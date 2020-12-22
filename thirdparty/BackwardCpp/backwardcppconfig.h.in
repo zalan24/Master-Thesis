@@ -1,0 +1,21 @@
+#pragma once
+
+#cmakedefine BFD_ENABLE
+
+#ifdef BFD_ENABLE
+#   define BACKWARD_HAS_BFD 1
+#endif
+
+#cmakedefine DW_ENABLE
+
+#ifdef DW_ENABLE
+#   define BACKWARD_HAS_DW 1
+#endif
+
+#cmakedefine DWARF_ENABLE
+
+#ifdef DWARF_ENABLE
+#   define BACKWARD_HAS_DWARF 1
+#endif
+
+#    include "backward.hpp"

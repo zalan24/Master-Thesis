@@ -1,0 +1,2 @@
+ninja -t recompact
+@PYTHON_EXECUTABLE@ @buildbloat_external_SOURCE_DIR@/buildbloat.py @PROJECT_BINARY_DIR@/.ninja_log > @PROJECT_BINARY_DIR@/build_profile.json
