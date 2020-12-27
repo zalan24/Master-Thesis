@@ -5,21 +5,16 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "renderer (win)",
+      "name": "Playground (win)",
       "type": "cppvsdbg",
       "request": "launch",
-      "program": "${workspaceFolder}/build/src/renderer/Renderer.exe",
+      "program": "${workspaceFolder}/build/src/apps/playground/Playground.exe",
       "stopAtEntry": false,
       "cwd": "${workspaceFolder}/build",
       "environment": [],
       "externalConsole": false,
       "internalConsoleOptions": "openOnSessionStart",
-      "args": [
-        "-stestScene2D",
-        "-ddepth.hdr",
-        "data/scenes/",
-        "data/images/"
-      ]
+      "args": []
     }
   ]
 }
