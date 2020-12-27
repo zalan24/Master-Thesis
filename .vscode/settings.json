@@ -157,5 +157,5 @@
         "thirdparty",
         "vulkan"
     ],
-    "cmake.configureOnOpen": true
+    "cmake.configureOnOpen": false
 }

@@ -7,4 +7,4 @@ set_target_properties(  AnimationsShaderManager
                         PROPERTIES
                         COMPILE_FLAGS ${TARGETCOMPILEFLAGS})
 target_include_directories(AnimationsShaderManager PUBLIC . ${CMAKE_CURRENT_BINARY_DIR})
-target_link_libraries(AnimationsShaderManager PRIVATE Animations_GLAD Animations_GLM)
+target_link_libraries(AnimationsShaderManager PRIVATE GLAD_LIB GLM_LIB)

@@ -6,5 +6,5 @@ set_target_properties(  AnimationsWindow
                         PROPERTIES
                         COMPILE_FLAGS ${TARGETCOMPILEFLAGS})
 target_include_directories(AnimationsWindow PUBLIC . ${CMAKE_CURRENT_BINARY_DIR})
-target_link_libraries(AnimationsWindow PRIVATE Animations_GLFW Animations_GLAD Animations_GLM AnimationsInput Animations_Imgui AnimationsIO)
+target_link_libraries(AnimationsWindow PRIVATE GLFW_LIB GLAD_LIB GLM_LIB AnimationsInput IMGUI_LIB AnimationsIO)
 target_link_libraries(AnimationsWindow PUBLIC AnimationsRenderer)

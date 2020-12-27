@@ -3,7 +3,7 @@ include(FetchContent)
 FetchContent_Declare(
     glfw_external
     GIT_REPOSITORY https://github.com/glfw/glfw.git
-    GIT_TAG        3.3
+    GIT_TAG        3.3.2
 )
 
 FetchContent_GetProperties(glfw_external)

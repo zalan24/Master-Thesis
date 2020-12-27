@@ -7,4 +7,4 @@ set_target_properties(  AnimationsIO
                         COMPILE_FLAGS ${TARGETCOMPILEFLAGS})
 target_include_directories(AnimationsIO PUBLIC . ${CMAKE_CURRENT_BINARY_DIR})
 target_link_libraries(AnimationsIO PUBLIC AnimationsData
-                                    PRIVATE Animations_Assimp Animations_Base64)
+                                    PRIVATE ASSIMP_LIB BASE64_LIB)

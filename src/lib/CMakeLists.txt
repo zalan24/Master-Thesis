@@ -15,4 +15,4 @@ target_link_libraries(AnimationsLibs INTERFACE
                     AnimationsWindow
                     AnimationsRenderer
                     AnimationsShaderManager
-                    )
+)
