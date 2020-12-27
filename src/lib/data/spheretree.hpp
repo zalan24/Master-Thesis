@@ -41,7 +41,7 @@ class SphereTree
             return ret;
         }
 
-        template <typename I, typename F>  // F : I -> BoundingSphere
+        template <typename F>  // F : I -> BoundingSphere
         static std::unique_ptr<SphereTreeNode> build(std::size_t count, std::vector<I>& indices,
                                                      std::vector<Sphere>& bounds,
                                                      std::size_t maxCountInNode, F&& f) {
@@ -63,10 +63,10 @@ class SphereTree
                          [&](std::size_t i) { return f(vec[i]); });
         }
 
-        template <typename I, typename F>
+        template <typename F>
         void intersect(const Ray& r, const std::vector<I>& indices, F&& f) const {
             if (::intersect(r, bound, false) >= 0) {
-                for (std::size_t i = dataStart; i < dataStart + dataCount; ++i) {
+                for (I i = dataStart; i < dataStart + dataCount; ++i) {
                     f(indices[i]);
                 }
                 if (left)
@@ -77,7 +77,6 @@ class SphereTree
         }
 
      private:
-        template <typename I>
         static std::unique_ptr<SphereTreeNode> build(std::size_t begin, std::size_t end,
                                                      std::vector<I>& indices,
                                                      std::vector<Sphere>& bounds,

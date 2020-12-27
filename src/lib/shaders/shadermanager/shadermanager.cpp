@@ -95,7 +95,7 @@ ShaderManager::ShaderManager() {
             if (isCompiled == GL_FALSE) {
                 GLint maxLength = 0;
                 glGetShaderiv(shader.id, GL_INFO_LOG_LENGTH, &maxLength);
-                std::vector<GLchar> infoLog(maxLength);
+                std::vector<GLchar> infoLog(static_cast<size_t>(maxLength));
                 glGetShaderInfoLog(shader.id, maxLength, &maxLength, &infoLog[0]);
                 throw std::runtime_error("Could not compile shader (" + shaderName
                                          + "): " + std::string{&infoLog[0], &infoLog.back()});
@@ -111,11 +111,11 @@ ShaderManager::ShaderManager() {
         }
         glLinkProgram(program.id);
         GLint isLinked = 0;
-        glGetProgramiv(program.id, GL_LINK_STATUS, (int*)&isLinked);
+        glGetProgramiv(program.id, GL_LINK_STATUS, reinterpret_cast<int*>(&isLinked));
         if (isLinked == GL_FALSE) {
             GLint maxLength = 0;
             glGetProgramiv(program.id, GL_INFO_LOG_LENGTH, &maxLength);
-            std::vector<GLchar> infoLog(maxLength);
+            std::vector<GLchar> infoLog(static_cast<size_t>(maxLength));
             glGetProgramInfoLog(program.id, maxLength, &maxLength, &infoLog[0]);
             throw std::runtime_error("Could not link program (" + programName
                                      + "): " + std::string{&infoLog[0], &infoLog.back()});
@@ -215,39 +215,39 @@ std::vector<ShaderManager::ShaderUniformData> ShaderManager::getProgramUniforms(
 }
 
 template <>
-void ShaderManager::setUniforms<glm::mat4>(GLint varId, GLuint programId, const glm::mat4* value,
+void ShaderManager::setUniforms<glm::mat4>(GLint varId, GLuint, const glm::mat4* value,
                                            std::size_t count) const {
     glUniformMatrix4fv(varId, count, GL_FALSE, glm::value_ptr(*value));
 }
 
 template <>
-void ShaderManager::setUniforms<glm::vec2>(GLint varId, GLuint programId, const glm::vec2* value,
+void ShaderManager::setUniforms<glm::vec2>(GLint varId, GLuint, const glm::vec2* value,
                                            std::size_t count) const {
     glUniform2fv(varId, count, glm::value_ptr(*value));
 }
 template <>
-void ShaderManager::setUniforms<glm::vec3>(GLint varId, GLuint programId, const glm::vec3* value,
+void ShaderManager::setUniforms<glm::vec3>(GLint varId, GLuint, const glm::vec3* value,
                                            std::size_t count) const {
     glUniform3fv(varId, count, glm::value_ptr(*value));
 }
 template <>
-void ShaderManager::setUniforms<glm::vec4>(GLint varId, GLuint programId, const glm::vec4* value,
+void ShaderManager::setUniforms<glm::vec4>(GLint varId, GLuint, const glm::vec4* value,
                                            std::size_t count) const {
     glUniform4fv(varId, count, glm::value_ptr(*value));
 }
 template <>
-void ShaderManager::setUniforms<float>(GLint varId, GLuint programId, const float* value,
+void ShaderManager::setUniforms<float>(GLint varId, GLuint, const float* value,
                                        std::size_t count) const {
     glUniform1fv(varId, count, value);
 }
 template <>
-void ShaderManager::setUniforms<int>(GLint varId, GLuint programId, const int* value,
+void ShaderManager::setUniforms<int>(GLint varId, GLuint, const int* value,
                                      std::size_t count) const {
     glUniform1iv(varId, count, value);
 }
 template <>
-void ShaderManager::setUniforms<unsigned int>(GLint varId, GLuint programId,
-                                              const unsigned int* value, std::size_t count) const {
+void ShaderManager::setUniforms<unsigned int>(GLint varId, GLuint, const unsigned int* value,
+                                              std::size_t count) const {
     glUniform1uiv(varId, count, value);
 }
 
