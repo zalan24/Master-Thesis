@@ -54,7 +54,7 @@ std::ifstream FileManager::readCache(const std::string& name) const {
     path /= getFileName(name);
     path += ".bin";
     std::ifstream ret(path.string().c_str(), std::ios::binary);
-    return std::move(ret);
+    return ret;
 }
 
 std::ofstream FileManager::writeCache(const std::string& name) const {
@@ -63,5 +63,5 @@ std::ofstream FileManager::writeCache(const std::string& name) const {
     path /= getFileName(name);
     path += ".bin";
     std::ofstream ret(path.string().c_str(), std::ios::binary);
-    return std::move(ret);
+    return ret;
 }

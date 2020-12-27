@@ -24,10 +24,6 @@ void Camera::rotateAround(const glm::vec3& point, const glm::vec3& axis, float a
         glm::vec4 ret = M * glm::vec4{p.x, p.y, p.z, 1};
         return glm::vec3{ret.x, ret.y, ret.z} / ret.w;
     };
-    auto transformDir = [&M](const glm::vec3& d) {
-        glm::vec4 ret = M * glm::vec4{d.x, d.y, d.z, 0};
-        return glm::vec3{ret.x, ret.y, ret.z};
-    };
     lookAt = transformPoint(lookAt);
     eyePos = transformPoint(eyePos);
     updatePV();

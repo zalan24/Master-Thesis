@@ -15,13 +15,17 @@
         "fileinfo",
         "fileloader",
         "found",
+        "fovy",
         "fresources",
         "fsanitize",
         "get",
         "getn",
         "gl",
+        "glf",
+        "glfw",
         "isystem",
         "matplotlibcpp",
+        "platform",
         "programiv",
         "pythonlibs",
         "recompact",
@@ -36,7 +40,10 @@
         "weverything",
         "wextra",
         "wunused",
-        "wweak"
+        "wweak",
+        "wwindow",
+        "xpos",
+        "ypos"
     ],
     "files.associations": {
         "*.sh": "hlsl",
@@ -162,6 +169,7 @@
         "stbimage",
         "strequal",
         "symengine",
+        "texcoord",
         "thirdparty",
         "vulkan"
     ],

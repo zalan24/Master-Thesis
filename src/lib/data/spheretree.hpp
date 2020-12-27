@@ -66,7 +66,7 @@ class SphereTree
         template <typename F>
         void intersect(const Ray& r, const std::vector<I>& indices, F&& f) const {
             if (::intersect(r, bound, false) >= 0) {
-                for (I i = dataStart; i < dataStart + dataCount; ++i) {
+                for (I i = static_cast<I>(dataStart); i < dataStart + dataCount; ++i) {
                     f(indices[i]);
                 }
                 if (left)

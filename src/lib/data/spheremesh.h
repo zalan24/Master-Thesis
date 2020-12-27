@@ -19,7 +19,7 @@ class SphereMesh
  public:
     SphereMesh(const Mesh& mesh, const std::string& shaderProgram = "spheremesh");
     SphereMesh(const std::string& shaderProgram = "spheremesh");
-    ~SphereMesh();
+    ~SphereMesh() override;
 
     SphereMesh(const SphereMesh&) = delete;
     SphereMesh& operator=(const SphereMesh&) = delete;

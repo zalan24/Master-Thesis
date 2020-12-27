@@ -23,7 +23,7 @@ class Mesh : public RenderableInterface
     };
 
     Mesh(const std::string& shaderProgram = "dummy");
-    ~Mesh() noexcept {}
+    ~Mesh() noexcept override {}
 
     void setShader(const std::string& shaderName);
 

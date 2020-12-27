@@ -73,7 +73,7 @@ void MeshManager::save() const {
     if (current.name == "" || current.sphereMesh == nullptr)
         return;
 
-    auto saveObj = [this](const ISerializable* obj, const std::string& name) {
+    auto saveObj = [](const ISerializable* obj, const std::string& name) {
         std::ofstream out = FileManager::getSingleton()->writeCache(name);
         if (!out.is_open())
             throw std::runtime_error("Could not save: " + name);
