@@ -1,6 +1,7 @@
 #include "entity.h"
 
-void Entity::Entity(Entity* _parent) : parent(_parent) {
+Entity::Entity(Entity* _parent, const AffineTransform& localTm)
+  : parent(_parent), localTransform(localTm) {
     if (parent)
         parent->addChild(this);
 }
@@ -15,7 +16,7 @@ void Entity::destroyChildren() {
     for (Entity*& c : copy)
         delete c;
     assert(children.size() == 0);
-    children = {};
+    children.clear();
 }
 
 Entity::AffineTransform Entity::getWorldTransform() const {
@@ -32,10 +33,10 @@ void Entity::setWorldTransform(const AffineTransform& tm) {
 }
 
 Entity::AffineTransform Entity::getLocalTransform() const {
-    return localTransfrom;
+    return localTransform;
 }
 
-void Entity::setLocalTransform(const AffineTransfrm& tm) {
+void Entity::setLocalTransform(const AffineTransform& tm) {
     localTransform = tm;
 }
 

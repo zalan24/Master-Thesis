@@ -29,16 +29,28 @@ class EntityManager
     const Entity* getById(EntityId id) const;
     EntityId getByName(const std::string& name) const;
     EntityId getId(const Entity* entity) const;
-    const std::string* getEntityName(EntityId id) const;
+    std::string getEntityName(EntityId id) const;
 
     void updateAll();
+    void start();
 
  private:
+    using Duration = std::chrono::duration<float>;
+    using Clock = std::chrono::high_resolution_clock;
     static EntityManager* instance;
 
-    std::vector<Entity*> entities;
+    struct EntityData
+    {
+        Entity* entity;
+        std::string name;
+        UpdatePriority priority;
+    };
+
+    std::vector<EntityData> entities;
     std::unordered_map<std::string, EntityId> nameMap;  // contains only named entities
     std::vector<EntityId> emptyList;  // indices of removed (currenty nullptr) entities
-
     std::multimap<UpdatePriority, EntityId> specialPriorities;  // only entities with priority != 0
+
+    Clock::time_point startTime;
+    float uptime = -1;
 };

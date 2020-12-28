@@ -8,9 +8,9 @@
 class Entity
 {
  public:
-    using AffineTransform = glm::mat3x4;
+    using AffineTransform = glm::mat4x4;
 
-    void Entity(Entity* parent);
+    Entity(Entity* parent, const AffineTransform& localTm = {});
     virtual ~Entity();
 
     Entity(const Entity&) = delete;
@@ -22,12 +22,12 @@ class Entity
         float dt;
     };
 
-    virtual update(const UpdateData& data) {}
+    virtual void update(const UpdateData&) {}
 
     AffineTransform getWorldTransform() const;
     void setWorldTransform(const AffineTransform& tm);
     AffineTransform getLocalTransform() const;
-    void setLocalTransform(const AffineTransfrm& tm);
+    void setLocalTransform(const AffineTransform& tm);
 
     void destroyChildren();
 
