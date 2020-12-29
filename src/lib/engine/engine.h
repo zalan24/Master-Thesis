@@ -8,6 +8,7 @@
 #include <entitymanager.h>
 #include <renderer.h>
 #include <serializable.h>
+#include <window.h>
 
 class Engine
 {
@@ -16,6 +17,7 @@ class Engine
     {
         int screenWidth;
         int screenHeight;
+        std::string title;
         void gatherEntries(std::vector<ISerializable::Entry>& entries) const override;
     };
 
@@ -29,11 +31,20 @@ class Engine
     void gameLoop();
 
  private:
+    struct GlLoader
+    {
+        GlLoader();
+        ~GlLoader();
+        GlLoader(const GlLoader&) = delete;
+        GlLoader& operator=(const GlLoader&) = delete;
+    };
+
     using FrameId = size_t;
 
     Config config;
 
     EntityManager entityManager;
+    Window window;
     // Renderer renderer; // TODO
 
     FrameId simulationFrame = 0;

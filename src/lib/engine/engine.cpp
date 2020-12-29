@@ -5,6 +5,7 @@
 void Engine::Config::gatherEntries(std::vector<ISerializable::Entry>& entries) const {
     REGISTER_ENTRY(screenWidth, entries);
     REGISTER_ENTRY(screenHeight, entries);
+    REGISTER_ENTRY(title, entries);
 }
 
 static Engine::Config get_config(const std::string& file) {
@@ -18,7 +19,8 @@ static Engine::Config get_config(const std::string& file) {
 Engine::Engine(const std::string& configFile) : Engine(get_config(configFile)) {
 }
 
-Engine::Engine(const Config& cfg) : config(cfg) {
+Engine::Engine(const Config& cfg)
+  : config(cfg), window(config.screenWidth, config.screenHeight, config.title) {
 }
 
 Engine::~Engine() {
