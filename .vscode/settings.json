@@ -10,6 +10,7 @@
         "buildbloat",
         "call",
         "compat",
+        "cvref",
         "ffast",
         "filehash",
         "fileinfo",
@@ -29,7 +30,9 @@
         "programiv",
         "pythonlibs",
         "recompact",
+        "remove",
         "resloader",
+        "t",
         "targetcompileflags",
         "test",
         "uniformfv",
@@ -173,5 +176,6 @@
         "thirdparty",
         "vulkan"
     ],
-    "cmake.configureOnOpen": false
+    "cmake.configureOnOpen": false,
+    "cmake.configureOnEdit": false
 }

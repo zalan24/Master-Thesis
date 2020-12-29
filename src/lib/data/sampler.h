@@ -1,6 +1,7 @@
 #pragma once
 
-#include "serializable.h"
+#include <serializable.h>
+
 #include "spheremesh.h"
 
 using uint = unsigned int;
@@ -48,6 +49,8 @@ class Sampler
     std::vector<std::string> getPrograms() const override { return {shaderProgram}; }
     std::vector<FloatOption> getOptions() override;
     std::vector<BoolOption> getBoolOptions() override;
+
+    void gatherEntries(std::vector<ISerializable::Entry>& entries) const override {}
 
     bool isBuilt() const;
 

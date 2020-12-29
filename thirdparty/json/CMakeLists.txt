@@ -3,7 +3,7 @@ include(FetchContent)
 FetchContent_Declare(
     json_external
     GIT_REPOSITORY https://github.com/nlohmann/json.git
-    GIT_TAG        v3.7.0
+    GIT_TAG        v3.9.1
 )
 
 FetchContent_GetProperties(json_external)

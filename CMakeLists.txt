@@ -23,7 +23,11 @@ set(SANITIZE_LINK_FLAGS "")
 if (USE_SANITIZERS)
     include(Sanitizer)
 endif (USE_SANITIZERS)
-include(FMath)
+
+option(FAST_MATH "Fast math" OFF)
+if (FAST_MATH)
+    include(FMath)
+endif(FAST_MATH)
 
 set(WARNINGFLAGS "")
 set(TEST_WARNINGFLAGS "")

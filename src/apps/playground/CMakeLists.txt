@@ -1,3 +1,3 @@
 
 add_executable(Playground playground.cpp)
-target_link_libraries(Playground AnimationsLibs)
+target_link_libraries(Playground PRIVATE AnimationsLibs CLI11_LIB)

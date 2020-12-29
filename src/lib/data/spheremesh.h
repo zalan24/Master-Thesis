@@ -30,6 +30,8 @@ class SphereMesh
     std::vector<std::string> getPrograms() const override;
     std::vector<FloatOption> getOptions() override;
 
+    void gatherEntries(std::vector<ISerializable::Entry>& entries) const override {}
+
     enum class Status
     {
         UNINITIALIZED,
