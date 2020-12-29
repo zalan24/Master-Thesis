@@ -55,8 +55,6 @@ class Window
     GLFWInit initer;
     WindowObject window;
     GLContext context;
-    //  std::unique_ptr<Renderer> renderer;  // replacable
-    //  std::unique_ptr<UI> ui;
     std::set<int> pushedButtons;
     std::set<int> pushedMouseButtons;
     int width = 0;

@@ -9,16 +9,6 @@
 
 #include <GLFW/glfw3.h>
 
-// #define GLM_FORCE_RADIANS
-// #include <glm/glm.hpp>
-// #include <glm/gtc/type_ptr.hpp>
-// #include <glm/mat4x4.hpp>
-
-// #include "renderer.h"
-// #include "ui.h"
-
-// using namespace glm;
-
 Window* Window::instance = nullptr;
 
 void Window::error_callback(int, const char* description) {
@@ -116,12 +106,7 @@ Window::GLContext::~GLContext() {
 }
 
 Window::Window(int _width, int _height, const std::string& title)
-  : initer(),
-    window(_width, _height, title),
-    context(window)
-// ,renderer(new Renderer),
-// ui(new UI{window})
-{
+  : initer(), window(_width, _height, title), context(window) {
     glfwSwapInterval(1);
     assert(instance == nullptr);
     instance = this;
@@ -146,14 +131,3 @@ void Window::present() {
 void Window::pollEvents() {
     glfwPollEvents();
 }
-
-// void Window::run() {
-//     while (!glfwWindowShouldClose(window)) {
-//         glfwGetFramebufferSize(window, &width, &height);
-//         renderer->render(width, height);
-//         UI::UIData data{renderer->getScene(), renderer->getShaderManager()};
-//         ui->render(data);
-//         glfwSwapBuffers(window);
-//         glfwPollEvents();
-//     }
-// }

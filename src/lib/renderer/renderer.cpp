@@ -2,6 +2,11 @@
 
 #include <glad/glad.h>
 
+#include <entitymanager.h>
+
+#include "drawableentity.h"
+#include "rendercontext.h"
+
 Renderer::Renderer() {
     GLuint vertexArrayID = 0;
     glGenVertexArrays(1, &vertexArrayID);
@@ -11,7 +16,7 @@ Renderer::Renderer() {
     checkError();
 }
 
-void Renderer::render(int width, int height) {
+void Renderer::render(EntityManager* entityManager, int width, int height) {
     float ratio;
     if (width <= 0 || height <= 0)
         return;
@@ -25,16 +30,15 @@ void Renderer::render(int width, int height) {
     glm::vec3 lightColor{1, 1, 1};
     glm::vec3 lightDir{glm::normalize(glm::vec3{-1, -1, 1})};
     glm::vec3 ambientColor{0.2f, 0.2f, 0.2f};
-    RenderableInterface::RenderContext context{width,    height,       camera.getPV(), lightColor,
-                                               lightDir, ambientColor, &shaderManager};
-    if (scene)
-        scene->render(context);
+    RenderContext context{width,    height,       camera.getPV(), lightColor,
+                          lightDir, ambientColor, &shaderManager};
+
+    EntityQuery renderQuery(
+      [](const Entity* entity) { return dynamic_cast<const DrawableEntity*>(entity) != nullptr; },
+      [&context](Entity* entity) { static_cast<DrawableEntity*>(entity)->draw(context); });
+    entityManager->performQuery(renderQuery);
 
     checkError();
-}
-
-void Renderer::setScene(std::unique_ptr<Scene>&& s) {
-    scene = std::move(s);
 }
 
 void Renderer::checkError() const {

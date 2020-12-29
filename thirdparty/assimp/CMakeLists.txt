@@ -3,7 +3,7 @@ include(FetchContent)
 FetchContent_Declare(
     assimp_external
     GIT_REPOSITORY https://github.com/assimp/assimp.git
-    GIT_TAG        v.5.0.0.rc1
+    GIT_TAG        v5.0.1
 )
 
 FetchContent_GetProperties(assimp_external)

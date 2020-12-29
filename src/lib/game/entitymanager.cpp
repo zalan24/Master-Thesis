@@ -147,3 +147,10 @@ void EntityManager::checkAndResetUpdateOrder() {
             updateOrder.push_back(id);
     needReset = false;
 }
+
+void EntityManager::performQuery(const EntityQuery& query) {
+    for (EntityId id = 0; id < entities.size(); ++id)
+        if (entities[id].entity != nullptr && entities[id].started
+            && query.selector(entities[id].entity.get()))
+            query.functor(entities[id].entity.get());
+}

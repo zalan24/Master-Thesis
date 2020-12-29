@@ -1,6 +1,7 @@
 #pragma once
 
 #include <chrono>
+#include <functional>
 #include <limits>
 #include <map>
 #include <memory>
@@ -9,6 +10,15 @@
 #include <vector>
 
 class Entity;
+
+struct EntityQuery
+{
+    std::function<bool(const Entity*)> selector;
+    std::function<void(Entity*)> functor;
+    template <typename F1, typename F2>
+    EntityQuery(F1&& _selector, F2&& _functor)
+      : selector(std::forward<F1>(_selector)), functor(std::forward<F2>(_functor)) {}
+};
 
 class EntityManager
 {
@@ -32,6 +42,8 @@ class EntityManager
     EntityId getByName(const std::string& name) const;
     EntityId getId(const Entity* entity) const;
     std::string getEntityName(EntityId id) const;
+
+    void performQuery(const EntityQuery& query);
 
     void step();
     void start();

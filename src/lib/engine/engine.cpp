@@ -50,6 +50,7 @@ void Engine::gameLoop() {
     LoopState state = SIMULATE;
     std::thread simulationThread(&Engine::simulationLoop, this, &quit, &state);
     renderFrame = 0;
+
     while (!window.shouldClose()) {
         int width, height;
         window.getFramebufferSize(width, height);
