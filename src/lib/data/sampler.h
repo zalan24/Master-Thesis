@@ -50,14 +50,13 @@ class Sampler
     std::vector<FloatOption> getOptions() override;
     std::vector<BoolOption> getBoolOptions() override;
 
-    void gatherEntries(std::vector<ISerializable::Entry>& entries) const override {}
-
     bool isBuilt() const;
 
     void write(std::ostream& out) const override;
     void read(std::istream& in) override;
 
  protected:
+    void gatherEntries(std::vector<ISerializable::Entry>& entries) const override {}
     void _render(const RenderContext& context) const override;
 
  private:

@@ -19,7 +19,8 @@ class ISerializable
             INT,
             FLOAT,
             STRING,
-            BOOL
+            BOOL,
+            OBJECT
         } type;
         union
         {
@@ -36,7 +37,6 @@ class ISerializable
             writePtr = wPtr;
         }
     };
-    virtual void gatherEntries(std::vector<Entry>& entries) const = 0;
 
     virtual ~ISerializable() {}
 
@@ -47,6 +47,8 @@ class ISerializable
     void read(const json& in);
 
  protected:
+    virtual void gatherEntries(std::vector<Entry>& entries) const = 0;
+
     template <typename T>
     static Entry::Type getType();
     template <>
@@ -57,6 +59,8 @@ class ISerializable
     static Entry::Type getType<std::string>();
     template <>
     static Entry::Type getType<bool>();
+    template <>
+    static Entry::Type getType<ISerializable*>();
 };
 
 #define REGISTER_ENTRY(name, entries) \

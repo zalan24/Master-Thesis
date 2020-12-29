@@ -146,7 +146,9 @@
         "xtree": "cpp",
         "bit": "cpp",
         "*.h++": "cpp",
-        "*.cuh": "cpp"
+        "*.cuh": "cpp",
+        "stack": "cpp",
+        "xthread": "cpp"
     },
     "cSpell.words": [
         "alignas",

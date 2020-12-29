@@ -28,6 +28,10 @@ template <>
 ISerializable::Entry::Type ISerializable::getType<bool>() {
     return Entry::BOOL;
 }
+template <>
+ISerializable::Entry::Type ISerializable::getType<ISerializable*>() {
+    return Entry::OBJECT;
+}
 
 static void write(json& to, const ISerializable::Entry& e) {
     switch (e.type) {
@@ -42,6 +46,11 @@ static void write(json& to, const ISerializable::Entry& e) {
             break;
         case ISerializable::Entry::BOOL:
             to[e.name] = *static_cast<const bool*>(e.readPtr);
+            break;
+        case ISerializable::Entry::OBJECT:
+            json obj;
+            (*static_cast<const ISerializable* const*>(e.readPtr))->write(obj);
+            to[e.name] = obj;
             break;
     }
 }
@@ -59,6 +68,11 @@ static void push(json& to, const ISerializable::Entry& e) {
             break;
         case ISerializable::Entry::BOOL:
             to.push_back(*static_cast<const bool*>(e.readPtr));
+            break;
+        case ISerializable::Entry::OBJECT:
+            json obj;
+            (*static_cast<const ISerializable* const*>(e.readPtr))->write(obj);
+            to.push_back(obj);
             break;
     }
 }
@@ -78,6 +92,9 @@ static void read(const json& from, ISerializable::Entry::Type type, void* wPtr, 
             break;
         case ISerializable::Entry::BOOL:
             static_cast<bool*>(wPtr)[arrIndex] = from[index];
+            break;
+        case ISerializable::Entry::OBJECT:
+            static_cast<ISerializable**>(wPtr)[arrIndex]->read(from[index]);
             break;
     }
 }

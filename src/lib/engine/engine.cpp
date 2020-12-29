@@ -27,6 +27,49 @@ Engine::~Engine() {
     // TODO
 }
 
+void Engine::simulationLoop(bool* quit, LoopState* state) {
+    simulationFrame = 0;
+    while (!*quit) {
+        {
+            std::unique_lock<std::mutex> lk(mutex);
+            simulationCV.wait(lk, [state, quit] { return *state == SIMULATE || *quit; });
+            if (*quit)
+                break;
+            entityManager.step();
+            simulationFrame++;
+            *state = RENDER;
+        }
+        renderCV.notify_one();
+    }
+    *state = SIMULATION_END;
+}
+
 void Engine::gameLoop() {
-    // TODO
+    entityManager.start();
+    bool quit = false;
+    LoopState state = SIMULATE;
+    std::thread simulationThread(&Engine::simulationLoop, this, &quit, &state);
+    renderFrame = 0;
+    while (!window.shouldClose()) {
+        int width, height;
+        window.getFramebufferSize(width, height);
+        {
+            std::unique_lock<std::mutex> lk(mutex);
+            renderCV.wait(lk, [&state] { return state == RENDER; });
+            // renderer->render(width, height);
+            // UI::UIData data{renderer->getScene(), renderer->getShaderManager()};
+            // ui->render(data);
+            state = SIMULATE;
+            window.pollEvents();
+        }
+        simulationCV.notify_one();
+        window.present();
+        renderFrame++;
+    }
+    {
+        std::unique_lock<std::mutex> lk(mutex);
+        quit = true;
+    }
+    simulationCV.notify_one();
+    simulationThread.join();
 }

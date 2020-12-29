@@ -7,3 +7,4 @@ set_target_properties(  AnimationsEntities
                         COMPILE_FLAGS ${TARGETCOMPILEFLAGS})
 target_include_directories(AnimationsEntities PUBLIC . ${CMAKE_CURRENT_BINARY_DIR})
 target_link_libraries(AnimationsEntities PRIVATE GLM_LIB)
+target_link_libraries(AnimationsEntities PUBLIC AnimationsSerializable)

@@ -18,10 +18,15 @@ EntityManager::EntityManager() {
 
 EntityManager::~EntityManager() noexcept {
     assert(instance == this);
+    for (EntityId id = 0; id < entities.size(); ++id)
+        if (entities[id].entity != nullptr)
+            removeEntity(id);
     instance = nullptr;
 }
 
-EntityManager::EntityId EntityManager::addEntity(Entity* entity, UpdatePriority priority) {
+EntityManager::EntityId EntityManager::addEntity(std::unique_ptr<Entity>&& entity,
+                                                 UpdatePriority priority) {
+    needReset = true;
     EntityId ret = INVALID_ENTITY;
     if (emptyList.size() > 0) {
         ret = emptyList.back();
@@ -32,17 +37,16 @@ EntityManager::EntityId EntityManager::addEntity(Entity* entity, UpdatePriority 
         ret = entities.size();
         entities.resize(entities.size() + 1);
     }
-    entities[ret] = {entity, "", priority};
-    if (priority != 0)
-        specialPriorities.insert({priority, ret});
+    entities[ret] = {std::move(entity), "", priority, false};
+    toStart.push_back(ret);
     return ret;
 }
 
-EntityManager::EntityId EntityManager::addEntity(Entity* entity, const std::string& name,
-                                                 UpdatePriority priority) {
+EntityManager::EntityId EntityManager::addEntity(std::unique_ptr<Entity>&& entity,
+                                                 const std::string& name, UpdatePriority priority) {
     if (nameMap.find(name) != nameMap.end())
         throw std::runtime_error("An entity as already added with name: " + name);
-    EntityId ret = addEntity(entity, priority);
+    EntityId ret = addEntity(std::move(entity), priority);
     assert(ret != INVALID_ENTITY);
     if (ret == INVALID_ENTITY)
         return ret;
@@ -52,8 +56,9 @@ EntityManager::EntityId EntityManager::addEntity(Entity* entity, const std::stri
 }
 
 EntityManager::EntityId EntityManager::getId(const Entity* entity) const {
-    auto itr = std::find_if(entities.begin(), entities.end(),
-                            [entity](const EntityData& data) { return data.entity == entity; });
+    auto itr = std::find_if(entities.begin(), entities.end(), [entity](const EntityData& data) {
+        return data.entity.get() == entity;
+    });
     if (itr == entities.end())
         return INVALID_ENTITY;
     return static_cast<EntityId>(std::distance(entities.begin(), itr));
@@ -69,27 +74,26 @@ std::string EntityManager::getEntityName(EntityId id) const {
 }
 
 void EntityManager::removeEntity(EntityId id) {
+    needReset = true;
     assert(id < entities.size() && entities[id].entity != nullptr);
-    entities[id].entity = nullptr;
-    emptyList.push_back(id);
+    assert(entities[id].started);
+    for (Entity* entity : entities[id].entity->getChildren())
+        removeEntity(entity);
     std::string name = getEntityName(id);
     if (name != "")
         nameMap.erase(nameMap.find(name));
-    auto itr = std::find_if(
-      specialPriorities.begin(), specialPriorities.end(),
-      [id](const std::pair<UpdatePriority, EntityId>& special) { return special.second == id; });
-    if (itr != specialPriorities.end())
-        specialPriorities.erase(itr);
+    entities[id].entity.reset();
+    emptyList.push_back(id);
 }
 
 Entity* EntityManager::getById(EntityId id) {
     assert(id < entities.size() && entities[id].entity != nullptr);
-    return entities[id].entity;
+    return entities[id].entity.get();
 }
 
 const Entity* EntityManager::getById(EntityId id) const {
     assert(id < entities.size() && entities[id].entity != nullptr);
-    return entities[id].entity;
+    return entities[id].entity.get();
 }
 
 EntityManager::EntityId EntityManager::getByName(const std::string& name) const {
@@ -104,7 +108,22 @@ void EntityManager::start() {
     startTime = Clock::now();
 }
 
-void EntityManager::updateAll() {
+void EntityManager::step() {
+    // Start
+    if (toStart.size() > 0) {
+        std::vector<EntityId> toStartEntities = toStart;
+        toStart.clear();
+        for (EntityId id : toStartEntities) {
+            if (entities[id].entity == nullptr)
+                continue;
+            if (!entities[id].started) {
+                entities[id].entity->start();
+                entities[id].started = true;
+            }
+        }
+    }
+
+    // Update
     assert(uptime >= 0);
     float now = std::chrono::duration_cast<Duration>(Clock::now() - startTime).count();
     float dt = now - uptime;
@@ -112,15 +131,19 @@ void EntityManager::updateAll() {
     Entity::UpdateData updateData;
     updateData.dt = dt;
     updateData.time = uptime;
-    for (const auto& [priority, id] : specialPriorities)
-        if (priority < 0)
-            getById(id)->update(updateData);
-        else
-            break;
-    for (const EntityData& data : entities)
-        if (data.priority == 0)
-            data.entity->update(updateData);
-    for (const auto& [priority, id] : specialPriorities)
-        if (priority > 0)
-            getById(id)->update(updateData);
+    checkAndResetUpdateOrder();
+    for (EntityId id : updateOrder)
+        if (entities[id].entity != nullptr && entities[id].started)
+            entities[id].entity->update(updateData);
+}
+
+void EntityManager::checkAndResetUpdateOrder() {
+    if (!needReset)
+        return;
+    updateOrder.clear();
+    updateOrder.reserve(entities.size() - emptyList.size());
+    for (EntityId id = 0; id < entities.size(); ++id)
+        if (entities[id].entity != nullptr)
+            updateOrder.push_back(id);
+    needReset = false;
 }

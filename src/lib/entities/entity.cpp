@@ -9,14 +9,7 @@ Entity::Entity(Entity* _parent, const AffineTransform& localTm)
 Entity::~Entity() {
     if (parent)
         parent->removeChild(this);
-}
-
-void Entity::destroyChildren() {
-    std::vector<Entity*> copy = children;  // cheap and easy
-    for (Entity*& c : copy)
-        delete c;
     assert(children.size() == 0);
-    children.clear();
 }
 
 Entity::AffineTransform Entity::getWorldTransform() const {
@@ -53,4 +46,10 @@ void Entity::removeChild(Entity* c) {
         assert(c->parent == this);
         c->parent = nullptr;
     }
+}
+
+void Entity::gatherEntries(std::vector<ISerializable::Entry>& entries) const {
+    // TODO
+    // REGISTER_ENTRY();
+    gatherEntityEntries(entries);
 }

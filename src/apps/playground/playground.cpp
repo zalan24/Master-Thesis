@@ -1,15 +1,10 @@
 #include <iostream>
-// #include <memory>
+#include <memory>
 
-#include <engine.h>
 #include <CLI/CLI.hpp>
-// #include <filemanager.h>
-// #include <loadmesh.h>
-// #include <meshmanager.h>
-// #include <renderer.h>
-// #include <scene.h>
-// #include <spheremesh.h>
-// #include <window.h>
+
+#include <animchar.h>
+#include <engine.h>
 
 using namespace std;
 
@@ -33,6 +28,10 @@ int main(int argc, char* argv[]) {
         }
 
         Engine engine(config);
+
+        std::unique_ptr<Animchar> ground(new Animchar());
+        engine.getEntityManager()->addEntity(std::move(ground));
+
         engine.gameLoop();
         // FileManager fileManager{argc == 1 ? "" : std::string{argv[1]}};
         // MeshManager meshManager;

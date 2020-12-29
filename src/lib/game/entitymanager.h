@@ -3,6 +3,7 @@
 #include <chrono>
 #include <limits>
 #include <map>
+#include <memory>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -21,8 +22,9 @@ class EntityManager
     EntityManager();
     ~EntityManager() noexcept;
 
-    EntityId addEntity(Entity* entity, UpdatePriority priority = 0);
-    EntityId addEntity(Entity* entity, const std::string& name, UpdatePriority priority = 0);
+    EntityId addEntity(std::unique_ptr<Entity>&& entity, UpdatePriority priority = 0);
+    EntityId addEntity(std::unique_ptr<Entity>&& entity, const std::string& name,
+                       UpdatePriority priority = 0);
     void removeEntity(const Entity* entity);
     void removeEntity(EntityId id);
     Entity* getById(EntityId id);
@@ -31,7 +33,7 @@ class EntityManager
     EntityId getId(const Entity* entity) const;
     std::string getEntityName(EntityId id) const;
 
-    void updateAll();
+    void step();
     void start();
 
  private:
@@ -41,16 +43,21 @@ class EntityManager
 
     struct EntityData
     {
-        Entity* entity;
+        std::unique_ptr<Entity> entity;
         std::string name;
         UpdatePriority priority;
+        bool started;
     };
 
     std::vector<EntityData> entities;
     std::unordered_map<std::string, EntityId> nameMap;  // contains only named entities
     std::vector<EntityId> emptyList;  // indices of removed (currenty nullptr) entities
-    std::multimap<UpdatePriority, EntityId> specialPriorities;  // only entities with priority != 0
+    std::vector<EntityId> updateOrder;
+    std::vector<EntityId> toStart;
 
     Clock::time_point startTime;
     float uptime = -1;
+    bool needReset = false;
+
+    void checkAndResetUpdateOrder();
 };

@@ -5,12 +5,14 @@
 #define GLM_FORCE_RADIANS
 #include <glm/glm.hpp>
 
-class Entity
+#include <serializable.h>
+
+class Entity : public ISerializable
 {
  public:
     using AffineTransform = glm::mat4x4;
 
-    Entity(Entity* parent, const AffineTransform& localTm = {});
+    Entity(Entity* parent = nullptr, const AffineTransform& localTm = {});
     virtual ~Entity();
 
     Entity(const Entity&) = delete;
@@ -23,13 +25,18 @@ class Entity
     };
 
     virtual void update(const UpdateData&) {}
+    virtual void start() {}
 
     AffineTransform getWorldTransform() const;
     void setWorldTransform(const AffineTransform& tm);
     AffineTransform getLocalTransform() const;
     void setLocalTransform(const AffineTransform& tm);
 
-    void destroyChildren();
+    const std::vector<Entity*>& getChildren() const { return children; }
+
+ protected:
+    void gatherEntries(std::vector<ISerializable::Entry>& entries) const override final;
+    virtual void gatherEntityEntries(std::vector<ISerializable::Entry>& entries) const {}
 
  private:
     Entity* parent = nullptr;

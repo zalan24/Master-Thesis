@@ -30,6 +30,9 @@ class Engine
 
     void gameLoop();
 
+    EntityManager* getEntityManager() { return &entityManager; }
+    const EntityManager* getEntityManager() const { return &entityManager; }
+
  private:
     struct GlLoader
     {
@@ -45,11 +48,21 @@ class Engine
 
     EntityManager entityManager;
     Window window;
-    // Renderer renderer; // TODO
+    Renderer renderer;
 
     FrameId simulationFrame = 0;
     FrameId renderFrame = 0;
 
-    std::thread simulationThread;
     std::mutex mutex;
+    std::condition_variable renderCV;
+    std::condition_variable simulationCV;
+
+    enum LoopState
+    {
+        SIMULATE,
+        RENDER,
+        SIMULATION_END
+    };
+
+    void simulationLoop(bool* quit, LoopState* state);
 };

@@ -131,6 +131,22 @@ Window::~Window() {
     instance = nullptr;
 }
 
+bool Window::shouldClose() {
+    return glfwWindowShouldClose(window);
+}
+
+void Window::getFramebufferSize(int& width, int& height) {
+    glfwGetFramebufferSize(window, &width, &height);
+}
+
+void Window::present() {
+    glfwSwapBuffers(window);
+}
+
+void Window::pollEvents() {
+    glfwPollEvents();
+}
+
 // void Window::run() {
 //     while (!glfwWindowShouldClose(window)) {
 //         glfwGetFramebufferSize(window, &width, &height);

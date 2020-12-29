@@ -17,6 +17,11 @@ class Window
     Window(const Window&) = delete;
     Window& operator=(const Window&) = delete;
 
+    bool shouldClose();
+    void getFramebufferSize(int& width, int& height);
+    void present();
+    void pollEvents();
+
  private:
     static Window* instance;
 
