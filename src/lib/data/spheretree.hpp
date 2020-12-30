@@ -8,7 +8,7 @@
 #define GLM_FORCE_RADIANS
 #include <glm/glm.hpp>
 
-#include "intersections.h"
+#include <intersections.h>
 
 template <typename I>
 class SphereTree

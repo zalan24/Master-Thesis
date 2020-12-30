@@ -5,6 +5,7 @@
 
 #include <animchar.h>
 #include <engine.h>
+#include <loadmesh.h>
 
 using namespace std;
 
@@ -29,7 +30,8 @@ int main(int argc, char* argv[]) {
 
         Engine engine(config);
 
-        std::unique_ptr<Animchar> ground(new Animchar());
+        Mesh m = loadMeshCube();
+        std::unique_ptr<Animchar> ground(new Animchar(std::move(m)));
         engine.getEntityManager()->addEntity(std::move(ground));
 
         engine.gameLoop();

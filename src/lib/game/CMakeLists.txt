@@ -6,4 +6,4 @@ set_target_properties(  AnimationsGame
                         PROPERTIES
                         COMPILE_FLAGS ${TARGETCOMPILEFLAGS})
 target_include_directories(AnimationsGame PUBLIC . ${CMAKE_CURRENT_BINARY_DIR})
-target_link_libraries(AnimationsGame PUBLIC AnimationsEntities AnimationsIO)
+target_link_libraries(AnimationsGame PUBLIC AnimationsEntities)

@@ -4,9 +4,7 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/type_ptr.hpp>
 
-#include "camerainput.h"
-
-class Camera : public CameraInterface
+class Camera
 {
  public:
     Camera();
@@ -15,8 +13,8 @@ class Camera : public CameraInterface
     const glm::mat4& getPV() const { return pv; }
     glm::mat4 getPV() { return pv; }
 
-    void rotateAround(const glm::vec3& point, const glm::vec3& axis, float angle) override;
-    void zoom(float value) override;
+    void rotateAround(const glm::vec3& point, const glm::vec3& axis, float angle);
+    void zoom(float value);
 
     glm::vec3 getLookAt() const { return lookAt; }
     glm::vec3 getEyePos() const { return eyePos; }

@@ -12,5 +12,4 @@ target_link_libraries(AnimationsIO PRIVATE
 )
 target_link_libraries(AnimationsIO PUBLIC
     AnimationsData
-    AnimationsEntities
 )
