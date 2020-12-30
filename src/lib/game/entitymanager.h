@@ -32,6 +32,7 @@ class EntityManager
     EntityManager();
     ~EntityManager() noexcept;
 
+    void addEntities(std::vector<std::unique_ptr<Entity>>&& entities, UpdatePriority priority = 0);
     EntityId addEntity(std::unique_ptr<Entity>&& entity, UpdatePriority priority = 0);
     EntityId addEntity(std::unique_ptr<Entity>&& entity, const std::string& name,
                        UpdatePriority priority = 0);

@@ -33,19 +33,32 @@ int main(int argc, char* argv[]) {
         engine.getRenderer()->getCamera().setEyePos(glm::vec3{0, 2, -3});
 
         std::unique_ptr<Animchar> cube = std::make_unique<Animchar>(
-          createCube(0.5), nullptr, glm::translate(glm::mat4(1.f), glm::vec3(-1, 0.5, 0)));
+          createCube(0.5), nullptr, glm::translate(glm::mat4(1.f), glm::vec3(-2, 0.5, 0)));
         cube->setUpdateFunctor([](Entity* cube, const Entity::UpdateData& data) {
             cube->setLocalTransform(
               glm::rotate(cube->getLocalTransform(), data.dt, glm::vec3{0, 1, 0}));
         });
         engine.getEntityManager()->addEntity(std::move(cube));
         std::unique_ptr<Animchar> sphere = std::make_unique<Animchar>(
-          createSphere(64, 32, 0.5), nullptr, glm::translate(glm::mat4(1.f), glm::vec3(1, 0.5, 0)));
+          createSphere(64, 32, 0.5), nullptr, glm::translate(glm::mat4(1.f), glm::vec3(2, 0.5, 0)));
         sphere->setUpdateFunctor([](Entity* sphere, const Entity::UpdateData& data) {
             sphere->setLocalTransform(
               glm::rotate(sphere->getLocalTransform(), data.dt, glm::vec3{0, 1, 0}));
         });
         engine.getEntityManager()->addEntity(std::move(sphere));
+
+        std::vector<Mesh> suzanneMeshes = loadMesh("data/models/suzanne.obj");
+        std::vector<std::unique_ptr<Entity>> suzanneComponents =
+          createAnimcharSet(suzanneMeshes.size(), suzanneMeshes.data());
+        Entity* suzanne = suzanneComponents[0].get();
+        suzanne->setLocalTransform(glm::scale(glm::translate(glm::mat4(1.f), glm::vec3(0, 0.5, 0)),
+                                              glm::vec3(0.5f, 0.5f, 0.5f)));
+        suzanne->setUpdateFunctor([](Entity* suzanne, const Entity::UpdateData& data) {
+            suzanne->setLocalTransform(
+              glm::rotate(suzanne->getLocalTransform(), data.dt, glm::vec3{0, 1, 0}));
+        });
+
+        engine.getEntityManager()->addEntities(std::move(suzanneComponents));
         engine.getEntityManager()->addEntity(
           std::make_unique<Animchar>(createPlane(glm::vec3{0, 0, 0}, glm::vec3(0, 1, 0), 10)));
 

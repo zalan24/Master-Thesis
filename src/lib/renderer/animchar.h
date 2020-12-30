@@ -1,5 +1,7 @@
 #pragma once
 
+#include <vector>
+
 #include <mesh.h>
 #include <shadermanager.h>
 #include <buffer.hpp>
@@ -26,3 +28,8 @@ class Animchar : public DrawableEntity
     void uploadData();
     void bindVertexAttributes();
 };
+
+std::vector<std::unique_ptr<Entity>> createAnimcharSet(size_t count, const Mesh* meshes,
+                                                       Entity* parent = nullptr);
+void populateAnimcharSet(Entity* entity, size_t count, const Mesh* meshes,
+                         std::vector<std::unique_ptr<Entity>>& entities);

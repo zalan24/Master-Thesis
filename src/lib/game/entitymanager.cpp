@@ -24,6 +24,12 @@ EntityManager::~EntityManager() noexcept {
     instance = nullptr;
 }
 
+void EntityManager::addEntities(std::vector<std::unique_ptr<Entity>>&& entities,
+                                UpdatePriority priority) {
+    for (std::unique_ptr<Entity>& itr : entities)
+        addEntity(std::move(itr), priority);
+}
+
 EntityManager::EntityId EntityManager::addEntity(std::unique_ptr<Entity>&& entity,
                                                  UpdatePriority priority) {
     needReset = true;

@@ -44,3 +44,22 @@ void Animchar::draw(const RenderContext& ctx) const {
     glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
     glDrawElements(GL_TRIANGLES, mesh.getIndices().size(), GL_UNSIGNED_INT, 0);
 }
+
+std::vector<std::unique_ptr<Entity>> createAnimcharSet(size_t count, const Mesh* meshes,
+                                                       Entity* parent) {
+    if (count == 1) {
+        std::vector<std::unique_ptr<Entity>> ret;
+        ret.push_back(std::make_unique<Animchar>(meshes[0], parent));
+        return ret;
+    }
+    std::vector<std::unique_ptr<Entity>> entities;
+    entities.push_back(std::make_unique<Entity>(parent));
+    populateAnimcharSet(entities.front().get(), count, meshes, entities);
+    return entities;
+}
+
+void populateAnimcharSet(Entity* entity, size_t count, const Mesh* meshes,
+                         std::vector<std::unique_ptr<Entity>>& entities) {
+    for (size_t i = 0; i < count; ++i)
+        entities.push_back(std::make_unique<Animchar>(meshes[0], entity));
+}
