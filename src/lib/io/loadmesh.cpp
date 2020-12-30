@@ -60,7 +60,7 @@ std::vector<Mesh> loadMesh(const std::string& filename) {
     return std::move(ret);
 }
 
-Mesh loadMeshCube() {
+Mesh createCube(float size) {
     Mesh ret;
     for (int ind : {0, 1, 2}) {
         for (int sgn : {-1, 1}) {
@@ -68,7 +68,9 @@ Mesh loadMeshCube() {
             dir[ind] = sgn;
             glm::vec3 side{0, 0, 0};
             side[(ind + 1) % 3] = sgn;
-            glm::vec3 up = glm::cross(dir, side);
+            glm::vec3 up = glm::cross(dir, side) * size;
+            side *= size;
+            dir *= size;
             glm::vec3 normal = glm::normalize(dir);
             ret.addVertex(
               Mesh::VertexData{dir - side - up, normal, glm::vec3{1, 1, 1}, glm::vec2{0, 0}});
@@ -91,6 +93,8 @@ Mesh createPlane(const glm::vec3& origin, glm::vec3 normal, float size) {
       std::abs(normal.y) > std::abs(normal.z) ? glm::vec3{0, 0, 1} : glm::vec3{0, 1, 0};
     up -= normal * dot(up, normal);
     glm::vec3 side = glm::cross(normal, up);
+    up *= size;
+    side *= size;
     Mesh ret;
     ret.addVertex(
       Mesh::VertexData{origin - side - up, normal, glm::vec3{1, 1, 1}, glm::vec2{0, 0}});

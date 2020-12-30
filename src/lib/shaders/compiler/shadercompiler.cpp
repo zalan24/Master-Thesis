@@ -25,6 +25,7 @@ int main(int argc, char* argv[]) {
         cerr << "Could not open for write: " << argv[1] << endl;
         return 1;
     }
+    out << "#pragma once" << endl;
     out << "#include <map>" << endl;
     out << "#include <stdexcept>" << endl;
     out << "#include <vector>" << endl;

@@ -11,7 +11,8 @@ class Animchar : public DrawableEntity
  public:
     Animchar(const Mesh& mesh, Entity* parent = nullptr,
              const Entity::AffineTransform& localTm = {});
-    Animchar(Mesh&& mesh, Entity* parent = nullptr, const Entity::AffineTransform& localTm = {});
+    Animchar(Mesh&& mesh, Entity* parent = nullptr,
+             const Entity::AffineTransform& localTm = Entity::AffineTransform(1.f));
 
     void draw(const RenderContext& ctx) const override final;
 

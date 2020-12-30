@@ -12,7 +12,7 @@ class Entity : public ISerializable
  public:
     using AffineTransform = glm::mat4x4;
 
-    Entity(Entity* parent = nullptr, const AffineTransform& localTm = {});
+    Entity(Entity* parent = nullptr, const AffineTransform& localTm = AffineTransform(1.f));
     virtual ~Entity();
 
     Entity(const Entity&) = delete;

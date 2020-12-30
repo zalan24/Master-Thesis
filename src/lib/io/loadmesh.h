@@ -9,5 +9,5 @@
 class Mesh;
 
 std::vector<Mesh> loadMesh(const std::string& filename);
-Mesh loadMeshCube();
+Mesh createCube(float size);
 Mesh createPlane(const glm::vec3& origin, glm::vec3 normal, float size);

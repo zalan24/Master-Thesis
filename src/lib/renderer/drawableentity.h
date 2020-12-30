@@ -7,7 +7,8 @@
 class DrawableEntity : public Entity
 {
  public:
-    DrawableEntity(Entity* parent = nullptr, const Entity::AffineTransform& localTm = {});
+    DrawableEntity(Entity* parent = nullptr,
+                   const Entity::AffineTransform& localTm = Entity::AffineTransform(1.f));
 
     void setHidden(bool hidden);
     bool isHidden() const;
