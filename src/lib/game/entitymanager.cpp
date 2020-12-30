@@ -17,9 +17,10 @@ EntityManager::EntityManager() {
 }
 
 EntityManager::~EntityManager() noexcept {
+    destructing = true;
     assert(instance == this);
     for (EntityId id = 0; id < entities.size(); ++id)
-        if (entities[id].entity != nullptr)
+        if (entities[id].entity != nullptr && entities[id].entity->getParent() == nullptr)
             removeEntity(id);
     instance = nullptr;
 }
@@ -82,9 +83,9 @@ std::string EntityManager::getEntityName(EntityId id) const {
 void EntityManager::removeEntity(EntityId id) {
     needReset = true;
     assert(id < entities.size() && entities[id].entity != nullptr);
-    assert(entities[id].started);
-    for (Entity* entity : entities[id].entity->getChildren())
-        removeEntity(entity);
+    assert(entities[id].started || destructing);
+    while (entities[id].entity->getChildren().size() > 0)
+        removeEntity(entities[id].entity->getChildren().front());
     std::string name = getEntityName(id);
     if (name != "")
         nameMap.erase(nameMap.find(name));

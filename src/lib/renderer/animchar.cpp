@@ -26,40 +26,43 @@ void Animchar::bindVertexAttributes() {
 }
 
 void Animchar::uploadData() {
-    glBuffer.upload(mesh.getVertices(), GL_STATIC_DRAW);
-    glIndices.upload(mesh.getIndices(), GL_STATIC_DRAW);
+    std::vector<Mesh::VertexData> vertices;
+    std::vector<Mesh::VertexIndex> indices;
+    mesh.traverse([&](Mesh& m, const glm::mat4&) {
+        vertices.insert(vertices.end(), m.getVertices().begin(), m.getVertices().end());
+        indices.insert(indices.end(), m.getIndices().begin(), m.getIndices().end());
+        return true;
+    });
+    glBuffer.upload(vertices, GL_STATIC_DRAW);
+    glIndices.upload(indices, GL_STATIC_DRAW);
 }
 
 void Animchar::draw(const RenderContext& ctx) const {
+    if (isHidden())
+        return;
     ctx.shaderManager->useProgram("animchar");
     glBuffer.bind();
     glIndices.bind();
     attributeBinder.bind(*ctx.shaderManager);
-    ctx.shaderManager->setUniform("PVM", ctx.pv * getLocalTransform());
-    ctx.shaderManager->setUniform("model", getLocalTransform());
     ctx.shaderManager->setUniform("lightColor", ctx.lightColor);
     ctx.shaderManager->setUniform("lightDir", ctx.lightDir);
     ctx.shaderManager->setUniform("ambientColor", ctx.ambientColor);
 
+    const AffineTransform modelTm = getWorldTransform();
+
     glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-    glDrawElements(GL_TRIANGLES, mesh.getIndices().size(), GL_UNSIGNED_INT, 0);
-}
-
-std::vector<std::unique_ptr<Entity>> createAnimcharSet(size_t count, const Mesh* meshes,
-                                                       Entity* parent) {
-    if (count == 1) {
-        std::vector<std::unique_ptr<Entity>> ret;
-        ret.push_back(std::make_unique<Animchar>(meshes[0], parent));
-        return ret;
-    }
-    std::vector<std::unique_ptr<Entity>> entities;
-    entities.push_back(std::make_unique<Entity>(parent));
-    populateAnimcharSet(entities.front().get(), count, meshes, entities);
-    return entities;
-}
-
-void populateAnimcharSet(Entity* entity, size_t count, const Mesh* meshes,
-                         std::vector<std::unique_ptr<Entity>>& entities) {
-    for (size_t i = 0; i < count; ++i)
-        entities.push_back(std::make_unique<Animchar>(meshes[0], entity));
+    size_t vertexOffset = 0;
+    size_t indexOffset = 0;
+    mesh.traverse([&, this](const Mesh& m, const glm::mat4& nodeTm) {
+        if (m.getIndices().size() > 0) {
+            AffineTransform tm = modelTm * nodeTm;
+            ctx.shaderManager->setUniform("PVM", ctx.pv * tm);
+            ctx.shaderManager->setUniform("model", tm);
+            glDrawElementsBaseVertex(GL_TRIANGLES, m.getIndices().size(), GL_UNSIGNED_INT,
+                                     reinterpret_cast<void*>(indexOffset), vertexOffset);
+        }
+        vertexOffset += m.getVertices().size();
+        indexOffset += sizeof(Mesh::VertexIndex) * m.getIndices().size();
+        return true;
+    });
 }

@@ -41,6 +41,9 @@ class Entity : public ISerializable
 
     const std::vector<Entity*>& getChildren() const { return children; }
 
+    Entity* getParent() { return parent; }
+    const Entity* getParent() const { return parent; }
+
  protected:
     void gatherEntries(std::vector<ISerializable::Entry>& entries) const override final;
     virtual void gatherEntityEntries(std::vector<ISerializable::Entry>& entries) const {}

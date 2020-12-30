@@ -10,12 +10,12 @@
       "request": "launch",
       "program": "${workspaceFolder}/build/src/apps/playground/Playground.exe",
       "stopAtEntry": false,
-      "cwd": "${workspaceFolder}",
+      "cwd": "${workspaceFolder}/build",
       "environment": [],
       "externalConsole": false,
       "internalConsoleOptions": "openOnSessionStart",
       "args": [
-        "-cdata/configs/playground_default.json"
+        "-c../data/configs/playground_default.json"
       ]
     }
   ]

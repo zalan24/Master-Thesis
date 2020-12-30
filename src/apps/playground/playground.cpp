@@ -30,7 +30,7 @@ int main(int argc, char* argv[]) {
 
         Engine engine(config);
         engine.getRenderer()->getCamera().setLookAt(glm::vec3{0, 0, 0});
-        engine.getRenderer()->getCamera().setEyePos(glm::vec3{0, 2, -3});
+        engine.getRenderer()->getCamera().setEyePos(glm::vec3{0, 3, -5});
 
         std::unique_ptr<Animchar> cube = std::make_unique<Animchar>(
           createCube(0.5), nullptr, glm::translate(glm::mat4(1.f), glm::vec3(-2, 0.5, 0)));
@@ -47,18 +47,32 @@ int main(int argc, char* argv[]) {
         });
         engine.getEntityManager()->addEntity(std::move(sphere));
 
-        std::vector<Mesh> suzanneMeshes = loadMesh("data/models/suzanne.obj");
-        std::vector<std::unique_ptr<Entity>> suzanneComponents =
-          createAnimcharSet(suzanneMeshes.size(), suzanneMeshes.data());
-        Entity* suzanne = suzanneComponents[0].get();
-        suzanne->setLocalTransform(glm::scale(glm::translate(glm::mat4(1.f), glm::vec3(0, 0.5, 0)),
-                                              glm::vec3(0.5f, 0.5f, 0.5f)));
+        Mesh suzanneMesh = loadMesh("../data/models/suzanne.obj");
+        std::unique_ptr<Entity> suzanne = std::make_unique<Animchar>(
+          suzanneMesh, nullptr,
+          glm::scale(glm::translate(glm::mat4(1.f), glm::vec3(0, 0.5, 0)),
+                     glm::vec3(0.5f, 0.5f, 0.5f)));
         suzanne->setUpdateFunctor([](Entity* suzanne, const Entity::UpdateData& data) {
             suzanne->setLocalTransform(
               glm::rotate(suzanne->getLocalTransform(), data.dt, glm::vec3{0, 1, 0}));
         });
+        engine.getEntityManager()->addEntity(std::move(suzanne));
 
-        engine.getEntityManager()->addEntities(std::move(suzanneComponents));
+        Mesh scottyMesh = loadMesh("../data/models/Scotty.blend");
+        glm::mat4 scottyTm = scottyMesh.getNodeTm();
+        std::swap(scottyTm[1], scottyTm[2]);
+        scottyTm = glm::scale(scottyTm, glm::vec3{0.3, 0.3, 0.3});
+        scottyMesh.setNodeTm(scottyTm);
+        std::unique_ptr<Animchar> scotty = std::make_unique<Animchar>(
+          scottyMesh, nullptr,
+          glm::scale(glm::translate(glm::mat4(1.f), glm::vec3(0, 0.5, 2)),
+                     glm::vec3(0.5f, 0.5f, 0.5f)));
+        scotty->setUpdateFunctor([](Entity* scotty, const Entity::UpdateData& data) {
+            scotty->setLocalTransform(
+              glm::rotate(scotty->getLocalTransform(), data.dt, glm::vec3{0, 1, 0}));
+        });
+        engine.getEntityManager()->addEntity(std::move(scotty));
+
         engine.getEntityManager()->addEntity(
           std::make_unique<Animchar>(createPlane(glm::vec3{0, 0, 0}, glm::vec3(0, 1, 0), 10)));
 

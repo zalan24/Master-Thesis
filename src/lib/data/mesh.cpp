@@ -28,17 +28,30 @@ void Mesh::addFace(VertexIndex p1, VertexIndex p2, VertexIndex p3) {
     indices.push_back(p3);
 }
 
-void Mesh::normalize() {
-    glm::vec3 G{0, 0, 0};
-    float maxDist = 0;
-    for (VertexIndex i = 0; i < vertices.size(); ++i) {
-        G += vertices[i].position;
-    }
-    G /= vertices.size();
-    for (VertexIndex i = 0; i < vertices.size(); ++i) {
-        maxDist = std::max(maxDist, glm::distance(G, vertices[i].position));
-    }
-    for (VertexIndex i = 0; i < vertices.size(); ++i) {
-        vertices[i].position = (vertices[i].position - G) / maxDist;
-    }
+void Mesh::traverse(const std::function<bool(const Mesh&, const glm::mat4&)>& functor,
+                    const glm::mat4 rootTm) const {
+    glm::mat4 tm = rootTm * nodeTransform;
+    if (functor(*this, tm))
+        for (const Mesh& m : children)
+            m.traverse(functor, tm);
+}
+
+void Mesh::traverse(const std::function<bool(Mesh&, const glm::mat4&)>& functor,
+                    const glm::mat4 rootTm) {
+    glm::mat4 tm = rootTm * nodeTransform;
+    if (functor(*this, tm))
+        for (Mesh& m : children)
+            m.traverse(functor, tm);
+}
+
+void Mesh::setNodeTm(const glm::mat4& tm) {
+    nodeTransform = tm;
+}
+
+void Mesh::addChild(const Mesh& m) {
+    children.push_back(m);
+}
+
+void Mesh::addChild(Mesh&& m) {
+    children.push_back(std::move(m));
 }

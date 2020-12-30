@@ -20,5 +20,5 @@ class DrawableEntity : public Entity
     virtual void gatherDrawableentityEntries(std::vector<ISerializable::Entry>& entries) const {}
 
  private:
-    bool hidden;
+    bool hidden = false;
 };

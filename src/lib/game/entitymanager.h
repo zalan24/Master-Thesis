@@ -73,4 +73,5 @@ class EntityManager
     bool needReset = false;
 
     void checkAndResetUpdateOrder();
+    bool destructing = false;
 };
