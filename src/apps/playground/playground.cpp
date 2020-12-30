@@ -29,10 +29,11 @@ int main(int argc, char* argv[]) {
         }
 
         Engine engine(config);
+        engine.getRenderer()->getCamera().setLookAt(glm::vec3{0, 0, 0});
+        engine.getRenderer()->getCamera().setEyePos(glm::vec3{0, 2, -3});
 
-        Mesh m = loadMeshCube();
-        std::unique_ptr<Animchar> ground(new Animchar(std::move(m)));
-        engine.getEntityManager()->addEntity(std::move(ground));
+        engine.getEntityManager()->addEntity(
+          std::make_unique<Animchar>(createPlane(glm::vec3{0, 0, 0}, glm::vec3(0, 1, 0), 100)));
 
         engine.gameLoop();
         // FileManager fileManager{argc == 1 ? "" : std::string{argv[1]}};

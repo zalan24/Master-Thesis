@@ -34,3 +34,13 @@ void Camera::zoom(float value) {
     eyePos = lookAt + d / value;
     updatePV();
 }
+
+void Camera::setLookAt(const glm::vec3& p) {
+    lookAt = p;
+    updatePV();
+}
+
+void Camera::setEyePos(const glm::vec3& p) {
+    eyePos = p;
+    updatePV();
+}

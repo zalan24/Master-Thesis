@@ -19,6 +19,9 @@ class Camera
     glm::vec3 getLookAt() const { return lookAt; }
     glm::vec3 getEyePos() const { return eyePos; }
 
+    void setLookAt(const glm::vec3& p);
+    void setEyePos(const glm::vec3& p);
+
  private:
     glm::mat4 pv;
     glm::vec3 eyePos{0, 0, -1};

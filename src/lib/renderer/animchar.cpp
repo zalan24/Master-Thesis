@@ -6,6 +6,7 @@ Animchar::Animchar(const Mesh& m, Entity* parent, const Entity::AffineTransform&
     glBuffer(GL_ARRAY_BUFFER),
     glIndices(GL_ELEMENT_ARRAY_BUFFER) {
     bindVertexAttributes();
+    uploadData();
 }
 
 Animchar::Animchar(Mesh&& m, Entity* parent, const Entity::AffineTransform& localTm)
@@ -14,6 +15,7 @@ Animchar::Animchar(Mesh&& m, Entity* parent, const Entity::AffineTransform& loca
     glBuffer(GL_ARRAY_BUFFER),
     glIndices(GL_ELEMENT_ARRAY_BUFFER) {
     bindVertexAttributes();
+    uploadData();
 }
 
 void Animchar::bindVertexAttributes() {

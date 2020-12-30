@@ -11,5 +11,6 @@ target_link_libraries(AnimationsIO PRIVATE
     BASE64_LIB
 )
 target_link_libraries(AnimationsIO PUBLIC
+    GLM_LIB
     AnimationsData
 )

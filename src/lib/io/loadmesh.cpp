@@ -69,17 +69,38 @@ Mesh loadMeshCube() {
             glm::vec3 side{0, 0, 0};
             side[(ind + 1) % 3] = sgn;
             glm::vec3 up = glm::cross(dir, side);
-            ret.addVertex(Mesh::VertexData{dir - side - up, glm::vec3{0, 0, 0}, glm::vec3{1, 1, 1},
-                                           glm::vec2{0, 0}});
-            ret.addVertex(Mesh::VertexData{dir - side + up, glm::vec3{0, 0, 0}, glm::vec3{1, 0, 0},
-                                           glm::vec2{0, 0}});
-            ret.addVertex(Mesh::VertexData{dir + side - up, glm::vec3{0, 0, 0}, glm::vec3{0, 1, 0},
-                                           glm::vec2{0, 0}});
+            glm::vec3 normal = glm::normalize(dir);
+            ret.addVertex(
+              Mesh::VertexData{dir - side - up, normal, glm::vec3{1, 1, 1}, glm::vec2{0, 0}});
+            ret.addVertex(
+              Mesh::VertexData{dir - side + up, normal, glm::vec3{1, 0, 0}, glm::vec2{0, 0}});
+            ret.addVertex(
+              Mesh::VertexData{dir + side - up, normal, glm::vec3{0, 1, 0}, glm::vec2{0, 0}});
             ret.addFace();
-            ret.addVertex(Mesh::VertexData{dir + side + up, glm::vec3{0, 0, 0}, glm::vec3{0, 0, 1},
-                                           glm::vec2{0, 0}});
+            ret.addVertex(
+              Mesh::VertexData{dir + side + up, normal, glm::vec3{0, 0, 1}, glm::vec2{0, 0}});
             ret.addFaceRev();
         }
     }
+    return ret;
+}
+
+Mesh createPlane(const glm::vec3& origin, glm::vec3 normal, float size) {
+    normal = glm::normalize(normal);
+    glm::vec3 up =
+      std::abs(normal.y) > std::abs(normal.z) ? glm::vec3{0, 0, 1} : glm::vec3{0, 1, 0};
+    up -= normal * dot(up, normal);
+    glm::vec3 side = glm::cross(normal, up);
+    Mesh ret;
+    ret.addVertex(
+      Mesh::VertexData{origin - side - up, normal, glm::vec3{1, 1, 1}, glm::vec2{0, 0}});
+    ret.addVertex(
+      Mesh::VertexData{origin - side + up, normal, glm::vec3{1, 0, 0}, glm::vec2{0, 1}});
+    ret.addVertex(
+      Mesh::VertexData{origin + side - up, normal, glm::vec3{0, 1, 0}, glm::vec2{1, 0}});
+    ret.addFace();
+    ret.addVertex(
+      Mesh::VertexData{origin + side + up, normal, glm::vec3{0, 0, 1}, glm::vec2{1, 1}});
+    ret.addFaceRev();
     return ret;
 }

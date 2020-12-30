@@ -57,7 +57,7 @@ void Engine::gameLoop() {
         {
             std::unique_lock<std::mutex> lk(mutex);
             renderCV.wait(lk, [&state] { return state == RENDER; });
-            // renderer->render(width, height);
+            renderer.render(&entityManager, width, height);
             // UI::UIData data{renderer->getScene(), renderer->getShaderManager()};
             // ui->render(data);
             state = SIMULATE;

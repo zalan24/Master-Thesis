@@ -33,6 +33,9 @@ class Engine
     EntityManager* getEntityManager() { return &entityManager; }
     const EntityManager* getEntityManager() const { return &entityManager; }
 
+    Renderer* getRenderer() { return &renderer; }
+    const Renderer* getRenderer() const { return &renderer; }
+
  private:
     struct GlLoader
     {
