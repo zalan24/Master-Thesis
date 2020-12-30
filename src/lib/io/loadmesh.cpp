@@ -9,6 +9,7 @@
 #include <glm/geometric.hpp>
 
 #include <mesh.h>
+#include <util.hpp>
 
 static Mesh process(aiMesh* mesh) {
     Mesh ret;
@@ -57,7 +58,7 @@ std::vector<Mesh> loadMesh(const std::string& filename) {
             ret.push_back(std::move(mesh));
         }
     }
-    return std::move(ret);
+    return ret;
 }
 
 Mesh createCube(float size) {
@@ -106,5 +107,34 @@ Mesh createPlane(const glm::vec3& origin, glm::vec3 normal, float size) {
     ret.addVertex(
       Mesh::VertexData{origin + side + up, normal, glm::vec3{0, 0, 1}, glm::vec2{1, 1}});
     ret.addFaceRev();
+    return ret;
+}
+
+Mesh createSphere(size_t resX, size_t resY, float size) {
+    Mesh ret;
+    for (size_t y = 0; y < resY; ++y) {
+        float theta = static_cast<float>(y) / resY;
+        float fy = std::cos(theta * M_PI);
+        float fxz = std::sin(theta * M_PI);
+        for (size_t x = 0; x < resX; ++x) {
+            float phi = static_cast<float>(x) / resX;
+            float fx = std::cos(phi * 2 * M_PI) * fxz;
+            float fz = std::sin(phi * 2 * M_PI) * fxz;
+            glm::vec3 normal{fx, fy, fz};
+            glm::vec3 pos = normal * size;
+            glm::vec2 texcoord{phi, theta};
+            ret.addVertex(Mesh::VertexData{pos, normal, glm::vec3{1, 0, 0}, texcoord});
+        }
+    }
+    for (size_t y = 0; y < resY; ++y) {
+        for (size_t x = 0; x < resX; ++x) {
+            Mesh::VertexIndex v00 = x + y * resX;
+            Mesh::VertexIndex v01 = ((x + 1) % resX) + y * resX;
+            Mesh::VertexIndex v10 = x + ((y + 1) % resY) * resX;
+            Mesh::VertexIndex v11 = ((x + 1) % resX) + ((y + 1) % resY) * resX;
+            ret.addFace(v00, v01, v10);
+            ret.addFace(v11, v01, v10);
+        }
+    }
     return ret;
 }

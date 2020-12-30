@@ -1,5 +1,6 @@
 #pragma once
 
+#include <functional>
 #include <vector>
 
 #define GLM_FORCE_RADIANS
@@ -11,6 +12,13 @@ class Entity : public ISerializable
 {
  public:
     using AffineTransform = glm::mat4x4;
+    struct UpdateData
+    {
+        float time;
+        float dt;
+    };
+    using UpdateFunctor = std::function<void(Entity* entity, const UpdateData&)>;
+    using StartFunctor = std::function<void(Entity*)>;
 
     Entity(Entity* parent = nullptr, const AffineTransform& localTm = AffineTransform(1.f));
     virtual ~Entity();
@@ -18,14 +26,13 @@ class Entity : public ISerializable
     Entity(const Entity&) = delete;
     Entity& operator=(const Entity&) = delete;
 
-    struct UpdateData
-    {
-        float time;
-        float dt;
-    };
+    virtual void update(const UpdateData& data);
+    virtual void start();
 
-    virtual void update(const UpdateData&) {}
-    virtual void start() {}
+    void setUpdateFunctor(const UpdateFunctor& functor);
+    void setUpdateFunctor(UpdateFunctor&& functor);
+    void setStartFunctor(const StartFunctor& functor);
+    void setStartFunctor(StartFunctor&& functor);
 
     AffineTransform getWorldTransform() const;
     void setWorldTransform(const AffineTransform& tm);
@@ -45,4 +52,8 @@ class Entity : public ISerializable
 
     void addChild(Entity* c);
     void removeChild(Entity* c);
+
+    // These are used if the update and start methods are not overridden
+    std::function<void(Entity* entity, const UpdateData&)> updateFunctor;
+    std::function<void(Entity*)> startFunctor;
 };
