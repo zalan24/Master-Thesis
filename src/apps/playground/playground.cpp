@@ -58,6 +58,17 @@ int main(int argc, char* argv[]) {
         });
         engine.getEntityManager()->addEntity(std::move(suzanne));
 
+        Mesh HammerMesh = loadMesh("../data/models/Hammer/Hammer.obj");
+        std::unique_ptr<Animchar> Hammer = std::make_unique<Animchar>(
+          HammerMesh, nullptr,
+          glm::scale(glm::translate(glm::mat4(1.f), glm::vec3(-2, 0.5, 2)),
+                     glm::vec3(0.5f, 0.5f, 0.5f)));
+        Hammer->setUpdateFunctor([](Entity* Hammer, const Entity::UpdateData& data) {
+            Hammer->setLocalTransform(
+              glm::rotate(Hammer->getLocalTransform(), data.dt, glm::vec3{0, 1, 0}));
+        });
+        engine.getEntityManager()->addEntity(std::move(Hammer));
+
         Mesh scottyMesh = loadMesh("../data/models/Scotty.blend");
         glm::mat4 scottyTm = scottyMesh.getNodeTm();
         std::swap(scottyTm[1], scottyTm[2]);

@@ -4,6 +4,8 @@
 
 #include <util.hpp>
 
+#include "material.h"
+
 Mesh::VertexIndex Mesh::addVertex(const VertexData& vert) {
     VertexIndex ret = safeCast<VertexIndex>(vertices.size());
     vertices.push_back(vert);
@@ -54,4 +56,12 @@ void Mesh::addChild(const Mesh& m) {
 
 void Mesh::addChild(Mesh&& m) {
     children.push_back(std::move(m));
+}
+
+void Mesh::setMaterial(const std::shared_ptr<Material>& mat) {
+    material = mat;
+}
+
+void Mesh::setMaterial(std::shared_ptr<Material>&& mat) {
+    material = std::move(mat);
 }

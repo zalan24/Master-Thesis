@@ -1,11 +1,14 @@
 #pragma once
 
 #include <functional>
+#include <memory>
 #include <string>
 #include <vector>
 
 #define GLM_FORCE_RADIANS
 #include <glm/glm.hpp>
+
+class Material;
 
 class Mesh
 {
@@ -15,7 +18,6 @@ class Mesh
     {
         glm::vec3 position;
         glm::vec3 normal;
-        glm::vec3 color;  // TODO remove color
         glm::vec2 texcoord;
     };
 
@@ -29,6 +31,8 @@ class Mesh
     void setNodeTm(const glm::mat4& tm);
     void addChild(const Mesh& m);
     void addChild(Mesh&& m);
+    void setMaterial(const std::shared_ptr<Material>& mat);
+    void setMaterial(std::shared_ptr<Material>&& mat);
 
     glm::mat4 getNodeTm() const { return nodeTransform; }
 
@@ -47,4 +51,5 @@ class Mesh
     std::vector<VertexData> vertices;
     std::vector<VertexIndex> indices;
     std::vector<Mesh> children;
+    std::shared_ptr<Material> material;
 };

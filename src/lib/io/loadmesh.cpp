@@ -1,5 +1,7 @@
 #include "loadmesh.h"
 
+#include <memory>
+
 #include <assimp/cimport.h>
 #include <assimp/matrix4x4.h>
 #include <assimp/postprocess.h>
@@ -8,21 +10,27 @@
 
 #include <glm/geometric.hpp>
 
+#include <material.h>
 #include <mesh.h>
 #include <util.hpp>
 
-static void process(const aiMesh* mesh, Mesh& m) {
+static void process(const aiMesh* mesh, Mesh& m,
+                    const std::vector<std::shared_ptr<Material>>& materials) {
+    assert(mesh->GetNumUVChannels() <= 1);
+    if (mesh->mMaterialIndex <= materials.size())
+        m.setMaterial(materials[mesh->mMaterialIndex]);
+    else
+        assert(materials.size() == 0);
     for (uint32_t i = 0; i < mesh->mNumVertices; ++i) {
         assert(mesh->HasPositions());
         glm::vec3 pos = glm::vec3(mesh->mVertices[i].x, mesh->mVertices[i].y, mesh->mVertices[i].z);
         glm::vec3 normal{0, 0, 0};
-        glm::vec3 color{1, 1, 1};
         glm::vec2 texture{0, 0};
         if (mesh->HasNormals())
             normal = glm::vec3(mesh->mNormals[i].x, mesh->mNormals[i].y, mesh->mNormals[i].z);
-        if (mesh->HasTextureCoords(i))
-            texture = glm::vec2(mesh->mTextureCoords[i]->x, mesh->mTextureCoords[i]->y);
-        m.addVertex({pos, normal, color, texture});
+        if (mesh->HasTextureCoords(0))
+            texture = glm::vec2(mesh->mTextureCoords[0][i].x, mesh->mTextureCoords[0][i].y);
+        m.addVertex({pos, normal, texture});
     }
     for (uint32_t i = 0; i < mesh->mNumFaces; ++i) {
         assert(mesh->mFaces->mNumIndices == 3);
@@ -39,6 +47,13 @@ static void process(const aiMesh* mesh, Mesh& m) {
 }
 
 static Mesh process(const aiScene* scene, const aiNode* node) {
+    std::vector<std::shared_ptr<Material>> materials;
+    if (scene->HasMaterials()) {
+        for (unsigned int i = 0; i < scene->mNumMaterials; ++i) {
+            std::shared_ptr<Material> mat = std::make_shared<Material>();
+            materials.push_back(std::move(mat));
+        }
+    }
     assert(node != nullptr);
     Mesh ret(node->mName.length == 0 ? "" : std::string(node->mName.data, node->mName.length));
     glm::mat4 tm;
@@ -61,10 +76,10 @@ static Mesh process(const aiScene* scene, const aiNode* node) {
     ret.setNodeTm(tm);
     for (unsigned int i = 0; i < node->mNumMeshes; ++i) {
         if (i == 0)
-            process(scene->mMeshes[node->mMeshes[i]], ret);
+            process(scene->mMeshes[node->mMeshes[i]], ret, materials);
         else {
             Mesh m;
-            process(scene->mMeshes[node->mMeshes[i]], m);
+            process(scene->mMeshes[node->mMeshes[i]], m, materials);
             ret.addChild(std::move(m));
         }
     }
@@ -78,7 +93,7 @@ Mesh loadMesh(const std::string& filename) {
     const aiScene* scene = importer.ReadFile(
       filename, aiProcess_CalcTangentSpace | aiProcess_Triangulate | aiProcess_JoinIdenticalVertices
                   | aiProcess_SortByPType | aiProcess_GenSmoothNormals | aiProcess_GenUVCoords
-                  | aiProcess_EmbedTextures);
+                  | aiProcess_EmbedTextures | aiProcess_TransformUVCoords);
     if (!scene) {
         std::string vError = importer.GetErrorString();
         throw std::runtime_error("Could not load object from file: " + filename + " (" + vError
@@ -99,15 +114,11 @@ Mesh createCube(float size) {
             side *= size;
             dir *= size;
             glm::vec3 normal = glm::normalize(dir);
-            ret.addVertex(
-              Mesh::VertexData{dir - side - up, normal, glm::vec3{1, 1, 1}, glm::vec2{0, 0}});
-            ret.addVertex(
-              Mesh::VertexData{dir - side + up, normal, glm::vec3{1, 0, 0}, glm::vec2{0, 0}});
-            ret.addVertex(
-              Mesh::VertexData{dir + side - up, normal, glm::vec3{0, 1, 0}, glm::vec2{0, 0}});
+            ret.addVertex(Mesh::VertexData{dir - side - up, normal, glm::vec2{0, 0}});
+            ret.addVertex(Mesh::VertexData{dir - side + up, normal, glm::vec2{0, 0}});
+            ret.addVertex(Mesh::VertexData{dir + side - up, normal, glm::vec2{0, 0}});
             ret.addFace();
-            ret.addVertex(
-              Mesh::VertexData{dir + side + up, normal, glm::vec3{0, 0, 1}, glm::vec2{0, 0}});
+            ret.addVertex(Mesh::VertexData{dir + side + up, normal, glm::vec2{0, 0}});
             ret.addFaceRev();
         }
     }
@@ -123,15 +134,11 @@ Mesh createPlane(const glm::vec3& origin, glm::vec3 normal, float size) {
     up *= size;
     side *= size;
     Mesh ret;
-    ret.addVertex(
-      Mesh::VertexData{origin - side - up, normal, glm::vec3{1, 1, 1}, glm::vec2{0, 0}});
-    ret.addVertex(
-      Mesh::VertexData{origin - side + up, normal, glm::vec3{1, 0, 0}, glm::vec2{0, 1}});
-    ret.addVertex(
-      Mesh::VertexData{origin + side - up, normal, glm::vec3{0, 1, 0}, glm::vec2{1, 0}});
+    ret.addVertex(Mesh::VertexData{origin - side - up, normal, glm::vec2{0, 0}});
+    ret.addVertex(Mesh::VertexData{origin - side + up, normal, glm::vec2{0, 1}});
+    ret.addVertex(Mesh::VertexData{origin + side - up, normal, glm::vec2{1, 0}});
     ret.addFace();
-    ret.addVertex(
-      Mesh::VertexData{origin + side + up, normal, glm::vec3{0, 0, 1}, glm::vec2{1, 1}});
+    ret.addVertex(Mesh::VertexData{origin + side + up, normal, glm::vec2{1, 1}});
     ret.addFaceRev();
     return ret;
 }
@@ -149,7 +156,7 @@ Mesh createSphere(size_t resX, size_t resY, float size) {
             glm::vec3 normal{fx, fy, fz};
             glm::vec3 pos = normal * size;
             glm::vec2 texcoord{phi, theta};
-            ret.addVertex(Mesh::VertexData{pos, normal, glm::vec3{1, 0, 0}, texcoord});
+            ret.addVertex(Mesh::VertexData{pos, normal, texcoord});
         }
     }
     for (size_t y = 0; y < resY - 1; ++y) {
