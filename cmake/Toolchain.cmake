@@ -1,0 +1,58 @@
+set(TOOLCHAIN "llvm" CACHE STRING "Toolchain to be used")
+set_property(CACHE TOOLCHAIN PROPERTY STRINGS llvm)
+
+set(ARCHITECTURE "x64" CACHE STRING "Architecture")
+set_property(CACHE ARCHITECTURE PROPERTY STRINGS x64 x32)
+
+if (WIN32)
+  set(EXE_SUFFIX ".exe")
+else()
+  set(EXE_SUFFIX "")
+endif()
+
+if ("${TOOLCHAIN}" STREQUAL "llvm")
+  if (WIN32)
+    set(LLVM_PATH "C:/Program Files/LLVM/bin/" CACHE STRING "Path to llvm")
+  else()
+    set(LLVM_PATH "" CACHE STRING "Path to llvm")
+  endif()
+
+  if ("${ARCHITECTURE}" STREQUAL "x64")
+    set(ARCH_FLAG "-m64")
+  elseif("${ARCHITECTURE}" STREQUAL "x32")
+    set(ARCH_FLAG "-m32")
+  else()
+    message(FATAL_ERROR "Unknown architecture")
+  endif()
+
+  set (CMAKE_C_FLAGS                  "${ARCH_FLAG}")
+  set (CMAKE_CXX_FLAGS                "${ARCH_FLAG}")
+
+  set (CMAKE_C_COMPILER               "${LLVM_PATH}clang${EXE_SUFFIX}")
+  set (CMAKE_C_FLAGS_DEBUG            "-g")
+  set (CMAKE_C_FLAGS_MINSIZEREL       "-Os -DNDEBUG")
+  set (CMAKE_C_FLAGS_RELEASE          "-O4 -DNDEBUG")
+  set (CMAKE_C_FLAGS_RELWITHDEBINFO   "-O2 -g")
+
+  set (CMAKE_CXX_COMPILER             "${LLVM_PATH}clang++${EXE_SUFFIX}")
+  set (CMAKE_CXX_FLAGS_DEBUG          "-g")
+  set (CMAKE_CXX_FLAGS_MINSIZEREL     "-Os -DNDEBUG")
+  set (CMAKE_CXX_FLAGS_RELEASE        "-O4 -DNDEBUG")
+  set (CMAKE_CXX_FLAGS_RELWITHDEBINFO "-O2 -g")
+
+  if (WIN32)
+    set(CMAKE_EXE_LINKER_FLAGS "-llibcmt")
+  endif()
+
+  set (CMAKE_AR          "${LLVM_PATH}llvm-ar${EXE_SUFFIX}")
+  set (CMAKE_LINKER      "${LLVM_PATH}llvm-ld${EXE_SUFFIX}")
+  set (CMAKE_NM          "${LLVM_PATH}llvm-nm${EXE_SUFFIX}")
+  set (CMAKE_OBJDUMP     "${LLVM_PATH}llvm-objdump${EXE_SUFFIX}")
+  set (CMAKE_RANLIB      "${LLVM_PATH}llvm-ranlib${EXE_SUFFIX}")
+  set (CMAKE_RC_COMPILER "${LLVM_PATH}llvm-rc${EXE_SUFFIX}")
+else()
+  message(FATAL_ERROR "Toolchain is not set properly")
+endif()
+
+# message(FATAL_ERROR "compiler target: ${CMAKE_CXX_COMPILER_TARGET}")
+# set(CMAKE_CXX_COMPILER_TARGET "x86_64-pc-windows-gnu")
