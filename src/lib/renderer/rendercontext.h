@@ -18,3 +18,5 @@ struct RenderContext
     glm::vec3 ambientColor;
     const ShaderManager* shaderManager;
 };
+
+void checkError();

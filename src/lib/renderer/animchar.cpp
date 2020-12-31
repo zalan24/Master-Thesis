@@ -5,6 +5,7 @@ Animchar::Animchar(const Mesh& m, Entity* parent, const Entity::AffineTransform&
     mesh(m),
     glBuffer(GL_ARRAY_BUFFER),
     glIndices(GL_ELEMENT_ARRAY_BUFFER) {
+    checkError();
     bindVertexAttributes();
     uploadData();
 }
@@ -14,6 +15,7 @@ Animchar::Animchar(Mesh&& m, Entity* parent, const Entity::AffineTransform& loca
     mesh(std::move(m)),
     glBuffer(GL_ARRAY_BUFFER),
     glIndices(GL_ELEMENT_ARRAY_BUFFER) {
+    checkError();
     bindVertexAttributes();
     uploadData();
 }
@@ -22,6 +24,7 @@ void Animchar::bindVertexAttributes() {
     attributeBinder.addAttribute(&Mesh::VertexData::position, "vPos");
     attributeBinder.addAttribute(&Mesh::VertexData::normal, "vNorm", true);
     attributeBinder.addAttribute(&Mesh::VertexData::texcoord, "vTex");
+    checkError();
 }
 
 void Animchar::uploadData() {
@@ -34,6 +37,7 @@ void Animchar::uploadData() {
     });
     glBuffer.upload(vertices, GL_STATIC_DRAW);
     glIndices.upload(indices, GL_STATIC_DRAW);
+    checkError();
 }
 
 void Animchar::draw(const RenderContext& ctx) const {

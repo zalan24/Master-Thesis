@@ -40,10 +40,3 @@ void Renderer::render(EntityManager* entityManager, int width, int height) {
 
     checkError();
 }
-
-void Renderer::checkError() const {
-    GLenum error = glGetError();
-    if (error == GL_NO_ERROR)
-        return;
-    throw std::runtime_error("GL error");
-}

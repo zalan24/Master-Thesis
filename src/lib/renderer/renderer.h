@@ -15,8 +15,6 @@ class Renderer
     const Camera& getCamera() const { return camera; }
     Camera& getCamera() { return camera; }
 
-    void checkError() const;
-
     ShaderManager& getShaderManager() { return shaderManager; }
     const ShaderManager& getShaderManager() const { return shaderManager; }
 

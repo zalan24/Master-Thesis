@@ -5,6 +5,17 @@
   "version": "0.2.0",
   "configurations": [
     {
+      "type": "lldb",
+      "request": "launch",
+      "name": "Playground (linux)",
+      "program": "${workspaceFolder}/build/src/apps/playground/Playground",
+      "args": [
+        "-c../data/configs/playground_default.json"
+      ],
+      "cwd": "${workspaceFolder}/build",
+      "internalConsoleOptions": "openOnSessionStart"
+    },
+    {
       "name": "Playground (win)",
       "type": "cppvsdbg",
       "request": "launch",

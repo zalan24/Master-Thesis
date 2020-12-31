@@ -4,8 +4,8 @@
 
 template <typename V>
 V slerp(const V& a, const V& b, float t) {
-    float o = acos(glm::dot(a, b));
-    return sin((1 - t) * o) / sin(o) * a + sin(t * o) / sin(o) * b;
+    float o = acosf(glm::dot(a, b));
+    return sinf((1 - t) * o) / sinf(o) * a + sinf(t * o) / sinf(o) * b;
 }
 
 template <typename V>
