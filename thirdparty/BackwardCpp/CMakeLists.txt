@@ -15,11 +15,14 @@ FetchContent_Declare(
 FetchContent_GetProperties(backtardcpp_external)
 if(NOT backtardcpp_external_POPULATED)
   FetchContent_Populate(backtardcpp_external)
+  prep_thirdparty(${backtardcpp_external_SOURCE_DIR} "${backtardcpp_external_SOURCE_DIR}_fixed")
 endif()
+set(FIXED "${backtardcpp_external_SOURCE_DIR}_fixed")
+
 add_library(BackwardCpp_LIB INTERFACE)
 add_dependencies(BackwardCpp_LIB backtardcpp_external)
 target_include_directories(BackwardCpp_LIB SYSTEM INTERFACE
-  ${backtardcpp_external_SOURCE_DIR}
+  ${FIXED}
   ${CMAKE_CURRENT_BINARY_DIR})
 
 if(${BFD_ENABLE})

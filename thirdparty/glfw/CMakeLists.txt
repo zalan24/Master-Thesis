@@ -9,9 +9,11 @@ FetchContent_Declare(
 FetchContent_GetProperties(glfw_external)
 if(NOT glfw_external_POPULATED)
   FetchContent_Populate(glfw_external)
-  add_subdirectory(${glfw_external_SOURCE_DIR} ${glfw_external_BINARY_DIR})
+  prep_thirdparty(${glfw_external_SOURCE_DIR} "${glfw_external_SOURCE_DIR}_fixed")
+  add_subdirectory("${glfw_external_SOURCE_DIR}_fixed" ${glfw_external_BINARY_DIR})
 endif()
+set(FIXED "${glfw_external_SOURCE_DIR}_fixed")
 
 add_library(GLFW_LIB INTERFACE)
-target_include_directories(GLFW_LIB SYSTEM INTERFACE "${glfw_external_BINARY_DIR}/include" "${glfw_external_SOURCE_DIR}/include")
+target_include_directories(GLFW_LIB SYSTEM INTERFACE "${glfw_external_BINARY_DIR}/include" "${FIXED}/include")
 target_link_libraries(GLFW_LIB INTERFACE glfw ${OPENGL_glu_LIBRARY} ${GLFW_LIBRARIES})

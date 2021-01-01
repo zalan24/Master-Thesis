@@ -9,7 +9,10 @@ FetchContent_Declare(
 FetchContent_GetProperties(glm_external)
 if(NOT glm_external_POPULATED)
   FetchContent_Populate(glm_external)
+  prep_thirdparty(${glm_external_SOURCE_DIR} "${glm_external_SOURCE_DIR}_fixed")
 endif()
+set(FIXED "${glm_external_SOURCE_DIR}_fixed")
+
 add_library(GLM_LIB INTERFACE)
 add_dependencies(GLM_LIB glm_external)
-target_include_directories(GLM_LIB SYSTEM INTERFACE ${glm_external_SOURCE_DIR})
+target_include_directories(GLM_LIB SYSTEM INTERFACE ${FIXED})

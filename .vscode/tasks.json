@@ -41,7 +41,7 @@
         {
             "label": "Cmake build debug",
             "type": "shell",
-            "command": "cmake --build build/ --config DEBUG",
+            "command": "cmake --build build --config Debug",
             "options": {
                 "cwd": "${workspaceRoot}"
             },
