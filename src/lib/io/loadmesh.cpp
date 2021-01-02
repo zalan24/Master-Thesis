@@ -107,9 +107,9 @@ Mesh createCube(float size) {
     for (int ind : {0, 1, 2}) {
         for (int sgn : {-1, 1}) {
             glm::vec3 dir{0, 0, 0};
-            dir[ind] = sgn;
+            dir[ind] = static_cast<float>(sgn);
             glm::vec3 side{0, 0, 0};
-            side[(ind + 1) % 3] = sgn;
+            side[(ind + 1) % 3] = static_cast<float>(sgn);
             glm::vec3 up = glm::cross(dir, side) * size;
             side *= size;
             dir *= size;
@@ -146,13 +146,13 @@ Mesh createPlane(const glm::vec3& origin, glm::vec3 normal, float size) {
 Mesh createSphere(size_t resX, size_t resY, float size) {
     Mesh ret;
     for (size_t y = 0; y < resY; ++y) {
-        float theta = static_cast<float>(y) / (resY - 1);
-        float fy = std::cos(theta * M_PI);
-        float fxz = std::sin(theta * M_PI);
+        float theta = static_cast<float>(y) / static_cast<float>(resY - 1);
+        float fy = static_cast<float>(std::cos(static_cast<double>(theta) * M_PI));
+        float fxz = static_cast<float>(std::sin(static_cast<double>(theta) * M_PI));
         for (size_t x = 0; x < resX; ++x) {
-            float phi = static_cast<float>(x) / resX;
-            float fx = std::cos(phi * 2 * M_PI) * fxz;
-            float fz = std::sin(phi * 2 * M_PI) * fxz;
+            float phi = static_cast<float>(x) / static_cast<float>(resX);
+            float fx = static_cast<float>(std::cos(static_cast<double>(phi * 2) * M_PI)) * fxz;
+            float fz = static_cast<float>(std::sin(static_cast<double>(phi * 2) * M_PI)) * fxz;
             glm::vec3 normal{fx, fy, fz};
             glm::vec3 pos = normal * size;
             glm::vec2 texcoord{phi, theta};
@@ -161,10 +161,11 @@ Mesh createSphere(size_t resX, size_t resY, float size) {
     }
     for (size_t y = 0; y < resY - 1; ++y) {
         for (size_t x = 0; x < resX; ++x) {
-            Mesh::VertexIndex v00 = x + y * resX;
-            Mesh::VertexIndex v01 = ((x + 1) % resX) + y * resX;
-            Mesh::VertexIndex v10 = x + ((y + 1) % resY) * resX;
-            Mesh::VertexIndex v11 = ((x + 1) % resX) + ((y + 1) % resY) * resX;
+            Mesh::VertexIndex v00 = static_cast<Mesh::VertexIndex>(x + y * resX);
+            Mesh::VertexIndex v01 = static_cast<Mesh::VertexIndex>(((x + 1) % resX) + y * resX);
+            Mesh::VertexIndex v10 = static_cast<Mesh::VertexIndex>(x + ((y + 1) % resY) * resX);
+            Mesh::VertexIndex v11 =
+              static_cast<Mesh::VertexIndex>(((x + 1) % resX) + ((y + 1) % resY) * resX);
             ret.addFace(v00, v01, v10);
             ret.addFace(v11, v01, v10);
         }

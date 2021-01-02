@@ -27,6 +27,7 @@ int main(int argc, char* argv[]) {
     }
     out << "#pragma once" << endl;
     out << "#include <map>" << endl;
+    out << "#include <mapbox/eternal.hpp>" << endl;
     out << "#include <stdexcept>" << endl;
     out << "#include <vector>" << endl;
     out << "#include <string>" << endl << endl;
@@ -43,8 +44,8 @@ int main(int argc, char* argv[]) {
     // out << "    std::vector<ShaderVarData> varying;" << endl;
     out << "};" << endl << endl;
 
-    out << "inline const std::map<std::string, ShaderData>& getShaderMap() {" << endl;
-    out << "    static std::map<std::string, ShaderData> data{" << endl;
+    out << "inline const std::map<std::string, ShaderData> getShaderMap() {" << endl;
+    out << "    std::map<std::string, ShaderData> data{" << endl;
 
     std::map<std::string, std::vector<std::string>> programs;
     for (int i = 2; i < argc; ++i) {
@@ -136,7 +137,7 @@ int main(int argc, char* argv[]) {
     out << "    return data;" << endl;
     out << "}" << endl << endl;
 
-    out << "inline const ShaderData& getShader(const std::string& shaderName) {" << endl;
+    out << "inline const ShaderData getShader(const std::string& shaderName) {" << endl;
     out << "    const auto& data = getShaderMap();" << endl;
     out << "    auto itr = data.find(shaderName);" << endl;
     out << "    if (itr == std::end(data))" << endl;
@@ -144,8 +145,8 @@ int main(int argc, char* argv[]) {
     out << "    return itr->second;" << endl;
     out << "}" << endl << endl;
 
-    out << "inline const std::map<std::string, std::vector<std::string>>& getPrograms() {" << endl;
-    out << "    static const std::map<std::string, std::vector<std::string>> programs{" << endl;
+    out << "inline const std::map<std::string, std::vector<std::string>> getPrograms() {" << endl;
+    out << "    const std::map<std::string, std::vector<std::string>> programs{" << endl;
     bool comma = false;
     for (const auto& [shaderName, shaders] : programs) {
         if (comma)
@@ -168,17 +169,17 @@ int main(int argc, char* argv[]) {
     out << "}" << endl << endl;
 
     out
-      << "inline const std::vector<std::string>& getProgramShaders(const std::string& programName) {"
+      << "inline const std::vector<std::string> getProgramShaders(const std::string& programName) {"
       << endl;
-    out << "    const auto& data = getPrograms();" << endl;
+    out << "    const auto data = getPrograms();" << endl;
     out << "    auto itr = data.find(programName);" << endl;
     out << "    if (itr == std::end(data))" << endl;
     out << "        throw std::runtime_error(\"Could not find program: \" + programName);" << endl;
     out << "    return itr->second;" << endl;
     out << "}" << endl << endl;
 
-    out << "inline const std::vector<std::string>& getProgramNames() {" << endl;
-    out << "    static const std::vector<std::string> names{";
+    out << "inline const std::vector<std::string> getProgramNames() {" << endl;
+    out << "    const std::vector<std::string> names{";
     comma = false;
     for (const auto& [shaderName, shaders] : programs) {
         if (comma)

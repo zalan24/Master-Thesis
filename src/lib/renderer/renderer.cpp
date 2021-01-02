@@ -20,7 +20,7 @@ void Renderer::render(EntityManager* entityManager, int width, int height) {
     float ratio;
     if (width <= 0 || height <= 0)
         return;
-    ratio = width / static_cast<float>(height);
+    ratio = static_cast<float>(width) / static_cast<float>(height);
     glViewport(0, 0, width, height);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     camera.setAspect(ratio);

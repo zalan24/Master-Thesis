@@ -17,7 +17,7 @@ class DrawableEntity : public Entity
 
  protected:
     void gatherEntityEntries(std::vector<ISerializable::Entry>& entries) const override final;
-    virtual void gatherDrawableentityEntries(std::vector<ISerializable::Entry>& entries) const {}
+    virtual void gatherDrawableentityEntries(std::vector<ISerializable::Entry>&) const {}
 
  private:
     bool hidden = false;

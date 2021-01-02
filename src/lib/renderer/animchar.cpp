@@ -56,7 +56,7 @@ void Animchar::draw(const RenderContext& ctx) const {
     glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
     size_t vertexOffset = 0;
     size_t indexOffset = 0;
-    mesh.traverse([&, this](const Mesh& m, const glm::mat4& nodeTm) {
+    mesh.traverse([&](const Mesh& m, const glm::mat4& nodeTm) {
         if (m.getIndices().size() > 0) {
             AffineTransform tm = modelTm * nodeTm;
             ctx.shaderManager->setUniform("PVM", ctx.pv * tm);

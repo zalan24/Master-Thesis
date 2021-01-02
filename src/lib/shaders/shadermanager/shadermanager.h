@@ -96,7 +96,7 @@ class AttributeBinder
         const T hackWack{};
         const uint8_t* h = reinterpret_cast<const uint8_t*>(&hackWack);
         const uint8_t* v = reinterpret_cast<const uint8_t*>(&((&hackWack)->*var));
-        size_t dist = v - h;
+        size_t dist = static_cast<size_t>(v - h);
         data.push_back(AttributeData{varName, getShaderVarType<A>(), normalized,
                                      reinterpret_cast<const void*>(dist)});
     }

@@ -46,7 +46,7 @@ class Entity : public ISerializable
 
  protected:
     void gatherEntries(std::vector<ISerializable::Entry>& entries) const override final;
-    virtual void gatherEntityEntries(std::vector<ISerializable::Entry>& entries) const {}
+    virtual void gatherEntityEntries(std::vector<ISerializable::Entry>&) const {}
 
  private:
     Entity* parent = nullptr;

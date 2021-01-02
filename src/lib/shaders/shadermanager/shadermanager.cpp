@@ -7,6 +7,7 @@
 
 #include <glad/glad.h>
 #include <glm/gtc/type_ptr.hpp>
+#include <mapbox/eternal.hpp>
 
 #include "shadercodes.h"
 
@@ -74,17 +75,18 @@ struct ProgramData
 };
 
 ShaderManager::ShaderManager() {
-    static const std::map<std::string, unsigned int> stages{{"frag", GL_FRAGMENT_SHADER},
-                                                            {"vert", GL_VERTEX_SHADER}};
+    MAPBOX_ETERNAL_CONSTEXPR const auto stages =
+      mapbox::eternal::map<mapbox::eternal::string, unsigned int>(
+        {{"frag", GL_FRAGMENT_SHADER}, {"vert", GL_VERTEX_SHADER}});
     for (const std::string& programName : getProgramNames()) {
         Program program{glCreateProgram()};
         std::map<std::string, std::string> uniforms;
         std::map<std::string, std::string> attributes;
         std::vector<Shader> shaders;
         for (const std::string& shaderName : getProgramShaders(programName)) {
-            const ShaderData& data = getShader(shaderName);
-            const auto stageItr = stages.find(data.stage);
-            if (stageItr == std::end(stages))
+            const ShaderData data = getShader(shaderName);
+            const auto stageItr = stages.find(mapbox::eternal::string(data.stage.c_str()));
+            if (stageItr == stages.end())
                 throw std::runtime_error("Unknown shader stage: " + data.stage);
             Shader shader{glCreateShader(stageItr->second)};
             const char* content = data.content.c_str();

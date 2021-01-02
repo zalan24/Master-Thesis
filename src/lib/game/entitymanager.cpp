@@ -25,13 +25,13 @@ EntityManager::~EntityManager() noexcept {
     instance = nullptr;
 }
 
-void EntityManager::addEntities(std::vector<std::unique_ptr<Entity>>&& entities,
+void EntityManager::addEntities(std::vector<std::unique_ptr<Entity>>&& _entities,
                                 UpdatePriority priority) {
-    for (std::unique_ptr<Entity>& itr : entities)
+    for (std::unique_ptr<Entity>& itr : _entities)
         addEntity(std::move(itr), priority);
 }
 
-EntityManager::EntityId EntityManager::addEntity(std::unique_ptr<Entity>&& entity,
+EntityManager::EntityId EntityManager::addEntity(std::unique_ptr<Entity>&& _entity,
                                                  UpdatePriority priority) {
     needReset = true;
     EntityId ret = INVALID_ENTITY;
@@ -44,16 +44,16 @@ EntityManager::EntityId EntityManager::addEntity(std::unique_ptr<Entity>&& entit
         ret = entities.size();
         entities.resize(entities.size() + 1);
     }
-    entities[ret] = {std::move(entity), "", priority, false};
+    entities[ret] = {std::move(_entity), "", priority, false};
     toStart.push_back(ret);
     return ret;
 }
 
-EntityManager::EntityId EntityManager::addEntity(std::unique_ptr<Entity>&& entity,
+EntityManager::EntityId EntityManager::addEntity(std::unique_ptr<Entity>&& _entity,
                                                  const std::string& name, UpdatePriority priority) {
     if (nameMap.find(name) != nameMap.end())
         throw std::runtime_error("An entity as already added with name: " + name);
-    EntityId ret = addEntity(std::move(entity), priority);
+    EntityId ret = addEntity(std::move(_entity), priority);
     assert(ret != INVALID_ENTITY);
     if (ret == INVALID_ENTITY)
         return ret;

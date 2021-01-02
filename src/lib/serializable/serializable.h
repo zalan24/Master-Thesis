@@ -38,8 +38,6 @@ class ISerializable
         }
     };
 
-    virtual ~ISerializable() {}
-
     virtual void write(std::ostream& out) const;
     virtual void read(std::istream& in);
 
@@ -48,23 +46,23 @@ class ISerializable
 
  protected:
     virtual void gatherEntries(std::vector<Entry>& entries) const = 0;
-
-    template <typename T>
-    static Entry::Type getType();
-    template <>
-    static Entry::Type getType<int>();
-    template <>
-    static Entry::Type getType<float>();
-    template <>
-    static Entry::Type getType<std::string>();
-    template <>
-    static Entry::Type getType<bool>();
-    template <>
-    static Entry::Type getType<ISerializable*>();
+    ~ISerializable() = default;
 };
 
+template <typename T>
+ISerializable::Entry::Type getType();
+template <>
+ISerializable::Entry::Type getType<int>();
+template <>
+ISerializable::Entry::Type getType<float>();
+template <>
+ISerializable::Entry::Type getType<std::string>();
+template <>
+ISerializable::Entry::Type getType<bool>();
+template <>
+ISerializable::Entry::Type getType<ISerializable*>();
+
 #define REGISTER_ENTRY(name, entries) \
-    entries.push_back(                \
-      ISerializable::Entry(ISerializable::getType<std::decay_t<decltype(name)>>(), &name, #name))
+    entries.push_back(ISerializable::Entry(getType<std::decay_t<decltype(name)>>(), &name, #name))
 #define REGISTER_ENTRY_ARRAY(name, entries, count) \
-    entries.push_back(ISerializable::Entry(getType<name>(), &name, #name, count))
+    entries.push_back(Entry(getType<name>(), &name, #name, count))

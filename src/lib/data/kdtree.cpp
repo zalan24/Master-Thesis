@@ -22,7 +22,7 @@ void KDTree::build() {
         indices[i].left = static_cast<unsigned int>(-1);
         indices[i].right = static_cast<unsigned int>(-1);
     }
-    root = build(0, positions.size(), 0);
+    root = build(0, static_cast<unsigned int>(positions.size()), 0);
 }
 
 unsigned int KDTree::build(unsigned int a, unsigned int b, unsigned int depth) {
@@ -52,12 +52,12 @@ void KDTree::collectInSphere(const glm::vec3& position, double range, unsigned i
     if (node == static_cast<unsigned int>(-1))
         return;
     glm::vec3 d = position - positions[indices[node].ind];
-    if (glm::dot(d, d) < range * range)
+    if (glm::dot(d, d) < static_cast<float>(range * range))
         vec.insert(indices[node].ind);
     float value = maskPos(d, depth);
-    if (value < range)
+    if (value < static_cast<float>(range))
         collectInSphere(position, range, indices[node].left, vec, depth + 1);
-    if (value > -range)
+    if (value > static_cast<float>(-range))
         collectInSphere(position, range, indices[node].right, vec, depth + 1);
 }
 

@@ -31,7 +31,7 @@ float intersect(const Ray& r, const Sphere& s, bool surfaceOnly) {
 glm::vec4 intersect(const Ray& r, const Triangle& t) {
     glm::vec3 N = glm::cross(t.b - t.a, t.c - t.a);
     float d = glm::dot(N, r.d);
-    if (fabs(d) < 0.00001)
+    if (fabs(d) < 0.00001f)
         return glm::vec4{0, 0, 0, -1};  // parallel
     float dist = glm::dot(N, t.a - r.o) / d;
     // if (dist < 0)

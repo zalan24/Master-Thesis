@@ -13,24 +13,24 @@ void ISerializable::read(std::istream& in) {
 }
 
 template <>
-ISerializable::Entry::Type ISerializable::getType<int>() {
-    return Entry::INT;
+ISerializable::Entry::Type getType<int>() {
+    return ISerializable::Entry::INT;
 }
 template <>
-ISerializable::Entry::Type ISerializable::getType<float>() {
-    return Entry::FLOAT;
+ISerializable::Entry::Type getType<float>() {
+    return ISerializable::Entry::FLOAT;
 }
 template <>
-ISerializable::Entry::Type ISerializable::getType<std::string>() {
-    return Entry::STRING;
+ISerializable::Entry::Type getType<std::string>() {
+    return ISerializable::Entry::STRING;
 }
 template <>
-ISerializable::Entry::Type ISerializable::getType<bool>() {
-    return Entry::BOOL;
+ISerializable::Entry::Type getType<bool>() {
+    return ISerializable::Entry::BOOL;
 }
 template <>
-ISerializable::Entry::Type ISerializable::getType<ISerializable*>() {
-    return Entry::OBJECT;
+ISerializable::Entry::Type getType<ISerializable*>() {
+    return ISerializable::Entry::OBJECT;
 }
 
 static void write(json& to, const ISerializable::Entry& e) {
@@ -105,7 +105,7 @@ void ISerializable::write(json& out) const {
     for (const Entry& e : entries) {
         if (e.count >= 0) {
             out[e.name] = json::array();
-            for (size_t i = 0; i < e.count; ++i)
+            for (int i = 0; i < e.count; ++i)
                 ::push(out[e.name], e);
         }
         else
@@ -127,7 +127,7 @@ void ISerializable::read(const json& in) {
             if (!array.is_array())
                 throw std::runtime_error(
                   "'" + e.name + "' property should be an array in input json: " + in.dump());
-            for (size_t i = 0; i < e.count; ++i)
+            for (unsigned int i = 0; i < static_cast<unsigned int>(e.count); ++i)
                 ::read(in[e.name], e.type, e.writePtr, i, i);
         }
         else

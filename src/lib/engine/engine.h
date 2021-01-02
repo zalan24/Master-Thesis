@@ -13,7 +13,7 @@
 class Engine
 {
  public:
-    struct Config : public ISerializable
+    struct Config final : public ISerializable
     {
         int screenWidth;
         int screenHeight;

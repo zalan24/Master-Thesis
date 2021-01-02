@@ -11,7 +11,7 @@
 
 Window* Window::instance = nullptr;
 
-void Window::error_callback(int, const char* description) {
+void Window::error_callback [[noreturn]] (int, const char* description) {
     throw std::runtime_error("Error: " + std::string{description});
 }
 
@@ -78,10 +78,10 @@ Window::GLFWInit::~GLFWInit() {
     glfwTerminate();
 }
 
-Window::WindowObject::WindowObject(int _width, int _height, const std::string& title) {
+Window::WindowObject::WindowObject(int width, int height, const std::string& title) {
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 2);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
-    window = glfwCreateWindow(_width, _height, title.c_str(), nullptr, nullptr);
+    window = glfwCreateWindow(width, height, title.c_str(), nullptr, nullptr);
     if (!window)
         throw std::runtime_error("Window or OpenGL context creation failed");
     // glfwSetKeyCallback(window, key_callback);

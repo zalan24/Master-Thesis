@@ -9,7 +9,7 @@ FetchContent_Declare(
 FetchContent_GetProperties(assimp_external)
 if(NOT assimp_external_POPULATED)
   FetchContent_Populate(assimp_external)
-  set(ASSIMP_BUILD_TESTS OFF)
+  set(ASSIMP_BUILD_TESTS OFF CACHE BOOL "" FORCE)
   prep_thirdparty(${assimp_external_SOURCE_DIR} "${assimp_external_SOURCE_DIR}_fixed")
   add_subdirectory("${assimp_external_SOURCE_DIR}_fixed" ${assimp_external_BINARY_DIR})
 endif()

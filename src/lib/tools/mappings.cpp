@@ -6,7 +6,7 @@ glm::vec3 sphericalToCartesion(const glm::vec2& sc) {
 
 glm::vec2 cartesionToSpherical(const glm::vec3& v) {
     float theta = acos(v.y);
-    float phi = v.z * v.z + v.x * v.x > 0.0001 ? atan2(v.z, v.x) : 0;
+    float phi = v.z * v.z + v.x * v.x > 0.0001f ? static_cast<float>(atan2(v.z, v.x)) : 0;
     return glm::vec2{theta, phi};
 }
 
