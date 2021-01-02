@@ -15,8 +15,6 @@ function(prep_thirdparty directory outdir)
             file(STRINGS ${F} CONTENT NEWLINE_CONSUME)
             string(PREPEND CONTENT
                 "#pragma clang system_header\n"
-                "#pragma GCC diagnostic ignored \"-Wall\"\n"
-                "#pragma clang diagnostic ignored \"-Weverything\"\n"
             )
             file(WRITE ${F} ${CONTENT})
         endforeach()
