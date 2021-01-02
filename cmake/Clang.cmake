@@ -10,5 +10,3 @@ set(WARNINGFLAGS "${WARNINGFLAGS}   -Weverything \
 set(TEST_WARNINGFLAGS "${TEST_WARNINGFLAGS} -Werror-return-type \
                                             -Wno-c++98-compat -Wno-c++98-compat-pedantic \
                                             -Wall")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} \
-                                    -Wno-error=unused-command-line-argument")
