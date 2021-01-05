@@ -23,6 +23,7 @@ Animchar::Animchar(Mesh&& m, Entity* parent, const Entity::AffineTransform& loca
 void Animchar::bindVertexAttributes() {
     attributeBinder.addAttribute(&Mesh::VertexData::position, "vPos");
     attributeBinder.addAttribute(&Mesh::VertexData::normal, "vNorm", true);
+    attributeBinder.addAttribute(&Mesh::VertexData::color, "vColor");
     attributeBinder.addAttribute(&Mesh::VertexData::texcoord, "vTex");
     checkError();
 }

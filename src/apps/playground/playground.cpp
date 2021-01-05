@@ -9,6 +9,23 @@
 
 using namespace std;
 
+static void load_mesh(Engine& engine, const std::string& file, const glm::vec3& pos, float size,
+                      bool flipYZ = false) {
+    Mesh mesh = loadMesh(file);
+    if (flipYZ) {
+        glm::mat4 tm = mesh.getNodeTm();
+        std::swap(tm[1], tm[2]);
+        mesh.setNodeTm(tm);
+    }
+    std::unique_ptr<Animchar> animchar = std::make_unique<Animchar>(
+      mesh, nullptr, glm::scale(glm::translate(glm::mat4(1.f), pos), glm::vec3(size, size, size)));
+    animchar->setUpdateFunctor([](Entity* animchar, const Entity::UpdateData& data) {
+        animchar->setLocalTransform(
+          glm::rotate(animchar->getLocalTransform(), data.dt, glm::vec3{0, 1, 0}));
+    });
+    engine.getEntityManager()->addEntity(std::move(animchar));
+}
+
 int main(int argc, char* argv[]) {
     try {
         CLI::App app{"Playground"};
@@ -47,43 +64,14 @@ int main(int argc, char* argv[]) {
         });
         engine.getEntityManager()->addEntity(std::move(sphere));
 
-        Mesh suzanneMesh = loadMesh("../data/models/suzanne.obj");
-        std::unique_ptr<Entity> suzanne = std::make_unique<Animchar>(
-          suzanneMesh, nullptr,
-          glm::scale(glm::translate(glm::mat4(1.f), glm::vec3(0, 0.5, 0)),
-                     glm::vec3(0.5f, 0.5f, 0.5f)));
-        suzanne->setUpdateFunctor([](Entity* suzanne, const Entity::UpdateData& data) {
-            suzanne->setLocalTransform(
-              glm::rotate(suzanne->getLocalTransform(), data.dt, glm::vec3{0, 1, 0}));
-        });
-        engine.getEntityManager()->addEntity(std::move(suzanne));
-
-        Mesh HammerMesh = loadMesh("../data/models/Hammer/Hammer.obj");
-        std::unique_ptr<Animchar> Hammer = std::make_unique<Animchar>(
-          HammerMesh, nullptr,
-          glm::scale(glm::translate(glm::mat4(1.f), glm::vec3(-2, 0.5, 2)),
-                     glm::vec3(0.5f, 0.5f, 0.5f)));
-        Hammer->setUpdateFunctor([](Entity* Hammer, const Entity::UpdateData& data) {
-            Hammer->setLocalTransform(
-              glm::rotate(Hammer->getLocalTransform(), data.dt, glm::vec3{0, 1, 0}));
-        });
-        engine.getEntityManager()->addEntity(std::move(Hammer));
-
-        Mesh scottyMesh = loadMesh("../data/models/Scotty.blend");
-        glm::mat4 scottyTm = scottyMesh.getNodeTm();
-        std::swap(scottyTm[1], scottyTm[2]);
-        scottyTm = glm::scale(scottyTm, glm::vec3{0.3, 0.3, 0.3});
-        scottyMesh.setNodeTm(scottyTm);
-        std::unique_ptr<Animchar> scotty = std::make_unique<Animchar>(
-          scottyMesh, nullptr,
-          glm::scale(glm::translate(glm::mat4(1.f), glm::vec3(0, 0.5, 2)),
-                     glm::vec3(0.5f, 0.5f, 0.5f)));
-        scotty->setUpdateFunctor([](Entity* scotty, const Entity::UpdateData& data) {
-            scotty->setLocalTransform(
-              glm::rotate(scotty->getLocalTransform(), data.dt, glm::vec3{0, 1, 0}));
-        });
-        engine.getEntityManager()->addEntity(std::move(scotty));
-
+        load_mesh(engine, "../data/models/Philodendron/philodendron.obj", glm::vec3(2, 0.5, 2),
+                  0.5);
+        load_mesh(engine, "../data/models/FreeCharacters/4/Model/steve.blend",
+                  glm::vec3(-2, 0.5, 2), 0.3, true);
+        load_mesh(engine, "../data/models/FreeCharacters/4/Model/creeper.blend",
+                  glm::vec3(-4, 0.5, 2), 0.5, true);
+        load_mesh(engine, "../data/models/suzanne.obj", glm::vec3(0, 0.5, 0), 0.5);
+        load_mesh(engine, "../data/models/Scotty.blend", glm::vec3(0, 0.5, 2), 0.15, true);
         engine.getEntityManager()->addEntity(
           std::make_unique<Animchar>(createPlane(glm::vec3{0, 0, 0}, glm::vec3(0, 1, 0), 10)));
 
