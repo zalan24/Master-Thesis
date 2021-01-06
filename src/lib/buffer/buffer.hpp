@@ -37,9 +37,11 @@ class Buffer
     void uploadVertexData(const std::vector<T>& data, GLenum usage = GL_STATIC_DRAW) {
         bind();
         glBufferData(GL_ARRAY_BUFFER, sizeof(T) * data.size(), data.data(), usage);
+        unbind();
     }
 
     void bind() const { glBindBuffer(bufferTarget, buffer); }
+    void unbind() const { glBindBuffer(bufferTarget, 0); }
 
     ~Buffer() {
         if (valid)

@@ -22,8 +22,8 @@ class Mesh
         glm::vec2 texcoord;
     };
 
-    Mesh() = default;
-    Mesh(const std::string& nodeName) : name(nodeName) {}
+    Mesh();
+    Mesh(const std::string& nodeName);
 
     VertexIndex addVertex(const VertexData& vert);
     void addFace();     // adds last three vertices
@@ -45,6 +45,8 @@ class Mesh
                   const glm::mat4 rootTm = glm::mat4(1.f)) const;
     void traverse(const std::function<bool(Mesh&, const glm::mat4&)>& functor,
                   const glm::mat4 rootTm = glm::mat4(1.f));
+
+    const Material* getMaterial() const;
 
  private:
     std::string name;

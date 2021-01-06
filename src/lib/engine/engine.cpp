@@ -2,6 +2,8 @@
 
 #include <fstream>
 
+#include <rendercontext.h>
+
 void Engine::Config::gatherEntries(std::vector<ISerializable::Entry>& entries) const {
     REGISTER_ENTRY(screenWidth, entries);
     REGISTER_ENTRY(screenHeight, entries);
@@ -25,6 +27,7 @@ Engine::Engine(const Config& cfg)
 
 Engine::~Engine() {
     // TODO
+    checkError();
 }
 
 void Engine::simulationLoop(bool* quit, LoopState* state) {

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <gltexture.h>
 #include <mesh.h>
 #include <shadermanager.h>
 #include <buffer.hpp>
@@ -22,6 +23,8 @@ class Animchar : public DrawableEntity
     std::string shaderProgram;
     Buffer<Mesh::VertexData> glBuffer;
     Buffer<Mesh::VertexIndex> glIndices;
+    GlTexture diffuseTex;
+    float alphaClipping = 0.5;
 
     void uploadData();
     void bindVertexAttributes();

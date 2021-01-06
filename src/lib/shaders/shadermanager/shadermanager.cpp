@@ -9,6 +9,8 @@
 #include <glm/gtc/type_ptr.hpp>
 #include <mapbox/eternal.hpp>
 
+#include <gltexture.h>
+
 #include "shadercodes.h"
 
 struct Shader
@@ -74,13 +76,19 @@ struct ProgramData
     std::map<std::string, ShaderVar> attributes;
 };
 
+struct UniformData
+{
+    std::string type;
+    size_t texId;
+};
+
 ShaderManager::ShaderManager() {
     MAPBOX_ETERNAL_CONSTEXPR const auto stages =
       mapbox::eternal::map<mapbox::eternal::string, unsigned int>(
         {{"frag", GL_FRAGMENT_SHADER}, {"vert", GL_VERTEX_SHADER}});
     for (const std::string& programName : getProgramNames()) {
         Program program{glCreateProgram()};
-        std::map<std::string, std::string> uniforms;
+        std::map<std::string, UniformData> uniforms;
         std::map<std::string, std::string> attributes;
         std::vector<Shader> shaders;
         for (const std::string& shaderName : getProgramShaders(programName)) {
@@ -109,7 +117,7 @@ ShaderManager::ShaderManager() {
                     attributes[varData.name] = varData.type;
             }
             for (const ShaderVarData& varData : data.uniform)
-                uniforms[varData.name] = varData.type;
+                uniforms[varData.name] = {varData.type, varData.texId};
         }
         glLinkProgram(program.id);
         GLint isLinked = 0;
@@ -124,14 +132,15 @@ ShaderManager::ShaderManager() {
         }
         std::map<std::string, ShaderVar> uniformsMap;
         std::map<std::string, ShaderVar> attributesMap;
-        for (const auto& [varName, varType] : uniforms) {
-            uniformsMap[varName] = {glGetUniformLocation(program.id, varName.c_str()), varType};
+        for (const auto& [varName, data] : uniforms) {
+            uniformsMap[varName] = {glGetUniformLocation(program.id, varName.c_str()), data.type,
+                                    data.texId};
             if (uniformsMap[varName].id < 0)
                 throw std::runtime_error("Could not find uniform (" + varName + ") in program ("
                                          + programName + ")");
         }
         for (const auto& [varName, varType] : attributes) {
-            attributesMap[varName] = {glGetAttribLocation(program.id, varName.c_str()), varType};
+            attributesMap[varName] = {glGetAttribLocation(program.id, varName.c_str()), varType, 0};
             if (attributesMap[varName].id < 0)
                 throw std::runtime_error("Could not find attribute (" + varName + ") in program ("
                                          + programName + ")");
@@ -214,6 +223,20 @@ std::vector<ShaderManager::ShaderUniformData> ShaderManager::getProgramUniforms(
     for (const auto& [name, var] : programData.uniforms)
         ret.push_back({name, var.type});
     return ret;
+}
+
+void ShaderManager::bindTexture(const std::string& varName, const GlTexture* tex,
+                                const std::string& program) const {
+    const ShaderVar var = findUniform(varName, program);
+    glActiveTexture(GL_TEXTURE0 + var.texId);
+    tex->bind();
+}
+
+void ShaderManager::unbindTexture(const std::string& varName, const GlTexture* tex,
+                                  const std::string& program) const {
+    const ShaderVar var = findUniform(varName, program);
+    glActiveTexture(GL_TEXTURE0 + var.texId);
+    tex->unbind();
 }
 
 template <>

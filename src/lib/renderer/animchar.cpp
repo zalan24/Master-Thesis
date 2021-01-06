@@ -1,20 +1,17 @@
 #include "animchar.h"
 
+#include <material.h>
+
 Animchar::Animchar(const Mesh& m, Entity* parent, const Entity::AffineTransform& localTm)
-  : DrawableEntity(parent, localTm),
-    mesh(m),
-    glBuffer(GL_ARRAY_BUFFER),
-    glIndices(GL_ELEMENT_ARRAY_BUFFER) {
-    checkError();
-    bindVertexAttributes();
-    uploadData();
+  : Animchar(Mesh(m), parent, localTm) {
 }
 
 Animchar::Animchar(Mesh&& m, Entity* parent, const Entity::AffineTransform& localTm)
   : DrawableEntity(parent, localTm),
     mesh(std::move(m)),
     glBuffer(GL_ARRAY_BUFFER),
-    glIndices(GL_ELEMENT_ARRAY_BUFFER) {
+    glIndices(GL_ELEMENT_ARRAY_BUFFER),
+    diffuseTex(GL_TEXTURE_2D, GL_RGBA) {
     checkError();
     bindVertexAttributes();
     uploadData();
@@ -39,6 +36,9 @@ void Animchar::uploadData() {
     glBuffer.upload(vertices, GL_STATIC_DRAW);
     glIndices.upload(indices, GL_STATIC_DRAW);
     checkError();
+    const Material* mat = mesh.getMaterial();
+    diffuseTex.upload(mat->getAlbedoAlpha());
+    checkError();
 }
 
 void Animchar::draw(const RenderContext& ctx) const {
@@ -51,6 +51,9 @@ void Animchar::draw(const RenderContext& ctx) const {
     ctx.shaderManager->setUniform("lightColor", ctx.lightColor);
     ctx.shaderManager->setUniform("lightDir", ctx.lightDir);
     ctx.shaderManager->setUniform("ambientColor", ctx.ambientColor);
+    ctx.shaderManager->setUniform("alphaClipping", alphaClipping);
+
+    ctx.shaderManager->bindTexture("diffuse_tex", &diffuseTex);
 
     const AffineTransform modelTm = getWorldTransform();
 
@@ -58,6 +61,7 @@ void Animchar::draw(const RenderContext& ctx) const {
     size_t vertexOffset = 0;
     size_t indexOffset = 0;
     mesh.traverse([&](const Mesh& m, const glm::mat4& nodeTm) {
+        assert(false);  // TODO set material here...
         if (m.getIndices().size() > 0) {
             AffineTransform tm = modelTm * nodeTm;
             ctx.shaderManager->setUniform("PVM", ctx.pv * tm);
@@ -69,4 +73,9 @@ void Animchar::draw(const RenderContext& ctx) const {
         indexOffset += sizeof(Mesh::VertexIndex) * m.getIndices().size();
         return true;
     });
+
+    ctx.shaderManager->unbindTexture("diffuse_tex", &diffuseTex);
+
+    glBuffer.unbind();
+    glIndices.unbind();
 }

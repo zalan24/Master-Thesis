@@ -6,6 +6,14 @@
 
 #include "material.h"
 
+Mesh::Mesh() {
+    setMaterial(std::make_unique<Material>(RGBA(0, 0, 0, 255)));
+}
+
+Mesh::Mesh(const std::string& nodeName) : name(nodeName) {
+    setMaterial(std::make_unique<Material>(RGBA(0, 0, 0, 255)));
+}
+
 Mesh::VertexIndex Mesh::addVertex(const VertexData& vert) {
     VertexIndex ret = safeCast<VertexIndex>(vertices.size());
     vertices.push_back(vert);
@@ -64,4 +72,8 @@ void Mesh::setMaterial(const std::shared_ptr<Material>& mat) {
 
 void Mesh::setMaterial(std::shared_ptr<Material>&& mat) {
     material = std::move(mat);
+}
+
+const Material* Mesh::getMaterial() const {
+    return material.get();
 }

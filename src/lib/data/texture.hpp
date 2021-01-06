@@ -20,6 +20,11 @@ class Texture
 
     void clear(const P& clear_value) { std::fill(data.begin(), data.end(), clear_value); }
 
+    size_t getWidth() const { return width; }
+    size_t getHeight() const { return height; }
+    size_t getDepth() const { return depth; }
+    const P* getData() const { return data.data(); }
+
  private:
     size_t width;
     size_t height;

@@ -11,6 +11,7 @@ struct ShaderVarData
 {
     std::string type;
     std::string name;
+    size_t texId;
 };
 
 int main(int argc, char* argv[]) {
@@ -34,6 +35,7 @@ int main(int argc, char* argv[]) {
     out << "struct ShaderVarData {" << endl;
     out << "    std::string type;" << endl;
     out << "    std::string name;" << endl;
+    out << "    size_t texId;" << endl;
     out << "};" << endl << endl;
     out << "struct ShaderData {" << endl;
     out << "    std::string name;" << endl;
@@ -52,18 +54,21 @@ int main(int argc, char* argv[]) {
         std::regex filenameRegex{"([a-zA-Z0-9]+)\\.([a-zA-Z]+)"};
         std::regex uniformRegex{"uniform ([^ ;]+) ([^ ;]+)"};
         std::regex attributeRegex{"(attribute|in) ([^ ;]+) ([^ ;]+)"};
+        std::regex texRegex{".*sampler.*"};
         // std::regex varyingRegex{"varying ([^ ;]+) ([^ ;]+)"};
         std::vector<ShaderVarData> uniform;
         std::vector<ShaderVarData> attribute;
         // std::vector<ShaderVarData> varying;
-        auto processVar = [](const std::regex& reg, std::vector<ShaderVarData>& vec,
-                             const std::string& line, unsigned int typeGroup,
-                             unsigned int nameGroup) {
+        size_t texId = 0;
+        auto processVar = [&](const std::regex& reg, std::vector<ShaderVarData>& vec,
+                              const std::string& line, unsigned int typeGroup,
+                              unsigned int nameGroup) {
             std::smatch base_match;
             if (std::regex_search(line, base_match, reg)) {
                 const std::string type = base_match[typeGroup].str();
                 const std::string name = base_match[nameGroup].str();
-                vec.push_back(ShaderVarData{type, name});
+                bool tex = std::regex_match(type, texRegex);
+                vec.push_back(ShaderVarData{type, name, tex ? texId++ : 0});
             }
         };
         auto processUniform = [&uniform, &uniformRegex, &processVar](const std::string& line) {
@@ -109,7 +114,7 @@ int main(int argc, char* argv[]) {
         for (const ShaderVarData& data : uniform) {
             if (comma)
                 out << ", ";
-            out << "{\"" << data.type << "\", \"" << data.name << "\"}";
+            out << "{\"" << data.type << "\", \"" << data.name << "\", " << data.texId << "}";
             comma = true;
         }
         out << "}, {" << endl;
@@ -117,7 +122,7 @@ int main(int argc, char* argv[]) {
         for (const ShaderVarData& data : attribute) {
             if (comma)
                 out << ", ";
-            out << "{\"" << data.type << "\", \"" << data.name << "\"}";
+            out << "{\"" << data.type << "\", \"" << data.name << "\", 0}";
             comma = true;
         }
         // out << "}, {" << endl;

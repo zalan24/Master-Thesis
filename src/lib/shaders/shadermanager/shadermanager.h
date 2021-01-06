@@ -16,11 +16,13 @@ struct ProgramData;
 struct Shader;
 struct Program;
 class ShaderManager;
+class GlTexture;
 
 struct ShaderVar
 {
     GLint id;
     std::string type;
+    size_t texId;
 };
 
 struct ShaderVarType
@@ -188,6 +190,11 @@ class ShaderManager
         getUniforms(varName, &ret, 1, program);
         return ret;
     }
+
+    void bindTexture(const std::string& varName, const GlTexture* tex,
+                     const std::string& program = "") const;
+    void unbindTexture(const std::string& varName, const GlTexture* tex,
+                       const std::string& program = "") const;
 
  private:
     std::map<std::string, std::unique_ptr<ProgramData>> programs;
