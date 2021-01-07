@@ -16,4 +16,6 @@ target_link_libraries(AnimationsEngine PUBLIC
     AnimationsGame
     AnimationsRenderer
     AnimationsWindow
+    AnimationsWindow
+    AnimationsResources
 )

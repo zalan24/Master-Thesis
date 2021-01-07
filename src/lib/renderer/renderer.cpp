@@ -33,6 +33,13 @@ void Renderer::render(EntityManager* entityManager, int width, int height) {
     RenderContext context{width,    height,       camera.getPV(), lightColor,
                           lightDir, ambientColor, &shaderManager};
 
+    // This could be parallel with renderQuery
+    // only single entities need synchronization
+    EntityQuery beforeDrawQuery(
+      [](const Entity* entity) { return dynamic_cast<const DrawableEntity*>(entity) != nullptr; },
+      [&context](Entity* entity) { static_cast<DrawableEntity*>(entity)->beforedraw(context); });
+    entityManager->performQuery(beforeDrawQuery);
+
     EntityQuery renderQuery(
       [](const Entity* entity) { return dynamic_cast<const DrawableEntity*>(entity) != nullptr; },
       [&context](Entity* entity) { static_cast<DrawableEntity*>(entity)->draw(context); });

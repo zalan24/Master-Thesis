@@ -1,12 +1,12 @@
 #pragma once
 
-#include <gltexture.h>
-#include <mesh.h>
+#include <glmesh.h>
 #include <shadermanager.h>
-#include <buffer.hpp>
+#include <resourcepool.hpp>
 
 #include "drawableentity.h"
 
+class GlMesh;
 class Animchar : public DrawableEntity
 {
  public:
@@ -16,16 +16,14 @@ class Animchar : public DrawableEntity
              const Entity::AffineTransform& localTm = Entity::AffineTransform(1.f));
 
     void draw(const RenderContext& ctx) const override final;
+    void beforedraw(const RenderContext& ctx) override final;
 
  private:
     AttributeBinder attributeBinder;
-    Mesh mesh;
     std::string shaderProgram;
-    Buffer<Mesh::VertexData> glBuffer;
-    Buffer<Mesh::VertexIndex> glIndices;
-    GlTexture diffuseTex;
+    ResourcePool<GlMesh>::ResourceRef meshRef;
+    std::vector<GlMesh::NodeState> nodeStates;
     float alphaClipping = 0.5;
 
-    void uploadData();
     void bindVertexAttributes();
 };

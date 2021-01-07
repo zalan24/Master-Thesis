@@ -7,6 +7,7 @@
 
 #include <entitymanager.h>
 #include <renderer.h>
+#include <resourcemanager.h>
 #include <serializable.h>
 #include <window.h>
 
@@ -49,6 +50,7 @@ class Engine
 
     Config config;
 
+    ResourceManager resourceMgr;
     EntityManager entityManager;
     Window window;
     Renderer renderer;

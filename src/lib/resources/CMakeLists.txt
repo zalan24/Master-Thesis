@@ -1,0 +1,12 @@
+file(GLOB RESOURCES_SOURCES *.cpp *.h *.hpp)
+
+add_library(AnimationsResources ${RESOURCES_SOURCES})
+
+set_target_properties(  AnimationsResources
+                        PROPERTIES
+                        COMPILE_FLAGS ${TARGETCOMPILEFLAGS})
+target_include_directories(AnimationsResources PUBLIC . ${CMAKE_CURRENT_BINARY_DIR})
+target_link_libraries(AnimationsResources PUBLIC
+    AnimationsData
+    AnimationsBuffer
+)
