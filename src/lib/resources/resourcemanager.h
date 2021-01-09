@@ -27,6 +27,7 @@ class ResourceManager
     auto* getGlTexturePool() { return &glTexturePool; }
 
     const TextureProvider* getTexProvider() const { return textureProvider.get(); }
+    const MeshProvider* getMeshProvider() const { return meshProvider.get(); }
 
  private:
     static ResourceManager* instance;

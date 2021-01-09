@@ -2,14 +2,15 @@
 
 #include <memory>
 
+#define GLM_FORCE_RADIANS
+#define GLM_LEFT_HAND
+#include <glm/geometric.hpp>
+
 #include <assimp/cimport.h>
 #include <assimp/matrix4x4.h>
 #include <assimp/postprocess.h>
 #include <assimp/scene.h>
 #include <assimp/Importer.hpp>
-
-#define GLM_FORCE_RADIANS
-#include <glm/geometric.hpp>
 
 #include <material.h>
 #include <mesh.h>

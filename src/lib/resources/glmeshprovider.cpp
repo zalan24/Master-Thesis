@@ -12,11 +12,10 @@ GenericResourcePool::ResourceRef GlMeshProvider::getResource(const ResourceDescr
     if (resId != GenericResourcePool::INVALID_RESOURCE)
         return meshPool->get(resId);
     GenericResourcePool::ResourceRef res;
-    if (desc.isFile()) {
+    if (desc.isFile())
         res = createResource(desc.getFilename());
-    }
     else
-        assert(false);
+        res = createResource(desc.getType());
     meshPool->registerDesc(desc, res.getId());
     return res;
 }
@@ -35,7 +34,7 @@ GenericResourcePool::ResourceRef GlMeshProvider::createResource(
         case ResourceDescriptor::CUBE:
             return createResource(create_cube(1));
         case ResourceDescriptor::SPHERE:
-            return createResource(create_sphere(1, 32, 16));
+            return createResource(create_sphere(32, 16, 1));
         case ResourceDescriptor::PLANE:
             return createResource(create_plane(glm::vec3(0, 0, 0), glm::vec3(0, 1, 0), 1));
     }

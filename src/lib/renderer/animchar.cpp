@@ -1,13 +1,12 @@
 #include "animchar.h"
 
 #include <gltexture.h>
-#include <material.h>
 #include <mesh.h>
 #include <resourcemanager.h>
 
 std::unique_ptr<Material> Animchar::getDefaultMaterial() {
     const TextureProvider* texProvider = ResourceManager::getSingleton()->getTexProvider();
-    TextureProvider::ResourceDescriptor diffuseDesc(glm::vec4(0, 0, 0, 1));
+    TextureProvider::ResourceDescriptor diffuseDesc(glm::vec4(1, 1, 1, 1));
     Material::DiffuseRes diffuseRes(texProvider, std::move(diffuseDesc));
     return std::make_unique<Material>(std::move(diffuseRes));
 }

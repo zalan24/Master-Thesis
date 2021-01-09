@@ -6,7 +6,9 @@ Camera::Camera() {
 
 void Camera::updatePV() {
     glm::mat4 projection = glm::perspective(fovy / 2, aspect, near, far);
-    glm::mat4 view = glm::lookAt(eyePos, lookAt, up);
+    glm::mat4 actuallyLeftHanded(1.f);
+    actuallyLeftHanded[0][0] = -1;
+    glm::mat4 view = actuallyLeftHanded * glm::lookAt(eyePos, lookAt, up);
     pv = projection * view;
 }
 

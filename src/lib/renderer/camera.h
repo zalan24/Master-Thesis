@@ -1,8 +1,11 @@
 #pragma once
 
 #define GLM_FORCE_RADIANS
+#define GLM_LEFT_HAND
 #include <glm/glm.hpp>
 #include <glm/gtc/type_ptr.hpp>
+
+#include <util.hpp>
 
 class Camera
 {
@@ -27,7 +30,7 @@ class Camera
     glm::vec3 eyePos{0, 0, -1};
     glm::vec3 lookAt{0, 0, 0};
     glm::vec3 up{0, 1, 0};
-    float fovy = 90;
+    float fovy = static_cast<float>(M_PI / 2);
     float aspect = 1;
     float near = 0.1f;
     float far = 10000;

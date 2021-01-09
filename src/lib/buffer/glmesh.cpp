@@ -50,9 +50,13 @@ void GlMesh::upload(const Mesh& mesh) {
         node.indexOffset = indexOffset;
         node.vertexOffset = vertexOffset;
         node.indexCount = m.getIndices().size();
-        auto itr = meshIndices.find(data.parent);
-        assert(itr != meshIndices.end());
-        node.parent = itr->second;
+        if (data.parent != nullptr) {
+            auto itr = meshIndices.find(data.parent);
+            assert(itr != meshIndices.end());
+            node.parent = itr->second;
+        }
+        else
+            node.parent = 0;
         node.diffuseRef =
           m.getMaterial() ? m.getMaterial()->getAlbedoAlpha() : GenericResourcePool::ResourceRef();
         nodes.push_back(std::move(node));

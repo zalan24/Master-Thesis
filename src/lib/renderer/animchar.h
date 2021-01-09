@@ -1,6 +1,9 @@
 #pragma once
 
+#include <memory>
+
 #include <glmesh.h>
+#include <material.h>
 #include <meshprovider.h>
 #include <resourcepool.h>
 #include <shadermanager.h>
@@ -8,7 +11,6 @@
 
 #include "drawableentity.h"
 
-class GlMesh;
 class Material;
 class Animchar : public DrawableEntity
 {

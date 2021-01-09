@@ -9,6 +9,7 @@
 #include <vector>
 
 #define GLM_FORCE_RADIANS
+#define GLM_LEFT_HAND
 #include <glad/glad.h>
 #include <glm/glm.hpp>
 

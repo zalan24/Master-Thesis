@@ -1,6 +1,7 @@
 #pragma once
 
 #define GLM_FORCE_RADIANS
+#define GLM_LEFT_HAND
 #include <glm/glm.hpp>
 
 struct Ray

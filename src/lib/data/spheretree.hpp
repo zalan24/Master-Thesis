@@ -6,6 +6,7 @@
 #include <vector>
 
 #define GLM_FORCE_RADIANS
+#define GLM_LEFT_HAND
 #include <glm/glm.hpp>
 
 #include <intersections.h>
