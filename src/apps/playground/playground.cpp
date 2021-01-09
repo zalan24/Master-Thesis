@@ -11,7 +11,7 @@ using namespace std;
 
 static void load_mesh(Engine& engine, const std::string& file, const glm::vec3& pos, float size,
                       const glm::vec3& color, bool flipYZ = false) {
-    Mesh mesh = loadMesh(file, color);
+    Mesh mesh = ::load_mesh(file, color, engine.getResMgr()->getTexProvider());
     if (flipYZ) {
         glm::mat4 tm = mesh.getNodeTm();
         std::swap(tm[1], tm[2]);

@@ -40,11 +40,18 @@ class Mesh
     const std::vector<VertexData>& getVertices() const { return vertices; }
     const std::vector<VertexIndex>& getIndices() const { return indices; }
 
+    struct TraverseData
+    {
+        glm::mat4 tm = glm::mat4(1.f);
+        const Mesh* parent = nullptr;
+        TraverseData() {}
+    };
+
     // functor : returns wether current mesh should be expanded recursively
-    void traverse(const std::function<bool(const Mesh&, const glm::mat4&)>& functor,
-                  const glm::mat4 rootTm = glm::mat4(1.f)) const;
-    void traverse(const std::function<bool(Mesh&, const glm::mat4&)>& functor,
-                  const glm::mat4 rootTm = glm::mat4(1.f));
+    void traverse(const std::function<bool(const Mesh&, const TraverseData&)>& functor,
+                  const TraverseData& data = TraverseData()) const;
+    void traverse(const std::function<bool(Mesh&, const TraverseData&)>& functor,
+                  const TraverseData& data = TraverseData());
 
     const Material* getMaterial() const;
 

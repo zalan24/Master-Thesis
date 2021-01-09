@@ -8,6 +8,7 @@
 #include <typeinfo>
 #include <vector>
 
+#define GLM_FORCE_RADIANS
 #include <glad/glad.h>
 #include <glm/glm.hpp>
 

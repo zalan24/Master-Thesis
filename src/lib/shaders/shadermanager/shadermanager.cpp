@@ -5,6 +5,7 @@
 #include <stdexcept>
 #include <vector>
 
+#define GLM_FORCE_RADIANS
 #include <glad/glad.h>
 #include <glm/gtc/type_ptr.hpp>
 #include <mapbox/eternal.hpp>

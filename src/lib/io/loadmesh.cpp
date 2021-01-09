@@ -8,11 +8,14 @@
 #include <assimp/scene.h>
 #include <assimp/Importer.hpp>
 
+#define GLM_FORCE_RADIANS
 #include <glm/geometric.hpp>
 
 #include <material.h>
 #include <mesh.h>
 #include <util.hpp>
+
+#include "textureprovider.h"
 
 static void process(const aiMesh* mesh, Mesh& m,
                     const std::vector<std::shared_ptr<Material>>& materials,
@@ -53,32 +56,33 @@ static void process(const aiMesh* mesh, Mesh& m,
     }
 }
 
-static void load_texture(const aiString& path) {
-    assert(false);
-}
-
-static Mesh process(const aiScene* scene, const aiNode* node, const glm::vec3& default_color) {
+static Mesh process(const aiScene* scene, const aiNode* node, const glm::vec3& default_color,
+                    const TextureProvider* texProvider) {
     std::vector<std::shared_ptr<Material>> materials;
     if (scene->HasMaterials()) {
         for (unsigned int i = 0; i < scene->mNumMaterials; ++i) {
             const auto matPtr = scene->mMaterials[i];
             std::shared_ptr<Material> mat;
+            // TODO embedded texture not supported
+            // TODO test with color/external tex/embedded tex
             aiString path;
             aiString name;
             matPtr->Get(AI_MATKEY_NAME, name);
             aiReturn texFound = matPtr->GetTexture(aiTextureType_DIFFUSE, 0, &name);
             if (matPtr->GetTexture(aiTextureType_DIFFUSE, 0, &path) == AI_SUCCESS) {
-                load_texture(path);
-                // mat = std::make_shared<Material>();
+                TextureProvider::ResourceDescriptor matDesc{std::string(path.data, path.length)};
+                mat =
+                  std::make_shared<Material>(Material::DiffuseRes(texProvider, std::move(matDesc)));
             }
             else {
                 aiColor3D albedo;
                 float opacity = 1;
                 matPtr->Get(AI_MATKEY_COLOR_DIFFUSE, albedo);
                 matPtr->Get(AI_MATKEY_OPACITY, opacity);
-                RGBA albedo_alpha;
-                albedo_alpha.set(albedo.r, albedo.g, albedo.b, opacity);
-                mat = std::make_shared<Material>(std::move(albedo_alpha));
+                glm::vec4 albedo_alpha{albedo.r, albedo.g, albedo.b, opacity};
+                TextureProvider::ResourceDescriptor matDesc{albedo_alpha};
+                mat =
+                  std::make_shared<Material>(Material::DiffuseRes(texProvider, std::move(matDesc)));
             }
             materials.push_back(std::move(mat));
         }
@@ -113,11 +117,12 @@ static Mesh process(const aiScene* scene, const aiNode* node, const glm::vec3& d
         }
     }
     for (unsigned int i = 0; i < node->mNumChildren; ++i)
-        ret.addChild(process(scene, node->mChildren[i], default_color));
+        ret.addChild(process(scene, node->mChildren[i], default_color, texProvider));
     return ret;
 }
 
-Mesh loadMesh(const std::string& filename, const glm::vec3& default_color) {
+Mesh load_mesh(const std::string& filename, const TextureProvider* texProvider,
+               const glm::vec3& default_color) {
     Assimp::Importer importer;
     const aiScene* scene = importer.ReadFile(
       filename, aiProcess_CalcTangentSpace | aiProcess_Triangulate | aiProcess_JoinIdenticalVertices
@@ -128,10 +133,10 @@ Mesh loadMesh(const std::string& filename, const glm::vec3& default_color) {
         throw std::runtime_error("Could not load object from file: " + filename + " (" + vError
                                  + ")");
     }
-    return process(scene, scene->mRootNode, default_color);
+    return process(scene, scene->mRootNode, default_color, texProvider);
 }
 
-Mesh createCube(float size, const glm::vec3& color) {
+Mesh create_cube(float size, const glm::vec3& color) {
     Mesh ret;
     for (int ind : {0, 1, 2}) {
         for (int sgn : {-1, 1}) {
@@ -154,7 +159,7 @@ Mesh createCube(float size, const glm::vec3& color) {
     return ret;
 }
 
-Mesh createPlane(const glm::vec3& origin, glm::vec3 normal, float size, const glm::vec3& color) {
+Mesh create_plane(const glm::vec3& origin, glm::vec3 normal, float size, const glm::vec3& color) {
     normal = glm::normalize(normal);
     glm::vec3 up =
       std::abs(normal.y) > std::abs(normal.z) ? glm::vec3{0, 0, 1} : glm::vec3{0, 1, 0};
@@ -172,7 +177,7 @@ Mesh createPlane(const glm::vec3& origin, glm::vec3 normal, float size, const gl
     return ret;
 }
 
-Mesh createSphere(size_t resX, size_t resY, float size, const glm::vec3& color) {
+Mesh create_sphere(size_t resX, size_t resY, float size, const glm::vec3& color) {
     Mesh ret;
     for (size_t y = 0; y < resY; ++y) {
         float theta = static_cast<float>(y) / static_cast<float>(resY - 1);

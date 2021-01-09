@@ -1,8 +1,10 @@
 #include "material.h"
 
-Material::Material(Channel<RGBA>&& aa) : albedo_alpha(channel_to_tex(std::move(aa))) {
+Material::Material(DiffuseChannel&& aa) : albedo_alpha(std::move(aa)) {
 }
 
-const Texture<RGBA>* Material::getAlbedoAlpha() const {
-    return albedo_alpha.get();
+const Material::DiffuseTexRef& Material::getAlbedoAlpha() const {
+    if (std::holds_alternative<DiffuseTexRef>(albedo_alpha))
+        return std::get<DiffuseTexRef>(albedo_alpha);
+    return std::get<DiffuseRes>(albedo_alpha).getRes();
 }

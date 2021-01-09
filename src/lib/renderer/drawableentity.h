@@ -14,7 +14,7 @@ class DrawableEntity : public Entity
     bool isHidden() const;
 
     virtual void draw(const RenderContext& ctx) const = 0;
-    virtual void beforedraw(const RenderContext& ctx) {}
+    virtual void beforedraw(const RenderContext&) {}
 
  protected:
     void gatherEntityEntries(std::vector<ISerializable::Entry>& entries) const override final;

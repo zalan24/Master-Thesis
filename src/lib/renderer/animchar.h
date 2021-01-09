@@ -2,7 +2,7 @@
 
 #include <glmesh.h>
 #include <shadermanager.h>
-#include <resourcepool.hpp>
+#include <resourcepool.h>
 
 #include "drawableentity.h"
 
@@ -21,7 +21,7 @@ class Animchar : public DrawableEntity
  private:
     AttributeBinder attributeBinder;
     std::string shaderProgram;
-    ResourcePool<GlMesh>::ResourceRef meshRef;
+    GenericResourcePool::ResourceRef meshRef;
     std::vector<GlMesh::NodeState> nodeStates;
     float alphaClipping = 0.5;
 

@@ -3,7 +3,6 @@
 #include <gltexture.h>
 #include <material.h>
 #include <mesh.h>
-#include <resourcemanager.h>
 
 Animchar::Animchar(const Mesh& m, Entity* parent, const Entity::AffineTransform& localTm)
   : Animchar(Mesh(m), parent, localTm) {
@@ -13,9 +12,10 @@ Animchar::Animchar(Mesh&& m, Entity* parent, const Entity::AffineTransform& loca
   : DrawableEntity(parent, localTm) {
     bindVertexAttributes();
     // TODO
-    std::unique_ptr<GlMesh> glMesh = std::make_unique<GlMesh>();
-    glMesh->upload(m);
-    meshRef = ResourceManager::getSingleton()->getGlMeshPool()->add(std::move(glMesh));
+    // std::unique_ptr<GlMesh> glMesh = std::make_unique<GlMesh>();
+    // glMesh->upload(m);
+    // meshRef = ResourceManager::getSingleton()->getGlMeshPool()->add(std::move(glMesh));
+    assert(false);
     checkError();
 }
 
@@ -27,19 +27,19 @@ void Animchar::bindVertexAttributes() {
     checkError();
 }
 
-void Animchar::beforedraw(const RenderContext& ctx) {
-    if (nodeStates.size() != meshRef.getRes()->getNodeCount()) {
-        nodeStates.resize(meshRef.getRes()->getNodeCount());
-        meshRef.getRes()->createStates(nodeStates.data());
+void Animchar::beforedraw(const RenderContext&) {
+    if (nodeStates.size() != meshRef.getRes<GlMesh>()->getNodeCount()) {
+        nodeStates.resize(meshRef.getRes<GlMesh>()->getNodeCount());
+        meshRef.getRes<GlMesh>()->createStates(nodeStates.data());
     }
-    meshRef.getRes()->updateStates(nodeStates.data());
+    meshRef.getRes<GlMesh>()->updateStates(nodeStates.data());
 }
 
 void Animchar::draw(const RenderContext& ctx) const {
     if (isHidden())
         return;
     ctx.shaderManager->useProgram("animchar");
-    meshRef.getRes()->bind();
+    meshRef.getRes<GlMesh>()->bind();
     attributeBinder.bind(*ctx.shaderManager);
     ctx.shaderManager->setUniform("lightColor", ctx.lightColor);
     ctx.shaderManager->setUniform("lightDir", ctx.lightDir);
@@ -49,18 +49,18 @@ void Animchar::draw(const RenderContext& ctx) const {
     const AffineTransform modelTm = getWorldTransform();
 
     glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-    for (size_t i = 0; i < meshRef.getRes()->getNodeCount(); ++i) {
-        const GlMesh::Node& node = meshRef.getRes()->getNodes()[i];
+    for (size_t i = 0; i < meshRef.getRes<GlMesh>()->getNodeCount(); ++i) {
+        const GlMesh::Node& node = meshRef.getRes<GlMesh>()->getNodes()[i];
         if (node.indexCount == 0)
             continue;
-        AffineTransform tm = modelTm * nodeStates[i].globalTm;
+        AffineTransform tm = modelTm * nodeStates[i].globTm;
         ctx.shaderManager->setUniform("PVM", ctx.pv * tm);
         ctx.shaderManager->setUniform("model", tm);
-        ctx.shaderManager->bindTexture("diffuse_tex", &diffuseTex);
+        ctx.shaderManager->bindTexture("diffuse_tex", node.diffuseRef.getRes<GlTexture>());
         glDrawElementsBaseVertex(GL_TRIANGLES, node.indexCount, GL_UNSIGNED_INT,
                                  reinterpret_cast<void*>(node.indexOffset), node.vertexOffset);
-        ctx.shaderManager->unbindTexture("diffuse_tex", &diffuseTex);
+        ctx.shaderManager->unbindTexture("diffuse_tex", node.diffuseRef.getRes<GlTexture>());
     }
 
-    meshRef.getRes()->unbind();
+    meshRef.getRes<GlMesh>()->unbind();
 }

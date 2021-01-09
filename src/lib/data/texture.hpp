@@ -11,10 +11,8 @@ class Texture
       : width(w), height(h), depth(d), data(width * height * depth) {}
 
     const P& get(size_t x, size_t y, size_t z = 0) const { return data[translate(x, y, z)]; }
-    void set(const P& pixel, size_t x, size_t y, size_t z = 0) const {
-        data[translate(x, y, z)] = pixel;
-    }
-    void set(P&& pixel, size_t x, size_t y, size_t z = 0) const {
+    void set(const P& pixel, size_t x, size_t y, size_t z = 0) { data[translate(x, y, z)] = pixel; }
+    void set(P&& pixel, size_t x, size_t y, size_t z = 0) {
         data[translate(x, y, z)] = std::move(pixel);
     }
 

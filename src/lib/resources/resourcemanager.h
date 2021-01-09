@@ -1,23 +1,18 @@
 #pragma once
 
-#include <resourcepool.hpp>
+#include <memory>
+
+#include <resourcepool.h>
+#include <textureprovider.h>
 
 class GlTexture;
 class GlMesh;
-// class Mesh;
-
-// mesh {cpu data; &material}
-// material {&texture}
-// texture {cpu data}
-// gltexture {gpu data}
-
-// rendering: {mesh gpu data; material; gltexture}
 
 class ResourceManager
 {
  public:
-    using GlTextureRef = ResourcePool<GlTexture>::ResourceRef;
-    using GlMeshRef = ResourcePool<GlMesh>::ResourceRef;
+    using GlTextureRef = GenericResourcePool::ResourceRef;
+    using GlMeshRef = GenericResourcePool::ResourceRef;
 
     static ResourceManager* getSingleton() { return instance; }
 
@@ -27,11 +22,16 @@ class ResourceManager
     ResourceManager(const ResourceManager&) = delete;
     ResourceManager& operator=(const ResourceManager&) = delete;
 
-    ResourcePool<GlMesh>* getGlMeshPool() { return &glMeshPool; }
+    auto* getGlMeshPool() { return &glMeshPool; }
+    auto* getGlTexturePool() { return &glTexturePool; }
+
+    const TextureProvider* getTexProvider() const { return textureProvider.get(); }
 
  private:
     static ResourceManager* instance;
 
     ResourcePool<GlMesh> glMeshPool;
-    ResourcePool<GlTexture> glTexturePool;
+    ResourcePool<GlTexture, TextureProvider::ResourceDescriptor> glTexturePool;
+
+    std::unique_ptr<TextureProvider> textureProvider;
 };

@@ -37,6 +37,9 @@ class Engine
     Renderer* getRenderer() { return &renderer; }
     const Renderer* getRenderer() const { return &renderer; }
 
+    ResourceManager* getResMgr() { return &resourceMgr; }
+    const ResourceManager* getResMgr() const { return &resourceMgr; }
+
  private:
     struct GlLoader
     {

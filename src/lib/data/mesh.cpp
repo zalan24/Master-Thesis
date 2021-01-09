@@ -6,12 +6,19 @@
 
 #include "material.h"
 
+static std::unique_ptr<Material> getDefaultMaterial() {
+    // glm::vec4 albedo
+    TextureProvider::ResourceDescriptor diffuseDesc(glm::vec4(0, 0, 0, 1));
+    Material::DiffuseRes diffuseRes(texProveder, std::move(diffuseDesc));
+    return std::make_unique<Material>(std::move(diffuseRes));
+}
+
 Mesh::Mesh() {
-    setMaterial(std::make_unique<Material>(RGBA(0, 0, 0, 255)));
+    setMaterial(getDefaultMaterial());
 }
 
 Mesh::Mesh(const std::string& nodeName) : name(nodeName) {
-    setMaterial(std::make_unique<Material>(RGBA(0, 0, 0, 255)));
+    setMaterial(getDefaultMaterial());
 }
 
 Mesh::VertexIndex Mesh::addVertex(const VertexData& vert) {
@@ -38,20 +45,24 @@ void Mesh::addFace(VertexIndex p1, VertexIndex p2, VertexIndex p3) {
     indices.push_back(p3);
 }
 
-void Mesh::traverse(const std::function<bool(const Mesh&, const glm::mat4&)>& functor,
-                    const glm::mat4 rootTm) const {
-    glm::mat4 tm = rootTm * nodeTransform;
-    if (functor(*this, tm))
+void Mesh::traverse(const std::function<bool(const Mesh&, const TraverseData&)>& functor,
+                    const TraverseData& data) const {
+    TraverseData d;
+    d.tm = data.tm * nodeTransform;
+    d.parent = this;
+    if (functor(*this, data))
         for (const Mesh& m : children)
-            m.traverse(functor, tm);
+            m.traverse(functor, d);
 }
 
-void Mesh::traverse(const std::function<bool(Mesh&, const glm::mat4&)>& functor,
-                    const glm::mat4 rootTm) {
-    glm::mat4 tm = rootTm * nodeTransform;
-    if (functor(*this, tm))
+void Mesh::traverse(const std::function<bool(Mesh&, const TraverseData&)>& functor,
+                    const TraverseData& data) {
+    TraverseData d;
+    d.tm = data.tm * nodeTransform;
+    d.parent = this;
+    if (functor(*this, data))
         for (Mesh& m : children)
-            m.traverse(functor, tm);
+            m.traverse(functor, d);
 }
 
 void Mesh::setNodeTm(const glm::mat4& tm) {

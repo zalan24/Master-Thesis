@@ -9,4 +9,5 @@ target_include_directories(AnimationsResources PUBLIC . ${CMAKE_CURRENT_BINARY_D
 target_link_libraries(AnimationsResources PUBLIC
     AnimationsData
     AnimationsBuffer
+    AnimationsIO
 )

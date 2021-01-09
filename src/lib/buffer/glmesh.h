@@ -5,9 +5,10 @@
 #define GLM_FORCE_RADIANS
 #include <glm/glm.hpp>
 
-#include "buffer.hpp"
+#include <mesh.h>
+#include <resourcepool.h>
 
-class Mesh;
+#include "buffer.hpp"
 
 class GlMesh
 {
@@ -18,14 +19,14 @@ class GlMesh
         size_t vertexOffset;
         size_t indexOffset;
         size_t indexCount;
-        GlTexture diffuseTex;
+        GenericResourcePool::ResourceRef diffuseRef;
         size_t parent;
     };
 
     struct NodeState
     {
         glm::mat4 localTm;
-        glm::mat4 globalTm;
+        glm::mat4 globTm;
         bool invalidTm = true;
     };
 

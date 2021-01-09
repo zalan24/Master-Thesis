@@ -4,6 +4,7 @@
 #include <iterator>
 #include <utility>
 
+#define GLM_FORCE_RADIANS
 #include <glm/glm.hpp>
 
 KDTree::KDTree(const std::vector<glm::vec3>& poss) : positions(poss) {

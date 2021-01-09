@@ -1,5 +1,6 @@
 #include "glmesh.h"
 
+#include <material.h>
 #include <mesh.h>
 
 #include "gltexture.h"
@@ -37,9 +38,11 @@ void GlMesh::createStates(NodeState* states) const {
 void GlMesh::upload(const Mesh& mesh) {
     std::vector<Mesh::VertexData> vertices;
     std::vector<Mesh::VertexIndex> indices;
+    std::unordered_map<const Mesh*, size_t> meshIndices;
+    size_t currentIndex = 0;
     size_t vertexOffset = 0;
     size_t indexOffset = 0;
-    mesh.traverse([&](Mesh& m, const glm::mat4&) {
+    mesh.traverse([&](const Mesh& m, const Mesh::TraverseData& data) {
         vertices.insert(vertices.end(), m.getVertices().begin(), m.getVertices().end());
         indices.insert(indices.end(), m.getIndices().begin(), m.getIndices().end());
         Node node;
@@ -47,19 +50,18 @@ void GlMesh::upload(const Mesh& mesh) {
         node.indexOffset = indexOffset;
         node.vertexOffset = vertexOffset;
         node.indexCount = m.getIndices().size();
-        node.parent = ;
-        node.diffuseTex = ;
-        // diffuseTex(GL_TEXTURE_2D, GL_RGBA)
-        // const Material* mat = mesh.getMaterial();
-        // diffuseTex.upload(mat->getAlbedoAlpha());
-        nodes.push_back(node);
+        auto itr = meshIndices.find(data.parent);
+        assert(itr != meshIndices.end());
+        node.parent = itr->second;
+        node.diffuseRef = m.getMaterial()->getAlbedoAlpha();
+        nodes.push_back(std::move(node));
         vertexOffset += m.getVertices().size();
         indexOffset += sizeof(Mesh::VertexIndex) * m.getIndices().size();
+        meshIndices[&m] = currentIndex++;
         return true;
     });
     glBuffer.upload(vertices, GL_STATIC_DRAW);
     glIndices.upload(indices, GL_STATIC_DRAW);
-    checkError();
 }
 
 void GlMesh::bind() const {

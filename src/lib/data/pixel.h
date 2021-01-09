@@ -2,9 +2,9 @@
 
 #include <cstdint>
 
-struct alignas(16) RGBA
+struct RGBA
 {
-    uint8_t a = 0;
+    uint8_t a = 255;
     uint8_t b = 0;
     uint8_t g = 0;
     uint8_t r = 0;
@@ -21,4 +21,36 @@ struct alignas(16) RGBA
         b = static_cast<uint8_t>(fb * 255);
         a = static_cast<uint8_t>(fa * 255);
     }
+    uint8_t& operator[](uint8_t index) {
+        switch (index) {
+            case 0:
+                return r;
+            case 1:
+                return g;
+            case 2:
+                return b;
+            case 3:
+                return a;
+        }
+        assert(false);
+        return r;
+    }
+    const uint8_t& operator[](uint8_t index) const {
+        switch (index) {
+            case 0:
+                return r;
+            case 1:
+                return g;
+            case 2:
+                return b;
+            case 3:
+                return a;
+        }
+        assert(false);
+        return r;
+    }
+    inline void set(size_t index, float value) {
+        (*this)[static_cast<uint8_t>(index)] = static_cast<uint8_t>(value * 255);
+    }
+    static constexpr size_t numChannels() { return 4; }
 };
