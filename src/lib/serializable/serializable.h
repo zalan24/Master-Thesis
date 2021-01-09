@@ -62,7 +62,9 @@ ISerializable::Entry::Type getType<bool>();
 template <>
 ISerializable::Entry::Type getType<ISerializable*>();
 
+#define REGISTER_OBJECT(name, entries) \
+    entries.push_back(ISerializable::Entry(::getType<ISerializable*>(), &name, #name))
 #define REGISTER_ENTRY(name, entries) \
-    entries.push_back(ISerializable::Entry(getType<std::decay_t<decltype(name)>>(), &name, #name))
+    entries.push_back(ISerializable::Entry(::getType<std::decay_t<decltype(name)>>(), &name, #name))
 #define REGISTER_ENTRY_ARRAY(name, entries, count) \
-    entries.push_back(Entry(getType<name>(), &name, #name, count))
+    entries.push_back(Entry(::getType<name>(), &name, #name, count))

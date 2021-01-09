@@ -1,18 +1,21 @@
 #pragma once
 
 #include <glmesh.h>
-#include <shadermanager.h>
+#include <meshprovider.h>
 #include <resourcepool.h>
+#include <shadermanager.h>
+#include <describedresource.hpp>
 
 #include "drawableentity.h"
 
 class GlMesh;
+class Material;
 class Animchar : public DrawableEntity
 {
  public:
-    Animchar(const Mesh& mesh, Entity* parent = nullptr,
-             const Entity::AffineTransform& localTm = Entity::AffineTransform(1.f));
-    Animchar(Mesh&& mesh, Entity* parent = nullptr,
+    using MeshRes = DescribedResource<MeshProvider>;
+
+    Animchar(MeshRes&& mesh, Entity* parent = nullptr,
              const Entity::AffineTransform& localTm = Entity::AffineTransform(1.f));
 
     void draw(const RenderContext& ctx) const override final;
@@ -20,10 +23,12 @@ class Animchar : public DrawableEntity
 
  private:
     AttributeBinder attributeBinder;
-    std::string shaderProgram;
-    GenericResourcePool::ResourceRef meshRef;
+    MeshRes mesh;
+    std::unique_ptr<Material> material;
     std::vector<GlMesh::NodeState> nodeStates;
     float alphaClipping = 0.5;
 
     void bindVertexAttributes();
+    const GlMesh* getGlMesh() const;
+    static std::unique_ptr<Material> getDefaultMaterial();
 };

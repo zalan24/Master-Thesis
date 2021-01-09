@@ -2,7 +2,6 @@
 
 #include <memory>
 
-#include <gltexture.h>
 #include <loadimage.h>
 
 #include "resourcemanager.h"
@@ -22,7 +21,7 @@ GenericResourcePool::ResourceRef GlTextureProvider::getResource(
         RGBA color;
         glm::vec4 value = desc.getColor();
         color.set(value.r, value.g, value.b, value.a);
-        res = static_cast<GenericResourcePool*>(this)->createResource(color);
+        res = static_cast<const TextureProvider*>(this)->createResource(color);
     }
     else if (desc.isFile())
         res = createResource(desc.getFilename());

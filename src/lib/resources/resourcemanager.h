@@ -2,6 +2,7 @@
 
 #include <memory>
 
+#include <meshprovider.h>
 #include <resourcepool.h>
 #include <textureprovider.h>
 
@@ -30,8 +31,9 @@ class ResourceManager
  private:
     static ResourceManager* instance;
 
-    ResourcePool<GlMesh> glMeshPool;
     ResourcePool<GlTexture, TextureProvider::ResourceDescriptor> glTexturePool;
+    ResourcePool<GlMesh, MeshProvider::ResourceDescriptor> glMeshPool;
 
     std::unique_ptr<TextureProvider> textureProvider;
+    std::unique_ptr<MeshProvider> meshProvider;
 };

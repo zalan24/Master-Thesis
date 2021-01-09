@@ -17,7 +17,7 @@ class DescribedResource final : public ISerializable
 
  protected:
     void gatherEntries(std::vector<Entry>& entries) const override {
-        REGISTER_ENTRY(descriptor, entries);
+        REGISTER_OBJECT(descriptor, entries);
     }
 
  private:

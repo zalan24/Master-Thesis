@@ -53,7 +53,8 @@ void GlMesh::upload(const Mesh& mesh) {
         auto itr = meshIndices.find(data.parent);
         assert(itr != meshIndices.end());
         node.parent = itr->second;
-        node.diffuseRef = m.getMaterial()->getAlbedoAlpha();
+        node.diffuseRef =
+          m.getMaterial() ? m.getMaterial()->getAlbedoAlpha() : GenericResourcePool::ResourceRef();
         nodes.push_back(std::move(node));
         vertexOffset += m.getVertices().size();
         indexOffset += sizeof(Mesh::VertexIndex) * m.getIndices().size();

@@ -6,11 +6,12 @@
 #include <texture.hpp>
 
 unsigned char* load_image(const std::string& filename, int& width, int& height, int& channels);
+void free_image(unsigned char* img);
 
 template <typename P>
 inline Texture<P> load_image(const std::string& filename) {
     int width, height, channels;
-    unsigned char* img = load_image(filename, &width, &height, &channels);
+    unsigned char* img = load_image(filename, width, height, channels);
     if (!img)
         throw std::runtime_error("Could not load image: " + filename);
     try {
@@ -22,13 +23,15 @@ inline Texture<P> load_image(const std::string& filename) {
                     throw std::runtime_error(
                       "Image has more channels than the requested pixel type");
                 for (uint8_t i = 0; i < channels; ++i)
-                    p[i] = img[(y * width + x) * channels + i];
+                    pixel[i] = img[(y * width + x) * channels + i];
+                ret.set(std::move(pixel), x, y, 0);
             }
         }
+        free_image(img);
         return ret;
     }
     catch (...) {
-        stbi_image_free(img);
+        free_image(img);
         throw;
     }
 }

@@ -6,19 +6,10 @@
 
 #include "material.h"
 
-static std::unique_ptr<Material> getDefaultMaterial() {
-    // glm::vec4 albedo
-    TextureProvider::ResourceDescriptor diffuseDesc(glm::vec4(0, 0, 0, 1));
-    Material::DiffuseRes diffuseRes(texProveder, std::move(diffuseDesc));
-    return std::make_unique<Material>(std::move(diffuseRes));
-}
-
 Mesh::Mesh() {
-    setMaterial(getDefaultMaterial());
 }
 
 Mesh::Mesh(const std::string& nodeName) : name(nodeName) {
-    setMaterial(getDefaultMaterial());
 }
 
 Mesh::VertexIndex Mesh::addVertex(const VertexData& vert) {

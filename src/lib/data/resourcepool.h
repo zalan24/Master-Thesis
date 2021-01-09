@@ -29,7 +29,7 @@ class GenericResourcePool
         template <typename R>
         const R* getRes() const {
             assert(resPool && res);
-            assert(resPool->resTypeInfo == typeid(R));
+            assert(resPool->resTypeInfo == typeid(R).hash_code());
             return static_cast<const R*>(res);
         }
 
@@ -56,8 +56,7 @@ class GenericResourcePool
     virtual bool has(ResourceId id) const = 0;
 
  protected:
-    template <typename R>
-    GenericResourcePool() : resTypeInfo(typeid(R)) {}
+    GenericResourcePool(const std::type_info& typeInfo) : resTypeInfo(typeInfo.hash_code()) {}
 
     ~GenericResourcePool() = default;
 
@@ -65,7 +64,7 @@ class GenericResourcePool
     virtual void release(ResourceId id) = 0;
 
  private:
-    std::type_info resTypeInfo;
+    size_t resTypeInfo;
     std::unordered_map<std::string, ResourceId> resourceNames;
 };
 
@@ -73,7 +72,7 @@ template <typename R, typename D>
 class ResourcePool final : public GenericResourcePool
 {
  public:
-    ResourcePool() : GenericResourcePool<R>() {}
+    ResourcePool() : GenericResourcePool(typeid(R)) {}
     ~ResourcePool() { assert(resources.empty()); }
 
     ResourceRef get(ResourceId id) override {
@@ -94,8 +93,8 @@ class ResourcePool final : public GenericResourcePool
     }
 
     void registerDesc(const D& desc, ResourceId id) {
-        assert(resourceDesc.find(decs) == resourceDesc.end());
-        resourceDesc[decs] = id;
+        assert(resourceDesc.find(desc) == resourceDesc.end());
+        resourceDesc[desc] = id;
     }
 
     ResourceId getDescId(const D& desc) {

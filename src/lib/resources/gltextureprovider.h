@@ -1,9 +1,8 @@
 #pragma once
 
+#include <gltexture.h>
 #include <resourcepool.h>
 #include <textureprovider.h>
-
-class GlTexture;
 
 class GlTextureProvider final : public TextureProvider
 {
