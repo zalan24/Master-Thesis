@@ -30,16 +30,18 @@ class MeshProvider
             PLANE
         };
 
-        ResourceDescriptor(const std::string& filename);
-        ResourceDescriptor(Type type);
+        ResourceDescriptor(const std::string& filename, bool flipYZ = false);
+        ResourceDescriptor(Type type, bool flipYZ = false);
 
         bool isFile() const { return type == FILE; }
         Type getType() const { return type; }
+        bool getFlipYZ() const {return flipYZ;}
 
         const std::string& getFilename() const { return filename; }
 
         bool operator==(const ResourceDescriptor& other) const {
-            return type == other.type && (type != FILE || filename == other.filename);
+            return type == other.type && (type != FILE || filename == other.filename)
+                   && flipYZ == other.flipYZ;
         }
 
      protected:
@@ -48,6 +50,7 @@ class MeshProvider
      private:
         Type type;
         std::string filename;
+        bool flipYZ;
     };
 
     virtual GenericResourcePool::ResourceRef getResource(const ResourceDescriptor& desc) const = 0;
@@ -65,9 +68,10 @@ template <>
 struct hash<MeshProvider::ResourceDescriptor>
 {
     std::size_t operator()(MeshProvider::ResourceDescriptor const& s) const noexcept {
+        size_t flip = std::hash<bool>{}(s.getFlipYZ());
         if (s.isFile())
-            return std::hash<std::string>{}(s.getFilename());
-        return std::hash<MeshProvider::ResourceDescriptor::Type>{}(s.getType());
+            return std::hash<std::string>{}(s.getFilename()) ^ flip;
+        return std::hash<MeshProvider::ResourceDescriptor::Type>{}(s.getType()) ^ flip;
     }
 };
 }  // namespace std

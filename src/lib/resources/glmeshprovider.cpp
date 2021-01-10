@@ -7,15 +7,42 @@ GlMeshProvider::GlMeshProvider(TextureProvider* _texProvider,
   : texProvider(_texProvider), meshPool(_meshPool) {
 }
 
+static void fix_mesh(Mesh& m, const MeshProvider::ResourceDescriptor& desc) {
+    if (desc.getFlipYZ()) {
+        glm::mat4 tm = m.getNodeTm();
+        std::swap(tm[1], tm[2]);
+        m.setNodeTm(tm);
+    }
+}
+
+static Mesh generate_mesh(MeshProvider::ResourceDescriptor::Type type) {
+    switch (type) {
+        case MeshProvider::ResourceDescriptor::FILE:
+            assert(false);
+            return {};
+        case MeshProvider::ResourceDescriptor::CUBE:
+            return create_cube(1);
+        case MeshProvider::ResourceDescriptor::SPHERE:
+            return create_sphere(32, 16, 1);
+        case MeshProvider::ResourceDescriptor::PLANE:
+            return create_plane(glm::vec3(0, 0, 0), glm::vec3(0, 1, 0), 1);
+    }
+    assert(false);
+    return {};
+}
+
 GenericResourcePool::ResourceRef GlMeshProvider::getResource(const ResourceDescriptor& desc) const {
     GenericResourcePool::ResourceId resId = meshPool->getDescId(desc);
     if (resId != GenericResourcePool::INVALID_RESOURCE)
         return meshPool->get(resId);
     GenericResourcePool::ResourceRef res;
+    Mesh m;
     if (desc.isFile())
-        res = createResource(desc.getFilename());
+        m = load_mesh(desc.getFilename(), texProvider);
     else
-        res = createResource(desc.getType());
+        m = generate_mesh(desc.getType());
+    fix_mesh(m, desc);
+    res = createResource(std::move(m));
     meshPool->registerDesc(desc, res.getId());
     return res;
 }
@@ -27,19 +54,7 @@ GenericResourcePool::ResourceRef GlMeshProvider::createResource(const std::strin
 
 GenericResourcePool::ResourceRef GlMeshProvider::createResource(
   const ResourceDescriptor::Type type) const {
-    switch (type) {
-        case ResourceDescriptor::FILE:
-            assert(false);
-            return {};
-        case ResourceDescriptor::CUBE:
-            return createResource(create_cube(1));
-        case ResourceDescriptor::SPHERE:
-            return createResource(create_sphere(32, 16, 1));
-        case ResourceDescriptor::PLANE:
-            return createResource(create_plane(glm::vec3(0, 0, 0), glm::vec3(0, 1, 0), 1));
-    }
-    assert(false);
-    return {};
+    return createResource(generate_mesh(type));
 }
 
 GenericResourcePool::ResourceRef GlMeshProvider::createResource(const Mesh& m) const {

@@ -11,7 +11,7 @@ using namespace std;
 
 static void load_mesh(Engine& engine, const std::string& file, const glm::vec3& pos, float size,
                       const glm::vec3& color, bool flipYZ = false) {
-    MeshProvider::ResourceDescriptor desc(file);
+    MeshProvider::ResourceDescriptor desc(file, flipYZ);
     Animchar::MeshRes mesh(engine.getResMgr()->getMeshProvider(), std::move(desc));
     std::unique_ptr<Animchar> entity = std::make_unique<Animchar>(std::move(mesh));
     entity->setLocalTransform(
@@ -21,11 +21,6 @@ static void load_mesh(Engine& engine, const std::string& file, const glm::vec3& 
           glm::rotate(entity->getLocalTransform(), data.dt, glm::vec3{0, 1, 0}));
     });
     engine.getEntityManager()->addEntity(std::move(entity));
-    // if (flipYZ) {
-    //     glm::mat4 tm = mesh.getNodeTm();
-    //     std::swap(tm[1], tm[2]);
-    //     mesh.setNodeTm(tm);
-    // }
 }
 
 int main(int argc, char* argv[]) {
@@ -48,7 +43,7 @@ int main(int argc, char* argv[]) {
         }
 
         Engine engine(config);
-        engine.getRenderer()->getCamera().setLookAt(glm::vec3{0, 0, 0});
+        engine.getRenderer()->getCamera().setLookAt(glm::vec3{0, 1, 0});
         engine.getRenderer()->getCamera().setEyePos(glm::vec3{0, 3, -5});
 
         load_mesh(engine, "../data/models/Philodendron/philodendron.obj", glm::vec3(2, 0.5, 2), 0.5,
