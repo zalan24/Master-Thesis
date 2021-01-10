@@ -136,18 +136,16 @@ Mesh load_mesh(const std::string& filename, const TextureProvider* texProvider,
     if (scene->HasTextures()) {
         for (unsigned int i = 0; i < scene->mNumTextures; ++i) {
             std::string imgFile(scene->GetShortFilename(scene->mTextures[i]->mFilename.C_Str()));
-            if (imgFile == "")
-                continue;
-            const std::string id = "*" + std::to_string(i + 1);
-            textures[id] = textures[imgFile] =
-              texProvider->createResource(load_texture(scene->mTextures[i]));
+            const std::string id = "*" + std::to_string(i);
+            textures[id] = texProvider->createResource(load_texture(scene->mTextures[i]));
+            if (imgFile != "")
+                textures[imgFile] = textures[id];
         }
     }
     if (scene->HasMaterials()) {
         for (unsigned int i = 0; i < scene->mNumMaterials; ++i) {
             const auto matPtr = scene->mMaterials[i];
             std::shared_ptr<Material> mat;
-            // TODO test with external tex
             aiString path;
             if (matPtr->GetTexture(aiTextureType_DIFFUSE, 0, &path) == AI_SUCCESS) {
                 std::string imgFile(scene->GetShortFilename(path.C_Str()));
@@ -227,22 +225,21 @@ Mesh create_sphere(size_t resX, size_t resY, float size, const glm::vec3& color)
         float fy = static_cast<float>(std::cos(static_cast<double>(theta) * M_PI));
         float fxz = static_cast<float>(std::sin(static_cast<double>(theta) * M_PI));
         for (size_t x = 0; x < resX; ++x) {
-            float phi = static_cast<float>(x) / static_cast<float>(resX);
+            float phi = static_cast<float>(x) / static_cast<float>(resX - 1);
             float fx = static_cast<float>(std::cos(static_cast<double>(phi * 2) * M_PI)) * fxz;
             float fz = static_cast<float>(std::sin(static_cast<double>(phi * 2) * M_PI)) * fxz;
             glm::vec3 normal{fx, fy, fz};
             glm::vec3 pos = normal * size;
-            glm::vec2 texcoord{phi, theta};
+            glm::vec2 texcoord{phi, 1.f - theta};
             ret.addVertex(Mesh::VertexData{pos, normal, color, texcoord});
         }
     }
     for (size_t y = 0; y < resY - 1; ++y) {
-        for (size_t x = 0; x < resX; ++x) {
+        for (size_t x = 0; x < resX - 1; ++x) {
             Mesh::VertexIndex v00 = static_cast<Mesh::VertexIndex>(x + y * resX);
-            Mesh::VertexIndex v01 = static_cast<Mesh::VertexIndex>(((x + 1) % resX) + y * resX);
-            Mesh::VertexIndex v10 = static_cast<Mesh::VertexIndex>(x + ((y + 1) % resY) * resX);
-            Mesh::VertexIndex v11 =
-              static_cast<Mesh::VertexIndex>(((x + 1) % resX) + ((y + 1) % resY) * resX);
+            Mesh::VertexIndex v01 = static_cast<Mesh::VertexIndex>((x + 1) + y * resX);
+            Mesh::VertexIndex v10 = static_cast<Mesh::VertexIndex>(x + (y + 1) * resX);
+            Mesh::VertexIndex v11 = static_cast<Mesh::VertexIndex>((x + 1) + (y + 1) * resX);
             ret.addFace(v00, v01, v10);
             ret.addFace(v11, v01, v10);
         }

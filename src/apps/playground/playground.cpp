@@ -53,21 +53,14 @@ int main(int argc, char* argv[]) {
         engine.getRenderer()->getCamera().setLookAt(glm::vec3{0, 1, 0});
         engine.getRenderer()->getCamera().setEyePos(glm::vec3{0, 3, -5});
 
-        load_mesh(engine, "../data/models/Twilight/Twilight_Character.FBX", glm::vec3(2, 0.5, 2),
+        load_mesh(engine, "../data/models/Twilight/Twilight_Character.FBX", glm::vec3(4, 0.5, 2),
                   0.005, glm::vec3());
-        // Animchar* plant = load_mesh(engine, "../data/models/Philodendron/philodendron.obj",
-        //                             glm::vec3(2, 0.5, 2), 0.5, glm::vec3());
-        // plant->setMaterial(getMat(engine, TextureProvider::ResourceDescriptor(
-        //                                     "../data/models/Philodendron/Philodendron_Diff.png")),
-        //                    true);
-        // load_mesh(engine, "../data/models/FreeCharacters/4/Model/steve.blend",
-        //           glm::vec3(-2, 0.5, 2), 0.3, glm::vec3(), true);
-        // load_mesh(engine, "../data/models/FreeCharacters/4/Model/creeper.blend",
-        //           glm::vec3(-4, 0.5, 2), 0.5, glm::vec3(), true);
-        // load_mesh(engine, "../data/models/suzanne.obj", glm::vec3(0, 0.5, 0), 0.5,
-        //           glm::vec3(0, 0, 1));
-        // load_mesh(engine, "../data/models/Scotty.blend", glm::vec3(0, 0.5, 2), 0.15, glm::vec3(),
-        //           true);
+        load_mesh(engine, "../data/models/suzanne.obj", glm::vec3(0, 0.5, 0), 0.5,
+                  glm::vec3(0, 0, 1));
+        load_mesh(engine, "../data/models/Scotty.blend", glm::vec3(0, 0.5, 2), 0.15, glm::vec3(),
+                  true);
+        // load_mesh(engine, "../data/models/StickFigure/StickFigurea.FBX", glm::vec3(0, 0.5, 2), 0.15,
+        //           glm::vec3(), true);
 
         MeshProvider::ResourceDescriptor sphereDesc(MeshProvider::ResourceDescriptor::SPHERE);
         Animchar::MeshRes sphereMesh(engine.getResMgr()->getMeshProvider(), std::move(sphereDesc));
@@ -78,6 +71,8 @@ int main(int argc, char* argv[]) {
             sphere->setLocalTransform(
               glm::rotate(sphere->getLocalTransform(), data.dt, glm::vec3{0, 1, 0}));
         });
+        sphere->setMaterial(
+          getMat(engine, TextureProvider::ResourceDescriptor("../data/textures/earth.jpg")), true);
         engine.getEntityManager()->addEntity(std::move(sphere));
 
         MeshProvider::ResourceDescriptor cubeDesc(MeshProvider::ResourceDescriptor::CUBE);

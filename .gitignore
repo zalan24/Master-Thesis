@@ -33,6 +33,7 @@
 
 build/
 data/models/*
+data/textures/*
 .vscode/ipch/
 .cache/
 imgui.ini
