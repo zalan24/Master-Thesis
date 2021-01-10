@@ -14,9 +14,10 @@
 
 #include <material.h>
 #include <mesh.h>
+#include <textureprovider.h>
 #include <util.hpp>
 
-#include "textureprovider.h"
+#include "loadimage.h"
 
 static void process(const aiMesh* mesh, Mesh& m,
                     const std::vector<std::shared_ptr<Material>>& materials,
@@ -37,6 +38,7 @@ static void process(const aiMesh* mesh, Mesh& m,
         if (mesh->HasTextureCoords(0))
             texture = glm::vec2(mesh->mTextureCoords[0][i].x, mesh->mTextureCoords[0][i].y);
         if (mesh->HasVertexColors(0)) {
+            assert(false);  // TODO checks this (never been tried)
             color.r = mesh->mColors[0][i].r;
             color.g = mesh->mColors[0][i].g;
             color.b = mesh->mColors[0][i].b;
@@ -57,37 +59,32 @@ static void process(const aiMesh* mesh, Mesh& m,
     }
 }
 
-static Mesh process(const aiScene* scene, const aiNode* node, const glm::vec3& default_color,
-                    const TextureProvider* texProvider) {
-    std::vector<std::shared_ptr<Material>> materials;
-    if (scene->HasMaterials()) {
-        for (unsigned int i = 0; i < scene->mNumMaterials; ++i) {
-            const auto matPtr = scene->mMaterials[i];
-            std::shared_ptr<Material> mat;
-            // TODO embedded texture not supported
-            // TODO test with color/external tex/embedded tex
-            aiString path;
-            aiString name;
-            matPtr->Get(AI_MATKEY_NAME, name);
-            aiReturn texFound = matPtr->GetTexture(aiTextureType_DIFFUSE, 0, &name);
-            if (matPtr->GetTexture(aiTextureType_DIFFUSE, 0, &path) == AI_SUCCESS) {
-                TextureProvider::ResourceDescriptor matDesc{std::string(path.data, path.length)};
-                mat =
-                  std::make_shared<Material>(Material::DiffuseRes(texProvider, std::move(matDesc)));
-            }
-            else {
-                aiColor3D albedo;
-                float opacity = 1;
-                matPtr->Get(AI_MATKEY_COLOR_DIFFUSE, albedo);
-                matPtr->Get(AI_MATKEY_OPACITY, opacity);
-                glm::vec4 albedo_alpha{albedo.r, albedo.g, albedo.b, opacity};
-                TextureProvider::ResourceDescriptor matDesc{albedo_alpha};
-                mat =
-                  std::make_shared<Material>(Material::DiffuseRes(texProvider, std::move(matDesc)));
-            }
-            materials.push_back(std::move(mat));
-        }
+static Texture<RGBA> load_texture(const aiTexture* tex) {
+    if (tex->mHeight == 0) {
+        // compressed
+        return load_image<RGBA>(static_cast<const void*>(tex->pcData), tex->mWidth);
     }
+    else {
+        Texture<RGBA> ret(tex->mHeight, tex->mHeight);
+        for (unsigned int y = 0; y < tex->mHeight; ++y) {
+            for (unsigned int x = 0; x < tex->mWidth; ++x) {
+                RGBA pixel;
+                const aiTexel& texel = tex->pcData[y * tex->mWidth + x];
+                pixel.r = texel.r;
+                pixel.g = texel.g;
+                pixel.b = texel.b;
+                pixel.a = texel.a;
+                ret.set(std::move(pixel), x, y);
+            }
+        }
+        assert(false);  // TODO checks this (never been tried)
+        return ret;
+    }
+}
+
+static Mesh process(const aiScene* scene, const aiNode* node,
+                    const std::vector<std::shared_ptr<Material>>& materials,
+                    const glm::vec3& default_color, const TextureProvider* texProvider) {
     assert(node != nullptr);
     Mesh ret(node->mName.length == 0 ? "" : std::string(node->mName.data, node->mName.length));
     glm::mat4 tm;
@@ -118,7 +115,7 @@ static Mesh process(const aiScene* scene, const aiNode* node, const glm::vec3& d
         }
     }
     for (unsigned int i = 0; i < node->mNumChildren; ++i)
-        ret.addChild(process(scene, node->mChildren[i], default_color, texProvider));
+        ret.addChild(process(scene, node->mChildren[i], materials, default_color, texProvider));
     return ret;
 }
 
@@ -128,13 +125,58 @@ Mesh load_mesh(const std::string& filename, const TextureProvider* texProvider,
     const aiScene* scene = importer.ReadFile(
       filename, aiProcess_CalcTangentSpace | aiProcess_Triangulate | aiProcess_JoinIdenticalVertices
                   | aiProcess_SortByPType | aiProcess_GenSmoothNormals | aiProcess_GenUVCoords
-                  | aiProcess_TransformUVCoords);
+                  | aiProcess_TransformUVCoords | aiProcess_EmbedTextures);
     if (!scene) {
         std::string vError = importer.GetErrorString();
         throw std::runtime_error("Could not load object from file: " + filename + " (" + vError
                                  + ")");
     }
-    return process(scene, scene->mRootNode, default_color, texProvider);
+    std::vector<std::shared_ptr<Material>> materials;
+    std::map<std::string, GenericResourcePool::ResourceRef> textures;
+    if (scene->HasTextures()) {
+        for (unsigned int i = 0; i < scene->mNumTextures; ++i) {
+            std::string imgFile(scene->GetShortFilename(scene->mTextures[i]->mFilename.C_Str()));
+            if (imgFile == "")
+                continue;
+            const std::string id = "*" + std::to_string(i + 1);
+            textures[id] = textures[imgFile] =
+              texProvider->createResource(load_texture(scene->mTextures[i]));
+        }
+    }
+    if (scene->HasMaterials()) {
+        for (unsigned int i = 0; i < scene->mNumMaterials; ++i) {
+            const auto matPtr = scene->mMaterials[i];
+            std::shared_ptr<Material> mat;
+            // TODO test with external tex
+            aiString path;
+            if (matPtr->GetTexture(aiTextureType_DIFFUSE, 0, &path) == AI_SUCCESS) {
+                std::string imgFile(scene->GetShortFilename(path.C_Str()));
+                auto itr = textures.find(imgFile);
+                if (itr != textures.end()) {
+                    mat = std::make_shared<Material>(itr->second);
+                }
+                else {
+                    TextureProvider::ResourceDescriptor matDesc{
+                      std::string(path.data, path.length)};
+                    mat = std::make_shared<Material>(
+                      Material::DiffuseRes(texProvider, std::move(matDesc)));
+                    assert(false);  // TODO checks this (never been tried)
+                }
+            }
+            else {
+                aiColor3D albedo;
+                float opacity = 1;
+                matPtr->Get(AI_MATKEY_COLOR_DIFFUSE, albedo);
+                matPtr->Get(AI_MATKEY_OPACITY, opacity);
+                glm::vec4 albedo_alpha{albedo.r, albedo.g, albedo.b, opacity};
+                TextureProvider::ResourceDescriptor matDesc{albedo_alpha};
+                mat =
+                  std::make_shared<Material>(Material::DiffuseRes(texProvider, std::move(matDesc)));
+            }
+            materials.push_back(std::move(mat));
+        }
+    }
+    return process(scene, scene->mRootNode, materials, default_color, texProvider);
 }
 
 Mesh create_cube(float size, const glm::vec3& color) {

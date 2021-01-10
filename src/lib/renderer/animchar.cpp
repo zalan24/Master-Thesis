@@ -14,6 +14,13 @@ std::unique_ptr<Material> Animchar::getDefaultMaterial() {
 Animchar::Animchar(MeshRes&& m, Entity* parent, const Entity::AffineTransform& localTm)
   : DrawableEntity(parent, localTm), mesh(std::move(m)) {
     bindVertexAttributes();
+    fixMat();
+    checkError();
+}
+
+void Animchar::fixMat() {
+    if (overrideMat && !material)
+        material = getDefaultMaterial();
     for (size_t i = 0; i < getGlMesh()->getNodeCount() && !material; ++i)
         if (!getGlMesh()->getNodes()[i].diffuseRef)
             material = getDefaultMaterial();
@@ -63,7 +70,7 @@ void Animchar::draw(const RenderContext& ctx) const {
         ctx.shaderManager->setUniform("model", tm);
 
         const GenericResourcePool::ResourceRef& diffuseRef =
-          node.diffuseRef ? node.diffuseRef : material->getAlbedoAlpha();
+          !node.diffuseRef || overrideMat ? material->getAlbedoAlpha() : node.diffuseRef;
 
         ctx.shaderManager->bindTexture("diffuse_tex", diffuseRef.getRes<GlTexture>());
         glDrawElementsBaseVertex(GL_TRIANGLES, node.indexCount, GL_UNSIGNED_INT,
@@ -72,4 +79,16 @@ void Animchar::draw(const RenderContext& ctx) const {
     }
 
     getGlMesh()->unbind();
+}
+
+void Animchar::setMaterial(std::unique_ptr<Material>&& mat, bool _overrideMat) {
+    material = std::move(mat);
+    overrideMat = _overrideMat;
+    fixMat();
+}
+
+void Animchar::setMaterial(const std::shared_ptr<Material>& mat, bool _overrideMat) {
+    material = std::move(mat);
+    overrideMat = _overrideMat;
+    fixMat();
 }

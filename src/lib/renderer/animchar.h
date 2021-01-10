@@ -23,14 +23,20 @@ class Animchar : public DrawableEntity
     void draw(const RenderContext& ctx) const override final;
     void beforedraw(const RenderContext& ctx) override final;
 
+    void setMaterial(const std::shared_ptr<Material>& mat, bool overrideMat);
+    void setMaterial(std::unique_ptr<Material>&& mat, bool overrideMat);
+
  private:
     AttributeBinder attributeBinder;
     MeshRes mesh;
-    std::unique_ptr<Material> material;
+    std::shared_ptr<Material> material;
     std::vector<GlMesh::NodeState> nodeStates;
     float alphaClipping = 0.5;
+    bool overrideMat = false;
 
     void bindVertexAttributes();
     const GlMesh* getGlMesh() const;
+    void fixMat();
+
     static std::unique_ptr<Material> getDefaultMaterial();
 };

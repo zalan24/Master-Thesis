@@ -101,7 +101,7 @@ class ResourcePool final : public GenericResourcePool
         auto itr = resourceDesc.find(desc);
         if (itr == resourceDesc.end())
             return INVALID_RESOURCE;
-        if (!get(itr->second)) {
+        if (!has(itr->second)) {
             resourceDesc.erase(itr);
             return INVALID_RESOURCE;
         }
@@ -112,7 +112,7 @@ class ResourcePool final : public GenericResourcePool
         auto itr = resourceDesc.find(desc);
         if (itr == resourceDesc.end())
             return INVALID_RESOURCE;
-        if (!get(itr->second))
+        if (!has(itr->second))
             return INVALID_RESOURCE;
         return itr->second;
     }

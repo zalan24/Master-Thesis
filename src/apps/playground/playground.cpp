@@ -9,8 +9,8 @@
 
 using namespace std;
 
-static void load_mesh(Engine& engine, const std::string& file, const glm::vec3& pos, float size,
-                      const glm::vec3& color, bool flipYZ = false) {
+static Animchar* load_mesh(Engine& engine, const std::string& file, const glm::vec3& pos,
+                           float size, const glm::vec3& color, bool flipYZ = false) {
     MeshProvider::ResourceDescriptor desc(file, flipYZ);
     Animchar::MeshRes mesh(engine.getResMgr()->getMeshProvider(), std::move(desc));
     std::unique_ptr<Animchar> entity = std::make_unique<Animchar>(std::move(mesh));
@@ -20,7 +20,14 @@ static void load_mesh(Engine& engine, const std::string& file, const glm::vec3& 
         entity->setLocalTransform(
           glm::rotate(entity->getLocalTransform(), data.dt, glm::vec3{0, 1, 0}));
     });
+    Animchar* ret = entity.get();
     engine.getEntityManager()->addEntity(std::move(entity));
+    return ret;
+}
+
+static shared_ptr<Material> getMat(Engine& engine, TextureProvider::ResourceDescriptor&& desc) {
+    Material::DiffuseRes diffuseRes(engine.getResMgr()->getTexProvider(), std::move(desc));
+    return std::make_unique<Material>(std::move(diffuseRes));
 }
 
 int main(int argc, char* argv[]) {
@@ -46,16 +53,21 @@ int main(int argc, char* argv[]) {
         engine.getRenderer()->getCamera().setLookAt(glm::vec3{0, 1, 0});
         engine.getRenderer()->getCamera().setEyePos(glm::vec3{0, 3, -5});
 
-        load_mesh(engine, "../data/models/Philodendron/philodendron.obj", glm::vec3(2, 0.5, 2), 0.5,
-                  glm::vec3());
-        load_mesh(engine, "../data/models/FreeCharacters/4/Model/steve.blend",
-                  glm::vec3(-2, 0.5, 2), 0.3, glm::vec3(), true);
-        load_mesh(engine, "../data/models/FreeCharacters/4/Model/creeper.blend",
-                  glm::vec3(-4, 0.5, 2), 0.5, glm::vec3(), true);
-        load_mesh(engine, "../data/models/suzanne.obj", glm::vec3(0, 0.5, 0), 0.5,
-                  glm::vec3(0, 0, 1));
-        load_mesh(engine, "../data/models/Scotty.blend", glm::vec3(0, 0.5, 2), 0.15, glm::vec3(),
-                  true);
+        load_mesh(engine, "../data/models/Twilight/Twilight_Character.FBX", glm::vec3(2, 0.5, 2),
+                  0.005, glm::vec3());
+        // Animchar* plant = load_mesh(engine, "../data/models/Philodendron/philodendron.obj",
+        //                             glm::vec3(2, 0.5, 2), 0.5, glm::vec3());
+        // plant->setMaterial(getMat(engine, TextureProvider::ResourceDescriptor(
+        //                                     "../data/models/Philodendron/Philodendron_Diff.png")),
+        //                    true);
+        // load_mesh(engine, "../data/models/FreeCharacters/4/Model/steve.blend",
+        //           glm::vec3(-2, 0.5, 2), 0.3, glm::vec3(), true);
+        // load_mesh(engine, "../data/models/FreeCharacters/4/Model/creeper.blend",
+        //           glm::vec3(-4, 0.5, 2), 0.5, glm::vec3(), true);
+        // load_mesh(engine, "../data/models/suzanne.obj", glm::vec3(0, 0.5, 0), 0.5,
+        //           glm::vec3(0, 0, 1));
+        // load_mesh(engine, "../data/models/Scotty.blend", glm::vec3(0, 0.5, 2), 0.15, glm::vec3(),
+        //           true);
 
         MeshProvider::ResourceDescriptor sphereDesc(MeshProvider::ResourceDescriptor::SPHERE);
         Animchar::MeshRes sphereMesh(engine.getResMgr()->getMeshProvider(), std::move(sphereDesc));
@@ -83,6 +95,8 @@ int main(int argc, char* argv[]) {
         Animchar::MeshRes groundMesh(engine.getResMgr()->getMeshProvider(), std::move(groundDesc));
         std::unique_ptr<Animchar> ground = std::make_unique<Animchar>(std::move(groundMesh));
         ground->setLocalTransform(glm::scale(glm::mat4(1.f), glm::vec3(100, 100, 100)));
+        ground->setMaterial(
+          getMat(engine, TextureProvider::ResourceDescriptor(glm::vec4(1, 1, 1, 1))), true);
         engine.getEntityManager()->addEntity(std::move(ground));
 
         engine.gameLoop();
