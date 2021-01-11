@@ -29,6 +29,9 @@ class GlMesh
         glm::mat4 localTm;
         glm::mat4 globTm;
         bool invalidTm = true;
+        Buffer<glm::mat4> bonesBuffer;
+        std::vector<glm::mat4> boneTms;
+        bool invalidBones = true;
     };
 
     GlMesh();

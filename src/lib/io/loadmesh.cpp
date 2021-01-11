@@ -1,6 +1,9 @@
 #include "loadmesh.h"
 
+#include <algorithm>
+#include <map>
 #include <memory>
+#include <string>
 
 #define GLM_FORCE_RADIANS
 #define GLM_LEFT_HAND
@@ -19,10 +22,31 @@
 
 #include "loadimage.h"
 
+// Thanks to http://www.ogldev.org/www/tutorial38/tutorial38.html for the Skeletal animations tutorial
+
 static void process(const aiMesh* mesh, Mesh& m,
                     const std::vector<std::shared_ptr<Material>>& materials,
                     const glm::vec3& default_color) {
     assert(mesh->GetNumUVChannels() <= 1);
+    std::map<std::string, uint32_t> boneMap;
+    std::map<uint32_t, std::vector<std::pair<uint32_t, float>>> vertexBoneWeights;
+    uint32_t boneCount = 0;
+    if (mesh->HasBones()) {
+        for (unsigned int i = 0; i < mesh->mNumBones; ++i) {
+            std::string name(mesh->mBones[i]->mName.C_Str());
+            uint32_t boneId = boneCount++;
+            boneMap[name] = boneId;
+            for (unsigned int j = 0; j < mesh->mBones[i]->mNumWeights; ++j)
+                vertexBoneWeights[mesh->mBones[i]->mWeights[j].mVertexId].emplace_back(
+                  boneId, mesh->mBones[i]->mWeights[j].mWeight);
+        }
+        for (auto& itr : vertexBoneWeights) {
+            if (itr.second.size() > Mesh::MAX_BONES) {
+                std::sort(itr.second.begin(), itr.second.end(), std::greater<>());
+                itr.second.resize(Mesh::MAX_BONES);
+            }
+        }
+    }
     if (mesh->mMaterialIndex <= materials.size())
         m.setMaterial(materials[mesh->mMaterialIndex]);
     else
@@ -33,6 +57,17 @@ static void process(const aiMesh* mesh, Mesh& m,
         glm::vec3 normal{0, 0, 0};
         glm::vec3 color = default_color;
         glm::vec2 texture{0, 0};
+        glm::ivec4 boneIds(0, 0, 0, 0);
+        glm::vec4 boneWeights(1, 0, 0, 0);
+        auto boneItr = vertexBoneWeights.find(i);
+        if (boneItr != vertexBoneWeights.end() && boneItr->second.size() > 0) {
+            for (size_t i = 0; i < boneItr->second.size(); ++i) {
+                const auto& [id, weight] = boneItr->second[i];
+                boneIds[i] = id;
+                boneWeights[i] = weight;
+            }
+            boneWeights = glm::normalize(boneWeights);
+        }
         if (mesh->HasNormals())
             normal = glm::vec3(mesh->mNormals[i].x, mesh->mNormals[i].y, mesh->mNormals[i].z);
         if (mesh->HasTextureCoords(0))
@@ -43,7 +78,7 @@ static void process(const aiMesh* mesh, Mesh& m,
             color.g = mesh->mColors[0][i].g;
             color.b = mesh->mColors[0][i].b;
         }
-        m.addVertex({pos, normal, color, texture});
+        m.addVertex(Mesh::VertexData(pos, normal, color, texture, boneIds, boneWeights));
     }
     for (uint32_t i = 0; i < mesh->mNumFaces; ++i) {
         assert(mesh->mFaces->mNumIndices == 3);
@@ -174,6 +209,7 @@ Mesh load_mesh(const std::string& filename, const TextureProvider* texProvider,
             materials.push_back(std::move(mat));
         }
     }
+    // scene->mAnimations[0]->
     return process(scene, scene->mRootNode, materials, default_color, texProvider);
 }
 
@@ -189,11 +225,11 @@ Mesh create_cube(float size, const glm::vec3& color) {
             side *= size;
             dir *= size;
             glm::vec3 normal = glm::normalize(dir);
-            ret.addVertex(Mesh::VertexData{dir - side - up, normal, color, glm::vec2{0, 0}});
-            ret.addVertex(Mesh::VertexData{dir - side + up, normal, color, glm::vec2{0, 0}});
-            ret.addVertex(Mesh::VertexData{dir + side - up, normal, color, glm::vec2{0, 0}});
+            ret.addVertex(Mesh::VertexData(dir - side - up, normal, color, glm::vec2{0, 0}));
+            ret.addVertex(Mesh::VertexData(dir - side + up, normal, color, glm::vec2{0, 0}));
+            ret.addVertex(Mesh::VertexData(dir + side - up, normal, color, glm::vec2{0, 0}));
             ret.addFace();
-            ret.addVertex(Mesh::VertexData{dir + side + up, normal, color, glm::vec2{0, 0}});
+            ret.addVertex(Mesh::VertexData(dir + side + up, normal, color, glm::vec2{0, 0}));
             ret.addFaceRev();
         }
     }
@@ -209,11 +245,11 @@ Mesh create_plane(const glm::vec3& origin, glm::vec3 normal, float size, const g
     up *= size;
     side *= size;
     Mesh ret;
-    ret.addVertex(Mesh::VertexData{origin - side - up, normal, color, glm::vec2{0, 0}});
-    ret.addVertex(Mesh::VertexData{origin - side + up, normal, color, glm::vec2{0, 1}});
-    ret.addVertex(Mesh::VertexData{origin + side - up, normal, color, glm::vec2{1, 0}});
+    ret.addVertex(Mesh::VertexData(origin - side - up, normal, color, glm::vec2{0, 0}));
+    ret.addVertex(Mesh::VertexData(origin - side + up, normal, color, glm::vec2{0, 1}));
+    ret.addVertex(Mesh::VertexData(origin + side - up, normal, color, glm::vec2{1, 0}));
     ret.addFace();
-    ret.addVertex(Mesh::VertexData{origin + side + up, normal, color, glm::vec2{1, 1}});
+    ret.addVertex(Mesh::VertexData(origin + side + up, normal, color, glm::vec2{1, 1}));
     ret.addFaceRev();
     return ret;
 }
@@ -231,7 +267,7 @@ Mesh create_sphere(size_t resX, size_t resY, float size, const glm::vec3& color)
             glm::vec3 normal{fx, fy, fz};
             glm::vec3 pos = normal * size;
             glm::vec2 texcoord{phi, 1.f - theta};
-            ret.addVertex(Mesh::VertexData{pos, normal, color, texcoord});
+            ret.addVertex(Mesh::VertexData(pos, normal, color, texcoord));
         }
     }
     for (size_t y = 0; y < resY - 1; ++y) {

@@ -23,15 +23,23 @@ void GlMesh::updateState(NodeState* states, size_t idx) const {
 }
 
 void GlMesh::updateStates(NodeState* states) const {
-    for (size_t i = 0; i < getNodeCount(); ++i)
+    for (size_t i = 0; i < getNodeCount(); ++i) {
         if (states[i].invalidTm)
             updateState(states, i);
+        if (states[i].invalidBones) {
+            states[i].invalidBones = false;
+            states[i].bonesBuffer.upload(states[i].boneTms, GL_DYNAMIC_DRAW);
+        }
+    }
 }
 
 void GlMesh::createStates(NodeState* states) const {
     for (size_t i = 0; i < getNodeCount(); ++i) {
         states[i].localTm = nodes[i].defaultTm;
         states[i].invalidTm = true;
+        states[i].bonesBuffer.reset(GL_SHADER_STORAGE_BUFFER);
+        states[i].boneTms.resize();
+        states[i].invalidBones = true;
     }
 }
 

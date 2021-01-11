@@ -79,3 +79,6 @@ class Goal
 
 # Math
 * IK: https://www.gdcvault.com/play/1022147/Math-for-Game-Programmers-Inverse
+
+# Assimp
+* http://www.ogldev.org/www/tutorial38/tutorial38.html - skeletal animations

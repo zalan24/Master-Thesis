@@ -36,6 +36,8 @@ void Animchar::bindVertexAttributes() {
     attributeBinder.addAttribute(&Mesh::VertexData::normal, "vNorm", true);
     attributeBinder.addAttribute(&Mesh::VertexData::color, "vColor");
     attributeBinder.addAttribute(&Mesh::VertexData::texcoord, "vTex");
+    attributeBinder.addAttribute(&Mesh::VertexData::boneIds, "vBoneIds");
+    attributeBinder.addAttribute(&Mesh::VertexData::boneWeights, "vBoneWeights");
     checkError();
 }
 

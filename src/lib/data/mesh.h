@@ -15,12 +15,28 @@ class Mesh
 {
  public:
     using VertexIndex = uint32_t;
+
+    static constexpr size_t MAX_BONES = 4;
+    
     struct VertexData
     {
         glm::vec3 position;
         glm::vec3 normal;
         glm::vec3 color;
         glm::vec2 texcoord;
+        glm::ivec4 boneIds;
+        glm::vec4 boneWeights;
+        VertexData(const glm::vec3& _position, const glm::vec3& _normal,
+                   const glm::vec3& _color = glm::vec3(0, 0, 0),
+                   const glm::vec2& _texcoord = glm::vec2(0, 0),
+                   const glm::ivec4& _boneIds = glm::ivec4(0, 0, 0, 0),
+                   const glm::vec4& _boneWeights = glm::vec4(1, 0, 0, 0))
+          : position(_position),
+            normal(_normal),
+            color(_color),
+            texcoord(_texcoord),
+            boneIds(_boneIds),
+            boneWeights(_boneWeights) {}
     };
 
     Mesh();

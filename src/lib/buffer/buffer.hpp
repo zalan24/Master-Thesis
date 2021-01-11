@@ -8,7 +8,21 @@ template <typename T>
 class Buffer
 {
  public:
+    Buffer() : valid(false) {}
     Buffer(GLenum target) : bufferTarget(target) { glGenBuffers(1, &buffer); }
+
+    void reset(GLenum target) {
+        close();
+        valid = true;
+        bufferTarget = target;
+        glGenBuffers(1, &buffer);
+    }
+
+    void close() {
+        if (valid)
+            glDeleteBuffers(1, &buffer);
+        valid = false;
+    }
 
     Buffer(const Buffer<T>&) = delete;
     Buffer& operator=(const Buffer<T>&) = delete;
@@ -23,6 +37,7 @@ class Buffer
     Buffer& operator=(Buffer<T>&& other) {
         if (this == &other)
             return *this;
+        close();
         valid = other.valid;
         buffer = other.buffer;
         bufferTarget = other.bufferTarget;
@@ -31,22 +46,27 @@ class Buffer
     }
 
     void upload(const std::vector<T>& data, GLenum usage) const {
+        assert(valid);
         glNamedBufferData(buffer, sizeof(T) * data.size(), data.data(), usage);
     }
 
     void uploadVertexData(const std::vector<T>& data, GLenum usage = GL_STATIC_DRAW) {
+        assert(valid);
         bind();
         glBufferData(GL_ARRAY_BUFFER, sizeof(T) * data.size(), data.data(), usage);
         unbind();
     }
 
-    void bind() const { glBindBuffer(bufferTarget, buffer); }
-    void unbind() const { glBindBuffer(bufferTarget, 0); }
-
-    ~Buffer() {
-        if (valid)
-            glDeleteBuffers(1, &buffer);
+    void bind() const {
+        assert(valid);
+        glBindBuffer(bufferTarget, buffer);
     }
+    void unbind() const {
+        assert(valid);
+        glBindBuffer(bufferTarget, 0);
+    }
+
+    ~Buffer() { close(); }
 
  private:
     bool valid = true;
