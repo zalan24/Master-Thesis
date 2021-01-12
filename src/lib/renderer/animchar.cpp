@@ -12,7 +12,7 @@ std::unique_ptr<Material> Animchar::getDefaultMaterial() {
 }
 
 Animchar::Animchar(MeshRes&& m, Entity* parent, const Entity::AffineTransform& localTm)
-  : DrawableEntity(parent, localTm), mesh(std::move(m)) {
+  : DrawableEntity(parent, localTm), mesh(std::move(m)), glMeshState(getGlMesh()->createState()) {
     bindVertexAttributes();
     fixMat();
     checkError();
@@ -21,8 +21,8 @@ Animchar::Animchar(MeshRes&& m, Entity* parent, const Entity::AffineTransform& l
 void Animchar::fixMat() {
     if (overrideMat && !material)
         material = getDefaultMaterial();
-    for (size_t i = 0; i < getGlMesh()->getNodeCount() && !material; ++i)
-        if (!getGlMesh()->getNodes()[i].diffuseRef)
+    for (size_t i = 0; i < getGlMesh()->getSegmentCount() && !material; ++i)
+        if (getGlMesh()->getSegments()[i].matId == Mesh::INVALID_MATERIAL)
             material = getDefaultMaterial();
     checkError();
 }
@@ -42,44 +42,62 @@ void Animchar::bindVertexAttributes() {
 }
 
 void Animchar::beforedraw(const RenderContext&) {
-    if (nodeStates.size() != getGlMesh()->getNodeCount()) {
-        nodeStates.resize(getGlMesh()->getNodeCount());
-        getGlMesh()->createStates(nodeStates.data());
-    }
-    getGlMesh()->updateStates(nodeStates.data());
+    getGlMesh()->updateState(glMeshState);
 }
 
+static void update_texture_state(const RenderContext& ctx, const std::string& name,
+                                 const GenericResourcePool::ResourceRef*& current,
+                                 const GenericResourcePool::ResourceRef* tex) {
+    if (current != tex) {
+        if (current)
+            ctx.shaderManager->unbindTexture(name, current->getRes<GlTexture>());
+        current = tex;
+        if (current)
+            ctx.shaderManager->bindTexture(name, current->getRes<GlTexture>());
+    }
+}
+
+// TODO this function is not expection safe
 void Animchar::draw(const RenderContext& ctx) const {
     if (isHidden())
         return;
     ctx.shaderManager->useProgram("animchar");
     getGlMesh()->bind();
+    getGlMesh()->bindState(glMeshState);
     attributeBinder.bind(*ctx.shaderManager);
     ctx.shaderManager->setUniform("lightColor", ctx.lightColor);
     ctx.shaderManager->setUniform("lightDir", ctx.lightDir);
     ctx.shaderManager->setUniform("ambientColor", ctx.ambientColor);
     ctx.shaderManager->setUniform("alphaClipping", alphaClipping);
-
     const AffineTransform modelTm = getWorldTransform();
+    ctx.shaderManager->setUniform("PVM", ctx.pv * modelTm);
+    ctx.shaderManager->setUniform("model", modelTm);
+
+    const GenericResourcePool::ResourceRef* currentDiffuse = nullptr;
 
     glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-    for (size_t i = 0; i < getGlMesh()->getNodeCount(); ++i) {
-        const GlMesh::Node& node = getGlMesh()->getNodes()[i];
-        if (node.indexCount == 0)
+    for (size_t i = 0; i < getGlMesh()->getSegmentCount(); ++i) {
+        const GlMesh::Segment& segment = getGlMesh()->getSegments()[i];
+        if (segment.indexCount == 0)
             continue;
-        AffineTransform tm = modelTm * nodeStates[i].globTm;
-        ctx.shaderManager->setUniform("PVM", ctx.pv * tm);
-        ctx.shaderManager->setUniform("model", tm);
 
-        const GenericResourcePool::ResourceRef& diffuseRef =
-          !node.diffuseRef || overrideMat ? material->getAlbedoAlpha() : node.diffuseRef;
+        const GenericResourcePool::ResourceRef* diffuse =
+          material ? &material->getAlbedoAlpha() : nullptr;
+        if (segment.matId != Mesh::INVALID_MATERIAL && !overrideMat) {
+            const GlMesh::Material& mat = getGlMesh()->getMat(segment.matId);
+            diffuse = &mat.diffuseRef;
+        }
+        assert(diffuse != nullptr);
+        update_texture_state(ctx, "diffuse_tex", currentDiffuse, diffuse);
 
-        ctx.shaderManager->bindTexture("diffuse_tex", diffuseRef.getRes<GlTexture>());
-        glDrawElementsBaseVertex(GL_TRIANGLES, node.indexCount, GL_UNSIGNED_INT,
-                                 reinterpret_cast<void*>(node.indexOffset), node.vertexOffset);
-        ctx.shaderManager->unbindTexture("diffuse_tex", diffuseRef.getRes<GlTexture>());
+        glDrawElementsBaseVertex(GL_TRIANGLES, segment.indexCount, GL_UNSIGNED_INT,
+                                 reinterpret_cast<void*>(segment.indexOffset),
+                                 segment.vertexOffset);
     }
 
+    update_texture_state(ctx, "diffuse_tex", currentDiffuse, nullptr);
+
+    getGlMesh()->unbindState(glMeshState);
     getGlMesh()->unbind();
 }
 

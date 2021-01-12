@@ -6,76 +6,62 @@
 
 #include "material.h"
 
+Mesh::Skeleton::Skeleton() {
+    Bone bone;
+    bone.localTm = glm::mat4(1.f);
+    bone.offset = glm::mat4(1.f);
+    bone.parent = INVALID_BONE;
+    rootBone = addBone(std::move(bone));
+}
+
 Mesh::Mesh() {
 }
 
-Mesh::Mesh(const std::string& nodeName) : name(nodeName) {
-}
-
-Mesh::VertexIndex Mesh::addVertex(const VertexData& vert) {
+Mesh::VertexIndex Mesh::Segment::addVertex(const VertexData& vert) {
     VertexIndex ret = safeCast<VertexIndex>(vertices.size());
     vertices.push_back(vert);
     return ret;
 }
 
-void Mesh::addFace() {
+void Mesh::Segment::addFace() {
     VertexIndex ind =
       safeCast<VertexIndex>(assertReturn(vertices.size(), [](auto val) { return val >= 3; }) - 3);
     addFace(ind, ind + 1, ind + 2);
 }
 
-void Mesh::addFaceRev() {
+void Mesh::Segment::addFaceRev() {
     VertexIndex ind =
       safeCast<VertexIndex>(assertReturn(vertices.size(), [](auto val) { return val >= 3; }) - 3);
     addFace(ind + 2, ind, ind + 1);
 }
 
-void Mesh::addFace(VertexIndex p1, VertexIndex p2, VertexIndex p3) {
+void Mesh::Segment::addFace(VertexIndex p1, VertexIndex p2, VertexIndex p3) {
     indices.push_back(p1);
     indices.push_back(p2);
     indices.push_back(p3);
 }
 
-void Mesh::traverse(const std::function<bool(const Mesh&, const TraverseData&)>& functor,
-                    const TraverseData& data) const {
-    TraverseData d;
-    d.tm = data.tm * nodeTransform;
-    d.parent = this;
-    if (functor(*this, data))
-        for (const Mesh& m : children)
-            m.traverse(functor, d);
+Mesh::MaterialIndex Mesh::addMaterial(Material&& mat) {
+    MaterialIndex ret = materials.size();
+    materials.emplace_back(std::move(mat));
+    return ret;
 }
 
-void Mesh::traverse(const std::function<bool(Mesh&, const TraverseData&)>& functor,
-                    const TraverseData& data) {
-    TraverseData d;
-    d.tm = data.tm * nodeTransform;
-    d.parent = this;
-    if (functor(*this, data))
-        for (Mesh& m : children)
-            m.traverse(functor, d);
+Mesh::MaterialIndex Mesh::addMaterial(const Material& mat) {
+    MaterialIndex ret = materials.size();
+    materials.emplace_back(mat);
+    return ret;
 }
 
-void Mesh::setNodeTm(const glm::mat4& tm) {
-    nodeTransform = tm;
+Mesh::SegmentIndex Mesh::addSegment(Mesh::Segment&& segment) {
+    segments.emplace_back(std::move(segment));
 }
 
-void Mesh::addChild(const Mesh& m) {
-    children.push_back(m);
+void Mesh::sortSegments() {
+    std::sort(segments.begin(), segments.end(),
+              [](const Segment& lhs, const Segment& rhs) { return lhs.mat < rhs.mat; });
 }
 
-void Mesh::addChild(Mesh&& m) {
-    children.push_back(std::move(m));
-}
-
-void Mesh::setMaterial(const std::shared_ptr<Material>& mat) {
-    material = mat;
-}
-
-void Mesh::setMaterial(std::shared_ptr<Material>&& mat) {
-    material = std::move(mat);
-}
-
-const Material* Mesh::getMaterial() const {
-    return material.get();
+const Material* Mesh::getMaterial(MaterialIndex mat) const {
+    return &materials[mat];
 }

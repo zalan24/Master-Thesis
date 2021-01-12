@@ -1,23 +1,51 @@
 #pragma once
 
 #include <functional>
+#include <limits>
 #include <memory>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 #define GLM_FORCE_RADIANS
 #define GLM_LEFT_HAND
 #include <glm/glm.hpp>
 
-class Material;
+#include "material.h"
 
 class Mesh
 {
  public:
     using VertexIndex = uint32_t;
+    using BoneIndex = uint32_t;
+    using MaterialIndex = uint32_t;
+    using SegmentIndex = uint32_t;
 
+    static constexpr MaterialIndex INVALID_MATERIAL = std::numeric_limits<MaterialIndex>::max();
+    static constexpr BoneIndex INVALID_BONE = std::numeric_limits<BoneIndex>::max();
     static constexpr size_t MAX_BONES = 4;
-    
+
+    struct Bone
+    {
+        BoneIndex parent;
+        glm::mat4 localTm;
+        glm::mat4 offset;  // TODO what's this used for?
+    };
+    class Skeleton
+    {
+     public:
+        Skeleton();
+
+        BoneIndex addBone(Bone&& bone);
+        void registerBone(BoneIndex boneId, const std::string& name);
+
+        BoneIndex getRoot() const { return rootBone; }
+
+     private:
+        std::unordered_map<std::string, BoneIndex> boneMap;
+        std::vector<Bone> bones;
+        BoneIndex rootBone;
+    };
     struct VertexData
     {
         glm::vec3 position;
@@ -39,44 +67,39 @@ class Mesh
             boneWeights(_boneWeights) {}
     };
 
-    Mesh();
-    Mesh(const std::string& nodeName);
-
-    VertexIndex addVertex(const VertexData& vert);
-    void addFace();     // adds last three vertices
-    void addFaceRev();  // adds last three vertices flipped
-    void addFace(VertexIndex p1, VertexIndex p2, VertexIndex p3);
-    void setNodeTm(const glm::mat4& tm);
-    void addChild(const Mesh& m);
-    void addChild(Mesh&& m);
-    void setMaterial(const std::shared_ptr<Material>& mat);
-    void setMaterial(std::shared_ptr<Material>&& mat);
-
-    glm::mat4 getNodeTm() const { return nodeTransform; }
-
-    const std::vector<VertexData>& getVertices() const { return vertices; }
-    const std::vector<VertexIndex>& getIndices() const { return indices; }
-
-    struct TraverseData
+    struct Segment
     {
-        glm::mat4 tm = glm::mat4(1.f);
-        const Mesh* parent = nullptr;
-        TraverseData() {}
+        Mesh::MaterialIndex mat = INVALID_MATERIAL;
+        std::vector<Mesh::VertexData> vertices;
+        std::vector<Mesh::VertexIndex> indices;
+
+        Mesh::VertexIndex addVertex(const Mesh::VertexData& vert);
+        void addFace();     // adds last three vertices
+        void addFaceRev();  // adds last three vertices flipped
+        void addFace(Mesh::VertexIndex p1, Mesh::VertexIndex p2, Mesh::VertexIndex p3);
+        void setNodeTm(const glm::mat4& tm);
+        void addChild(const Mesh& m);
+        void addChild(Mesh&& m);
     };
 
-    // functor : returns wether current mesh should be expanded recursively
-    void traverse(const std::function<bool(const Mesh&, const TraverseData&)>& functor,
-                  const TraverseData& data = TraverseData()) const;
-    void traverse(const std::function<bool(Mesh&, const TraverseData&)>& functor,
-                  const TraverseData& data = TraverseData());
+    Mesh();
 
-    const Material* getMaterial() const;
+    MaterialIndex addMaterial(Material&& mat);
+    MaterialIndex addMaterial(const Material& mat);
+
+    SegmentIndex addSegment(Segment&& segment);
+    void sortSegments();
+
+    size_t getSegmentCount() const { return segments.size(); }
+    const Segment& getSegment(size_t id) const { return segments[id]; }
+
+    const Material* getMaterial(MaterialIndex mat) const;
+
+    const Skeleton* getSkeleton() const { return &skeleton; }
+    Skeleton* getSkeleton() { return &skeleton; }
 
  private:
-    std::string name;
-    glm::mat4 nodeTransform = glm::mat4(1.f);
-    std::vector<VertexData> vertices;
-    std::vector<VertexIndex> indices;
-    std::vector<Mesh> children;
-    std::shared_ptr<Material> material;
+    std::vector<Material> materials;
+    std::vector<Segment> segments;
+    Skeleton skeleton;
 };

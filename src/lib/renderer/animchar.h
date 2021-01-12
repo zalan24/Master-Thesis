@@ -30,7 +30,7 @@ class Animchar : public DrawableEntity
     AttributeBinder attributeBinder;
     MeshRes mesh;
     std::shared_ptr<Material> material;
-    std::vector<GlMesh::NodeState> nodeStates;
+    GlMesh::State glMeshState;
     float alphaClipping = 0.5;
     bool overrideMat = false;
 

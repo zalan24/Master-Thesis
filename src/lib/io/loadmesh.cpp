@@ -24,31 +24,56 @@
 
 // Thanks to http://www.ogldev.org/www/tutorial38/tutorial38.html for the Skeletal animations tutorial
 
-static void process(const aiMesh* mesh, Mesh& m,
-                    const std::vector<std::shared_ptr<Material>>& materials,
-                    const glm::vec3& default_color) {
+static glm::mat4 convert_matrix(const aiMatrix4x4& mat) {
+    glm::mat4 tm;
+    tm[0][0] = mat.a1;
+    tm[1][0] = mat.a2;
+    tm[2][0] = mat.a3;
+    tm[3][0] = mat.a4;
+    tm[0][1] = mat.b1;
+    tm[1][1] = mat.b2;
+    tm[2][1] = mat.b3;
+    tm[3][1] = mat.b4;
+    tm[0][2] = mat.c1;
+    tm[1][2] = mat.c2;
+    tm[2][2] = mat.c3;
+    tm[3][2] = mat.c4;
+    tm[0][3] = mat.d1;
+    tm[1][3] = mat.d2;
+    tm[2][3] = mat.d3;
+    tm[3][3] = mat.d4;
+    return tm;
+}
+
+static Mesh::Segment process(const aiMesh* mesh, const std::vector<Mesh::MaterialIndex>& materials,
+                             Mesh::BoneIndex& boneId, const glm::vec3& default_color) {
     assert(mesh->GetNumUVChannels() <= 1);
-    std::map<std::string, uint32_t> boneMap;
+    Mesh::Segment segment;
+    // mesh->mAnimMeshes[0]->
     std::map<uint32_t, std::vector<std::pair<uint32_t, float>>> vertexBoneWeights;
-    uint32_t boneCount = 0;
-    if (mesh->HasBones()) {
-        for (unsigned int i = 0; i < mesh->mNumBones; ++i) {
-            std::string name(mesh->mBones[i]->mName.C_Str());
-            uint32_t boneId = boneCount++;
-            boneMap[name] = boneId;
-            for (unsigned int j = 0; j < mesh->mBones[i]->mNumWeights; ++j)
-                vertexBoneWeights[mesh->mBones[i]->mWeights[j].mVertexId].emplace_back(
-                  boneId, mesh->mBones[i]->mWeights[j].mWeight);
-        }
-        for (auto& itr : vertexBoneWeights) {
-            if (itr.second.size() > Mesh::MAX_BONES) {
-                std::sort(itr.second.begin(), itr.second.end(), std::greater<>());
-                itr.second.resize(Mesh::MAX_BONES);
-            }
-        }
-    }
+    // if (mesh->HasBones()) {
+    //     for (unsigned int i = 0; i < mesh->mNumBones; ++i) {
+    //         std::string name(mesh->mBones[i]->mName.C_Str());
+    //         uint32_t boneId = skeleton->bones.size();
+    //         Mesh::Bone bone;
+    //         bone.offset = convert_matrix(mesh->mBones[i]->mOffsetMatrix);
+    //         bone.parent = ;  // boneId for default
+    //         skeleton->bones.push_back(std::move(bone));
+    //         assert(skeleton->boneMap contains name);
+    //         skeleton->boneMap[name] = boneId;
+    //         for (unsigned int j = 0; j < mesh->mBones[i]->mNumWeights; ++j)
+    //             vertexBoneWeights[mesh->mBones[i]->mWeights[j].mVertexId].emplace_back(
+    //               boneId, mesh->mBones[i]->mWeights[j].mWeight);
+    //     }
+    //     for (auto& itr : vertexBoneWeights) {
+    //         if (itr.second.size() > Mesh::MAX_BONES) {
+    //             std::sort(itr.second.begin(), itr.second.end(), std::greater<>());
+    //             itr.second.resize(Mesh::MAX_BONES);
+    //         }
+    //     }
+    // }
     if (mesh->mMaterialIndex <= materials.size())
-        m.setMaterial(materials[mesh->mMaterialIndex]);
+        segment.mat = materials[mesh->mMaterialIndex];
     else
         assert(materials.size() == 0);
     for (uint32_t i = 0; i < mesh->mNumVertices; ++i) {
@@ -57,7 +82,7 @@ static void process(const aiMesh* mesh, Mesh& m,
         glm::vec3 normal{0, 0, 0};
         glm::vec3 color = default_color;
         glm::vec2 texture{0, 0};
-        glm::ivec4 boneIds(0, 0, 0, 0);
+        glm::ivec4 boneIds(boneId, boneId, boneId, boneId);
         glm::vec4 boneWeights(1, 0, 0, 0);
         auto boneItr = vertexBoneWeights.find(i);
         if (boneItr != vertexBoneWeights.end() && boneItr->second.size() > 0) {
@@ -78,7 +103,7 @@ static void process(const aiMesh* mesh, Mesh& m,
             color.g = mesh->mColors[0][i].g;
             color.b = mesh->mColors[0][i].b;
         }
-        m.addVertex(Mesh::VertexData(pos, normal, color, texture, boneIds, boneWeights));
+        segment.addVertex(Mesh::VertexData(pos, normal, color, texture, boneIds, boneWeights));
     }
     for (uint32_t i = 0; i < mesh->mNumFaces; ++i) {
         assert(mesh->mFaces->mNumIndices == 3);
@@ -90,8 +115,9 @@ static void process(const aiMesh* mesh, Mesh& m,
         unsigned int p1 = mesh->mFaces[i].mIndices[0];
         unsigned int p2 = mesh->mFaces[i].mIndices[1];
         unsigned int p3 = mesh->mFaces[i].mIndices[2];
-        m.addFace(p1, p2, p3);
+        segment.addFace(p1, p2, p3);
     }
+    return segment;
 }
 
 static Texture<RGBA> load_texture(const aiTexture* tex) {
@@ -117,41 +143,24 @@ static Texture<RGBA> load_texture(const aiTexture* tex) {
     }
 }
 
-static Mesh process(const aiScene* scene, const aiNode* node,
-                    const std::vector<std::shared_ptr<Material>>& materials,
-                    const glm::vec3& default_color, const TextureProvider* texProvider) {
+static void process(const aiScene* scene, const aiNode* node,
+                    std::vector<Mesh::BoneIndex> meshBones, Mesh::Skeleton* skeleton,
+                    Mesh::BoneIndex parentBone) {
     assert(node != nullptr);
-    Mesh ret(node->mName.length == 0 ? "" : std::string(node->mName.data, node->mName.length));
-    glm::mat4 tm;
-    tm[0][0] = node->mTransformation.a1;
-    tm[1][0] = node->mTransformation.a2;
-    tm[2][0] = node->mTransformation.a3;
-    tm[3][0] = node->mTransformation.a4;
-    tm[0][1] = node->mTransformation.b1;
-    tm[1][1] = node->mTransformation.b2;
-    tm[2][1] = node->mTransformation.b3;
-    tm[3][1] = node->mTransformation.b4;
-    tm[0][2] = node->mTransformation.c1;
-    tm[1][2] = node->mTransformation.c2;
-    tm[2][2] = node->mTransformation.c3;
-    tm[3][2] = node->mTransformation.c4;
-    tm[0][3] = node->mTransformation.d1;
-    tm[1][3] = node->mTransformation.d2;
-    tm[2][3] = node->mTransformation.d3;
-    tm[3][3] = node->mTransformation.d4;
-    ret.setNodeTm(tm);
+    Mesh::Bone bone;
+    bone.parent = parentBone;
+    bone.localTm = convert_matrix(node->mTransformation);
+    bone.offset = ;  // TODO
+    Mesh::BoneIndex boneId = skeleton->addBone(std::move(bone));
+    if (node->mName.length > 0)
+        skeleton->registerBone(boneId, std::string(node->mName.C_Str()));
     for (unsigned int i = 0; i < node->mNumMeshes; ++i) {
-        if (i == 0)
-            process(scene->mMeshes[node->mMeshes[i]], ret, materials, default_color);
-        else {
-            Mesh m;
-            process(scene->mMeshes[node->mMeshes[i]], m, materials, default_color);
-            ret.addChild(std::move(m));
-        }
+        // Mesh bone should only be set once per segment
+        assert(meshBones[node->mMeshes[i]] == skeleton->getRoot());
+        meshBones[node->mMeshes[i]] = boneId;
     }
     for (unsigned int i = 0; i < node->mNumChildren; ++i)
-        ret.addChild(process(scene, node->mChildren[i], materials, default_color, texProvider));
-    return ret;
+        process(scene, node->mChildren[i], meshBones, skeleton, boneId);
 }
 
 Mesh load_mesh(const std::string& filename, const TextureProvider* texProvider,
@@ -166,7 +175,8 @@ Mesh load_mesh(const std::string& filename, const TextureProvider* texProvider,
         throw std::runtime_error("Could not load object from file: " + filename + " (" + vError
                                  + ")");
     }
-    std::vector<std::shared_ptr<Material>> materials;
+    Mesh ret;
+    std::vector<Mesh::MaterialIndex> materials;
     std::map<std::string, GenericResourcePool::ResourceRef> textures;
     if (scene->HasTextures()) {
         for (unsigned int i = 0; i < scene->mNumTextures; ++i) {
@@ -180,19 +190,19 @@ Mesh load_mesh(const std::string& filename, const TextureProvider* texProvider,
     if (scene->HasMaterials()) {
         for (unsigned int i = 0; i < scene->mNumMaterials; ++i) {
             const auto matPtr = scene->mMaterials[i];
-            std::shared_ptr<Material> mat;
+            Mesh::MaterialIndex mat;
             aiString path;
             if (matPtr->GetTexture(aiTextureType_DIFFUSE, 0, &path) == AI_SUCCESS) {
                 std::string imgFile(scene->GetShortFilename(path.C_Str()));
                 auto itr = textures.find(imgFile);
                 if (itr != textures.end()) {
-                    mat = std::make_shared<Material>(itr->second);
+                    mat = ret.addMaterial(Material(itr->second));
                 }
                 else {
                     TextureProvider::ResourceDescriptor matDesc{
                       std::string(path.data, path.length)};
-                    mat = std::make_shared<Material>(
-                      Material::DiffuseRes(texProvider, std::move(matDesc)));
+                    mat = ret.addMaterial(
+                      Material(Material::DiffuseRes(texProvider, std::move(matDesc))));
                     assert(false);  // TODO checks this (never been tried)
                 }
             }
@@ -204,17 +214,31 @@ Mesh load_mesh(const std::string& filename, const TextureProvider* texProvider,
                 glm::vec4 albedo_alpha{albedo.r, albedo.g, albedo.b, opacity};
                 TextureProvider::ResourceDescriptor matDesc{albedo_alpha};
                 mat =
-                  std::make_shared<Material>(Material::DiffuseRes(texProvider, std::move(matDesc)));
+                  ret.addMaterial(Material(Material::DiffuseRes(texProvider, std::move(matDesc))));
             }
             materials.push_back(std::move(mat));
         }
     }
-    // scene->mAnimations[0]->
-    return process(scene, scene->mRootNode, materials, default_color, texProvider);
+    std::vector<Mesh::BoneIndex> meshBones(scene->mNumMeshes, ret.getSkeleton()->getRoot());
+    process(scene, scene->mRootNode, meshBones, ret.getSkeleton(), ret.getSkeleton()->getRoot());
+    std::vector<Mesh::SegmentIndex> segments;
+    if (scene->HasMeshes()) {
+        for (unsigned int i = 0; i < scene->mNumMeshes; ++i) {
+            Mesh::Segment segment =
+              process(scene->mMeshes[i], materials, meshBones[i], default_color);
+            segments.push_back(ret.addSegment(std::move(segment)));
+        }
+    }
+    // TODO animations
+    // scene->mAnimations[0]->mChannels[0]->;
+    // scene->mAnimations[0]->mMeshChannels[0]->;
+    ret.sortSegments();
+    return ret;
 }
 
 Mesh create_cube(float size, const glm::vec3& color) {
     Mesh ret;
+    Mesh::Segment segment;
     for (int ind : {0, 1, 2}) {
         for (int sgn : {-1, 1}) {
             glm::vec3 dir{0, 0, 0};
@@ -225,14 +249,15 @@ Mesh create_cube(float size, const glm::vec3& color) {
             side *= size;
             dir *= size;
             glm::vec3 normal = glm::normalize(dir);
-            ret.addVertex(Mesh::VertexData(dir - side - up, normal, color, glm::vec2{0, 0}));
-            ret.addVertex(Mesh::VertexData(dir - side + up, normal, color, glm::vec2{0, 0}));
-            ret.addVertex(Mesh::VertexData(dir + side - up, normal, color, glm::vec2{0, 0}));
-            ret.addFace();
-            ret.addVertex(Mesh::VertexData(dir + side + up, normal, color, glm::vec2{0, 0}));
-            ret.addFaceRev();
+            segment.addVertex(Mesh::VertexData(dir - side - up, normal, color, glm::vec2{0, 0}));
+            segment.addVertex(Mesh::VertexData(dir - side + up, normal, color, glm::vec2{0, 0}));
+            segment.addVertex(Mesh::VertexData(dir + side - up, normal, color, glm::vec2{0, 0}));
+            segment.addFace();
+            segment.addVertex(Mesh::VertexData(dir + side + up, normal, color, glm::vec2{0, 0}));
+            segment.addFaceRev();
         }
     }
+    ret.addSegment(std::move(segment));
     return ret;
 }
 
@@ -245,17 +270,20 @@ Mesh create_plane(const glm::vec3& origin, glm::vec3 normal, float size, const g
     up *= size;
     side *= size;
     Mesh ret;
-    ret.addVertex(Mesh::VertexData(origin - side - up, normal, color, glm::vec2{0, 0}));
-    ret.addVertex(Mesh::VertexData(origin - side + up, normal, color, glm::vec2{0, 1}));
-    ret.addVertex(Mesh::VertexData(origin + side - up, normal, color, glm::vec2{1, 0}));
-    ret.addFace();
-    ret.addVertex(Mesh::VertexData(origin + side + up, normal, color, glm::vec2{1, 1}));
-    ret.addFaceRev();
+    Mesh::Segment segment;
+    segment.addVertex(Mesh::VertexData(origin - side - up, normal, color, glm::vec2{0, 0}));
+    segment.addVertex(Mesh::VertexData(origin - side + up, normal, color, glm::vec2{0, 1}));
+    segment.addVertex(Mesh::VertexData(origin + side - up, normal, color, glm::vec2{1, 0}));
+    segment.addFace();
+    segment.addVertex(Mesh::VertexData(origin + side + up, normal, color, glm::vec2{1, 1}));
+    segment.addFaceRev();
+    ret.addSegment(std::move(segment));
     return ret;
 }
 
 Mesh create_sphere(size_t resX, size_t resY, float size, const glm::vec3& color) {
     Mesh ret;
+    Mesh::Segment segment;
     for (size_t y = 0; y < resY; ++y) {
         float theta = static_cast<float>(y) / static_cast<float>(resY - 1);
         float fy = static_cast<float>(std::cos(static_cast<double>(theta) * M_PI));
@@ -267,7 +295,7 @@ Mesh create_sphere(size_t resX, size_t resY, float size, const glm::vec3& color)
             glm::vec3 normal{fx, fy, fz};
             glm::vec3 pos = normal * size;
             glm::vec2 texcoord{phi, 1.f - theta};
-            ret.addVertex(Mesh::VertexData(pos, normal, color, texcoord));
+            segment.addVertex(Mesh::VertexData(pos, normal, color, texcoord));
         }
     }
     for (size_t y = 0; y < resY - 1; ++y) {
@@ -276,9 +304,10 @@ Mesh create_sphere(size_t resX, size_t resY, float size, const glm::vec3& color)
             Mesh::VertexIndex v01 = static_cast<Mesh::VertexIndex>((x + 1) + y * resX);
             Mesh::VertexIndex v10 = static_cast<Mesh::VertexIndex>(x + (y + 1) * resX);
             Mesh::VertexIndex v11 = static_cast<Mesh::VertexIndex>((x + 1) + (y + 1) * resX);
-            ret.addFace(v00, v01, v10);
-            ret.addFace(v11, v01, v10);
+            segment.addFace(v00, v01, v10);
+            segment.addFace(v11, v01, v10);
         }
     }
+    ret.addSegment(std::move(segment));
     return ret;
 }
