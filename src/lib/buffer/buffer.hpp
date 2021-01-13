@@ -65,6 +65,14 @@ class Buffer
         assert(valid);
         glBindBuffer(bufferTarget, 0);
     }
+    void bind(GLuint binding) const {
+        assert(valid);
+        glBindBufferBase(bufferTarget, binding, buffer);
+    }
+    void unbind(GLuint binding) const {
+        assert(valid);
+        glBindBufferBase(bufferTarget, binding, 0);
+    }
 
     ~Buffer() { close(); }
 

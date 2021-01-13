@@ -14,6 +14,16 @@ Mesh::Skeleton::Skeleton() {
     rootBone = addBone(std::move(bone));
 }
 
+Mesh::BoneIndex Mesh::Skeleton::addBone(Bone&& bone) {
+    BoneIndex boneId = static_cast<BoneIndex>(bones.size());
+    bones.emplace_back(std::move(bone));
+    return boneId;
+}
+
+void Mesh::Skeleton::registerBone(BoneIndex boneId, const std::string& name) {
+    boneMap[name] = boneId;
+}
+
 Mesh::Mesh() {
 }
 
@@ -42,19 +52,21 @@ void Mesh::Segment::addFace(VertexIndex p1, VertexIndex p2, VertexIndex p3) {
 }
 
 Mesh::MaterialIndex Mesh::addMaterial(Material&& mat) {
-    MaterialIndex ret = materials.size();
+    MaterialIndex ret = static_cast<MaterialIndex>(materials.size());
     materials.emplace_back(std::move(mat));
     return ret;
 }
 
 Mesh::MaterialIndex Mesh::addMaterial(const Material& mat) {
-    MaterialIndex ret = materials.size();
+    MaterialIndex ret = static_cast<MaterialIndex>(materials.size());
     materials.emplace_back(mat);
     return ret;
 }
 
 Mesh::SegmentIndex Mesh::addSegment(Mesh::Segment&& segment) {
+    SegmentIndex ret = static_cast<SegmentIndex>(segments.size());
     segments.emplace_back(std::move(segment));
+    return ret;
 }
 
 void Mesh::sortSegments() {

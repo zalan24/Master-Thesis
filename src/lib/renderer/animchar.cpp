@@ -12,7 +12,7 @@ std::unique_ptr<Material> Animchar::getDefaultMaterial() {
 }
 
 Animchar::Animchar(MeshRes&& m, Entity* parent, const Entity::AffineTransform& localTm)
-  : DrawableEntity(parent, localTm), mesh(std::move(m)), glMeshState(getGlMesh()->createState()) {
+  : DrawableEntity(parent, localTm), mesh(std::move(m)), glMeshState(getGlMesh()->createState(0)) {
     bindVertexAttributes();
     fixMat();
     checkError();

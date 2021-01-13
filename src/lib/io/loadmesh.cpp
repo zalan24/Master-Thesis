@@ -86,10 +86,10 @@ static Mesh::Segment process(const aiMesh* mesh, const std::vector<Mesh::Materia
         glm::vec4 boneWeights(1, 0, 0, 0);
         auto boneItr = vertexBoneWeights.find(i);
         if (boneItr != vertexBoneWeights.end() && boneItr->second.size() > 0) {
-            for (size_t i = 0; i < boneItr->second.size(); ++i) {
-                const auto& [id, weight] = boneItr->second[i];
-                boneIds[i] = id;
-                boneWeights[i] = weight;
+            for (size_t j = 0; j < boneItr->second.size(); ++j) {
+                const auto& [id, weight] = boneItr->second[j];
+                boneIds[j] = static_cast<float>(id);
+                boneWeights[j] = weight;
             }
             boneWeights = glm::normalize(boneWeights);
         }
@@ -144,13 +144,13 @@ static Texture<RGBA> load_texture(const aiTexture* tex) {
 }
 
 static void process(const aiScene* scene, const aiNode* node,
-                    std::vector<Mesh::BoneIndex> meshBones, Mesh::Skeleton* skeleton,
+                    std::vector<Mesh::BoneIndex>& meshBones, Mesh::Skeleton* skeleton,
                     Mesh::BoneIndex parentBone) {
     assert(node != nullptr);
     Mesh::Bone bone;
     bone.parent = parentBone;
     bone.localTm = convert_matrix(node->mTransformation);
-    bone.offset = ;  // TODO
+    // bone.offset = ;  // TODO
     Mesh::BoneIndex boneId = skeleton->addBone(std::move(bone));
     if (node->mName.length > 0)
         skeleton->registerBone(boneId, std::string(node->mName.C_Str()));

@@ -41,6 +41,13 @@ class Mesh
 
         BoneIndex getRoot() const { return rootBone; }
 
+        size_t getBoneCount() const { return bones.size(); }
+        const Bone* getBones() const { return bones.data(); }
+
+        const Bone& getBone(BoneIndex boneId) const { return bones[boneId]; }
+        void setBone(BoneIndex boneId, const Bone& bone) { bones[boneId] = bone; }
+        void setBone(BoneIndex boneId, Bone&& bone) { bones[boneId] = std::move(bone); }
+
      private:
         std::unordered_map<std::string, BoneIndex> boneMap;
         std::vector<Bone> bones;
@@ -52,12 +59,13 @@ class Mesh
         glm::vec3 normal;
         glm::vec3 color;
         glm::vec2 texcoord;
-        glm::ivec4 boneIds;
-        glm::vec4 boneWeights;
+        glm::vec4 boneIds = glm::vec4(0, 0, 0, 0);
+        glm::vec4 boneWeights = glm::vec4(1, 0, 0, 0);
+        VertexData() = default;
         VertexData(const glm::vec3& _position, const glm::vec3& _normal,
                    const glm::vec3& _color = glm::vec3(0, 0, 0),
                    const glm::vec2& _texcoord = glm::vec2(0, 0),
-                   const glm::ivec4& _boneIds = glm::ivec4(0, 0, 0, 0),
+                   const glm::vec4& _boneIds = glm::vec4(0, 0, 0, 0),
                    const glm::vec4& _boneWeights = glm::vec4(1, 0, 0, 0))
           : position(_position),
             normal(_normal),
@@ -97,6 +105,9 @@ class Mesh
 
     const Skeleton* getSkeleton() const { return &skeleton; }
     Skeleton* getSkeleton() { return &skeleton; }
+
+    size_t getMaterialCount() const { return materials.size(); }
+    const Material* getMaterials() const { return materials.data(); }
 
  private:
     std::vector<Material> materials;

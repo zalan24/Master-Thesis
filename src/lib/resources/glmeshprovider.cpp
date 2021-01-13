@@ -9,9 +9,10 @@ GlMeshProvider::GlMeshProvider(TextureProvider* _texProvider,
 
 static void fix_mesh(Mesh& m, const MeshProvider::ResourceDescriptor& desc) {
     if (desc.getFlipYZ()) {
-        glm::mat4 tm = m.getNodeTm();
-        std::swap(tm[1], tm[2]);
-        m.setNodeTm(tm);
+        Mesh::Skeleton* skeleton = m.getSkeleton();
+        Mesh::Bone bone = skeleton->getBone(skeleton->getRoot());
+        std::swap(bone.localTm[1], bone.localTm[2]);
+        skeleton->setBone(skeleton->getRoot(), std::move(bone));
     }
 }
 

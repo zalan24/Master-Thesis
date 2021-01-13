@@ -31,19 +31,26 @@ class GlMesh
         Mesh::MaterialIndex matId;
     };
 
+    struct BoneState
+    {
+        glm::mat4 localTm;
+    };
+
     struct State
     {
         Buffer<glm::mat4> bonesBuffer;
         std::vector<glm::mat4> boneTms;
+        std::vector<BoneState> bones;
         bool invalidBones = true;
+        GLuint boneBinding;
     };
 
     GlMesh();
 
     void upload(const Mesh& mesh);
 
-    size_t getSegmentCount() const { return segments.size(); }
-    const Segment* getSegments() const { return segments.data(); }
+    size_t getSegmentCount() const;
+    const Segment* getSegments() const;
 
     void bind() const;
     void unbind() const;
@@ -51,10 +58,12 @@ class GlMesh
     void bindState(const State& state) const;
     void unbindState(const State& state) const;
 
-    State createState() const;
+    State createState(GLuint boneBinding) const;
     void updateState(State& state) const;
 
     const Material& getMat(Mesh::MaterialIndex id) const;
+
+    void clear();
 
  private:
     Buffer<Mesh::VertexData> glBuffer;
@@ -62,6 +71,4 @@ class GlMesh
     std::vector<Segment> segments;
     std::vector<BoneInfo> bones;
     std::vector<Material> materials;
-
-    // void updateNodeState(NodeState* states, size_t idx) const;
 };

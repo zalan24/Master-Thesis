@@ -68,6 +68,21 @@ inline ShaderVarType getShaderVarType<glm::vec4>() {
 }
 
 template <>
+inline ShaderVarType getShaderVarType<glm::ivec2>() {
+    return {GL_INT, 2, "ivec2"};
+}
+
+template <>
+inline ShaderVarType getShaderVarType<glm::ivec3>() {
+    return {GL_INT, 3, "ivec3"};
+}
+
+template <>
+inline ShaderVarType getShaderVarType<glm::ivec4>() {
+    return {GL_INT, 4, "ivec4"};
+}
+
+template <>
 inline ShaderVarType getShaderVarType<glm::mat2>() {
     return {GL_FLOAT, 0, "mat2"};
 }
