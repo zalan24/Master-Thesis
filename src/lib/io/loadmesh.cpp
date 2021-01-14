@@ -46,32 +46,33 @@ static glm::mat4 convert_matrix(const aiMatrix4x4& mat) {
 }
 
 static Mesh::Segment process(const aiMesh* mesh, const std::vector<Mesh::MaterialIndex>& materials,
-                             Mesh::BoneIndex& boneId, const glm::vec3& default_color) {
+                             Mesh::BoneIndex& boneId, const Mesh::Skeleton* skeleton,
+                             const glm::vec3& default_color) {
     assert(mesh->GetNumUVChannels() <= 1);
     Mesh::Segment segment;
     // mesh->mAnimMeshes[0]->
     std::map<uint32_t, std::vector<std::pair<uint32_t, float>>> vertexBoneWeights;
-    // if (mesh->HasBones()) {
-    //     for (unsigned int i = 0; i < mesh->mNumBones; ++i) {
-    //         std::string name(mesh->mBones[i]->mName.C_Str());
-    //         uint32_t boneId = skeleton->bones.size();
-    //         Mesh::Bone bone;
-    //         bone.offset = convert_matrix(mesh->mBones[i]->mOffsetMatrix);
-    //         bone.parent = ;  // boneId for default
-    //         skeleton->bones.push_back(std::move(bone));
-    //         assert(skeleton->boneMap contains name);
-    //         skeleton->boneMap[name] = boneId;
-    //         for (unsigned int j = 0; j < mesh->mBones[i]->mNumWeights; ++j)
-    //             vertexBoneWeights[mesh->mBones[i]->mWeights[j].mVertexId].emplace_back(
-    //               boneId, mesh->mBones[i]->mWeights[j].mWeight);
-    //     }
-    //     for (auto& itr : vertexBoneWeights) {
-    //         if (itr.second.size() > Mesh::MAX_BONES) {
-    //             std::sort(itr.second.begin(), itr.second.end(), std::greater<>());
-    //             itr.second.resize(Mesh::MAX_BONES);
-    //         }
-    //     }
-    // }
+    if (mesh->HasBones()) {
+        for (unsigned int i = 0; i < mesh->mNumBones; ++i) {
+            std::string name(mesh->mBones[i]->mName.C_Str());
+            Mesh::BoneIndex boneId = skeleton->getBoneId(name);
+            assert(boneId != Mesh::INVALID_BONE);
+            for (unsigned int j = 0; j < mesh->mBones[i]->mNumWeights; ++j)
+                vertexBoneWeights[mesh->mBones[i]->mWeights[j].mVertexId].emplace_back(
+                  boneId, mesh->mBones[i]->mWeights[j].mWeight);
+        }
+        for (auto& itr : vertexBoneWeights) {
+            // assert(itr.second.size() <= Mesh::MAX_BONES);  // TODO not sure if this would work
+            if (itr.second.size() > Mesh::MAX_BONES) {
+                std::sort(
+                  itr.second.begin(), itr.second.end(),
+                  [](const std::pair<uint32_t, float>& lhs, const std::pair<uint32_t, float>& rhs) {
+                      return lhs.second > rhs.second;
+                  });
+                itr.second.resize(Mesh::MAX_BONES);
+            }
+        }
+    }
     if (mesh->mMaterialIndex <= materials.size())
         segment.mat = materials[mesh->mMaterialIndex];
     else
@@ -91,7 +92,7 @@ static Mesh::Segment process(const aiMesh* mesh, const std::vector<Mesh::Materia
                 boneIds[j] = static_cast<float>(id);
                 boneWeights[j] = weight;
             }
-            boneWeights = glm::normalize(boneWeights);
+            boneWeights /= boneWeights.x + boneWeights.y + boneWeights.z + boneWeights.w;
         }
         if (mesh->HasNormals())
             normal = glm::vec3(mesh->mNormals[i].x, mesh->mNormals[i].y, mesh->mNormals[i].z);
@@ -150,7 +151,6 @@ static void process(const aiScene* scene, const aiNode* node,
     Mesh::Bone bone;
     bone.parent = parentBone;
     bone.localTm = convert_matrix(node->mTransformation);
-    // bone.offset = ;  // TODO
     Mesh::BoneIndex boneId = skeleton->addBone(std::move(bone));
     if (node->mName.length > 0)
         skeleton->registerBone(boneId, std::string(node->mName.C_Str()));
@@ -225,7 +225,7 @@ Mesh load_mesh(const std::string& filename, const TextureProvider* texProvider,
     if (scene->HasMeshes()) {
         for (unsigned int i = 0; i < scene->mNumMeshes; ++i) {
             Mesh::Segment segment =
-              process(scene->mMeshes[i], materials, meshBones[i], default_color);
+              process(scene->mMeshes[i], materials, meshBones[i], ret.getSkeleton(), default_color);
             segments.push_back(ret.addSegment(std::move(segment)));
         }
     }

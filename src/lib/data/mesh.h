@@ -29,7 +29,6 @@ class Mesh
     {
         BoneIndex parent;
         glm::mat4 localTm;
-        glm::mat4 offset;  // TODO what's this used for?
     };
     class Skeleton
     {
@@ -38,6 +37,8 @@ class Mesh
 
         BoneIndex addBone(Bone&& bone);
         void registerBone(BoneIndex boneId, const std::string& name);
+
+        BoneIndex getBoneId(const std::string& name) const;
 
         BoneIndex getRoot() const { return rootBone; }
 

@@ -9,7 +9,6 @@
 Mesh::Skeleton::Skeleton() {
     Bone bone;
     bone.localTm = glm::mat4(1.f);
-    bone.offset = glm::mat4(1.f);
     bone.parent = INVALID_BONE;
     rootBone = addBone(std::move(bone));
 }
@@ -22,6 +21,13 @@ Mesh::BoneIndex Mesh::Skeleton::addBone(Bone&& bone) {
 
 void Mesh::Skeleton::registerBone(BoneIndex boneId, const std::string& name) {
     boneMap[name] = boneId;
+}
+
+Mesh::BoneIndex Mesh::Skeleton::getBoneId(const std::string& name) const {
+    auto itr = boneMap.find(name);
+    if (itr == boneMap.end())
+        return INVALID_BONE;
+    return itr->second;
 }
 
 Mesh::Mesh() {
