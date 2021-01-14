@@ -26,6 +26,7 @@
         "gl",
         "glf",
         "glfw",
+        "integerv",
         "isystem",
         "ivec",
         "lboolean",

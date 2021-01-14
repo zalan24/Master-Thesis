@@ -61,6 +61,7 @@ static void update_texture_state(const RenderContext& ctx, const std::string& na
 void Animchar::draw(const RenderContext& ctx) const {
     if (isHidden())
         return;
+    std::unique_lock<std::mutex> lock(ctx.mutex);
     ctx.shaderManager->useProgram("animchar");
     getGlMesh()->bind();
     getGlMesh()->bindState(glMeshState);
@@ -74,6 +75,14 @@ void Animchar::draw(const RenderContext& ctx) const {
     ctx.shaderManager->setUniform("model", modelTm);
 
     const GenericResourcePool::ResourceRef* currentDiffuse = nullptr;
+
+    bool drawSkeleton = drawBones && glMeshState.bones.size() > 0;
+
+    unsigned int currentStencil = ((*ctx.currentStencil)++ % ctx.maxStencil) + 1;
+    if (currentStencil == ctx.maxStencil)
+        glClearStencil(0);
+    glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE);
+    glStencilFunc(GL_ALWAYS, currentStencil, 0xFF);
 
     glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
     for (size_t i = 0; i < getGlMesh()->getSegmentCount(); ++i) {
@@ -96,6 +105,11 @@ void Animchar::draw(const RenderContext& ctx) const {
     }
 
     update_texture_state(ctx, "diffuse_tex", currentDiffuse, nullptr);
+
+    if (drawSkeleton) {
+        glStencilFunc(GL_EQUAL, currentStencil, 0xFF);
+        // TODO
+    }
 
     getGlMesh()->unbindState(glMeshState);
     getGlMesh()->unbind();

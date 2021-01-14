@@ -19,39 +19,36 @@ class GlTexture
         SamplingState() noexcept {}
     };
 
+    GlTexture();
     GlTexture(GLenum target, GLint internalformat, const SamplingState& sampling = SamplingState());
     ~GlTexture();
+
+    GlTexture(const GlTexture&) = delete;
+    GlTexture& operator=(const GlTexture&) = delete;
+    GlTexture(GlTexture&& other);
+    GlTexture& operator=(GlTexture&& other);
+
+    operator bool() const;
+
+    void close();
 
     void setSampling(const SamplingState& sampling);
     const SamplingState& getSampling() const;
 
+    void create(unsigned int width, unsigned int height, unsigned int depth, GLenum format,
+                GLenum dataType, const void* pixels = nullptr);
+
     template <typename P>
     void upload(const Texture<P>* texture, bool genMips = true) {
-        bind();
         static constexpr GLenum format = PixelType<P>::format;
         static constexpr GLenum dataType = PixelType<P>::dataType;
-        if (is1D()) {
-            assert(texture->getHeight() == 1 && texture->getDepth() == 1);
-            glTexImage1D(target, 0, internalFormat, texture->getWidth(), 0, format, dataType,
-                         texture->getData());
-        }
-        else if (is3D()) {
-            // 3D
-            glTexImage3D(target, 0, internalFormat, texture->getWidth(), texture->getHeight(),
-                         texture->getDepth(), 0, format, dataType, texture->getData());
-        }
-        else {
-            // 2D
-            assert(is2D());
-            assert(texture->getDepth() == 1);
-            glTexImage2D(target, 0, internalFormat, texture->getWidth(), texture->getHeight(), 0,
-                         format, dataType, texture->getData());
-        }
-        uploaded = true;
-        setParams();
-        if (genMips)
+        create(texture->getWidth(), texture->getHeight(), texture->getDepth(), format, dataType,
+               texture->getData());
+        if (genMips) {
+            bind();
             glGenerateMipmap(target);
-        unbind();
+            unbind();
+        }
     }
 
     void bind() const;
@@ -60,6 +57,8 @@ class GlTexture
     bool is1D() const;
     bool is2D() const;
     bool is3D() const;
+
+    GLuint getId() const { return textureID; }
 
  private:
     GLenum target;

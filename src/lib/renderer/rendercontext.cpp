@@ -8,5 +8,5 @@ void checkError() {
     GLenum error = glGetError();
     if (error == GL_NO_ERROR)
         return;
-    throw std::runtime_error("GL error");
+    throw std::runtime_error("GL error: " + std::to_string(error));
 }

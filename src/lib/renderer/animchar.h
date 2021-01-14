@@ -33,6 +33,7 @@ class Animchar : public DrawableEntity
     GlMesh::State glMeshState;
     float alphaClipping = 0.5;
     bool overrideMat = false;
+    bool drawBones = true;
 
     void bindVertexAttributes();
     const GlMesh* getGlMesh() const;

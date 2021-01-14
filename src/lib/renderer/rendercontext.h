@@ -1,5 +1,7 @@
 #pragma once
 
+#include <atomic>
+#include <mutex>
 #include <string>
 #include <vector>
 
@@ -18,6 +20,9 @@ struct RenderContext
     glm::vec3 lightDir;
     glm::vec3 ambientColor;
     const ShaderManager* shaderManager;
+    unsigned int maxStencil;
+    std::atomic<unsigned int>* currentStencil;
+    mutable std::mutex mutex;
 };
 
 void checkError();

@@ -5,8 +5,46 @@ GlTexture::GlTexture(GLenum _target, GLint _internalformat, const SamplingState&
     glGenTextures(1, &textureID);
 }
 
-GlTexture::~GlTexture() {
+GlTexture::GlTexture() {
+}
+
+void GlTexture::close() {
+    if (textureID == 0)
+        return;
     glDeleteTextures(1, &textureID);
+    textureID = 0;
+    uploaded = false;
+}
+
+GlTexture::operator bool() const {
+    return textureID > 0;
+}
+
+GlTexture::GlTexture(GlTexture&& other)
+  : target(other.target),
+    internalFormat(other.internalFormat),
+    sampling(std::move(other.sampling)),
+    textureID(other.textureID),
+    uploaded(other.uploaded) {
+    other.textureID = 0;
+}
+
+GlTexture& GlTexture::operator=(GlTexture&& other) {
+    if (this == &other)
+        return *this;
+    close();
+    target = other.target;
+    internalFormat = other.internalFormat;
+    sampling = std::move(other.sampling);
+    textureID = other.textureID;
+    uploaded = other.uploaded;
+
+    other.textureID = 0;
+    return *this;
+}
+
+GlTexture::~GlTexture() {
+    close();
 }
 
 void GlTexture::bind() const {
@@ -48,4 +86,26 @@ void GlTexture::setSampling(const SamplingState& _sampling) {
 
 const GlTexture::SamplingState& GlTexture::getSampling() const {
     return sampling;
+}
+
+void GlTexture::create(unsigned int width, unsigned int height, unsigned int depth, GLenum format,
+                       GLenum dataType, const void* pixels) {
+    bind();
+    if (is1D()) {
+        assert(height == 1 && depth == 1);
+        glTexImage1D(target, 0, internalFormat, width, 0, format, dataType, pixels);
+    }
+    else if (is3D()) {
+        // 3D
+        glTexImage3D(target, 0, internalFormat, width, height, depth, 0, format, dataType, pixels);
+    }
+    else {
+        // 2D
+        assert(is2D());
+        assert(depth == 1);
+        glTexImage2D(target, 0, internalFormat, width, height, 0, format, dataType, pixels);
+    }
+    uploaded = true;
+    setParams();
+    unbind();
 }
