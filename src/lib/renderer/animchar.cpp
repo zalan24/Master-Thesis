@@ -38,6 +38,9 @@ void Animchar::bindVertexAttributes() {
     attributeBinder.addAttribute(&Mesh::VertexData::texcoord, "vTex");
     attributeBinder.addAttribute(&Mesh::VertexData::boneIds, "vBoneIds");
     attributeBinder.addAttribute(&Mesh::VertexData::boneWeights, "vBoneWeights");
+
+    skeletonAttributeBinder.addAttribute(&Mesh::BoneVertex::vId_Depth, "vId_Depth");
+    skeletonAttributeBinder.addAttribute(&Mesh::BoneVertex::vPos, "vPos");
     checkError();
 }
 
@@ -55,6 +58,27 @@ static void update_texture_state(const RenderContext& ctx, const std::string& na
         if (current)
             ctx.shaderManager->bindTexture(name, current->getRes<GlTexture>());
     }
+}
+
+void Animchar::renderBones(const RenderContext& ctx) const {
+    ctx.shaderManager->useProgram("skeleton");
+    getGlMesh()->bindSkeleton();
+    getGlMesh()->bindState(glMeshState);
+    glDisable(GL_DEPTH_TEST);
+    skeletonAttributeBinder.bind(*ctx.shaderManager);
+
+    const AffineTransform modelTm = getWorldTransform();
+    ctx.shaderManager->setUniform("PVM", ctx.pv * modelTm);
+
+    static const glm::vec3 colors[2] = {glm::vec3(0.9, 0.85, 0.75), glm::vec3(0.75, 0.85, 0.9)};
+    ctx.shaderManager->setUniforms("colors", colors, size_t(2));
+
+    glDrawElements(GL_LINES, getGlMesh()->getSkeletonIndexCount(), GL_UNSIGNED_INT, nullptr);
+
+    getGlMesh()->unbindState(glMeshState);
+    getGlMesh()->unbindSkeleton();
+    checkError();
+    glEnable(GL_DEPTH_TEST);
 }
 
 // TODO this function is not expection safe
@@ -76,12 +100,11 @@ void Animchar::draw(const RenderContext& ctx) const {
 
     const GenericResourcePool::ResourceRef* currentDiffuse = nullptr;
 
-    bool drawSkeleton = drawBones && glMeshState.bones.size() > 0;
+    bool drawSkeleton = drawBones && glMeshState.bones.size() > 1;
 
     unsigned int currentStencil = ((*ctx.currentStencil)++ % ctx.maxStencil) + 1;
     if (currentStencil == ctx.maxStencil)
         glClearStencil(0);
-    glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE);
     glStencilFunc(GL_ALWAYS, currentStencil, 0xFF);
 
     glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
@@ -106,13 +129,16 @@ void Animchar::draw(const RenderContext& ctx) const {
 
     update_texture_state(ctx, "diffuse_tex", currentDiffuse, nullptr);
 
-    if (drawSkeleton) {
-        glStencilFunc(GL_EQUAL, currentStencil, 0xFF);
-        // TODO
-    }
-
     getGlMesh()->unbindState(glMeshState);
     getGlMesh()->unbind();
+
+    checkError();
+
+    if (drawSkeleton) {
+        glStencilFunc(GL_EQUAL, currentStencil, 0xFF);
+        renderBones(ctx);
+        glStencilFunc(GL_ALWAYS, 0, 0xFF);
+    }
 }
 
 void Animchar::setMaterial(std::unique_ptr<Material>&& mat, bool _overrideMat) {

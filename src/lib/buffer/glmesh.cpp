@@ -5,7 +5,11 @@
 
 #include "gltexture.h"
 
-GlMesh::GlMesh() : glBuffer(GL_ARRAY_BUFFER), glIndices(GL_ELEMENT_ARRAY_BUFFER) {
+GlMesh::GlMesh()
+  : glVertices(GL_ARRAY_BUFFER),
+    glIndices(GL_ELEMENT_ARRAY_BUFFER),
+    glSkeletonVertices(GL_ARRAY_BUFFER),
+    glSkeletonIndices(GL_ELEMENT_ARRAY_BUFFER) {
 }
 
 void GlMesh::clear() {
@@ -18,6 +22,8 @@ void GlMesh::upload(const Mesh& mesh) {
     clear();
     std::vector<Mesh::VertexData> vertices;
     std::vector<Mesh::VertexIndex> indices;
+    std::vector<Mesh::BoneVertex> boneVertices;
+    std::vector<Mesh::VertexIndex> boneIndices;
     size_t vertexOffset = 0;
     size_t indexOffset = 0;
     segments.reserve(mesh.getSegmentCount());
@@ -40,6 +46,8 @@ void GlMesh::upload(const Mesh& mesh) {
 
     const Mesh::Skeleton* skeleton = mesh.getSkeleton();
     bones.reserve(skeleton->getBoneCount());
+    std::vector<unsigned int> boneDepth(skeleton->getBoneCount(), 0);
+    std::vector<bool> leafBones(skeleton->getBoneCount(), true);
     for (size_t i = 0; i < skeleton->getBoneCount(); ++i) {
         const Mesh::Bone& bone = skeleton->getBones()[i];
         BoneInfo boneInfo;
@@ -48,20 +56,54 @@ void GlMesh::upload(const Mesh& mesh) {
         // required for updater
         assert(boneInfo.parent <= i || boneInfo.parent == Mesh::INVALID_BONE);
         bones.push_back(std::move(boneInfo));
+        if (bone.parent != Mesh::INVALID_BONE && bone.parent != i) {
+            leafBones[bone.parent] = false;
+            boneDepth[i] = boneDepth[bone.parent] + 1;
+            boneIndices.push_back(bones[i].parent);
+            boneIndices.push_back(i);
+        }
+        Mesh::BoneVertex boneVertex;
+        boneVertex.vId_Depth = glm::vec2(i, boneDepth[i]);
+        boneVertex.vPos = glm::vec3(0, 0, 0);
+        boneVertices.push_back(std::move(boneVertex));
+    }
+    for (size_t i = 0; i < skeleton->getBoneCount(); ++i) {
+        if (!leafBones[i])
+            continue;
+        boneIndices.push_back(i);
+        boneIndices.push_back(boneVertices.size());
+        Mesh::BoneVertex vert = boneVertices[i];
+        vert.vPos = glm::vec3(0, 0, 1);
+        vert.vId_Depth.y = vert.vId_Depth.y + 1;
+        boneVertices.push_back(std::move(vert));
     }
 
-    glBuffer.upload(vertices, GL_STATIC_DRAW);
+    glVertices.upload(vertices, GL_STATIC_DRAW);
     glIndices.upload(indices, GL_STATIC_DRAW);
+
+    glSkeletonVertices.upload(boneVertices, GL_STATIC_DRAW);
+    glSkeletonIndices.upload(boneIndices, GL_STATIC_DRAW);
+    boneIndexCount = boneIndices.size();
 }
 
 void GlMesh::bind() const {
-    glBuffer.bind();
+    glVertices.bind();
     glIndices.bind();
 }
 
 void GlMesh::unbind() const {
-    glBuffer.unbind();
+    glVertices.unbind();
     glIndices.unbind();
+}
+
+void GlMesh::bindSkeleton() const {
+    glSkeletonVertices.bind();
+    glSkeletonIndices.bind();
+}
+
+void GlMesh::unbindSkeleton() const {
+    glSkeletonVertices.bind();
+    glSkeletonIndices.bind();
 }
 
 size_t GlMesh::getSegmentCount() const {

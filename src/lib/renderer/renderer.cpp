@@ -25,6 +25,7 @@ void Renderer::updateFrameBuffer(Framebuffer& framebuffer, unsigned int width,
         glDepthFunc(GL_LESS);
         glEnable(GL_STENCIL_TEST);
         glStencilFunc(GL_ALWAYS, 0, 0xFF);
+        glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE);
         framebuffer.unbind();
         checkError();
     }

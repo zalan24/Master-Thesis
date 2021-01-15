@@ -55,6 +55,9 @@ class GlMesh
     void bind() const;
     void unbind() const;
 
+    void bindSkeleton() const;
+    void unbindSkeleton() const;
+
     void bindState(const State& state) const;
     void unbindState(const State& state) const;
 
@@ -65,10 +68,15 @@ class GlMesh
 
     void clear();
 
+    size_t getSkeletonIndexCount() const { return boneIndexCount; }
+
  private:
-    Buffer<Mesh::VertexData> glBuffer;
+    Buffer<Mesh::VertexData> glVertices;
     Buffer<Mesh::VertexIndex> glIndices;
+    Buffer<Mesh::BoneVertex> glSkeletonVertices;
+    Buffer<Mesh::VertexIndex> glSkeletonIndices;
     std::vector<Segment> segments;
     std::vector<BoneInfo> bones;
     std::vector<Material> materials;
+    size_t boneIndexCount = 0;
 };

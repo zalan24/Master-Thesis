@@ -28,6 +28,7 @@ class Animchar : public DrawableEntity
 
  private:
     AttributeBinder attributeBinder;
+    AttributeBinder skeletonAttributeBinder;
     MeshRes mesh;
     std::shared_ptr<Material> material;
     GlMesh::State glMeshState;
@@ -40,4 +41,5 @@ class Animchar : public DrawableEntity
     void fixMat();
 
     static std::unique_ptr<Material> getDefaultMaterial();
+    void renderBones(const RenderContext& ctx) const;
 };

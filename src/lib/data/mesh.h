@@ -76,6 +76,12 @@ class Mesh
             boneWeights(_boneWeights) {}
     };
 
+    struct BoneVertex
+    {
+        glm::vec3 vPos;
+        glm::vec2 vId_Depth;
+    };
+
     struct Segment
     {
         Mesh::MaterialIndex mat = INVALID_MATERIAL;

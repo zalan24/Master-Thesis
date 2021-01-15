@@ -11,3 +11,5 @@ add_custom_command(
     COMMAND  AnimationsShaderCompiler ${SHADERCODE_H} ${SHADERS_SOURCES}
     DEPENDS  ${SHADERS_SOURCES} AnimationsShaderCompiler
 )
+
+# TODO add clang proprecosser to shaders using -E

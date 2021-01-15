@@ -51,9 +51,9 @@ int main(int argc, char* argv[]) {
 
     std::map<std::string, std::vector<std::string>> programs;
     for (int i = 2; i < argc; ++i) {
-        std::regex filenameRegex{"([a-zA-Z0-9]+)\\.([a-zA-Z]+)"};
-        std::regex uniformRegex{"uniform ([^ ;]+) ([^ ;]+)"};
-        std::regex attributeRegex{"(attribute|in) ([^ ;]+) ([^ ;]+)"};
+        std::regex filenameRegex{"(\\w+)\\.([a-zA-Z]+)"};
+        std::regex uniformRegex{"uniform ([^ ;]+) (\\w+)"};
+        std::regex attributeRegex{"(attribute|in) (\\w+) (\\w+)"};
         std::regex texRegex{".*sampler.*"};
         // std::regex varyingRegex{"varying ([^ ;]+) ([^ ;]+)"};
         std::vector<ShaderVarData> uniform;
