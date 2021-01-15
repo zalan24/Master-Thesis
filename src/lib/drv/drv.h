@@ -1,0 +1,143 @@
+#pragma once
+
+#include <drvtypes.h>
+
+extern "C"
+{
+    struct Milestone;
+}
+
+namespace drv
+{
+using DriverIndex = unsigned int;
+enum class Driver : DriverIndex
+{
+    CPU = 0,
+    CUDA,
+    VULKAN,
+    NUM_PLATFORMS
+};
+// Registers the first available driver on the list
+bool register_driver(const Driver* drivers, unsigned int count);
+
+// This struct is used to define driver info outside the engine
+struct DriverRegistry
+{
+    struct ShaderLoaders
+    {
+        using ShaderLoaderF = bool (*)(LogicalDevicePtr);
+        ShaderLoaderF load_shaders = nullptr;
+        ShaderLoaderF free_shaders = nullptr;
+    } shaderLoaders;
+};
+
+DriverRegistry& get_driver_registry();
+DriverRegistry& get_driver_registry(Driver driver);
+
+void register_shader_loaders(Driver driver, const DriverRegistry::ShaderLoaders& shaderLoaders);
+
+bool init();
+bool close();
+
+CommandTypeMask get_command_type_mask(Command cmd);
+
+InstancePtr create_instance(const InstanceCreateInfo* info, bool _default = true);
+bool delete_instance(InstancePtr ptr);
+
+bool get_physical_devices(unsigned int* count, PhysicalDeviceInfo* infos,
+                          InstancePtr instance = NULL_HANDLE);
+bool get_physical_device_queue_families(PhysicalDevicePtr physicalDevice, unsigned int* count,
+                                        QueueFamily* queueFamilies);
+
+CommandTypeMask get_command_type_mask(PhysicalDevicePtr physicalDevice, QueueFamilyPtr queueFamily);
+
+LogicalDevicePtr create_logical_device(const LogicalDeviceCreateInfo* info);
+bool delete_logical_device(LogicalDevicePtr device);
+
+QueuePtr get_queue(LogicalDevicePtr device, QueueFamilyPtr family, unsigned int ind);
+QueueInfo get_queue_info(LogicalDevicePtr device, QueuePtr queue);
+
+CommandPoolPtr create_command_pool(LogicalDevicePtr device, QueueFamilyPtr queueFamily,
+                                   const CommandPoolCreateInfo* info);
+bool destroy_command_pool(LogicalDevicePtr device, CommandPoolPtr commandPool);
+
+CommandBufferPtr create_command_buffer(LogicalDevicePtr device, CommandPoolPtr pool,
+                                       const CommandBufferCreateInfo* info);
+
+bool free_command_buffer(LogicalDevicePtr device, CommandPoolPtr pool, unsigned int count,
+                         drv::CommandBufferPtr* buffers);
+
+SemaphorePtr create_semaphore(LogicalDevicePtr device);
+bool destroy_semaphore(LogicalDevicePtr device, SemaphorePtr semaphore);
+
+FencePtr create_fence(LogicalDevicePtr device, const FenceCreateInfo* info);
+bool destroy_fence(LogicalDevicePtr device, FencePtr fence);
+bool is_fence_signalled(LogicalDevicePtr device, FencePtr fence);
+bool reset_fences(LogicalDevicePtr device, unsigned int count, FencePtr* fences);
+// timeOut is in nanoseconds
+FenceWaitResult wait_for_fence(LogicalDevicePtr device, unsigned int count, const FencePtr* fences,
+                               bool waitAll, unsigned long long int timeOut);
+
+bool execute(QueuePtr queue, unsigned int count, const ExecutionInfo* infos,
+             FencePtr fence = nullptr);
+
+bool command(const CommandData* cmd, const CommandExecutionData* data);
+
+BufferPtr create_buffer(LogicalDevicePtr device, const BufferCreateInfo* info);
+bool destroy_buffer(LogicalDevicePtr device, BufferPtr buffer);
+
+DeviceMemoryPtr allocate_memory(LogicalDevicePtr device, const MemoryAllocationInfo* info);
+bool free_memory(LogicalDevicePtr device, DeviceMemoryPtr memory);
+
+bool bind_memory(LogicalDevicePtr device, BufferPtr buffer, DeviceMemoryPtr memory,
+                 DeviceSize offset);
+
+bool get_memory_properties(PhysicalDevicePtr physicalDevice, MemoryProperties& props);
+
+bool get_memory_requirements(LogicalDevicePtr device, BufferPtr buffer,
+                             MemoryRequirements& memoryRequirements);
+
+BufferMemoryInfo get_buffer_memory_info(LogicalDevicePtr device, BufferPtr buffer);
+
+bool map_memory(LogicalDevicePtr device, DeviceMemoryPtr memory, DeviceSize offset, DeviceSize size,
+                void** data);
+bool unmap_memory(LogicalDevicePtr device, DeviceMemoryPtr memory);
+
+// bool push_data(LogicalDevicePtr device, )
+
+bool load_shaders(LogicalDevicePtr device);
+bool free_shaders(LogicalDevicePtr device);
+
+DescriptorSetLayoutPtr create_descriptor_set_layout(LogicalDevicePtr device,
+                                                    const DescriptorSetLayoutCreateInfo* info);
+bool destroy_descriptor_set_layout(LogicalDevicePtr device, DescriptorSetLayoutPtr layout);
+
+DescriptorPoolPtr create_descriptor_pool(LogicalDevicePtr device,
+                                         const DescriptorPoolCreateInfo* info);
+bool destroy_descriptor_pool(LogicalDevicePtr device, DescriptorPoolPtr pool);
+bool allocate_descriptor_sets(LogicalDevicePtr device,
+                              const DescriptorSetAllocateInfo* allocateInfo,
+                              DescriptorSetPtr* sets);
+bool update_descriptor_sets(LogicalDevicePtr device, uint32_t descriptorWriteCount,
+                            const WriteDescriptorSet* writes, uint32_t descriptorCopyCount,
+                            const CopyDescriptorSet* copies);
+
+bool destroy_shader_create_info(ShaderCreateInfoPtr info);
+
+PipelineLayoutPtr create_pipeline_layout(LogicalDevicePtr device,
+                                         const PipelineLayoutCreateInfo* info);
+bool destroy_pipeline_layout(LogicalDevicePtr device, PipelineLayoutPtr layout);
+
+bool create_compute_pipeline(LogicalDevicePtr device, unsigned int count,
+                             const ComputePipelineCreateInfo* infos, ComputePipelinePtr* pipelines);
+bool destroy_compute_pipeline(LogicalDevicePtr device, ComputePipelinePtr pipeline);
+
+ShaderModulePtr get_shader_module(LogicalDevicePtr device, ShaderIdType shaderId);
+unsigned int get_num_shader_descriptor_set_layouts(LogicalDevicePtr device, ShaderIdType shaderId);
+DescriptorSetLayoutPtr* get_shader_descriptor_set_layouts(LogicalDevicePtr device,
+                                                          ShaderIdType shaderId);
+
+ShaderModulePtr create_shader_module(LogicalDevicePtr device, ShaderCreateInfoPtr info);
+bool destroy_shader_module(LogicalDevicePtr device, ShaderModulePtr module);
+
+};  // namespace drv
