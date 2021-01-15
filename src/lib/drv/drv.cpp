@@ -8,12 +8,6 @@
 
 #include "drvfunctions.h"
 
-#ifdef DRIVER_CPU
-#    include <drvcpu.h>
-#endif
-#ifdef DRIVER_CUDA
-#    include <drvcuda.h>
-#endif
 #ifdef DRIVER_VULKAN
 #    include <drvvulkan.h>
 #endif
@@ -59,20 +53,6 @@ bool drv::register_driver(const Driver* drivers, unsigned int count) {
     for (unsigned int i = 0; i < count; ++i) {
         current_driver = drivers[i];
         switch (drivers[i]) {
-            case Driver::CPU:
-#ifdef DRIVER_CPU
-                drv_cpu::register_cpu_drv(functions);
-                return true;
-#else
-                break;
-#endif
-            case Driver::CUDA:
-#ifdef DRIVER_CUDA
-                drv_cuda::register_cuda_drv(functions);
-                return true;
-#else
-                break;
-#endif
             case Driver::VULKAN:
 #ifdef DRIVER_VULKAN
                 drv_vulkan::register_vulkan_drv(functions);

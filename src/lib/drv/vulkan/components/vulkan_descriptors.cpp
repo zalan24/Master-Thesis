@@ -161,40 +161,42 @@ bool drv_vulkan::update_descriptor_sets(drv::LogicalDevicePtr device, uint32_t d
                                         const drv::WriteDescriptorSet* writes,
                                         uint32_t descriptorCopyCount,
                                         const drv::CopyDescriptorSet* copies) {
-    LOCAL_MEMORY_POOL_DEFAULT(pool);
-    drv::MemoryPool* threadPool = pool.pool();
-    drv::MemoryPool::MemoryHolder writeMemory(descriptorWriteCount * sizeof(VkWriteDescriptorSet),
-                                              threadPool);
-    drv::MemoryPool::MemoryHolder copyMemory(descriptorCopyCount * sizeof(VkCopyDescriptorSet),
-                                             threadPool);
-    VkWriteDescriptorSet* vkWrites = reinterpret_cast<VkWriteDescriptorSet*>(writeMemory.get());
-    drv::drv_assert(vkWrites != nullptr, "Could not allocate memory for descriptor set writes");
-    VkCopyDescriptorSet* vkCopies = reinterpret_cast<VkCopyDescriptorSet*>(copyMemory.get());
-    drv::drv_assert(vkCopies != nullptr, "Could not allocate memory for descriptor set copies");
-    for (unsigned int i = 0; i < descriptorWriteCount; ++i) {
-        vkWrites[i].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        vkWrites[i].pNext = nullptr;
-        vkWrites[i].dstSet = reinterpret_cast<VkDescriptorSet>(writes[i].dstSet);
-        vkWrites[i].dstBinding = writes[i].dstBinding;
-        vkWrites[i].dstArrayElement = writes[i].dstArrayElement;
-        // TODO
-        vkWrites[i].descriptorType = ;
-        vkWrites[i].descriptorCount = writes[i].descriptorCount;
-        vkWrites[i].pBufferInfo = &bufferInfo;
-        // vkWrites[i].pImageInfo = nullptr;
-        // vkWrites[i].pTexelBufferView = nullptr;
-    }
-    for (unsigned int i = 0; i < descriptorCopyCount; ++i) {
-        vkCopies[i].sType = VK_STRUCTURE_TYPE_COPY_DESCRIPTOR_SET;
-        vkCopies[i].pNext = nullptr;
-        vkCopies[i].srcSet = reinterpret_cast<VkDescriptorSet>(copies[i].srcSet);
-        vkCopies[i].srcBinding = copies[i].srcBinding;
-        vkCopies[i].srcArrayElement = copies[i].srcArrayElement;
-        vkCopies[i].dstSet = reinterpret_cast<VkDescriptorSet>(copies[i].dstSet);
-        vkCopies[i].dstBinding = copies[i].dstBinding;
-        vkCopies[i].dstArrayElement = copies[i].dstArrayElement
-    }
-    vkUpdateDescriptorSets(reinterpret_cast<VkDevice>(device), descriptorWriteCount, vkWrites,
-                           descriptorCopyCount, vkCopies);
-    return true;
+    drv::drv_assert(false, "Unimplemented");
+    return false;
+    // LOCAL_MEMORY_POOL_DEFAULT(pool);
+    // drv::MemoryPool* threadPool = pool.pool();
+    // drv::MemoryPool::MemoryHolder writeMemory(descriptorWriteCount * sizeof(VkWriteDescriptorSet),
+    //                                           threadPool);
+    // drv::MemoryPool::MemoryHolder copyMemory(descriptorCopyCount * sizeof(VkCopyDescriptorSet),
+    //                                          threadPool);
+    // VkWriteDescriptorSet* vkWrites = reinterpret_cast<VkWriteDescriptorSet*>(writeMemory.get());
+    // drv::drv_assert(vkWrites != nullptr, "Could not allocate memory for descriptor set writes");
+    // VkCopyDescriptorSet* vkCopies = reinterpret_cast<VkCopyDescriptorSet*>(copyMemory.get());
+    // drv::drv_assert(vkCopies != nullptr, "Could not allocate memory for descriptor set copies");
+    // for (unsigned int i = 0; i < descriptorWriteCount; ++i) {
+    //     vkWrites[i].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+    //     vkWrites[i].pNext = nullptr;
+    //     vkWrites[i].dstSet = reinterpret_cast<VkDescriptorSet>(writes[i].dstSet);
+    //     vkWrites[i].dstBinding = writes[i].dstBinding;
+    //     vkWrites[i].dstArrayElement = writes[i].dstArrayElement;
+    //     // TODO
+    //     vkWrites[i].descriptorType = ;
+    //     vkWrites[i].descriptorCount = writes[i].descriptorCount;
+    //     vkWrites[i].pBufferInfo = &bufferInfo;
+    //     // vkWrites[i].pImageInfo = nullptr;
+    //     // vkWrites[i].pTexelBufferView = nullptr;
+    // }
+    // for (unsigned int i = 0; i < descriptorCopyCount; ++i) {
+    //     vkCopies[i].sType = VK_STRUCTURE_TYPE_COPY_DESCRIPTOR_SET;
+    //     vkCopies[i].pNext = nullptr;
+    //     vkCopies[i].srcSet = reinterpret_cast<VkDescriptorSet>(copies[i].srcSet);
+    //     vkCopies[i].srcBinding = copies[i].srcBinding;
+    //     vkCopies[i].srcArrayElement = copies[i].srcArrayElement;
+    //     vkCopies[i].dstSet = reinterpret_cast<VkDescriptorSet>(copies[i].dstSet);
+    //     vkCopies[i].dstBinding = copies[i].dstBinding;
+    //     vkCopies[i].dstArrayElement = copies[i].dstArrayElement
+    // }
+    // vkUpdateDescriptorSets(reinterpret_cast<VkDevice>(device), descriptorWriteCount, vkWrites,
+    //                        descriptorCopyCount, vkCopies);
+    // return true;
 }

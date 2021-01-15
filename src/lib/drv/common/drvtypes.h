@@ -60,12 +60,6 @@ struct CallbackData
 };
 using CallbackFunction = void (*)(const CallbackData*);
 
-struct TestData
-{
-    CallbackFunction callback;
-};
-using TestFunction = bool (*)(const TestData*);
-
 struct PhysicalDeviceInfo
 {
     static const unsigned int MAX_NAME_SIZE = 256;

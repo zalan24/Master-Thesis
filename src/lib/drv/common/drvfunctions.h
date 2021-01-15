@@ -141,7 +141,5 @@ struct DrvFunctions
 
     ShaderModulePtr (*create_shader_module)(LogicalDevicePtr, ShaderCreateInfoPtr) = nullptr;
     bool (*destroy_shader_module)(LogicalDevicePtr, ShaderModulePtr) = nullptr;
-
-    bool (*test)(const TestData*) = nullptr;
 };
 }  // namespace drv

@@ -12,9 +12,7 @@ namespace drv
 using DriverIndex = unsigned int;
 enum class Driver : DriverIndex
 {
-    CPU = 0,
-    CUDA,
-    VULKAN,
+    VULKAN = 0,
     NUM_PLATFORMS
 };
 // Registers the first available driver on the list
