@@ -5,7 +5,8 @@ add_dependencies(AnimationsShaderManager ShaderCodes)
 
 set_target_properties(  AnimationsShaderManager
                         PROPERTIES
-                        COMPILE_FLAGS ${TARGETCOMPILEFLAGS})
+                        COMPILE_FLAGS ${TARGETCOMPILEFLAGS}
+                        LINK_OPTIONS "${TARGET_LINK_FLAGS}")
 target_include_directories(AnimationsShaderManager PUBLIC . ${CMAKE_CURRENT_BINARY_DIR})
 target_link_libraries(AnimationsShaderManager PRIVATE MAPBOX_LIB)
 target_link_libraries(AnimationsShaderManager PUBLIC

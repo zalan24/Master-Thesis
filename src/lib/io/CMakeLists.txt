@@ -4,7 +4,8 @@ add_library(AnimationsIO ${IO_SOURCES})
 
 set_target_properties(  AnimationsIO
                         PROPERTIES
-                        COMPILE_FLAGS ${TARGETCOMPILEFLAGS})
+                        COMPILE_FLAGS ${TARGETCOMPILEFLAGS}
+                        LINK_OPTIONS "${TARGET_LINK_FLAGS}")
 target_include_directories(AnimationsIO PUBLIC . ${CMAKE_CURRENT_BINARY_DIR})
 target_link_libraries(AnimationsIO PRIVATE
     ASSIMP_LIB

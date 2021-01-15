@@ -6,25 +6,23 @@ if (Vulkan_FOUND)
         commands/*.c commands/*.cpp commands/*.h commands/*.hpp
         components/*.c components/*.cpp components/*.h components/*.hpp)
 
-    add_library(ProjectiveGeometryDrvVulkan ${DRV_VULKAN_FILES})
-    target_include_directories(ProjectiveGeometryDrvVulkan PUBLIC
+    add_library(AnimationsDrvVulkan ${DRV_VULKAN_FILES})
+    target_include_directories(AnimationsDrvVulkan PUBLIC
         ${CMAKE_CURRENT_BINARY_DIR}
         ${CMAKE_CURRENT_SOURCE_DIR}
     )
-    target_include_directories(ProjectiveGeometryDrvVulkan PRIVATE
+    target_include_directories(AnimationsDrvVulkan PRIVATE
         ${Vulkan_INCLUDE_DIRS}
     )
-    set_target_properties(  ProjectiveGeometryDrvVulkan
+    set_target_properties(  AnimationsDrvVulkan
                             PROPERTIES
-                            COMPILE_FLAGS ${TARGETCOMPILEFLAGS})
-    set_target_properties(  ProjectiveGeometryDrvVulkan
-                            PROPERTIES
+                            COMPILE_FLAGS ${TARGETCOMPILEFLAGS}
                             LINK_OPTIONS "${TARGET_LINK_FLAGS}")
-    target_link_libraries(ProjectiveGeometryDrvVulkan PUBLIC
-        ProjectiveGeometryDrvCommon
-        ProjectiveGeometryDrvMemory
+    target_link_libraries(AnimationsDrvVulkan PUBLIC
+        AnimationsDrvCommon
+        AnimationsDrvMemory
     )
-    target_link_libraries(ProjectiveGeometryDrvVulkan PRIVATE
+    target_link_libraries(AnimationsDrvVulkan PRIVATE
         ${Vulkan_LIBRARIES}
         Vulkan_LIB
     )

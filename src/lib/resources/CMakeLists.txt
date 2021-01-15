@@ -4,7 +4,8 @@ add_library(AnimationsResources ${RESOURCES_SOURCES})
 
 set_target_properties(  AnimationsResources
                         PROPERTIES
-                        COMPILE_FLAGS ${TARGETCOMPILEFLAGS})
+                        COMPILE_FLAGS ${TARGETCOMPILEFLAGS}
+                        LINK_OPTIONS "${TARGET_LINK_FLAGS}")
 target_include_directories(AnimationsResources PUBLIC . ${CMAKE_CURRENT_BINARY_DIR})
 target_link_libraries(AnimationsResources PUBLIC
     AnimationsData
