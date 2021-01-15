@@ -62,8 +62,9 @@ static void update_texture_state(const RenderContext& ctx, const std::string& na
 
 void Animchar::renderBones(const RenderContext& ctx) const {
     ctx.shaderManager->useProgram("skeleton");
+    getGlMesh()->uploadBones(glMeshState, nullptr);
     getGlMesh()->bindSkeleton();
-    getGlMesh()->bindState(glMeshState);
+    getGlMesh()->bindBones(glMeshState);
     glDisable(GL_DEPTH_TEST);
     skeletonAttributeBinder.bind(*ctx.shaderManager);
 
@@ -75,7 +76,7 @@ void Animchar::renderBones(const RenderContext& ctx) const {
 
     glDrawElements(GL_LINES, getGlMesh()->getSkeletonIndexCount(), GL_UNSIGNED_INT, nullptr);
 
-    getGlMesh()->unbindState(glMeshState);
+    getGlMesh()->unbindBones(glMeshState);
     getGlMesh()->unbindSkeleton();
     checkError();
     glEnable(GL_DEPTH_TEST);
@@ -88,7 +89,6 @@ void Animchar::draw(const RenderContext& ctx) const {
     std::unique_lock<std::mutex> lock(ctx.mutex);
     ctx.shaderManager->useProgram("animchar");
     getGlMesh()->bind();
-    getGlMesh()->bindState(glMeshState);
     attributeBinder.bind(*ctx.shaderManager);
     ctx.shaderManager->setUniform("lightColor", ctx.lightColor);
     ctx.shaderManager->setUniform("lightDir", ctx.lightDir);
@@ -112,6 +112,8 @@ void Animchar::draw(const RenderContext& ctx) const {
         const GlMesh::Segment& segment = getGlMesh()->getSegments()[i];
         if (segment.indexCount == 0)
             continue;
+        getGlMesh()->uploadBones(glMeshState, segment.boneOffsets.data());
+        getGlMesh()->bindBones(glMeshState);
 
         const GenericResourcePool::ResourceRef* diffuse =
           material ? &material->getAlbedoAlpha() : nullptr;
@@ -125,11 +127,11 @@ void Animchar::draw(const RenderContext& ctx) const {
         glDrawElementsBaseVertex(GL_TRIANGLES, segment.indexCount, GL_UNSIGNED_INT,
                                  reinterpret_cast<void*>(segment.indexOffset),
                                  segment.vertexOffset);
+        getGlMesh()->unbindBones(glMeshState);
     }
 
     update_texture_state(ctx, "diffuse_tex", currentDiffuse, nullptr);
 
-    getGlMesh()->unbindState(glMeshState);
     getGlMesh()->unbind();
 
     checkError();

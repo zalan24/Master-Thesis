@@ -28,6 +28,7 @@ class GlMesh
         size_t vertexOffset;
         size_t indexOffset;
         size_t indexCount;
+        std::vector<glm::mat4> boneOffsets;
         Mesh::MaterialIndex matId;
     };
 
@@ -39,9 +40,8 @@ class GlMesh
     struct State
     {
         Buffer<glm::mat4> bonesBuffer;
-        std::vector<glm::mat4> boneTms;
+        mutable std::vector<glm::mat4> boneTms;  // temp storage for uploading
         std::vector<BoneState> bones;
-        bool invalidBones = true;
         GLuint boneBinding;
     };
 
@@ -58,11 +58,13 @@ class GlMesh
     void bindSkeleton() const;
     void unbindSkeleton() const;
 
-    void bindState(const State& state) const;
-    void unbindState(const State& state) const;
+    void bindBones(const State& state) const;
+    void unbindBones(const State& state) const;
 
     State createState(GLuint boneBinding) const;
     void updateState(State& state) const;
+
+    void uploadBones(const State& state, const glm::mat4* offsets) const;
 
     const Material& getMat(Mesh::MaterialIndex id) const;
 

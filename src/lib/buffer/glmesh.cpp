@@ -36,6 +36,7 @@ void GlMesh::upload(const Mesh& mesh) {
         segment.vertexOffset = vertexOffset;
         segment.indexCount = s.indices.size();
         segment.matId = s.mat;
+        segment.boneOffsets = s.boneOffsets;
         segments.push_back(std::move(segment));
         vertexOffset += s.vertices.size();
         indexOffset += sizeof(Mesh::VertexIndex) * s.indices.size();
@@ -113,11 +114,11 @@ const GlMesh::Segment* GlMesh::getSegments() const {
     return segments.data();
 }
 
-void GlMesh::bindState(const State& state) const {
+void GlMesh::bindBones(const State& state) const {
     state.bonesBuffer.bind(state.boneBinding);
 }
 
-void GlMesh::unbindState(const State& state) const {
+void GlMesh::unbindBones(const State& state) const {
     state.bonesBuffer.unbind(state.boneBinding);
 }
 
@@ -132,21 +133,26 @@ GlMesh::State GlMesh::createState(GLuint boneBinding) const {
         state.localTm = boneInfo.defaultTm;
         return state;
     });
-    ret.invalidBones = true;
     return ret;
 }
 
 void GlMesh::updateState(State& state) const {
-    if (state.invalidBones) {
-        for (size_t i = 0; i < bones.size(); ++i) {
-            if (bones[i].parent < i)
-                state.boneTms[i] = state.boneTms[bones[i].parent] * state.bones[i].localTm;
-            else
-                state.boneTms[i] = state.bones[i].localTm;
-        }
-        state.bonesBuffer.upload(state.boneTms, GL_DYNAMIC_DRAW);
-        state.invalidBones = false;
+    if (state.boneTms.size() != bones.size())
+        state.boneTms.resize(bones.size());
+    // TODO update bone states here
+}
+
+void GlMesh::uploadBones(const State& state, const glm::mat4* offsets) const {
+    for (size_t i = 0; i < bones.size(); ++i) {
+        if (bones[i].parent < i)
+            state.boneTms[i] = state.boneTms[bones[i].parent] * state.bones[i].localTm;
+        else
+            state.boneTms[i] = state.bones[i].localTm;
     }
+    if (offsets != nullptr)
+        for (size_t i = 0; i < bones.size(); ++i)
+            state.boneTms[i] = state.boneTms[i] * offsets[i];
+    state.bonesBuffer.upload(state.boneTms, GL_DYNAMIC_DRAW);
 }
 
 const GlMesh::Material& GlMesh::getMat(Mesh::MaterialIndex id) const {

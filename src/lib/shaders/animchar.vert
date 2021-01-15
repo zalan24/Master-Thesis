@@ -3,6 +3,7 @@
 // TODO put in UBO
 uniform mat4 PVM;
 uniform mat4 model;
+
 in vec3 vPos;
 in vec3 vNorm;
 in vec3 vColor;

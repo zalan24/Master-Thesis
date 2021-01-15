@@ -87,6 +87,7 @@ class Mesh
         Mesh::MaterialIndex mat = INVALID_MATERIAL;
         std::vector<Mesh::VertexData> vertices;
         std::vector<Mesh::VertexIndex> indices;
+        std::vector<glm::mat4> boneOffsets;
 
         Mesh::VertexIndex addVertex(const Mesh::VertexData& vert);
         void addFace();     // adds last three vertices

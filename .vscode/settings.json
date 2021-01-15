@@ -182,6 +182,7 @@
         "stbi",
         "stbimage",
         "strequal",
+        "struct",
         "symengine",
         "texcoord",
         "thirdparty",

@@ -53,6 +53,12 @@ int main(int argc, char* argv[]) {
         engine.getRenderer()->getCamera().setLookAt(glm::vec3{0, 1, 0});
         engine.getRenderer()->getCamera().setEyePos(glm::vec3{0, 3, -5});
 
+        load_mesh(engine, "../data/models/BH-2/BH-2 Free.fbx", glm::vec3(-4, 0.5, 2), 0.01,
+                  glm::vec3());
+        // load_mesh(engine, "../data/models/cartoon_boy/cartoon_boy.obj", glm::vec3(4, 0.5, 2), 0.005,
+        //           glm::vec3());
+        load_mesh(engine, "../data/models/boring_guy.fbx", glm::vec3(-2, 0.5, 2), 0.005,
+                  glm::vec3());
         load_mesh(engine, "../data/models/Twilight/Twilight_Character.FBX", glm::vec3(4, 0.5, 2),
                   0.005, glm::vec3());
         load_mesh(engine, "../data/models/suzanne.obj", glm::vec3(0, 0.5, 0), 0.5,

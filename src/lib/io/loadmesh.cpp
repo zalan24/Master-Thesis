@@ -45,6 +45,13 @@ static glm::mat4 convert_matrix(const aiMatrix4x4& mat) {
     return tm;
 }
 
+static glm::mat4 get_bone_transform(const Mesh::Skeleton* skeleton, Mesh::BoneIndex boneId) {
+    const Mesh::Bone& b = skeleton->getBone(boneId);
+    if (b.parent != Mesh::INVALID_BONE && b.parent != boneId)
+        return get_bone_transform(skeleton, b.parent) * b.localTm;
+    return b.localTm;
+}
+
 static Mesh::Segment process(const aiMesh* mesh, const std::vector<Mesh::MaterialIndex>& materials,
                              Mesh::BoneIndex& boneId, const Mesh::Skeleton* skeleton,
                              const glm::vec3& default_color) {
@@ -52,14 +59,16 @@ static Mesh::Segment process(const aiMesh* mesh, const std::vector<Mesh::Materia
     Mesh::Segment segment;
     // mesh->mAnimMeshes[0]->
     std::map<uint32_t, std::vector<std::pair<uint32_t, float>>> vertexBoneWeights;
+    segment.boneOffsets = std::vector<glm::mat4>(skeleton->getBoneCount(), glm::mat4(1.f));
     if (mesh->HasBones()) {
         for (unsigned int i = 0; i < mesh->mNumBones; ++i) {
             std::string name(mesh->mBones[i]->mName.C_Str());
-            Mesh::BoneIndex boneId = skeleton->getBoneId(name);
-            assert(boneId != Mesh::INVALID_BONE);
+            Mesh::BoneIndex id = skeleton->getBoneId(name);
+            assert(id != Mesh::INVALID_BONE);
+            segment.boneOffsets[id] = convert_matrix(mesh->mBones[i]->mOffsetMatrix);
             for (unsigned int j = 0; j < mesh->mBones[i]->mNumWeights; ++j)
                 vertexBoneWeights[mesh->mBones[i]->mWeights[j].mVertexId].emplace_back(
-                  boneId, mesh->mBones[i]->mWeights[j].mWeight);
+                  id, mesh->mBones[i]->mWeights[j].mWeight);
         }
         for (auto& itr : vertexBoneWeights) {
             // assert(itr.second.size() <= Mesh::MAX_BONES);  // TODO not sure if this would work
