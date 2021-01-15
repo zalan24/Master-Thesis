@@ -49,6 +49,8 @@ class Mesh
         void setBone(BoneIndex boneId, const Bone& bone) { bones[boneId] = bone; }
         void setBone(BoneIndex boneId, Bone&& bone) { bones[boneId] = std::move(bone); }
 
+        glm::mat4 getBoneWtm(Mesh::BoneIndex boneId) const;
+
      private:
         std::unordered_map<std::string, BoneIndex> boneMap;
         std::vector<Bone> bones;

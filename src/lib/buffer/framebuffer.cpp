@@ -45,7 +45,7 @@ void Framebuffer::unbind(GLenum bindMode) const {
 bool Framebuffer::isBound(GLenum bindMode) const {
     GLint id;
     glGetIntegerv(bindMode, &id);
-    return id == fbo;
+    return id >= 0 && static_cast<GLuint>(id) == fbo;
 }
 
 bool Framebuffer::setResolution(unsigned int _width, unsigned int _height) {

@@ -60,8 +60,8 @@ void GlMesh::upload(const Mesh& mesh) {
         if (bone.parent != Mesh::INVALID_BONE && bone.parent != i) {
             leafBones[bone.parent] = false;
             boneDepth[i] = boneDepth[bone.parent] + 1;
-            boneIndices.push_back(bones[i].parent);
-            boneIndices.push_back(i);
+            boneIndices.push_back(static_cast<Mesh::VertexIndex>(bones[i].parent));
+            boneIndices.push_back(static_cast<Mesh::VertexIndex>(i));
         }
         Mesh::BoneVertex boneVertex;
         boneVertex.vId_Depth = glm::vec2(i, boneDepth[i]);
@@ -71,8 +71,8 @@ void GlMesh::upload(const Mesh& mesh) {
     for (size_t i = 0; i < skeleton->getBoneCount(); ++i) {
         if (!leafBones[i])
             continue;
-        boneIndices.push_back(i);
-        boneIndices.push_back(boneVertices.size());
+        boneIndices.push_back(static_cast<Mesh::VertexIndex>(i));
+        boneIndices.push_back(static_cast<Mesh::VertexIndex>(boneVertices.size()));
         Mesh::BoneVertex vert = boneVertices[i];
         vert.vPos = glm::vec3(0, 0, 1);
         vert.vId_Depth.y = vert.vId_Depth.y + 1;

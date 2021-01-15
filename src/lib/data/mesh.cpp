@@ -83,3 +83,10 @@ void Mesh::sortSegments() {
 const Material* Mesh::getMaterial(MaterialIndex mat) const {
     return &materials[mat];
 }
+
+glm::mat4 Mesh::Skeleton::getBoneWtm(Mesh::BoneIndex boneId) const {
+    const Mesh::Bone& b = getBone(boneId);
+    if (b.parent != Mesh::INVALID_BONE && b.parent != boneId)
+        return getBoneWtm(b.parent) * b.localTm;
+    return b.localTm;
+}

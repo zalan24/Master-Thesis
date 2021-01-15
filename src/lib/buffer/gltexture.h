@@ -42,7 +42,9 @@ class GlTexture
     void upload(const Texture<P>* texture, bool genMips = true) {
         static constexpr GLenum format = PixelType<P>::format;
         static constexpr GLenum dataType = PixelType<P>::dataType;
-        create(texture->getWidth(), texture->getHeight(), texture->getDepth(), format, dataType,
+        create(static_cast<unsigned int>(texture->getWidth()),
+               static_cast<unsigned int>(texture->getHeight()),
+               static_cast<unsigned int>(texture->getDepth()), format, dataType,
                texture->getData());
         if (genMips) {
             bind();

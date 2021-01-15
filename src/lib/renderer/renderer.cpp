@@ -35,7 +35,8 @@ void Renderer::render(EntityManager* entityManager, int width, int height) {
     float ratio;
     if (width <= 0 || height <= 0)
         return;
-    updateFrameBuffer(frame.framebuffer, width, height);
+    updateFrameBuffer(frame.framebuffer, static_cast<unsigned int>(width),
+                      static_cast<unsigned int>(height));
     frame.framebuffer.bind();
     ratio = static_cast<float>(width) / static_cast<float>(height);
     glViewport(0, 0, width, height);

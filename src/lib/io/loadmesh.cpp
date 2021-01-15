@@ -45,13 +45,6 @@ static glm::mat4 convert_matrix(const aiMatrix4x4& mat) {
     return tm;
 }
 
-static glm::mat4 get_bone_transform(const Mesh::Skeleton* skeleton, Mesh::BoneIndex boneId) {
-    const Mesh::Bone& b = skeleton->getBone(boneId);
-    if (b.parent != Mesh::INVALID_BONE && b.parent != boneId)
-        return get_bone_transform(skeleton, b.parent) * b.localTm;
-    return b.localTm;
-}
-
 static Mesh::Segment process(const aiMesh* mesh, const std::vector<Mesh::MaterialIndex>& materials,
                              Mesh::BoneIndex& boneId, const Mesh::Skeleton* skeleton,
                              const glm::vec3& default_color) {
@@ -92,14 +85,14 @@ static Mesh::Segment process(const aiMesh* mesh, const std::vector<Mesh::Materia
         glm::vec3 normal{0, 0, 0};
         glm::vec3 color = default_color;
         glm::vec2 texture{0, 0};
-        glm::ivec4 boneIds(boneId, boneId, boneId, boneId);
+        glm::vec4 boneIds(boneId, boneId, boneId, boneId);
         glm::vec4 boneWeights(1, 0, 0, 0);
         auto boneItr = vertexBoneWeights.find(i);
         if (boneItr != vertexBoneWeights.end() && boneItr->second.size() > 0) {
             for (size_t j = 0; j < boneItr->second.size(); ++j) {
                 const auto& [id, weight] = boneItr->second[j];
-                boneIds[j] = static_cast<float>(id);
-                boneWeights[j] = weight;
+                boneIds[static_cast<int>(j)] = static_cast<float>(id);
+                boneWeights[static_cast<int>(j)] = weight;
             }
             boneWeights /= boneWeights.x + boneWeights.y + boneWeights.z + boneWeights.w;
         }
