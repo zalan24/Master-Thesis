@@ -6,10 +6,10 @@
 #include <thread>
 
 #include <entitymanager.h>
-#include <renderer.h>
-#include <resourcemanager.h>
+// #include <renderer.h>
+// #include <resourcemanager.h>
 #include <serializable.h>
-#include <window.h>
+// #include <window.h>
 
 class Engine
 {
@@ -34,11 +34,11 @@ class Engine
     EntityManager* getEntityManager() { return &entityManager; }
     const EntityManager* getEntityManager() const { return &entityManager; }
 
-    Renderer* getRenderer() { return &renderer; }
-    const Renderer* getRenderer() const { return &renderer; }
+    // Renderer* getRenderer() { return &renderer; }
+    // const Renderer* getRenderer() const { return &renderer; }
 
-    ResourceManager* getResMgr() { return &resourceMgr; }
-    const ResourceManager* getResMgr() const { return &resourceMgr; }
+    // ResourceManager* getResMgr() { return &resourceMgr; }
+    // const ResourceManager* getResMgr() const { return &resourceMgr; }
 
  private:
     struct GlLoader
@@ -53,10 +53,10 @@ class Engine
 
     Config config;
 
-    ResourceManager resourceMgr;
+    // ResourceManager resourceMgr;
     EntityManager entityManager;
-    Window window;
-    Renderer renderer;
+    // Window window;
+    // Renderer renderer;
 
     FrameId simulationFrame = 0;
     FrameId renderFrame = 0;
@@ -72,5 +72,5 @@ class Engine
         SIMULATION_END
     };
 
-    void simulationLoop(bool* quit, LoopState* state);
+    void simulationLoop(volatile bool* quit, volatile LoopState* state);
 };
