@@ -3,12 +3,6 @@
 #define ON 1
 #define OFF 0
 
-#if @BUILD_DRV_CPU@ == ON
-#    define DRIVER_CPU
-#endif
-#if @BUILD_DRV_CUDA@ == ON
-#    define DRIVER_CUDA
-#endif
 #if @BUILD_DRV_VULKAN@ == ON
 #    define DRIVER_VULKAN
 #endif

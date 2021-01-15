@@ -43,7 +43,6 @@ bool drv_vulkan::get_physical_devices(drv::InstancePtr _instance, unsigned int* 
             case VK_PHYSICAL_DEVICE_TYPE_CPU:
                 infos[i].type = drv::PhysicalDeviceInfo::Type::CPU;
                 break;
-            case VK_PHYSICAL_DEVICE_TYPE_RANGE_SIZE:
             case VK_PHYSICAL_DEVICE_TYPE_MAX_ENUM:
                 drv::drv_assert(false, "Unhandled device type");
         }

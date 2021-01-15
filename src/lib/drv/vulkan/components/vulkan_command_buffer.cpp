@@ -136,8 +136,8 @@ bool drv_vulkan::execute(drv::QueuePtr queue, unsigned int count, const drv::Exe
                   VK_PIPELINE_STAGE_TRANSFORM_FEEDBACK_BIT_EXT);
     COMPARE_ENUMS(unsigned int, drv::PipelineStages::CONDITIONAL_RENDERING_BIT_EXT,
                   VK_PIPELINE_STAGE_CONDITIONAL_RENDERING_BIT_EXT);
-    COMPARE_ENUMS(unsigned int, drv::PipelineStages::COMMAND_PROCESS_BIT_NVX,
-                  VK_PIPELINE_STAGE_COMMAND_PROCESS_BIT_NVX);
+    COMPARE_ENUMS(unsigned int, drv::PipelineStages::COMMAND_PREPROCESS_BIT_NV,
+                  VK_PIPELINE_STAGE_COMMAND_PREPROCESS_BIT_NV);
     COMPARE_ENUMS(unsigned int, drv::PipelineStages::SHADING_RATE_IMAGE_BIT_NV,
                   VK_PIPELINE_STAGE_SHADING_RATE_IMAGE_BIT_NV);
     COMPARE_ENUMS(unsigned int, drv::PipelineStages::RAY_TRACING_SHADER_BIT_NV,

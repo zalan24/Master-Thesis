@@ -11,9 +11,9 @@ if (Vulkan_FOUND)
         ${CMAKE_CURRENT_BINARY_DIR}
         ${CMAKE_CURRENT_SOURCE_DIR}
     )
-    target_include_directories(AnimationsDrvVulkan PRIVATE
-        ${Vulkan_INCLUDE_DIRS}
-    )
+    # target_include_directories(AnimationsDrvVulkan PRIVATE
+    #     ${Vulkan_INCLUDE_DIRS}
+    # )
     set_target_properties(  AnimationsDrvVulkan
                             PROPERTIES
                             COMPILE_FLAGS ${TARGETCOMPILEFLAGS}
@@ -25,5 +25,6 @@ if (Vulkan_FOUND)
     target_link_libraries(AnimationsDrvVulkan PRIVATE
         ${Vulkan_LIBRARIES}
         Vulkan_LIB
+        VulkanHeaders_LIB
     )
 endif()
