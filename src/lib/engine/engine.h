@@ -66,6 +66,7 @@ class Engine
     drv::DriverWrapper driver;
     drv::Instance drvInstance;
     drv::PhysicalDevice physicalDevice;
+    drv::LogicalDevice device;
     // ResourceManager resourceMgr;
     EntityManager entityManager;
     // Window window;

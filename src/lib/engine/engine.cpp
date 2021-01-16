@@ -71,7 +71,9 @@ Engine::Engine(const Config& cfg)
   : config(cfg),
     driverSelector(get_driver(cfg.driver)),
     drvInstance(drv::InstanceCreateInfo{cfg.title.c_str()}),
-    physicalDevice(get_device_selection_info(drvInstance)) {
+    physicalDevice(get_device_selection_info(drvInstance)),
+    device({physicalDevice})  // TODO queue priorities
+{
 }
 
 Engine::~Engine() {
