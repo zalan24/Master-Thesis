@@ -1,5 +1,6 @@
 #include "engine.h"
 
+#include <chrono>
 #include <fstream>
 #include <iostream>
 #include <map>
@@ -72,36 +73,79 @@ Engine::Engine(const Config& cfg)
     driverSelector(get_driver(cfg.driver)),
     drvInstance(drv::InstanceCreateInfo{cfg.title.c_str()}),
     physicalDevice(get_device_selection_info(drvInstance)),
-    device({physicalDevice})  // TODO queue priorities
-{
+    device({physicalDevice}),  // TODO queue priorities
+    queueManager(physicalDevice, device) {
 }
 
 Engine::~Engine() {
 }
 
-void Engine::simulationLoop(volatile bool* quit, volatile LoopState* state) {
-    simulationFrame = 0;
-    while (!*quit) {
+void Engine::simulationLoop(RenderState* state) {
+    while (!state->quit) {
+        FrameId simulationFrame = state->simulationFrame.load();
         {
-            std::unique_lock<std::mutex> lk(mutex);
-            simulationCV.wait(lk, [state, quit] { return *state == SIMULATE || *quit; });
-            if (*quit)
+            std::unique_lock<std::mutex> lk(state->simulationMutex);
+            state->simulationCV.wait(lk, [state] { return state->canSimulate || state->quit; });
+            state->canSimulate = false;
+            if (state->quit)
                 break;
-            entityManager.step();
-            simulationFrame++;
-            *state = RENDER;
         }
-        renderCV.notify_one();
+        // TODO wait for render (max frames)
+        entityManager.step();
+        {
+            std::unique_lock<std::mutex> lk(state->recordMutex);
+            state->canRecord = true;
+            state->recordCV.notify_one();
+        }
+        state->simulationFrame.fetch_add(FrameId(1));
     }
-    *state = SIMULATION_END;
+    // *state = SIMULATION_END;
+}
+
+void Engine::recordCommandsLoop(RenderState* state) {
+    while (!state->quit) {
+        FrameId recordFrame = state->recordFrame.load();
+        // Do pre-record stuff (allocator, etc.)
+        {
+            std::unique_lock<std::mutex> lk(state->recordMutex);
+            state->recordCV.wait(lk, [state] { return state->canRecord || state->quit; });
+            state->canRecord = false;
+            if (state->quit)
+                break;
+        }
+        // TODO render entities
+        // entityManager.step();
+        {
+            std::unique_lock<std::mutex> lk(state->simulationMutex);
+            state->canSimulate = true;
+            state->simulationCV.notify_one();
+        }
+        // Do work here, that's unrelated to simulation
+        state->recordFrame.fetch_add(FrameId(1));
+    }
+}
+
+void Engine::executeCommandsLoop(RenderState* state) {
+    // while (!state->quit) {
+    //     FrameId executeFrame = state->executeFrame.load();
+    //     {
+    //         std::unique_lock<std::mutex> lk(state->executeMutex);
+    //         state->executeCV.wait(lk, [state] { return state->canExecute || state->quit; });
+    //         state->canExecute = false;
+    //         if (state->quit)
+    //             break;
+    //     }
+
+    //     state->executeFrame.fetch_add(FrameId(1));
+    // }
 }
 
 void Engine::gameLoop() {
     entityManager.start();
-    volatile bool quit = false;
-    volatile LoopState state = SIMULATE;
-    std::thread simulationThread(&Engine::simulationLoop, this, &quit, &state);
-    renderFrame = 0;
+    RenderState state;
+    std::thread simulationThread(&Engine::simulationLoop, this, &state);
+    std::thread recordThread(&Engine::recordCommandsLoop, this, &state);
+    std::thread executeThread(&Engine::executeCommandsLoop, this, &state);
 
     // while (!window.shouldClose()) {
     //     int width, height;
@@ -119,10 +163,15 @@ void Engine::gameLoop() {
     //     window.present();
     //     renderFrame++;
     // }
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
     {
-        std::unique_lock<std::mutex> lk(mutex);
-        quit = true;
+        std::unique_lock<std::mutex> simLk(state.simulationMutex);
+        std::unique_lock<std::mutex> recLk(state.recordMutex);
+        state.quit = true;
+        state.simulationCV.notify_one();
+        state.recordCV.notify_one();
     }
-    simulationCV.notify_one();
     simulationThread.join();
+    recordThread.join();
+    executeThread.join();
 }

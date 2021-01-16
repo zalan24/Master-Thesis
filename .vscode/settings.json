@@ -156,7 +156,8 @@
         "*.h++": "cpp",
         "*.cuh": "cpp",
         "stack": "cpp",
-        "xthread": "cpp"
+        "xthread": "cpp",
+        "xxatomic": "cpp"
     },
     "cSpell.words": [
         "alignas",

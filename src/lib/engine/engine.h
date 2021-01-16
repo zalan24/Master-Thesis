@@ -1,11 +1,13 @@
 #pragma once
 
+#include <atomic>
 #include <condition_variable>
 #include <mutex>
 #include <string>
 #include <thread>
 
 #include <drv.h>
+#include <drv_queue_manager.h>
 #include <drv_wrappers.h>
 
 #include <entitymanager.h>
@@ -17,6 +19,8 @@
 class Engine
 {
  public:
+    using FrameId = size_t;
+
     struct Config final : public ISerializable
     {
         int screenWidth;
@@ -67,25 +71,31 @@ class Engine
     drv::Instance drvInstance;
     drv::PhysicalDevice physicalDevice;
     drv::LogicalDevice device;
+    drv::QueueManager queueManager;
     // ResourceManager resourceMgr;
     EntityManager entityManager;
     // Window window;
     // Renderer renderer;
 
-    FrameId simulationFrame = 0;
-    FrameId renderFrame = 0;
-
-    std::mutex mutex;
-    std::condition_variable renderCV;
-    std::condition_variable simulationCV;
-
-    enum LoopState
+    struct RenderState
     {
-        SIMULATE,
-        RENDER,
-        SIMULATION_END
+        std::atomic<bool> quit = false;
+        std::atomic<bool> canSimulate = true;
+        std::atomic<bool> canRecord = false;
+        // std::atomic<bool> canExecute = false;
+        std::atomic<FrameId> simulationFrame = 0;
+        std::atomic<FrameId> recordFrame = 0;
+        // std::atomic<FrameId> executeFrame = 0;
+        std::mutex simulationMutex;
+        std::mutex recordMutex;
+        // std::mutex executeMutex;
+        std::condition_variable simulationCV;
+        std::condition_variable recordCV;
+        // std::condition_variable executeCV;
     };
 
-    void simulationLoop(volatile bool* quit, volatile LoopState* state);
+    void simulationLoop(RenderState* state);
+    void recordCommandsLoop(RenderState* state);
+    void executeCommandsLoop(RenderState* state);
     static drv::PhysicalDevice::SelectionInfo get_device_selection_info(drv::InstancePtr instance);
 };
