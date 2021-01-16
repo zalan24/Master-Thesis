@@ -1,6 +1,6 @@
 file(GLOB DATA_SOURCES *.cpp *.h *.hpp)
 
-add_library(AnimationsData ${DATA_SOURCES})
+add_library(AnimationsData STATIC ${DATA_SOURCES})
 
 set_target_properties(  AnimationsData
                         PROPERTIES

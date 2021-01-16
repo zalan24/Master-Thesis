@@ -1,6 +1,6 @@
 file(GLOB DRV_MEMORY_FILES *.cpp *.h *.hpp *.c)
 
-add_library(AnimationsDrvMemory ${DRV_MEMORY_FILES})
+add_library(AnimationsDrvMemory STATIC ${DRV_MEMORY_FILES})
 target_include_directories(AnimationsDrvMemory PUBLIC
     ${CMAKE_CURRENT_BINARY_DIR}
     ${CMAKE_CURRENT_SOURCE_DIR}

@@ -1,6 +1,6 @@
 file(GLOB ENGINE_SOURCES *.cpp *.h *.hpp)
 
-add_library(AnimationsEngine ${ENGINE_SOURCES})
+add_library(AnimationsEngine STATIC ${ENGINE_SOURCES})
 
 set_target_properties(  AnimationsEngine
                         PROPERTIES

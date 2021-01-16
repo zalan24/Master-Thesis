@@ -6,7 +6,7 @@ if (Vulkan_FOUND)
         commands/*.c commands/*.cpp commands/*.h commands/*.hpp
         components/*.c components/*.cpp components/*.h components/*.hpp)
 
-    add_library(AnimationsDrvVulkan ${DRV_VULKAN_FILES})
+    add_library(AnimationsDrvVulkan STATIC ${DRV_VULKAN_FILES})
     target_include_directories(AnimationsDrvVulkan PUBLIC
         ${CMAKE_CURRENT_BINARY_DIR}
         ${CMAKE_CURRENT_SOURCE_DIR}

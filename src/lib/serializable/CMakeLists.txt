@@ -1,6 +1,6 @@
 file(GLOB SERIALIZABLE_SOURCES *.cpp *.h *.hpp)
 
-add_library(AnimationsSerializable ${SERIALIZABLE_SOURCES})
+add_library(AnimationsSerializable STATIC ${SERIALIZABLE_SOURCES})
 
 set_target_properties(  AnimationsSerializable
                         PROPERTIES

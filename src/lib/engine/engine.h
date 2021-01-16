@@ -5,6 +5,9 @@
 #include <string>
 #include <thread>
 
+#include <drv.h>
+#include <drv_wrappers.h>
+
 #include <entitymanager.h>
 // #include <renderer.h>
 // #include <resourcemanager.h>
@@ -19,6 +22,7 @@ class Engine
         int screenWidth;
         int screenHeight;
         std::string title;
+        std::string driver;
         void gatherEntries(std::vector<ISerializable::Entry>& entries) const override;
     };
 
@@ -49,10 +53,18 @@ class Engine
         GlLoader& operator=(const GlLoader&) = delete;
     };
 
+    struct DriverSelector
+    {
+        DriverSelector(drv::Driver driver);
+    };
+
     using FrameId = size_t;
 
     Config config;
 
+    DriverSelector driverSelector;
+    drv::Instance drvInstance;
+    drv::DriverWrapper driver;
     // ResourceManager resourceMgr;
     EntityManager entityManager;
     // Window window;

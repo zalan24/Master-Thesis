@@ -1,13 +1,37 @@
 #include "engine.h"
 
 #include <fstream>
+#include <iostream>
+#include <map>
+
+#include <drv.h>
+#include <drverror.h>
 
 // #include <rendercontext.h>
+
+static void callback(const drv::CallbackData* data) {
+    switch (data->type) {
+        case drv::CallbackData::Type::VERBOSE:
+        case drv::CallbackData::Type::NOTE:
+            std::cout << data->text << std::endl;
+            break;
+        case drv::CallbackData::Type::WARNING:
+            std::cerr << data->text << std::endl;
+            break;
+        case drv::CallbackData::Type::ERROR:
+            std::cerr << data->text << std::endl;
+            throw std::runtime_error(std::string{data->text});
+        case drv::CallbackData::Type::FATAL:
+            std::cerr << data->text << std::endl;
+            std::abort();
+    }
+}
 
 void Engine::Config::gatherEntries(std::vector<ISerializable::Entry>& entries) const {
     REGISTER_ENTRY(screenWidth, entries);
     REGISTER_ENTRY(screenHeight, entries);
     REGISTER_ENTRY(title, entries);
+    REGISTER_ENTRY(driver, entries);
 }
 
 static Engine::Config get_config(const std::string& file) {
@@ -18,16 +42,28 @@ static Engine::Config get_config(const std::string& file) {
     return config;
 }
 
+static drv::Driver get_driver(const std::string& name) {
+    if (name == "Vulkan")
+        return drv::Driver::VULKAN;
+    throw std::runtime_error("Unknown driver: " + name);
+}
+
+Engine::DriverSelector::DriverSelector(drv::Driver d) {
+    if (!drv::register_driver(&d, 1))
+        throw std::runtime_error("Could not initialize driver");
+}
+
 Engine::Engine(const std::string& configFile) : Engine(get_config(configFile)) {
 }
 
 Engine::Engine(const Config& cfg)
-  : config(cfg)  //, window(config.screenWidth, config.screenHeight, config.title)
-{
+  : config(cfg),
+    driverSelector(get_driver(cfg.driver)),
+    drvInstance(drv::InstanceCreateInfo{cfg.title.c_str()}) {
+    drv::set_callback(callback);
 }
 
 Engine::~Engine() {
-    // TODO
 }
 
 void Engine::simulationLoop(volatile bool* quit, volatile LoopState* state) {

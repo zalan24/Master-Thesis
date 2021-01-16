@@ -1,6 +1,6 @@
 file(GLOB GAME_SOURCES *.cpp *.h *.hpp)
 
-add_library(AnimationsGame ${GAME_SOURCES})
+add_library(AnimationsGame STATIC ${GAME_SOURCES})
 
 set_target_properties(  AnimationsGame
                         PROPERTIES

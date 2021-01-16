@@ -1,6 +1,6 @@
 file(GLOB TOOLS_SOURCES *.cpp *.h *.hpp)
 
-add_library(AnimationsTools ${TOOLS_SOURCES})
+add_library(AnimationsTools STATIC ${TOOLS_SOURCES})
 set_target_properties(AnimationsTools PROPERTIES LINKER_LANGUAGE CXX)
 
 set_target_properties(  AnimationsTools
