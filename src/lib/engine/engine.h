@@ -7,8 +7,9 @@
 #include <thread>
 
 #include <drv.h>
-#include <drv_queue_manager.h>
+// #include <drv_queue_manager.h>
 #include <drv_wrappers.h>
+#include <drvlane.h>
 
 #include <entitymanager.h>
 // #include <renderer.h>
@@ -70,8 +71,9 @@ class Engine
     drv::DriverWrapper driver;
     drv::Instance drvInstance;
     drv::PhysicalDevice physicalDevice;
+    drv::CommandLaneManager commandLaneMgr;
     drv::LogicalDevice device;
-    drv::QueueManager queueManager;
+    // drv::QueueManager queueManager;
     // ResourceManager resourceMgr;
     EntityManager entityManager;
     // Window window;

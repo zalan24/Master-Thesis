@@ -73,8 +73,13 @@ Engine::Engine(const Config& cfg)
     driverSelector(get_driver(cfg.driver)),
     drvInstance(drv::InstanceCreateInfo{cfg.title.c_str()}),
     physicalDevice(get_device_selection_info(drvInstance)),
-    device({physicalDevice}),  // TODO queue priorities
-    queueManager(physicalDevice, device) {
+    commandLaneMgr(physicalDevice,
+                   {{"main", 0.5f, 10, 0u,
+                     drv::CMD_TYPE_COMPUTE | drv::CMD_TYPE_TRANSFER | drv::CMD_TYPE_GRAPHICS},
+                    {"input", 1, 1, 1u, drv::CMD_TYPE_TRANSFER}}),
+    device({physicalDevice, commandLaneMgr.getQueuePriorityInfo()})
+// ,queueManager(physicalDevice, device)
+{
 }
 
 Engine::~Engine() {
