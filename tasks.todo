@@ -1,0 +1,15 @@
+Get a triangle on screen:
+    ☐ Modify queue manager to work with command lanes
+    ☐ Implement barriers
+    ☐ Create a frame memory allocator
+    ☐ Command for reset command buffer
+    ☐ Prepare frame-graph and multi-command buffer for per-frame building and execution
+        ☐ Use frame mem
+        ☐ Reuse objects, where possible (don't recreate multi command buffer)
+        ☐ Cache used queues???
+    ☐ Queue command list builders
+        ☐ Get a concurrent dequeue (std::deque???)
+        ☐ Push command list builders from recorder thread
+        ☐ Pop them on execution thread
+        ☐ Build command buffers on execution thread
+        ☐ Execute them

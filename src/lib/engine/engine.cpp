@@ -77,9 +77,8 @@ Engine::Engine(const Config& cfg)
                    {{"main", 0.5f, 10, 0u,
                      drv::CMD_TYPE_COMPUTE | drv::CMD_TYPE_TRANSFER | drv::CMD_TYPE_GRAPHICS},
                     {"input", 1, 1, 1u, drv::CMD_TYPE_TRANSFER}}),
-    device({physicalDevice, commandLaneMgr.getQueuePriorityInfo()})
-// ,queueManager(physicalDevice, device)
-{
+    device({physicalDevice, commandLaneMgr.getQueuePriorityInfo()}),
+    queueManager(physicalDevice, device) {
 }
 
 Engine::~Engine() {
