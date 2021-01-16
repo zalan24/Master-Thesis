@@ -63,8 +63,9 @@ class Engine
     Config config;
 
     DriverSelector driverSelector;
-    drv::Instance drvInstance;
     drv::DriverWrapper driver;
+    drv::Instance drvInstance;
+    drv::PhysicalDevice physicalDevice;
     // ResourceManager resourceMgr;
     EntityManager entityManager;
     // Window window;
@@ -85,4 +86,5 @@ class Engine
     };
 
     void simulationLoop(volatile bool* quit, volatile LoopState* state);
+    static drv::PhysicalDevice::SelectionInfo get_device_selection_info(drv::InstancePtr instance);
 };

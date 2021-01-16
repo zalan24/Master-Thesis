@@ -9,7 +9,8 @@ void drv::set_callback(CallbackFunction func) {
 }
 
 void drv::report_error(CallbackData* data) {
-    callback(data);
+    if (callback)
+        callback(data);
 }
 
 void drv::drv_assert(bool ok, const char* text) {
