@@ -1,6 +1,7 @@
 #pragma once
 
 #include <map>
+#include <set>
 #include <string>
 #include <type_traits>
 #include <unordered_map>
@@ -53,6 +54,14 @@ class ISerializable
         return out;
     }
 
+    template <typename T>
+    static json serialize(const std::set<T>& data) {
+        json out = json::array();
+        for (const T& v : data)
+            out.push_back(serialize(v));
+        return out;
+    }
+
     template <typename V>
     static json serialize(const std::map<std::string, V>& data) {
         json out = json::object();
@@ -84,6 +93,18 @@ class ISerializable
         data.resize(in.size());
         for (size_t i = 0; i < in.size(); ++i)
             data[i] = in[i];
+    }
+
+    template <typename T>
+    static void serialize(const json& in, std::set<T>& data) {
+        if (!in.is_array())
+            throw std::runtime_error("Input json is not an array: " + in.dump());
+        data.clear();
+        for (size_t i = 0; i < in.size(); ++i) {
+            T value;
+            serialize(in[i], value);
+            data.insert(std::move(value));
+        }
     }
 
     template <typename V>

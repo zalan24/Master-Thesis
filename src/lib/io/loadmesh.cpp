@@ -1,6 +1,7 @@
 #include "loadmesh.h"
 
 #include <algorithm>
+#include <fstream>
 #include <map>
 #include <memory>
 #include <string>
@@ -180,6 +181,7 @@ Mesh load_mesh(const std::string& filename, const MeshProvider::ModelResource& r
         throw std::runtime_error("Could not load object from file: " + filename + " (" + vError
                                  + ")");
     }
+    MeshInfo meshInfo;
     Mesh ret;
     std::vector<Mesh::MaterialIndex> materials;
     std::map<std::string, GenericResourcePool::ResourceRef> textures;
@@ -229,9 +231,13 @@ Mesh load_mesh(const std::string& filename, const MeshProvider::ModelResource& r
     std::vector<Mesh::SegmentIndex> segments;
     if (scene->HasMeshes()) {
         for (unsigned int i = 0; i < scene->mNumMeshes; ++i) {
+            std::string meshName(scene->mMeshes[i]->mName.C_Str());
+            meshInfo.meshNames.push_back(meshName);
+            if (resData.excludeMeshes.count(meshName) > 0)
+                continue;
             Mesh::Segment segment = process(scene->mMeshes[i], materials, meshBones[i],
                                             ret.getSkeleton(), glm::vec3(0, 0, 0));
-            segments.push_back(ret.addSegment(std::move(segment)));
+            ret.addSegment(std::move(segment));
         }
     }
     // TODO animations
@@ -243,6 +249,22 @@ Mesh load_mesh(const std::string& filename, const MeshProvider::ModelResource& r
       glm::scale(glm::mat4(1.f), glm::vec3(resData.size, resData.size, resData.size))
       * rootBone.localTm;
     ret.getSkeleton()->setBone(ret.getSkeleton()->getRoot(), std::move(rootBone));
+
+    std::map<std::string, MeshInfo> meshInfos;
+    {
+        std::ifstream meshInfoIn("meshInfos.json");
+        if (meshInfoIn.is_open()) {
+            json in;
+            meshInfoIn >> in;
+            ISerializable::serialize(in, meshInfos);
+        }
+    }
+    {
+        std::ofstream meshInfoOut("meshInfos.json");
+        meshInfos[filename] = meshInfo;
+        meshInfoOut << ISerializable::serialize(meshInfos);
+    }
+
     return ret;
 }
 
@@ -320,4 +342,12 @@ Mesh create_sphere(size_t resX, size_t resY, float size, const glm::vec3& color)
     }
     ret.addSegment(std::move(segment));
     return ret;
+}
+
+void MeshInfo::writeJson(json& out) const {
+    WRITE_OBJECT(meshNames, out);
+}
+
+void MeshInfo::readJson(const json& in) {
+    READ_OBJECT(meshNames, in);
 }

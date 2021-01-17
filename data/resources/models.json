@@ -11,7 +11,12 @@
         "file": "models/BH-2/BH-2 Free.fbx",
         "size": 0.01,
         "axisOrder": "xyz",
-        "excludeMeshes": [],
+        "excludeMeshes": [
+            "BH_2_lod1",
+            "BH_2_lod2",
+            "BH_2_lod3",
+            "BH_2_lod4"
+        ],
         "meshSlots": {},
         "materialOverrides": {}
     },
@@ -35,7 +40,9 @@
         "file": "models/Twilight/Twilight_Character.FBX",
         "size": 0.005,
         "axisOrder": "xyz",
-        "excludeMeshes": [],
+        "excludeMeshes": [
+            "TwilightCATTransform"
+        ],
         "meshSlots": {},
         "materialOverrides": {}
     },

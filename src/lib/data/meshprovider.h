@@ -30,10 +30,10 @@ class MeshProvider
         std::string file;
         float size;
         std::string axisOrder;
-        std::vector<std::string> excludeMeshes;
+        std::set<std::string> excludeMeshes;
         // TODO
         // std::unordered_map<std::string, > materialOverrides;
-        std::unordered_map<std::string, std::vector<std::string>> meshSlots;
+        std::unordered_map<std::string, std::set<std::string>> meshSlots;
     };
 
     using ModelResourceMap = std::unordered_map<std::string, ModelResource>;

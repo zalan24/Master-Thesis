@@ -23,6 +23,7 @@ class Mesh
 
     static constexpr MaterialIndex INVALID_MATERIAL = std::numeric_limits<MaterialIndex>::max();
     static constexpr BoneIndex INVALID_BONE = std::numeric_limits<BoneIndex>::max();
+    static constexpr BoneIndex INVALID_SEGMENT = std::numeric_limits<SegmentIndex>::max();
     static constexpr size_t MAX_BONES = 4;
 
     struct Bone

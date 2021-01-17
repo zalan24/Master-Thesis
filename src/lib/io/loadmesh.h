@@ -8,10 +8,22 @@
 #include <glm/glm.hpp>
 
 #include <meshprovider.h>
+#include <serializable.h>
 
 class TextureProvider;
 
 class Mesh;
+
+class MeshInfo final : public ISerializable
+{
+ public:
+    // virtual ~MeshInfo() = default;
+
+    void writeJson(json& out) const override final;
+    void readJson(const json& in) override final;
+
+    std::vector<std::string> meshNames;
+};
 
 Mesh load_mesh(const std::string& filename, const MeshProvider::ModelResource& resData,
                const TextureProvider* texProvider);
