@@ -1,6 +1,6 @@
 file(GLOB BUFFER_SOURCES *.cpp *.h *.hpp)
 
-add_library(AnimationsBuffer ${BUFFER_SOURCES})
+add_library(AnimationsBuffer STATIC ${BUFFER_SOURCES})
 
 set_target_properties(  AnimationsBuffer
                         PROPERTIES

@@ -13,5 +13,5 @@ endif()
 set(FIXED "${base64_external_SOURCE_DIR}_fixed")
 
 set(BASE64_SOURCES ${FIXED}/base64.cpp ${FIXED}/base64.h)
-add_library(BASE64_LIB ${BASE64_SOURCES})
+add_library(BASE64_LIB STATIC ${BASE64_SOURCES})
 target_include_directories(BASE64_LIB SYSTEM PUBLIC "${base64_external_BINARY_DIR}" "${FIXED}")

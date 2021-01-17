@@ -1,6 +1,6 @@
 file(GLOB ENTITIES_SOURCES *.cpp *.h *.hpp)
 
-add_library(AnimationsEntities ${ENTITIES_SOURCES})
+add_library(AnimationsEntities STATIC ${ENTITIES_SOURCES})
 
 set_target_properties(  AnimationsEntities
                         PROPERTIES

@@ -1,6 +1,6 @@
 file(GLOB RESOURCES_SOURCES *.cpp *.h *.hpp)
 
-add_library(AnimationsResources ${RESOURCES_SOURCES})
+add_library(AnimationsResources STATIC ${RESOURCES_SOURCES})
 
 set_target_properties(  AnimationsResources
                         PROPERTIES

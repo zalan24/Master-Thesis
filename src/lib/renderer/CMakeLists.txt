@@ -1,6 +1,6 @@
 file(GLOB RENDERER_SOURCES *.cpp *.h *.hpp)
 
-add_library(AnimationsRenderer ${RENDERER_SOURCES})
+add_library(AnimationsRenderer STATIC ${RENDERER_SOURCES})
 
 set_target_properties(  AnimationsRenderer
                         PROPERTIES

@@ -1,6 +1,6 @@
 file(GLOB WINDOW_SOURCES *.cpp *.h *.hpp)
 
-add_library(AnimationsUI ${WINDOW_SOURCES})
+add_library(AnimationsUI STATIC ${WINDOW_SOURCES})
 
 set_target_properties(  AnimationsUI
                         PROPERTIES

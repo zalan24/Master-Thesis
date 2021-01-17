@@ -7,7 +7,7 @@ option(BUILD_DRV_VULKAN "Build driver for vulkan" ON)
 configure_file(drivers.h.in drivers.h @ONLY)
 
 file(GLOB DRV_FILES *.cpp *.h *.hpp)
-add_library(AnimationsDrv ${DRV_FILES})
+add_library(AnimationsDrv STATIC ${DRV_FILES})
 target_include_directories(AnimationsDrv PUBLIC
     ${CMAKE_CURRENT_BINARY_DIR}
     ${CMAKE_CURRENT_SOURCE_DIR}

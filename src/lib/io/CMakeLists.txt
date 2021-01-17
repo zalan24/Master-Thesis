@@ -1,6 +1,6 @@
 file(GLOB IO_SOURCES *.cpp *.h *.hpp)
 
-add_library(AnimationsIO ${IO_SOURCES})
+add_library(AnimationsIO STATIC ${IO_SOURCES})
 
 set_target_properties(  AnimationsIO
                         PROPERTIES

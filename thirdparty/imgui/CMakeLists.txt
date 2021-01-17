@@ -24,7 +24,7 @@ set(IMGUI_SOURCES_EXAMPLES
   ${FIXED}/examples/imgui_impl_opengl2.h
   ${FIXED}/examples/imgui_impl_opengl2.cpp
 )
-add_library(IMGUI_LIB ${IMGUI_SOURCES} ${IMGUI_SOURCES_EXAMPLES})
+add_library(IMGUI_LIB STATIC ${IMGUI_SOURCES} ${IMGUI_SOURCES_EXAMPLES})
 target_include_directories(IMGUI_LIB SYSTEM PUBLIC "${imgui_external_BINARY_DIR}" "${FIXED}")
 target_include_directories(IMGUI_LIB SYSTEM PRIVATE "${imgui_external_BINARY_DIR}/examples" "${FIXED}/examples")
 target_link_libraries(IMGUI_LIB PRIVATE GLFW_LIB GLAD_LIB)

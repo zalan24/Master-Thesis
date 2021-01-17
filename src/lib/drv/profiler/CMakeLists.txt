@@ -1,6 +1,6 @@
 file(GLOB DRV_PROFILER_FILES *.cpp *.h *.hpp *.c)
 
-add_library(AnimationsDrvProfiler ${DRV_PROFILER_FILES})
+add_library(AnimationsDrvProfiler STATIC ${DRV_PROFILER_FILES})
 target_include_directories(AnimationsDrvProfiler PUBLIC
     ${CMAKE_CURRENT_BINARY_DIR}
     ${CMAKE_CURRENT_SOURCE_DIR}

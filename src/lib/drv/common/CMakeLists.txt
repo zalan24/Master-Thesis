@@ -1,6 +1,6 @@
 file(GLOB DRV_COMMON_FILES *.cpp *.h *.hpp *.c)
 
-add_library(AnimationsDrvCommon ${DRV_COMMON_FILES})
+add_library(AnimationsDrvCommon STATIC ${DRV_COMMON_FILES})
 target_include_directories(AnimationsDrvCommon PUBLIC
     ${CMAKE_CURRENT_BINARY_DIR}
     ${CMAKE_CURRENT_SOURCE_DIR}
