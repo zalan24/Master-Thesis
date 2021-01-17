@@ -3,17 +3,32 @@
 MeshProvider::~MeshProvider() {
 }
 
-MeshProvider::ResourceDescriptor::ResourceDescriptor(Type _type, bool _flipYZ)
-  : type(_type), filename(""), flipYZ(_flipYZ) {
-    assert(type != FILE);
+MeshProvider::ResourceDescriptor::ResourceDescriptor(const std::string& res_name)
+  : resName(res_name) {
 }
 
-MeshProvider::ResourceDescriptor::ResourceDescriptor(const std::string& _filename, bool _flipYZ)
-  : type(FILE), filename(_filename), flipYZ(_flipYZ) {
+void MeshProvider::ResourceDescriptor::writeJson(json& out) const {
+    WRITE_OBJECT(resName, out);
 }
 
-void MeshProvider::ResourceDescriptor::gatherEntries(std::vector<Entry>& entries) const {
-    // TODO register enum
-    REGISTER_ENTRY(filename, entries);
-    REGISTER_ENTRY(flipYZ, entries);
+void MeshProvider::ResourceDescriptor::readJson(const json& in) {
+    READ_OBJECT(resName, in);
+}
+
+void MeshProvider::ModelResource::writeJson(json& out) const {
+    WRITE_OBJECT(file, out);
+    WRITE_OBJECT(size, out);
+    WRITE_OBJECT(axisOrder, out);
+    WRITE_OBJECT(excludeMeshes, out);
+    // WRITE_OBJECT(materialOverrides, out);
+    WRITE_OBJECT(meshSlots, out);
+}
+
+void MeshProvider::ModelResource::readJson(const json& in) {
+    READ_OBJECT(file, in);
+    READ_OBJECT(size, in);
+    READ_OBJECT(axisOrder, in);
+    READ_OBJECT(excludeMeshes, in);
+    // READ_OBJECT(materialOverrides, in);
+    READ_OBJECT(meshSlots, in);
 }

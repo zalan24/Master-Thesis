@@ -15,10 +15,8 @@ class DescribedResource final : public ISerializable
 
     const GenericResourcePool::ResourceRef& getRes() const { return resource; }
 
- protected:
-    void gatherEntries(std::vector<Entry>& entries) const override {
-        REGISTER_OBJECT(descriptor, entries);
-    }
+    void writeJson(json& out) const override final { WRITE_OBJECT(descriptor, out); }
+    void readJson(const json& in) override final { READ_OBJECT(descriptor, in); }
 
  private:
     const P* provider;

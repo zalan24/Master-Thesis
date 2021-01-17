@@ -7,7 +7,8 @@
 class GlTextureProvider final : public TextureProvider
 {
  public:
-    GlTextureProvider(ResourcePool<GlTexture, TextureProvider::ResourceDescriptor>* texPool);
+    GlTextureProvider(std::string data_path,
+                      ResourcePool<GlTexture, TextureProvider::ResourceDescriptor>* texPool);
     ~GlTextureProvider() override {}
 
     GenericResourcePool::ResourceRef getResource(const ResourceDescriptor& desc) const override;
@@ -16,5 +17,6 @@ class GlTextureProvider final : public TextureProvider
     GenericResourcePool::ResourceRef createResource(const std::string& filename) const override;
 
  private:
+    std::string dataPath;
     ResourcePool<GlTexture, TextureProvider::ResourceDescriptor>* texPool;
 };

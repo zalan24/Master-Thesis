@@ -15,9 +15,15 @@ class ResourceManager
     using GlTextureRef = GenericResourcePool::ResourceRef;
     using GlMeshRef = GenericResourcePool::ResourceRef;
 
+    struct ResourceInfos
+    {
+        std::string resourceFolder;
+        MeshProvider::ModelResourceMap modelResources;
+    };
+
     static ResourceManager* getSingleton() { return instance; }
 
-    ResourceManager();
+    ResourceManager(ResourceInfos resource_infos);
     ~ResourceManager();
 
     ResourceManager(const ResourceManager&) = delete;
@@ -31,6 +37,8 @@ class ResourceManager
 
  private:
     static ResourceManager* instance;
+
+    ResourceInfos resourceInfos;
 
     ResourcePool<GlTexture, TextureProvider::ResourceDescriptor> glTexturePool;
     ResourcePool<GlMesh, MeshProvider::ResourceDescriptor> glMeshPool;

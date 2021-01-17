@@ -19,11 +19,12 @@ class Engine
         int screenWidth;
         int screenHeight;
         std::string title;
-        void gatherEntries(std::vector<ISerializable::Entry>& entries) const override;
+        void writeJson(json& out) const override final;
+        void readJson(const json& in) override final;
     };
 
-    Engine(const Config& config);
-    Engine(const std::string& configFile);
+    Engine(const Config& config, ResourceManager::ResourceInfos resource_infos);
+    Engine(const std::string& configFile, ResourceManager::ResourceInfos resource_infos);
     ~Engine();
 
     Engine(const Engine&) = delete;

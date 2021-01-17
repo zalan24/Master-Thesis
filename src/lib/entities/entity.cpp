@@ -48,12 +48,6 @@ void Entity::removeChild(Entity* c) {
     }
 }
 
-void Entity::gatherEntries(std::vector<ISerializable::Entry>& entries) const {
-    // TODO
-    // REGISTER_ENTRY();
-    gatherEntityEntries(entries);
-}
-
 void Entity::update(const UpdateData& data) {
     if (updateFunctor)
         updateFunctor(this, data);

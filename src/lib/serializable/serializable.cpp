@@ -2,14 +2,14 @@
 
 void ISerializable::write(std::ostream& out) const {
     json j;
-    write(j);
+    writeJson(j);
     out << j;
 }
 
 void ISerializable::read(std::istream& in) {
     json j;
     in >> j;
-    read(j);
+    readJson(j);
 }
 
 template <>
@@ -49,7 +49,7 @@ static void write(json& to, const ISerializable::Entry& e) {
             break;
         case ISerializable::Entry::OBJECT:
             json obj;
-            (*static_cast<const ISerializable* const*>(e.readPtr))->write(obj);
+            (*static_cast<const ISerializable* const*>(e.readPtr))->writeJson(obj);
             to[e.name] = obj;
             break;
     }
@@ -71,7 +71,7 @@ static void push(json& to, const ISerializable::Entry& e) {
             break;
         case ISerializable::Entry::OBJECT:
             json obj;
-            (*static_cast<const ISerializable* const*>(e.readPtr))->write(obj);
+            (*static_cast<const ISerializable* const*>(e.readPtr))->writeJson(obj);
             to.push_back(obj);
             break;
     }
@@ -94,43 +94,7 @@ static void read(const json& from, ISerializable::Entry::Type type, void* wPtr, 
             static_cast<bool*>(wPtr)[arrIndex] = from[index];
             break;
         case ISerializable::Entry::OBJECT:
-            static_cast<ISerializable**>(wPtr)[arrIndex]->read(from[index]);
+            static_cast<ISerializable**>(wPtr)[arrIndex]->readJson(from[index]);
             break;
-    }
-}
-
-void ISerializable::write(json& out) const {
-    std::vector<Entry> entries;
-    gatherEntries(entries);
-    for (const Entry& e : entries) {
-        if (e.count >= 0) {
-            out[e.name] = json::array();
-            for (int i = 0; i < e.count; ++i)
-                ::push(out[e.name], e);
-        }
-        else
-            ::write(out, e);
-    }
-}
-
-void ISerializable::read(const json& in) {
-    std::vector<Entry> entries;
-    gatherEntries(entries);
-    for (const Entry& e : entries) {
-        if (!in.is_object())
-            throw std::runtime_error("Input json is not an object: " + in.dump());
-        if (!in.count(e.name))
-            throw std::runtime_error("Input json is missing a property (" + e.name
-                                     + "):" + in.dump());
-        if (e.count >= 0) {
-            const json& array = in[e.name];
-            if (!array.is_array())
-                throw std::runtime_error(
-                  "'" + e.name + "' property should be an array in input json: " + in.dump());
-            for (unsigned int i = 0; i < static_cast<unsigned int>(e.count); ++i)
-                ::read(in[e.name], e.type, e.writePtr, i, i);
-        }
-        else
-            ::read(in, e.type, e.writePtr, e.name);
     }
 }

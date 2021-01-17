@@ -8,6 +8,8 @@
 #define GLM_FORCE_RADIANS
 #define GLM_LEFT_HAND
 #include <glm/geometric.hpp>
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
 
 #include <assimp/cimport.h>
 #include <assimp/matrix4x4.h>
@@ -17,6 +19,7 @@
 
 #include <material.h>
 #include <mesh.h>
+#include <meshprovider.h>
 #include <textureprovider.h>
 #include <util.hpp>
 
@@ -165,8 +168,8 @@ static void process(const aiScene* scene, const aiNode* node,
         process(scene, node->mChildren[i], meshBones, skeleton, boneId);
 }
 
-Mesh load_mesh(const std::string& filename, const TextureProvider* texProvider,
-               const glm::vec3& default_color) {
+Mesh load_mesh(const std::string& filename, const MeshProvider::ModelResource& resData,
+               const TextureProvider* texProvider) {
     Assimp::Importer importer;
     const aiScene* scene = importer.ReadFile(
       filename, aiProcess_CalcTangentSpace | aiProcess_Triangulate | aiProcess_JoinIdenticalVertices
@@ -226,8 +229,8 @@ Mesh load_mesh(const std::string& filename, const TextureProvider* texProvider,
     std::vector<Mesh::SegmentIndex> segments;
     if (scene->HasMeshes()) {
         for (unsigned int i = 0; i < scene->mNumMeshes; ++i) {
-            Mesh::Segment segment =
-              process(scene->mMeshes[i], materials, meshBones[i], ret.getSkeleton(), default_color);
+            Mesh::Segment segment = process(scene->mMeshes[i], materials, meshBones[i],
+                                            ret.getSkeleton(), glm::vec3(0, 0, 0));
             segments.push_back(ret.addSegment(std::move(segment)));
         }
     }
@@ -235,6 +238,11 @@ Mesh load_mesh(const std::string& filename, const TextureProvider* texProvider,
     // scene->mAnimations[0]->mChannels[0]->;
     // scene->mAnimations[0]->mMeshChannels[0]->;
     ret.sortSegments();
+    Mesh::Bone rootBone = ret.getSkeleton()->getBone(ret.getSkeleton()->getRoot());
+    rootBone.localTm =
+      glm::scale(glm::mat4(1.f), glm::vec3(resData.size, resData.size, resData.size))
+      * rootBone.localTm;
+    ret.getSkeleton()->setBone(ret.getSkeleton()->getRoot(), std::move(rootBone));
     return ret;
 }
 

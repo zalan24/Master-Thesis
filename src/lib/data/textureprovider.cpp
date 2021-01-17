@@ -14,8 +14,14 @@ TextureProvider::ResourceDescriptor::ResourceDescriptor(const std::string& _file
   : filename(_filename) {
 }
 
-void TextureProvider::ResourceDescriptor::gatherEntries(std::vector<Entry>& entries) const {
+void TextureProvider::ResourceDescriptor::writeJson(json& out) const {
     // TODO support vec4
     // REGISTER_ENTRY(value, entries);
-    REGISTER_ENTRY(filename, entries);
+    WRITE_OBJECT(filename, out);
+}
+
+void TextureProvider::ResourceDescriptor::readJson(const json& in) {
+    // TODO support vec4
+    // REGISTER_ENTRY(value, entries);
+    READ_OBJECT(filename, in);
 }

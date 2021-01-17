@@ -7,17 +7,21 @@
 class GlMeshProvider final : public MeshProvider
 {
  public:
-    GlMeshProvider(TextureProvider* texProvider,
+    GlMeshProvider(std::string data_path, ModelResourceMap model_resources,
+                   TextureProvider* texProvider,
                    ResourcePool<GlMesh, MeshProvider::ResourceDescriptor>* meshPool);
     ~GlMeshProvider() override = default;
 
-    GenericResourcePool::ResourceRef getResource(const ResourceDescriptor& desc) const override;
-    GenericResourcePool::ResourceRef createResource(const std::string& filename) const override;
+    GenericResourcePool::ResourceRef getResource(
+      const ResourceDescriptor& desc) const override final;
     GenericResourcePool::ResourceRef createResource(
-      const ResourceDescriptor::Type type) const override;
-    GenericResourcePool::ResourceRef createResource(const Mesh& m) const override;
+      const std::string& resName) const override final;
+    GenericResourcePool::ResourceRef createResource(const Mesh& m) const override final;
+    GenericResourcePool::ResourceRef createResource(const ModelResource& res) const override final;
 
  private:
+    std::string dataPath;
+    ModelResourceMap modelResources;
     TextureProvider* texProvider;
     ResourcePool<GlMesh, MeshProvider::ResourceDescriptor>* meshPool;
 };

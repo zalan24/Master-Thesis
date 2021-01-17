@@ -9,7 +9,7 @@
 
 #include <serializable.h>
 
-class Entity : public ISerializable
+class Entity  // : public ISerializable
 {
  public:
     using AffineTransform = glm::mat4x4;
@@ -44,10 +44,6 @@ class Entity : public ISerializable
 
     Entity* getParent() { return parent; }
     const Entity* getParent() const { return parent; }
-
- protected:
-    void gatherEntries(std::vector<ISerializable::Entry>& entries) const override final;
-    virtual void gatherEntityEntries(std::vector<ISerializable::Entry>&) const {}
 
  private:
     Entity* parent = nullptr;

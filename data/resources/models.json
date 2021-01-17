@@ -1,0 +1,74 @@
+{
+    "suzanne": {
+        "file": "models/suzanne.obj",
+        "size": 0.5,
+        "axisOrder": "xyz",
+        "excludeMeshes": [],
+        "meshSlots": {},
+        "materialOverrides": {}
+    },
+    "BH-2": {
+        "file": "models/BH-2/BH-2 Free.fbx",
+        "size": 0.01,
+        "axisOrder": "xyz",
+        "excludeMeshes": [],
+        "meshSlots": {},
+        "materialOverrides": {}
+    },
+    "cartoon_boy": {
+        "file": "models/cartoon_boy/cartoon_boy.obj",
+        "size": 0.005,
+        "axisOrder": "xyz",
+        "excludeMeshes": [],
+        "meshSlots": {},
+        "materialOverrides": {}
+    },
+    "boring_guy": {
+        "file": "models/boring_guy.fbx",
+        "size": 0.005,
+        "axisOrder": "xyz",
+        "excludeMeshes": [],
+        "meshSlots": {},
+        "materialOverrides": {}
+    },
+    "Twilight": {
+        "file": "models/Twilight/Twilight_Character.FBX",
+        "size": 0.005,
+        "axisOrder": "xyz",
+        "excludeMeshes": [],
+        "meshSlots": {},
+        "materialOverrides": {}
+    },
+    "Scotty": {
+        "file": "models/Scotty.blend",
+        "size": 0.15,
+        "axisOrder": "xzy",
+        "excludeMeshes": [],
+        "meshSlots": {},
+        "materialOverrides": {}
+    },
+    "ground": {
+        "file": "@plane",
+        "size": 100,
+        "axisOrder": "xyz",
+        "excludeMeshes": [],
+        "meshSlots": {},
+        "materialOverrides": {}
+    },
+    "ball": {
+        "file": "@sphere",
+        "size": 0.5,
+        "axisOrder": "xyz",
+        "excludeMeshes": [],
+        "meshSlots": {},
+        "materialOverrides": {}
+    },
+    "cube": {
+        "file": "@cube",
+        "size": 0.5,
+        "axisOrder": "xyz",
+        "excludeMeshes": [],
+        "meshSlots": {},
+        "materialOverrides": {}
+    }
+}

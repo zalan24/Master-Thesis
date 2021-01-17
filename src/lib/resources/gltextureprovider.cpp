@@ -7,8 +7,8 @@
 #include "resourcemanager.h"
 
 GlTextureProvider::GlTextureProvider(
-  ResourcePool<GlTexture, TextureProvider::ResourceDescriptor>* _texPool)
-  : texPool(_texPool) {
+  std::string data_path, ResourcePool<GlTexture, TextureProvider::ResourceDescriptor>* _texPool)
+  : dataPath(std::move(data_path)), texPool(_texPool) {
 }
 
 GenericResourcePool::ResourceRef GlTextureProvider::getResource(
@@ -39,6 +39,6 @@ GenericResourcePool::ResourceRef GlTextureProvider::createResource(const Texture
 
 GenericResourcePool::ResourceRef GlTextureProvider::createResource(
   const std::string& filename) const {
-    Texture<RGBA> tex = load_image<RGBA>(filename);
+    Texture<RGBA> tex = load_image<RGBA>(dataPath + filename);
     return createResource(tex);
 }

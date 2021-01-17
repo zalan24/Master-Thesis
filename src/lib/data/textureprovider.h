@@ -34,8 +34,8 @@ class TextureProvider
             return filename == "" ? value == other.value : true;
         }
 
-     protected:
-        void gatherEntries(std::vector<Entry>& entries) const override;
+        void writeJson(json& out) const override final;
+        void readJson(const json& in) override final;
 
      private:
         glm::vec4 value;
