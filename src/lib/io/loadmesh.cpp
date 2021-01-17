@@ -83,6 +83,7 @@ static Mesh::Segment process(const aiMesh* mesh,
         }
     }
     if (mesh->mMaterialIndex <= materials.size()) {
+        // Materials could be merged here...
         auto itr = materialOverrides.find(meshName);
         if (itr == materialOverrides.end())
             segment.mat = materials[mesh->mMaterialIndex];
@@ -231,6 +232,11 @@ Mesh load_mesh(const std::string& filename, const MeshProvider::ModelResource& r
             }
             materials.push_back(std::move(mat));
         }
+    }
+    if (resData.globalMaterialOverride) {
+        // This could be merged as well
+        Mesh::MaterialIndex mat = ret.addMaterial(resData.globalMaterialOverride);
+        std::fill(materials.begin(), materials.end(), mat);
     }
     std::vector<Mesh::BoneIndex> meshBones(scene->mNumMeshes, ret.getSkeleton()->getRoot());
     process(scene, scene->mRootNode, meshBones, ret.getSkeleton(), ret.getSkeleton()->getRoot());

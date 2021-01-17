@@ -30,14 +30,16 @@ void MeshProvider::ModelResource::writeJson(json& out) const {
     WRITE_OBJECT(axisOrder, out);
     WRITE_OBJECT(excludeMeshes, out);
     WRITE_OBJECT(materialOverrides, out);
+    WRITE_OBJECT(globalMaterialOverride, out);
     WRITE_OBJECT(meshSlots, out);
 }
 
 void MeshProvider::ModelResource::readJson(const json& in) {
     READ_OBJECT(file, in);
-    READ_OBJECT(size, in);
-    READ_OBJECT(axisOrder, in);
-    READ_OBJECT(excludeMeshes, in);
-    READ_OBJECT(materialOverrides, in);
-    READ_OBJECT(meshSlots, in);
+    READ_OBJECT_OPT(size, in, 1.f);
+    READ_OBJECT_OPT(axisOrder, in, "xyz");
+    READ_OBJECT_OPT(excludeMeshes, in, {});
+    READ_OBJECT_OPT(materialOverrides, in, {});
+    READ_OBJECT_OPT(globalMaterialOverride, in, {});
+    READ_OBJECT_OPT(meshSlots, in, {});
 }

@@ -82,8 +82,15 @@ GenericResourcePool::ResourceRef GlMeshProvider::createResource(const Mesh& m) c
 
 GenericResourcePool::ResourceRef GlMeshProvider::createResource(const ModelResource& res) const {
     Mesh m;
-    if (res.file.size() > 0 && res.file[0] == '@')
+    if (res.file.size() > 0 && res.file[0] == '@') {
         m = generate_mesh(res);
+        if (res.globalMaterialOverride) {
+            // Merging materials?
+            Mesh::MaterialIndex mat = m.addMaterial(res.globalMaterialOverride);
+            for (size_t i = 0; i < m.getSegmentCount(); ++i)
+                m.getSegment(i).mat = mat;
+        }
+    }
     else
         m = load_mesh(dataPath + "/" + res.file, res, texProvider);
     fix_mesh(m, res.axisOrder);

@@ -21,6 +21,10 @@ void Material::writeJson(json& out) const {
 
 void Material::readJson(const json& in) {
     DiffuseRes albedo;
-    READ_OBJECT(albedo, in);
+    READ_OBJECT_OPT(albedo, in, {});
     albedo_alpha = std::move(albedo);
+}
+
+Material::operator bool() const {
+    return getAlbedoAlpha();
 }

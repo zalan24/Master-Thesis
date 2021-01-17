@@ -35,6 +35,7 @@ class MeshProvider
         float size;
         std::string axisOrder;
         std::set<std::string> excludeMeshes;
+        Material globalMaterialOverride;
         std::unordered_map<std::string, Material> materialOverrides;
         std::unordered_map<std::string, std::set<std::string>> meshSlots;
     };

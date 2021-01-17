@@ -184,3 +184,8 @@ ISerializable::Entry::Type getType<ISerializable*>();
 #define WRITE_OBJECTS(name, count, json) json[#name] = serialize(count, name)
 #define READ_OBJECT(name, json) serialize(json[#name], name)
 #define READ_OBJECTS(name, count, json) serialize(json[#name], count, name)
+#define READ_OBJECT_OPT(name, json, def) \
+    if (json.count(#name) > 0)           \
+        serialize(json[#name], name);    \
+    else                                 \
+        name = def

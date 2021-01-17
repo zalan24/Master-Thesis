@@ -30,6 +30,8 @@ class Material final : public ISerializable
     void writeJson(json& out) const override;
     void readJson(const json& in) override;
 
+    operator bool() const;
+
  private:
     DiffuseChannel albedo_alpha;
 };

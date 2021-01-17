@@ -111,6 +111,7 @@ class Mesh
 
     size_t getSegmentCount() const { return segments.size(); }
     const Segment& getSegment(size_t id) const { return segments[id]; }
+    Segment& getSegment(size_t id) { return segments[id]; }
 
     const Material* getMaterial(MaterialIndex mat) const;
 
