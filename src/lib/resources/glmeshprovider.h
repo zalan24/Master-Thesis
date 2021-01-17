@@ -7,7 +7,7 @@
 class GlMeshProvider final : public MeshProvider
 {
  public:
-    GlMeshProvider(std::string data_path, ModelResourceMap model_resources,
+    GlMeshProvider(std::string data_path, const std::string& model_resources_file,
                    TextureProvider* texProvider,
                    ResourcePool<GlMesh, MeshProvider::ResourceDescriptor>* meshPool);
     ~GlMeshProvider() override = default;

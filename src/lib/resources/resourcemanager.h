@@ -18,7 +18,7 @@ class ResourceManager
     struct ResourceInfos
     {
         std::string resourceFolder;
-        MeshProvider::ModelResourceMap modelResources;
+        std::string modelResourcesJson;
     };
 
     static ResourceManager* getSingleton() { return instance; }

@@ -1,6 +1,15 @@
 #include "meshprovider.h"
 
+MeshProvider* MeshProvider::instance = nullptr;
+
+MeshProvider::MeshProvider() {
+    assert(instance == nullptr);
+    instance = this;
+}
+
 MeshProvider::~MeshProvider() {
+    assert(instance == this);
+    instance = nullptr;
 }
 
 MeshProvider::ResourceDescriptor::ResourceDescriptor(const std::string& res_name)
@@ -20,7 +29,7 @@ void MeshProvider::ModelResource::writeJson(json& out) const {
     WRITE_OBJECT(size, out);
     WRITE_OBJECT(axisOrder, out);
     WRITE_OBJECT(excludeMeshes, out);
-    // WRITE_OBJECT(materialOverrides, out);
+    WRITE_OBJECT(materialOverrides, out);
     WRITE_OBJECT(meshSlots, out);
 }
 
@@ -29,6 +38,6 @@ void MeshProvider::ModelResource::readJson(const json& in) {
     READ_OBJECT(size, in);
     READ_OBJECT(axisOrder, in);
     READ_OBJECT(excludeMeshes, in);
-    // READ_OBJECT(materialOverrides, in);
+    READ_OBJECT(materialOverrides, in);
     READ_OBJECT(meshSlots, in);
 }

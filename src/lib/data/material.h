@@ -4,12 +4,14 @@
 #include <memory>
 #include <variant>
 
+#include <serializable.h>
+
 #include "describedresource.hpp"
 #include "textureprovider.h"
 
 class GlTexture;
 
-class Material
+class Material final : public ISerializable
 {
  public:
     using DiffuseRes = DescribedResource<TextureProvider>;
@@ -20,9 +22,13 @@ class Material
 
     using DiffuseChannel = Channel<DiffuseRes, DiffuseTexRef>;
 
+    Material();
     Material(DiffuseChannel&& albedo_alpha);
 
     const DiffuseTexRef& getAlbedoAlpha() const;
+
+    void writeJson(json& out) const override;
+    void readJson(const json& in) override;
 
  private:
     DiffuseChannel albedo_alpha;

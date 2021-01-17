@@ -11,9 +11,9 @@ ResourceManager::ResourceManager(ResourceInfos resource_infos)
     instance = this;
     textureProvider =
       std::make_unique<GlTextureProvider>(resourceInfos.resourceFolder, &glTexturePool);
-    meshProvider =
-      std::make_unique<GlMeshProvider>(resourceInfos.resourceFolder, resourceInfos.modelResources,
-                                       textureProvider.get(), &glMeshPool);
+    meshProvider = std::make_unique<GlMeshProvider>(resourceInfos.resourceFolder,
+                                                    resourceInfos.modelResourcesJson,
+                                                    textureProvider.get(), &glMeshPool);
 }
 
 ResourceManager::~ResourceManager() {

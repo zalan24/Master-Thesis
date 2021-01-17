@@ -49,10 +49,13 @@ static glm::mat4 convert_matrix(const aiMatrix4x4& mat) {
     return tm;
 }
 
-static Mesh::Segment process(const aiMesh* mesh, const std::vector<Mesh::MaterialIndex>& materials,
+static Mesh::Segment process(const aiMesh* mesh,
+                             const std::map<std::string, Mesh::MaterialIndex>& materialOverrides,
+                             const std::vector<Mesh::MaterialIndex>& materials,
                              Mesh::BoneIndex& boneId, const Mesh::Skeleton* skeleton,
                              const glm::vec3& default_color) {
     assert(mesh->GetNumUVChannels() <= 1);
+    std::string meshName(mesh->mName.C_Str());
     Mesh::Segment segment;
     // mesh->mAnimMeshes[0]->
     std::map<uint32_t, std::vector<std::pair<uint32_t, float>>> vertexBoneWeights;
@@ -79,8 +82,13 @@ static Mesh::Segment process(const aiMesh* mesh, const std::vector<Mesh::Materia
             }
         }
     }
-    if (mesh->mMaterialIndex <= materials.size())
-        segment.mat = materials[mesh->mMaterialIndex];
+    if (mesh->mMaterialIndex <= materials.size()) {
+        auto itr = materialOverrides.find(meshName);
+        if (itr == materialOverrides.end())
+            segment.mat = materials[mesh->mMaterialIndex];
+        else
+            segment.mat = itr->second;
+    }
     else
         assert(materials.size() == 0);
     for (uint32_t i = 0; i < mesh->mNumVertices; ++i) {
@@ -208,8 +216,7 @@ Mesh load_mesh(const std::string& filename, const MeshProvider::ModelResource& r
                 else {
                     TextureProvider::ResourceDescriptor matDesc{
                       std::string(path.data, path.length)};
-                    mat = ret.addMaterial(
-                      Material(Material::DiffuseRes(texProvider, std::move(matDesc))));
+                    mat = ret.addMaterial(Material(Material::DiffuseRes(std::move(matDesc))));
                     assert(false);  // TODO checks this (never been tried)
                 }
             }
@@ -220,14 +227,16 @@ Mesh load_mesh(const std::string& filename, const MeshProvider::ModelResource& r
                 matPtr->Get(AI_MATKEY_OPACITY, opacity);
                 glm::vec4 albedo_alpha{albedo.r, albedo.g, albedo.b, opacity};
                 TextureProvider::ResourceDescriptor matDesc{albedo_alpha};
-                mat =
-                  ret.addMaterial(Material(Material::DiffuseRes(texProvider, std::move(matDesc))));
+                mat = ret.addMaterial(Material(Material::DiffuseRes(std::move(matDesc))));
             }
             materials.push_back(std::move(mat));
         }
     }
     std::vector<Mesh::BoneIndex> meshBones(scene->mNumMeshes, ret.getSkeleton()->getRoot());
     process(scene, scene->mRootNode, meshBones, ret.getSkeleton(), ret.getSkeleton()->getRoot());
+    std::map<std::string, Mesh::MaterialIndex> materialOverrides;
+    for (const auto& [meshName, mat] : resData.materialOverrides)
+        materialOverrides[meshName] = ret.addMaterial(mat);
     std::vector<Mesh::SegmentIndex> segments;
     if (scene->HasMeshes()) {
         for (unsigned int i = 0; i < scene->mNumMeshes; ++i) {
@@ -235,8 +244,8 @@ Mesh load_mesh(const std::string& filename, const MeshProvider::ModelResource& r
             meshInfo.meshNames.push_back(meshName);
             if (resData.excludeMeshes.count(meshName) > 0)
                 continue;
-            Mesh::Segment segment = process(scene->mMeshes[i], materials, meshBones[i],
-                                            ret.getSkeleton(), glm::vec3(0, 0, 0));
+            Mesh::Segment segment = process(scene->mMeshes[i], materialOverrides, materials,
+                                            meshBones[i], ret.getSkeleton(), glm::vec3(0, 0, 0));
             ret.addSegment(std::move(segment));
         }
     }

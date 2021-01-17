@@ -87,6 +87,14 @@ class ISerializable
     static json serialize(const ISerializable& value) { return serialize(&value); }
 
     template <typename T>
+    static json serialize(size_t count, const T* values) {
+        json out = json::array();
+        for (size_t i = 0; i < count; ++i)
+            out.push_back(serialize(values[i]));
+        return out;
+    }
+
+    template <typename T>
     static void serialize(const json& in, std::vector<T>& data) {
         if (!in.is_array())
             throw std::runtime_error("Input json is not an array: " + in.dump());
@@ -133,6 +141,17 @@ class ISerializable
 
     static void serialize(const json& in, ISerializable& value) { return serialize(in, &value); }
 
+    template <typename T>
+    static void serialize(const json& in, size_t count, T* values) {
+        if (!in.is_array())
+            throw std::runtime_error("Input json is not an array: " + in.dump());
+        if (in.size() != count)
+            throw std::runtime_error("Wrong json array size, expecting size of "
+                                     + std::to_string(count) + ": " + in.dump());
+        for (size_t i = 0; i < count; ++i)
+            serialize(in[i], values[i]);
+    }
+
  protected:
     ~ISerializable() = default;
 
@@ -162,4 +181,6 @@ template <>
 ISerializable::Entry::Type getType<ISerializable*>();
 
 #define WRITE_OBJECT(name, json) json[#name] = serialize(name)
+#define WRITE_OBJECTS(name, count, json) json[#name] = serialize(count, name)
 #define READ_OBJECT(name, json) serialize(json[#name], name)
+#define READ_OBJECTS(name, count, json) serialize(json[#name], count, name)

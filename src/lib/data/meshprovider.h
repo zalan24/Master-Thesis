@@ -10,6 +10,7 @@
 
 #include <serializable.h>
 
+#include "material.h"
 #include "pixel.h"
 #include "resourcepool.h"
 #include "texture.hpp"
@@ -19,7 +20,10 @@ class Mesh;
 class MeshProvider
 {
  public:
+    MeshProvider();
     virtual ~MeshProvider();
+
+    static MeshProvider* getSingleton() { return instance; }
 
     class ModelResource final : public ISerializable
     {
@@ -31,8 +35,7 @@ class MeshProvider
         float size;
         std::string axisOrder;
         std::set<std::string> excludeMeshes;
-        // TODO
-        // std::unordered_map<std::string, > materialOverrides;
+        std::unordered_map<std::string, Material> materialOverrides;
         std::unordered_map<std::string, std::set<std::string>> meshSlots;
     };
 
@@ -60,6 +63,7 @@ class MeshProvider
     virtual GenericResourcePool::ResourceRef createResource(const ModelResource& res) const = 0;
 
  private:
+    static MeshProvider* instance;
 };
 
 namespace std

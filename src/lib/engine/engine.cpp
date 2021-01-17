@@ -30,8 +30,8 @@ Engine::Engine(const std::string& configFile, ResourceManager::ResourceInfos res
 
 Engine::Engine(const Config& cfg, ResourceManager::ResourceInfos resource_infos)
   : config(cfg),
-    resourceMgr(std::move(resource_infos)),
-    window(config.screenWidth, config.screenHeight, config.title) {
+    window(config.screenWidth, config.screenHeight, config.title),
+    resourceMgr(std::move(resource_infos)) {
 }
 
 Engine::~Engine() {

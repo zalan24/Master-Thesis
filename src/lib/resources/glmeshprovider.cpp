@@ -1,14 +1,22 @@
 #include "glmeshprovider.h"
 
+#include <fstream>
+
 #include <loadmesh.h>
 
-GlMeshProvider::GlMeshProvider(std::string data_path, ModelResourceMap model_resources,
+GlMeshProvider::GlMeshProvider(std::string data_path, const std::string& model_resources_file,
                                TextureProvider* _texProvider,
                                ResourcePool<GlMesh, MeshProvider::ResourceDescriptor>* _meshPool)
-  : dataPath(std::move(data_path)),
-    modelResources(std::move(model_resources)),
-    texProvider(_texProvider),
-    meshPool(_meshPool) {
+  : dataPath(std::move(data_path)), texProvider(_texProvider), meshPool(_meshPool) {
+    json modelResourcesJson;
+    {
+        std::ifstream modeResourcesIn(model_resources_file);
+        if (!modeResourcesIn.is_open())
+            throw std::runtime_error("Could not find model resources file: "
+                                     + model_resources_file);
+        modeResourcesIn >> modelResourcesJson;
+    }
+    ISerializable::serialize(modelResourcesJson, modelResources);
 }
 
 static void fix_mesh(Mesh& m, const std::string& axisOrder) {

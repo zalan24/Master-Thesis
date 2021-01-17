@@ -7,6 +7,41 @@
         "meshSlots": {},
         "materialOverrides": {}
     },
+    "plant": {
+        "file": "models/Philodendron/philodendron.obj",
+        "size": 0.5,
+        "axisOrder": "xyz",
+        "excludeMeshes": [],
+        "meshSlots": {},
+        "materialOverrides": {
+            "Philodendron_LP": {
+                "albedo": {
+                    "descriptor": {
+                        "color": [
+                            0,
+                            0,
+                            0,
+                            1
+                        ],
+                        "filename": "models/Philodendron/Philodendron_Diff.png"
+                    }
+                }
+            },
+            "Philodendron_LP.001_CUCube.002": {
+                "albedo": {
+                    "descriptor": {
+                        "color": [
+                            0,
+                            0,
+                            0,
+                            1
+                        ],
+                        "filename": "models/Philodendron/Pot1_Diff.png"
+                    }
+                }
+            }
+        }
+    },
     "BH-2": {
         "file": "models/BH-2/BH-2 Free.fbx",
         "size": 0.01,

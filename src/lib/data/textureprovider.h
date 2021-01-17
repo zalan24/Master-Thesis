@@ -14,11 +14,15 @@
 class TextureProvider
 {
  public:
-    virtual ~TextureProvider() {}
+    TextureProvider();
+    virtual ~TextureProvider();
+
+    static TextureProvider* getSingleton() { return instance; }
 
     class ResourceDescriptor final : public ISerializable
     {
      public:
+        ResourceDescriptor() : ResourceDescriptor(glm::vec4(0, 0, 0, 1)) {}
         ResourceDescriptor(const glm::vec4& value);
         ResourceDescriptor(const std::string& filename);
 
@@ -49,6 +53,7 @@ class TextureProvider
     virtual GenericResourcePool::ResourceRef createResource(const std::string& filename) const = 0;
 
  private:
+    static TextureProvider* instance;
 };
 
 namespace std

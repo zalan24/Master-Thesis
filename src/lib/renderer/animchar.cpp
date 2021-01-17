@@ -5,9 +5,8 @@
 #include <resourcemanager.h>
 
 std::unique_ptr<Material> Animchar::getDefaultMaterial() {
-    const TextureProvider* texProvider = ResourceManager::getSingleton()->getTexProvider();
     TextureProvider::ResourceDescriptor diffuseDesc(glm::vec4(1, 1, 1, 1));
-    Material::DiffuseRes diffuseRes(texProvider, std::move(diffuseDesc));
+    Material::DiffuseRes diffuseRes(std::move(diffuseDesc));
     return std::make_unique<Material>(std::move(diffuseRes));
 }
 
