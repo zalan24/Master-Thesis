@@ -62,7 +62,13 @@ Cleanup & other:
 
 
 Questions:
-    ☐ Query 16 queue and use 1 vs Query 1 queue and use 1
-    ☐ Synchronize between two queue after every command (semaphores), but no actual waiting happens
-    ☐ 16 draw calls on 16 queues vs 16 draw calls on 1 queue (sync for depth test and sync for color write)
-    ☐ How vk submit waits on semaphores, where stages are provided (command buffers might contain a lot of pipelines)
+    ✔ Query 16 queue and use 1 vs Query 1 queue and use 1 @done (1/18/2021, 12:28:09 PM)
+        -> allocation cost
+    ✔ Synchronize between two queue after every command (semaphores), but no actual waiting happens @done (1/18/2021, 12:28:30 PM)
+        -> semaphore overhead is negligible
+    ✔ 16 draw calls on 16 queues vs 16 draw calls on 1 queue (sync for depth test and sync for color write) @done (1/18/2021, 12:29:45 PM)
+        -> no point in separation, card already runs in parallel. Set up render passes properly though
+    ✔ How vk submit waits on semaphores, where stages are provided (command buffers might contain a lot of pipelines) @done (1/18/2021, 12:37:58 PM)
+        -> all commands wait until that stage on the semaphore
+    ✔ 100 commands on same buffer vs on separate buffers @done (1/18/2021, 12:29:18 PM)
+        -> consumes memory / more api calls. Use a single buffer if possible
