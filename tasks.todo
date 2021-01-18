@@ -1,25 +1,58 @@
 Get a triangle on screen:
+    ☐ Rework command lanes
+        ☐ Command lane info contains queue infos (name, what's required, what's preferred, priority, etc.)
+        ☐ When using the same queue, use the highest priority
+        ☐ Try to use different queue families in a command lane
+        ☐ Command lane tries to get these queues separately if possible
+        ☐ Command lane will have a set of queues assigned to the names, which don't have to be unique (transfer and render queue can be the same)
+        ☐ Command lanes used in the engine:
+            ☐ Main
+                ☐ Render (graphics queue)
+                ☐ Compute (compute queue)
+                ☐ DtoH (transfer queue)
+                ☐ HtoD (transfer queue)
+            ☐ Input
+                ☐ HtoD (transfer queue)
     ☐ Modify queue manager to work with command lanes
-    ☐ Implement barriers
-    ☐ Implement events
-    ☐ Implement graphical pipeline
-    ☐ Implement render pass
+        ☐ Have a mapping of CommandLane -> QueueName -> Queue
+        ☐ Acquired queues based on this
+        ☐ Remove hash based groupings (maybe some other stuff as well)
     ☐ Create a frame memory allocator
         ☐ It needs to support allocation on recording thread and release in the execution thread (multiple frame memory objects?)
         ☐ Use a pool of frame mems? acquire in simulation thread, release in execution thread
-    ☐ Command for reset command buffer
-    ☐ Add a new thread for callbacks
-        ☐ Pair of fences or events + std::function can be added to it
-        ☐ Wait for fence/event execute function
-    ☐ Prepare frame-graph and multi-command buffer for per-frame building and execution
+    ☐ Command buffer pool
+        ☐ Initialize in engine
+
+        ☐ CommandBuffer circulator:
+            ☐ Is assigned to a family
+            ☐ Have a Command pool
+            ☐ The idea is that, upon cmd buffer request
+                ☐ If there is an available buffer, return it
+                    ☐ Prefer queues with lower index
+                ☐ If not, create more command buffers
+                ☐ If utilization is low for a long time, decrease the size by releasing the last X command buffers
+                ☐ the vector stores command pools with different sizes (one active, others wait to be released)
+                ☐ set contains the cmd buffers from the corresponding pool
+            ☐ Upon recording the buffer, it should be sent to the execution thread with the circulator ptr
+            ☐ Upon submission, give the pending buffer back to the circulator
+            ☐ Dtor/close asserts/waits if there are some pending queues (that might be a problem when in a catch block...)
+        ☐ One-time-submit command buffers:
+            ☐ Have a large singular Command buffer circulator map<queueFamily, cmd buffer circulator> for every family/queue
+        ☐ Reusable (non-transient) buffers:
+            ☐ The client code should create a new circulator
+            ☐ If the returned buffer is new, record it
+            ☐ Use it for things that are not created often
+        ☐ Transient command buffers:
+            ☐ For simplicity, just add a separate circulator for each family/queue
+            ☐ Initialize this with a larger starting size
+            ☐ Command buffers are not expected to be returned until closing them
+    ☐ Rework frame graph
+        ☐ Nodes will be assigned to specific queues
         ☐ Use frame mem
-        ☐ Review/rework queue selection algorithm
-        ☐ Add extra info to dependencies? (for barriers and buffer grouping)
-        ☐ Reuse objects, where possible (don't recreate multi command buffer)
-        ☐ Nodes should create command buffers directly and later record into them
-            ☐ Nodes could have a list of command buffers??? (these would be in the same synchronization unit)
-        ☐ Nodes should be assigned to a command lane
-        ☐ Pre-create nodes
+        ☐ Remove unnecessary stuff
+        ☐ Reuse objects, where possible
+
+        ☐ Static nodes
             ☐ Some nodes should be pre-created before recording starts (these should be fairly constant nodes)
             ☐ Don't create them every frame
             ☐ These nodes need the same queues every frame (until recreation)
@@ -35,11 +68,25 @@ Get a triangle on screen:
                 ☐ If there is a command buffer in the pool, use it
                 ☐ When removing the node: reset the command buffer, return it to the pool
                 ☐ Should be concurrent
+
+        ☐ Add extra info to dependencies? (for barriers and buffer grouping)
+        ☐ Nodes should create command buffers directly and later record into them
+            ☐ Nodes could have a list of command buffers??? (these would be in the same synchronization unit)
+        ☐ Nodes should be assigned to a command lane
         ☐ Nodes need to be closeable (no more dependencies can be created)
         ☐ Allow partial execution of closed nodes
             ☐ Instead of actual execution, just return a queue and the command buffer
         ☐ Frame graph should be concurrent (adding nodes in one thread, partial executions in the other)
         ☐ Are semaphores needed within a single queue (events might be better)
+    ☐ Implement barriers
+    ☐ Implement timeline fences and semaphores
+    ☐ Implement events
+    ☐ Implement graphical pipeline
+    ☐ Implement render pass
+    ☐ Command for reset command buffer
+    ☐ Add a new thread for callbacks
+        ☐ Pair of fences or events + std::function can be added to it
+        ☐ Wait for fence/event execute function
     ☐ Execute frame graph
         ☐ When a node is complete (closed):
             ☐ Have two command buffers (or two lists if lists are used)
@@ -64,11 +111,19 @@ Cleanup & other:
 Questions:
     ✔ Query 16 queue and use 1 vs Query 1 queue and use 1 @done (1/18/2021, 12:28:09 PM)
         -> allocation cost
+        -> can have extra perf cost as well. Don't do it
     ✔ Synchronize between two queue after every command (semaphores), but no actual waiting happens @done (1/18/2021, 12:28:30 PM)
         -> semaphore overhead is negligible
     ✔ 16 draw calls on 16 queues vs 16 draw calls on 1 queue (sync for depth test and sync for color write) @done (1/18/2021, 12:29:45 PM)
         -> no point in separation, card already runs in parallel. Set up render passes properly though
+        -> cs and transfer can be separate
     ✔ How vk submit waits on semaphores, where stages are provided (command buffers might contain a lot of pipelines) @done (1/18/2021, 12:37:58 PM)
         -> all commands wait until that stage on the semaphore
     ✔ 100 commands on same buffer vs on separate buffers @done (1/18/2021, 12:29:18 PM)
         -> consumes memory / more api calls. Use a single buffer if possible
+    ☐ Can I record commands to two separate command buffers, which share a command pool concurrently?
+
+    https://stackoverflow.com/questions/37575012/should-i-try-to-use-as-many-queues-as-possible
+
+    ☐ Read: https://mynameismjp.wordpress.com/2018/06/17/breaking-down-barriers-part-3-multiple-command-processors/
+    ☐ Read: https://community.arm.com/developer/tools-software/graphics/b/blog/posts/vulkan-mobile-best-practices-and-management
