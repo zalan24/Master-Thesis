@@ -19,4 +19,5 @@ target_link_libraries(AnimationsEngine PUBLIC
     AnimationsWindow
     AnimationsWindow
     AnimationsResources
+    AnimationsInput
 )

@@ -6,12 +6,14 @@
 
 struct GLFWwindow;
 
+class Input;
+
 class Window
 {
  public:
     static Window* getSingleton() { return instance; }
 
-    Window(int width, int height, const std::string& title);
+    Window(Input* input, int width, int height, const std::string& title);
     ~Window();
 
     Window(const Window&) = delete;
@@ -53,14 +55,15 @@ class Window
         ~GLContext();
     };
     GLFWInit initer;
+    Input* input;
     WindowObject window;
     GLContext context;
     std::set<int> pushedButtons;
     std::set<int> pushedMouseButtons;
 
     static void error_callback [[noreturn]] (int error, const char* description);
-    //  static void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods);
-    //  static void cursor_position_callback(GLFWwindow* window, double xpos, double ypos);
-    //  static void mouse_button_callback(GLFWwindow* window, int button, int action, int mods);
-    //  static void scroll_callback(GLFWwindow* window, double xoffset, double yoffset);
+    static void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods);
+    static void cursor_position_callback(GLFWwindow* window, double xpos, double ypos);
+    static void mouse_button_callback(GLFWwindow* window, int button, int action, int mods);
+    static void scroll_callback(GLFWwindow* window, double xoffset, double yoffset);
 };

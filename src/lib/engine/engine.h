@@ -6,6 +6,7 @@
 #include <thread>
 
 #include <entitymanager.h>
+#include <input.h>
 #include <renderer.h>
 #include <resourcemanager.h>
 #include <serializable.h>
@@ -18,6 +19,7 @@ class Engine
     {
         int screenWidth;
         int screenHeight;
+        int inputBufferSize;
         std::string title;
         void writeJson(json& out) const override final;
         void readJson(const json& in) override final;
@@ -54,6 +56,7 @@ class Engine
 
     Config config;
 
+    Input input;
     Window window;
     Renderer renderer;
     ResourceManager resourceMgr;
@@ -72,6 +75,8 @@ class Engine
         RENDER,
         SIMULATION_END
     };
+
+    void sampleInput();
 
     void simulationLoop(bool* quit, LoopState* state);
 };

@@ -18,6 +18,8 @@ class DescribedResource final : public ISerializable
     void writeJson(json& out) const override final { WRITE_OBJECT(descriptor, out); }
     void readJson(const json& in) override final {
         READ_OBJECT(descriptor, in);
+        // this avoids releasing the resource if it's the same as the new one
+        GenericResourcePool::ResourceRef originalRes = resource;
         resource = P::getSingleton()->getResource(descriptor);
     }
 
