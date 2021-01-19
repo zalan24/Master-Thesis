@@ -38,6 +38,7 @@ CommandLaneManager::CommandLaneManager(PhysicalDevicePtr physicalDevice,
             Queue q;
             q.priority = queueInfo.priority;
             q.familyPtr = nullptr;
+            q.commandTypes = queueInfo.commandTypes;
             unsigned int bestMatch = 0;
             for (size_t i = 0; i < familyCount; ++i) {
                 if ((queueFamilies[i].commandTypeMask & queueInfo.commandTypes)

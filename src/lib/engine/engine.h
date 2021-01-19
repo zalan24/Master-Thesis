@@ -74,6 +74,11 @@ class Engine
     drv::CommandLaneManager commandLaneMgr;
     drv::LogicalDevice device;
     drv::QueueManager queueManager;
+    drv::QueueManager::Queue renderQueue;
+    drv::QueueManager::Queue computeQueue;
+    drv::QueueManager::Queue DtoHQueue;
+    drv::QueueManager::Queue HtoDQueue;
+    drv::QueueManager::Queue inputQueue;
     // ResourceManager resourceMgr;
     EntityManager entityManager;
     // Window window;

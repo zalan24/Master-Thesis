@@ -20,6 +20,7 @@ class CommandLaneManager
         QueueFamilyPtr familyPtr;
         unsigned int queueIndex;
         float priority;
+        CommandTypeMask commandTypes;
     };
 
     struct CommandLaneInfo

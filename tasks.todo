@@ -1,5 +1,5 @@
 Get a triangle on screen:
-    ☐ Rework command lanes
+    ✔ Rework command lanes @done (1/19/2021, 11:12:55 AM)
         ✔ Command lane info contains queue infos (name, what's required, what's preferred, priority, etc.) @done (1/19/2021, 10:42:42 AM)
         ✔ When using the same queue, use the highest priority @done (1/19/2021, 10:42:45 AM)
         ✔ Try to use different queue families in a command lane @done (1/19/2021, 10:45:02 AM)
@@ -13,17 +13,17 @@ Get a triangle on screen:
                 ✔ HtoD (transfer queue) @done (1/19/2021, 10:45:33 AM)
             ✔ Input @done (1/19/2021, 10:45:33 AM)
                 ✔ HtoD (transfer queue) @done (1/19/2021, 10:45:32 AM)
-    ☐ Modify queue manager to work with command lanes
+    ✔ Modify queue manager to work with command lanes @done (1/19/2021, 11:12:08 PM)
         ✔ Have a mapping of CommandLane -> QueueName -> Queue @done (1/19/2021, 11:12:08 AM)
         ✔ Acquired queues based on this @done (1/19/2021, 11:12:08 AM)
-        ☐ Remove hash based groupings (maybe some other stuff as well)
+        ✔ Remove hash based groupings (maybe some other stuff as well) @done (1/19/2021, 11:12:07 PM)
     ☐ Create a frame memory allocator
         ☐ It needs to support allocation on recording thread and release in the execution thread (multiple frame memory objects?)
         ☐ Use a pool of frame mems? acquire in simulation thread, release in execution thread
     ☐ Command buffer pool
         ☐ Initialize in engine
-
         ☐ CommandBuffer circulator:
+            ☐ Only resetable one-time-submit command buffer are supported
             ☐ Is assigned to a family
             ☐ Have a Command pool
             ☐ The idea is that, upon cmd buffer request
@@ -31,26 +31,18 @@ Get a triangle on screen:
                     ☐ Prefer queues with lower index
                 ☐ If not, create more command buffers
                 ☐ If utilization is low for a long time, decrease the size by releasing the last X command buffers
-                ☐ the vector stores command pools with different sizes (one active, others wait to be released)
-                ☐ set contains the cmd buffers from the corresponding pool
             ☐ Upon recording the buffer, it should be sent to the execution thread with the circulator ptr
             ☐ Upon submission, give the pending buffer back to the circulator
             ☐ Dtor/close asserts/waits if there are some pending queues (that might be a problem when in a catch block...)
-        ☐ One-time-submit command buffers:
-            ☐ Have a large singular Command buffer circulator map<queueFamily, cmd buffer circulator> for every family/queue
-        ☐ Reusable (non-transient) buffers:
-            ☐ The client code should create a new circulator
-            ☐ If the returned buffer is new, record it
-            ☐ Use it for things that are not created often
-        ☐ Transient command buffers:
-            ☐ For simplicity, just add a separate circulator for each family/queue
-            ☐ Initialize this with a larger starting size
-            ☐ Command buffers are not expected to be returned until closing them
+        ☐ Have a CommandBuffer circulator for each queue family
     ☐ Rework frame graph
         ☐ Nodes will be assigned to specific queues
         ☐ Use frame mem
         ☐ Remove unnecessary stuff
         ☐ Reuse objects, where possible
+        ☐ Single time nodes:
+            ☐ They are given a single time command buffer from the circulator
+            ☐ Execution removes executed dynamic nodes
 
         ☐ Static nodes
             ☐ Some nodes should be pre-created before recording starts (these should be fairly constant nodes)
@@ -60,14 +52,6 @@ Get a triangle on screen:
             ☐ Nodes can have a fixed command buffer. For such nodes, the renderer needs to have a function to fill them (before normal render)
                 ☐ If they need recreating, add their command buffer to a separate list, paired with a fence, which is added to the assigned queue
                 ☐ Have a cleanup thread (or use the callback wait thread), which waits for these fences and removes objects (later different types of resources can be added)
-        ☐ On-the-fly queue assignment (for command pool)
-            ☐ New nodes can be added, and they get a queue dynamically
-            ☐ Execution removes executed dynamic nodes
-            ☐ There should be a pool of command buffers for each queue family
-                ☐ If there is no available command buffer, create one
-                ☐ If there is a command buffer in the pool, use it
-                ☐ When removing the node: reset the command buffer, return it to the pool
-                ☐ Should be concurrent
 
         ☐ Add extra info to dependencies? (for barriers and buffer grouping)
         ☐ Nodes should create command buffers directly and later record into them
@@ -122,6 +106,7 @@ Questions:
     ✔ 100 commands on same buffer vs on separate buffers @done (1/18/2021, 12:29:18 PM)
         -> consumes memory / more api calls. Use a single buffer if possible
     ☐ Can I record commands to two separate command buffers, which share a command pool concurrently?
+    ☐ Transient command buffer vs non-transient (except for parallel execution)
 
     https://stackoverflow.com/questions/37575012/should-i-try-to-use-as-many-queues-as-possible
 

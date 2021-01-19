@@ -80,9 +80,14 @@ Engine::Engine(const Config& cfg)
          {"compute", 0.5, drv::CMD_TYPE_COMPUTE, drv::CMD_TYPE_TRANSFER},
          {"DtoH", 0.5, drv::CMD_TYPE_TRANSFER, 0},
          {"HtoD", 0.5, drv::CMD_TYPE_TRANSFER, 0}}},
-       {"input", {{"HtoD", 0.5, drv::CMD_TYPE_TRANSFER, 0}}}}),
+       {"input", {{"HtoD", 1, drv::CMD_TYPE_TRANSFER, 0}}}}),
     device({physicalDevice, commandLaneMgr.getQueuePriorityInfo()}),
-    queueManager(physicalDevice, device, &commandLaneMgr) {
+    queueManager(device, &commandLaneMgr),
+    renderQueue(queueManager.getQueue({"main", "render"})),
+    computeQueue(queueManager.getQueue({"main", "compute"})),
+    DtoHQueue(queueManager.getQueue({"main", "DtoH"})),
+    HtoDQueue(queueManager.getQueue({"main", "HtoD"})),
+    inputQueue(queueManager.getQueue({"input", "HtoD"})) {
 }
 
 Engine::~Engine() {
