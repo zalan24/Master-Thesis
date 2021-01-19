@@ -222,6 +222,13 @@ LogicalDevice& LogicalDevice::operator=(LogicalDevice&& other) {
     return *this;
 }
 
+CommandPool::CommandPool() : ptr(NULL_HANDLE) {
+}
+
+CommandPool::operator bool() const {
+    return ptr != NULL_HANDLE;
+}
+
 CommandPool::CommandPool(LogicalDevicePtr _device, QueueFamilyPtr queueFamily,
                          const CommandPoolCreateInfo& info)
   : device(_device) {
@@ -296,6 +303,10 @@ CommandBuffer::CommandBuffer(LogicalDevicePtr _device, CommandPoolPtr _pool,
 
 CommandBuffer::~CommandBuffer() noexcept {
     close();
+}
+
+CommandBuffer::operator bool() const {
+    return ptr != NULL_HANDLE;
 }
 
 void CommandBuffer::close() {

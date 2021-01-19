@@ -17,11 +17,8 @@ Get a triangle on screen:
         ✔ Have a mapping of CommandLane -> QueueName -> Queue @done (1/19/2021, 11:12:08 AM)
         ✔ Acquired queues based on this @done (1/19/2021, 11:12:08 AM)
         ✔ Remove hash based groupings (maybe some other stuff as well) @done (1/19/2021, 11:12:07 PM)
-    ☐ Create a frame memory allocator
-        ☐ It needs to support allocation on recording thread and release in the execution thread (multiple frame memory objects?)
-        ☐ Use a pool of frame mems? acquire in simulation thread, release in execution thread
     ☐ Command buffer pool
-        ☐ Initialize in engine
+        ✔ Initialize in engine @done (1/20/2021, 12:25:34 AM)
         ☐ CommandBuffer circulator:
             ☐ Only resetable one-time-submit command buffer are supported
             ☐ Is assigned to a family
@@ -35,6 +32,9 @@ Get a triangle on screen:
             ☐ Upon submission, give the pending buffer back to the circulator
             ☐ Dtor/close asserts/waits if there are some pending queues (that might be a problem when in a catch block...)
         ☐ Have a CommandBuffer circulator for each queue family
+    ☐ Create a frame memory allocator
+        ☐ It needs to support allocation on recording thread and release in the execution thread (multiple frame memory objects?)
+        ☐ Use a pool of frame mems? acquire in simulation thread, release in execution thread
     ☐ Rework frame graph
         ☐ Nodes will be assigned to specific queues
         ☐ Use frame mem

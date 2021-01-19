@@ -9,6 +9,7 @@
 #include <drv.h>
 #include <drv_queue_manager.h>
 #include <drv_wrappers.h>
+#include <drvcmdbufferbank.h>
 #include <drvlane.h>
 
 #include <entitymanager.h>
@@ -79,6 +80,7 @@ class Engine
     drv::QueueManager::Queue DtoHQueue;
     drv::QueueManager::Queue HtoDQueue;
     drv::QueueManager::Queue inputQueue;
+    CommandBufferBank cmdBufferBank;
     // ResourceManager resourceMgr;
     EntityManager entityManager;
     // Window window;

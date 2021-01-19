@@ -135,6 +135,7 @@ class CommandPool
   , private Exclusive
 {
  public:
+    CommandPool();
     CommandPool(LogicalDevicePtr device, QueueFamilyPtr queueFamily,
                 const CommandPoolCreateInfo& info);
     ~CommandPool() noexcept;
@@ -143,6 +144,7 @@ class CommandPool
     CommandPool& operator=(CommandPool&& other) noexcept;
 
     operator CommandPoolPtr() const;
+    operator bool() const;
 
  private:
     LogicalDevicePtr device;
@@ -182,6 +184,7 @@ class CommandBuffer
     CommandBuffer& operator=(CommandBuffer&& other) noexcept;
 
     operator CommandBufferPtr() const;
+    operator bool() const;
 
  private:
     LogicalDevicePtr device;

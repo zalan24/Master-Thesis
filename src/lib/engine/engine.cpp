@@ -87,7 +87,8 @@ Engine::Engine(const Config& cfg)
     computeQueue(queueManager.getQueue({"main", "compute"})),
     DtoHQueue(queueManager.getQueue({"main", "DtoH"})),
     HtoDQueue(queueManager.getQueue({"main", "HtoD"})),
-    inputQueue(queueManager.getQueue({"input", "HtoD"})) {
+    inputQueue(queueManager.getQueue({"input", "HtoD"})),
+    cmdBufferBank(device) {
 }
 
 Engine::~Engine() {
