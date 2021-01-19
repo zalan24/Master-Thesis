@@ -8,6 +8,8 @@
 
 using namespace drv;
 
+/*
+
 MultiCommandBuffer::MultiCommandBuffer() : device(NULL_HANDLE) {
 }
 
@@ -227,3 +229,4 @@ void FrameGraph::build_impl(MultiCommandBuffer& _commandBuffer,
     }
     _commandBuffer.build();
 }
+*/

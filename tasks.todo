@@ -14,8 +14,8 @@ Get a triangle on screen:
             ✔ Input @done (1/19/2021, 10:45:33 AM)
                 ✔ HtoD (transfer queue) @done (1/19/2021, 10:45:32 AM)
     ☐ Modify queue manager to work with command lanes
-        ☐ Have a mapping of CommandLane -> QueueName -> Queue
-        ☐ Acquired queues based on this
+        ✔ Have a mapping of CommandLane -> QueueName -> Queue @done (1/19/2021, 11:12:08 AM)
+        ✔ Acquired queues based on this @done (1/19/2021, 11:12:08 AM)
         ☐ Remove hash based groupings (maybe some other stuff as well)
     ☐ Create a frame memory allocator
         ☐ It needs to support allocation on recording thread and release in the execution thread (multiple frame memory objects?)

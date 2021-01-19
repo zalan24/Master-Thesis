@@ -73,7 +73,7 @@ class Engine
     drv::PhysicalDevice physicalDevice;
     drv::CommandLaneManager commandLaneMgr;
     drv::LogicalDevice device;
-    // drv::QueueManager queueManager;
+    drv::QueueManager queueManager;
     // ResourceManager resourceMgr;
     EntityManager entityManager;
     // Window window;

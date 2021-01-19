@@ -35,6 +35,12 @@ class CommandLaneManager
         std::vector<CommandQueueInfo> queues;
     };
 
+    struct CommandLane
+    {
+        // The same queue can be assigned to several names
+        std::unordered_map<std::string, Queue> queues;
+    };
+
     CommandLaneManager(PhysicalDevicePtr physicalDevice,
                        const std::vector<CommandLaneInfo>& laneInfos);
 
@@ -42,13 +48,9 @@ class CommandLaneManager
 
     std::unordered_map<QueueFamilyPtr, std::vector<float>> getQueuePriorityInfo() const;
 
- private:
-    struct CommandLane
-    {
-        // The same queue can be assigned to several names
-        std::unordered_map<std::string, Queue> queues;
-    };
+    const std::unordered_map<std::string, CommandLane>& getLanes() const { return lanes; }
 
+ private:
     std::unordered_map<std::string, CommandLane> lanes;
 };
 
