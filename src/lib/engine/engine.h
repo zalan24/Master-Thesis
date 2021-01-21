@@ -59,10 +59,10 @@ class Engine
 
     Input input;
     InputManager inputManager;
+    EntityManager entityManager;
     Window window;
     Renderer renderer;
     ResourceManager resourceMgr;
-    EntityManager entityManager;
 
     FrameId simulationFrame = 0;
     FrameId renderFrame = 0;

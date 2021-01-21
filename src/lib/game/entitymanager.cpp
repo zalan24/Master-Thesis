@@ -16,12 +16,16 @@ EntityManager::EntityManager() {
     instance = this;
 }
 
-EntityManager::~EntityManager() noexcept {
+void EntityManager::deleteAll() {
     destructing = true;
-    assert(instance == this);
     for (EntityId id = 0; id < entities.size(); ++id)
         if (entities[id].entity != nullptr && entities[id].entity->getParent() == nullptr)
             removeEntity(id);
+}
+
+EntityManager::~EntityManager() noexcept {
+    assert(instance == this);
+    deleteAll();
     instance = nullptr;
 }
 

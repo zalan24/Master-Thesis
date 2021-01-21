@@ -38,6 +38,7 @@ Engine::Engine(const Config& cfg, ResourceManager::ResourceInfos resource_infos)
 }
 
 Engine::~Engine() {
+    entityManager.deleteAll();
     checkError();
 }
 
