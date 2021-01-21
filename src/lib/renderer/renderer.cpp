@@ -5,6 +5,7 @@
 #include <entitymanager.h>
 
 #include "drawableentity.h"
+#include "freecam.h"
 #include "rendercontext.h"
 
 Renderer::Renderer() {
@@ -12,6 +13,9 @@ Renderer::Renderer() {
     glGenVertexArrays(1, &vertexArrayID);
     glBindVertexArray(vertexArrayID);
     checkError();
+    std::unique_ptr<FreeCamEntity> freeCam = std::make_unique<FreeCamEntity>(this);
+    freeCam->activate();  // TODO remove this line
+    EntityManager::getSingleton()->addEntity(std::move(freeCam));
 }
 
 void Renderer::updateFrameBuffer(Framebuffer& framebuffer, unsigned int width,

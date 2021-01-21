@@ -44,6 +44,7 @@ void InputManager::unregisterListener(InputListener* listener) {
 }
 
 void InputManager::feedInput(Input::InputEvent&& event) {
+    // TODO deal with unregistered listeners here (might happen in the loop)
     for (Listener& l : inputListeners)
         if (l.ptr->process(event))
             return;

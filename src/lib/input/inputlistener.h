@@ -10,6 +10,7 @@ class InputListener
 
     bool process(const Input::InputEvent& event);
 
+ protected:
     virtual bool processKeyboard(const Input::KeyboardEvent&) { return blockAll; }
     virtual bool processMouseButton(const Input::MouseButtenEvent&) { return blockAll; }
     virtual bool processMouseMove(const Input::MouseMoveEvent&) { return blockAll; }

@@ -15,4 +15,5 @@ target_link_libraries(AnimationsRenderer PUBLIC
     AnimationsBuffer
     AnimationsGame
     AnimationsResources
+    AnimationsInput
 )

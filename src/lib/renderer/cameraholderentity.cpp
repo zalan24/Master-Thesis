@@ -17,10 +17,12 @@ void CameraHolderEntity::activate() {
       },
       [](Entity* entity) { static_cast<CameraHolderEntity*>(entity)->deactivate(); });
     EntityManager::getSingleton()->performQuery(deactivateQuery);
+    _activate();
 }
 
 void CameraHolderEntity::deactivate() {
     active = false;
+    _deactivate();
 }
 
 void CameraHolderEntity::update(const UpdateData&) {

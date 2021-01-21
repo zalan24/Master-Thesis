@@ -17,6 +17,10 @@ class CameraHolderEntity : public Entity
 
     void update(const UpdateData& data) override final;
 
+ protected:
+    virtual void _activate() {}
+    virtual void _deactivate() {}
+
  private:
     Renderer* renderer;
     Entity::AffineTransform cameraOffset;
