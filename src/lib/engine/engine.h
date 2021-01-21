@@ -7,6 +7,7 @@
 
 #include <entitymanager.h>
 #include <input.h>
+#include <inputmanager.h>
 #include <renderer.h>
 #include <resourcemanager.h>
 #include <serializable.h>
@@ -57,6 +58,7 @@ class Engine
     Config config;
 
     Input input;
+    InputManager inputManager;
     Window window;
     Renderer renderer;
     ResourceManager resourceMgr;

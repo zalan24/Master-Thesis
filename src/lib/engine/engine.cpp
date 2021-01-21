@@ -43,9 +43,8 @@ Engine::~Engine() {
 
 void Engine::sampleInput() {
     Input::InputEvent event;
-    while (input.popEvent(event)) {
-        // TODO process input
-    }
+    while (input.popEvent(event))
+        inputManager.feedInput(std::move(event));
 }
 
 void Engine::simulationLoop(bool* quit, LoopState* state) {
