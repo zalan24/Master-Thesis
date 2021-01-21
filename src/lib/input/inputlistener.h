@@ -10,6 +10,16 @@ class InputListener
 
     bool process(const Input::InputEvent& event);
 
+    enum CursorMode
+    {
+        DONT_CARE,
+        NORMAL,
+        HIDE,
+        LOCK
+    };
+
+    virtual CursorMode getCursorMode() { return DONT_CARE; }
+
  protected:
     virtual bool processKeyboard(const Input::KeyboardEvent&) { return blockAll; }
     virtual bool processMouseButton(const Input::MouseButtenEvent&) { return blockAll; }

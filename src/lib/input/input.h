@@ -135,6 +135,8 @@ class Input
     {
         double relX;
         double relY;
+        double dX;
+        double dY;
     };
     struct MouseButtenEvent
     {

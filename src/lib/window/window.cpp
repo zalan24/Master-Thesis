@@ -10,6 +10,7 @@
 #include <GLFW/glfw3.h>
 
 #include <input.h>
+#include <inputmanager.h>
 
 Window* Window::instance = nullptr;
 
@@ -39,13 +40,19 @@ void Window::key_callback(GLFWwindow*, int key, int scancode, int action, int) {
     instance->input->pushKeyboard(std::move(event));
 }
 
-void Window::cursor_position_callback(GLFWwindow*, double xpos, double ypos) {
+void Window::cursor_position_callback(GLFWwindow* window, double xpos, double ypos) {
     // static bool wasPressed = false;
-    // static double prevX = 0;
-    // static double prevY = 0;
+    static double prevX = 0;
+    static double prevY = 0;
+    int w, h;
+    glfwGetWindowSize(window, &w, &h);
     Input::MouseMoveEvent event;
-    event.relX = xpos;
-    event.relY = ypos;
+    event.relX = xpos / w;
+    event.relY = ypos / h;
+    event.dX = event.relX - prevX;
+    event.dY = event.relY - prevY;
+    prevX = event.relX;
+    prevY = event.relY;
     instance->input->pushMouseMove(std::move(event));
 
     // bool pressed = getSingleton()->pushedMouseButtons.find(GLFW_MOUSE_BUTTON_LEFT)
@@ -126,11 +133,30 @@ Window::GLContext::GLContext(GLFWwindow* _window) {
 Window::GLContext::~GLContext() {
 }
 
-Window::Window(Input* _input, int _width, int _height, const std::string& title)
-  : initer(), input(_input), window(_width, _height, title), context(window) {
+Window::Window(Input* _input, InputManager* _inputManager, int _width, int _height,
+               const std::string& title)
+  : initer(),
+    input(_input),
+    inputManager(_inputManager),
+    window(_width, _height, title),
+    context(window) {
     glfwSwapInterval(1);
     assert(instance == nullptr);
     instance = this;
+    inputManager->setCursorModeCallbock([this](InputListener::CursorMode mode) {
+        switch (mode) {
+            case InputListener::CursorMode::DONT_CARE:
+            case InputListener::CursorMode::NORMAL:
+                glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+                break;
+            case InputListener::CursorMode::HIDE:
+                glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_HIDDEN);
+                break;
+            case InputListener::CursorMode::LOCK:
+                glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+                break;
+        }
+    });
 }
 
 Window::~Window() {

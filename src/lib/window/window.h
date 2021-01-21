@@ -7,13 +7,15 @@
 struct GLFWwindow;
 
 class Input;
+class InputManager;
 
 class Window
 {
  public:
     static Window* getSingleton() { return instance; }
 
-    Window(Input* input, int width, int height, const std::string& title);
+    Window(Input* input, InputManager* inputManager, int width, int height,
+           const std::string& title);
     ~Window();
 
     Window(const Window&) = delete;
@@ -56,6 +58,7 @@ class Window
     };
     GLFWInit initer;
     Input* input;
+    InputManager* inputManager;
     WindowObject window;
     GLContext context;
     std::set<int> pushedButtons;

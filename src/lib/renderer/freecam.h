@@ -28,6 +28,8 @@ class FreeCamEntity final : public CameraHolderEntity
     float normalSpeed = 2;
     float fastSpeed = 50;
     bool boost = false;
+    float rotationSpeed = 3;
+    float upMinAngle = 0.1f;
 
     friend class FreeCamInput;
 };

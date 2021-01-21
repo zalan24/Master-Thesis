@@ -32,6 +32,7 @@ InputManager& InputManager::operator=(InputManager&& other) {
 void InputManager::registerListener(InputListener* listener, float priority) {
     inputListeners.push_back({listener, priority});
     std::sort(inputListeners.begin(), inputListeners.end(), std::greater<>());
+    setCursorMode();
 }
 
 void InputManager::unregisterListener(InputListener* listener) {
@@ -41,6 +42,7 @@ void InputManager::unregisterListener(InputListener* listener) {
     inputListeners.erase(itr);
     // This might not be needed (not sure if erase is order preserving)
     std::sort(inputListeners.begin(), inputListeners.end(), std::greater<>());
+    setCursorMode();
 }
 
 void InputManager::feedInput(Input::InputEvent&& event) {
@@ -48,4 +50,18 @@ void InputManager::feedInput(Input::InputEvent&& event) {
     for (Listener& l : inputListeners)
         if (l.ptr->process(event))
             return;
+}
+
+void InputManager::setCursorMode() {
+    InputListener::CursorMode mode = InputListener::DONT_CARE;
+    for (Listener& l : inputListeners)
+        if ((mode = l.ptr->getCursorMode()) != InputListener::DONT_CARE)
+            break;
+    if (cursorCallback)
+        cursorCallback(mode);
+}
+
+void InputManager::setCursorModeCallbock(CursorModeCallback&& callback) {
+    cursorCallback = std::move(callback);
+    setCursorMode();
 }
