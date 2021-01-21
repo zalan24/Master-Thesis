@@ -38,9 +38,10 @@ void Camera::zoom(float value) {
     updatePV();
 }
 
-void Camera::setLookAt(const glm::vec3& eye_pos, const glm::vec3& look_at) {
+void Camera::setLookAt(const glm::vec3& eye_pos, const glm::vec3& look_at, const glm::vec3& _up) {
     lookAt = look_at;
     eyePos = eye_pos;
+    up = _up;
 
     glm::mat4 actuallyLeftHanded(1.f);
     actuallyLeftHanded[0][0] = -1;

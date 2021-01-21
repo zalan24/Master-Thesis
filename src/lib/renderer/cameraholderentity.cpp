@@ -25,7 +25,10 @@ void CameraHolderEntity::deactivate() {
     _deactivate();
 }
 
-void CameraHolderEntity::update(const UpdateData&) {
-    if (active)
-        renderer->getCamera().setView(getWorldTransform() * cameraOffset);
+void CameraHolderEntity::update(const UpdateData& data) {
+    _update(data);
+    if (active) {
+        AffineTransform tm = getWorldTransform() * cameraOffset;
+        renderer->getCamera().setLookAt(tm[3], tm[3] + tm[2], tm[1]);
+    }
 }

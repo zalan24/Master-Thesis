@@ -20,6 +20,7 @@ class CameraHolderEntity : public Entity
  protected:
     virtual void _activate() {}
     virtual void _deactivate() {}
+    virtual void _update(const UpdateData&) {}
 
  private:
     Renderer* renderer;
