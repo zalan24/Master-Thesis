@@ -58,8 +58,7 @@ int main(int argc, char* argv[]) {
         resourceInfos.resourceFolder = resourceFolder;
         resourceInfos.modelResourcesJson = modelResources;
         Engine engine(config, std::move(resourceInfos));
-        engine.getRenderer()->getCamera().setLookAt(glm::vec3{0, 1, 0});
-        engine.getRenderer()->getCamera().setEyePos(glm::vec3{0, 3, -5});
+        engine.getRenderer()->getCamera().setLookAt(glm::vec3{0, 3, -5}, glm::vec3{0, 1, 0});
 
         load_mesh(engine, "BH-2", glm::vec3(-4, 0.5, 2));
         // load_mesh(engine, "cartoon_boy", glm::vec3(2, 0.5, 2));

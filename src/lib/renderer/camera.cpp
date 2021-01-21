@@ -6,15 +6,16 @@ Camera::Camera() {
 
 void Camera::updatePV() {
     glm::mat4 projection = glm::perspective(fovy / 2, aspect, near, far);
-    glm::mat4 actuallyLeftHanded(1.f);
-    actuallyLeftHanded[0][0] = -1;
-    glm::mat4 view = actuallyLeftHanded * glm::lookAt(eyePos, lookAt, up);
     pv = projection * view;
 }
 
 void Camera::setAspect(float a) {
     aspect = a;
     updatePV();
+}
+
+void Camera::setView(const glm::mat4& _view) {
+    view = _view;
 }
 
 void Camera::rotateAround(const glm::vec3& point, const glm::vec3& axis, float angle) {
@@ -37,12 +38,13 @@ void Camera::zoom(float value) {
     updatePV();
 }
 
-void Camera::setLookAt(const glm::vec3& p) {
-    lookAt = p;
-    updatePV();
-}
+void Camera::setLookAt(const glm::vec3& eye_pos, const glm::vec3& look_at) {
+    lookAt = look_at;
+    eyePos = eye_pos;
 
-void Camera::setEyePos(const glm::vec3& p) {
-    eyePos = p;
+    glm::mat4 actuallyLeftHanded(1.f);
+    actuallyLeftHanded[0][0] = -1;
+    setView(actuallyLeftHanded * glm::lookAt(eyePos, lookAt, up));
+
     updatePV();
 }

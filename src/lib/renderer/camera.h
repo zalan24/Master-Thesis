@@ -22,14 +22,16 @@ class Camera
     glm::vec3 getLookAt() const { return lookAt; }
     glm::vec3 getEyePos() const { return eyePos; }
 
-    void setLookAt(const glm::vec3& p);
-    void setEyePos(const glm::vec3& p);
+    void setLookAt(const glm::vec3& eyePos, const glm::vec3& lookAt);
+
+    void setView(const glm::mat4& view);
 
  private:
     glm::mat4 pv;
     glm::vec3 eyePos{0, 0, -1};
     glm::vec3 lookAt{0, 0, 0};
     glm::vec3 up{0, 1, 0};
+    glm::mat4 view;
     float fovy = static_cast<float>(M_PI / 2);
     float aspect = 1;
     float near = 0.1f;
