@@ -9,6 +9,8 @@
 
 #include "drv.h"
 
+class IWindow;
+
 namespace drv
 {
 class NoCopy
@@ -60,6 +62,26 @@ class Instance
 
  private:
     InstancePtr ptr = NULL_HANDLE;
+
+    void close();
+};
+
+class Window
+  : public NoCopy
+  , private Exclusive
+{
+ public:
+    Window(const WindowOptions& options);
+    ~Window();
+
+    Window(Window&& other);
+    Window& operator=(Window&& other);
+
+    operator bool() const;
+    operator IWindow*() const;
+
+ private:
+    IWindow* ptr = nullptr;
 
     void close();
 };

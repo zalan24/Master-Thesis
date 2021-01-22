@@ -7,6 +7,7 @@
 
 #include <drv.h>
 #include <drverror.h>
+#include <drvwindow.h>
 
 // #include <rendercontext.h>
 
@@ -82,7 +83,9 @@ Engine::Engine(const Config& cfg)
     DtoHQueue(queueManager.getQueue({"main", "DtoH"})),
     HtoDQueue(queueManager.getQueue({"main", "HtoD"})),
     inputQueue(queueManager.getQueue({"input", "HtoD"})),
-    cmdBufferBank(device) {
+    cmdBufferBank(device),
+    window(drv::WindowOptions{static_cast<unsigned int>(cfg.screenWidth),
+                              static_cast<unsigned int>(cfg.screenHeight), cfg.title.c_str()}) {
 }
 
 Engine::~Engine() {

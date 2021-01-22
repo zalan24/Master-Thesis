@@ -64,6 +64,44 @@ Instance::operator InstancePtr() const {
     return ptr;
 }
 
+Window::Window(const WindowOptions& options) : ptr(drv::create_window(options)) {
+}
+
+Window::~Window() {
+    close();
+}
+
+void Window::close() {
+    CHECK_THREAD;
+    if (ptr != nullptr) {
+        delete ptr;
+        ptr = nullptr;
+    }
+}
+
+Window::Window(Window&& other) {
+    ptr = other.ptr;
+    other.ptr = nullptr;
+}
+
+Window& Window::operator=(Window&& other) {
+    if (this == &other)
+        return *this;
+    close();
+    ptr = other.ptr;
+    other.ptr = nullptr;
+    return *this;
+}
+
+Window::operator bool() const {
+    return ptr != NULL_HANDLE;
+}
+
+Window::operator IWindow*() const {
+    CHECK_THREAD;
+    return ptr;
+}
+
 bool PhysicalDevice::pick_discere_card(PhysicalDeviceInfo* lhs, PhysicalDeviceInfo* rhs) {
     return lhs->type != PhysicalDeviceInfo::Type::DISCRETE_GPU
            && rhs->type == PhysicalDeviceInfo::Type::DISCRETE_GPU;

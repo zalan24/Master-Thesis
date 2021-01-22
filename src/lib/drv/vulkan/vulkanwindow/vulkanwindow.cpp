@@ -1,26 +1,25 @@
-#include "window.h"
+#include "vulkanwindow.h"
 
 #include <algorithm>
 #include <cassert>
 #include <stdexcept>
 #include <string>
 
-#include <glad/glad.h>
-
+#define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
 
-Window* Window::instance = nullptr;
+using namespace drv;
 
-void Window::error_callback [[noreturn]] (int, const char* description) {
+void VulkanWindow::error_callback [[noreturn]] (int, const char* description) {
     throw std::runtime_error("Error: " + std::string{description});
 }
 
-// void Window::key_callback(GLFWwindow* window, int key, int, int action, int) {
+// void VulkanWindow::key_callback(GLFWwindow* window, int key, int, int action, int) {
 //     if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS)
 //         glfwSetWindowShouldClose(window, GLFW_TRUE);
 // }
 
-// void Window::cursor_position_callback(GLFWwindow*, double xpos, double ypos) {
+// void VulkanWindow::cursor_position_callback(GLFWwindow*, double xpos, double ypos) {
 //     static bool wasPressed = false;
 //     static double prevX = 0;
 //     static double prevY = 0;
@@ -52,7 +51,7 @@ void Window::error_callback [[noreturn]] (int, const char* description) {
 //     wasPressed = pressed;
 // }
 
-// void Window::mouse_button_callback(GLFWwindow*, int button, int action, int) {
+// void VulkanWindow::mouse_button_callback(GLFWwindow*, int button, int action, int) {
 //     if (action == GLFW_PRESS) {
 //         // assert(getSingleton()->pushedMouseButtons.find(button)
 //         //        == std::end(getSingleton()->pushedMouseButtons));
@@ -65,69 +64,68 @@ void Window::error_callback [[noreturn]] (int, const char* description) {
 //     }
 // }
 
-// void Window::scroll_callback(GLFWwindow*, double, double yoffset) {
+// void VulkanWindow::scroll_callback(GLFWwindow*, double, double yoffset) {
 //     getSingleton()->renderer->getCamera().zoom(static_cast<float>(exp(yoffset / 10)));
 // }
 
-Window::GLFWInit::GLFWInit() {
+VulkanWindow::GLFWInit::GLFWInit() {
     if (!glfwInit())
         throw std::runtime_error("glfw could not be initialized");
 }
 
-Window::GLFWInit::~GLFWInit() {
+VulkanWindow::GLFWInit::~GLFWInit() {
     glfwTerminate();
 }
 
-Window::WindowObject::WindowObject(int width, int height, const std::string& title) {
+VulkanWindow::WindowObject::WindowObject(int width, int height, const std::string& title) {
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 2);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
+    glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
+    glfwSetErrorCallback(error_callback);
     window = glfwCreateWindow(width, height, title.c_str(), nullptr, nullptr);
     if (!window)
         throw std::runtime_error("Window or OpenGL context creation failed");
+    // glfwMakeContextCurrent(window);
     // glfwSetKeyCallback(window, key_callback);
     // glfwSetCursorPosCallback(window, cursor_position_callback);
     // glfwSetMouseButtonCallback(window, mouse_button_callback);
     // glfwSetScrollCallback(window, scroll_callback);
 }
 
-Window::WindowObject::~WindowObject() {
+VulkanWindow::WindowObject::~WindowObject() {
     glfwDestroyWindow(window);
     window = nullptr;
 }
 
-Window::GLContext::GLContext(GLFWwindow* _window) {
-    glfwSetErrorCallback(error_callback);
-    glfwMakeContextCurrent(_window);
-    if (!gladLoadGL())
-        throw std::runtime_error("Could not load gl");
+VulkanWindow::VulkanWindow(IDriver* _driver, unsigned int _width, unsigned int _height,
+                           const std::string& title)
+  : driver(_driver), initer(), window(_width, _height, title) {
+    // glfwSwapInterval(1);
 }
 
-Window::GLContext::~GLContext() {
+VulkanWindow::~VulkanWindow() {
 }
 
-Window::Window(int _width, int _height, const std::string& title)
-  : initer(), window(_width, _height, title), context(window) {
-    glfwSwapInterval(1);
-    assert(instance == nullptr);
-    instance = this;
+void VulkanWindow::getContentSize(unsigned int& width, unsigned int& height) const {
+    assert(false);
 }
 
-Window::~Window() {
-    instance = nullptr;
+void VulkanWindow::getWindowSize(unsigned int& width, unsigned int& height) const {
+    assert(false);
 }
 
-bool Window::shouldClose() {
-    return glfwWindowShouldClose(window);
-}
+// bool VulkanWindow::shouldClose() {
+//     return glfwWindowShouldClose(window);
+// }
 
-void Window::getFramebufferSize(int& width, int& height) {
-    glfwGetFramebufferSize(window, &width, &height);
-}
+// void VulkanWindow::getFramebufferSize(int& width, int& height) {
+//     glfwGetFramebufferSize(window, &width, &height);
+// }
 
-void Window::present() {
-    glfwSwapBuffers(window);
-}
+// void VulkanWindow::present() {
+//     glfwSwapBuffers(window);
+// }
 
-void Window::pollEvents() {
-    glfwPollEvents();
-}
+// void VulkanWindow::pollEvents() {
+//     glfwPollEvents();
+// }

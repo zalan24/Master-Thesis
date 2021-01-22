@@ -20,18 +20,18 @@ Get a triangle on screen:
     ☐ Command buffer pool
         ✔ Initialize in engine @done (1/20/2021, 12:25:34 AM)
         ☐ CommandBuffer circulator:
-            ☐ Only resetable one-time-submit command buffer are supported
-            ☐ Is assigned to a family
-            ☐ Have a Command pool
-            ☐ The idea is that, upon cmd buffer request
-                ☐ If there is an available buffer, return it
-                    ☐ Prefer queues with lower index
-                ☐ If not, create more command buffers
+            ✔ Only resetable one-time-submit command buffer are supported @done (1/22/2021, 9:25:39 PM)
+            ✔ Is assigned to a family @done (1/22/2021, 9:25:43 PM)
+            ✔ Have a Command pool @done (1/22/2021, 9:25:43 PM)
+            ✔ The idea is that, upon cmd buffer request @done (1/22/2021, 9:25:46 PM)
+                ✔ If there is an available buffer, return it @done (1/22/2021, 9:25:46 PM)
+                    ✔ Prefer queues with lower index @done (1/22/2021, 9:25:47 PM)
+                ✔ If not, create more command buffers @done (1/22/2021, 9:25:51 PM)
                 ☐ If utilization is low for a long time, decrease the size by releasing the last X command buffers
             ☐ Upon recording the buffer, it should be sent to the execution thread with the circulator ptr
             ☐ Upon submission, give the pending buffer back to the circulator
             ☐ Dtor/close asserts/waits if there are some pending queues (that might be a problem when in a catch block...)
-        ☐ Have a CommandBuffer circulator for each queue family
+        ✔ Have a CommandBuffer circulator for each queue family @done (1/22/2021, 9:26:05 PM)
     ☐ Create a frame memory allocator
         ☐ It needs to support allocation on recording thread and release in the execution thread (multiple frame memory objects?)
         ☐ Use a pool of frame mems? acquire in simulation thread, release in execution thread

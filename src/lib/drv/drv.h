@@ -7,6 +7,8 @@ extern "C"
     struct Milestone;
 }
 
+class IWindow;
+
 namespace drv
 {
 using DriverIndex = unsigned int;
@@ -127,7 +129,9 @@ bool create_compute_pipeline(LogicalDevicePtr device, unsigned int count,
                              const ComputePipelineCreateInfo* infos, ComputePipelinePtr* pipelines);
 bool destroy_compute_pipeline(LogicalDevicePtr device, ComputePipelinePtr pipeline);
 
-ShaderModulePtr get_shader_module(LogicalDevicePtr device, ShaderIdType shaderId);
+IWindow* create_window(const WindowOptions& options);
+
+// ShaderModulePtr get_shader_module(LogicalDevicePtr device, ShaderIdType shaderId);
 // unsigned int get_num_shader_descriptor_set_layouts(LogicalDevicePtr device, ShaderIdType shaderId);
 // DescriptorSetLayoutPtr* get_shader_descriptor_set_layouts(LogicalDevicePtr device,
 //                                                           ShaderIdType shaderId);

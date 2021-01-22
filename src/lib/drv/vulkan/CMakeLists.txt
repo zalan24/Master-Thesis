@@ -1,6 +1,8 @@
 find_package(Vulkan REQUIRED)
 
 if (Vulkan_FOUND)
+    add_subdirectory(vulkanwindow)
+
     file(GLOB DRV_VULKAN_FILES
         *.c *.cpp *.h *.hpp
         commands/*.c commands/*.cpp commands/*.h commands/*.hpp
@@ -11,9 +13,6 @@ if (Vulkan_FOUND)
         ${CMAKE_CURRENT_BINARY_DIR}
         ${CMAKE_CURRENT_SOURCE_DIR}
     )
-    # target_include_directories(AnimationsDrvVulkan PRIVATE
-    #     ${Vulkan_INCLUDE_DIRS}
-    # )
     set_target_properties(  AnimationsDrvVulkan
                             PROPERTIES
                             COMPILE_FLAGS ${TARGETCOMPILEFLAGS}
@@ -26,5 +25,6 @@ if (Vulkan_FOUND)
         ${Vulkan_LIBRARIES}
         Vulkan_LIB
         VulkanHeaders_LIB
+        AnimationsVulkanWindow
     )
 endif()

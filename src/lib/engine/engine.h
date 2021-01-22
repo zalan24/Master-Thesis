@@ -16,7 +16,6 @@
 // #include <renderer.h>
 // #include <resourcemanager.h>
 #include <serializable.h>
-// #include <window.h>
 
 class Engine
 {
@@ -77,7 +76,7 @@ class Engine
     drv::CommandBufferBank cmdBufferBank;
     // ResourceManager resourceMgr;
     EntityManager entityManager;
-    // Window window;
+    drv::Window window;
     // Renderer renderer;
 
     struct RenderState

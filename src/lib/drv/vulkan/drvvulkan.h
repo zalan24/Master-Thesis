@@ -12,6 +12,7 @@
 class DrvVulkan final : public drv::IDriver
 {
  public:
+    ~DrvVulkan() override {}
     drv::InstancePtr create_instance(const drv::InstanceCreateInfo* info) override;
     bool delete_instance(drv::InstancePtr ptr) override;
     bool get_physical_devices(drv::InstancePtr instance, unsigned int* count,
@@ -94,6 +95,7 @@ class DrvVulkan final : public drv::IDriver
     // drv::ShaderModulePtr create_shader_module(drv::LogicalDevicePtr device,
     //                                           drv::ShaderCreateInfoPtr info) override;
     // bool destroy_shader_module(drv::LogicalDevicePtr device, drv::ShaderModulePtr module) override;
+    IWindow* create_window(const drv::WindowOptions& options) override;
 };
 
 // TODO

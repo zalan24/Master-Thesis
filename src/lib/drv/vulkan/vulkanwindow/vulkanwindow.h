@@ -4,27 +4,31 @@
 #include <set>
 #include <string>
 
+#include <drvwindow.h>
+
 struct GLFWwindow;
 
-class Window
+namespace drv
+{
+class IDriver;
+}
+
+class VulkanWindow final : public IWindow
 {
  public:
-    static Window* getSingleton() { return instance; }
+    VulkanWindow(drv::IDriver* driver, unsigned int width, unsigned int height,
+                 const std::string& title);
+    ~VulkanWindow() override;
 
-    Window(int width, int height, const std::string& title);
-    ~Window();
+    void getContentSize(unsigned int& width, unsigned int& height) const override;
+    void getWindowSize(unsigned int& width, unsigned int& height) const override;
 
-    Window(const Window&) = delete;
-    Window& operator=(const Window&) = delete;
-
-    bool shouldClose();
-    void getFramebufferSize(int& width, int& height);
-    void present();
-    void pollEvents();
+    //  bool shouldClose();
+    //  void getFramebufferSize(int& width, int& height);
+    //  void present();
+    //  void pollEvents();
 
  private:
-    static Window* instance;
-
     class GLFWInit
     {
      public:
@@ -46,15 +50,9 @@ class Window
      private:
         GLFWwindow* window = nullptr;
     };
-    class GLContext
-    {
-     public:
-        GLContext(GLFWwindow* window);
-        ~GLContext();
-    };
+    drv::IDriver* driver;
     GLFWInit initer;
     WindowObject window;
-    GLContext context;
     std::set<int> pushedButtons;
     std::set<int> pushedMouseButtons;
 

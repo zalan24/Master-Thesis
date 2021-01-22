@@ -2,11 +2,14 @@
 
 #include "drvtypes.h"
 
+class IWindow;
+
 namespace drv
 {
 class IDriver
 {
  public:
+    virtual ~IDriver() {}
     virtual InstancePtr create_instance(const InstanceCreateInfo* info) = 0;
     virtual bool delete_instance(InstancePtr ptr) = 0;
     virtual bool get_physical_devices(InstancePtr instance, unsigned int* count,
@@ -77,6 +80,7 @@ class IDriver
                                          const ComputePipelineCreateInfo* infos,
                                          ComputePipelinePtr* pipelines) = 0;
     virtual bool destroy_compute_pipeline(LogicalDevicePtr device, ComputePipelinePtr pipeline) = 0;
+    virtual IWindow* create_window(const WindowOptions& options) = 0;
     // virtual ShaderModulePtr create_shader_module(LogicalDevicePtr device,
     //                                              ShaderCreateInfoPtr info) = 0;
     // virtual bool destroy_shader_module(LogicalDevicePtr device, ShaderModulePtr module) = 0;

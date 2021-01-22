@@ -243,6 +243,10 @@ bool drv::destroy_compute_pipeline(LogicalDevicePtr device, ComputePipelinePtr p
     return current_driver_interface->destroy_compute_pipeline(device, pipeline);
 }
 
+IWindow* drv::create_window(const WindowOptions& options) {
+    return current_driver_interface->create_window(options);
+}
+
 // drv::ShaderModulePtr drv::create_shader_module(LogicalDevicePtr device, ShaderCreateInfoPtr info) {
 //     return current_driver_interface->create_shader_module(device, info);
 // }

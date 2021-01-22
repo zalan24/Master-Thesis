@@ -427,4 +427,11 @@ struct ComputePipelineCreateInfo
     PipelineLayoutPtr layout;
 };
 
+struct WindowOptions
+{
+    unsigned int width;
+    unsigned int height;
+    const char* title;
+};
+
 };  // namespace drv
