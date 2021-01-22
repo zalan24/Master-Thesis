@@ -8,7 +8,7 @@
 #include <drverror.h>
 #include <drvmemory.h>
 
-drv::DescriptorSetLayoutPtr drv_vulkan::create_descriptor_set_layout(
+drv::DescriptorSetLayoutPtr DrvVulkan::create_descriptor_set_layout(
   drv::LogicalDevicePtr device, const drv::DescriptorSetLayoutCreateInfo* info) {
     VkDescriptorSetLayoutCreateInfo layoutInfo = {};
     layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
@@ -98,14 +98,14 @@ drv::DescriptorSetLayoutPtr drv_vulkan::create_descriptor_set_layout(
     return reinterpret_cast<drv::DescriptorSetLayoutPtr>(layout);
 }
 
-bool drv_vulkan::destroy_descriptor_set_layout(drv::LogicalDevicePtr device,
-                                               drv::DescriptorSetLayoutPtr layout) {
+bool DrvVulkan::destroy_descriptor_set_layout(drv::LogicalDevicePtr device,
+                                              drv::DescriptorSetLayoutPtr layout) {
     vkDestroyDescriptorSetLayout(reinterpret_cast<VkDevice>(device),
                                  reinterpret_cast<VkDescriptorSetLayout>(layout), nullptr);
     return true;
 }
 
-drv::DescriptorPoolPtr drv_vulkan::create_descriptor_pool(
+drv::DescriptorPoolPtr DrvVulkan::create_descriptor_pool(
   drv::LogicalDevicePtr device, const drv::DescriptorPoolCreateInfo* info) {
     VkDescriptorPoolCreateInfo poolInfo = {};
     poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
@@ -135,16 +135,15 @@ drv::DescriptorPoolPtr drv_vulkan::create_descriptor_pool(
     return reinterpret_cast<drv::DescriptorPoolPtr>(descriptorPool);
 }
 
-bool drv_vulkan::destroy_descriptor_pool(drv::LogicalDevicePtr device,
-                                         drv::DescriptorPoolPtr pool) {
+bool DrvVulkan::destroy_descriptor_pool(drv::LogicalDevicePtr device, drv::DescriptorPoolPtr pool) {
     vkDestroyDescriptorPool(reinterpret_cast<VkDevice>(device),
                             reinterpret_cast<VkDescriptorPool>(pool), nullptr);
     return true;
 }
 
-bool drv_vulkan::allocate_descriptor_sets(drv::LogicalDevicePtr device,
-                                          const drv::DescriptorSetAllocateInfo* allocateInfo,
-                                          drv::DescriptorSetPtr* sets) {
+bool DrvVulkan::allocate_descriptor_sets(drv::LogicalDevicePtr device,
+                                         const drv::DescriptorSetAllocateInfo* allocateInfo,
+                                         drv::DescriptorSetPtr* sets) {
     VkDescriptorSetAllocateInfo vkAllocateInfo;
     vkAllocateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
     vkAllocateInfo.descriptorPool =
@@ -157,10 +156,10 @@ bool drv_vulkan::allocate_descriptor_sets(drv::LogicalDevicePtr device,
     return result == VK_SUCCESS;
 }
 
-bool drv_vulkan::update_descriptor_sets(drv::LogicalDevicePtr device, uint32_t descriptorWriteCount,
-                                        const drv::WriteDescriptorSet* writes,
-                                        uint32_t descriptorCopyCount,
-                                        const drv::CopyDescriptorSet* copies) {
+bool DrvVulkan::update_descriptor_sets(drv::LogicalDevicePtr device, uint32_t descriptorWriteCount,
+                                       const drv::WriteDescriptorSet* writes,
+                                       uint32_t descriptorCopyCount,
+                                       const drv::CopyDescriptorSet* copies) {
     drv::drv_assert(false, "Unimplemented");
     return false;
     // LOCAL_MEMORY_POOL_DEFAULT(pool);

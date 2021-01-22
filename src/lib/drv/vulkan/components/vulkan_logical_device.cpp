@@ -6,7 +6,7 @@
 
 #include <drverror.h>
 
-drv::LogicalDevicePtr drv_vulkan::create_logical_device(const drv::LogicalDeviceCreateInfo* info) {
+drv::LogicalDevicePtr DrvVulkan::create_logical_device(const drv::LogicalDeviceCreateInfo* info) {
     std::vector<VkDeviceQueueCreateInfo> queues(info->queueInfoCount);
     for (unsigned int i = 0; i < info->queueInfoCount; ++i) {
         VkDeviceQueueCreateInfo queueCreateInfo = {};
@@ -40,12 +40,12 @@ drv::LogicalDevicePtr drv_vulkan::create_logical_device(const drv::LogicalDevice
     return reinterpret_cast<drv::LogicalDevicePtr>(device);
 }
 
-bool drv_vulkan::delete_logical_device(drv::LogicalDevicePtr device) {
+bool DrvVulkan::delete_logical_device(drv::LogicalDevicePtr device) {
     vkDestroyDevice(reinterpret_cast<VkDevice>(device), nullptr);
     return true;
 }
 
-drv::QueuePtr drv_vulkan::get_queue(drv::LogicalDevicePtr device, drv::QueueFamilyPtr family,
+drv::QueuePtr DrvVulkan::get_queue(drv::LogicalDevicePtr device, drv::QueueFamilyPtr family,
                                     unsigned int ind) {
     VkQueue queue;
     vkGetDeviceQueue(reinterpret_cast<VkDevice>(device),

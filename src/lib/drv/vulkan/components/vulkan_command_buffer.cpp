@@ -7,7 +7,7 @@
 
 #include "vulkan_buffer.h"
 
-drv::CommandBufferPtr drv_vulkan::create_command_buffer(drv::LogicalDevicePtr device,
+drv::CommandBufferPtr DrvVulkan::create_command_buffer(drv::LogicalDevicePtr device,
                                                         drv::CommandPoolPtr pool,
                                                         const drv::CommandBufferCreateInfo* info) {
     VkCommandBufferAllocateInfo allocInfo = {};
@@ -60,7 +60,7 @@ drv::CommandBufferPtr drv_vulkan::create_command_buffer(drv::LogicalDevicePtr de
     return reinterpret_cast<drv::CommandBufferPtr>(commandBuffer);
 }
 
-bool drv_vulkan::execute(drv::QueuePtr queue, unsigned int count, const drv::ExecutionInfo* infos,
+bool DrvVulkan::execute(drv::QueuePtr queue, unsigned int count, const drv::ExecutionInfo* infos,
                          drv::FencePtr fence) {
     LOCAL_MEMORY_POOL_DEFAULT(pool);
     drv::MemoryPool* threadPool = pool.pool();
@@ -147,7 +147,7 @@ bool drv_vulkan::execute(drv::QueuePtr queue, unsigned int count, const drv::Exe
     return result == VK_SUCCESS;
 }
 
-bool drv_vulkan::free_command_buffer(drv::LogicalDevicePtr device, drv::CommandPoolPtr pool,
+bool DrvVulkan::free_command_buffer(drv::LogicalDevicePtr device, drv::CommandPoolPtr pool,
                                      unsigned int count, drv::CommandBufferPtr* buffers) {
     vkFreeCommandBuffers(reinterpret_cast<VkDevice>(device), reinterpret_cast<VkCommandPool>(pool),
                          count, reinterpret_cast<VkCommandBuffer*>(buffers));

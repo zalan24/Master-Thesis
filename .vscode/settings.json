@@ -12,6 +12,7 @@
         "call",
         "compat",
         "cvref",
+        "drvvulkan",
         "ffast",
         "filehash",
         "fileinfo",

@@ -4,7 +4,7 @@
 
 #include <drverror.h>
 
-drv::SemaphorePtr drv_vulkan::create_semaphore(drv::LogicalDevicePtr device) {
+drv::SemaphorePtr DrvVulkan::create_semaphore(drv::LogicalDevicePtr device) {
     VkSemaphore semaphore;
     VkSemaphoreCreateInfo semaphoreInfo = {};
     semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
@@ -14,7 +14,7 @@ drv::SemaphorePtr drv_vulkan::create_semaphore(drv::LogicalDevicePtr device) {
     return reinterpret_cast<drv::SemaphorePtr>(semaphore);
 }
 
-bool drv_vulkan::destroy_semaphore(drv::LogicalDevicePtr device, drv::SemaphorePtr semaphore) {
+bool DrvVulkan::destroy_semaphore(drv::LogicalDevicePtr device, drv::SemaphorePtr semaphore) {
     vkDestroySemaphore(reinterpret_cast<VkDevice>(device), reinterpret_cast<VkSemaphore>(semaphore),
                        nullptr);
     return true;

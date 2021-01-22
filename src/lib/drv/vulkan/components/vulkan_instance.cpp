@@ -13,6 +13,8 @@ static char const* EngineName = "Vulkan.hpp";
 
 static const char* const validationLayers[] = {"VK_LAYER_KHRONOS_validation"};
 
+using namespace drv_vulkan;
+
 static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
   VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT,
   const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void*) {
@@ -66,7 +68,7 @@ static bool checkValidationLayerSupport() {
     return true;
 }
 
-drv::InstancePtr drv_vulkan::create_instance(const drv::InstanceCreateInfo* info) {
+drv::InstancePtr DrvVulkan::create_instance(const drv::InstanceCreateInfo* info) {
     VkApplicationInfo appInfo = {};
     appInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
     appInfo.pApplicationName = info->appname;
@@ -139,7 +141,7 @@ drv::InstancePtr drv_vulkan::create_instance(const drv::InstanceCreateInfo* info
     }
 }
 
-bool drv_vulkan::delete_instance(drv::InstancePtr ptr) {
+bool DrvVulkan::delete_instance(drv::InstancePtr ptr) {
     if (ptr == drv::NULL_HANDLE)
         return true;
     Instance* instance = reinterpret_cast<Instance*>(ptr);

@@ -4,7 +4,7 @@
 
 #include <drverror.h>
 
-drv::CommandPoolPtr drv_vulkan::create_command_pool(drv::LogicalDevicePtr device,
+drv::CommandPoolPtr DrvVulkan::create_command_pool(drv::LogicalDevicePtr device,
                                                     drv::QueueFamilyPtr queueFamily,
                                                     const drv::CommandPoolCreateInfo* info) {
     VkCommandPoolCreateInfo poolInfo = {};
@@ -24,7 +24,7 @@ drv::CommandPoolPtr drv_vulkan::create_command_pool(drv::LogicalDevicePtr device
     return reinterpret_cast<drv::CommandPoolPtr>(commandPool);
 }
 
-bool drv_vulkan::destroy_command_pool(drv::LogicalDevicePtr device,
+bool DrvVulkan::destroy_command_pool(drv::LogicalDevicePtr device,
                                       drv::CommandPoolPtr commandPool) {
     vkDestroyCommandPool(reinterpret_cast<VkDevice>(device),
                          reinterpret_cast<VkCommandPool>(commandPool), nullptr);

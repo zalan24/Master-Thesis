@@ -6,7 +6,7 @@
 
 #include <drverror.h>
 
-drv::FencePtr drv_vulkan::create_fence(drv::LogicalDevicePtr device, const drv::FenceCreateInfo*) {
+drv::FencePtr DrvVulkan::create_fence(drv::LogicalDevicePtr device, const drv::FenceCreateInfo*) {
     VkFence fence;
     VkFenceCreateInfo fenceCreateInfo = {};
     fenceCreateInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
@@ -19,12 +19,12 @@ drv::FencePtr drv_vulkan::create_fence(drv::LogicalDevicePtr device, const drv::
     return reinterpret_cast<drv::FencePtr>(fence);
 }
 
-bool drv_vulkan::destroy_fence(drv::LogicalDevicePtr device, drv::FencePtr fence) {
+bool DrvVulkan::destroy_fence(drv::LogicalDevicePtr device, drv::FencePtr fence) {
     vkDestroyFence(reinterpret_cast<VkDevice>(device), reinterpret_cast<VkFence>(fence), nullptr);
     return true;
 }
 
-bool drv_vulkan::is_fence_signalled(drv::LogicalDevicePtr device, drv::FencePtr fence) {
+bool DrvVulkan::is_fence_signalled(drv::LogicalDevicePtr device, drv::FencePtr fence) {
     VkResult result =
       vkGetFenceStatus(reinterpret_cast<VkDevice>(device), reinterpret_cast<VkFence>(fence));
     drv::drv_assert(result == VK_SUCCESS || result == VK_NOT_READY,
@@ -32,7 +32,7 @@ bool drv_vulkan::is_fence_signalled(drv::LogicalDevicePtr device, drv::FencePtr 
     return result == VK_SUCCESS;
 }
 
-bool drv_vulkan::reset_fences(drv::LogicalDevicePtr device, unsigned int count,
+bool DrvVulkan::reset_fences(drv::LogicalDevicePtr device, unsigned int count,
                               drv::FencePtr* fences) {
     VkResult result =
       vkResetFences(reinterpret_cast<VkDevice>(device), count, reinterpret_cast<VkFence*>(fences));
@@ -40,7 +40,7 @@ bool drv_vulkan::reset_fences(drv::LogicalDevicePtr device, unsigned int count,
     return true;
 }
 
-drv::FenceWaitResult drv_vulkan::wait_for_fence(drv::LogicalDevicePtr device, unsigned int count,
+drv::FenceWaitResult DrvVulkan::wait_for_fence(drv::LogicalDevicePtr device, unsigned int count,
                                                 const drv::FencePtr* fences, bool waitAll,
                                                 unsigned long long int timeOut) {
     VkResult result = vkWaitForFences(

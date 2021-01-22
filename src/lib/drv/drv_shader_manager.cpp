@@ -9,8 +9,10 @@
 
 #include "drv.h"
 
-using namespace drv;
+// TODO
 
+using namespace drv;
+/*
 namespace drv
 {
 struct ShaderData
@@ -178,3 +180,4 @@ DescriptorSetLayoutPtr* drv::get_shader_descriptor_set_layouts(LogicalDevicePtr 
         return nullptr;
     return shaderItr->second.layouts.data();
 }
+*/

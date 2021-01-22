@@ -8,8 +8,8 @@
 
 using namespace drv;
 
-DriverWrapper::DriverWrapper() {
-    drv_assert(init());
+DriverWrapper::DriverWrapper(const Driver* drivers, unsigned int count) {
+    drv_assert(init(drivers, count));
 }
 
 DriverWrapper::~DriverWrapper() {
@@ -184,33 +184,33 @@ void LogicalDevice::close() {
     }
 }
 
-ShaderLoader::ShaderLoader(LogicalDevicePtr _device) : device(_device) {
-    drv_assert(load_shaders(device), "Could not load shaders");
-}
+// ShaderLoader::ShaderLoader(LogicalDevicePtr _device) : device(_device) {
+//     drv_assert(load_shaders(device), "Could not load shaders");
+// }
 
-ShaderLoader::~ShaderLoader() {
-    close();
-}
+// ShaderLoader::~ShaderLoader() {
+//     close();
+// }
 
-ShaderLoader::ShaderLoader(ShaderLoader&& other) {
-    device = other.device;
-    other.device = NULL_HANDLE;
-}
+// ShaderLoader::ShaderLoader(ShaderLoader&& other) {
+//     device = other.device;
+//     other.device = NULL_HANDLE;
+// }
 
-ShaderLoader& ShaderLoader::operator=(ShaderLoader&& other) {
-    if (&other == this)
-        return *this;
-    close();
-    device = other.device;
-    other.device = NULL_HANDLE;
-    return *this;
-}
+// ShaderLoader& ShaderLoader::operator=(ShaderLoader&& other) {
+//     if (&other == this)
+//         return *this;
+//     close();
+//     device = other.device;
+//     other.device = NULL_HANDLE;
+//     return *this;
+// }
 
-void ShaderLoader::close() {
-    CHECK_THREAD;
-    if (device != NULL_HANDLE)
-        drv_assert(free_shaders(device), "Could not free shaders");
-}
+// void ShaderLoader::close() {
+//     CHECK_THREAD;
+//     if (device != NULL_HANDLE)
+//         drv_assert(free_shaders(device), "Could not free shaders");
+// }
 
 LogicalDevice& LogicalDevice::operator=(LogicalDevice&& other) {
     if (this == &other)
@@ -754,86 +754,86 @@ void DescriptorPool::close() {
     device = NULL_HANDLE;
 }
 
-PipelineLayoutManager::PipelineLayoutManager(LogicalDevicePtr _device) : device(_device) {
-}
+// PipelineLayoutManager::PipelineLayoutManager(LogicalDevicePtr _device) : device(_device) {
+// }
 
-PipelineLayoutManager::~PipelineLayoutManager() {
-    close();
-}
+// PipelineLayoutManager::~PipelineLayoutManager() {
+//     close();
+// }
 
-void PipelineLayoutManager::close() {
-    CHECK_THREAD;
-    if (device == NULL_HANDLE)
-        return;
-    drv_assert(references.size() == 0 && layouts.size() == 0,
-               "Not all pipeline layouts were freed");
-}
+// void PipelineLayoutManager::close() {
+//     CHECK_THREAD;
+//     if (device == NULL_HANDLE)
+//         return;
+//     drv_assert(references.size() == 0 && layouts.size() == 0,
+//                "Not all pipeline layouts were freed");
+// }
 
-bool drv::operator<(const PipelineLayoutManager::CreateData& lhs,
-                    const PipelineLayoutManager::CreateData& rhs) {
-    if (lhs.descriptorSetLayouts.size() != rhs.descriptorSetLayouts.size())
-        return lhs.descriptorSetLayouts.size() < rhs.descriptorSetLayouts.size();
-    auto itr1 = lhs.descriptorSetLayouts.begin();
-    auto itr2 = rhs.descriptorSetLayouts.begin();
-    for (; itr1 != lhs.descriptorSetLayouts.end(); ++itr1)
-        if (*itr1 != *itr2)
-            return *itr1 < *itr2;
-    // TODO push constants
-    return false;
-}
+// bool drv::operator<(const PipelineLayoutManager::CreateData& lhs,
+//                     const PipelineLayoutManager::CreateData& rhs) {
+//     if (lhs.descriptorSetLayouts.size() != rhs.descriptorSetLayouts.size())
+//         return lhs.descriptorSetLayouts.size() < rhs.descriptorSetLayouts.size();
+//     auto itr1 = lhs.descriptorSetLayouts.begin();
+//     auto itr2 = rhs.descriptorSetLayouts.begin();
+//     for (; itr1 != lhs.descriptorSetLayouts.end(); ++itr1)
+//         if (*itr1 != *itr2)
+//             return *itr1 < *itr2;
+//     // TODO push constants
+//     return false;
+// }
 
-PipelineLayoutPtr PipelineLayoutManager::acquireLayout(unsigned int stageCount,
-                                                       const ShaderIdType* shaders) {
-    CreateData data;
-    unsigned int count = 0;
-    for (unsigned int i = 0; i < stageCount; ++i)
-        count += get_num_shader_descriptor_set_layouts(device, shaders[i]);
-    data.descriptorSetLayouts.reserve(count);
-    for (unsigned int i = 0; i < stageCount; ++i) {
-        const unsigned int numLayouts = get_num_shader_descriptor_set_layouts(device, shaders[i]);
-        DescriptorSetLayoutPtr* l = get_shader_descriptor_set_layouts(device, shaders[i]);
-        for (unsigned int j = 0; j < numLayouts; ++j)
-            data.descriptorSetLayouts.push_back(l[j]);
-    }
-    std::sort(data.descriptorSetLayouts.begin(), data.descriptorSetLayouts.end());
-    data.descriptorSetLayouts.erase(
-      std::unique(data.descriptorSetLayouts.begin(), data.descriptorSetLayouts.end()),
-      data.descriptorSetLayouts.end());
-    auto itr = layouts.find(data);
-    if (itr != layouts.end()) {
-        PipelineLayoutPtr ret = itr->second;
-        references[ret]++;
-        return ret;
-    }
+// PipelineLayoutPtr PipelineLayoutManager::acquireLayout(unsigned int stageCount,
+//                                                        const ShaderIdType* shaders) {
+//     CreateData data;
+//     unsigned int count = 0;
+//     for (unsigned int i = 0; i < stageCount; ++i)
+//         count += get_num_shader_descriptor_set_layouts(device, shaders[i]);
+//     data.descriptorSetLayouts.reserve(count);
+//     for (unsigned int i = 0; i < stageCount; ++i) {
+//         const unsigned int numLayouts = get_num_shader_descriptor_set_layouts(device, shaders[i]);
+//         DescriptorSetLayoutPtr* l = get_shader_descriptor_set_layouts(device, shaders[i]);
+//         for (unsigned int j = 0; j < numLayouts; ++j)
+//             data.descriptorSetLayouts.push_back(l[j]);
+//     }
+//     std::sort(data.descriptorSetLayouts.begin(), data.descriptorSetLayouts.end());
+//     data.descriptorSetLayouts.erase(
+//       std::unique(data.descriptorSetLayouts.begin(), data.descriptorSetLayouts.end()),
+//       data.descriptorSetLayouts.end());
+//     auto itr = layouts.find(data);
+//     if (itr != layouts.end()) {
+//         PipelineLayoutPtr ret = itr->second;
+//         references[ret]++;
+//         return ret;
+//     }
 
-    PipelineLayoutCreateInfo createInfo;
-    createInfo.setLayoutCount = static_cast<unsigned int>(data.descriptorSetLayouts.size());
-    createInfo.setLayouts = data.descriptorSetLayouts.data();
-    // TODO push constants
-    PipelineLayoutPtr ret = create_pipeline_layout(device, &createInfo);
+//     PipelineLayoutCreateInfo createInfo;
+//     createInfo.setLayoutCount = static_cast<unsigned int>(data.descriptorSetLayouts.size());
+//     createInfo.setLayouts = data.descriptorSetLayouts.data();
+//     // TODO push constants
+//     PipelineLayoutPtr ret = create_pipeline_layout(device, &createInfo);
 
-    layouts[data] = ret;
-    references[ret] = 1;
-    createData[ret] = data;
-    return ret;
-}
+//     layouts[data] = ret;
+//     references[ret] = 1;
+//     createData[ret] = data;
+//     return ret;
+// }
 
-void PipelineLayoutManager::releaseLayout(PipelineLayoutPtr layout) {
-    auto itr = references.find(layout);
-    drv_assert(itr != references.end(), "Released layout was not referenced");
-    itr->second--;
-    if (itr->second == 0) {
-        references.erase(itr);
-        auto createDataItr = createData.find(layout);
-        drv_assert(createDataItr != createData.end(), "Something went wrong");
-        auto layoutItr = layouts.find(createDataItr->second);
-        drv_assert(layoutItr != layouts.end(), "Something went wrong");
-        drv_assert(destroy_pipeline_layout(device, layoutItr->second),
-                   "Could not destory pipeline layout");
-        layouts.erase(layoutItr);
-        createData.erase(createDataItr);
-    }
-}
+// void PipelineLayoutManager::releaseLayout(PipelineLayoutPtr layout) {
+//     auto itr = references.find(layout);
+//     drv_assert(itr != references.end(), "Released layout was not referenced");
+//     itr->second--;
+//     if (itr->second == 0) {
+//         references.erase(itr);
+//         auto createDataItr = createData.find(layout);
+//         drv_assert(createDataItr != createData.end(), "Something went wrong");
+//         auto layoutItr = layouts.find(createDataItr->second);
+//         drv_assert(layoutItr != layouts.end(), "Something went wrong");
+//         drv_assert(destroy_pipeline_layout(device, layoutItr->second),
+//                    "Could not destory pipeline layout");
+//         layouts.erase(layoutItr);
+//         createData.erase(createDataItr);
+//     }
+// }
 
 // ComputePipeline::ComputePipeline(PipelineLayoutManager& _layoutManager, ShaderIdType shader)
 //   : layoutManager(&_layoutManager) {

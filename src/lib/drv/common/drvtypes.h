@@ -88,16 +88,6 @@ struct LogicalDeviceCreateInfo
     QueueInfo* queueInfoPtr;
 };
 
-using CommandBase = uint8_t;
-enum Command : CommandBase
-{
-    CMD_TRANSFER = 0,
-    CMD_BIND_COMPUTE_PIPELINE,
-    CMD_BIND_DESCRIPTOR_SETS,
-    CMD_DISPATCH,
-    COMMAND_FUNCTION_COUNT
-};
-
 using CommandTypeBase = uint8_t;
 enum CommandTypeBits : CommandTypeBase
 {

@@ -9,12 +9,14 @@
 
 #include "vulkan_instance.h"
 
+using namespace drv_vulkan;
+
 static unsigned long int min(unsigned long int a, unsigned long int b) {
     return a < b ? a : b;
 }
 
-bool drv_vulkan::get_physical_devices(drv::InstancePtr _instance, unsigned int* count,
-                                      drv::PhysicalDeviceInfo* infos) {
+bool DrvVulkan::get_physical_devices(drv::InstancePtr _instance, unsigned int* count,
+                                     drv::PhysicalDeviceInfo* infos) {
     Instance* instance = reinterpret_cast<Instance*>(_instance);
     vkEnumeratePhysicalDevices(instance->instance, count, nullptr);
     if (infos == nullptr)
@@ -64,9 +66,9 @@ static drv::CommandTypeMask get_mask(const VkQueueFlags& flags) {
     return commandTypeMask;
 }
 
-bool drv_vulkan::get_physical_device_queue_families(drv::PhysicalDevicePtr physicalDevice,
-                                                    unsigned int* count,
-                                                    drv::QueueFamily* queueFamilies) {
+bool DrvVulkan::get_physical_device_queue_families(drv::PhysicalDevicePtr physicalDevice,
+                                                   unsigned int* count,
+                                                   drv::QueueFamily* queueFamilies) {
     vkGetPhysicalDeviceQueueFamilyProperties(reinterpret_cast<VkPhysicalDevice>(physicalDevice),
                                              count, nullptr);
     if (queueFamilies == nullptr)
@@ -83,8 +85,8 @@ bool drv_vulkan::get_physical_device_queue_families(drv::PhysicalDevicePtr physi
     return true;
 }
 
-drv::CommandTypeMask drv_vulkan::get_command_type_mask(drv::PhysicalDevicePtr physicalDevice,
-                                                       drv::QueueFamilyPtr queueFamily) {
+drv::CommandTypeMask DrvVulkan::get_command_type_mask(drv::PhysicalDevicePtr physicalDevice,
+                                                      drv::QueueFamilyPtr queueFamily) {
     unsigned int count = 0;
     vkGetPhysicalDeviceQueueFamilyProperties(reinterpret_cast<VkPhysicalDevice>(physicalDevice),
                                              &count, nullptr);

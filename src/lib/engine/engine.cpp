@@ -59,18 +59,12 @@ drv::PhysicalDevice::SelectionInfo Engine::get_device_selection_info(drv::Instan
     return selectInfo;
 }
 
-Engine::DriverSelector::DriverSelector(drv::Driver d) {
-    drv::set_callback(callback);
-    if (!drv::register_driver(&d, 1))
-        throw std::runtime_error("Could not initialize driver");
-}
-
 Engine::Engine(const std::string& configFile) : Engine(get_config(configFile)) {
 }
 
 Engine::Engine(const Config& cfg)
   : config(cfg),
-    driverSelector(get_driver(cfg.driver)),
+    driver({get_driver(cfg.driver)}),
     drvInstance(drv::InstanceCreateInfo{cfg.title.c_str()}),
     physicalDevice(get_device_selection_info(drvInstance)),
     commandLaneMgr(

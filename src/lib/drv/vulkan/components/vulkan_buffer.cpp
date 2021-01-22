@@ -7,8 +7,10 @@
 
 #include "vulkan_buffer.h"
 
-drv::BufferPtr drv_vulkan::create_buffer(drv::LogicalDevicePtr device,
-                                         const drv::BufferCreateInfo* info) {
+using namespace drv_vulkan;
+
+drv::BufferPtr DrvVulkan::create_buffer(drv::LogicalDevicePtr device,
+                                        const drv::BufferCreateInfo* info) {
     Buffer* buffer = new Buffer;
     if (buffer == nullptr)
         return VK_NULL_HANDLE;
@@ -74,15 +76,15 @@ drv::BufferPtr drv_vulkan::create_buffer(drv::LogicalDevicePtr device,
     }
 }
 
-bool drv_vulkan::destroy_buffer(drv::LogicalDevicePtr device, drv::BufferPtr _buffer) {
+bool DrvVulkan::destroy_buffer(drv::LogicalDevicePtr device, drv::BufferPtr _buffer) {
     Buffer* buffer = reinterpret_cast<Buffer*>(_buffer);
     vkDestroyBuffer(reinterpret_cast<VkDevice>(device), buffer->buffer, nullptr);
     delete buffer;
     return true;
 }
 
-drv::DeviceMemoryPtr drv_vulkan::allocate_memory(drv::LogicalDevicePtr device,
-                                                 const drv::MemoryAllocationInfo* info) {
+drv::DeviceMemoryPtr DrvVulkan::allocate_memory(drv::LogicalDevicePtr device,
+                                                const drv::MemoryAllocationInfo* info) {
     VkMemoryAllocateInfo allocInfo = {};
     allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
     allocInfo.allocationSize = info->size;
@@ -94,14 +96,14 @@ drv::DeviceMemoryPtr drv_vulkan::allocate_memory(drv::LogicalDevicePtr device,
     return reinterpret_cast<drv::DeviceMemoryPtr>(memory);
 }
 
-bool drv_vulkan::free_memory(drv::LogicalDevicePtr device, drv::DeviceMemoryPtr memory) {
+bool DrvVulkan::free_memory(drv::LogicalDevicePtr device, drv::DeviceMemoryPtr memory) {
     vkFreeMemory(reinterpret_cast<VkDevice>(device), reinterpret_cast<VkDeviceMemory>(memory),
                  nullptr);
     return true;
 }
 
-bool drv_vulkan::bind_memory(drv::LogicalDevicePtr device, drv::BufferPtr _buffer,
-                             drv::DeviceMemoryPtr memory, drv::DeviceSize offset) {
+bool DrvVulkan::bind_memory(drv::LogicalDevicePtr device, drv::BufferPtr _buffer,
+                            drv::DeviceMemoryPtr memory, drv::DeviceSize offset) {
     Buffer* buffer = reinterpret_cast<Buffer*>(_buffer);
     buffer->memoryPtr = memory;
     buffer->offset = offset;
@@ -110,8 +112,8 @@ bool drv_vulkan::bind_memory(drv::LogicalDevicePtr device, drv::BufferPtr _buffe
     return result == VK_SUCCESS;
 }
 
-bool drv_vulkan::get_memory_properties(drv::PhysicalDevicePtr physicalDevice,
-                                       drv::MemoryProperties& props) {
+bool DrvVulkan::get_memory_properties(drv::PhysicalDevicePtr physicalDevice,
+                                      drv::MemoryProperties& props) {
     VkPhysicalDeviceMemoryProperties memProperties;
     vkGetPhysicalDeviceMemoryProperties(reinterpret_cast<VkPhysicalDevice>(physicalDevice),
                                         &memProperties);
@@ -135,8 +137,8 @@ bool drv_vulkan::get_memory_properties(drv::PhysicalDevicePtr physicalDevice,
     return true;
 }
 
-bool drv_vulkan::get_memory_requirements(drv::LogicalDevicePtr device, drv::BufferPtr buffer,
-                                         drv::MemoryRequirements& memoryRequirements) {
+bool DrvVulkan::get_memory_requirements(drv::LogicalDevicePtr device, drv::BufferPtr buffer,
+                                        drv::MemoryRequirements& memoryRequirements) {
     VkMemoryRequirements memRequirements;
     vkGetBufferMemoryRequirements(reinterpret_cast<VkDevice>(device),
                                   reinterpret_cast<Buffer*>(buffer)->buffer, &memRequirements);
@@ -146,20 +148,20 @@ bool drv_vulkan::get_memory_requirements(drv::LogicalDevicePtr device, drv::Buff
     return true;
 }
 
-bool drv_vulkan::map_memory(drv::LogicalDevicePtr device, drv::DeviceMemoryPtr memory,
-                            drv::DeviceSize offset, drv::DeviceSize size, void** data) {
+bool DrvVulkan::map_memory(drv::LogicalDevicePtr device, drv::DeviceMemoryPtr memory,
+                           drv::DeviceSize offset, drv::DeviceSize size, void** data) {
     VkResult result = vkMapMemory(reinterpret_cast<VkDevice>(device),
                                   reinterpret_cast<VkDeviceMemory>(memory), offset, size, 0, data);
     return result == VK_SUCCESS;
 }
 
-bool drv_vulkan::unmap_memory(drv::LogicalDevicePtr device, drv::DeviceMemoryPtr memory) {
+bool DrvVulkan::unmap_memory(drv::LogicalDevicePtr device, drv::DeviceMemoryPtr memory) {
     vkUnmapMemory(reinterpret_cast<VkDevice>(device), reinterpret_cast<VkDeviceMemory>(memory));
     return true;
 }
 
-drv::BufferMemoryInfo drv_vulkan::get_buffer_memory_info(drv::LogicalDevicePtr,
-                                                         drv::BufferPtr buffer) {
+drv::BufferMemoryInfo DrvVulkan::get_buffer_memory_info(drv::LogicalDevicePtr,
+                                                        drv::BufferPtr buffer) {
     drv::BufferMemoryInfo ret;
     ret.memory = reinterpret_cast<Buffer*>(buffer)->memoryPtr;
     ret.size = reinterpret_cast<Buffer*>(buffer)->size;

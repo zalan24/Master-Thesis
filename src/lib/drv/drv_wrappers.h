@@ -27,7 +27,9 @@ class DriverWrapper
   , private Exclusive
 {
  public:
-    DriverWrapper();
+    DriverWrapper(const std::vector<Driver>& drivers)
+      : DriverWrapper(drivers.data(), drivers.size()) {}
+    DriverWrapper(const Driver* drivers, unsigned int count);
     ~DriverWrapper();
 
     DriverWrapper(const DriverWrapper& other) = delete;
@@ -113,22 +115,22 @@ class LogicalDevice
     void close();
 };
 
-class ShaderLoader
-  : public NoCopy
-  , private Exclusive
-{
- public:
-    ShaderLoader(LogicalDevicePtr device);
-    ~ShaderLoader();
+// class ShaderLoader
+//   : public NoCopy
+//   , private Exclusive
+// {
+//  public:
+//     ShaderLoader(LogicalDevicePtr device);
+//     ~ShaderLoader();
 
-    ShaderLoader(ShaderLoader&& other);
-    ShaderLoader& operator=(ShaderLoader&& other);
+//     ShaderLoader(ShaderLoader&& other);
+//     ShaderLoader& operator=(ShaderLoader&& other);
 
- private:
-    LogicalDevicePtr device;
+//  private:
+//     LogicalDevicePtr device;
 
-    void close();
-};
+//     void close();
+// };
 
 class CommandPool
   : public NoCopy
@@ -371,39 +373,39 @@ class DescriptorPool
     void close();
 };
 
-class PipelineLayoutManager
-  : public NoCopy
-  , private Exclusive
-{
- public:
-    PipelineLayoutManager(LogicalDevicePtr device);
-    ~PipelineLayoutManager();
+// class PipelineLayoutManager
+//   : public NoCopy
+//   , private Exclusive
+// {
+//  public:
+//     PipelineLayoutManager(LogicalDevicePtr device);
+//     ~PipelineLayoutManager();
 
-    // pointer has to stay valid
-    PipelineLayoutManager(PipelineLayoutManager&& other) = delete;
-    PipelineLayoutManager& operator=(PipelineLayoutManager&& other) = delete;
+//     // pointer has to stay valid
+//     PipelineLayoutManager(PipelineLayoutManager&& other) = delete;
+//     PipelineLayoutManager& operator=(PipelineLayoutManager&& other) = delete;
 
-    PipelineLayoutPtr acquireLayout(unsigned int stageCount, const ShaderIdType* shaders);
-    void releaseLayout(PipelineLayoutPtr layout);
+//     PipelineLayoutPtr acquireLayout(unsigned int stageCount, const ShaderIdType* shaders);
+//     void releaseLayout(PipelineLayoutPtr layout);
 
-    LogicalDevicePtr getDevice() const { return device; }
+//     LogicalDevicePtr getDevice() const { return device; }
 
-    struct CreateData
-    {
-        std::vector<DescriptorSetLayoutPtr> descriptorSetLayouts;
-        // TODO push constants
-    };
+//     struct CreateData
+//     {
+//         std::vector<DescriptorSetLayoutPtr> descriptorSetLayouts;
+//         // TODO push constants
+//     };
 
- private:
-    LogicalDevicePtr device;
-    std::unordered_map<PipelineLayoutPtr, CreateData> createData;
-    std::map<CreateData, PipelineLayoutPtr> layouts;
-    std::unordered_map<PipelineLayoutPtr, unsigned int> references;
+//  private:
+//     LogicalDevicePtr device;
+//     std::unordered_map<PipelineLayoutPtr, CreateData> createData;
+//     std::map<CreateData, PipelineLayoutPtr> layouts;
+//     std::unordered_map<PipelineLayoutPtr, unsigned int> references;
 
-    void close();
-};
-bool operator<(const PipelineLayoutManager::CreateData& lhs,
-               const PipelineLayoutManager::CreateData& rhs);
+//     void close();
+// };
+// bool operator<(const PipelineLayoutManager::CreateData& lhs,
+//                const PipelineLayoutManager::CreateData& rhs);
 
 // TODO
 

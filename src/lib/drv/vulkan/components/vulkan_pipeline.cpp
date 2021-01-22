@@ -5,7 +5,7 @@
 #include <drverror.h>
 #include <drvmemory.h>
 
-drv::PipelineLayoutPtr drv_vulkan::create_pipeline_layout(
+drv::PipelineLayoutPtr DrvVulkan::create_pipeline_layout(
   drv::LogicalDevicePtr device, const drv::PipelineLayoutCreateInfo* info) {
     VkPipelineLayoutCreateInfo pipelineLayoutInfo = {};
     pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
@@ -21,14 +21,14 @@ drv::PipelineLayoutPtr drv_vulkan::create_pipeline_layout(
     return reinterpret_cast<drv::PipelineLayoutPtr>(layout);
 }
 
-bool drv_vulkan::destroy_pipeline_layout(drv::LogicalDevicePtr device,
+bool DrvVulkan::destroy_pipeline_layout(drv::LogicalDevicePtr device,
                                          drv::PipelineLayoutPtr layout) {
     vkDestroyPipelineLayout(reinterpret_cast<VkDevice>(device),
                             reinterpret_cast<VkPipelineLayout>(layout), nullptr);
     return true;
 }
 
-bool drv_vulkan::create_compute_pipeline(drv::LogicalDevicePtr device, unsigned int count,
+bool DrvVulkan::create_compute_pipeline(drv::LogicalDevicePtr device, unsigned int count,
                                          const drv::ComputePipelineCreateInfo* infos,
                                          drv::ComputePipelinePtr* pipelines) {
     LOCAL_MEMORY_POOL_DEFAULT(pool);
@@ -60,7 +60,7 @@ bool drv_vulkan::create_compute_pipeline(drv::LogicalDevicePtr device, unsigned 
     return result == VK_SUCCESS;
 }
 
-bool drv_vulkan::destroy_compute_pipeline(drv::LogicalDevicePtr device,
+bool DrvVulkan::destroy_compute_pipeline(drv::LogicalDevicePtr device,
                                           drv::ComputePipelinePtr pipeline) {
     vkDestroyPipeline(reinterpret_cast<VkDevice>(device), reinterpret_cast<VkPipeline>(pipeline),
                       nullptr);

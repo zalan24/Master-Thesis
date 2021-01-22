@@ -59,16 +59,10 @@ class Engine
         GlLoader& operator=(const GlLoader&) = delete;
     };
 
-    struct DriverSelector
-    {
-        DriverSelector(drv::Driver driver);
-    };
-
     using FrameId = size_t;
 
     Config config;
 
-    DriverSelector driverSelector;
     drv::DriverWrapper driver;
     drv::Instance drvInstance;
     drv::PhysicalDevice physicalDevice;

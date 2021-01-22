@@ -15,29 +15,28 @@ enum class Driver : DriverIndex
     VULKAN = 0,
     NUM_PLATFORMS
 };
-// Registers the first available driver on the list
-bool register_driver(const Driver* drivers, unsigned int count);
+
+// TODO Shaders
 
 // This struct is used to define driver info outside the engine
-struct DriverRegistry
-{
-    struct ShaderLoaders
-    {
-        using ShaderLoaderF = bool (*)(LogicalDevicePtr);
-        ShaderLoaderF load_shaders = nullptr;
-        ShaderLoaderF free_shaders = nullptr;
-    } shaderLoaders;
-};
+// struct DriverRegistry
+// {
+//     struct ShaderLoaders
+//     {
+//         using ShaderLoaderF = bool (*)(LogicalDevicePtr);
+//         ShaderLoaderF load_shaders = nullptr;
+//         ShaderLoaderF free_shaders = nullptr;
+//     } shaderLoaders;
+// };
 
-DriverRegistry& get_driver_registry();
-DriverRegistry& get_driver_registry(Driver driver);
+// DriverRegistry& get_driver_registry();
+// DriverRegistry& get_driver_registry(Driver driver);
 
-void register_shader_loaders(Driver driver, const DriverRegistry::ShaderLoaders& shaderLoaders);
+// void register_shader_loaders(Driver driver, const DriverRegistry::ShaderLoaders& shaderLoaders);
 
-bool init();
+// Registers the first available driver on the list
+bool init(const Driver* drivers, unsigned int count);
 bool close();
-
-CommandTypeMask get_command_type_mask(Command cmd);
 
 InstancePtr create_instance(const InstanceCreateInfo* info, bool _default = true);
 bool delete_instance(InstancePtr ptr);
@@ -101,8 +100,8 @@ bool unmap_memory(LogicalDevicePtr device, DeviceMemoryPtr memory);
 
 // bool push_data(LogicalDevicePtr device, )
 
-bool load_shaders(LogicalDevicePtr device);
-bool free_shaders(LogicalDevicePtr device);
+// bool load_shaders(LogicalDevicePtr device);
+// bool free_shaders(LogicalDevicePtr device);
 
 DescriptorSetLayoutPtr create_descriptor_set_layout(LogicalDevicePtr device,
                                                     const DescriptorSetLayoutCreateInfo* info);
@@ -118,7 +117,7 @@ bool update_descriptor_sets(LogicalDevicePtr device, uint32_t descriptorWriteCou
                             const WriteDescriptorSet* writes, uint32_t descriptorCopyCount,
                             const CopyDescriptorSet* copies);
 
-bool destroy_shader_create_info(ShaderCreateInfoPtr info);
+// bool destroy_shader_create_info(ShaderCreateInfoPtr info);
 
 PipelineLayoutPtr create_pipeline_layout(LogicalDevicePtr device,
                                          const PipelineLayoutCreateInfo* info);
@@ -129,11 +128,11 @@ bool create_compute_pipeline(LogicalDevicePtr device, unsigned int count,
 bool destroy_compute_pipeline(LogicalDevicePtr device, ComputePipelinePtr pipeline);
 
 ShaderModulePtr get_shader_module(LogicalDevicePtr device, ShaderIdType shaderId);
-unsigned int get_num_shader_descriptor_set_layouts(LogicalDevicePtr device, ShaderIdType shaderId);
-DescriptorSetLayoutPtr* get_shader_descriptor_set_layouts(LogicalDevicePtr device,
-                                                          ShaderIdType shaderId);
+// unsigned int get_num_shader_descriptor_set_layouts(LogicalDevicePtr device, ShaderIdType shaderId);
+// DescriptorSetLayoutPtr* get_shader_descriptor_set_layouts(LogicalDevicePtr device,
+//                                                           ShaderIdType shaderId);
 
-ShaderModulePtr create_shader_module(LogicalDevicePtr device, ShaderCreateInfoPtr info);
-bool destroy_shader_module(LogicalDevicePtr device, ShaderModulePtr module);
+// ShaderModulePtr create_shader_module(LogicalDevicePtr device, ShaderCreateInfoPtr info);
+// bool destroy_shader_module(LogicalDevicePtr device, ShaderModulePtr module);
 
 };  // namespace drv
