@@ -13,4 +13,6 @@ class IWindow
     virtual void getWindowSize(unsigned int& width, unsigned int& height) const = 0;
     // void present();
     // void pollEvents();
+
+    virtual bool shouldClose() = 0;
 };

@@ -23,7 +23,7 @@ class VulkanWindow final : public IWindow
     void getContentSize(unsigned int& width, unsigned int& height) const override;
     void getWindowSize(unsigned int& width, unsigned int& height) const override;
 
-    //  bool shouldClose();
+    bool shouldClose() override;
     //  void getFramebufferSize(int& width, int& height);
     //  void present();
     //  void pollEvents();

@@ -114,9 +114,9 @@ void VulkanWindow::getWindowSize(unsigned int& width, unsigned int& height) cons
     assert(false);
 }
 
-// bool VulkanWindow::shouldClose() {
-//     return glfwWindowShouldClose(window);
-// }
+bool VulkanWindow::shouldClose() {
+    return glfwWindowShouldClose(window);
+}
 
 // void VulkanWindow::getFramebufferSize(int& width, int& height) {
 //     glfwGetFramebufferSize(window, &width, &height);

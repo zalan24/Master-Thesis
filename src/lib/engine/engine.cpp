@@ -158,21 +158,23 @@ void Engine::gameLoop() {
     std::thread recordThread(&Engine::recordCommandsLoop, this, &state);
     std::thread executeThread(&Engine::executeCommandsLoop, this, &state);
 
-    // while (!window.shouldClose()) {
-    //     int width, height;
-    //     window.getFramebufferSize(width, height);
-    //     {
-    //         std::unique_lock<std::mutex> lk(mutex);
-    //         renderCV.wait(lk, [&state] { return state == RENDER; });
-    //         renderer.render(&entityManager, width, height);
-    //         // UI::UIData data{renderer->getScene(), renderer->getShaderManager()};
-    //         // ui->render(data);
-    //         state = SIMULATE;
-    //         window.pollEvents();
-    //     }
-    //     simulationCV.notify_one();
-    //     window.present();
-    //     renderFrame++;
+    IWindow* w = window;
+    // while (!w->shouldClose()) {
+    //     std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    // unsigned int width, height;
+    // w->getContentSize(width, height);
+    // {
+    //     std::unique_lock<std::mutex> lk(mutex);
+    //     renderCV.wait(lk, [&state] { return state == RENDER; });
+    //     renderer.render(&entityManager, width, height);
+    //     // UI::UIData data{renderer->getScene(), renderer->getShaderManager()};
+    //     // ui->render(data);
+    //     state = SIMULATE;
+    //     window.pollEvents();
+    // }
+    // simulationCV.notify_one();
+    // window.present();
+    // renderFrame++;
     // }
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
     {
