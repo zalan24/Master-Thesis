@@ -214,10 +214,6 @@ bool drv::execute(QueuePtr queue, unsigned int count, const ExecutionInfo* infos
     return functions.execute(queue, count, infos, fence);
 }
 
-bool drv::command(const CommandData* cmd, const CommandExecutionData* data) {
-    return functions.command(cmd, data);
-}
-
 drv::BufferPtr drv::create_buffer(LogicalDevicePtr device, const BufferCreateInfo* info) {
     return functions.create_buffer(device, info);
 }

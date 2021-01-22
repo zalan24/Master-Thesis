@@ -835,50 +835,50 @@ void PipelineLayoutManager::releaseLayout(PipelineLayoutPtr layout) {
     }
 }
 
-ComputePipeline::ComputePipeline(PipelineLayoutManager& _layoutManager, ShaderIdType shader)
-  : layoutManager(&_layoutManager) {
-    ComputePipelineCreateInfo info;
-    info.stage.module = drv::get_shader_module(layoutManager->getDevice(), shader);
-    info.stage.stage = ShaderStage::ShaderStageFlagBits::COMPUTE_BIT;
-    info.layout = layout = layoutManager->acquireLayout(1, &shader);
-    drv_assert(drv::create_compute_pipeline(layoutManager->getDevice(), 1, &info, &ptr),
-               "Could not create compute pipeline");
-}
+// ComputePipeline::ComputePipeline(PipelineLayoutManager& _layoutManager, ShaderIdType shader)
+//   : layoutManager(&_layoutManager) {
+//     ComputePipelineCreateInfo info;
+//     info.stage.module = drv::get_shader_module(layoutManager->getDevice(), shader);
+//     info.stage.stage = ShaderStage::ShaderStageFlagBits::COMPUTE_BIT;
+//     info.layout = layout = layoutManager->acquireLayout(1, &shader);
+//     drv_assert(drv::create_compute_pipeline(layoutManager->getDevice(), 1, &info, &ptr),
+//                "Could not create compute pipeline");
+// }
 
-ComputePipeline::~ComputePipeline() noexcept {
-    close();
-}
+// ComputePipeline::~ComputePipeline() noexcept {
+//     close();
+// }
 
-ComputePipeline::ComputePipeline(ComputePipeline&& other) noexcept {
-    layoutManager = other.layoutManager;
-    ptr = other.ptr;
-    other.layoutManager = nullptr;
-}
+// ComputePipeline::ComputePipeline(ComputePipeline&& other) noexcept {
+//     layoutManager = other.layoutManager;
+//     ptr = other.ptr;
+//     other.layoutManager = nullptr;
+// }
 
-ComputePipeline& ComputePipeline::operator=(ComputePipeline&& other) noexcept {
-    if (this == &other)
-        return *this;
-    layoutManager = other.layoutManager;
-    ptr = other.ptr;
-    other.layoutManager = nullptr;
-    return *this;
-}
+// ComputePipeline& ComputePipeline::operator=(ComputePipeline&& other) noexcept {
+//     if (this == &other)
+//         return *this;
+//     layoutManager = other.layoutManager;
+//     ptr = other.ptr;
+//     other.layoutManager = nullptr;
+//     return *this;
+// }
 
-ComputePipeline::operator ComputePipelinePtr() const {
-    return ptr;
-}
+// ComputePipeline::operator ComputePipelinePtr() const {
+//     return ptr;
+// }
 
-void ComputePipeline::close() {
-    if (layoutManager == nullptr)
-        return;
-    layoutManager->releaseLayout(layout);
-    drv::drv_assert(drv::destroy_compute_pipeline(layoutManager->getDevice(), ptr),
-                    "Could not destroy descriptor set layout");
-    layoutManager = nullptr;
-}
+// void ComputePipeline::close() {
+//     if (layoutManager == nullptr)
+//         return;
+//     layoutManager->releaseLayout(layout);
+//     drv::drv_assert(drv::destroy_compute_pipeline(layoutManager->getDevice(), ptr),
+//                     "Could not destroy descriptor set layout");
+//     layoutManager = nullptr;
+// }
 
-CommandOptions_bind_compute_pipeline ComputePipeline::bind() const {
-    CommandOptions_bind_compute_pipeline ret;
-    ret.pipeline = ptr;
-    return ret;
-}
+// CommandOptions_bind_compute_pipeline ComputePipeline::bind() const {
+//     CommandOptions_bind_compute_pipeline ret;
+//     ret.pipeline = ptr;
+//     return ret;
+// }

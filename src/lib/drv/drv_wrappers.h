@@ -405,27 +405,29 @@ class PipelineLayoutManager
 bool operator<(const PipelineLayoutManager::CreateData& lhs,
                const PipelineLayoutManager::CreateData& rhs);
 
-class ComputePipeline
-  : public NoCopy
-  , private Exclusive
-{
- public:
-    ComputePipeline(PipelineLayoutManager& layoutManager, ShaderIdType shader);
-    ~ComputePipeline() noexcept;
+// TODO
 
-    ComputePipeline(ComputePipeline&& other) noexcept;
-    ComputePipeline& operator=(ComputePipeline&& other) noexcept;
+// class ComputePipeline
+//   : public NoCopy
+//   , private Exclusive
+// {
+//  public:
+//     ComputePipeline(PipelineLayoutManager& layoutManager, ShaderIdType shader);
+//     ~ComputePipeline() noexcept;
 
-    operator ComputePipelinePtr() const;
+//     ComputePipeline(ComputePipeline&& other) noexcept;
+//     ComputePipeline& operator=(ComputePipeline&& other) noexcept;
 
-    CommandOptions_bind_compute_pipeline bind() const;
+//     operator ComputePipelinePtr() const;
 
- private:
-    PipelineLayoutManager* layoutManager;
-    PipelineLayoutPtr layout;
-    ComputePipelinePtr ptr;
+//     CommandOptions_bind_compute_pipeline bind() const;
 
-    void close();
-};
+//  private:
+//     PipelineLayoutManager* layoutManager;
+//     PipelineLayoutPtr layout;
+//     ComputePipelinePtr ptr;
+
+//     void close();
+// };
 
 }  // namespace drv

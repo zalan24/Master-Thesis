@@ -10,6 +10,7 @@ CommandPoolCreateInfo CommandBufferCirculator::get_create_info() {
     CommandPoolCreateInfo ret;
     ret.resetCommandBuffer = true;
     ret.transient = false;
+    return ret;
 }
 
 CommandBufferCirculator::CommandBufferCirculator(LogicalDevicePtr _device, QueueFamilyPtr _family,
@@ -33,23 +34,19 @@ CommandBufferCirculator::CommandBufferHandle CommandBufferCirculator::acquire() 
     CommandBufferHandle ret;
     if (tryAcquire(ret))
         return ret;
-    CommandBufferData bufferData;
     CommandBufferCreateInfo createInfo;
     createInfo.type = type;
     createInfo.flags =
       (render_pass_continueos ? CommandBufferCreateInfo::RENDER_PASS_CONTINUE_BIT : 0)
       | CommandBufferCreateInfo::ONE_TIME_SUBMIT_BIT;
-    createInfo.commands = ;  // TODO remove this
-    bufferData.commandBuffer = CommandBuffer(device, pool, std::move(createInfo));
-    bufferData.commandBufferPtr = bufferData.commandBuffer;
-    bufferData.state = READY;
-    ret.commandBufferPtr = bufferData.commandBufferPtr;
+    CommandBuffer commandBuffer = CommandBuffer(device, pool, std::move(createInfo));
+    ret.commandBufferPtr = commandBuffer;
     ret.family = family;
     ret.circulator = this;
     {
         std::unique_lock lock(mutex);
         ret.bufferIndex = commandBuffers.size();
-        commandBuffers.emplace_back(std::move(bufferData));
+        commandBuffers.emplace_back(std::move(commandBuffer), commandBuffer, READY);
     }
     acquiredStates.fetch_add(1);
     return ret;
@@ -96,7 +93,7 @@ CommandBufferBank::CommandBufferBank(LogicalDevicePtr _device) : device(_device)
 }
 
 CommandBufferCirculator::CommandBufferHandle CommandBufferBank::acquire(
-  const GroupInfo& groupInfo) {
+  const CommandBufferBankGroupInfo& groupInfo) {
     {
         CommandBufferCirculator::CommandBufferHandle ret;
         if (tryAcquire(ret, groupInfo))
@@ -122,11 +119,26 @@ CommandBufferCirculator::CommandBufferHandle CommandBufferBank::acquire(
 }
 
 bool CommandBufferBank::tryAcquire(CommandBufferCirculator::CommandBufferHandle& handle,
-                                   const GroupInfo& groupInfo) {
+                                   const CommandBufferBankGroupInfo& groupInfo) {
     std::shared_lock lock(mutex);
     auto pool = pools.find(groupInfo);
     if (pool == pools.end())
         return false;
     CommandBufferCirculator* circulator = pool->second.get();
     return circulator->tryAcquire(handle);
+}
+
+CommandBufferCirculator::CommandBufferData::CommandBufferData(CommandBufferData&& other)
+  : commandBuffer(std::move(other.commandBuffer)),
+    commandBufferPtr(std::move(other.commandBufferPtr)),
+    state(other.state.load()) {
+}
+CommandBufferCirculator::CommandBufferData& CommandBufferCirculator::CommandBufferData::operator=(
+  CommandBufferData&& other) {
+    if (this == &other)
+        return *this;
+    commandBuffer = std::move(other.commandBuffer);
+    commandBufferPtr = std::move(other.commandBufferPtr);
+    state = other.state.load();
+    return *this;
 }

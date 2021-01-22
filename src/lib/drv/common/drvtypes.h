@@ -275,98 +275,6 @@ struct CommandExecutionData
     FencePtr fence = NULL_HANDLE;
 };
 
-struct CommandOptions
-{
-#ifdef DEBUG
-    struct DebugInfo
-    {
-        const char* filename;
-        unsigned int line;
-        const char* commandName;
-        unsigned long long commandNumber;
-    } debugInfo;
-#    define OPTION_DEBUG_INFO(name, number) \
-        drv::CommandOptions::DebugInfo { __FILE__, __LINE__, #name, number }
-#    define SET_OPTION_DEBUG_INFO(option, name, number) \
-        option.debugInfo = OPTION_DEBUG_INFO(name, number)
-#    define OPTIONS_WITH_DEBUG_INFO(name, number) \
-        drv::CommandOptions { OPTION_DEBUG_INFO(name, number) }
-#else
-#    define OPTION_DEBUG_INFO(...) static_cast<void>(nullptr)
-#    define SET_OPTION_DEBUG_INFO(...) static_cast<void>(nullptr)
-#    define OPTIONS_WITH_DEBUG_INFO(name, number) \
-        drv::CommandOptions {}
-#endif
-};
-
-struct CommandOptions_transfer : CommandOptions
-{
-    BufferPtr src;
-    BufferPtr dst;
-    struct Region
-    {
-        DeviceSize srcOffset;
-        DeviceSize dstOffset;
-        DeviceSize size;
-    };
-    static const unsigned int MAX_NUM_REGIONS = 4;
-    unsigned int numRegions;
-    Region regions[MAX_NUM_REGIONS];
-};
-
-struct CommandOptions_bind_compute_pipeline : CommandOptions
-{
-    ComputePipelinePtr pipeline;
-};
-
-struct CommandOptions_bind_descriptor_sets : CommandOptions
-{
-    enum PipelineBindPoint
-    {
-        GRAPHICS = 0,
-        COMPUTE = 1,
-        RAY_TRACING_KHR = 1000165000,
-        RAY_TRACING_NV = RAY_TRACING_KHR,
-        MAX_ENUM = 0x7FFFFFFF
-    } bindPoint;
-    PipelineLayoutPtr pipelineLayout;
-    unsigned long firstSet;
-    unsigned long setCount;
-    const DescriptorSetPtr* descriptorSetPtrs;
-    // TODO dynamic offsets?
-};
-
-struct CommandOptions_dispatch : CommandOptions
-{
-    unsigned int sizeX;
-    unsigned int sizeY;
-    unsigned int sizeZ;
-};
-
-struct CommandData
-{
-    Command cmd;
-    union Options
-    {
-        CommandOptions_transfer transfer;
-        CommandOptions_bind_compute_pipeline bindComputePipeline;
-        CommandOptions_bind_descriptor_sets bindDescriptorSets;
-        CommandOptions_dispatch dispatch;
-    } options;
-
-    CommandData() = default;
-    CommandData(CommandOptions_transfer transfer);
-    CommandData(CommandOptions_bind_compute_pipeline bindData);
-    CommandData(CommandOptions_bind_descriptor_sets bindInfo);
-    CommandData(CommandOptions_dispatch dispatch);
-};
-
-struct CommandList
-{
-    unsigned int commandCount = 0;
-    CommandData* commands = nullptr;
-};
-
 struct CommandBufferCreateInfo
 {
     using UsageType = uint32_t;
@@ -379,7 +287,6 @@ struct CommandBufferCreateInfo
     };
     UsageType flags = 0;
     CommandBufferType type;
-    CommandList commands;
 };
 
 namespace ShaderStage

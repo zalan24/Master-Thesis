@@ -79,8 +79,6 @@ FenceWaitResult wait_for_fence(LogicalDevicePtr device, unsigned int count, cons
 bool execute(QueuePtr queue, unsigned int count, const ExecutionInfo* infos,
              FencePtr fence = nullptr);
 
-bool command(const CommandData* cmd, const CommandExecutionData* data);
-
 BufferPtr create_buffer(LogicalDevicePtr device, const BufferCreateInfo* info);
 bool destroy_buffer(LogicalDevicePtr device, BufferPtr buffer);
 

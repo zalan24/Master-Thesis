@@ -33,7 +33,6 @@
                              unsigned int count, drv::CommandBufferPtr* buffers);                  \
     bool execute(drv::QueuePtr queue, unsigned int count, const drv::ExecutionInfo* infos,         \
                  drv::FencePtr fence);                                                             \
-    bool command(const drv::CommandData* cmd, const drv::CommandExecutionData* data);              \
     drv::BufferPtr create_buffer(drv::LogicalDevicePtr device, const drv::BufferCreateInfo* info); \
     bool destroy_buffer(drv::LogicalDevicePtr device, drv::BufferPtr buffer);                      \
     drv::DeviceMemoryPtr allocate_memory(drv::LogicalDevicePtr device,                             \

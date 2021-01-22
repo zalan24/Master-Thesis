@@ -24,7 +24,6 @@
     f.reset_fences = reset_fences;                                             \
     f.wait_for_fence = wait_for_fence;                                         \
     f.execute = execute;                                                       \
-    f.command = command;                                                       \
     f.create_buffer = create_buffer;                                           \
     f.destroy_buffer = destroy_buffer;                                         \
     f.allocate_memory = allocate_memory;                                       \
@@ -96,8 +95,6 @@ struct DrvFunctions
                                       unsigned long long int) = nullptr;
 
     bool (*execute)(QueuePtr, unsigned int, const ExecutionInfo*, FencePtr) = nullptr;
-
-    bool (*command)(const CommandData*, const CommandExecutionData*) = nullptr;
 
     BufferPtr (*create_buffer)(LogicalDevicePtr, const BufferCreateInfo*) = nullptr;
     bool (*destroy_buffer)(LogicalDevicePtr, BufferPtr) = nullptr;
