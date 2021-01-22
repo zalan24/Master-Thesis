@@ -1,6 +1,7 @@
 #pragma once
 
 #include <atomic>
+#include <memory>
 #include <shared_mutex>
 #include <unordered_map>
 #include <vector>
@@ -12,23 +13,34 @@ namespace drv
 // Ask for a cmd buffer
 // use the cmd buffer
 // give the cmd buffer back
-class CommandBufferBank
+class CommandBufferCirculator
 {
  public:
     struct CommandBufferHandle
     {
-        size_t bufferIndex = 0;
+        CommandBufferCirculator* circulator = nullptr;
         QueueFamilyPtr family = NULL_HANDLE;
+        size_t bufferIndex = 0;
         CommandBufferPtr commandBufferPtr = NULL_HANDLE;
         operator bool() const { return commandBufferPtr != NULL_HANDLE; }
     };
 
-    CommandBufferBank(LogicalDevicePtr device);
+    CommandBufferCirculator(LogicalDevicePtr device, QueueFamilyPtr family, CommandBufferType type,
+                            bool render_pass_continueos);
 
-    CommandBufferHandle acquire(QueueFamilyPtr family);
-    bool tryAcquire(CommandBufferHandle& handle, QueueFamilyPtr family);
+    ~CommandBufferCirculator();
+
+    CommandBufferCirculator(const CommandBufferCirculator&) = delete;
+    CommandBufferCirculator& operator=(const CommandBufferCirculator&) = delete;
+    CommandBufferCirculator(CommandBufferCirculator&&) = delete;
+    CommandBufferCirculator& operator=(CommandBufferCirculator&&) = delete;
+
+    CommandBufferHandle acquire();
+    bool tryAcquire(CommandBufferHandle& handle);
 
     void finished(CommandBufferHandle&& handle);
+
+    static CommandPoolCreateInfo get_create_info();
 
  private:
     enum CommandBufferState
@@ -37,22 +49,72 @@ class CommandBufferBank
         RECORDING,
         PENDING
     };
-    struct CommandBuffer
+    struct CommandBufferData
     {
         CommandBuffer commandBuffer;
         CommandBufferPtr commandBufferPtr;
         std::atomic<CommandBufferState> state;
     };
-    struct PerFamilyData
-    {
-        CommandPool pool;
-        std::vector<CommandBuffer> commandBuffers;
-        mutable std::shared_mutex mutex;
-    };
 
     LogicalDevicePtr device;
-    std::unordered_map<QueueFamilyPtr, PerFamilyData> pools;
+    QueueFamilyPtr family;
+    CommandPool pool;
+    drv::CommandBufferType type;
+    bool render_pass_continueos;
+    std::vector<CommandBufferData> commandBuffers;
+    std::atomic<size_t> acquiredStates = 0;
+    mutable std::shared_mutex mutex;  // for releasing the command buffer from a different thread
+};
+
+class CommandBufferBank
+{
+ public:
+    struct GroupInfo
+    {
+        QueueFamilyPtr family;
+        bool render_pass_continueos;
+        CommandBufferType type;
+        std::thread::id thread;
+        GroupInfo(QueueFamilyPtr _family, bool _render_pass_continueos, CommandBufferType _type)
+          : family(_family),
+            render_pass_continueos(_render_pass_continueos),
+            type(_type),
+            thread(std::this_thread::get_id()) {}
+        bool operator==(const GroupInfo& lhs) const {
+            return family == lhs.family && render_pass_continueos == lhs.render_pass_continueos
+                   && type == lhs.type && thread == lhs.thread;
+        }
+    };
+
+    CommandBufferBank(LogicalDevicePtr device);
+    ~CommandBufferBank();
+
+    CommandBufferBank(const CommandBufferBank&) = delete;
+    CommandBufferBank& operator=(const CommandBufferBank&) = delete;
+    CommandBufferBank(CommandBufferBank&&) = delete;
+    CommandBufferBank& operator=(CommandBufferBank&&) = delete;
+
+    CommandBufferCirculator::CommandBufferHandle acquire(const GroupInfo& groupInfo);
+    bool tryAcquire(CommandBufferCirculator::CommandBufferHandle& handle,
+                    const GroupInfo& groupInfo);
+
+ private:
+    LogicalDevicePtr device;
+    std::unordered_map<GroupInfo, std::unique_ptr<CommandBufferCirculator>> pools;
     mutable std::shared_mutex mutex;
 };
 
 }  // namespace drv
+
+namespace std
+{
+template <>
+struct hash<CommandBufferBank::GroupInfo>
+{
+    std::size_t operator()(const CommandBufferBank::GroupInfo& s) const noexcept {
+        return std::hash<QueueFamilyPtr>{}(s.family) ^ std::hash<bool>{}(s.render_pass_continueos)
+               ^ std::hash<std::thread::id>{}(s.thread)
+               ^ std::hash<drv::CommandBufferType>{}(s.type);
+    }
+};
+}  // namespace std

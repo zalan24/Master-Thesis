@@ -80,7 +80,7 @@ class Engine
     drv::QueueManager::Queue DtoHQueue;
     drv::QueueManager::Queue HtoDQueue;
     drv::QueueManager::Queue inputQueue;
-    CommandBufferBank cmdBufferBank;
+    drv::CommandBufferBank cmdBufferBank;
     // ResourceManager resourceMgr;
     EntityManager entityManager;
     // Window window;
