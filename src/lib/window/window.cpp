@@ -147,13 +147,13 @@ Window::Window(Input* _input, InputManager* _inputManager, int _width, int _heig
         switch (mode) {
             case InputListener::CursorMode::DONT_CARE:
             case InputListener::CursorMode::NORMAL:
-                glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+                targetCursorMode = GLFW_CURSOR_NORMAL;
                 break;
             case InputListener::CursorMode::HIDE:
-                glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_HIDDEN);
+                targetCursorMode = GLFW_CURSOR_HIDDEN;
                 break;
             case InputListener::CursorMode::LOCK:
-                glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+                targetCursorMode = GLFW_CURSOR_DISABLED;
                 break;
         }
     });
@@ -177,4 +177,9 @@ void Window::present() {
 
 void Window::pollEvents() {
     glfwPollEvents();
+    int targetCursor = targetCursorMode.load();
+    if (targetCursor != currentCursorMode) {
+        currentCursorMode = targetCursor;
+        glfwSetInputMode(window, GLFW_CURSOR, currentCursorMode);
+    }
 }

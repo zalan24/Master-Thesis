@@ -1,5 +1,6 @@
 #pragma once
 
+#include <atomic>
 #include <memory>
 #include <set>
 #include <string>
@@ -56,6 +57,8 @@ class Window
         GLContext(GLFWwindow* window);
         ~GLContext();
     };
+    int currentCursorMode;
+    std::atomic<int> targetCursorMode;
     GLFWInit initer;
     Input* input;
     InputManager* inputManager;

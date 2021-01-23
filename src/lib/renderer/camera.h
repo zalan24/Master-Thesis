@@ -26,6 +26,8 @@ class Camera
 
     void setView(const glm::mat4& view);
 
+    glm::mat4 getView() const { return view; }
+
  private:
     glm::mat4 pv;
     glm::vec3 eyePos{0, 0, -1};

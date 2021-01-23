@@ -6,11 +6,19 @@
 #include "camera.h"
 
 class EntityManager;
+class InputListener;
+class FreeCamEntity;
 
 class Renderer
 {
  public:
     Renderer();
+    ~Renderer();
+
+    Renderer(const Renderer&) = delete;
+    Renderer& operator=(const Renderer&) = delete;
+    Renderer(Renderer&&) = default;
+    Renderer& operator=(Renderer&&) = default;
 
     void render(EntityManager* entityManager, int width, int height);
 
@@ -29,7 +37,10 @@ class Renderer
     Camera camera;
     ShaderManager shaderManager;
     FrameObject frame;
+    FreeCamEntity* freeCamEntity;
+    std::unique_ptr<InputListener> inputListener;
 
     static void updateFrameBuffer(Framebuffer& framebuffer, unsigned int width,
                                   unsigned int height);
+    friend class RendererInput;
 };

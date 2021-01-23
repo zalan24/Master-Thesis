@@ -30,26 +30,59 @@ InputManager& InputManager::operator=(InputManager&& other) {
 }
 
 void InputManager::registerListener(InputListener* listener, float priority) {
-    inputListeners.push_back({listener, priority});
-    std::sort(inputListeners.begin(), inputListeners.end(), std::greater<>());
-    setCursorMode();
+    if (inListenerLoop)
+        registerEvent.push_back(Listener{listener, priority});
+    else {
+        inputListeners.push_back({listener, priority});
+        std::sort(inputListeners.begin(), inputListeners.end(), std::greater<>());
+        setCursorMode();
+    }
 }
 
 void InputManager::unregisterListener(InputListener* listener) {
     auto itr = std::find_if(inputListeners.begin(), inputListeners.end(),
                             [listener](const Listener& l) { return l.ptr == listener; });
-    assert(itr != inputListeners.end());
-    inputListeners.erase(itr);
-    // This might not be needed (not sure if erase is order preserving)
-    std::sort(inputListeners.begin(), inputListeners.end(), std::greater<>());
-    setCursorMode();
+    if (itr == inputListeners.end())
+        return;
+    if (inListenerLoop)
+        registerEvent.push_back(itr->ptr);
+    else {
+        inputListeners.erase(itr);
+        // This might not be needed (not sure if erase is order preserving)
+        std::sort(inputListeners.begin(), inputListeners.end(), std::greater<>());
+        setCursorMode();
+    }
 }
 
 void InputManager::feedInput(Input::InputEvent&& event) {
-    // TODO deal with unregistered listeners here (might happen in the loop)
-    for (Listener& l : inputListeners)
-        if (l.ptr->process(event))
-            return;
+    try {
+        inListenerLoop = true;
+        for (Listener& l : inputListeners)
+            if (l.ptr->process(event))
+                break;
+        inListenerLoop = false;
+        if (!registerEvent.empty()) {
+            for (size_t i = 0; i < registerEvent.size(); ++i) {
+                if (std::holds_alternative<Listener>(registerEvent[i]))
+                    inputListeners.push_back(std::move(std::get<Listener>(registerEvent[i])));
+                else {
+                    assert(std::holds_alternative<InputListener*>(registerEvent[i]));
+                    InputListener* ptr = std::get<InputListener*>(registerEvent[i]);
+                    auto itr = std::find_if(inputListeners.begin(), inputListeners.end(),
+                                            [ptr](const Listener& l) { return l.ptr == ptr; });
+                    if (itr != inputListeners.end())
+                        inputListeners.erase(itr);
+                }
+            }
+            registerEvent.clear();
+            std::sort(inputListeners.begin(), inputListeners.end(), std::greater<>());
+            setCursorMode();
+        }
+    }
+    catch (...) {
+        inListenerLoop = false;
+        throw;
+    }
 }
 
 void InputManager::setCursorMode() {

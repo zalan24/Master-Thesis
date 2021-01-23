@@ -14,6 +14,7 @@ class FreeCamEntity final : public CameraHolderEntity
 {
  public:
     FreeCamEntity(Renderer* renderer);
+    ~FreeCamEntity() override;
 
  protected:
     void _activate() override final;

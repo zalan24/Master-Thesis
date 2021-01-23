@@ -11,18 +11,23 @@ CameraHolderEntity::CameraHolderEntity(Renderer* _renderer,
 }
 
 void CameraHolderEntity::activate() {
-    EntityQuery deactivateQuery(
-      [](const Entity* entity) {
-          return dynamic_cast<const CameraHolderEntity*>(entity) != nullptr;
-      },
-      [](Entity* entity) { static_cast<CameraHolderEntity*>(entity)->deactivate(); });
-    EntityManager::getSingleton()->performQuery(deactivateQuery);
-    _activate();
+    if (!active) {
+        EntityQuery deactivateQuery(
+          [](const Entity* entity) {
+              return dynamic_cast<const CameraHolderEntity*>(entity) != nullptr;
+          },
+          [](Entity* entity) { static_cast<CameraHolderEntity*>(entity)->deactivate(); });
+        EntityManager::getSingleton()->performQuery(deactivateQuery);
+        active = true;
+        _activate();
+    }
 }
 
 void CameraHolderEntity::deactivate() {
-    active = false;
-    _deactivate();
+    if (active) {
+        active = false;
+        _deactivate();
+    }
 }
 
 void CameraHolderEntity::update(const UpdateData& data) {

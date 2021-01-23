@@ -1,6 +1,7 @@
 #pragma once
 
 #include <functional>
+#include <variant>
 #include <vector>
 
 #include "input.h"
@@ -41,6 +42,11 @@ class InputManager
     };
     std::vector<Listener> inputListeners;
     CursorModeCallback cursorCallback;
+
+    using RegisterEvent = std::variant<InputListener*, Listener>;
+
+    bool inListenerLoop = false;
+    std::vector<RegisterEvent> registerEvent;
 
     void setCursorMode();
 };

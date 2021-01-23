@@ -87,6 +87,10 @@ FreeCamEntity::FreeCamEntity(Renderer* renderer)
     inputListener = std::make_unique<FreeCamInput>(this);
 }
 
+FreeCamEntity::~FreeCamEntity() {
+    InputManager::getSingleton()->unregisterListener(inputListener.get());
+}
+
 void FreeCamEntity::_activate() {
     speed = glm::vec3(0, 0, 0);
     boost = false;

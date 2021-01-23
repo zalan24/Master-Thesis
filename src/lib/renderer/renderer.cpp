@@ -3,10 +3,42 @@
 #include <glad/glad.h>
 
 #include <entitymanager.h>
+#include <inputlistener.h>
+#include <inputmanager.h>
 
 #include "drawableentity.h"
 #include "freecam.h"
 #include "rendercontext.h"
+
+class RendererInput final : public InputListener
+{
+ public:
+    RendererInput(Renderer* _renderer) : InputListener(false), renderer(_renderer) {}
+    ~RendererInput() override {}
+
+    CursorMode getCursorMode() override final { return DONT_CARE; }
+
+ protected:
+    bool processKeyboard(const Input::KeyboardEvent& event) override final;
+
+ private:
+    Renderer* renderer;
+};
+
+bool RendererInput::processKeyboard(const Input::KeyboardEvent& event) {
+    if (event.key == KEY_F11) {
+        if (event.type == event.PRESS) {
+            if (renderer->freeCamEntity->isActive())
+                renderer->freeCamEntity->deactivate();
+            else {
+                // renderer->freeCamEntity->setLocalTransform(renderer->camera.getView());
+                renderer->freeCamEntity->activate();
+            }
+        }
+        return true;
+    }
+    return false;
+}
 
 Renderer::Renderer() {
     GLuint vertexArrayID = 0;
@@ -14,8 +46,16 @@ Renderer::Renderer() {
     glBindVertexArray(vertexArrayID);
     checkError();
     std::unique_ptr<FreeCamEntity> freeCam = std::make_unique<FreeCamEntity>(this);
-    freeCam->activate();  // TODO remove this line
+    freeCamEntity = freeCam.get();
     EntityManager::getSingleton()->addEntity(std::move(freeCam));
+
+    inputListener = std::make_unique<RendererInput>(this);
+    InputManager::getSingleton()->registerListener(inputListener.get(), 10);
+}
+
+Renderer::~Renderer() {
+    if (inputListener)
+        InputManager::getSingleton()->unregisterListener(inputListener.get());
 }
 
 void Renderer::updateFrameBuffer(Framebuffer& framebuffer, unsigned int width,

@@ -25,5 +25,5 @@ class CameraHolderEntity : public Entity
  private:
     Renderer* renderer;
     Entity::AffineTransform cameraOffset;
-    bool active;
+    bool active = false;
 };
