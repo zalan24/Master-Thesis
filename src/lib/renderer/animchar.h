@@ -9,10 +9,13 @@
 #include <shadermanager.h>
 #include <describedresource.hpp>
 
+#include "controllercamera.h"
 #include "drawableentity.h"
 
 class Material;
-class Animchar : public DrawableEntity
+class Animchar
+  : public DrawableEntity
+  , public IFollowable
 {
  public:
     using MeshRes = DescribedResource<MeshProvider>;
@@ -25,6 +28,8 @@ class Animchar : public DrawableEntity
 
     void setMaterial(const std::shared_ptr<Material>& mat, bool overrideMat);
     void setMaterial(std::unique_ptr<Material>&& mat, bool overrideMat);
+
+    glm::mat4 getFocusOffset() const override;
 
  private:
     AttributeBinder attributeBinder;

@@ -161,21 +161,23 @@ static Texture<RGBA> load_texture(const aiTexture* tex) {
 
 static void process(const aiScene* scene, const aiNode* node,
                     std::vector<Mesh::BoneIndex>& meshBones, Mesh::Skeleton* skeleton,
-                    Mesh::BoneIndex parentBone) {
+                    Mesh::BoneIndex parentBone, MeshInfo& meshInfo) {
     assert(node != nullptr);
     Mesh::Bone bone;
     bone.parent = parentBone;
     bone.localTm = convert_matrix(node->mTransformation);
     Mesh::BoneIndex boneId = skeleton->addBone(std::move(bone));
-    if (node->mName.length > 0)
+    if (node->mName.length > 0) {
         skeleton->registerBone(boneId, std::string(node->mName.C_Str()));
+        meshInfo.boneNames.emplace_back(node->mName.C_Str());
+    }
     for (unsigned int i = 0; i < node->mNumMeshes; ++i) {
         // Mesh bone should only be set once per segment
         assert(meshBones[node->mMeshes[i]] == skeleton->getRoot());
         meshBones[node->mMeshes[i]] = boneId;
     }
     for (unsigned int i = 0; i < node->mNumChildren; ++i)
-        process(scene, node->mChildren[i], meshBones, skeleton, boneId);
+        process(scene, node->mChildren[i], meshBones, skeleton, boneId, meshInfo);
 }
 
 Mesh load_mesh(const std::string& filename, const MeshProvider::ModelResource& resData,
@@ -239,7 +241,8 @@ Mesh load_mesh(const std::string& filename, const MeshProvider::ModelResource& r
         std::fill(materials.begin(), materials.end(), mat);
     }
     std::vector<Mesh::BoneIndex> meshBones(scene->mNumMeshes, ret.getSkeleton()->getRoot());
-    process(scene, scene->mRootNode, meshBones, ret.getSkeleton(), ret.getSkeleton()->getRoot());
+    process(scene, scene->mRootNode, meshBones, ret.getSkeleton(), ret.getSkeleton()->getRoot(),
+            meshInfo);
     std::map<std::string, Mesh::MaterialIndex> materialOverrides;
     for (const auto& [meshName, mat] : resData.materialOverrides)
         materialOverrides[meshName] = ret.addMaterial(mat);
@@ -361,8 +364,10 @@ Mesh create_sphere(size_t resX, size_t resY, float size, const glm::vec3& color)
 
 void MeshInfo::writeJson(json& out) const {
     WRITE_OBJECT(meshNames, out);
+    WRITE_OBJECT(boneNames, out);
 }
 
 void MeshInfo::readJson(const json& in) {
-    READ_OBJECT(meshNames, in);
+    READ_OBJECT_OPT(meshNames, in, {});
+    READ_OBJECT_OPT(boneNames, in, {});
 }

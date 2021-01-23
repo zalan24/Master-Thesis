@@ -23,6 +23,7 @@ class MeshInfo final : public ISerializable
     void readJson(const json& in) override final;
 
     std::vector<std::string> meshNames;
+    std::vector<std::string> boneNames;
 };
 
 Mesh load_mesh(const std::string& filename, const MeshProvider::ModelResource& resData,

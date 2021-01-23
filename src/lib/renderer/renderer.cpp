@@ -55,7 +55,7 @@ Renderer::Renderer() {
     std::unique_ptr<ControllerCamera> cameraControllerEntity =
       std::make_unique<ControllerCamera>(this);
     cameraController = cameraControllerEntity.get();
-    EntityManager::getSingleton()->addEntity(std::move(cameraControllerEntity));
+    EntityManager::getSingleton()->addEntity(std::move(cameraControllerEntity), -1);
 
     inputListener = std::make_unique<RendererInput>(this);
     InputManager::getSingleton()->registerListener(inputListener.get(), 10);

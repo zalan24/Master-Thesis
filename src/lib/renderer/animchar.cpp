@@ -153,3 +153,8 @@ void Animchar::setMaterial(const std::shared_ptr<Material>& mat, bool _overrideM
     overrideMat = _overrideMat;
     fixMat();
 }
+
+glm::mat4 Animchar::getFocusOffset() const {
+    // TODO
+    return glm::mat4(1.f);
+}
