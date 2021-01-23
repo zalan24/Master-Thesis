@@ -2,7 +2,6 @@
 
 #include <glad/glad.h>
 
-#include <entitymanager.h>
 #include <inputlistener.h>
 #include <inputmanager.h>
 
@@ -29,9 +28,12 @@ class RendererInput final : public InputListener
 bool RendererInput::processKeyboard(const Input::KeyboardEvent& event) {
     if (event.key == KEY_F11) {
         if (event.type == event.PRESS) {
-            if (renderer->freeCamEntity->isActive())
+            if (renderer->freeCamEntity->isActive()) {
                 renderer->freeCamEntity->deactivate();
+                renderer->cameraController->activate();
+            }
             else {
+                renderer->cameraController->deactivate();
                 renderer->freeCamEntity->setLocalTransform(renderer->camera.getView());
                 renderer->freeCamEntity->activate();
             }
@@ -50,6 +52,11 @@ Renderer::Renderer() {
     freeCamEntity = freeCam.get();
     EntityManager::getSingleton()->addEntity(std::move(freeCam));
 
+    std::unique_ptr<ControllerCamera> cameraControllerEntity =
+      std::make_unique<ControllerCamera>(this);
+    cameraController = cameraControllerEntity.get();
+    EntityManager::getSingleton()->addEntity(std::move(cameraControllerEntity));
+
     inputListener = std::make_unique<RendererInput>(this);
     InputManager::getSingleton()->registerListener(inputListener.get(), 10);
 }
@@ -57,6 +64,12 @@ Renderer::Renderer() {
 Renderer::~Renderer() {
     if (inputListener)
         InputManager::getSingleton()->unregisterListener(inputListener.get());
+}
+
+void Renderer::setCharacter(EntityManager::EntityId character) {
+    cameraController->setCharacter(character);
+    if (!freeCamEntity->isActive())
+        cameraController->activate();
 }
 
 void Renderer::updateFrameBuffer(Framebuffer& framebuffer, unsigned int width,

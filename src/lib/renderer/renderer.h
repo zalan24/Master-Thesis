@@ -1,5 +1,6 @@
 #pragma once
 
+#include <entitymanager.h>
 #include <framebuffer.h>
 #include <shadermanager.h>
 
@@ -29,6 +30,8 @@ class Renderer
     ShaderManager& getShaderManager() { return shaderManager; }
     const ShaderManager& getShaderManager() const { return shaderManager; }
 
+    void setCharacter(EntityManager::EntityId character);
+
  private:
     struct FrameObject
     {
@@ -39,6 +42,7 @@ class Renderer
     ShaderManager shaderManager;
     FrameObject frame;
     FreeCamEntity* freeCamEntity;
+    ControllerCamera* cameraController;
     std::unique_ptr<InputListener> inputListener;
 
     static void updateFrameBuffer(Framebuffer& framebuffer, unsigned int width,

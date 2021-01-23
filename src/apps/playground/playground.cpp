@@ -12,6 +12,18 @@ using json = nlohmann::json;
 
 using namespace std;
 
+static Animchar* create_character(Engine& engine, const std::string& resName,
+                                  const glm::vec3& pos) {
+    MeshProvider::ResourceDescriptor desc(resName);
+    Animchar::MeshRes mesh(std::move(desc));
+    std::unique_ptr<Animchar> entity = std::make_unique<Animchar>(std::move(mesh));
+    entity->setLocalTransform(glm::translate(glm::mat4(1.f), pos));
+    Animchar* ret = entity.get();
+    EntityManager::EntityId id = engine.getEntityManager()->addEntity(std::move(entity));
+    engine.getRenderer()->setCharacter(id);
+    return ret;
+}
+
 static Animchar* load_mesh(Engine& engine, const std::string& resName, const glm::vec3& pos) {
     MeshProvider::ResourceDescriptor desc(resName);
     Animchar::MeshRes mesh(std::move(desc));
@@ -61,7 +73,8 @@ int main(int argc, char* argv[]) {
         engine.getRenderer()->getCamera().lookAt(glm::vec3{0, 3, -5}, glm::vec3{0, 1, 0},
                                                  glm::vec3{0, 1, 0});
 
-        load_mesh(engine, "BH-2", glm::vec3(-4, 0.5, 2));
+        create_character(engine, "BH-2", glm::vec3(0, 0.5, -2));
+        // load_mesh(engine, "BH-2", glm::vec3(-4, 0.5, 2));
         // load_mesh(engine, "cartoon_boy", glm::vec3(2, 0.5, 2));
         // load_mesh(engine, "plant", glm::vec3(2, 0.5, 2));
         // load_mesh(engine, "boring_guy", glm::vec3(-2, 0.5, 2));
