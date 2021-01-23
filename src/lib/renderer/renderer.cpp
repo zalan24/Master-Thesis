@@ -6,6 +6,7 @@
 #include <inputlistener.h>
 #include <inputmanager.h>
 
+#include "controllercamera.h"
 #include "drawableentity.h"
 #include "freecam.h"
 #include "rendercontext.h"
@@ -31,7 +32,7 @@ bool RendererInput::processKeyboard(const Input::KeyboardEvent& event) {
             if (renderer->freeCamEntity->isActive())
                 renderer->freeCamEntity->deactivate();
             else {
-                // renderer->freeCamEntity->setLocalTransform(renderer->camera.getView());
+                renderer->freeCamEntity->setLocalTransform(renderer->camera.getView());
                 renderer->freeCamEntity->activate();
             }
         }

@@ -8,6 +8,7 @@
 class EntityManager;
 class InputListener;
 class FreeCamEntity;
+class ControllerCamera;
 
 class Renderer
 {

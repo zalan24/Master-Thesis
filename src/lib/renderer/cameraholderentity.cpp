@@ -34,6 +34,6 @@ void CameraHolderEntity::update(const UpdateData& data) {
     _update(data);
     if (active) {
         AffineTransform tm = getWorldTransform() * cameraOffset;
-        renderer->getCamera().setLookAt(tm[3], tm[3] + tm[2], tm[1]);
+        renderer->getCamera().setView(tm);
     }
 }
