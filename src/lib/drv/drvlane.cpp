@@ -18,7 +18,7 @@ static unsigned int bit_count(size_t s) {
     return ret;
 }
 
-CommandLaneManager::CommandLaneManager(PhysicalDevicePtr physicalDevice,
+CommandLaneManager::CommandLaneManager(PhysicalDevicePtr physicalDevice, IWindow* window,
                                        const std::vector<CommandLaneInfo>& laneInfos) {
     unsigned int familyCount = 0;
     drv::get_physical_device_queue_families(physicalDevice, &familyCount, nullptr);
@@ -44,6 +44,9 @@ CommandLaneManager::CommandLaneManager(PhysicalDevicePtr physicalDevice,
                 if ((queueFamilies[i].commandTypeMask & queueInfo.commandTypes)
                     != queueInfo.commandTypes)
                     continue;
+                if (queueInfo.requirePresent
+                    && !drv::can_present(physicalDevice, window, queueFamilies[i].handle))
+                    continue;
                 if (remaining[queueFamilies[i].handle] == 0)
                     continue;
                 unsigned int value =
@@ -66,6 +69,40 @@ CommandLaneManager::CommandLaneManager(PhysicalDevicePtr physicalDevice,
         for (const QueueFamilyPtr& ptr : usedFamilies)
             remaining[ptr]--;
         lanes[laneInfo.name] = std::move(lane);
+    }
+
+    // Could be optimized
+    auto countQueuesOn = [&](drv::QueueFamilyPtr family, unsigned int queueIndex) {
+        unsigned int count = 0;
+        for (auto& lane : lanes)
+            for (auto& queue : lane.second.queues)
+                if (queue.second.familyPtr == family && queue.second.queueIndex == queueIndex)
+                    count++;
+        return count;
+    };
+
+    for (const CommandLaneInfo& laneInfo : laneInfos) {
+        auto laneItr = lanes.find(laneInfo.name);
+        drv::drv_assert(laneItr != lanes.end());
+        for (const CommandLaneInfo::CommandQueueInfo& queueInfo : laneInfo.queues) {
+            if (!queueInfo.requirePresent)
+                continue;
+            auto queueItr = laneItr->second.queues.find(queueInfo.name);
+            drv::drv_assert(queueItr != laneItr->second.queues.end());
+            // Queue &q = lanes[laneInfo.name].queues[queueInfo.name]
+            if (remaining[queueItr->second.familyPtr] == 0)
+                continue;
+            if (countQueuesOn(queueItr->second.familyPtr, queueItr->second.queueIndex) <= 1)
+                continue;
+            auto familyItr = std::find_if(queueFamilies.begin(), queueFamilies.end(),
+                                          [queueItr](const QueueFamily& family) {
+                                              return family.handle == queueItr->second.familyPtr;
+                                          });
+            drv::drv_assert(familyItr != queueFamilies.end());
+            queueItr->second.queueIndex =
+              familyItr->queueCount - remaining[queueItr->second.familyPtr];
+            remaining[queueItr->second.familyPtr]--;
+        }
     }
 
     for (auto& lane : lanes)

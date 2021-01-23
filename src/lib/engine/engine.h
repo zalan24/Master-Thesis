@@ -54,6 +54,12 @@ class Engine
     {
         ErrorCallback();
     };
+    struct WindowIniter
+    {
+        WindowIniter(IWindow* window, drv::InstancePtr instance);
+        ~WindowIniter();
+        IWindow* window;
+    };
 
     using FrameId = size_t;
 
@@ -63,6 +69,7 @@ class Engine
     drv::DriverWrapper driver;
     drv::Window window;
     drv::Instance drvInstance;
+    WindowIniter windowIniter;
     drv::PhysicalDevice physicalDevice;
     drv::CommandLaneManager commandLaneMgr;
     drv::LogicalDevice device;

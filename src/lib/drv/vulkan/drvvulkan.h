@@ -96,6 +96,8 @@ class DrvVulkan final : public drv::IDriver
     //                                           drv::ShaderCreateInfoPtr info) override;
     // bool destroy_shader_module(drv::LogicalDevicePtr device, drv::ShaderModulePtr module) override;
     IWindow* create_window(const drv::WindowOptions& options) override;
+    bool can_present(drv::PhysicalDevicePtr physicalDevice, IWindow* window,
+                     drv::QueueFamilyPtr family) override;
 };
 
 // TODO

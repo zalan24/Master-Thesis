@@ -44,6 +44,9 @@ class VulkanWindow final : public IWindow
     //  void pollEvents();
 
     bool init(drv::InstancePtr instance) override;
+    void close() override;
+
+    VkSurfaceKHR getSurface();
 
  private:
     class GLFWInit

@@ -93,12 +93,13 @@ class PhysicalDevice
 
     struct SelectionInfo
     {
+        bool requirePresent;
         std::vector<CommandTypeMask> commandMasks;
         bool (*compare)(PhysicalDeviceInfo* lhs, PhysicalDeviceInfo* rhs) = nullptr;
         InstancePtr instance = drv::NULL_HANDLE;
     };
 
-    explicit PhysicalDevice(const SelectionInfo& info);
+    explicit PhysicalDevice(const SelectionInfo& info, IWindow* window);
 
     operator PhysicalDevicePtr() const;
 

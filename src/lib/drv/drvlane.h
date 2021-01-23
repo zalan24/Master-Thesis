@@ -32,6 +32,8 @@ class CommandLaneManager
             float priority;
             CommandTypeMask commandTypes;
             CommandTypeMask preferenceMask;  // doesn't need to contain 'commandTypes'
+            bool requirePresent;
+            bool preferDedicated;
         };
         std::vector<CommandQueueInfo> queues;
     };
@@ -42,7 +44,7 @@ class CommandLaneManager
         std::unordered_map<std::string, Queue> queues;
     };
 
-    CommandLaneManager(PhysicalDevicePtr physicalDevice,
+    CommandLaneManager(PhysicalDevicePtr physicalDevice, IWindow* window,
                        const std::vector<CommandLaneInfo>& laneInfos);
 
     const Queue* getQueue(const std::string& laneName, const std::string& queueName) const;

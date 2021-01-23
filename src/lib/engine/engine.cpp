@@ -54,6 +54,7 @@ static drv::Driver get_driver(const std::string& name) {
 drv::PhysicalDevice::SelectionInfo Engine::get_device_selection_info(drv::InstancePtr instance) {
     drv::PhysicalDevice::SelectionInfo selectInfo;
     selectInfo.instance = instance;
+    selectInfo.requirePresent = true;
     selectInfo.compare = drv::PhysicalDevice::pick_discere_card;
     selectInfo.commandMasks = {drv::CMD_TYPE_TRANSFER, drv::CMD_TYPE_COMPUTE,
                                drv::CMD_TYPE_GRAPHICS};
@@ -62,6 +63,14 @@ drv::PhysicalDevice::SelectionInfo Engine::get_device_selection_info(drv::Instan
 
 Engine::ErrorCallback::ErrorCallback() {
     drv::set_callback(::callback);
+}
+
+Engine::WindowIniter::WindowIniter(IWindow* _window, drv::InstancePtr instance) : window(_window) {
+    drv::drv_assert(window->init(instance), "Could not initialize window");
+}
+
+Engine::WindowIniter::~WindowIniter() {
+    window->close();
 }
 
 Engine::Engine(const std::string& configFile) : Engine(get_config(configFile)) {
@@ -73,15 +82,16 @@ Engine::Engine(const Config& cfg)
     window(drv::WindowOptions{static_cast<unsigned int>(cfg.screenWidth),
                               static_cast<unsigned int>(cfg.screenHeight), cfg.title.c_str()}),
     drvInstance(drv::InstanceCreateInfo{cfg.title.c_str()}),
-    physicalDevice(get_device_selection_info(drvInstance)),
-    commandLaneMgr(
-      physicalDevice,
-      {{"main",
-        {{"render", 0.5, drv::CMD_TYPE_GRAPHICS, drv::CMD_TYPE_COMPUTE | drv::CMD_TYPE_TRANSFER},
-         {"compute", 0.5, drv::CMD_TYPE_COMPUTE, drv::CMD_TYPE_TRANSFER},
-         {"DtoH", 0.5, drv::CMD_TYPE_TRANSFER, 0},
-         {"HtoD", 0.5, drv::CMD_TYPE_TRANSFER, 0}}},
-       {"input", {{"HtoD", 1, drv::CMD_TYPE_TRANSFER, 0}}}}),
+    windowIniter(window, drvInstance),
+    physicalDevice(get_device_selection_info(drvInstance), window),
+    commandLaneMgr(physicalDevice, window,
+                   {{"main",
+                     {{"render", 0.5, drv::CMD_TYPE_GRAPHICS,
+                       drv::CMD_TYPE_COMPUTE | drv::CMD_TYPE_TRANSFER, true, true},
+                      {"compute", 0.5, drv::CMD_TYPE_COMPUTE, drv::CMD_TYPE_TRANSFER, false, true},
+                      {"DtoH", 0.5, drv::CMD_TYPE_TRANSFER, 0, false, true},
+                      {"HtoD", 0.5, drv::CMD_TYPE_TRANSFER, 0, false, true}}},
+                    {"input", {{"HtoD", 1, drv::CMD_TYPE_TRANSFER, 0, false, true}}}}),
     device({physicalDevice, commandLaneMgr.getQueuePriorityInfo()}),
     queueManager(device, &commandLaneMgr),
     renderQueue(queueManager.getQueue({"main", "render"})),
@@ -90,8 +100,6 @@ Engine::Engine(const Config& cfg)
     HtoDQueue(queueManager.getQueue({"main", "HtoD"})),
     inputQueue(queueManager.getQueue({"input", "HtoD"})),
     cmdBufferBank(device) {
-    drv::drv_assert(static_cast<IWindow*>(window)->init(drvInstance),
-                    "Could not initialize window");
 }
 
 Engine::~Engine() {

@@ -107,7 +107,7 @@ bool PhysicalDevice::pick_discere_card(PhysicalDeviceInfo* lhs, PhysicalDeviceIn
            && rhs->type == PhysicalDeviceInfo::Type::DISCRETE_GPU;
 }
 
-PhysicalDevice::PhysicalDevice(const SelectionInfo& info) {
+PhysicalDevice::PhysicalDevice(const SelectionInfo& info, IWindow* window) {
     unsigned int count = 0;
     if (!get_physical_devices(&count, nullptr, info.instance))
         return;
@@ -123,14 +123,16 @@ PhysicalDevice::PhysicalDevice(const SelectionInfo& info) {
         if (!get_physical_device_queue_families(infos[i].handle, &queueCount, queueFamilies.data()))
             return;
         bool ok = true;
+        bool presentOk = !info.requirePresent;
         for (unsigned int j = 0; j < info.commandMasks.size() && ok; ++j) {
             ok = false;
             for (unsigned int k = 0; k < queueCount && !ok; ++k)
-                if ((info.commandMasks[j] & queueFamilies[k].commandTypeMask)
-                    == info.commandMasks[j])
-                    ok = true;
+                ok =
+                  (info.commandMasks[j] & queueFamilies[k].commandTypeMask) == info.commandMasks[j];
         }
-        if (!ok)
+        for (unsigned int k = 0; k < queueCount && !presentOk; ++k)
+            presentOk = drv::can_present(infos[i].handle, window, queueFamilies[k].handle);
+        if (!ok || !presentOk)
             continue;
         if (info.compare == nullptr) {
             best = &infos[i];

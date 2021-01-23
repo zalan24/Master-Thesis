@@ -247,6 +247,10 @@ IWindow* drv::create_window(const WindowOptions& options) {
     return current_driver_interface->create_window(options);
 }
 
+bool drv::can_present(PhysicalDevicePtr physicalDevice, IWindow* window, QueueFamilyPtr family) {
+    return current_driver_interface->can_present(physicalDevice, window, family);
+}
+
 // drv::ShaderModulePtr drv::create_shader_module(LogicalDevicePtr device, ShaderCreateInfoPtr info) {
 //     return current_driver_interface->create_shader_module(device, info);
 // }

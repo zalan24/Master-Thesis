@@ -81,6 +81,8 @@ class IDriver
                                          ComputePipelinePtr* pipelines) = 0;
     virtual bool destroy_compute_pipeline(LogicalDevicePtr device, ComputePipelinePtr pipeline) = 0;
     virtual IWindow* create_window(const WindowOptions& options) = 0;
+    virtual bool can_present(PhysicalDevicePtr physicalDevice, IWindow* window,
+                             QueueFamilyPtr family) = 0;
     // virtual ShaderModulePtr create_shader_module(LogicalDevicePtr device,
     //                                              ShaderCreateInfoPtr info) = 0;
     // virtual bool destroy_shader_module(LogicalDevicePtr device, ShaderModulePtr module) = 0;

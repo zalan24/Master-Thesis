@@ -12,6 +12,7 @@ class IWindow
     IWindow& operator=(const IWindow&) = delete;
 
     virtual bool init(drv::InstancePtr instance) = 0;
+    virtual void close() = 0;
 
     virtual void getContentSize(unsigned int& width, unsigned int& height) const = 0;
     virtual void getWindowSize(unsigned int& width, unsigned int& height) const = 0;

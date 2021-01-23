@@ -130,6 +130,10 @@ bool VulkanWindow::init(drv::InstancePtr instance) {
     return true;
 }
 
+void VulkanWindow::close() {
+    surface = {};
+}
+
 VulkanWindow::WindowObject::~WindowObject() {
     glfwDestroyWindow(window);
     window = nullptr;
@@ -194,6 +198,10 @@ void VulkanWindow::getWindowSize(unsigned int& width, unsigned int& height) cons
     assert(false);
 }
 
+VkSurfaceKHR VulkanWindow::getSurface() {
+    return surface.surface;
+}
+
 bool VulkanWindow::shouldClose() {
     return glfwWindowShouldClose(window);
 }
@@ -212,4 +220,14 @@ bool VulkanWindow::shouldClose() {
 
 IWindow* DrvVulkan::create_window(const drv::WindowOptions& options) {
     return new VulkanWindow(this, options.width, options.height, std::string(options.title));
+}
+
+bool DrvVulkan::can_present(drv::PhysicalDevicePtr physicalDevice, IWindow* window,
+                            drv::QueueFamilyPtr family) {
+    VkBool32 presentSupport = false;
+    unsigned int i = static_cast<unsigned int>(reinterpret_cast<long>(family)) - 1;
+    vkGetPhysicalDeviceSurfaceSupportKHR(reinterpret_cast<VkPhysicalDevice>(physicalDevice), i,
+                                         static_cast<VulkanWindow*>(window)->getSurface(),
+                                         &presentSupport);
+    return presentSupport == VK_TRUE;
 }
