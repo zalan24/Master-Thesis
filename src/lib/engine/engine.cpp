@@ -9,6 +9,7 @@
 #include <drverror.h>
 #include <drvwindow.h>
 
+#include <namethreads.h>
 // #include <rendercontext.h>
 
 static void callback(const drv::CallbackData* data) {
@@ -171,6 +172,10 @@ void Engine::gameLoop() {
     std::thread simulationThread(&Engine::simulationLoop, this, &state);
     std::thread recordThread(&Engine::recordCommandsLoop, this, &state);
     std::thread executeThread(&Engine::executeCommandsLoop, this, &state);
+
+    set_thread_name(&simulationThread, "simulation");
+    set_thread_name(&recordThread, "record");
+    set_thread_name(&executeThread, "execute");
 
     IWindow* w = window;
     // while (!w->shouldClose()) {
