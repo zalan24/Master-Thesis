@@ -1,9 +1,20 @@
 #pragma once
 
 #include <memory>
+#include <optional>
 #include <set>
-#include <string>
 
+#ifdef _WIN32
+// include this before vulkan, because apparently
+// you can't have order-independent headers on vindoz
+#    include <fck_vindoz.h>
+#    define VK_USE_PLATFORM_WIN32_KHR
+#else
+#    error Implement this...
+#endif
+#include <vulkan/vulkan.h>
+
+#include <drvtypes.h>
 #include <drvwindow.h>
 
 struct GLFWwindow;
@@ -13,20 +24,26 @@ namespace drv
 class IDriver;
 }
 
+namespace drv_vulkan
+{
 class VulkanWindow final : public IWindow
 {
  public:
-    VulkanWindow(drv::IDriver* driver, unsigned int width, unsigned int height,
+    VulkanWindow(drv::IDriver* driver, unsigned int _width, unsigned int _height,
                  const std::string& title);
     ~VulkanWindow() override;
 
     void getContentSize(unsigned int& width, unsigned int& height) const override;
     void getWindowSize(unsigned int& width, unsigned int& height) const override;
 
+    static const char* const* get_required_extensions(uint32_t& count);
+
     bool shouldClose() override;
     //  void getFramebufferSize(int& width, int& height);
     //  void present();
     //  void pollEvents();
+
+    bool init(drv::InstancePtr instance) override;
 
  private:
     class GLFWInit
@@ -50,9 +67,23 @@ class VulkanWindow final : public IWindow
      private:
         GLFWwindow* window = nullptr;
     };
+    struct Surface
+    {
+        Surface();
+        Surface(GLFWwindow* window, drv::InstancePtr instance);
+        ~Surface();
+        Surface(const Surface&) = delete;
+        Surface& operator=(const Surface&) = delete;
+        Surface(Surface&&);
+        Surface& operator=(Surface&&);
+        void close();
+        VkSurfaceKHR surface;
+        drv::InstancePtr instance;
+    };
     drv::IDriver* driver;
     GLFWInit initer;
     WindowObject window;
+    Surface surface;
     std::set<int> pushedButtons;
     std::set<int> pushedMouseButtons;
 
@@ -62,3 +93,5 @@ class VulkanWindow final : public IWindow
     //  static void mouse_button_callback(GLFWwindow* window, int button, int action, int mods);
     //  static void scroll_callback(GLFWwindow* window, double xoffset, double yoffset);
 };
+
+}  // namespace drv_vulkan

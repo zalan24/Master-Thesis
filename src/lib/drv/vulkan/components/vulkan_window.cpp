@@ -1,14 +1,40 @@
-#include "vulkanwindow.h"
+#include "vulkan_window.h"
 
 #include <algorithm>
 #include <cassert>
 #include <stdexcept>
 #include <string>
 
+#ifdef _WIN32
+// include this before vulkan, because apparently
+// you can't have order-independent headers on vindoz
+#    include <fck_vindoz.h>
+#    define VK_USE_PLATFORM_WIN32_KHR
+#    define GLFW_EXPOSE_NATIVE_WIN32
+#else
+#    error Implement this...
+#endif
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
+#include <GLFW/glfw3native.h>
+
+#include <vulkan/vulkan.h>
+
+#include <drverror.h>
+#include <drvwindow.h>
+
+#include "drvvulkan.h"
+#include "vulkan_instance.h"
+
+struct GLFWwindow;
+
+namespace drv
+{
+class IDriver;
+}
 
 using namespace drv;
+using namespace drv_vulkan;
 
 void VulkanWindow::error_callback [[noreturn]] (int, const char* description) {
     throw std::runtime_error("Error: " + std::string{description});
@@ -68,6 +94,10 @@ void VulkanWindow::error_callback [[noreturn]] (int, const char* description) {
 //     getSingleton()->renderer->getCamera().zoom(static_cast<float>(exp(yoffset / 10)));
 // }
 
+const char* const* VulkanWindow::get_required_extensions(uint32_t& count) {
+    return glfwGetRequiredInstanceExtensions(&count);
+}
+
 VulkanWindow::GLFWInit::GLFWInit() {
     if (!glfwInit())
         throw std::runtime_error("glfw could not be initialized");
@@ -83,8 +113,11 @@ VulkanWindow::WindowObject::WindowObject(int width, int height, const std::strin
     glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
     glfwSetErrorCallback(error_callback);
     window = glfwCreateWindow(width, height, title.c_str(), nullptr, nullptr);
-    if (!window)
-        throw std::runtime_error("Window or OpenGL context creation failed");
+    drv::drv_assert(window, "Window context creation failed");
+    // vkCreateWin32
+    // if (vkCreateWin32SurfaceKHR(instance, &createInfo, nullptr, &surface) != VK_SUCCESS) {
+    //     throw std::runtime_error("failed to create window surface!");
+    // }
     // glfwMakeContextCurrent(window);
     // glfwSetKeyCallback(window, key_callback);
     // glfwSetCursorPosCallback(window, cursor_position_callback);
@@ -92,9 +125,56 @@ VulkanWindow::WindowObject::WindowObject(int width, int height, const std::strin
     // glfwSetScrollCallback(window, scroll_callback);
 }
 
+bool VulkanWindow::init(drv::InstancePtr instance) {
+    surface = Surface(window, instance);
+    return true;
+}
+
 VulkanWindow::WindowObject::~WindowObject() {
     glfwDestroyWindow(window);
     window = nullptr;
+}
+
+VulkanWindow::Surface::Surface() : surface(VK_NULL_HANDLE), instance(drv::NULL_HANDLE) {
+}
+
+void VulkanWindow::Surface::close() {
+    if (surface == VK_NULL_HANDLE)
+        return;
+    vkDestroySurfaceKHR(reinterpret_cast<Instance*>(instance)->instance, surface, nullptr);
+    surface = VK_NULL_HANDLE;
+}
+
+VulkanWindow::Surface::Surface(Surface&& other) {
+    surface = other.surface;
+    instance = other.instance;
+    other.surface = VK_NULL_HANDLE;
+}
+
+VulkanWindow::Surface& VulkanWindow::Surface::operator=(Surface&& other) {
+    if (&other == this)
+        return *this;
+    close();
+    surface = other.surface;
+    instance = other.instance;
+    other.surface = VK_NULL_HANDLE;
+    return *this;
+}
+
+VulkanWindow::Surface::Surface(GLFWwindow* window, drv::InstancePtr _instance)
+  : instance(_instance) {
+    VkWin32SurfaceCreateInfoKHR createInfo{};
+    createInfo.sType = VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR;
+    createInfo.hwnd = glfwGetWin32Window(window);
+    createInfo.hinstance = GetModuleHandle(nullptr);
+    drv::drv_assert(vkCreateWin32SurfaceKHR(reinterpret_cast<Instance*>(instance)->instance,
+                                            &createInfo, nullptr, &surface)
+                      == VK_SUCCESS,
+                    "Could not create window surface");
+}
+
+VulkanWindow::Surface::~Surface() {
+    close();
 }
 
 VulkanWindow::VulkanWindow(IDriver* _driver, unsigned int _width, unsigned int _height,
@@ -129,3 +209,7 @@ bool VulkanWindow::shouldClose() {
 // void VulkanWindow::pollEvents() {
 //     glfwPollEvents();
 // }
+
+IWindow* DrvVulkan::create_window(const drv::WindowOptions& options) {
+    return new VulkanWindow(this, options.width, options.height, std::string(options.title));
+}

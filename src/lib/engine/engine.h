@@ -50,19 +50,18 @@ class Engine
     // const ResourceManager* getResMgr() const { return &resourceMgr; }
 
  private:
-    struct GlLoader
+    struct ErrorCallback
     {
-        GlLoader();
-        ~GlLoader();
-        GlLoader(const GlLoader&) = delete;
-        GlLoader& operator=(const GlLoader&) = delete;
+        ErrorCallback();
     };
 
     using FrameId = size_t;
 
     Config config;
 
+    ErrorCallback callback;
     drv::DriverWrapper driver;
+    drv::Window window;
     drv::Instance drvInstance;
     drv::PhysicalDevice physicalDevice;
     drv::CommandLaneManager commandLaneMgr;
@@ -76,7 +75,6 @@ class Engine
     drv::CommandBufferBank cmdBufferBank;
     // ResourceManager resourceMgr;
     EntityManager entityManager;
-    drv::Window window;
     // Renderer renderer;
 
     struct RenderState

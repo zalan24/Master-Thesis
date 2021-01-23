@@ -1,8 +1,6 @@
 find_package(Vulkan REQUIRED)
 
 if (Vulkan_FOUND)
-    add_subdirectory(vulkanwindow)
-
     file(GLOB DRV_VULKAN_FILES
         *.c *.cpp *.h *.hpp
         commands/*.c commands/*.cpp commands/*.h commands/*.hpp
@@ -25,6 +23,6 @@ if (Vulkan_FOUND)
         ${Vulkan_LIBRARIES}
         Vulkan_LIB
         VulkanHeaders_LIB
-        AnimationsVulkanWindow
+        GLFW_LIB
     )
 endif()

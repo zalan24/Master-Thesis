@@ -7,6 +7,7 @@ namespace drv_vulkan
 struct Features
 {
     bool debug_utils = false;
+    bool glfw = true;
 };
 
 struct Instance

@@ -27,6 +27,7 @@
         "gl",
         "glf",
         "glfw",
+        "hwnd",
         "integerv",
         "isystem",
         "ivec",

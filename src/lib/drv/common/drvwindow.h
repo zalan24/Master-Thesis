@@ -1,5 +1,7 @@
 #pragma once
 
+#include "drvtypes.h"
+
 class IWindow
 {
  public:
@@ -8,6 +10,8 @@ class IWindow
 
     IWindow(const IWindow&) = delete;
     IWindow& operator=(const IWindow&) = delete;
+
+    virtual bool init(drv::InstancePtr instance) = 0;
 
     virtual void getContentSize(unsigned int& width, unsigned int& height) const = 0;
     virtual void getWindowSize(unsigned int& width, unsigned int& height) const = 0;

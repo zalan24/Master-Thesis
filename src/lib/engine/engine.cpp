@@ -60,12 +60,18 @@ drv::PhysicalDevice::SelectionInfo Engine::get_device_selection_info(drv::Instan
     return selectInfo;
 }
 
+Engine::ErrorCallback::ErrorCallback() {
+    drv::set_callback(::callback);
+}
+
 Engine::Engine(const std::string& configFile) : Engine(get_config(configFile)) {
 }
 
 Engine::Engine(const Config& cfg)
   : config(cfg),
     driver({get_driver(cfg.driver)}),
+    window(drv::WindowOptions{static_cast<unsigned int>(cfg.screenWidth),
+                              static_cast<unsigned int>(cfg.screenHeight), cfg.title.c_str()}),
     drvInstance(drv::InstanceCreateInfo{cfg.title.c_str()}),
     physicalDevice(get_device_selection_info(drvInstance)),
     commandLaneMgr(
@@ -83,9 +89,9 @@ Engine::Engine(const Config& cfg)
     DtoHQueue(queueManager.getQueue({"main", "DtoH"})),
     HtoDQueue(queueManager.getQueue({"main", "HtoD"})),
     inputQueue(queueManager.getQueue({"input", "HtoD"})),
-    cmdBufferBank(device),
-    window(drv::WindowOptions{static_cast<unsigned int>(cfg.screenWidth),
-                              static_cast<unsigned int>(cfg.screenHeight), cfg.title.c_str()}) {
+    cmdBufferBank(device) {
+    drv::drv_assert(static_cast<IWindow*>(window)->init(drvInstance),
+                    "Could not initialize window");
 }
 
 Engine::~Engine() {
