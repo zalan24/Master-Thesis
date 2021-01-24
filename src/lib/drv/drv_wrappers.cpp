@@ -798,6 +798,68 @@ void DescriptorPool::close() {
     device = NULL_HANDLE;
 }
 
+SwapchainCreateInfo Swapchain::getSwapchainInfo(uint32_t width, uint32_t height) {
+    SwapchainCreateInfo ret;
+    ret.allowedFormatCount = createInfo.formatPreferences.size();
+    ret.formatPreferences = createInfo.formatPreferences.data();
+    ret.allowedPresentModeCount = createInfo.preferredPresentModes.size();
+    ret.preferredPresentModes = createInfo.preferredPresentModes.data();
+    ret.width = width;
+    ret.height = height;
+    ret.preferredImageCount = createInfo.preferredImageCount;
+    ret.oldSwapchain = ptr;
+    ret.clipped = createInfo.clipped;
+    return ret;
+}
+
+Swapchain::Swapchain(LogicalDevicePtr _device, IWindow* window, const CreateInfo& info,
+                     uint32_t width, uint32_t height)
+  : createInfo(info), device(_device) {
+    if (width > 0 && height > 0) {
+        SwapchainCreateInfo swapchainInfo = getSwapchainInfo(width, height);
+        ptr = create_swapchain(device, window, &swapchainInfo);
+        drv::drv_assert(ptr != NULL_HANDLE, "Could not create Swapchain");
+    }
+}
+
+// TODO
+// void Swapchain::recreate(uint32_t width, uint32_t height);
+
+Swapchain::~Swapchain() noexcept {
+    close();
+}
+
+void Swapchain::close() {
+    CHECK_THREAD;
+    if (ptr != NULL_HANDLE) {
+        drv::drv_assert(destroy_swapchain(device, ptr), "Could not destroy Swapchain");
+        ptr = NULL_HANDLE;
+    }
+}
+
+Swapchain::Swapchain(Swapchain&& other) noexcept {
+    createInfo = std::move(other.createInfo);
+    device = std::move(other.device);
+    ptr = std::move(other.ptr);
+    other.ptr = NULL_HANDLE;
+}
+
+Swapchain& Swapchain::operator=(Swapchain&& other) noexcept {
+    if (&other == this)
+        return *this;
+    close();
+    createInfo = std::move(other.createInfo);
+    device = std::move(other.device);
+    ptr = std::move(other.ptr);
+    other.ptr = NULL_HANDLE;
+    return *this;
+}
+
+Swapchain::operator SwapchainPtr() const {
+    CHECK_THREAD;
+    return ptr;
+}
+
 // PipelineLayoutManager::PipelineLayoutManager(LogicalDevicePtr _device) : device(_device) {
 // }
 

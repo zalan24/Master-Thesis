@@ -76,11 +76,13 @@ class Engine
     drv::LogicalDevice device;
     drv::QueueManager queueManager;
     drv::QueueManager::Queue renderQueue;
+    drv::QueueManager::Queue presentQueue;
     drv::QueueManager::Queue computeQueue;
     drv::QueueManager::Queue DtoHQueue;
     drv::QueueManager::Queue HtoDQueue;
     drv::QueueManager::Queue inputQueue;
     drv::CommandBufferBank cmdBufferBank;
+    drv::Swapchain swapchain;
     // ResourceManager resourceMgr;
     EntityManager entityManager;
     // Renderer renderer;
@@ -107,4 +109,5 @@ class Engine
     void executeCommandsLoop(RenderState* state);
     static drv::PhysicalDevice::SelectionInfo get_device_selection_info(
       drv::InstancePtr instance, const drv::DeviceExtensions& deviceExtensions);
+    static drv::Swapchain::CreateInfo get_swapchain_create_info();
 };

@@ -398,6 +398,39 @@ class DescriptorPool
     void close();
 };
 
+class Swapchain
+  : public NoCopy
+  , private Exclusive
+{
+ public:
+    struct CreateInfo
+    {
+        std::vector<ImageFormat> formatPreferences;
+        std::vector<SwapchainCreateInfo::PresentMode> preferredPresentModes;
+        uint32_t preferredImageCount;
+        bool clipped;  // invisible pixels
+    };
+
+    Swapchain(LogicalDevicePtr device, IWindow* window, const CreateInfo& info, uint32_t width = 0,
+              uint32_t height = 0);
+    ~Swapchain() noexcept;
+
+    Swapchain(Swapchain&& other) noexcept;
+    Swapchain& operator=(Swapchain&& other) noexcept;
+
+    operator SwapchainPtr() const;
+
+    void recreate(uint32_t width, uint32_t height);
+
+ private:
+    CreateInfo createInfo;
+    LogicalDevicePtr device;
+    SwapchainPtr ptr;
+
+    void close();
+    SwapchainCreateInfo getSwapchainInfo(uint32_t width, uint32_t height);
+};
+
 // class PipelineLayoutManager
 //   : public NoCopy
 //   , private Exclusive

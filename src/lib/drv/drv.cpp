@@ -255,6 +255,20 @@ drv::DeviceExtensions drv::get_supported_extensions(PhysicalDevicePtr physicalDe
     return current_driver_interface->get_supported_extensions(physicalDevice);
 }
 
+drv::SwapchainPtr drv::create_swapchain(LogicalDevicePtr device, IWindow* window,
+                                        const SwapchainCreateInfo* info) {
+    return current_driver_interface->create_swapchain(device, window, info);
+}
+
+bool drv::destroy_swapchain(LogicalDevicePtr device, SwapchainPtr swapchain) {
+    return current_driver_interface->destroy_swapchain(device, swapchain);
+}
+
+drv::PresentReselt drv::present(drv::QueuePtr queue, drv::SwapchainPtr swapchain,
+                                const PresentInfo& info) {
+    return current_driver_interface->present(queue, swapchain, info);
+}
+
 // drv::ShaderModulePtr drv::create_shader_module(LogicalDevicePtr device, ShaderCreateInfoPtr info) {
 //     return current_driver_interface->create_shader_module(device, info);
 // }

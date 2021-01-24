@@ -132,6 +132,10 @@ bool destroy_compute_pipeline(LogicalDevicePtr device, ComputePipelinePtr pipeli
 IWindow* create_window(const WindowOptions& options);
 bool can_present(PhysicalDevicePtr physicalDevice, IWindow* window, QueueFamilyPtr family);
 DeviceExtensions get_supported_extensions(PhysicalDevicePtr physicalDevice);
+SwapchainPtr create_swapchain(LogicalDevicePtr device, IWindow* window,
+                              const SwapchainCreateInfo* info);
+bool destroy_swapchain(LogicalDevicePtr device, SwapchainPtr swapchain);
+PresentReselt present(drv::QueuePtr queue, drv::SwapchainPtr swapchain, const PresentInfo& info);
 
 // ShaderModulePtr get_shader_module(LogicalDevicePtr device, ShaderIdType shaderId);
 // unsigned int get_num_shader_descriptor_set_layouts(LogicalDevicePtr device, ShaderIdType shaderId);

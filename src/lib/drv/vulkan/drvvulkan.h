@@ -1,5 +1,7 @@
 #pragma once
 
+#include <vector>
+
 #include <drv_interface.h>
 
 #include <drvtypes.h>
@@ -13,6 +15,9 @@ class DrvVulkan final : public drv::IDriver
 {
  public:
     ~DrvVulkan() override {}
+
+    // --- Interface ---
+
     drv::InstancePtr create_instance(const drv::InstanceCreateInfo* info) override;
     bool delete_instance(drv::InstancePtr ptr) override;
     bool get_physical_devices(drv::InstancePtr instance, unsigned int* count,
@@ -99,6 +104,11 @@ class DrvVulkan final : public drv::IDriver
     bool can_present(drv::PhysicalDevicePtr physicalDevice, IWindow* window,
                      drv::QueueFamilyPtr family) override;
     drv::DeviceExtensions get_supported_extensions(drv::PhysicalDevicePtr physicalDevice) override;
+    drv::SwapchainPtr create_swapchain(drv::LogicalDevicePtr device, IWindow* window,
+                                       const drv::SwapchainCreateInfo* info) override;
+    bool destroy_swapchain(drv::LogicalDevicePtr device, drv::SwapchainPtr swapchain) override;
+    drv::PresentReselt present(drv::QueuePtr queue, drv::SwapchainPtr swapchain,
+                               const drv::PresentInfo& info) override;
 };
 
 // TODO

@@ -79,6 +79,18 @@ Engine::WindowIniter::~WindowIniter() {
 Engine::Engine(const std::string& configFile) : Engine(get_config(configFile)) {
 }
 
+drv::Swapchain::CreateInfo Engine::get_swapchain_create_info() {
+    drv::Swapchain::CreateInfo ret;
+    ret.clipped = true;
+    ret.preferredImageCount = 3;
+    ret.formatPreferences = {drv::ImageFormat::B8G8R8A8_SRGB};
+    ret.preferredPresentModes = {drv::SwapchainCreateInfo::PresentMode::MAILBOX,
+                                 drv::SwapchainCreateInfo::PresentMode::IMMEDIATE,
+                                 drv::SwapchainCreateInfo::PresentMode::FIFO_RELAXED,
+                                 drv::SwapchainCreateInfo::PresentMode::FIFO};
+    return ret;
+}
+
 Engine::Engine(const Config& cfg)
   : config(cfg),
     driver({get_driver(cfg.driver)}),
@@ -88,22 +100,33 @@ Engine::Engine(const Config& cfg)
     windowIniter(window, drvInstance),
     deviceExtensions(true),
     physicalDevice(get_device_selection_info(drvInstance, deviceExtensions), window),
-    commandLaneMgr(physicalDevice, window,
-                   {{"main",
-                     {{"render", 0.5, drv::CMD_TYPE_GRAPHICS,
-                       drv::CMD_TYPE_COMPUTE | drv::CMD_TYPE_TRANSFER, true, true},
-                      {"compute", 0.5, drv::CMD_TYPE_COMPUTE, drv::CMD_TYPE_TRANSFER, false, true},
-                      {"DtoH", 0.5, drv::CMD_TYPE_TRANSFER, 0, false, true},
-                      {"HtoD", 0.5, drv::CMD_TYPE_TRANSFER, 0, false, true}}},
-                    {"input", {{"HtoD", 1, drv::CMD_TYPE_TRANSFER, 0, false, true}}}}),
+    commandLaneMgr(
+      physicalDevice, window,
+      {{"main",
+        {{"render", 0.5, drv::CMD_TYPE_GRAPHICS, drv::CMD_TYPE_COMPUTE | drv::CMD_TYPE_TRANSFER,
+          false, true},
+         {"present", 0.5, 0,
+          drv::CMD_TYPE_COMPUTE | drv::CMD_TYPE_TRANSFER | drv::CMD_TYPE_GRAPHICS, true, false},
+         {"compute", 0.5, drv::CMD_TYPE_COMPUTE, drv::CMD_TYPE_TRANSFER, false, true},
+         {"DtoH", 0.5, drv::CMD_TYPE_TRANSFER, 0, false, true},
+         {"HtoD", 0.5, drv::CMD_TYPE_TRANSFER, 0, false, true}}},
+       {"input", {{"HtoD", 1, drv::CMD_TYPE_TRANSFER, 0, false, true}}}}),
     device({physicalDevice, commandLaneMgr.getQueuePriorityInfo(), deviceExtensions}),
     queueManager(device, &commandLaneMgr),
     renderQueue(queueManager.getQueue({"main", "render"})),
+    presentQueue(queueManager.getQueue({"main", "present"})),
     computeQueue(queueManager.getQueue({"main", "compute"})),
     DtoHQueue(queueManager.getQueue({"main", "DtoH"})),
     HtoDQueue(queueManager.getQueue({"main", "HtoD"})),
     inputQueue(queueManager.getQueue({"input", "HtoD"})),
-    cmdBufferBank(device) {
+    cmdBufferBank(device),
+    swapchain(device, window, get_swapchain_create_info(),
+              static_cast<IWindow*>(window)->getWidth(),
+              static_cast<IWindow*>(window)->getHeight()) {
+    // std::vector<ImageFormat> formatPreferences;
+    // std::vector<SwapchainCreateInfo::PresentMode> preferredPresentModes;
+    // uint32_t preferredImageCount;
+    // bool clipped;  // invisible pixels
 }
 
 Engine::~Engine() {
@@ -150,6 +173,12 @@ void Engine::recordCommandsLoop(RenderState* state) {
             state->simulationCV.notify_one();
         }
         // Do work here, that's unrelated to simulation
+        // // TODO
+        // drv::PresentInfo info;
+        // info.semaphoreCount = ;
+        // info.waitSemaphores = ;
+        // drv::present(presentQueue.queue, swapchain, info); -- probably perform on execution thread???
+        // TODO recreate swapchain if necessary
         state->recordFrame.fetch_add(FrameId(1));
     }
 }
@@ -181,23 +210,26 @@ void Engine::gameLoop() {
     set_thread_name(&executeThread, "execute");
 
     IWindow* w = window;
-    // while (!w->shouldClose()) {
-    //     std::this_thread::sleep_for(std::chrono::milliseconds(100));
-    // unsigned int width, height;
-    // w->getContentSize(width, height);
-    // {
-    //     std::unique_lock<std::mutex> lk(mutex);
-    //     renderCV.wait(lk, [&state] { return state == RENDER; });
-    //     renderer.render(&entityManager, width, height);
-    //     // UI::UIData data{renderer->getScene(), renderer->getShaderManager()};
-    //     // ui->render(data);
-    //     state = SIMULATE;
-    //     window.pollEvents();
-    // }
-    // simulationCV.notify_one();
-    // window.present();
-    // renderFrame++;
-    // }
+    if (false) {
+        while (!w->shouldClose()) {
+            static_cast<IWindow*>(window)->pollEvents();
+
+            // unsigned int width, height;
+            // w->getContentSize(width, height);
+            // {
+            //     std::unique_lock<std::mutex> lk(mutex);
+            //     renderCV.wait(lk, [&state] { return state == RENDER; });
+            //     renderer.render(&entityManager, width, height);
+            //     // UI::UIData data{renderer->getScene(), renderer->getShaderManager()};
+            //     // ui->render(data);
+            //     state = SIMULATE;
+            //     window.pollEvents();
+            // }
+            // simulationCV.notify_one();
+            // window.present();
+            // renderFrame++;
+        }
+    }
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
     {
         std::unique_lock<std::mutex> simLk(state.simulationMutex);

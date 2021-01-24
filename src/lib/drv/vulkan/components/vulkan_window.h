@@ -39,9 +39,9 @@ class VulkanWindow final : public IWindow
     static const char* const* get_required_extensions(uint32_t& count);
 
     bool shouldClose() override;
-    //  void getFramebufferSize(int& width, int& height);
-    //  void present();
-    //  void pollEvents();
+    void pollEvents() override;
+    uint32_t getWidth() const override;
+    uint32_t getHeight() const override;
 
     bool init(drv::InstancePtr instance) override;
     void close() override;
