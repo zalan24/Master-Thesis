@@ -28,7 +28,12 @@ drv::LogicalDevicePtr DrvVulkan::create_logical_device(const drv::LogicalDeviceC
 
     createInfo.pEnabledFeatures = &deviceFeatures;
 
-    createInfo.enabledExtensionCount = 0;
+    std::vector<const char*> extensions = {};
+    if (info->extensions.extensions.swapchain)
+        extensions.push_back(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
+
+    createInfo.enabledExtensionCount = extensions.size();
+    createInfo.ppEnabledExtensionNames = extensions.data();
 
     createInfo.enabledLayerCount = 0;
 
@@ -46,7 +51,7 @@ bool DrvVulkan::delete_logical_device(drv::LogicalDevicePtr device) {
 }
 
 drv::QueuePtr DrvVulkan::get_queue(drv::LogicalDevicePtr device, drv::QueueFamilyPtr family,
-                                    unsigned int ind) {
+                                   unsigned int ind) {
     VkQueue queue;
     vkGetDeviceQueue(reinterpret_cast<VkDevice>(device),
                      static_cast<uint32_t>(reinterpret_cast<long>(family)) - 1, ind, &queue);

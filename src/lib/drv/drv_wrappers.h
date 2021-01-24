@@ -94,6 +94,7 @@ class PhysicalDevice
     struct SelectionInfo
     {
         bool requirePresent;
+        drv::DeviceExtensions extensions;
         std::vector<CommandTypeMask> commandMasks;
         bool (*compare)(PhysicalDeviceInfo* lhs, PhysicalDeviceInfo* rhs) = nullptr;
         InstancePtr instance = drv::NULL_HANDLE;
@@ -116,6 +117,7 @@ class LogicalDevice
     {
         PhysicalDevicePtr physicalDevice = nullptr;
         std::unordered_map<QueueFamilyPtr, std::vector<float>> queues;
+        DeviceExtensions deviceExtensions;
     };
     LogicalDevice(CreateInfo&& info);
     ~LogicalDevice();

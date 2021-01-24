@@ -131,6 +131,7 @@ bool destroy_compute_pipeline(LogicalDevicePtr device, ComputePipelinePtr pipeli
 
 IWindow* create_window(const WindowOptions& options);
 bool can_present(PhysicalDevicePtr physicalDevice, IWindow* window, QueueFamilyPtr family);
+DeviceExtensions get_supported_extensions(PhysicalDevicePtr physicalDevice);
 
 // ShaderModulePtr get_shader_module(LogicalDevicePtr device, ShaderIdType shaderId);
 // unsigned int get_num_shader_descriptor_set_layouts(LogicalDevicePtr device, ShaderIdType shaderId);

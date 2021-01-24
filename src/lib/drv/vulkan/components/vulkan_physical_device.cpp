@@ -1,5 +1,6 @@
 #include "drvvulkan.h"
 
+#include <algorithm>
 #include <cstring>
 #include <vector>
 
@@ -96,4 +97,22 @@ drv::CommandTypeMask DrvVulkan::get_command_type_mask(drv::PhysicalDevicePtr phy
                                              &count, vkQueueFamilies.data());
     unsigned int i = static_cast<unsigned int>(reinterpret_cast<long>(queueFamily)) - 1;
     return get_mask(vkQueueFamilies[i].queueFlags);
+}
+
+drv::DeviceExtensions DrvVulkan::get_supported_extensions(drv::PhysicalDevicePtr physicalDevice) {
+    uint32_t extensionCount;
+    vkEnumerateDeviceExtensionProperties(reinterpret_cast<VkPhysicalDevice>(physicalDevice),
+                                         nullptr, &extensionCount, nullptr);
+
+    std::vector<VkExtensionProperties> availableExtensions(extensionCount);
+    vkEnumerateDeviceExtensionProperties(reinterpret_cast<VkPhysicalDevice>(physicalDevice),
+                                         nullptr, &extensionCount, availableExtensions.data());
+    drv::DeviceExtensions ret;
+    ret.extensions.swapchain =
+      std::find_if(availableExtensions.begin(), availableExtensions.end(),
+                   [](const VkExtensionProperties& extension) {
+                       return strcmp(extension.extensionName, VK_KHR_SWAPCHAIN_EXTENSION_NAME) == 0;
+                   })
+      != availableExtensions.end();
+    return ret;
 }

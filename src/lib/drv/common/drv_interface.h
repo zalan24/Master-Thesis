@@ -83,6 +83,7 @@ class IDriver
     virtual IWindow* create_window(const WindowOptions& options) = 0;
     virtual bool can_present(PhysicalDevicePtr physicalDevice, IWindow* window,
                              QueueFamilyPtr family) = 0;
+    virtual DeviceExtensions get_supported_extensions(PhysicalDevicePtr physicalDevice) = 0;
     // virtual ShaderModulePtr create_shader_module(LogicalDevicePtr device,
     //                                              ShaderCreateInfoPtr info) = 0;
     // virtual bool destroy_shader_module(LogicalDevicePtr device, ShaderModulePtr module) = 0;

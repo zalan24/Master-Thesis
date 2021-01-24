@@ -70,6 +70,7 @@ class Engine
     drv::Window window;
     drv::Instance drvInstance;
     WindowIniter windowIniter;
+    drv::DeviceExtensions deviceExtensions;
     drv::PhysicalDevice physicalDevice;
     drv::CommandLaneManager commandLaneMgr;
     drv::LogicalDevice device;
@@ -104,5 +105,6 @@ class Engine
     void simulationLoop(RenderState* state);
     void recordCommandsLoop(RenderState* state);
     void executeCommandsLoop(RenderState* state);
-    static drv::PhysicalDevice::SelectionInfo get_device_selection_info(drv::InstancePtr instance);
+    static drv::PhysicalDevice::SelectionInfo get_device_selection_info(
+      drv::InstancePtr instance, const drv::DeviceExtensions& deviceExtensions);
 };

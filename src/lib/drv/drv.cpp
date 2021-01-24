@@ -251,6 +251,10 @@ bool drv::can_present(PhysicalDevicePtr physicalDevice, IWindow* window, QueueFa
     return current_driver_interface->can_present(physicalDevice, window, family);
 }
 
+drv::DeviceExtensions drv::get_supported_extensions(PhysicalDevicePtr physicalDevice) {
+    return current_driver_interface->get_supported_extensions(physicalDevice);
+}
+
 // drv::ShaderModulePtr drv::create_shader_module(LogicalDevicePtr device, ShaderCreateInfoPtr info) {
 //     return current_driver_interface->create_shader_module(device, info);
 // }

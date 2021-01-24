@@ -98,6 +98,7 @@ class DrvVulkan final : public drv::IDriver
     IWindow* create_window(const drv::WindowOptions& options) override;
     bool can_present(drv::PhysicalDevicePtr physicalDevice, IWindow* window,
                      drv::QueueFamilyPtr family) override;
+    drv::DeviceExtensions get_supported_extensions(drv::PhysicalDevicePtr physicalDevice) override;
 };
 
 // TODO

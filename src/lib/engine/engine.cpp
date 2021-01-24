@@ -52,10 +52,12 @@ static drv::Driver get_driver(const std::string& name) {
     throw std::runtime_error("Unknown driver: " + name);
 }
 
-drv::PhysicalDevice::SelectionInfo Engine::get_device_selection_info(drv::InstancePtr instance) {
+drv::PhysicalDevice::SelectionInfo Engine::get_device_selection_info(
+  drv::InstancePtr instance, const drv::DeviceExtensions& deviceExtensions) {
     drv::PhysicalDevice::SelectionInfo selectInfo;
     selectInfo.instance = instance;
     selectInfo.requirePresent = true;
+    selectInfo.extensions = deviceExtensions;
     selectInfo.compare = drv::PhysicalDevice::pick_discere_card;
     selectInfo.commandMasks = {drv::CMD_TYPE_TRANSFER, drv::CMD_TYPE_COMPUTE,
                                drv::CMD_TYPE_GRAPHICS};
@@ -84,7 +86,8 @@ Engine::Engine(const Config& cfg)
                               static_cast<unsigned int>(cfg.screenHeight), cfg.title.c_str()}),
     drvInstance(drv::InstanceCreateInfo{cfg.title.c_str()}),
     windowIniter(window, drvInstance),
-    physicalDevice(get_device_selection_info(drvInstance), window),
+    deviceExtensions(true),
+    physicalDevice(get_device_selection_info(drvInstance, deviceExtensions), window),
     commandLaneMgr(physicalDevice, window,
                    {{"main",
                      {{"render", 0.5, drv::CMD_TYPE_GRAPHICS,
@@ -93,7 +96,7 @@ Engine::Engine(const Config& cfg)
                       {"DtoH", 0.5, drv::CMD_TYPE_TRANSFER, 0, false, true},
                       {"HtoD", 0.5, drv::CMD_TYPE_TRANSFER, 0, false, true}}},
                     {"input", {{"HtoD", 1, drv::CMD_TYPE_TRANSFER, 0, false, true}}}}),
-    device({physicalDevice, commandLaneMgr.getQueuePriorityInfo()}),
+    device({physicalDevice, commandLaneMgr.getQueuePriorityInfo(), deviceExtensions}),
     queueManager(device, &commandLaneMgr),
     renderQueue(queueManager.getQueue({"main", "render"})),
     computeQueue(queueManager.getQueue({"main", "compute"})),

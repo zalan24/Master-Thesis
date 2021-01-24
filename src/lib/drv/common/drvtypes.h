@@ -75,6 +75,20 @@ struct PhysicalDeviceInfo
     PhysicalDevicePtr handle;
 };
 
+struct DeviceExtensions
+{
+    union
+    {
+        struct Extensions
+        {
+            uint32_t swapchain : 1;
+        } extensions;
+        uint32_t bits;
+    };
+    DeviceExtensions() : bits(0) {}
+    explicit DeviceExtensions(bool _swapchain) : bits(0) { extensions.swapchain = _swapchain; }
+};
+
 struct LogicalDeviceCreateInfo
 {
     PhysicalDevicePtr physicalDevice;
@@ -86,6 +100,7 @@ struct LogicalDeviceCreateInfo
     };
     unsigned int queueInfoCount;
     QueueInfo* queueInfoPtr;
+    DeviceExtensions extensions;
 };
 
 using CommandTypeBase = uint8_t;

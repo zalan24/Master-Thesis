@@ -116,6 +116,9 @@ PhysicalDevice::PhysicalDevice(const SelectionInfo& info, IWindow* window) {
         return;
     PhysicalDeviceInfo* best = nullptr;
     for (unsigned int i = 0; i < count; ++i) {
+        DeviceExtensions extensions = get_supported_extensions(infos[i].handle);
+        if ((extensions.bits & info.extensions.bits) != info.extensions.bits)
+            continue;
         unsigned int queueCount = 0;
         if (!get_physical_device_queue_families(infos[i].handle, &queueCount, nullptr))
             return;
@@ -154,6 +157,7 @@ LogicalDevice::LogicalDevice(CreateInfo&& info) {
     std::vector<QueueFamily> queueFamilies;
     std::vector<std::vector<float>> priorities;
     createInfo.physicalDevice = info.physicalDevice;
+    createInfo.extensions = std::move(info.deviceExtensions);
     std::vector<LogicalDeviceCreateInfo::QueueInfo> queueInfos;
     if (info.queues.size() > 0) {
         createInfo.queueInfoCount = static_cast<unsigned int>(info.queues.size());
