@@ -60,7 +60,6 @@ class EntityManager
     {
         std::unique_ptr<Entity> entity;
         std::string name;
-        // TODO it's ignored atm
         UpdatePriority priority;
         bool started;
     };

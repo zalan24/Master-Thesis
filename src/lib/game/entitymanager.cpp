@@ -156,6 +156,10 @@ void EntityManager::checkAndResetUpdateOrder() {
     for (EntityId id = 0; id < entities.size(); ++id)
         if (entities[id].entity != nullptr)
             updateOrder.push_back(id);
+    std::sort(updateOrder.begin(), updateOrder.end(),
+              [this](const EntityId lhs, const EntityId rhs) {
+                  return entities[lhs].priority > entities[rhs].priority;
+              });
     needReset = false;
 }
 
