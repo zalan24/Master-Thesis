@@ -43,6 +43,18 @@ void Animchar::bindVertexAttributes() {
     checkError();
 }
 
+void Animchar::update(const UpdateData& data) {
+    const ICharacterController* ctrl = getController();
+    if (ctrl) {
+        ICharacterController::ControlData controlData = ctrl->getControls();
+        Entity::AffineTransform tm = getLocalTransform();
+        tm[3] += glm::vec4(controlData.movement.speed.x, controlData.movement.speed.y,
+                           controlData.movement.speed.z, 0)
+                 * data.dt;
+        setLocalTransform(tm);
+    }
+}
+
 void Animchar::beforedraw(const RenderContext&) {
     getGlMesh()->updateState(glMeshState);
 }
@@ -163,4 +175,20 @@ glm::mat4 Animchar::getFocusOffset() const {
         ret += getGlMesh()->getBoneWtm(glMeshState, bone.index) * bone.offset * bone.weight;
     ret /= ret[3][3];
     return ret;
+}
+
+void Animchar::setController(const ICharacterController* _controller) {
+    controller = _controller;
+}
+
+void Animchar::setController(std::unique_ptr<ICharacterController>&& _controller) {
+    controller = std::move(_controller);
+}
+
+const ICharacterController* Animchar::getController() const {
+    if (std::holds_alternative<const ICharacterController*>(controller))
+        return std::get<const ICharacterController*>(controller);
+    if (std::holds_alternative<std::unique_ptr<ICharacterController>>(controller))
+        return std::get<std::unique_ptr<ICharacterController>>(controller).get();
+    return nullptr;
 }

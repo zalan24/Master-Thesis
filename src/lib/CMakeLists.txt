@@ -11,6 +11,7 @@ add_subdirectory(engine)
 add_subdirectory(serializable)
 add_subdirectory(resources)
 add_subdirectory(input)
+add_subdirectory(controller)
 # add_subdirectory(drv)
 # add_subdirectory(ui)
 

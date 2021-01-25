@@ -3,6 +3,7 @@
 #include <memory>
 #include <variant>
 
+#include <charactercontroller.h>
 #include <entitymanager.h>
 #include <util.hpp>
 
@@ -19,7 +20,9 @@ class IFollowable
     virtual glm::mat4 getFocusOffset() const = 0;
 };
 
-class ControllerCamera final : public CameraHolderEntity
+class ControllerCamera final
+  : public CameraHolderEntity
+  , public ICharacterController
 {
  public:
     ControllerCamera(Renderer* renderer);
@@ -27,6 +30,8 @@ class ControllerCamera final : public CameraHolderEntity
 
     void setCharacter(EntityManager::EntityId character);
     void resetCharacter();
+
+    ControlData getControls() const override;
 
  protected:
     void _activate() override final;
@@ -41,7 +46,7 @@ class ControllerCamera final : public CameraHolderEntity
         uint16_t forward : 1;
         uint16_t backward : 1;
         // uint16_t jump : 1;
-        // uint16_t run : 1;
+        uint16_t run : 1;
         // uint16_t crouch : 1;
         // uint16_t lay : 1;
         // uint16_t stand : 1;
@@ -64,6 +69,8 @@ class ControllerCamera final : public CameraHolderEntity
     double scrollSpeed = 0.1;
     double minDist = 0.1;
     double maxDist = 10;
+    double runSpeed = 5;
+    double walkSpeed = 2;
 
     friend class ControllerInput;
 };

@@ -34,9 +34,8 @@ bool ControllerInput::processKeyboard(const Input::KeyboardEvent& event) {
         controller->input.left = event.type != Input::KeyboardEvent::RELEASE;
     else if (event.key == KEY_D)
         controller->input.right = event.type != Input::KeyboardEvent::RELEASE;
-    // freeCam->targetSpeed.x = (right ? 1 : 0) - (left ? 1 : 0);
-    // freeCam->targetSpeed.y = up ? 1 : 0;
-    // freeCam->targetSpeed.z = (forward ? 1 : 0) - (backward ? 1 : 0);
+    else if (event.key == KEY_LEFT_SHIFT)
+        controller->input.run = event.type != Input::KeyboardEvent::RELEASE;
     return true;
 }
 
@@ -86,7 +85,7 @@ void ControllerCamera::_deactivate() {
     input = Input();
 }
 
-void ControllerCamera::_update(const UpdateData& data) {
+void ControllerCamera::_update(const UpdateData&) {
     const Entity* entity = EntityManager::getSingleton()->getById(characterEntity);
     if (!entity) {
         resetCharacter();
@@ -105,9 +104,36 @@ void ControllerCamera::_update(const UpdateData& data) {
 }
 
 void ControllerCamera::resetCharacter() {
-    characterEntity = EntityManager::INVALID_ENTITY;
+    if (characterEntity != EntityManager::INVALID_ENTITY) {
+        Entity* entity = EntityManager::getSingleton()->getById(characterEntity);
+        if (IControllable* controllable = dynamic_cast<IControllable*>(entity); controllable)
+            controllable->setController(nullptr);
+        characterEntity = EntityManager::INVALID_ENTITY;
+    }
 }
 
 void ControllerCamera::setCharacter(EntityManager::EntityId character) {
+    resetCharacter();
     characterEntity = character;
+    if (characterEntity != EntityManager::INVALID_ENTITY) {
+        Entity* entity = EntityManager::getSingleton()->getById(characterEntity);
+        if (IControllable* controllable = dynamic_cast<IControllable*>(entity); controllable)
+            controllable->setController(this);
+    }
+}
+
+ICharacterController::ControlData ControllerCamera::getControls() const {
+    glm::vec3 motion;
+    motion.x = (input.right ? 1 : 0) - (input.left ? 1 : 0);
+    motion.z = (input.forward ? 1 : 0) - (input.backward ? 1 : 0);
+    glm::mat4 tm = getLocalTransform();
+    motion = motion.x * tm[0] + motion.z * tm[2];
+    motion.y = 0;
+    if (glm::length(motion) > 0)
+        motion = glm::normalize(motion) * static_cast<float>(input.run ? runSpeed : walkSpeed);
+    ICharacterController::ControlData ret;
+    ret.looking.dir = glm::vec3(tm[2].x, tm[2].y, tm[2].z);
+    ret.facing.dir = glm::normalize(glm::vec3(tm[2].x, 0, tm[2].z));
+    ret.movement.speed = motion;
+    return ret;
 }
