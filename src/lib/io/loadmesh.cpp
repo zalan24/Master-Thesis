@@ -282,7 +282,25 @@ Mesh load_mesh(const std::string& filename, const MeshProvider::ModelResource& r
         meshInfos[filename] = meshInfo;
         meshInfoOut << ISerializable::serialize(meshInfos);
     }
-
+    Mesh::CameraData cameraData;
+    float totalWeight = 0;
+    for (const auto& [name, weight] : resData.cameraConfig.bones) {
+        Mesh::CameraData::BoneInfo info;
+        info.weight = weight;
+        info.index = ret.getSkeleton()->getBoneId(name);
+        if (info.index == Mesh::INVALID_BONE)
+            throw std::runtime_error("Invalid bone in camera config: " + name);
+        // offset = boneTm * info.offset;
+        info.offset =
+          glm::inverse(ret.getSkeleton()->getBoneWtm(info.index)) * resData.cameraConfig.tm;
+        totalWeight += weight;
+        cameraData.bones.push_back(std::move(info));
+    }
+    if (cameraData.bones.size() > 0 && totalWeight <= 0)
+        throw std::runtime_error("Total bone weight in camera config is not positive");
+    for (auto& bone : cameraData.bones)
+        bone.weight /= totalWeight;
+    ret.setCameraData(std::move(cameraData));
     return ret;
 }
 

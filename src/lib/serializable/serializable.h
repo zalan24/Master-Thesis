@@ -9,37 +9,26 @@
 
 #include <nlohmann/json.hpp>
 
+#define GLM_FORCE_RADIANS
+#include <glm/glm.hpp>
+
 using json = nlohmann::json;
 
 class ISerializable
 {
- public:
-    struct Entry
-    {
-        enum Type
-        {
-            INT,
-            FLOAT,
-            STRING,
-            BOOL,
-            OBJECT
-        } type;
-        union
-        {
-            const void* readPtr;
-            void* writePtr;
-        };
-        std::string name;
-        int count;
-        Entry(Type t, const void* rPtr, const std::string& n, int c = -1)
-          : type(t), name(n), count(c) {
-            readPtr = rPtr;
-        }
-        Entry(Type t, void* wPtr, const std::string& n, int c = -1) : type(t), name(n), count(c) {
-            writePtr = wPtr;
-        }
-    };
+ protected:
+    // This is required by the vector and map serialization
+    static auto serialize(int value) { return value; }
+    static auto serialize(float value) { return value; }
+    static auto serialize(const std::string& value) { return value; }
+    static auto serialize(bool value) { return value; }
 
+    static void serialize(const json& in, int& value) { value = in; }
+    static void serialize(const json& in, float& value) { value = in; }
+    static void serialize(const json& in, std::string& value) { value = in; }
+    static void serialize(const json& in, bool& value) { value = in; }
+
+ public:
     virtual void write(std::ostream& out) const;
     virtual void read(std::istream& in);
 
@@ -91,6 +80,39 @@ class ISerializable
         json out = json::array();
         for (size_t i = 0; i < count; ++i)
             out.push_back(serialize(values[i]));
+        return out;
+    }
+
+    static json serialize(const glm::vec2& value) {
+        json out = json::array();
+        out.push_back(serialize(value.x));
+        out.push_back(serialize(value.y));
+        return out;
+    }
+
+    static json serialize(const glm::vec3& value) {
+        json out = json::array();
+        out.push_back(serialize(value.x));
+        out.push_back(serialize(value.y));
+        out.push_back(serialize(value.z));
+        return out;
+    }
+
+    static json serialize(const glm::vec4& value) {
+        json out = json::array();
+        out.push_back(serialize(value.x));
+        out.push_back(serialize(value.y));
+        out.push_back(serialize(value.z));
+        out.push_back(serialize(value.w));
+        return out;
+    }
+
+    static json serialize(const glm::mat4& value) {
+        json out = json::array();
+        out.push_back(serialize(value[0]));
+        out.push_back(serialize(value[1]));
+        out.push_back(serialize(value[2]));
+        out.push_back(serialize(value[3]));
         return out;
     }
 
@@ -152,33 +174,50 @@ class ISerializable
             serialize(in[i], values[i]);
     }
 
+    static void serialize(const json& in, glm::vec2& value) {
+        if (!in.is_array())
+            throw std::runtime_error("Input json is not an array: " + in.dump());
+        if (in.size() != 2)
+            throw std::runtime_error("Wrong json array size, expecting size of 2: " + in.dump());
+        serialize(in[0], value.x);
+        serialize(in[1], value.y);
+    }
+
+    static void serialize(const json& in, glm::vec3& value) {
+        if (!in.is_array())
+            throw std::runtime_error("Input json is not an array: " + in.dump());
+        if (in.size() != 3)
+            throw std::runtime_error("Wrong json array size, expecting size of 3: " + in.dump());
+        serialize(in[0], value.x);
+        serialize(in[1], value.y);
+        serialize(in[2], value.z);
+    }
+
+    static void serialize(const json& in, glm::vec4& value) {
+        if (!in.is_array())
+            throw std::runtime_error("Input json is not an array: " + in.dump());
+        if (in.size() != 4)
+            throw std::runtime_error("Wrong json array size, expecting size of 4: " + in.dump());
+        serialize(in[0], value.x);
+        serialize(in[1], value.y);
+        serialize(in[2], value.z);
+        serialize(in[3], value.w);
+    }
+
+    static void serialize(const json& in, glm::mat4& value) {
+        if (!in.is_array())
+            throw std::runtime_error("Input json is not an array: " + in.dump());
+        if (in.size() != 4)
+            throw std::runtime_error("Wrong json array size, expecting size of 4: " + in.dump());
+        serialize(in[0], value[0]);
+        serialize(in[1], value[1]);
+        serialize(in[2], value[2]);
+        serialize(in[3], value[3]);
+    }
+
  protected:
     ~ISerializable() = default;
-
-    // This is required by the vector and map serialization
-    static auto serialize(int value) { return value; }
-    static auto serialize(float value) { return value; }
-    static auto serialize(const std::string& value) { return value; }
-    static auto serialize(bool value) { return value; }
-
-    static void serialize(const json& in, int& value) { value = in; }
-    static void serialize(const json& in, float& value) { value = in; }
-    static void serialize(const json& in, std::string& value) { value = in; }
-    static void serialize(const json& in, bool& value) { value = in; }
 };
-
-template <typename T>
-ISerializable::Entry::Type getType();
-template <>
-ISerializable::Entry::Type getType<int>();
-template <>
-ISerializable::Entry::Type getType<float>();
-template <>
-ISerializable::Entry::Type getType<std::string>();
-template <>
-ISerializable::Entry::Type getType<bool>();
-template <>
-ISerializable::Entry::Type getType<ISerializable*>();
 
 #define WRITE_OBJECT(name, json) json[#name] = serialize(name)
 #define WRITE_OBJECTS(name, count, json) json[#name] = serialize(count, name)

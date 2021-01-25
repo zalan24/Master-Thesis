@@ -32,6 +32,7 @@ void MeshProvider::ModelResource::writeJson(json& out) const {
     WRITE_OBJECT(materialOverrides, out);
     WRITE_OBJECT(globalMaterialOverride, out);
     WRITE_OBJECT(meshSlots, out);
+    WRITE_OBJECT(cameraConfig, out);
 }
 
 void MeshProvider::ModelResource::readJson(const json& in) {
@@ -42,4 +43,15 @@ void MeshProvider::ModelResource::readJson(const json& in) {
     READ_OBJECT_OPT(materialOverrides, in, {});
     READ_OBJECT_OPT(globalMaterialOverride, in, {});
     READ_OBJECT_OPT(meshSlots, in, {});
+    READ_OBJECT_OPT(cameraConfig, in, {});
+}
+
+void MeshProvider::CameraConfig::writeJson(json& out) const {
+    WRITE_OBJECT(bones, out);
+    WRITE_OBJECT(tm, out);
+}
+
+void MeshProvider::CameraConfig::readJson(const json& in) {
+    READ_OBJECT_OPT(bones, in, {});
+    READ_OBJECT_OPT(tm, in, glm::mat4(1.f));
 }

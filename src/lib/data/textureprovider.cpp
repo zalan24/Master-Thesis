@@ -27,13 +27,13 @@ TextureProvider::ResourceDescriptor::ResourceDescriptor(const std::string& _file
 }
 
 void TextureProvider::ResourceDescriptor::writeJson(json& out) const {
-    const float* color = &value.x;
-    WRITE_OBJECTS(color, 4, out);
+    const glm::vec4& color = value;
+    WRITE_OBJECT(color, out);
     WRITE_OBJECT(filename, out);
 }
 
 void TextureProvider::ResourceDescriptor::readJson(const json& in) {
-    float* color = &value.x;
-    READ_OBJECTS(color, 4, in);
+    glm::vec4& color = value;
+    READ_OBJECT(color, in);
     READ_OBJECT(filename, in);
 }

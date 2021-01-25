@@ -56,7 +56,7 @@ class ControllerCamera final : public CameraHolderEntity
     std::unique_ptr<InputListener> inputListener;
     EntityManager::EntityId characterEntity = EntityManager::INVALID_ENTITY;
 
-    double distance = 1;
+    double distance = 1.7;
     double phi = 0;
     double theta = M_PI / 2;
     double rotationSpeed = 3;

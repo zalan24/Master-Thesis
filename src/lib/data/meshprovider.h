@@ -25,6 +25,16 @@ class MeshProvider
 
     static MeshProvider* getSingleton() { return instance; }
 
+    class CameraConfig final : public ISerializable
+    {
+     public:
+        void writeJson(json& out) const override final;
+        void readJson(const json& in) override final;
+
+        std::unordered_map<std::string, float> bones;
+        glm::mat4 tm;
+    };
+
     class ModelResource final : public ISerializable
     {
      public:
@@ -38,6 +48,7 @@ class MeshProvider
         Material globalMaterialOverride;
         std::unordered_map<std::string, Material> materialOverrides;
         std::unordered_map<std::string, std::set<std::string>> meshSlots;
+        CameraConfig cameraConfig;
     };
 
     using ModelResourceMap = std::unordered_map<std::string, ModelResource>;

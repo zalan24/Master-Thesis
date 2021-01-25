@@ -155,6 +155,12 @@ void Animchar::setMaterial(const std::shared_ptr<Material>& mat, bool _overrideM
 }
 
 glm::mat4 Animchar::getFocusOffset() const {
-    // TODO
-    return glm::mat4(1.f);
+    const Mesh::CameraData& cameraData = getGlMesh()->getCameraData();
+    if (cameraData.bones.size() == 0)
+        return glm::mat4(1.f);
+    glm::mat4 ret(0.f);
+    for (const Mesh::CameraData::BoneInfo& bone : cameraData.bones)
+        ret += getGlMesh()->getBoneWtm(glMeshState, bone.index) * bone.offset * bone.weight;
+    ret /= ret[3][3];
+    return ret;
 }

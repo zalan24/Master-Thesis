@@ -20,6 +20,7 @@ void GlMesh::clear() {
 
 void GlMesh::upload(const Mesh& mesh) {
     clear();
+    cameraData = mesh.getCameraData();
     std::vector<Mesh::VertexData> vertices;
     std::vector<Mesh::VertexIndex> indices;
     std::vector<Mesh::BoneVertex> boneVertices;
@@ -157,4 +158,11 @@ void GlMesh::uploadBones(const State& state, const glm::mat4* offsets) const {
 
 const GlMesh::Material& GlMesh::getMat(Mesh::MaterialIndex id) const {
     return materials[id];
+}
+
+glm::mat4 GlMesh::getBoneWtm(const State& state, Mesh::BoneIndex boneId) const {
+    if (bones[boneId].parent == boneId || bones[boneId].parent == Mesh::INVALID_BONE)
+        return state.bones[boneId].localTm;
+    else
+        return getBoneWtm(state, bones[boneId].parent) * state.bones[boneId].localTm;
 }
