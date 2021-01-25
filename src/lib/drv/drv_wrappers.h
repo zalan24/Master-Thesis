@@ -411,8 +411,8 @@ class Swapchain
         bool clipped;  // invisible pixels
     };
 
-    Swapchain(LogicalDevicePtr device, IWindow* window, const CreateInfo& info, uint32_t width = 0,
-              uint32_t height = 0);
+    Swapchain(PhysicalDevicePtr physicalDevice, LogicalDevicePtr device, IWindow* window,
+              const CreateInfo& info, uint32_t width = 0, uint32_t height = 0);
     ~Swapchain() noexcept;
 
     Swapchain(Swapchain&& other) noexcept;

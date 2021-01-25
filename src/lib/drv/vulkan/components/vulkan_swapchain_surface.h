@@ -15,9 +15,9 @@ struct SwapChainSupportDetails
     std::vector<VkPresentModeKHR> presentModes;
 };
 
-SwapChainSupportDetails drv_vulkan::query_swap_chain_support(drv::PhysicalDevicePtr physicalDevice,
-                                                             VkSurfaceKHR surface);
+SwapChainSupportDetails query_swap_chain_support(drv::PhysicalDevicePtr physicalDevice,
+                                                 VkSurfaceKHR surface);
 
 VkSurfaceKHR get_surface(IWindow* window);
-const SwapChainSupportDetails& get_surface_support(IWindow* window);
+SwapChainSupportDetails get_surface_support(drv::PhysicalDevicePtr physicalDevice, IWindow* window);
 }  // namespace drv_vulkan

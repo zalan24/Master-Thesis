@@ -255,9 +255,9 @@ drv::DeviceExtensions drv::get_supported_extensions(PhysicalDevicePtr physicalDe
     return current_driver_interface->get_supported_extensions(physicalDevice);
 }
 
-drv::SwapchainPtr drv::create_swapchain(LogicalDevicePtr device, IWindow* window,
-                                        const SwapchainCreateInfo* info) {
-    return current_driver_interface->create_swapchain(device, window, info);
+drv::SwapchainPtr drv::create_swapchain(PhysicalDevicePtr physicalDevice, LogicalDevicePtr device,
+                                        IWindow* window, const SwapchainCreateInfo* info) {
+    return current_driver_interface->create_swapchain(physicalDevice, device, window, info);
 }
 
 bool drv::destroy_swapchain(LogicalDevicePtr device, SwapchainPtr swapchain) {

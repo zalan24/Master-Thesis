@@ -26,6 +26,7 @@ class IDriver;
 
 namespace drv_vulkan
 {
+struct SwapChainSupportDetails;
 class VulkanWindow final : public IWindow
 {
  public:
@@ -87,14 +88,19 @@ class VulkanWindow final : public IWindow
     GLFWInit initer;
     WindowObject window;
     Surface surface;
+    std::unique_ptr<SwapChainSupportDetails> swapchainSupport;
     std::set<int> pushedButtons;
     std::set<int> pushedMouseButtons;
+    int width = 0;
+    int height = 0;
 
     static void error_callback [[noreturn]] (int error, const char* description);
     //  static void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods);
     //  static void cursor_position_callback(GLFWwindow* window, double xpos, double ypos);
     //  static void mouse_button_callback(GLFWwindow* window, int button, int action, int mods);
     //  static void scroll_callback(GLFWwindow* window, double xoffset, double yoffset);
+
+    static void framebuffer_resize_callback(GLFWwindow* window, int width, int height);
 };
 
 }  // namespace drv_vulkan

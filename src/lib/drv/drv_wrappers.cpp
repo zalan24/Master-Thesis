@@ -812,12 +812,12 @@ SwapchainCreateInfo Swapchain::getSwapchainInfo(uint32_t width, uint32_t height)
     return ret;
 }
 
-Swapchain::Swapchain(LogicalDevicePtr _device, IWindow* window, const CreateInfo& info,
-                     uint32_t width, uint32_t height)
-  : createInfo(info), device(_device) {
+Swapchain::Swapchain(drv::PhysicalDevicePtr physicalDevice, LogicalDevicePtr _device,
+                     IWindow* window, const CreateInfo& info, uint32_t width, uint32_t height)
+  : createInfo(info), device(_device), ptr(NULL_HANDLE) {
     if (width > 0 && height > 0) {
         SwapchainCreateInfo swapchainInfo = getSwapchainInfo(width, height);
-        ptr = create_swapchain(device, window, &swapchainInfo);
+        ptr = create_swapchain(physicalDevice, device, window, &swapchainInfo);
         drv::drv_assert(ptr != NULL_HANDLE, "Could not create Swapchain");
     }
 }

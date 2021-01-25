@@ -120,13 +120,9 @@ Engine::Engine(const Config& cfg)
     HtoDQueue(queueManager.getQueue({"main", "HtoD"})),
     inputQueue(queueManager.getQueue({"input", "HtoD"})),
     cmdBufferBank(device),
-    swapchain(device, window, get_swapchain_create_info(),
+    swapchain(physicalDevice, device, window, get_swapchain_create_info(),
               static_cast<IWindow*>(window)->getWidth(),
               static_cast<IWindow*>(window)->getHeight()) {
-    // std::vector<ImageFormat> formatPreferences;
-    // std::vector<SwapchainCreateInfo::PresentMode> preferredPresentModes;
-    // uint32_t preferredImageCount;
-    // bool clipped;  // invisible pixels
 }
 
 Engine::~Engine() {

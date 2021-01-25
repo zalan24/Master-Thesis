@@ -41,6 +41,33 @@ void VulkanWindow::error_callback [[noreturn]] (int, const char* description) {
     throw std::runtime_error("Error: " + std::string{description});
 }
 
+SwapChainSupportDetails drv_vulkan::query_swap_chain_support(drv::PhysicalDevicePtr physicalDevice,
+                                                             VkSurfaceKHR surface) {
+    VkPhysicalDevice vkPhysicalDevice = reinterpret_cast<VkPhysicalDevice>(physicalDevice);
+    SwapChainSupportDetails details;
+    vkGetPhysicalDeviceSurfaceCapabilitiesKHR(vkPhysicalDevice, surface, &details.capabilities);
+
+    uint32_t formatCount;
+    vkGetPhysicalDeviceSurfaceFormatsKHR(vkPhysicalDevice, surface, &formatCount, nullptr);
+
+    if (formatCount != 0) {
+        details.formats.resize(formatCount);
+        vkGetPhysicalDeviceSurfaceFormatsKHR(vkPhysicalDevice, surface, &formatCount,
+                                             details.formats.data());
+    }
+
+    uint32_t presentModeCount;
+    vkGetPhysicalDeviceSurfacePresentModesKHR(vkPhysicalDevice, surface, &presentModeCount,
+                                              nullptr);
+
+    if (presentModeCount != 0) {
+        details.presentModes.resize(presentModeCount);
+        vkGetPhysicalDeviceSurfacePresentModesKHR(vkPhysicalDevice, surface, &presentModeCount,
+                                                  details.presentModes.data());
+    }
+    return details;
+}
+
 // void VulkanWindow::key_callback(GLFWwindow* window, int key, int, int action, int) {
 //     if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS)
 //         glfwSetWindowShouldClose(window, GLFW_TRUE);
@@ -108,9 +135,6 @@ VulkanWindow::GLFWInit::~GLFWInit() {
     glfwTerminate();
 }
 
-// static void framebufferResizeCallback(GLFWwindow* window, int width, int height) {
-// }
-
 VulkanWindow::WindowObject::WindowObject(int width, int height, const std::string& title) {
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 2);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
@@ -118,7 +142,6 @@ VulkanWindow::WindowObject::WindowObject(int width, int height, const std::strin
     glfwSetErrorCallback(error_callback);
     window = glfwCreateWindow(width, height, title.c_str(), nullptr, nullptr);
     drv::drv_assert(window, "Window context creation failed");
-    glfwSetFramebufferSizeCallback(window, framebufferResizeCallback);
     // vkCreateWin32
     // if (vkCreateWin32SurfaceKHR(instance, &createInfo, nullptr, &surface) != VK_SUCCESS) {
     //     throw std::runtime_error("failed to create window surface!");
@@ -130,8 +153,17 @@ VulkanWindow::WindowObject::WindowObject(int width, int height, const std::strin
     // glfwSetScrollCallback(window, scroll_callback);
 }
 
+void VulkanWindow::framebuffer_resize_callback(GLFWwindow* window, int width, int height) {
+    VulkanWindow* w = static_cast<VulkanWindow*>(glfwGetWindowUserPointer(window));
+    w->height = height;
+    w->width = width;
+}
+
 bool VulkanWindow::init(drv::InstancePtr instance) {
     surface = Surface(window, instance);
+    glfwGetFramebufferSize(window, &width, &height);
+    glfwSetWindowUserPointer(window, this);
+    glfwSetFramebufferSizeCallback(window, framebuffer_resize_callback);
     return true;
 }
 
@@ -212,14 +244,10 @@ bool VulkanWindow::shouldClose() {
 }
 
 uint32_t VulkanWindow::getWidth() const {
-    int width;
-    glfwGetFramebufferSize(window, &width, nullptr);
     return static_cast<uint32_t>(width);
 }
 
 uint32_t VulkanWindow::getHeight() const {
-    int height;
-    glfwGetFramebufferSize(window, nullptr, &height);
     return static_cast<uint32_t>(height);
 }
 
@@ -239,33 +267,6 @@ IWindow* DrvVulkan::create_window(const drv::WindowOptions& options) {
     return new VulkanWindow(this, options.width, options.height, std::string(options.title));
 }
 
-SwapChainSupportDetails drv_vulkan::query_swap_chain_support(drv::PhysicalDevicePtr physicalDevice,
-                                                             VkSurfaceKHR surface) {
-    VkPhysicalDevice vkPhysicalDevice = reinterpret_cast<VkPhysicalDevice>(physicalDevice);
-    SwapChainSupportDetails details;
-    vkGetPhysicalDeviceSurfaceCapabilitiesKHR(vkPhysicalDevice, surface, &details.capabilities);
-
-    uint32_t formatCount;
-    vkGetPhysicalDeviceSurfaceFormatsKHR(vkPhysicalDevice, surface, &formatCount, nullptr);
-
-    if (formatCount != 0) {
-        details.formats.resize(formatCount);
-        vkGetPhysicalDeviceSurfaceFormatsKHR(vkPhysicalDevice, surface, &formatCount,
-                                             details.formats.data());
-    }
-
-    uint32_t presentModeCount;
-    vkGetPhysicalDeviceSurfacePresentModesKHR(vkPhysicalDevice, surface, &presentModeCount,
-                                              nullptr);
-
-    if (presentModeCount != 0) {
-        details.presentModes.resize(presentModeCount);
-        vkGetPhysicalDeviceSurfacePresentModesKHR(vkPhysicalDevice, surface, &presentModeCount,
-                                                  details.presentModes.data());
-    }
-    return details;
-}
-
 bool DrvVulkan::can_present(drv::PhysicalDevicePtr physicalDevice, IWindow* window,
                             drv::QueueFamilyPtr family) {
     VkBool32 presentSupport = false;
@@ -275,7 +276,7 @@ bool DrvVulkan::can_present(drv::PhysicalDevicePtr physicalDevice, IWindow* wind
                                          surface, &presentSupport);
     if (presentSupport == VK_FALSE)
         return false;
-    SwapChainSupportDetails swapChainSupport = query_swap_chain_support(physicalDevice, surface);
+    const SwapChainSupportDetails& swapChainSupport = get_surface_support(physicalDevice, window);
     return !swapChainSupport.formats.empty() && !swapChainSupport.presentModes.empty();
 }
 
@@ -283,5 +284,8 @@ VkSurfaceKHR drv_vulkan::get_surface(IWindow* window) {
     return static_cast<VulkanWindow*>(window)->getSurface();
 }
 
-// TODO
-// const SwapChainSupportDetails &get_surface_support(IWindow* window){}
+SwapChainSupportDetails drv_vulkan::get_surface_support(drv::PhysicalDevicePtr physicalDevice,
+                                                        IWindow* window) {
+    // this could cache the support data
+    return query_swap_chain_support(physicalDevice, get_surface(window));
+}

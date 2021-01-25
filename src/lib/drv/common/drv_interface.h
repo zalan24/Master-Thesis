@@ -84,10 +84,10 @@ class IDriver
     virtual bool can_present(PhysicalDevicePtr physicalDevice, IWindow* window,
                              QueueFamilyPtr family) = 0;
     virtual DeviceExtensions get_supported_extensions(PhysicalDevicePtr physicalDevice) = 0;
-    virtual SwapchainPtr create_swapchain(LogicalDevicePtr device, IWindow* window,
-                                          const SwapchainCreateInfo* info) = 0;
+    virtual SwapchainPtr create_swapchain(PhysicalDevicePtr physicalDevice, LogicalDevicePtr device,
+                                          IWindow* window, const SwapchainCreateInfo* info) = 0;
     virtual bool destroy_swapchain(LogicalDevicePtr device, SwapchainPtr swapchain) = 0;
-    virtual PresentReselt present(drv::QueuePtr queue, drv::SwapchainPtr swapchain,
+    virtual PresentReselt present(QueuePtr queue, SwapchainPtr swapchain,
                                   const PresentInfo& info) = 0;
     // virtual ShaderModulePtr create_shader_module(LogicalDevicePtr device,
     //                                              ShaderCreateInfoPtr info) = 0;

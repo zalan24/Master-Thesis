@@ -12,24 +12,41 @@
 
 using namespace drv_vulkan;
 
-drv::SwapchainPtr DrvVulkan::create_swapchain(LogicalDevicePtr device, IWindow* window,
-                                              const SwapchainCreateInfo* info) {
-    const SwapChainSupportDetails& support = get_surface_support(window);
-    uint32_t formatId = 0;
-    for (; formatId < info->allowedFormatCount; ++formatId)
-        if (std::find(support.formats.begin(), support.formats.end(),
-                      info->formatPreferences[formatId])
-            != support.formats.end())
-            break;
-    drv::drv_assert(formatId < info->allowedFormatCount,
+drv::SwapchainPtr DrvVulkan::create_swapchain(drv::PhysicalDevicePtr physicalDevice,
+                                              drv::LogicalDevicePtr device, IWindow* window,
+                                              const drv::SwapchainCreateInfo* info) {
+    const SwapChainSupportDetails& support = get_surface_support(physicalDevice, window);
+    // TODO check format enum
+
+    COMPARE_ENUMS(unsigned int, drv::SwapchainCreateInfo::FIFO, VK_PRESENT_MODE_FIFO_KHR);
+    COMPARE_ENUMS(unsigned int, drv::SwapchainCreateInfo::MAILBOX, VK_PRESENT_MODE_MAILBOX_KHR);
+    COMPARE_ENUMS(unsigned int, drv::SwapchainCreateInfo::FIFO_RELAXED,
+                  VK_PRESENT_MODE_FIFO_RELAXED_KHR);
+    COMPARE_ENUMS(unsigned int, drv::SwapchainCreateInfo::IMMEDIATE, VK_PRESENT_MODE_IMMEDIATE_KHR);
+
+    auto formatItr = std::find_if(
+      info->formatPreferences, info->formatPreferences + info->allowedFormatCount,
+      [&](const drv::ImageFormat& format) {
+          return std::find_if(support.formats.begin(), support.formats.end(),
+                              [&](const VkSurfaceFormatKHR& surfaceFormat) {
+                                  return surfaceFormat.format == static_cast<VkFormat>(format)
+                                         && surfaceFormat.colorSpace
+                                              == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
+                              })
+                 != support.formats.end();
+      });
+    drv::drv_assert(formatItr != info->formatPreferences + info->allowedFormatCount,
                     "None of the allowed swapchain image formats are supported");
-    uint32_t presentModeId = 0;
-    for (; presentModeId < info->allowedPresentModeCount; ++presentModeId)
-        if (std::find(support.presentModes.begin(), support.presentModes.end(),
-                      info->preferredPresentModes[presentModeId])
-            != support.presentModes.end())
-            break;
-    drv::drv_assert(presentModeId < info->allowedPresentModeCount,
+    auto presentModeItr = std::find_if(
+      info->preferredPresentModes, info->preferredPresentModes + info->allowedPresentModeCount,
+      [&](const drv::SwapchainCreateInfo::PresentMode& mode) {
+          return std::find_if(support.presentModes.begin(), support.presentModes.end(),
+                              [&](const VkPresentModeKHR& presentMode) {
+                                  return presentMode == static_cast<VkPresentModeKHR>(mode);
+                              })
+                 != support.presentModes.end();
+      });
+    drv::drv_assert(presentModeItr != info->preferredPresentModes + info->allowedPresentModeCount,
                     "None of the allowed swapchain present modes are supported");
     VkSwapchainCreateInfoKHR createInfo{};
     createInfo.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
@@ -39,17 +56,17 @@ drv::SwapchainPtr DrvVulkan::create_swapchain(LogicalDevicePtr device, IWindow* 
       std::min(std::max(info->preferredImageCount, support.capabilities.minImageCount),
                support.capabilities.maxImageCount > 0 ? support.capabilities.maxImageCount
                                                       : std::numeric_limits<uint32_t>::max());
-    createInfo.imageFormat = info->formatPreferences[formatId];
-    createInfo.imageColorSpace = ;
+    createInfo.imageFormat = static_cast<VkFormat>(*formatItr);
+    createInfo.imageColorSpace = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
     createInfo.imageExtent = {info->width, info->height};
     createInfo.imageArrayLayers = 1;
     createInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
-    createInfo.imageSharingMode = ;
-    createInfo.queueFamilyIndexCount = ;
-    createInfo.pQueueFamilyIndices = ;
-    createInfo.preTransform = ;
+    createInfo.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
+    createInfo.queueFamilyIndexCount = 0;
+    createInfo.pQueueFamilyIndices = nullptr;
+    createInfo.preTransform = support.capabilities.currentTransform;
     createInfo.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
-    createInfo.presentMode = info->preferredPresentModes[presentModeId];
+    createInfo.presentMode = static_cast<VkPresentModeKHR>(*presentModeItr);
     createInfo.clipped = info->clipped;
     createInfo.oldSwapchain = reinterpret_cast<VkSwapchainKHR>(info->oldSwapchain);
     VkSwapchainKHR swapChain;
@@ -59,9 +76,9 @@ drv::SwapchainPtr DrvVulkan::create_swapchain(LogicalDevicePtr device, IWindow* 
     return reinterpret_cast<drv::SwapchainPtr>(swapChain);
 }
 
-void DrvVulkan::destroy_swapchain(LogicalDevicePtr device, SwapchainPtr swapchain) {
+bool DrvVulkan::destroy_swapchain(drv::LogicalDevicePtr device, drv::SwapchainPtr swapchain) {
     vkDestroySwapchainKHR(reinterpret_cast<VkDevice>(device),
-                          reinterpret_cast<VkSwapchainKHR>(swapChain), nullptr);
+                          reinterpret_cast<VkSwapchainKHR>(swapchain), nullptr);
     return true;
 }
 
@@ -71,9 +88,19 @@ drv::PresentReselt DrvVulkan::present(drv::QueuePtr queue, drv::SwapchainPtr swa
     presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
     presentInfo.pNext = nullptr;
     presentInfo.waitSemaphoreCount = info.semaphoreCount;
-    presentInfo.pWaitSemaphores = reinterpret_cast<const drv::SemaphorePtr*>(info.waitSemaphores);
+    presentInfo.pWaitSemaphores = reinterpret_cast<const VkSemaphore*>(info.waitSemaphores);
     presentInfo.swapchainCount = 1;
     presentInfo.pSwapchains = reinterpret_cast<const VkSwapchainKHR*>(&swapchain);
     presentInfo.pResults = nullptr;
-    VkResult result = vkQueuePresentKHR(presentQueue, &presentInfo);
+    VkResult result = vkQueuePresentKHR(reinterpret_cast<VkQueue>(queue), &presentInfo);
+    switch (result) {
+        case VK_SUCCESS:
+            return drv::PresentReselt::SUCCESS;
+        case VK_SUBOPTIMAL_KHR:
+            return drv::PresentReselt::RECREATE_ADVISED;
+        case VK_ERROR_OUT_OF_DATE_KHR:
+            return drv::PresentReselt::RECREATE_REQUIRED;
+        default:
+            return drv::PresentReselt::ERROR;
+    }
 }
