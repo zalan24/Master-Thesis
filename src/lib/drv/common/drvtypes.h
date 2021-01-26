@@ -31,6 +31,7 @@ using PipelineLayoutPtr = Ptr;
 using ComputePipelinePtr = Ptr;
 using ShaderModulePtr = Ptr;
 using SwapchainPtr = Ptr;
+using EventPtr = Ptr;
 
 using ShaderIdType = StrHash;
 #define SHADER(name) (#name##_hash)
@@ -78,16 +79,19 @@ struct PhysicalDeviceInfo
 
 struct DeviceExtensions
 {
-    union
+    union Values
     {
         struct Extensions
         {
             uint32_t swapchain : 1;
         } extensions;
-        uint32_t bits;
-    };
-    DeviceExtensions() : bits(0) {}
-    explicit DeviceExtensions(bool _swapchain) : bits(0) { extensions.swapchain = _swapchain; }
+        uint32_t bits = 0;
+    } values;
+    DeviceExtensions() { values.bits = 0; }
+    explicit DeviceExtensions(bool _swapchain) {
+        values.bits = 0;
+        values.extensions.swapchain = _swapchain;
+    }
 };
 
 struct LogicalDeviceCreateInfo
@@ -143,7 +147,7 @@ enum class CommandBufferType
 
 struct FenceCreateInfo
 {
-    // bool signalled = false;
+    bool signalled = false;
 };
 
 enum class FenceWaitResult
@@ -151,6 +155,9 @@ enum class FenceWaitResult
     SUCCESS,
     TIME_OUT
 };
+
+struct EventCreateInfo
+{};
 
 struct PipelineStages
 {

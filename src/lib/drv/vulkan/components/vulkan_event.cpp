@@ -1,0 +1,57 @@
+#include "drvvulkan.h"
+
+#include <vulkan/vulkan.h>
+
+#include <drverror.h>
+
+#include "vulkan_buffer.h"
+
+using namespace drv_vulkan;
+
+drv::EventPtr DrvVulkan::create_event(drv::LogicalDevicePtr device, const drv::EventCreateInfo*) {
+    VkEventCreateInfo createInfo{};
+    createInfo.sType = VK_STRUCTURE_TYPE_EVENT_CREATE_INFO;
+    createInfo.pNext = nullptr;
+    createInfo.flags = 0;
+    VkEvent event;
+    VkResult result =
+      vkCreateEvent(reinterpret_cast<VkDevice>(device), &createInfo, nullptr, &event);
+    drv::drv_assert(result == VK_SUCCESS, "Could not create event");
+    return reinterpret_cast<drv::EventPtr>(event);
+}
+
+bool DrvVulkan::destroy_event(drv::LogicalDevicePtr device, drv::EventPtr event) {
+    vkDestroyEvent(reinterpret_cast<VkDevice>(device), reinterpret_cast<VkEvent>(event), nullptr);
+    return true;
+}
+
+bool DrvVulkan::is_event_set(drv::LogicalDevicePtr device, drv::EventPtr event) {
+    return vkGetEventStatus(reinterpret_cast<VkDevice>(device), reinterpret_cast<VkEvent>(event))
+           == VK_EVENT_SET;
+}
+
+bool DrvVulkan::reset_event(drv::LogicalDevicePtr device, drv::EventPtr event) {
+    return vkResetEvent(reinterpret_cast<VkDevice>(device), reinterpret_cast<VkEvent>(event))
+           == VK_SUCCESS;
+}
+
+bool DrvVulkan::set_event(drv::LogicalDevicePtr device, drv::EventPtr event) {
+    return vkSetEvent(reinterpret_cast<VkDevice>(device), reinterpret_cast<VkEvent>(event))
+           == VK_SUCCESS;
+}
+
+bool DrvVulkan::cmd_reset_event(drv::CommandBufferPtr commandBuffer, drv::EventPtr event,
+                                drv::PipelineStages sourceStage) {
+    vkCmdResetEvent(reinterpret_cast<VkCommandBuffer>(commandBuffer),
+                    reinterpret_cast<VkEvent>(event),
+                    static_cast<VkPipelineStageFlags>(sourceStage.stageFlags));
+    return true;
+}
+
+bool DrvVulkan::cmd_set_event(drv::CommandBufferPtr commandBuffer, drv::EventPtr event,
+                              drv::PipelineStages sourceStage) {
+    vkCmdSetEvent(reinterpret_cast<VkCommandBuffer>(commandBuffer),
+                  reinterpret_cast<VkEvent>(event),
+                  static_cast<VkPipelineStageFlags>(sourceStage.stageFlags));
+    return true;
+}

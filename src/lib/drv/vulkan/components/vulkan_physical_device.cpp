@@ -108,7 +108,7 @@ drv::DeviceExtensions DrvVulkan::get_supported_extensions(drv::PhysicalDevicePtr
     vkEnumerateDeviceExtensionProperties(reinterpret_cast<VkPhysicalDevice>(physicalDevice),
                                          nullptr, &extensionCount, availableExtensions.data());
     drv::DeviceExtensions ret;
-    ret.extensions.swapchain =
+    ret.values.extensions.swapchain =
       std::find_if(availableExtensions.begin(), availableExtensions.end(),
                    [](const VkExtensionProperties& extension) {
                        return strcmp(extension.extensionName, VK_KHR_SWAPCHAIN_EXTENSION_NAME) == 0;

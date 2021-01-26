@@ -323,10 +323,39 @@ class Fence
     operator FencePtr() const;
 
     FenceWaitResult wait(unsigned long long int timeOut = 0) const;
+    bool isSignalled() const;
 
  private:
     LogicalDevicePtr device;
     FencePtr ptr;
+
+    void close();
+};
+
+class Event
+  : public NoCopy
+  , private Exclusive
+{
+ public:
+    Event(LogicalDevicePtr device, const EventCreateInfo& info = {});
+    ~Event() noexcept;
+
+    Event(Event&& other) noexcept;
+    Event& operator=(Event&& other) noexcept;
+
+    operator EventPtr() const;
+
+    void reset();
+    void set();
+    bool isSet();
+
+    void cmdSet(CommandBufferPtr commandBuffer, PipelineStages sourceStage);
+    void cmdReset(CommandBufferPtr commandBuffer, PipelineStages sourceStage);
+    //  void cmdWait();
+
+ private:
+    LogicalDevicePtr device;
+    EventPtr ptr;
 
     void close();
 };

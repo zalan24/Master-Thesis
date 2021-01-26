@@ -269,6 +269,36 @@ drv::PresentReselt drv::present(drv::QueuePtr queue, drv::SwapchainPtr swapchain
     return current_driver_interface->present(queue, swapchain, info);
 }
 
+drv::EventPtr drv::create_event(LogicalDevicePtr device, const EventCreateInfo* info) {
+    return current_driver_interface->create_event(device, info);
+}
+
+bool drv::destroy_event(LogicalDevicePtr device, EventPtr event) {
+    return current_driver_interface->destroy_event(device, event);
+}
+
+bool drv::is_event_set(LogicalDevicePtr device, EventPtr event) {
+    return current_driver_interface->is_event_set(device, event);
+}
+
+bool drv::reset_event(LogicalDevicePtr device, EventPtr event) {
+    return current_driver_interface->reset_event(device, event);
+}
+
+bool drv::set_event(LogicalDevicePtr device, EventPtr event) {
+    return current_driver_interface->set_event(device, event);
+}
+
+bool drv::cmd_reset_event(CommandBufferPtr commandBuffer, EventPtr event,
+                          PipelineStages sourceStage) {
+    return current_driver_interface->cmd_reset_event(commandBuffer, event, sourceStage);
+}
+
+bool drv::cmd_set_event(CommandBufferPtr commandBuffer, EventPtr event,
+                        PipelineStages sourceStage) {
+    return current_driver_interface->cmd_set_event(commandBuffer, event, sourceStage);
+}
+
 // drv::ShaderModulePtr drv::create_shader_module(LogicalDevicePtr device, ShaderCreateInfoPtr info) {
 //     return current_driver_interface->create_shader_module(device, info);
 // }

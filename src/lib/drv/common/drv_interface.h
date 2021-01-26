@@ -89,6 +89,15 @@ class IDriver
     virtual bool destroy_swapchain(LogicalDevicePtr device, SwapchainPtr swapchain) = 0;
     virtual PresentReselt present(QueuePtr queue, SwapchainPtr swapchain,
                                   const PresentInfo& info) = 0;
+    virtual EventPtr create_event(LogicalDevicePtr device, const EventCreateInfo* info) = 0;
+    virtual bool destroy_event(LogicalDevicePtr device, EventPtr event) = 0;
+    virtual bool is_event_set(LogicalDevicePtr device, EventPtr event) = 0;
+    virtual bool reset_event(LogicalDevicePtr device, EventPtr event) = 0;
+    virtual bool set_event(LogicalDevicePtr device, EventPtr event) = 0;
+    virtual bool cmd_reset_event(CommandBufferPtr commandBuffer, EventPtr event,
+                                 PipelineStages sourceStage) = 0;
+    virtual bool cmd_set_event(CommandBufferPtr commandBuffer, EventPtr event,
+                               PipelineStages sourceStage) = 0;
     // virtual ShaderModulePtr create_shader_module(LogicalDevicePtr device,
     //                                              ShaderCreateInfoPtr info) = 0;
     // virtual bool destroy_shader_module(LogicalDevicePtr device, ShaderModulePtr module) = 0;

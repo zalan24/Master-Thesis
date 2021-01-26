@@ -136,6 +136,16 @@ SwapchainPtr create_swapchain(PhysicalDevicePtr physicalDevice, LogicalDevicePtr
                               IWindow* window, const SwapchainCreateInfo* info);
 bool destroy_swapchain(LogicalDevicePtr device, SwapchainPtr swapchain);
 PresentReselt present(drv::QueuePtr queue, drv::SwapchainPtr swapchain, const PresentInfo& info);
+EventPtr create_event(LogicalDevicePtr device, const EventCreateInfo* info);
+bool destroy_event(LogicalDevicePtr device, EventPtr event);
+bool is_event_set(LogicalDevicePtr device, EventPtr event);
+bool reset_event(LogicalDevicePtr device, EventPtr event);
+bool set_event(LogicalDevicePtr device, EventPtr event);
+bool cmd_reset_event(CommandBufferPtr commandBuffer, EventPtr event, PipelineStages sourceStage);
+bool cmd_set_event(CommandBufferPtr commandBuffer, EventPtr event, PipelineStages sourceStage);
+// TODO
+// bool cmd_wait_events(CommandBufferPtr commandBuffer, uint32_t eventCount,
+//                      PipelineStages sourceStage, PipelineStages dstStage, );
 
 // ShaderModulePtr get_shader_module(LogicalDevicePtr device, ShaderIdType shaderId);
 // unsigned int get_num_shader_descriptor_set_layouts(LogicalDevicePtr device, ShaderIdType shaderId);

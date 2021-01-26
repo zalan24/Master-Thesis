@@ -117,7 +117,7 @@ PhysicalDevice::PhysicalDevice(const SelectionInfo& info, IWindow* window) {
     PhysicalDeviceInfo* best = nullptr;
     for (unsigned int i = 0; i < count; ++i) {
         DeviceExtensions extensions = get_supported_extensions(infos[i].handle);
-        if ((extensions.bits & info.extensions.bits) != info.extensions.bits)
+        if ((extensions.values.bits & info.extensions.values.bits) != info.extensions.values.bits)
             continue;
         unsigned int queueCount = 0;
         if (!get_physical_device_queue_families(infos[i].handle, &queueCount, nullptr))
@@ -723,6 +723,69 @@ Fence::operator FencePtr() const {
 
 FenceWaitResult Fence::wait(unsigned long long int timeOut) const {
     return drv::wait_for_fence(device, 1, &ptr, true, timeOut);
+}
+
+bool Fence::isSignalled() const {
+    return drv::is_fence_signalled(device, ptr);
+}
+
+Event::Event(LogicalDevicePtr _device, const EventCreateInfo& info) : device(_device) {
+    ptr = create_event(device, &info);
+    drv::drv_assert(ptr != NULL_HANDLE, "Could not create Event");
+}
+
+Event::~Event() noexcept {
+    close();
+}
+
+void Event::close() {
+    CHECK_THREAD;
+    if (ptr != NULL_HANDLE) {
+        drv::drv_assert(destroy_event(device, ptr), "Could not destroy Event");
+        ptr = NULL_HANDLE;
+    }
+}
+
+Event::Event(Event&& other) noexcept {
+    device = std::move(other.device);
+    ptr = std::move(other.ptr);
+    other.ptr = NULL_HANDLE;
+}
+
+Event& Event::operator=(Event&& other) noexcept {
+    if (&other == this)
+        return *this;
+    close();
+    device = std::move(other.device);
+    ptr = std::move(other.ptr);
+    other.ptr = NULL_HANDLE;
+    return *this;
+}
+
+Event::operator EventPtr() const {
+    CHECK_THREAD;
+    return ptr;
+}
+
+void Event::reset() {
+    drv::drv_assert(drv::reset_event(device, ptr), "Could not reset event");
+}
+
+void Event::set() {
+    drv::drv_assert(drv::set_event(device, ptr), "Could not set event");
+}
+
+bool Event::isSet() {
+    return drv::is_event_set(device, ptr);
+}
+
+void Event::cmdSet(CommandBufferPtr commandBuffer, PipelineStages sourceStage) {
+    drv::drv_assert(drv::cmd_set_event(commandBuffer, ptr, sourceStage), "Could not cmd set event");
+}
+
+void Event::cmdReset(CommandBufferPtr commandBuffer, PipelineStages sourceStage) {
+    drv::drv_assert(drv::cmd_reset_event(commandBuffer, ptr, sourceStage),
+                    "Could not cmd reset event");
 }
 
 DescriptorSetLayout::DescriptorSetLayout(LogicalDevicePtr _device,

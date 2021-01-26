@@ -110,6 +110,16 @@ class DrvVulkan final : public drv::IDriver
     bool destroy_swapchain(drv::LogicalDevicePtr device, drv::SwapchainPtr swapchain) override;
     drv::PresentReselt present(drv::QueuePtr queue, drv::SwapchainPtr swapchain,
                                const drv::PresentInfo& info) override;
+    drv::EventPtr create_event(drv::LogicalDevicePtr device,
+                               const drv::EventCreateInfo* info) override;
+    bool destroy_event(drv::LogicalDevicePtr device, drv::EventPtr event) override;
+    bool is_event_set(drv::LogicalDevicePtr device, drv::EventPtr event) override;
+    bool reset_event(drv::LogicalDevicePtr device, drv::EventPtr event) override;
+    bool set_event(drv::LogicalDevicePtr device, drv::EventPtr event) override;
+    bool cmd_reset_event(drv::CommandBufferPtr commandBuffer, drv::EventPtr event,
+                         drv::PipelineStages sourceStage) override;
+    bool cmd_set_event(drv::CommandBufferPtr commandBuffer, drv::EventPtr event,
+                       drv::PipelineStages sourceStage) override;
 };
 
 // TODO

@@ -29,7 +29,7 @@ drv::LogicalDevicePtr DrvVulkan::create_logical_device(const drv::LogicalDeviceC
     createInfo.pEnabledFeatures = &deviceFeatures;
 
     std::vector<const char*> extensions = {};
-    if (info->extensions.extensions.swapchain)
+    if (info->extensions.values.extensions.swapchain)
         extensions.push_back(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
 
     createInfo.enabledExtensionCount = extensions.size();

@@ -6,13 +6,14 @@
 
 #include <drverror.h>
 
-drv::FencePtr DrvVulkan::create_fence(drv::LogicalDevicePtr device, const drv::FenceCreateInfo*) {
+drv::FencePtr DrvVulkan::create_fence(drv::LogicalDevicePtr device,
+                                      const drv::FenceCreateInfo* info) {
     VkFence fence;
     VkFenceCreateInfo fenceCreateInfo = {};
     fenceCreateInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
     fenceCreateInfo.flags = 0;
-    // if (info->signalled)
-    //     fenceCreateInfo.flags = fenceCreateInfo.flags | VK_FENCE_CREATE_SIGNALED_BIT;
+    if (info->signalled)
+        fenceCreateInfo.flags = fenceCreateInfo.flags | VK_FENCE_CREATE_SIGNALED_BIT;
     VkResult result =
       vkCreateFence(reinterpret_cast<VkDevice>(device), &fenceCreateInfo, nullptr, &fence);
     drv::drv_assert(result == VK_SUCCESS, "Could not create fence");
@@ -33,7 +34,7 @@ bool DrvVulkan::is_fence_signalled(drv::LogicalDevicePtr device, drv::FencePtr f
 }
 
 bool DrvVulkan::reset_fences(drv::LogicalDevicePtr device, unsigned int count,
-                              drv::FencePtr* fences) {
+                             drv::FencePtr* fences) {
     VkResult result =
       vkResetFences(reinterpret_cast<VkDevice>(device), count, reinterpret_cast<VkFence*>(fences));
     drv::drv_assert(result == VK_SUCCESS, "Could not reset fences");
@@ -41,8 +42,8 @@ bool DrvVulkan::reset_fences(drv::LogicalDevicePtr device, unsigned int count,
 }
 
 drv::FenceWaitResult DrvVulkan::wait_for_fence(drv::LogicalDevicePtr device, unsigned int count,
-                                                const drv::FencePtr* fences, bool waitAll,
-                                                unsigned long long int timeOut) {
+                                               const drv::FencePtr* fences, bool waitAll,
+                                               unsigned long long int timeOut) {
     VkResult result = vkWaitForFences(
       reinterpret_cast<VkDevice>(device), count, reinterpret_cast<const VkFence*>(fences), waitAll,
       timeOut == 0 ? std::numeric_limits<decltype(timeOut)>::max() : timeOut);
