@@ -64,7 +64,7 @@ Get a triangle on screen:
         ☐ Are semaphores needed within a single queue (events might be better)
     ☐ Implement barriers
     ☐ Implement timeline fences and semaphores
-    ☐ Implement events
+    ✔ Implement events @done (1/26/2021, 11:30:31 AM)
     ☐ Implement graphical pipeline
     ☐ Implement render pass
     ☐ Command for reset command buffer
@@ -89,7 +89,7 @@ Get a triangle on screen:
 
 Cleanup & other:
     ☐ Remove useless common driver stuff (drv/common)
-    ☐ Use abstract driver class instead of function pointer table
+    ✔ Use abstract driver class instead of function pointer table @done (1/26/2021, 11:31:13 AM)
 
 
 Questions:
@@ -105,7 +105,8 @@ Questions:
         -> all commands wait until that stage on the semaphore
     ✔ 100 commands on same buffer vs on separate buffers @done (1/18/2021, 12:29:18 PM)
         -> consumes memory / more api calls. Use a single buffer if possible
-    ☐ Can I record commands to two separate command buffers, which share a command pool concurrently?
+    ✔ Can I record commands to two separate command buffers, which share a command pool concurrently? @done (1/26/2021, 11:31:18 AM)
+        -> No
     ☐ Transient command buffer vs non-transient (except for parallel execution)
 
     https://stackoverflow.com/questions/37575012/should-i-try-to-use-as-many-queues-as-possible
