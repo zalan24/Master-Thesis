@@ -683,6 +683,60 @@ Semaphore::operator SemaphorePtr() const {
     return ptr;
 }
 
+TimelineSemaphore::TimelineSemaphore(LogicalDevicePtr _device,
+                                     const TimelineSemaphoreCreateInfo& info)
+  : device(_device) {
+    ptr = create_timeline_semaphore(device, &info);
+    drv::drv_assert(ptr != NULL_HANDLE, "Could not create timeline semaphore");
+}
+
+TimelineSemaphore::~TimelineSemaphore() noexcept {
+    close();
+}
+
+void TimelineSemaphore::close() {
+    CHECK_THREAD;
+    if (ptr != NULL_HANDLE) {
+        drv::drv_assert(destroy_timeline_semaphore(device, ptr),
+                        "Could not destroy timeline semaphore");
+        ptr = NULL_HANDLE;
+    }
+}
+
+TimelineSemaphore::TimelineSemaphore(TimelineSemaphore&& other) noexcept {
+    device = std::move(other.device);
+    ptr = std::move(other.ptr);
+    other.ptr = NULL_HANDLE;
+}
+
+TimelineSemaphore& TimelineSemaphore::operator=(TimelineSemaphore&& other) noexcept {
+    if (&other == this)
+        return *this;
+    close();
+    device = std::move(other.device);
+    ptr = std::move(other.ptr);
+    other.ptr = NULL_HANDLE;
+    return *this;
+}
+
+TimelineSemaphore::operator TimelineSemaphorePtr() const {
+    CHECK_THREAD;
+    return ptr;
+}
+
+bool TimelineSemaphore::wait(uint64_t value, uint64_t timeoutNs) const {
+    return wait_on_timeline_semaphores(device, 1, &ptr, &value, true, timeoutNs);
+}
+
+uint64_t TimelineSemaphore::getValue() const {
+    return get_timeline_semaphore_value(device, ptr);
+}
+
+void TimelineSemaphore::signal(uint64_t value) const {
+    drv::drv_assert(signal_timeline_semaphore(device, ptr, value),
+                    "Could not signal timeline semaphore");
+}
+
 Fence::Fence(LogicalDevicePtr _device, const FenceCreateInfo& info) : device(_device) {
     ptr = create_fence(device, &info);
     drv::drv_assert(ptr != NULL_HANDLE, "Could not create fence");

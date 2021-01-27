@@ -133,6 +133,18 @@ class DrvVulkan final : public drv::IDriver
                               const drv::BufferMemoryBarrier* bufferBarriers,
                               uint32_t imageBarrierCount,
                               const drv::ImageMemoryBarrier* imageBarriers) override;
+    drv::TimelineSemaphorePtr create_timeline_semaphore(
+      drv::LogicalDevicePtr device, const drv::TimelineSemaphoreCreateInfo* info) override;
+    bool destroy_timeline_semaphore(drv::LogicalDevicePtr device,
+                                    drv::TimelineSemaphorePtr semaphore) override;
+    bool signal_timeline_semaphore(drv::LogicalDevicePtr device,
+                                   drv::TimelineSemaphorePtr semaphore, uint64_t value) override;
+    bool wait_on_timeline_semaphores(drv::LogicalDevicePtr device, uint32_t count,
+                                     const drv::TimelineSemaphorePtr* semaphores,
+                                     const uint64_t* waitValues, bool waitAll,
+                                     uint64_t timeoutNs) override;
+    uint64_t get_timeline_semaphore_value(drv::LogicalDevicePtr device,
+                                          drv::TimelineSemaphorePtr semaphore) override;
 };
 
 // TODO

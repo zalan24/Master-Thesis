@@ -113,6 +113,18 @@ class IDriver
                                       const BufferMemoryBarrier* bufferBarriers,
                                       uint32_t imageBarrierCount,
                                       const ImageMemoryBarrier* imageBarriers) = 0;
+    virtual TimelineSemaphorePtr create_timeline_semaphore(
+      LogicalDevicePtr device, const TimelineSemaphoreCreateInfo* info) = 0;
+    virtual bool destroy_timeline_semaphore(LogicalDevicePtr device,
+                                            TimelineSemaphorePtr semaphore) = 0;
+    virtual bool signal_timeline_semaphore(LogicalDevicePtr device, TimelineSemaphorePtr semaphore,
+                                           uint64_t value) = 0;
+    virtual bool wait_on_timeline_semaphores(LogicalDevicePtr device, uint32_t count,
+                                             const TimelineSemaphorePtr* semaphores,
+                                             const uint64_t* waitValues, bool waitAll,
+                                             uint64_t timeoutNs) = 0;
+    virtual uint64_t get_timeline_semaphore_value(LogicalDevicePtr device,
+                                                  TimelineSemaphorePtr semaphore) = 0;
     // virtual ShaderModulePtr create_shader_module(LogicalDevicePtr device,
     //                                              ShaderCreateInfoPtr info) = 0;
     // virtual bool destroy_shader_module(LogicalDevicePtr device, ShaderModulePtr module) = 0;

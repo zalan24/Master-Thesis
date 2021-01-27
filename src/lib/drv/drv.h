@@ -153,7 +153,15 @@ bool cmd_pipeline_barrier(CommandBufferPtr commandBuffer, PipelineStages sourceS
                           uint32_t memoryBarrierCount, const MemoryBarrier* memoryBarriers,
                           uint32_t bufferBarrierCount, const BufferMemoryBarrier* bufferBarriers,
                           uint32_t imageBarrierCount, const ImageMemoryBarrier* imageBarriers);
-// TimelineSemaphorePtr create_timeline_semaphore(LogicalDevicePtr device); // TODO
+TimelineSemaphorePtr create_timeline_semaphore(LogicalDevicePtr device,
+                                               const TimelineSemaphoreCreateInfo* info);
+bool destroy_timeline_semaphore(LogicalDevicePtr device, TimelineSemaphorePtr semaphore);
+bool signal_timeline_semaphore(LogicalDevicePtr device, TimelineSemaphorePtr semaphore,
+                               uint64_t value);
+bool wait_on_timeline_semaphores(LogicalDevicePtr device, uint32_t count,
+                                 const TimelineSemaphorePtr* semaphores, const uint64_t* waitValues,
+                                 bool waitAll, uint64_t timeoutNs = UINT64_MAX);
+uint64_t get_timeline_semaphore_value(LogicalDevicePtr device, TimelineSemaphorePtr semaphore);
 
 // ShaderModulePtr get_shader_module(LogicalDevicePtr device, ShaderIdType shaderId);
 // unsigned int get_num_shader_descriptor_set_layouts(LogicalDevicePtr device, ShaderIdType shaderId);

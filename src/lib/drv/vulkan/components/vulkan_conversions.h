@@ -30,3 +30,23 @@ inline VkImage convertImage(drv::ImagePtr image) {
 inline drv::ImagePtr convertImage(VkImage image) {
     return reinterpret_cast<drv::ImagePtr>(image);
 }
+
+inline VkDevice convertDevice(drv::LogicalDevicePtr device) {
+    return reinterpret_cast<VkDevice>(device);
+}
+
+inline VkSemaphore convertSemaphore(drv::TimelineSemaphorePtr semaphore) {
+    return reinterpret_cast<VkSemaphore>(semaphore);
+}
+
+inline const VkSemaphore* convertSemaphores(const drv::TimelineSemaphorePtr* semaphores) {
+    return reinterpret_cast<const VkSemaphore*>(semaphores);
+}
+
+inline VkSemaphore convertSemaphore(drv::SemaphorePtr semaphore) {
+    return reinterpret_cast<VkSemaphore>(semaphore);
+}
+
+inline const VkSemaphore* convertSemaphores(const drv::SemaphorePtr* semaphores) {
+    return reinterpret_cast<const VkSemaphore*>(semaphores);
+}

@@ -309,6 +309,31 @@ class Semaphore
     void close();
 };
 
+class TimelineSemaphore
+  : public NoCopy
+  , private Exclusive
+{
+ public:
+    TimelineSemaphore(LogicalDevicePtr device, const TimelineSemaphoreCreateInfo& info);
+    ~TimelineSemaphore() noexcept;
+
+    TimelineSemaphore(TimelineSemaphore&& other) noexcept;
+    TimelineSemaphore& operator=(TimelineSemaphore&& other) noexcept;
+
+    operator TimelineSemaphorePtr() const;
+
+    // returns false if timeout
+    bool wait(uint64_t value, uint64_t timeoutNs = UINT64_MAX) const;
+    uint64_t getValue() const;
+    void signal(uint64_t value) const;
+
+ private:
+    LogicalDevicePtr device;
+    TimelineSemaphorePtr ptr;
+
+    void close();
+};
+
 class Fence
   : public NoCopy
   , private Exclusive

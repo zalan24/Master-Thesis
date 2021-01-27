@@ -199,12 +199,18 @@ struct PipelineStages
 struct ExecutionInfo
 {
     unsigned int numWaitSemaphores = 0;
-    SemaphorePtr* waitSemaphores = nullptr;
+    const SemaphorePtr* waitSemaphores = nullptr;
     PipelineStages::FlagType* waitStages = nullptr;
     unsigned int numCommandBuffers = 0;
     CommandBufferPtr* commandBuffers = nullptr;
     unsigned int numSignalSemaphores = 0;
-    SemaphorePtr* signalSemaphores = nullptr;
+    const SemaphorePtr* signalSemaphores = nullptr;
+    unsigned int numWaitTimelineSemaphores = 0;
+    const TimelineSemaphorePtr* waitTimelineSemaphores = nullptr;
+    const uint64_t* timelineWaitValues = nullptr;
+    unsigned int numSignalTimelineSemaphores = 0;
+    const TimelineSemaphorePtr* signalTimelineSemaphores = nullptr;
+    const uint64_t* timelineSignalValues = nullptr;
 };
 
 struct BufferCreateInfo
@@ -729,6 +735,8 @@ struct SwapchainCreateInfo
 
 struct PresentInfo
 {
+    // no support for timeline semaphores
+    // window system doesn't support them
     uint32_t semaphoreCount;
     const SemaphorePtr* waitSemaphores;
 };
@@ -918,6 +926,11 @@ enum class DependencyFlagBits
     //     VK_DEPENDENCY_VIEW_LOCAL_BIT_KHR = VK_DEPENDENCY_VIEW_LOCAL_BIT,
     //   // Provided by VK_KHR_device_group
     //     VK_DEPENDENCY_DEVICE_GROUP_BIT_KHR = VK_DEPENDENCY_DEVICE_GROUP_BIT,
+};
+
+struct TimelineSemaphoreCreateInfo
+{
+    uint64_t startValue;
 };
 
 };  // namespace drv

@@ -6,6 +6,7 @@
 #include <drvmemory.h>
 
 #include "vulkan_buffer.h"
+#include "vulkan_conversions.h"
 #include "vulkan_enum_compare.h"
 
 drv::CommandBufferPtr DrvVulkan::create_command_buffer(drv::LogicalDevicePtr device,
@@ -30,34 +31,6 @@ drv::CommandBufferPtr DrvVulkan::create_command_buffer(drv::LogicalDevicePtr dev
     VkResult result =
       vkAllocateCommandBuffers(reinterpret_cast<VkDevice>(device), &allocInfo, &commandBuffer);
     drv::drv_assert(result == VK_SUCCESS, "Could not create command buffer");
-
-    // TODO store flags
-
-    // COMPARE_ENUMS(unsigned int, drv::CommandBufferCreateInfo::ONE_TIME_SUBMIT_BIT,
-    //               VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
-    // COMPARE_ENUMS(unsigned int, drv::CommandBufferCreateInfo::RENDER_PASS_CONTINUE_BIT,
-    //               VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT);
-    // COMPARE_ENUMS(unsigned int, drv::CommandBufferCreateInfo::SIMULTANEOUS_USE_BIT,
-    //               VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT);
-    // COMPARE_ENUMS(unsigned int, drv::CommandBufferCreateInfo::FLAG_BITS_MAX_ENUM,
-    //               VK_COMMAND_BUFFER_USAGE_FLAG_BITS_MAX_ENUM);
-    // VkCommandBufferBeginInfo beginInfo = {};
-    // beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-    // beginInfo.flags = info->flags;
-    // beginInfo.pInheritanceInfo = nullptr;  // Optional
-
-    // result = vkBeginCommandBuffer(commandBuffer, &beginInfo);
-    // drv::drv_assert(result == VK_SUCCESS, "Could not record command buffer");
-
-    // for (unsigned int i = 0; i < info->commands.commandCount; ++i)
-    //     record_command(commandBuffer, info->commands.commands[i]);
-
-    // // TODO
-    // // Barriers? (https://github.com/KhronosGroup/Vulkan-Docs/wiki/Synchronization-Examples)
-
-    // result = vkEndCommandBuffer(commandBuffer);
-    // drv::drv_assert(result == VK_SUCCESS, "Could not record command buffer");
-
     return reinterpret_cast<drv::CommandBufferPtr>(commandBuffer);
 }
 
@@ -69,11 +42,13 @@ bool DrvVulkan::execute(drv::QueuePtr queue, unsigned int count, const drv::Exec
     VkSubmitInfo* submitInfos = reinterpret_cast<VkSubmitInfo*>(submitInfosMemory.get());
     drv::drv_assert(submitInfos != nullptr, "Could not allocate memory for submit infos");
 
+    // TODO
+
     for (unsigned int i = 0; i < count; ++i) {
         submitInfos[i].sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 
         submitInfos[i].waitSemaphoreCount = infos[i].numWaitSemaphores;
-        submitInfos[i].pWaitSemaphores = reinterpret_cast<VkSemaphore*>(infos[i].waitSemaphores);
+        submitInfos[i].pWaitSemaphores = convertSemaphores(infos[i].waitSemaphores);
         submitInfos[i].pWaitDstStageMask =
           reinterpret_cast<VkPipelineStageFlags*>(infos[i].waitStages);
 
@@ -82,8 +57,7 @@ bool DrvVulkan::execute(drv::QueuePtr queue, unsigned int count, const drv::Exec
           reinterpret_cast<VkCommandBuffer*>(infos[i].commandBuffers);
 
         submitInfos[i].signalSemaphoreCount = infos[i].numSignalSemaphores;
-        submitInfos[i].pSignalSemaphores =
-          reinterpret_cast<VkSemaphore*>(infos[i].signalSemaphores);
+        submitInfos[i].pSignalSemaphores = convertSemaphores(infos[i].signalSemaphores);
     }
 
     VkResult result = vkQueueSubmit(reinterpret_cast<VkQueue>(queue), count, submitInfos,

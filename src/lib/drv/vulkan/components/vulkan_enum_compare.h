@@ -38,6 +38,10 @@ COMPARE_ENUMS(unsigned int, drv::MemoryType::PROTECTED_BIT, VK_MEMORY_PROPERTY_P
 
 COMPARE_ENUMS(unsigned int, drv::CommandBufferCreateInfo::ONE_TIME_SUBMIT_BIT,
               VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
+COMPARE_ENUMS(unsigned int, drv::CommandBufferCreateInfo::RENDER_PASS_CONTINUE_BIT,
+              VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT);
+COMPARE_ENUMS(unsigned int, drv::CommandBufferCreateInfo::SIMULTANEOUS_USE_BIT,
+              VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT);
 
 COMPARE_ENUMS(unsigned int, drv::PipelineStages::TOP_OF_PIPE_BIT,
               VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT);

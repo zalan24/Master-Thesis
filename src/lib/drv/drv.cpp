@@ -322,6 +322,33 @@ bool drv::cmd_pipeline_barrier(CommandBufferPtr commandBuffer, PipelineStages so
       bufferBarrierCount, bufferBarriers, imageBarrierCount, imageBarriers);
 }
 
+drv::TimelineSemaphorePtr drv::create_timeline_semaphore(LogicalDevicePtr device,
+                                                         const TimelineSemaphoreCreateInfo* info) {
+    return current_driver_interface->create_timeline_semaphore(device, info);
+}
+
+bool drv::destroy_timeline_semaphore(LogicalDevicePtr device, TimelineSemaphorePtr semaphore) {
+    return current_driver_interface->destroy_timeline_semaphore(device, semaphore);
+}
+
+bool drv::signal_timeline_semaphore(LogicalDevicePtr device, TimelineSemaphorePtr semaphore,
+                                    uint64_t value) {
+    return current_driver_interface->signal_timeline_semaphore(device, semaphore, value);
+}
+
+bool drv::wait_on_timeline_semaphores(LogicalDevicePtr device, uint32_t count,
+                                      const TimelineSemaphorePtr* semaphores,
+                                      const uint64_t* waitValues, bool waitAll,
+                                      uint64_t timeoutNs) {
+    return current_driver_interface->wait_on_timeline_semaphores(device, count, semaphores,
+                                                                 waitValues, waitAll, timeoutNs);
+}
+
+uint64_t drv::get_timeline_semaphore_value(LogicalDevicePtr device,
+                                           TimelineSemaphorePtr semaphore) {
+    return current_driver_interface->get_timeline_semaphore_value(device, semaphore);
+}
+
 // drv::ShaderModulePtr drv::create_shader_module(LogicalDevicePtr device, ShaderCreateInfoPtr info) {
 //     return current_driver_interface->create_shader_module(device, info);
 // }
