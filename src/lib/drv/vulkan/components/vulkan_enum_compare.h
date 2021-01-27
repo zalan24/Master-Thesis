@@ -437,3 +437,8 @@ COMPARE_ENUMS(unsigned int, drv::ImageMemoryBarrier::SubresourceRange::AspectFla
               VK_IMAGE_ASPECT_STENCIL_BIT);
 COMPARE_ENUMS(unsigned int, drv::ImageMemoryBarrier::SubresourceRange::AspectFlagBits::METADATA_BIT,
               VK_IMAGE_ASPECT_METADATA_BIT);
+
+COMPARE_ENUMS(unsigned int, drv::DependencyFlagBits::BY_REGION_BIT, VK_DEPENDENCY_BY_REGION_BIT);
+COMPARE_ENUMS(unsigned int, drv::DependencyFlagBits::DEVICE_GROUP_BIT,
+              VK_DEPENDENCY_DEVICE_GROUP_BIT);
+COMPARE_ENUMS(unsigned int, drv::DependencyFlagBits::VIEW_LOCAL_BIT, VK_DEPENDENCY_VIEW_LOCAL_BIT);

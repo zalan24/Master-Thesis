@@ -148,6 +148,11 @@ bool cmd_wait_events(CommandBufferPtr commandBuffer, uint32_t eventCount, const 
                      uint32_t memoryBarrierCount, const MemoryBarrier* memoryBarriers,
                      uint32_t bufferBarrierCount, const BufferMemoryBarrier* bufferBarriers,
                      uint32_t imageBarrierCount, const ImageMemoryBarrier* imageBarriers);
+bool cmd_pipeline_barrier(CommandBufferPtr commandBuffer, PipelineStages sourceStage,
+                          PipelineStages dstStage, DependencyFlagBits dependencyFlags,
+                          uint32_t memoryBarrierCount, const MemoryBarrier* memoryBarriers,
+                          uint32_t bufferBarrierCount, const BufferMemoryBarrier* bufferBarriers,
+                          uint32_t imageBarrierCount, const ImageMemoryBarrier* imageBarriers);
 
 // ShaderModulePtr get_shader_module(LogicalDevicePtr device, ShaderIdType shaderId);
 // unsigned int get_num_shader_descriptor_set_layouts(LogicalDevicePtr device, ShaderIdType shaderId);

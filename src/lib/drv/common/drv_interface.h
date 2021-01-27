@@ -105,6 +105,14 @@ class IDriver
                                  const BufferMemoryBarrier* bufferBarriers,
                                  uint32_t imageBarrierCount,
                                  const ImageMemoryBarrier* imageBarriers) = 0;
+    virtual bool cmd_pipeline_barrier(CommandBufferPtr commandBuffer, PipelineStages sourceStage,
+                                      PipelineStages dstStage, DependencyFlagBits dependencyFlags,
+                                      uint32_t memoryBarrierCount,
+                                      const MemoryBarrier* memoryBarriers,
+                                      uint32_t bufferBarrierCount,
+                                      const BufferMemoryBarrier* bufferBarriers,
+                                      uint32_t imageBarrierCount,
+                                      const ImageMemoryBarrier* imageBarriers) = 0;
     // virtual ShaderModulePtr create_shader_module(LogicalDevicePtr device,
     //                                              ShaderCreateInfoPtr info) = 0;
     // virtual bool destroy_shader_module(LogicalDevicePtr device, ShaderModulePtr module) = 0;

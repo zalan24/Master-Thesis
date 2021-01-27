@@ -126,6 +126,13 @@ class DrvVulkan final : public drv::IDriver
                          const drv::MemoryBarrier* memoryBarriers, uint32_t bufferBarrierCount,
                          const drv::BufferMemoryBarrier* bufferBarriers, uint32_t imageBarrierCount,
                          const drv::ImageMemoryBarrier* imageBarriers) override;
+    bool cmd_pipeline_barrier(drv::CommandBufferPtr commandBuffer, drv::PipelineStages sourceStage,
+                              drv::PipelineStages dstStage, drv::DependencyFlagBits dependencyFlags,
+                              uint32_t memoryBarrierCount, const drv::MemoryBarrier* memoryBarriers,
+                              uint32_t bufferBarrierCount,
+                              const drv::BufferMemoryBarrier* bufferBarriers,
+                              uint32_t imageBarrierCount,
+                              const drv::ImageMemoryBarrier* imageBarriers) override;
 };
 
 // TODO

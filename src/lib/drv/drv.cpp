@@ -310,6 +310,18 @@ bool drv::cmd_wait_events(CommandBufferPtr commandBuffer, uint32_t eventCount,
       bufferBarrierCount, bufferBarriers, imageBarrierCount, imageBarriers);
 }
 
+bool drv::cmd_pipeline_barrier(CommandBufferPtr commandBuffer, PipelineStages sourceStage,
+                               PipelineStages dstStage, DependencyFlagBits dependencyFlags,
+                               uint32_t memoryBarrierCount, const MemoryBarrier* memoryBarriers,
+                               uint32_t bufferBarrierCount,
+                               const BufferMemoryBarrier* bufferBarriers,
+                               uint32_t imageBarrierCount,
+                               const ImageMemoryBarrier* imageBarriers) {
+    return current_driver_interface->cmd_pipeline_barrier(
+      commandBuffer, sourceStage, dstStage, dependencyFlags, memoryBarrierCount, memoryBarriers,
+      bufferBarrierCount, bufferBarriers, imageBarrierCount, imageBarriers);
+}
+
 // drv::ShaderModulePtr drv::create_shader_module(LogicalDevicePtr device, ShaderCreateInfoPtr info) {
 //     return current_driver_interface->create_shader_module(device, info);
 // }

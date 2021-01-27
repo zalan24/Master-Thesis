@@ -69,8 +69,8 @@ Get a triangle on screen:
             ☐ Instead of actual execution, just return a queue and the command buffer
         ☐ Frame graph should be concurrent (adding nodes in one thread, partial executions in the other)
         ☐ Are semaphores needed within a single queue (events might be better)
-    ☐ Implement barriers
-    ☐ Implement timeline fences and semaphores
+    ✔ Implement barriers @done (1/27/2021, 11:38:06 AM)
+    ☐ Implement timeline semaphores
     ✔ Implement events @done (1/26/2021, 11:30:31 AM)
     ☐ Implement graphical pipeline
     ☐ Implement render pass
