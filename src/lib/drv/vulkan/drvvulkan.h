@@ -120,6 +120,12 @@ class DrvVulkan final : public drv::IDriver
                          drv::PipelineStages sourceStage) override;
     bool cmd_set_event(drv::CommandBufferPtr commandBuffer, drv::EventPtr event,
                        drv::PipelineStages sourceStage) override;
+    bool cmd_wait_events(drv::CommandBufferPtr commandBuffer, uint32_t eventCount,
+                         const drv::EventPtr* events, drv::PipelineStages sourceStage,
+                         drv::PipelineStages dstStage, uint32_t memoryBarrierCount,
+                         const drv::MemoryBarrier* memoryBarriers, uint32_t bufferBarrierCount,
+                         const drv::BufferMemoryBarrier* bufferBarriers, uint32_t imageBarrierCount,
+                         const drv::ImageMemoryBarrier* imageBarriers) override;
 };
 
 // TODO

@@ -8,6 +8,8 @@
 #include <drverror.h>
 #include <drvmemory.h>
 
+#include "vulkan_enum_compare.h"
+
 drv::DescriptorSetLayoutPtr DrvVulkan::create_descriptor_set_layout(
   drv::LogicalDevicePtr device, const drv::DescriptorSetLayoutCreateInfo* info) {
     VkDescriptorSetLayoutCreateInfo layoutInfo = {};
@@ -27,29 +29,6 @@ drv::DescriptorSetLayoutPtr DrvVulkan::create_descriptor_set_layout(
     static_assert(offsetof(vulkan_binding, descriptorType) == offsetof(custom_binding, type),
                   "Vulkan compatibility error");
 
-    COMPARE_ENUMS(unsigned int, custom_binding::SAMPLER, VK_DESCRIPTOR_TYPE_SAMPLER);
-    COMPARE_ENUMS(unsigned int, custom_binding::COMBINED_IMAGE_SAMPLER,
-                  VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
-    COMPARE_ENUMS(unsigned int, custom_binding::SAMPLED_IMAGE, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
-    COMPARE_ENUMS(unsigned int, custom_binding::STORAGE_IMAGE, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE);
-    COMPARE_ENUMS(unsigned int, custom_binding::UNIFORM_TEXEL_BUFFER,
-                  VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER);
-    COMPARE_ENUMS(unsigned int, custom_binding::STORAGE_TEXEL_BUFFER,
-                  VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER);
-    COMPARE_ENUMS(unsigned int, custom_binding::UNIFORM_BUFFER, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
-    COMPARE_ENUMS(unsigned int, custom_binding::STORAGE_BUFFER, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
-    COMPARE_ENUMS(unsigned int, custom_binding::UNIFORM_BUFFER_DYNAMIC,
-                  VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC);
-    COMPARE_ENUMS(unsigned int, custom_binding::STORAGE_BUFFER_DYNAMIC,
-                  VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC);
-    COMPARE_ENUMS(unsigned int, custom_binding::INPUT_ATTACHMENT,
-                  VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT);
-    COMPARE_ENUMS(unsigned int, custom_binding::INLINE_UNIFORM_BLOCK_EXT,
-                  VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK_EXT);
-    COMPARE_ENUMS(unsigned int, custom_binding::ACCELERATION_STRUCTURE_NV,
-                  VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_NV);
-    COMPARE_ENUMS(unsigned int, custom_binding::MAX_ENUM, VK_DESCRIPTOR_TYPE_MAX_ENUM);
-
     static_assert(offsetof(vulkan_binding, descriptorCount) == offsetof(custom_binding, count),
                   "Vulkan compatibility error");
     static_assert(
@@ -58,29 +37,6 @@ drv::DescriptorSetLayoutPtr DrvVulkan::create_descriptor_set_layout(
 
     static_assert(offsetof(vulkan_binding, stageFlags) == offsetof(custom_binding, stages),
                   "Vulkan compatibility error");
-
-    COMPARE_ENUMS(unsigned int, drv::ShaderStage::VERTEX_BIT, VK_SHADER_STAGE_VERTEX_BIT);
-    COMPARE_ENUMS(unsigned int, drv::ShaderStage::TESSELLATION_CONTROL_BIT,
-                  VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT);
-    COMPARE_ENUMS(unsigned int, drv::ShaderStage::TESSELLATION_EVALUATION_BIT,
-                  VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT);
-    COMPARE_ENUMS(unsigned int, drv::ShaderStage::GEOMETRY_BIT, VK_SHADER_STAGE_GEOMETRY_BIT);
-    COMPARE_ENUMS(unsigned int, drv::ShaderStage::FRAGMENT_BIT, VK_SHADER_STAGE_FRAGMENT_BIT);
-    COMPARE_ENUMS(unsigned int, drv::ShaderStage::COMPUTE_BIT, VK_SHADER_STAGE_COMPUTE_BIT);
-    COMPARE_ENUMS(unsigned int, drv::ShaderStage::ALL_GRAPHICS, VK_SHADER_STAGE_ALL_GRAPHICS);
-    COMPARE_ENUMS(unsigned int, drv::ShaderStage::ALL, VK_SHADER_STAGE_ALL);
-    COMPARE_ENUMS(unsigned int, drv::ShaderStage::RAYGEN_BIT_NV, VK_SHADER_STAGE_RAYGEN_BIT_NV);
-    COMPARE_ENUMS(unsigned int, drv::ShaderStage::ANY_HIT_BIT_NV, VK_SHADER_STAGE_ANY_HIT_BIT_NV);
-    COMPARE_ENUMS(unsigned int, drv::ShaderStage::CLOSEST_HIT_BIT_NV,
-                  VK_SHADER_STAGE_CLOSEST_HIT_BIT_NV);
-    COMPARE_ENUMS(unsigned int, drv::ShaderStage::MISS_BIT_NV, VK_SHADER_STAGE_MISS_BIT_NV);
-    COMPARE_ENUMS(unsigned int, drv::ShaderStage::INTERSECTION_BIT_NV,
-                  VK_SHADER_STAGE_INTERSECTION_BIT_NV);
-    COMPARE_ENUMS(unsigned int, drv::ShaderStage::CALLABLE_BIT_NV, VK_SHADER_STAGE_CALLABLE_BIT_NV);
-    COMPARE_ENUMS(unsigned int, drv::ShaderStage::TASK_BIT_NV, VK_SHADER_STAGE_TASK_BIT_NV);
-    COMPARE_ENUMS(unsigned int, drv::ShaderStage::MESH_BIT_NV, VK_SHADER_STAGE_MESH_BIT_NV);
-    COMPARE_ENUMS(unsigned int, drv::ShaderStage::FLAG_BITS_MAX_ENUM,
-                  VK_SHADER_STAGE_FLAG_BITS_MAX_ENUM);
 
     static_assert(
       offsetof(vulkan_binding, pImmutableSamplers) == offsetof(custom_binding, immutableSamplers),

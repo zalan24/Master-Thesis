@@ -143,9 +143,11 @@ bool reset_event(LogicalDevicePtr device, EventPtr event);
 bool set_event(LogicalDevicePtr device, EventPtr event);
 bool cmd_reset_event(CommandBufferPtr commandBuffer, EventPtr event, PipelineStages sourceStage);
 bool cmd_set_event(CommandBufferPtr commandBuffer, EventPtr event, PipelineStages sourceStage);
-// TODO
-// bool cmd_wait_events(CommandBufferPtr commandBuffer, uint32_t eventCount,
-//                      PipelineStages sourceStage, PipelineStages dstStage, );
+bool cmd_wait_events(CommandBufferPtr commandBuffer, uint32_t eventCount, const EventPtr* events,
+                     PipelineStages sourceStage, PipelineStages dstStage,
+                     uint32_t memoryBarrierCount, const MemoryBarrier* memoryBarriers,
+                     uint32_t bufferBarrierCount, const BufferMemoryBarrier* bufferBarriers,
+                     uint32_t imageBarrierCount, const ImageMemoryBarrier* imageBarriers);
 
 // ShaderModulePtr get_shader_module(LogicalDevicePtr device, ShaderIdType shaderId);
 // unsigned int get_num_shader_descriptor_set_layouts(LogicalDevicePtr device, ShaderIdType shaderId);

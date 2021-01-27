@@ -6,13 +6,14 @@
 
 #include <drverror.h>
 
+#include "vulkan_conversions.h"
+
 drv::LogicalDevicePtr DrvVulkan::create_logical_device(const drv::LogicalDeviceCreateInfo* info) {
     std::vector<VkDeviceQueueCreateInfo> queues(info->queueInfoCount);
     for (unsigned int i = 0; i < info->queueInfoCount; ++i) {
         VkDeviceQueueCreateInfo queueCreateInfo = {};
         queueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
-        queueCreateInfo.queueFamilyIndex =
-          static_cast<uint32_t>(reinterpret_cast<long>(info->queueInfoPtr[i].family)) - 1;
+        queueCreateInfo.queueFamilyIndex = convertFamily(info->queueInfoPtr[i].family);
         queueCreateInfo.queueCount = info->queueInfoPtr[i].count;
         queueCreateInfo.pQueuePriorities = info->queueInfoPtr[i].prioritiesPtr;
 
@@ -53,7 +54,6 @@ bool DrvVulkan::delete_logical_device(drv::LogicalDevicePtr device) {
 drv::QueuePtr DrvVulkan::get_queue(drv::LogicalDevicePtr device, drv::QueueFamilyPtr family,
                                    unsigned int ind) {
     VkQueue queue;
-    vkGetDeviceQueue(reinterpret_cast<VkDevice>(device),
-                     static_cast<uint32_t>(reinterpret_cast<long>(family)) - 1, ind, &queue);
+    vkGetDeviceQueue(reinterpret_cast<VkDevice>(device), convertFamily(family), ind, &queue);
     return reinterpret_cast<drv::QueuePtr>(queue);
 }

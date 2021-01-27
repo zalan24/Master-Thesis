@@ -6,6 +6,8 @@
 #include <drvmemory.h>
 
 #include "vulkan_buffer.h"
+#include "vulkan_conversions.h"
+#include "vulkan_enum_compare.h"
 
 using namespace drv_vulkan;
 
@@ -39,30 +41,9 @@ drv::BufferPtr DrvVulkan::create_buffer(drv::LogicalDevicePtr device,
             drv::drv_assert(queueFamilies != nullptr,
                             "Could not allocate memory for queue families");
             for (unsigned int i = 0; i < info->familyCount; ++i)
-                queueFamilies[i] =
-                  static_cast<unsigned int>(reinterpret_cast<long>(info->families[i])) - 1;
+                queueFamilies[i] = convertFamily(info->families[i]);
             bufferCreateInfo.pQueueFamilyIndices = queueFamilies;
         }
-        COMPARE_ENUMS(unsigned int, drv::BufferCreateInfo::TRANSFER_SRC_BIT,
-                      VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
-        COMPARE_ENUMS(unsigned int, drv::BufferCreateInfo::TRANSFER_DST_BIT,
-                      VK_BUFFER_USAGE_TRANSFER_DST_BIT);
-        COMPARE_ENUMS(unsigned int, drv::BufferCreateInfo::UNIFORM_TEXEL_BUFFER_BIT,
-                      VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT);
-        COMPARE_ENUMS(unsigned int, drv::BufferCreateInfo::STORAGE_TEXEL_BUFFER_BIT,
-                      VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT);
-        COMPARE_ENUMS(unsigned int, drv::BufferCreateInfo::UNIFORM_BUFFER_BIT,
-                      VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
-        COMPARE_ENUMS(unsigned int, drv::BufferCreateInfo::STORAGE_BUFFER_BIT,
-                      VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
-        COMPARE_ENUMS(unsigned int, drv::BufferCreateInfo::INDEX_BUFFER_BIT,
-                      VK_BUFFER_USAGE_INDEX_BUFFER_BIT);
-        COMPARE_ENUMS(unsigned int, drv::BufferCreateInfo::VERTEX_BUFFER_BIT,
-                      VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
-        COMPARE_ENUMS(unsigned int, drv::BufferCreateInfo::INDIRECT_BUFFER_BIT,
-                      VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT);
-        COMPARE_ENUMS(unsigned int, drv::BufferCreateInfo::RAY_TRACING_BIT_NV,
-                      VK_BUFFER_USAGE_RAY_TRACING_BIT_NV);
         bufferCreateInfo.usage = reinterpret_cast<VkBufferUsageFlags>(info->usage);
 
         VkResult result = vkCreateBuffer(reinterpret_cast<VkDevice>(device), &bufferCreateInfo,
@@ -120,17 +101,6 @@ bool DrvVulkan::get_memory_properties(drv::PhysicalDevicePtr physicalDevice,
     static_assert(drv::MemoryProperties::MAX_MEMORY_TYPES >= VK_MAX_MEMORY_TYPES,
                   "Memory types might not fit in th earray");
     props.memoryTypeCount = memProperties.memoryTypeCount;
-    COMPARE_ENUMS(unsigned int, drv::MemoryType::DEVICE_LOCAL_BIT,
-                  VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-    COMPARE_ENUMS(unsigned int, drv::MemoryType::HOST_VISIBLE_BIT,
-                  VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
-    COMPARE_ENUMS(unsigned int, drv::MemoryType::HOST_COHERENT_BIT,
-                  VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
-    COMPARE_ENUMS(unsigned int, drv::MemoryType::HOST_CACHED_BIT,
-                  VK_MEMORY_PROPERTY_HOST_CACHED_BIT);
-    COMPARE_ENUMS(unsigned int, drv::MemoryType::LAZILY_ALLOCATED_BIT,
-                  VK_MEMORY_PROPERTY_LAZILY_ALLOCATED_BIT);
-    COMPARE_ENUMS(unsigned int, drv::MemoryType::PROTECTED_BIT, VK_MEMORY_PROPERTY_PROTECTED_BIT);
     for (unsigned int i = 0; i < props.memoryTypeCount; ++i)
         props.memoryTypes[i].properties = reinterpret_cast<drv::MemoryType::PropertyType>(
           memProperties.memoryTypes[i].propertyFlags);

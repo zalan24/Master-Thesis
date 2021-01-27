@@ -4,12 +4,14 @@
 
 #include <drverror.h>
 
+#include "vulkan_conversions.h"
+
 drv::CommandPoolPtr DrvVulkan::create_command_pool(drv::LogicalDevicePtr device,
-                                                    drv::QueueFamilyPtr queueFamily,
-                                                    const drv::CommandPoolCreateInfo* info) {
+                                                   drv::QueueFamilyPtr queueFamily,
+                                                   const drv::CommandPoolCreateInfo* info) {
     VkCommandPoolCreateInfo poolInfo = {};
     poolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-    poolInfo.queueFamilyIndex = static_cast<uint32_t>(reinterpret_cast<long>(queueFamily)) - 1;
+    poolInfo.queueFamilyIndex = convertFamily(queueFamily);
     poolInfo.flags = 0;
     if (info->transient)
         poolInfo.flags |= VK_COMMAND_POOL_CREATE_TRANSIENT_BIT;
@@ -25,7 +27,7 @@ drv::CommandPoolPtr DrvVulkan::create_command_pool(drv::LogicalDevicePtr device,
 }
 
 bool DrvVulkan::destroy_command_pool(drv::LogicalDevicePtr device,
-                                      drv::CommandPoolPtr commandPool) {
+                                     drv::CommandPoolPtr commandPool) {
     vkDestroyCommandPool(reinterpret_cast<VkDevice>(device),
                          reinterpret_cast<VkCommandPool>(commandPool), nullptr);
     return true;

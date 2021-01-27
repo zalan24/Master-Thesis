@@ -8,6 +8,7 @@
 
 #include <drverror.h>
 
+#include "vulkan_conversions.h"
 #include "vulkan_instance.h"
 
 using namespace drv_vulkan;
@@ -81,7 +82,7 @@ bool DrvVulkan::get_physical_device_queue_families(drv::PhysicalDevicePtr physic
     for (unsigned int i = 0; i < *count; ++i) {
         queueFamilies[i].queueCount = vkQueueFamilies[i].queueCount;
         queueFamilies[i].commandTypeMask = get_mask(vkQueueFamilies[i].queueFlags);
-        queueFamilies[i].handle = reinterpret_cast<drv::QueueFamilyPtr>(i + 1);
+        queueFamilies[i].handle = convertFamily(i);
     }
     return true;
 }
@@ -95,7 +96,7 @@ drv::CommandTypeMask DrvVulkan::get_command_type_mask(drv::PhysicalDevicePtr phy
     std::vector<VkQueueFamilyProperties> vkQueueFamilies(count);
     vkGetPhysicalDeviceQueueFamilyProperties(reinterpret_cast<VkPhysicalDevice>(physicalDevice),
                                              &count, vkQueueFamilies.data());
-    unsigned int i = static_cast<unsigned int>(reinterpret_cast<long>(queueFamily)) - 1;
+    unsigned int i = convertFamily(queueFamily);
     return get_mask(vkQueueFamilies[i].queueFlags);
 }
 

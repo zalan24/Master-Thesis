@@ -8,6 +8,7 @@
 #include <drverror.h>
 #include <drvmemory.h>
 
+#include "vulkan_enum_compare.h"
 #include "vulkan_swapchain_surface.h"
 
 using namespace drv_vulkan;
@@ -16,13 +17,6 @@ drv::SwapchainPtr DrvVulkan::create_swapchain(drv::PhysicalDevicePtr physicalDev
                                               drv::LogicalDevicePtr device, IWindow* window,
                                               const drv::SwapchainCreateInfo* info) {
     const SwapChainSupportDetails& support = get_surface_support(physicalDevice, window);
-    // TODO check format enum
-
-    COMPARE_ENUMS(unsigned int, drv::SwapchainCreateInfo::FIFO, VK_PRESENT_MODE_FIFO_KHR);
-    COMPARE_ENUMS(unsigned int, drv::SwapchainCreateInfo::MAILBOX, VK_PRESENT_MODE_MAILBOX_KHR);
-    COMPARE_ENUMS(unsigned int, drv::SwapchainCreateInfo::FIFO_RELAXED,
-                  VK_PRESENT_MODE_FIFO_RELAXED_KHR);
-    COMPARE_ENUMS(unsigned int, drv::SwapchainCreateInfo::IMMEDIATE, VK_PRESENT_MODE_IMMEDIATE_KHR);
 
     auto formatItr = std::find_if(
       info->formatPreferences, info->formatPreferences + info->allowedFormatCount,

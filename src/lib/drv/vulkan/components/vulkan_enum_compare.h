@@ -1,0 +1,439 @@
+#pragma once
+
+#include <drvtypes.h>
+
+#include <vulkan/vulkan.h>
+
+#include "drvvulkan.h"
+
+COMPARE_ENUMS(unsigned int, drv::BufferCreateInfo::TRANSFER_SRC_BIT,
+              VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
+COMPARE_ENUMS(unsigned int, drv::BufferCreateInfo::TRANSFER_DST_BIT,
+              VK_BUFFER_USAGE_TRANSFER_DST_BIT);
+COMPARE_ENUMS(unsigned int, drv::BufferCreateInfo::UNIFORM_TEXEL_BUFFER_BIT,
+              VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT);
+COMPARE_ENUMS(unsigned int, drv::BufferCreateInfo::STORAGE_TEXEL_BUFFER_BIT,
+              VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT);
+COMPARE_ENUMS(unsigned int, drv::BufferCreateInfo::UNIFORM_BUFFER_BIT,
+              VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT);
+COMPARE_ENUMS(unsigned int, drv::BufferCreateInfo::STORAGE_BUFFER_BIT,
+              VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+COMPARE_ENUMS(unsigned int, drv::BufferCreateInfo::INDEX_BUFFER_BIT,
+              VK_BUFFER_USAGE_INDEX_BUFFER_BIT);
+COMPARE_ENUMS(unsigned int, drv::BufferCreateInfo::VERTEX_BUFFER_BIT,
+              VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
+COMPARE_ENUMS(unsigned int, drv::BufferCreateInfo::INDIRECT_BUFFER_BIT,
+              VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT);
+COMPARE_ENUMS(unsigned int, drv::BufferCreateInfo::RAY_TRACING_BIT_NV,
+              VK_BUFFER_USAGE_RAY_TRACING_BIT_NV);
+
+COMPARE_ENUMS(unsigned int, drv::MemoryType::DEVICE_LOCAL_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+COMPARE_ENUMS(unsigned int, drv::MemoryType::HOST_VISIBLE_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
+COMPARE_ENUMS(unsigned int, drv::MemoryType::HOST_COHERENT_BIT,
+              VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+COMPARE_ENUMS(unsigned int, drv::MemoryType::HOST_CACHED_BIT, VK_MEMORY_PROPERTY_HOST_CACHED_BIT);
+COMPARE_ENUMS(unsigned int, drv::MemoryType::LAZILY_ALLOCATED_BIT,
+              VK_MEMORY_PROPERTY_LAZILY_ALLOCATED_BIT);
+COMPARE_ENUMS(unsigned int, drv::MemoryType::PROTECTED_BIT, VK_MEMORY_PROPERTY_PROTECTED_BIT);
+
+COMPARE_ENUMS(unsigned int, drv::CommandBufferCreateInfo::ONE_TIME_SUBMIT_BIT,
+              VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
+
+COMPARE_ENUMS(unsigned int, drv::PipelineStages::TOP_OF_PIPE_BIT,
+              VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT);
+COMPARE_ENUMS(unsigned int, drv::PipelineStages::DRAW_INDIRECT_BIT,
+              VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT);
+COMPARE_ENUMS(unsigned int, drv::PipelineStages::VERTEX_INPUT_BIT,
+              VK_PIPELINE_STAGE_VERTEX_INPUT_BIT);
+COMPARE_ENUMS(unsigned int, drv::PipelineStages::VERTEX_SHADER_BIT,
+              VK_PIPELINE_STAGE_VERTEX_SHADER_BIT);
+COMPARE_ENUMS(unsigned int, drv::PipelineStages::TESSELLATION_CONTROL_SHADER_BIT,
+              VK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT);
+COMPARE_ENUMS(unsigned int, drv::PipelineStages::TESSELLATION_EVALUATION_SHADER_BIT,
+              VK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT);
+COMPARE_ENUMS(unsigned int, drv::PipelineStages::GEOMETRY_SHADER_BIT,
+              VK_PIPELINE_STAGE_GEOMETRY_SHADER_BIT);
+COMPARE_ENUMS(unsigned int, drv::PipelineStages::FRAGMENT_SHADER_BIT,
+              VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
+COMPARE_ENUMS(unsigned int, drv::PipelineStages::EARLY_FRAGMENT_TESTS_BIT,
+              VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT);
+COMPARE_ENUMS(unsigned int, drv::PipelineStages::LATE_FRAGMENT_TESTS_BIT,
+              VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT);
+COMPARE_ENUMS(unsigned int, drv::PipelineStages::COLOR_ATTACHMENT_OUTPUT_BIT,
+              VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
+COMPARE_ENUMS(unsigned int, drv::PipelineStages::COMPUTE_SHADER_BIT,
+              VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT);
+COMPARE_ENUMS(unsigned int, drv::PipelineStages::TRANSFER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT);
+COMPARE_ENUMS(unsigned int, drv::PipelineStages::BOTTOM_OF_PIPE_BIT,
+              VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT);
+COMPARE_ENUMS(unsigned int, drv::PipelineStages::HOST_BIT, VK_PIPELINE_STAGE_HOST_BIT);
+COMPARE_ENUMS(unsigned int, drv::PipelineStages::ALL_GRAPHICS_BIT,
+              VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT);
+COMPARE_ENUMS(unsigned int, drv::PipelineStages::ALL_COMMANDS_BIT,
+              VK_PIPELINE_STAGE_ALL_COMMANDS_BIT);
+COMPARE_ENUMS(unsigned int, drv::PipelineStages::TRANSFORM_FEEDBACK_BIT_EXT,
+              VK_PIPELINE_STAGE_TRANSFORM_FEEDBACK_BIT_EXT);
+COMPARE_ENUMS(unsigned int, drv::PipelineStages::CONDITIONAL_RENDERING_BIT_EXT,
+              VK_PIPELINE_STAGE_CONDITIONAL_RENDERING_BIT_EXT);
+COMPARE_ENUMS(unsigned int, drv::PipelineStages::COMMAND_PREPROCESS_BIT_NV,
+              VK_PIPELINE_STAGE_COMMAND_PREPROCESS_BIT_NV);
+COMPARE_ENUMS(unsigned int, drv::PipelineStages::SHADING_RATE_IMAGE_BIT_NV,
+              VK_PIPELINE_STAGE_SHADING_RATE_IMAGE_BIT_NV);
+COMPARE_ENUMS(unsigned int, drv::PipelineStages::RAY_TRACING_SHADER_BIT_NV,
+              VK_PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_NV);
+COMPARE_ENUMS(unsigned int, drv::PipelineStages::ACCELERATION_STRUCTURE_BUILD_BIT_NV,
+              VK_PIPELINE_STAGE_ACCELERATION_STRUCTURE_BUILD_BIT_NV);
+COMPARE_ENUMS(unsigned int, drv::PipelineStages::TASK_SHADER_BIT_NV,
+              VK_PIPELINE_STAGE_TASK_SHADER_BIT_NV);
+COMPARE_ENUMS(unsigned int, drv::PipelineStages::MESH_SHADER_BIT_NV,
+              VK_PIPELINE_STAGE_MESH_SHADER_BIT_NV);
+COMPARE_ENUMS(unsigned int, drv::PipelineStages::FRAGMENT_DENSITY_PROCESS_BIT_EXT,
+              VK_PIPELINE_STAGE_FRAGMENT_DENSITY_PROCESS_BIT_EXT);
+COMPARE_ENUMS(unsigned int, drv::PipelineStages::FLAG_BITS_MAX_ENUM,
+              VK_PIPELINE_STAGE_FLAG_BITS_MAX_ENUM);
+
+COMPARE_ENUMS(unsigned int, drv::DescriptorSetLayoutCreateInfo::Binding::SAMPLER,
+              VK_DESCRIPTOR_TYPE_SAMPLER);
+COMPARE_ENUMS(unsigned int, drv::DescriptorSetLayoutCreateInfo::Binding::COMBINED_IMAGE_SAMPLER,
+              VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER);
+COMPARE_ENUMS(unsigned int, drv::DescriptorSetLayoutCreateInfo::Binding::SAMPLED_IMAGE,
+              VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
+COMPARE_ENUMS(unsigned int, drv::DescriptorSetLayoutCreateInfo::Binding::STORAGE_IMAGE,
+              VK_DESCRIPTOR_TYPE_STORAGE_IMAGE);
+COMPARE_ENUMS(unsigned int, drv::DescriptorSetLayoutCreateInfo::Binding::UNIFORM_TEXEL_BUFFER,
+              VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER);
+COMPARE_ENUMS(unsigned int, drv::DescriptorSetLayoutCreateInfo::Binding::STORAGE_TEXEL_BUFFER,
+              VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER);
+COMPARE_ENUMS(unsigned int, drv::DescriptorSetLayoutCreateInfo::Binding::UNIFORM_BUFFER,
+              VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
+COMPARE_ENUMS(unsigned int, drv::DescriptorSetLayoutCreateInfo::Binding::STORAGE_BUFFER,
+              VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
+COMPARE_ENUMS(unsigned int, drv::DescriptorSetLayoutCreateInfo::Binding::UNIFORM_BUFFER_DYNAMIC,
+              VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC);
+COMPARE_ENUMS(unsigned int, drv::DescriptorSetLayoutCreateInfo::Binding::STORAGE_BUFFER_DYNAMIC,
+              VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC);
+COMPARE_ENUMS(unsigned int, drv::DescriptorSetLayoutCreateInfo::Binding::INPUT_ATTACHMENT,
+              VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT);
+COMPARE_ENUMS(unsigned int, drv::DescriptorSetLayoutCreateInfo::Binding::INLINE_UNIFORM_BLOCK_EXT,
+              VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK_EXT);
+COMPARE_ENUMS(unsigned int, drv::DescriptorSetLayoutCreateInfo::Binding::ACCELERATION_STRUCTURE_NV,
+              VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_NV);
+COMPARE_ENUMS(unsigned int, drv::DescriptorSetLayoutCreateInfo::Binding::MAX_ENUM,
+              VK_DESCRIPTOR_TYPE_MAX_ENUM);
+
+COMPARE_ENUMS(unsigned int, drv::ShaderStage::VERTEX_BIT, VK_SHADER_STAGE_VERTEX_BIT);
+COMPARE_ENUMS(unsigned int, drv::ShaderStage::TESSELLATION_CONTROL_BIT,
+              VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT);
+COMPARE_ENUMS(unsigned int, drv::ShaderStage::TESSELLATION_EVALUATION_BIT,
+              VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT);
+COMPARE_ENUMS(unsigned int, drv::ShaderStage::GEOMETRY_BIT, VK_SHADER_STAGE_GEOMETRY_BIT);
+COMPARE_ENUMS(unsigned int, drv::ShaderStage::FRAGMENT_BIT, VK_SHADER_STAGE_FRAGMENT_BIT);
+COMPARE_ENUMS(unsigned int, drv::ShaderStage::COMPUTE_BIT, VK_SHADER_STAGE_COMPUTE_BIT);
+COMPARE_ENUMS(unsigned int, drv::ShaderStage::ALL_GRAPHICS, VK_SHADER_STAGE_ALL_GRAPHICS);
+COMPARE_ENUMS(unsigned int, drv::ShaderStage::ALL, VK_SHADER_STAGE_ALL);
+COMPARE_ENUMS(unsigned int, drv::ShaderStage::RAYGEN_BIT_NV, VK_SHADER_STAGE_RAYGEN_BIT_NV);
+COMPARE_ENUMS(unsigned int, drv::ShaderStage::ANY_HIT_BIT_NV, VK_SHADER_STAGE_ANY_HIT_BIT_NV);
+COMPARE_ENUMS(unsigned int, drv::ShaderStage::CLOSEST_HIT_BIT_NV,
+              VK_SHADER_STAGE_CLOSEST_HIT_BIT_NV);
+COMPARE_ENUMS(unsigned int, drv::ShaderStage::MISS_BIT_NV, VK_SHADER_STAGE_MISS_BIT_NV);
+COMPARE_ENUMS(unsigned int, drv::ShaderStage::INTERSECTION_BIT_NV,
+              VK_SHADER_STAGE_INTERSECTION_BIT_NV);
+COMPARE_ENUMS(unsigned int, drv::ShaderStage::CALLABLE_BIT_NV, VK_SHADER_STAGE_CALLABLE_BIT_NV);
+COMPARE_ENUMS(unsigned int, drv::ShaderStage::TASK_BIT_NV, VK_SHADER_STAGE_TASK_BIT_NV);
+COMPARE_ENUMS(unsigned int, drv::ShaderStage::MESH_BIT_NV, VK_SHADER_STAGE_MESH_BIT_NV);
+COMPARE_ENUMS(unsigned int, drv::ShaderStage::FLAG_BITS_MAX_ENUM,
+              VK_SHADER_STAGE_FLAG_BITS_MAX_ENUM);
+
+COMPARE_ENUMS(unsigned int, drv::SwapchainCreateInfo::FIFO, VK_PRESENT_MODE_FIFO_KHR);
+COMPARE_ENUMS(unsigned int, drv::SwapchainCreateInfo::MAILBOX, VK_PRESENT_MODE_MAILBOX_KHR);
+COMPARE_ENUMS(unsigned int, drv::SwapchainCreateInfo::FIFO_RELAXED,
+              VK_PRESENT_MODE_FIFO_RELAXED_KHR);
+COMPARE_ENUMS(unsigned int, drv::SwapchainCreateInfo::IMMEDIATE, VK_PRESENT_MODE_IMMEDIATE_KHR);
+
+COMPARE_ENUMS(unsigned int, drv::ImageFormat::UNDEFINED, VK_FORMAT_UNDEFINED);
+COMPARE_ENUMS(unsigned int, drv::ImageFormat::R4G4_UNORM_PACK8, VK_FORMAT_R4G4_UNORM_PACK8);
+COMPARE_ENUMS(unsigned int, drv::ImageFormat::R4G4B4A4_UNORM_PACK16,
+              VK_FORMAT_R4G4B4A4_UNORM_PACK16);
+COMPARE_ENUMS(unsigned int, drv::ImageFormat::B4G4R4A4_UNORM_PACK16,
+              VK_FORMAT_B4G4R4A4_UNORM_PACK16);
+COMPARE_ENUMS(unsigned int, drv::ImageFormat::R5G6B5_UNORM_PACK16, VK_FORMAT_R5G6B5_UNORM_PACK16);
+COMPARE_ENUMS(unsigned int, drv::ImageFormat::B5G6R5_UNORM_PACK16, VK_FORMAT_B5G6R5_UNORM_PACK16);
+COMPARE_ENUMS(unsigned int, drv::ImageFormat::R5G5B5A1_UNORM_PACK16,
+              VK_FORMAT_R5G5B5A1_UNORM_PACK16);
+COMPARE_ENUMS(unsigned int, drv::ImageFormat::B5G5R5A1_UNORM_PACK16,
+              VK_FORMAT_B5G5R5A1_UNORM_PACK16);
+COMPARE_ENUMS(unsigned int, drv::ImageFormat::A1R5G5B5_UNORM_PACK16,
+              VK_FORMAT_A1R5G5B5_UNORM_PACK16);
+COMPARE_ENUMS(unsigned int, drv::ImageFormat::R8_UNORM, VK_FORMAT_R8_UNORM);
+COMPARE_ENUMS(unsigned int, drv::ImageFormat::R8_SNORM, VK_FORMAT_R8_SNORM);
+COMPARE_ENUMS(unsigned int, drv::ImageFormat::R8_USCALED, VK_FORMAT_R8_USCALED);
+COMPARE_ENUMS(unsigned int, drv::ImageFormat::R8_SSCALED, VK_FORMAT_R8_SSCALED);
+COMPARE_ENUMS(unsigned int, drv::ImageFormat::R8_UINT, VK_FORMAT_R8_UINT);
+COMPARE_ENUMS(unsigned int, drv::ImageFormat::R8_SINT, VK_FORMAT_R8_SINT);
+COMPARE_ENUMS(unsigned int, drv::ImageFormat::R8_SRGB, VK_FORMAT_R8_SRGB);
+COMPARE_ENUMS(unsigned int, drv::ImageFormat::R8G8_UNORM, VK_FORMAT_R8G8_UNORM);
+COMPARE_ENUMS(unsigned int, drv::ImageFormat::R8G8_SNORM, VK_FORMAT_R8G8_SNORM);
+COMPARE_ENUMS(unsigned int, drv::ImageFormat::R8G8_USCALED, VK_FORMAT_R8G8_USCALED);
+COMPARE_ENUMS(unsigned int, drv::ImageFormat::R8G8_SSCALED, VK_FORMAT_R8G8_SSCALED);
+COMPARE_ENUMS(unsigned int, drv::ImageFormat::R8G8_UINT, VK_FORMAT_R8G8_UINT);
+COMPARE_ENUMS(unsigned int, drv::ImageFormat::R8G8_SINT, VK_FORMAT_R8G8_SINT);
+COMPARE_ENUMS(unsigned int, drv::ImageFormat::R8G8_SRGB, VK_FORMAT_R8G8_SRGB);
+COMPARE_ENUMS(unsigned int, drv::ImageFormat::R8G8B8_UNORM, VK_FORMAT_R8G8B8_UNORM);
+COMPARE_ENUMS(unsigned int, drv::ImageFormat::R8G8B8_SNORM, VK_FORMAT_R8G8B8_SNORM);
+COMPARE_ENUMS(unsigned int, drv::ImageFormat::R8G8B8_USCALED, VK_FORMAT_R8G8B8_USCALED);
+COMPARE_ENUMS(unsigned int, drv::ImageFormat::R8G8B8_SSCALED, VK_FORMAT_R8G8B8_SSCALED);
+COMPARE_ENUMS(unsigned int, drv::ImageFormat::R8G8B8_UINT, VK_FORMAT_R8G8B8_UINT);
+COMPARE_ENUMS(unsigned int, drv::ImageFormat::R8G8B8_SINT, VK_FORMAT_R8G8B8_SINT);
+COMPARE_ENUMS(unsigned int, drv::ImageFormat::R8G8B8_SRGB, VK_FORMAT_R8G8B8_SRGB);
+COMPARE_ENUMS(unsigned int, drv::ImageFormat::B8G8R8_UNORM, VK_FORMAT_B8G8R8_UNORM);
+COMPARE_ENUMS(unsigned int, drv::ImageFormat::B8G8R8_SNORM, VK_FORMAT_B8G8R8_SNORM);
+COMPARE_ENUMS(unsigned int, drv::ImageFormat::B8G8R8_USCALED, VK_FORMAT_B8G8R8_USCALED);
+COMPARE_ENUMS(unsigned int, drv::ImageFormat::B8G8R8_SSCALED, VK_FORMAT_B8G8R8_SSCALED);
+COMPARE_ENUMS(unsigned int, drv::ImageFormat::B8G8R8_UINT, VK_FORMAT_B8G8R8_UINT);
+COMPARE_ENUMS(unsigned int, drv::ImageFormat::B8G8R8_SINT, VK_FORMAT_B8G8R8_SINT);
+COMPARE_ENUMS(unsigned int, drv::ImageFormat::B8G8R8_SRGB, VK_FORMAT_B8G8R8_SRGB);
+COMPARE_ENUMS(unsigned int, drv::ImageFormat::R8G8B8A8_UNORM, VK_FORMAT_R8G8B8A8_UNORM);
+COMPARE_ENUMS(unsigned int, drv::ImageFormat::R8G8B8A8_SNORM, VK_FORMAT_R8G8B8A8_SNORM);
+COMPARE_ENUMS(unsigned int, drv::ImageFormat::R8G8B8A8_USCALED, VK_FORMAT_R8G8B8A8_USCALED);
+COMPARE_ENUMS(unsigned int, drv::ImageFormat::R8G8B8A8_SSCALED, VK_FORMAT_R8G8B8A8_SSCALED);
+COMPARE_ENUMS(unsigned int, drv::ImageFormat::R8G8B8A8_UINT, VK_FORMAT_R8G8B8A8_UINT);
+COMPARE_ENUMS(unsigned int, drv::ImageFormat::R8G8B8A8_SINT, VK_FORMAT_R8G8B8A8_SINT);
+COMPARE_ENUMS(unsigned int, drv::ImageFormat::R8G8B8A8_SRGB, VK_FORMAT_R8G8B8A8_SRGB);
+COMPARE_ENUMS(unsigned int, drv::ImageFormat::B8G8R8A8_UNORM, VK_FORMAT_B8G8R8A8_UNORM);
+COMPARE_ENUMS(unsigned int, drv::ImageFormat::B8G8R8A8_SNORM, VK_FORMAT_B8G8R8A8_SNORM);
+COMPARE_ENUMS(unsigned int, drv::ImageFormat::B8G8R8A8_USCALED, VK_FORMAT_B8G8R8A8_USCALED);
+COMPARE_ENUMS(unsigned int, drv::ImageFormat::B8G8R8A8_SSCALED, VK_FORMAT_B8G8R8A8_SSCALED);
+COMPARE_ENUMS(unsigned int, drv::ImageFormat::B8G8R8A8_UINT, VK_FORMAT_B8G8R8A8_UINT);
+COMPARE_ENUMS(unsigned int, drv::ImageFormat::B8G8R8A8_SINT, VK_FORMAT_B8G8R8A8_SINT);
+COMPARE_ENUMS(unsigned int, drv::ImageFormat::B8G8R8A8_SRGB, VK_FORMAT_B8G8R8A8_SRGB);
+COMPARE_ENUMS(unsigned int, drv::ImageFormat::A8B8G8R8_UNORM_PACK32,
+              VK_FORMAT_A8B8G8R8_UNORM_PACK32);
+COMPARE_ENUMS(unsigned int, drv::ImageFormat::A8B8G8R8_SNORM_PACK32,
+              VK_FORMAT_A8B8G8R8_SNORM_PACK32);
+COMPARE_ENUMS(unsigned int, drv::ImageFormat::A8B8G8R8_USCALED_PACK32,
+              VK_FORMAT_A8B8G8R8_USCALED_PACK32);
+COMPARE_ENUMS(unsigned int, drv::ImageFormat::A8B8G8R8_SSCALED_PACK32,
+              VK_FORMAT_A8B8G8R8_SSCALED_PACK32);
+COMPARE_ENUMS(unsigned int, drv::ImageFormat::A8B8G8R8_UINT_PACK32, VK_FORMAT_A8B8G8R8_UINT_PACK32);
+COMPARE_ENUMS(unsigned int, drv::ImageFormat::A8B8G8R8_SINT_PACK32, VK_FORMAT_A8B8G8R8_SINT_PACK32);
+COMPARE_ENUMS(unsigned int, drv::ImageFormat::A8B8G8R8_SRGB_PACK32, VK_FORMAT_A8B8G8R8_SRGB_PACK32);
+COMPARE_ENUMS(unsigned int, drv::ImageFormat::A2R10G10B10_UNORM_PACK32,
+              VK_FORMAT_A2R10G10B10_UNORM_PACK32);
+COMPARE_ENUMS(unsigned int, drv::ImageFormat::A2R10G10B10_SNORM_PACK32,
+              VK_FORMAT_A2R10G10B10_SNORM_PACK32);
+COMPARE_ENUMS(unsigned int, drv::ImageFormat::A2R10G10B10_USCALED_PACK32,
+              VK_FORMAT_A2R10G10B10_USCALED_PACK32);
+COMPARE_ENUMS(unsigned int, drv::ImageFormat::A2R10G10B10_SSCALED_PACK32,
+              VK_FORMAT_A2R10G10B10_SSCALED_PACK32);
+COMPARE_ENUMS(unsigned int, drv::ImageFormat::A2R10G10B10_UINT_PACK32,
+              VK_FORMAT_A2R10G10B10_UINT_PACK32);
+COMPARE_ENUMS(unsigned int, drv::ImageFormat::A2R10G10B10_SINT_PACK32,
+              VK_FORMAT_A2R10G10B10_SINT_PACK32);
+COMPARE_ENUMS(unsigned int, drv::ImageFormat::A2B10G10R10_UNORM_PACK32,
+              VK_FORMAT_A2B10G10R10_UNORM_PACK32);
+COMPARE_ENUMS(unsigned int, drv::ImageFormat::A2B10G10R10_SNORM_PACK32,
+              VK_FORMAT_A2B10G10R10_SNORM_PACK32);
+COMPARE_ENUMS(unsigned int, drv::ImageFormat::A2B10G10R10_USCALED_PACK32,
+              VK_FORMAT_A2B10G10R10_USCALED_PACK32);
+COMPARE_ENUMS(unsigned int, drv::ImageFormat::A2B10G10R10_SSCALED_PACK32,
+              VK_FORMAT_A2B10G10R10_SSCALED_PACK32);
+COMPARE_ENUMS(unsigned int, drv::ImageFormat::A2B10G10R10_UINT_PACK32,
+              VK_FORMAT_A2B10G10R10_UINT_PACK32);
+COMPARE_ENUMS(unsigned int, drv::ImageFormat::A2B10G10R10_SINT_PACK32,
+              VK_FORMAT_A2B10G10R10_SINT_PACK32);
+COMPARE_ENUMS(unsigned int, drv::ImageFormat::R16_UNORM, VK_FORMAT_R16_UNORM);
+COMPARE_ENUMS(unsigned int, drv::ImageFormat::R16_SNORM, VK_FORMAT_R16_SNORM);
+COMPARE_ENUMS(unsigned int, drv::ImageFormat::R16_USCALED, VK_FORMAT_R16_USCALED);
+COMPARE_ENUMS(unsigned int, drv::ImageFormat::R16_SSCALED, VK_FORMAT_R16_SSCALED);
+COMPARE_ENUMS(unsigned int, drv::ImageFormat::R16_UINT, VK_FORMAT_R16_UINT);
+COMPARE_ENUMS(unsigned int, drv::ImageFormat::R16_SINT, VK_FORMAT_R16_SINT);
+COMPARE_ENUMS(unsigned int, drv::ImageFormat::R16_SFLOAT, VK_FORMAT_R16_SFLOAT);
+COMPARE_ENUMS(unsigned int, drv::ImageFormat::R16G16_UNORM, VK_FORMAT_R16G16_UNORM);
+COMPARE_ENUMS(unsigned int, drv::ImageFormat::R16G16_SNORM, VK_FORMAT_R16G16_SNORM);
+COMPARE_ENUMS(unsigned int, drv::ImageFormat::R16G16_USCALED, VK_FORMAT_R16G16_USCALED);
+COMPARE_ENUMS(unsigned int, drv::ImageFormat::R16G16_SSCALED, VK_FORMAT_R16G16_SSCALED);
+COMPARE_ENUMS(unsigned int, drv::ImageFormat::R16G16_UINT, VK_FORMAT_R16G16_UINT);
+COMPARE_ENUMS(unsigned int, drv::ImageFormat::R16G16_SINT, VK_FORMAT_R16G16_SINT);
+COMPARE_ENUMS(unsigned int, drv::ImageFormat::R16G16_SFLOAT, VK_FORMAT_R16G16_SFLOAT);
+COMPARE_ENUMS(unsigned int, drv::ImageFormat::R16G16B16_UNORM, VK_FORMAT_R16G16B16_UNORM);
+COMPARE_ENUMS(unsigned int, drv::ImageFormat::R16G16B16_SNORM, VK_FORMAT_R16G16B16_SNORM);
+COMPARE_ENUMS(unsigned int, drv::ImageFormat::R16G16B16_USCALED, VK_FORMAT_R16G16B16_USCALED);
+COMPARE_ENUMS(unsigned int, drv::ImageFormat::R16G16B16_SSCALED, VK_FORMAT_R16G16B16_SSCALED);
+COMPARE_ENUMS(unsigned int, drv::ImageFormat::R16G16B16_UINT, VK_FORMAT_R16G16B16_UINT);
+COMPARE_ENUMS(unsigned int, drv::ImageFormat::R16G16B16_SINT, VK_FORMAT_R16G16B16_SINT);
+COMPARE_ENUMS(unsigned int, drv::ImageFormat::R16G16B16_SFLOAT, VK_FORMAT_R16G16B16_SFLOAT);
+COMPARE_ENUMS(unsigned int, drv::ImageFormat::R16G16B16A16_UNORM, VK_FORMAT_R16G16B16A16_UNORM);
+COMPARE_ENUMS(unsigned int, drv::ImageFormat::R16G16B16A16_SNORM, VK_FORMAT_R16G16B16A16_SNORM);
+COMPARE_ENUMS(unsigned int, drv::ImageFormat::R16G16B16A16_USCALED, VK_FORMAT_R16G16B16A16_USCALED);
+COMPARE_ENUMS(unsigned int, drv::ImageFormat::R16G16B16A16_SSCALED, VK_FORMAT_R16G16B16A16_SSCALED);
+COMPARE_ENUMS(unsigned int, drv::ImageFormat::R16G16B16A16_UINT, VK_FORMAT_R16G16B16A16_UINT);
+COMPARE_ENUMS(unsigned int, drv::ImageFormat::R16G16B16A16_SINT, VK_FORMAT_R16G16B16A16_SINT);
+COMPARE_ENUMS(unsigned int, drv::ImageFormat::R16G16B16A16_SFLOAT, VK_FORMAT_R16G16B16A16_SFLOAT);
+COMPARE_ENUMS(unsigned int, drv::ImageFormat::R32_UINT, VK_FORMAT_R32_UINT);
+COMPARE_ENUMS(unsigned int, drv::ImageFormat::R32_SINT, VK_FORMAT_R32_SINT);
+COMPARE_ENUMS(unsigned int, drv::ImageFormat::R32_SFLOAT, VK_FORMAT_R32_SFLOAT);
+COMPARE_ENUMS(unsigned int, drv::ImageFormat::R32G32_UINT, VK_FORMAT_R32G32_UINT);
+COMPARE_ENUMS(unsigned int, drv::ImageFormat::R32G32_SINT, VK_FORMAT_R32G32_SINT);
+COMPARE_ENUMS(unsigned int, drv::ImageFormat::R32G32_SFLOAT, VK_FORMAT_R32G32_SFLOAT);
+COMPARE_ENUMS(unsigned int, drv::ImageFormat::R32G32B32_UINT, VK_FORMAT_R32G32B32_UINT);
+COMPARE_ENUMS(unsigned int, drv::ImageFormat::R32G32B32_SINT, VK_FORMAT_R32G32B32_SINT);
+COMPARE_ENUMS(unsigned int, drv::ImageFormat::R32G32B32_SFLOAT, VK_FORMAT_R32G32B32_SFLOAT);
+COMPARE_ENUMS(unsigned int, drv::ImageFormat::R32G32B32A32_UINT, VK_FORMAT_R32G32B32A32_UINT);
+COMPARE_ENUMS(unsigned int, drv::ImageFormat::R32G32B32A32_SINT, VK_FORMAT_R32G32B32A32_SINT);
+COMPARE_ENUMS(unsigned int, drv::ImageFormat::R32G32B32A32_SFLOAT, VK_FORMAT_R32G32B32A32_SFLOAT);
+COMPARE_ENUMS(unsigned int, drv::ImageFormat::R64_UINT, VK_FORMAT_R64_UINT);
+COMPARE_ENUMS(unsigned int, drv::ImageFormat::R64_SINT, VK_FORMAT_R64_SINT);
+COMPARE_ENUMS(unsigned int, drv::ImageFormat::R64_SFLOAT, VK_FORMAT_R64_SFLOAT);
+COMPARE_ENUMS(unsigned int, drv::ImageFormat::R64G64_UINT, VK_FORMAT_R64G64_UINT);
+COMPARE_ENUMS(unsigned int, drv::ImageFormat::R64G64_SINT, VK_FORMAT_R64G64_SINT);
+COMPARE_ENUMS(unsigned int, drv::ImageFormat::R64G64_SFLOAT, VK_FORMAT_R64G64_SFLOAT);
+COMPARE_ENUMS(unsigned int, drv::ImageFormat::R64G64B64_UINT, VK_FORMAT_R64G64B64_UINT);
+COMPARE_ENUMS(unsigned int, drv::ImageFormat::R64G64B64_SINT, VK_FORMAT_R64G64B64_SINT);
+COMPARE_ENUMS(unsigned int, drv::ImageFormat::R64G64B64_SFLOAT, VK_FORMAT_R64G64B64_SFLOAT);
+COMPARE_ENUMS(unsigned int, drv::ImageFormat::R64G64B64A64_UINT, VK_FORMAT_R64G64B64A64_UINT);
+COMPARE_ENUMS(unsigned int, drv::ImageFormat::R64G64B64A64_SINT, VK_FORMAT_R64G64B64A64_SINT);
+COMPARE_ENUMS(unsigned int, drv::ImageFormat::R64G64B64A64_SFLOAT, VK_FORMAT_R64G64B64A64_SFLOAT);
+COMPARE_ENUMS(unsigned int, drv::ImageFormat::B10G11R11_UFLOAT_PACK32,
+              VK_FORMAT_B10G11R11_UFLOAT_PACK32);
+COMPARE_ENUMS(unsigned int, drv::ImageFormat::E5B9G9R9_UFLOAT_PACK32,
+              VK_FORMAT_E5B9G9R9_UFLOAT_PACK32);
+COMPARE_ENUMS(unsigned int, drv::ImageFormat::D16_UNORM, VK_FORMAT_D16_UNORM);
+COMPARE_ENUMS(unsigned int, drv::ImageFormat::X8_D24_UNORM_PACK32, VK_FORMAT_X8_D24_UNORM_PACK32);
+COMPARE_ENUMS(unsigned int, drv::ImageFormat::D32_SFLOAT, VK_FORMAT_D32_SFLOAT);
+COMPARE_ENUMS(unsigned int, drv::ImageFormat::S8_UINT, VK_FORMAT_S8_UINT);
+COMPARE_ENUMS(unsigned int, drv::ImageFormat::D16_UNORM_S8_UINT, VK_FORMAT_D16_UNORM_S8_UINT);
+COMPARE_ENUMS(unsigned int, drv::ImageFormat::D24_UNORM_S8_UINT, VK_FORMAT_D24_UNORM_S8_UINT);
+COMPARE_ENUMS(unsigned int, drv::ImageFormat::D32_SFLOAT_S8_UINT, VK_FORMAT_D32_SFLOAT_S8_UINT);
+COMPARE_ENUMS(unsigned int, drv::ImageFormat::BC1_RGB_UNORM_BLOCK, VK_FORMAT_BC1_RGB_UNORM_BLOCK);
+COMPARE_ENUMS(unsigned int, drv::ImageFormat::BC1_RGB_SRGB_BLOCK, VK_FORMAT_BC1_RGB_SRGB_BLOCK);
+COMPARE_ENUMS(unsigned int, drv::ImageFormat::BC1_RGBA_UNORM_BLOCK, VK_FORMAT_BC1_RGBA_UNORM_BLOCK);
+COMPARE_ENUMS(unsigned int, drv::ImageFormat::BC1_RGBA_SRGB_BLOCK, VK_FORMAT_BC1_RGBA_SRGB_BLOCK);
+COMPARE_ENUMS(unsigned int, drv::ImageFormat::BC2_UNORM_BLOCK, VK_FORMAT_BC2_UNORM_BLOCK);
+COMPARE_ENUMS(unsigned int, drv::ImageFormat::BC2_SRGB_BLOCK, VK_FORMAT_BC2_SRGB_BLOCK);
+COMPARE_ENUMS(unsigned int, drv::ImageFormat::BC3_UNORM_BLOCK, VK_FORMAT_BC3_UNORM_BLOCK);
+COMPARE_ENUMS(unsigned int, drv::ImageFormat::BC3_SRGB_BLOCK, VK_FORMAT_BC3_SRGB_BLOCK);
+COMPARE_ENUMS(unsigned int, drv::ImageFormat::BC4_UNORM_BLOCK, VK_FORMAT_BC4_UNORM_BLOCK);
+COMPARE_ENUMS(unsigned int, drv::ImageFormat::BC4_SNORM_BLOCK, VK_FORMAT_BC4_SNORM_BLOCK);
+COMPARE_ENUMS(unsigned int, drv::ImageFormat::BC5_UNORM_BLOCK, VK_FORMAT_BC5_UNORM_BLOCK);
+COMPARE_ENUMS(unsigned int, drv::ImageFormat::BC5_SNORM_BLOCK, VK_FORMAT_BC5_SNORM_BLOCK);
+COMPARE_ENUMS(unsigned int, drv::ImageFormat::BC6H_UFLOAT_BLOCK, VK_FORMAT_BC6H_UFLOAT_BLOCK);
+COMPARE_ENUMS(unsigned int, drv::ImageFormat::BC6H_SFLOAT_BLOCK, VK_FORMAT_BC6H_SFLOAT_BLOCK);
+COMPARE_ENUMS(unsigned int, drv::ImageFormat::BC7_UNORM_BLOCK, VK_FORMAT_BC7_UNORM_BLOCK);
+COMPARE_ENUMS(unsigned int, drv::ImageFormat::BC7_SRGB_BLOCK, VK_FORMAT_BC7_SRGB_BLOCK);
+COMPARE_ENUMS(unsigned int, drv::ImageFormat::ETC2_R8G8B8_UNORM_BLOCK,
+              VK_FORMAT_ETC2_R8G8B8_UNORM_BLOCK);
+COMPARE_ENUMS(unsigned int, drv::ImageFormat::ETC2_R8G8B8_SRGB_BLOCK,
+              VK_FORMAT_ETC2_R8G8B8_SRGB_BLOCK);
+COMPARE_ENUMS(unsigned int, drv::ImageFormat::ETC2_R8G8B8A1_UNORM_BLOCK,
+              VK_FORMAT_ETC2_R8G8B8A1_UNORM_BLOCK);
+COMPARE_ENUMS(unsigned int, drv::ImageFormat::ETC2_R8G8B8A1_SRGB_BLOCK,
+              VK_FORMAT_ETC2_R8G8B8A1_SRGB_BLOCK);
+COMPARE_ENUMS(unsigned int, drv::ImageFormat::ETC2_R8G8B8A8_UNORM_BLOCK,
+              VK_FORMAT_ETC2_R8G8B8A8_UNORM_BLOCK);
+COMPARE_ENUMS(unsigned int, drv::ImageFormat::ETC2_R8G8B8A8_SRGB_BLOCK,
+              VK_FORMAT_ETC2_R8G8B8A8_SRGB_BLOCK);
+COMPARE_ENUMS(unsigned int, drv::ImageFormat::EAC_R11_UNORM_BLOCK, VK_FORMAT_EAC_R11_UNORM_BLOCK);
+COMPARE_ENUMS(unsigned int, drv::ImageFormat::EAC_R11_SNORM_BLOCK, VK_FORMAT_EAC_R11_SNORM_BLOCK);
+COMPARE_ENUMS(unsigned int, drv::ImageFormat::EAC_R11G11_UNORM_BLOCK,
+              VK_FORMAT_EAC_R11G11_UNORM_BLOCK);
+COMPARE_ENUMS(unsigned int, drv::ImageFormat::EAC_R11G11_SNORM_BLOCK,
+              VK_FORMAT_EAC_R11G11_SNORM_BLOCK);
+COMPARE_ENUMS(unsigned int, drv::ImageFormat::ASTC_4x4_UNORM_BLOCK, VK_FORMAT_ASTC_4x4_UNORM_BLOCK);
+COMPARE_ENUMS(unsigned int, drv::ImageFormat::ASTC_4x4_SRGB_BLOCK, VK_FORMAT_ASTC_4x4_SRGB_BLOCK);
+COMPARE_ENUMS(unsigned int, drv::ImageFormat::ASTC_5x4_UNORM_BLOCK, VK_FORMAT_ASTC_5x4_UNORM_BLOCK);
+COMPARE_ENUMS(unsigned int, drv::ImageFormat::ASTC_5x4_SRGB_BLOCK, VK_FORMAT_ASTC_5x4_SRGB_BLOCK);
+COMPARE_ENUMS(unsigned int, drv::ImageFormat::ASTC_5x5_UNORM_BLOCK, VK_FORMAT_ASTC_5x5_UNORM_BLOCK);
+COMPARE_ENUMS(unsigned int, drv::ImageFormat::ASTC_5x5_SRGB_BLOCK, VK_FORMAT_ASTC_5x5_SRGB_BLOCK);
+COMPARE_ENUMS(unsigned int, drv::ImageFormat::ASTC_6x5_UNORM_BLOCK, VK_FORMAT_ASTC_6x5_UNORM_BLOCK);
+COMPARE_ENUMS(unsigned int, drv::ImageFormat::ASTC_6x5_SRGB_BLOCK, VK_FORMAT_ASTC_6x5_SRGB_BLOCK);
+COMPARE_ENUMS(unsigned int, drv::ImageFormat::ASTC_6x6_UNORM_BLOCK, VK_FORMAT_ASTC_6x6_UNORM_BLOCK);
+COMPARE_ENUMS(unsigned int, drv::ImageFormat::ASTC_6x6_SRGB_BLOCK, VK_FORMAT_ASTC_6x6_SRGB_BLOCK);
+COMPARE_ENUMS(unsigned int, drv::ImageFormat::ASTC_8x5_UNORM_BLOCK, VK_FORMAT_ASTC_8x5_UNORM_BLOCK);
+COMPARE_ENUMS(unsigned int, drv::ImageFormat::ASTC_8x5_SRGB_BLOCK, VK_FORMAT_ASTC_8x5_SRGB_BLOCK);
+COMPARE_ENUMS(unsigned int, drv::ImageFormat::ASTC_8x6_UNORM_BLOCK, VK_FORMAT_ASTC_8x6_UNORM_BLOCK);
+COMPARE_ENUMS(unsigned int, drv::ImageFormat::ASTC_8x6_SRGB_BLOCK, VK_FORMAT_ASTC_8x6_SRGB_BLOCK);
+COMPARE_ENUMS(unsigned int, drv::ImageFormat::ASTC_8x8_UNORM_BLOCK, VK_FORMAT_ASTC_8x8_UNORM_BLOCK);
+COMPARE_ENUMS(unsigned int, drv::ImageFormat::ASTC_8x8_SRGB_BLOCK, VK_FORMAT_ASTC_8x8_SRGB_BLOCK);
+COMPARE_ENUMS(unsigned int, drv::ImageFormat::ASTC_10x5_UNORM_BLOCK,
+              VK_FORMAT_ASTC_10x5_UNORM_BLOCK);
+COMPARE_ENUMS(unsigned int, drv::ImageFormat::ASTC_10x5_SRGB_BLOCK, VK_FORMAT_ASTC_10x5_SRGB_BLOCK);
+COMPARE_ENUMS(unsigned int, drv::ImageFormat::ASTC_10x6_UNORM_BLOCK,
+              VK_FORMAT_ASTC_10x6_UNORM_BLOCK);
+COMPARE_ENUMS(unsigned int, drv::ImageFormat::ASTC_10x6_SRGB_BLOCK, VK_FORMAT_ASTC_10x6_SRGB_BLOCK);
+COMPARE_ENUMS(unsigned int, drv::ImageFormat::ASTC_10x8_UNORM_BLOCK,
+              VK_FORMAT_ASTC_10x8_UNORM_BLOCK);
+COMPARE_ENUMS(unsigned int, drv::ImageFormat::ASTC_10x8_SRGB_BLOCK, VK_FORMAT_ASTC_10x8_SRGB_BLOCK);
+COMPARE_ENUMS(unsigned int, drv::ImageFormat::ASTC_10x10_UNORM_BLOCK,
+              VK_FORMAT_ASTC_10x10_UNORM_BLOCK);
+COMPARE_ENUMS(unsigned int, drv::ImageFormat::ASTC_10x10_SRGB_BLOCK,
+              VK_FORMAT_ASTC_10x10_SRGB_BLOCK);
+COMPARE_ENUMS(unsigned int, drv::ImageFormat::ASTC_12x10_UNORM_BLOCK,
+              VK_FORMAT_ASTC_12x10_UNORM_BLOCK);
+COMPARE_ENUMS(unsigned int, drv::ImageFormat::ASTC_12x10_SRGB_BLOCK,
+              VK_FORMAT_ASTC_12x10_SRGB_BLOCK);
+COMPARE_ENUMS(unsigned int, drv::ImageFormat::ASTC_12x12_UNORM_BLOCK,
+              VK_FORMAT_ASTC_12x12_UNORM_BLOCK);
+COMPARE_ENUMS(unsigned int, drv::ImageFormat::ASTC_12x12_SRGB_BLOCK,
+              VK_FORMAT_ASTC_12x12_SRGB_BLOCK);
+
+COMPARE_ENUMS(unsigned int, drv::MemoryBarrier::AccessFlagBits::INDIRECT_COMMAND_READ_BIT,
+              VK_ACCESS_INDIRECT_COMMAND_READ_BIT);
+COMPARE_ENUMS(unsigned int, drv::MemoryBarrier::AccessFlagBits::INDEX_READ_BIT,
+              VK_ACCESS_INDEX_READ_BIT);
+COMPARE_ENUMS(unsigned int, drv::MemoryBarrier::AccessFlagBits::VERTEX_ATTRIBUTE_READ_BIT,
+              VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT);
+COMPARE_ENUMS(unsigned int, drv::MemoryBarrier::AccessFlagBits::UNIFORM_READ_BIT,
+              VK_ACCESS_UNIFORM_READ_BIT);
+COMPARE_ENUMS(unsigned int, drv::MemoryBarrier::AccessFlagBits::INPUT_ATTACHMENT_READ_BIT,
+              VK_ACCESS_INPUT_ATTACHMENT_READ_BIT);
+COMPARE_ENUMS(unsigned int, drv::MemoryBarrier::AccessFlagBits::SHADER_READ_BIT,
+              VK_ACCESS_SHADER_READ_BIT);
+COMPARE_ENUMS(unsigned int, drv::MemoryBarrier::AccessFlagBits::SHADER_WRITE_BIT,
+              VK_ACCESS_SHADER_WRITE_BIT);
+COMPARE_ENUMS(unsigned int, drv::MemoryBarrier::AccessFlagBits::COLOR_ATTACHMENT_READ_BIT,
+              VK_ACCESS_COLOR_ATTACHMENT_READ_BIT);
+COMPARE_ENUMS(unsigned int, drv::MemoryBarrier::AccessFlagBits::COLOR_ATTACHMENT_WRITE_BIT,
+              VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT);
+COMPARE_ENUMS(unsigned int, drv::MemoryBarrier::AccessFlagBits::DEPTH_STENCIL_ATTACHMENT_READ_BIT,
+              VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT);
+COMPARE_ENUMS(unsigned int, drv::MemoryBarrier::AccessFlagBits::DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
+              VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT);
+COMPARE_ENUMS(unsigned int, drv::MemoryBarrier::AccessFlagBits::TRANSFER_READ_BIT,
+              VK_ACCESS_TRANSFER_READ_BIT);
+COMPARE_ENUMS(unsigned int, drv::MemoryBarrier::AccessFlagBits::TRANSFER_WRITE_BIT,
+              VK_ACCESS_TRANSFER_WRITE_BIT);
+COMPARE_ENUMS(unsigned int, drv::MemoryBarrier::AccessFlagBits::HOST_READ_BIT,
+              VK_ACCESS_HOST_READ_BIT);
+COMPARE_ENUMS(unsigned int, drv::MemoryBarrier::AccessFlagBits::HOST_WRITE_BIT,
+              VK_ACCESS_HOST_WRITE_BIT);
+COMPARE_ENUMS(unsigned int, drv::MemoryBarrier::AccessFlagBits::MEMORY_READ_BIT,
+              VK_ACCESS_MEMORY_READ_BIT);
+COMPARE_ENUMS(unsigned int, drv::MemoryBarrier::AccessFlagBits::MEMORY_WRITE_BIT,
+              VK_ACCESS_MEMORY_WRITE_BIT);
+
+COMPARE_ENUMS(unsigned int, drv::ImageMemoryBarrier::ImageLayout::UNDEFINED,
+              VK_IMAGE_LAYOUT_UNDEFINED);
+COMPARE_ENUMS(unsigned int, drv::ImageMemoryBarrier::ImageLayout::GENERAL, VK_IMAGE_LAYOUT_GENERAL);
+COMPARE_ENUMS(unsigned int, drv::ImageMemoryBarrier::ImageLayout::COLOR_ATTACHMENT_OPTIMAL,
+              VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+COMPARE_ENUMS(unsigned int, drv::ImageMemoryBarrier::ImageLayout::DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+              VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
+COMPARE_ENUMS(unsigned int, drv::ImageMemoryBarrier::ImageLayout::DEPTH_STENCIL_READ_ONLY_OPTIMAL,
+              VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL);
+COMPARE_ENUMS(unsigned int, drv::ImageMemoryBarrier::ImageLayout::SHADER_READ_ONLY_OPTIMAL,
+              VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+COMPARE_ENUMS(unsigned int, drv::ImageMemoryBarrier::ImageLayout::TRANSFER_SRC_OPTIMAL,
+              VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
+COMPARE_ENUMS(unsigned int, drv::ImageMemoryBarrier::ImageLayout::TRANSFER_DST_OPTIMAL,
+              VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+COMPARE_ENUMS(unsigned int, drv::ImageMemoryBarrier::ImageLayout::PREINITIALIZED,
+              VK_IMAGE_LAYOUT_PREINITIALIZED);
+
+COMPARE_ENUMS(unsigned int, drv::ImageMemoryBarrier::SubresourceRange::AspectFlagBits::COLOR_BIT,
+              VK_IMAGE_ASPECT_COLOR_BIT);
+COMPARE_ENUMS(unsigned int, drv::ImageMemoryBarrier::SubresourceRange::AspectFlagBits::DEPTH_BIT,
+              VK_IMAGE_ASPECT_DEPTH_BIT);
+COMPARE_ENUMS(unsigned int, drv::ImageMemoryBarrier::SubresourceRange::AspectFlagBits::STENCIL_BIT,
+              VK_IMAGE_ASPECT_STENCIL_BIT);
+COMPARE_ENUMS(unsigned int, drv::ImageMemoryBarrier::SubresourceRange::AspectFlagBits::METADATA_BIT,
+              VK_IMAGE_ASPECT_METADATA_BIT);

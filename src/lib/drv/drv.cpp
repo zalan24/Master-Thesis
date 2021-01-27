@@ -299,6 +299,17 @@ bool drv::cmd_set_event(CommandBufferPtr commandBuffer, EventPtr event,
     return current_driver_interface->cmd_set_event(commandBuffer, event, sourceStage);
 }
 
+bool drv::cmd_wait_events(CommandBufferPtr commandBuffer, uint32_t eventCount,
+                          const EventPtr* events, PipelineStages sourceStage,
+                          PipelineStages dstStage, uint32_t memoryBarrierCount,
+                          const MemoryBarrier* memoryBarriers, uint32_t bufferBarrierCount,
+                          const BufferMemoryBarrier* bufferBarriers, uint32_t imageBarrierCount,
+                          const ImageMemoryBarrier* imageBarriers) {
+    return current_driver_interface->cmd_wait_events(
+      commandBuffer, eventCount, events, sourceStage, dstStage, memoryBarrierCount, memoryBarriers,
+      bufferBarrierCount, bufferBarriers, imageBarrierCount, imageBarriers);
+}
+
 // drv::ShaderModulePtr drv::create_shader_module(LogicalDevicePtr device, ShaderCreateInfoPtr info) {
 //     return current_driver_interface->create_shader_module(device, info);
 // }

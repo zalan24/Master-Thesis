@@ -15,9 +15,9 @@ using QueuePtr = Ptr;
 using CommandPoolPtr = Ptr;
 using CommandBufferPtr = Ptr;
 using BufferPtr = Ptr;
+using ImagePtr = Ptr;
 using SemaphorePtr = Ptr;
 using FencePtr = Ptr;
-using BufferPtr = Ptr;
 using DeviceMemoryPtr = Ptr;
 using DeviceSize = unsigned long long;
 using DeviceMemoryTypeId = uint32_t;
@@ -738,6 +738,174 @@ enum class PresentReselt
     RECREATE_REQUIRED,
     RECREATE_ADVISED,
     SUCCESS
+};
+
+struct MemoryBarrier
+{
+    using AccessFlagBitType = uint32_t;
+    enum AccessFlagBits : AccessFlagBitType
+    {
+        INDIRECT_COMMAND_READ_BIT = 0x00000001,
+        INDEX_READ_BIT = 0x00000002,
+        VERTEX_ATTRIBUTE_READ_BIT = 0x00000004,
+        UNIFORM_READ_BIT = 0x00000008,
+        INPUT_ATTACHMENT_READ_BIT = 0x00000010,
+        SHADER_READ_BIT = 0x00000020,
+        SHADER_WRITE_BIT = 0x00000040,
+        COLOR_ATTACHMENT_READ_BIT = 0x00000080,
+        COLOR_ATTACHMENT_WRITE_BIT = 0x00000100,
+        DEPTH_STENCIL_ATTACHMENT_READ_BIT = 0x00000200,
+        DEPTH_STENCIL_ATTACHMENT_WRITE_BIT = 0x00000400,
+        TRANSFER_READ_BIT = 0x00000800,
+        TRANSFER_WRITE_BIT = 0x00001000,
+        HOST_READ_BIT = 0x00002000,
+        HOST_WRITE_BIT = 0x00004000,
+        MEMORY_READ_BIT = 0x00008000,
+        MEMORY_WRITE_BIT = 0x00010000,
+        // // Provided by VK_EXT_transform_feedback
+        // TRANSFORM_FEEDBACK_WRITE_BIT_EXT = 0x02000000,
+        // // Provided by VK_EXT_transform_feedback
+        // TRANSFORM_FEEDBACK_COUNTER_READ_BIT_EXT = 0x04000000,
+        // // Provided by VK_EXT_transform_feedback
+        // TRANSFORM_FEEDBACK_COUNTER_WRITE_BIT_EXT = 0x08000000,
+        // // Provided by VK_EXT_conditional_rendering
+        // CONDITIONAL_RENDERING_READ_BIT_EXT = 0x00100000,
+        // // Provided by VK_EXT_blend_operation_advanced
+        // COLOR_ATTACHMENT_READ_NONCOHERENT_BIT_EXT = 0x00080000,
+        // // Provided by VK_KHR_acceleration_structure
+        // ACCELERATION_STRUCTURE_READ_BIT_KHR = 0x00200000,
+        // // Provided by VK_KHR_acceleration_structure
+        // ACCELERATION_STRUCTURE_WRITE_BIT_KHR = 0x00400000,
+        // // Provided by VK_NV_shading_rate_image
+        // SHADING_RATE_IMAGE_READ_BIT_NV = 0x00800000,
+        // // Provided by VK_EXT_fragment_density_map
+        // FRAGMENT_DENSITY_MAP_READ_BIT_EXT = 0x01000000,
+        // // Provided by VK_NV_device_generated_commands
+        // COMMAND_PREPROCESS_READ_BIT_NV = 0x00020000,
+        // // Provided by VK_NV_device_generated_commands
+        // COMMAND_PREPROCESS_WRITE_BIT_NV = 0x00040000,
+        // // Provided by VK_NV_ray_tracing
+        // ACCELERATION_STRUCTURE_READ_BIT_NV = ACCELERATION_STRUCTURE_READ_BIT_KHR,
+        // // Provided by VK_NV_ray_tracing
+        // ACCELERATION_STRUCTURE_WRITE_BIT_NV = ACCELERATION_STRUCTURE_WRITE_BIT_KHR,
+        // // Provided by VK_KHR_fragment_shading_rate
+        // FRAGMENT_SHADING_RATE_ATTACHMENT_READ_BIT_KHR = SHADING_RATE_IMAGE_READ_BIT_NV,
+    };
+    AccessFlagBitType sourceAccessFlags;
+    AccessFlagBitType dstAccessFlags;
+};
+
+struct BufferMemoryBarrier
+{
+    MemoryBarrier::AccessFlagBitType sourceAccessFlags;
+    MemoryBarrier::AccessFlagBitType dstAccessFlags;
+
+    // ownership transfer
+    drv::QueueFamilyPtr srcFamily;
+    drv::QueueFamilyPtr dstFamily;
+
+    drv::BufferPtr buffer;
+    DeviceSize offset;
+    DeviceSize size;
+};
+
+struct ImageMemoryBarrier
+{
+    struct SubresourceRange
+    {
+        using ImageAspectBitType = uint32_t;
+        enum AspectFlagBits : ImageAspectBitType
+        {
+            COLOR_BIT = 0x00000001,
+            DEPTH_BIT = 0x00000002,
+            STENCIL_BIT = 0x00000004,
+            METADATA_BIT = 0x00000008,
+            // Provided by VK_VERSION_1_1
+            // PLANE_0_BIT = 0x00000010,
+            // // Provided by VK_VERSION_1_1
+            // PLANE_1_BIT = 0x00000020,
+            // // Provided by VK_VERSION_1_1
+            // PLANE_2_BIT = 0x00000040,
+            // // Provided by VK_EXT_image_drm_format_modifier
+            // MEMORY_PLANE_0_BIT_EXT = 0x00000080,
+            // // Provided by VK_EXT_image_drm_format_modifier
+            // MEMORY_PLANE_1_BIT_EXT = 0x00000100,
+            // // Provided by VK_EXT_image_drm_format_modifier
+            // MEMORY_PLANE_2_BIT_EXT = 0x00000200,
+            // // Provided by VK_EXT_image_drm_format_modifier
+            // MEMORY_PLANE_3_BIT_EXT = 0x00000400,
+            // // Provided by VK_KHR_sampler_ycbcr_conversion
+            // PLANE_0_BIT_KHR = PLANE_0_BIT,
+            // // Provided by VK_KHR_sampler_ycbcr_conversion
+            // PLANE_1_BIT_KHR = PLANE_1_BIT,
+            // // Provided by VK_KHR_sampler_ycbcr_conversion
+            // PLANE_2_BIT_KHR = PLANE_2_BIT,
+        };
+        ImageAspectBitType aspectMask;
+        uint32_t baseMipLevel;
+        uint32_t levelCount;
+        uint32_t baseArrayLayer;
+        uint32_t layerCount;
+    };
+    enum ImageLayout
+    {
+        UNDEFINED = 0,
+        GENERAL = 1,
+        COLOR_ATTACHMENT_OPTIMAL = 2,
+        DEPTH_STENCIL_ATTACHMENT_OPTIMAL = 3,
+        DEPTH_STENCIL_READ_ONLY_OPTIMAL = 4,
+        SHADER_READ_ONLY_OPTIMAL = 5,
+        TRANSFER_SRC_OPTIMAL = 6,
+        TRANSFER_DST_OPTIMAL = 7,
+        PREINITIALIZED = 8,
+        // Provided by VK_VERSION_1_1
+        // DEPTH_READ_ONLY_STENCIL_ATTACHMENT_OPTIMAL = 1000117000,
+        // // Provided by VK_VERSION_1_1
+        // DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL = 1000117001,
+        // // Provided by VK_VERSION_1_2
+        // DEPTH_ATTACHMENT_OPTIMAL = 1000241000,
+        // // Provided by VK_VERSION_1_2
+        // DEPTH_READ_ONLY_OPTIMAL = 1000241001,
+        // // Provided by VK_VERSION_1_2
+        // STENCIL_ATTACHMENT_OPTIMAL = 1000241002,
+        // // Provided by VK_VERSION_1_2
+        // STENCIL_READ_ONLY_OPTIMAL = 1000241003,
+        // // Provided by VK_KHR_swapchain
+        // PRESENT_SRC_KHR = 1000001002,
+        // // Provided by VK_KHR_shared_presentable_image
+        // SHARED_PRESENT_KHR = 1000111000,
+        // // Provided by VK_NV_shading_rate_image
+        // SHADING_RATE_OPTIMAL_NV = 1000164003,
+        // // Provided by VK_EXT_fragment_density_map
+        // FRAGMENT_DENSITY_MAP_OPTIMAL_EXT = 1000218000,
+        // // Provided by VK_KHR_maintenance2
+        // DEPTH_READ_ONLY_STENCIL_ATTACHMENT_OPTIMAL_KHR = DEPTH_READ_ONLY_STENCIL_ATTACHMENT_OPTIMAL,
+        // // Provided by VK_KHR_maintenance2
+        // DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL_KHR = DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL,
+        // // Provided by VK_KHR_fragment_shading_rate
+        // FRAGMENT_SHADING_RATE_ATTACHMENT_OPTIMAL_KHR = SHADING_RATE_OPTIMAL_NV,
+        // // Provided by VK_KHR_separate_depth_stencil_layouts
+        // DEPTH_ATTACHMENT_OPTIMAL_KHR = DEPTH_ATTACHMENT_OPTIMAL,
+        // // Provided by VK_KHR_separate_depth_stencil_layouts
+        // DEPTH_READ_ONLY_OPTIMAL_KHR = DEPTH_READ_ONLY_OPTIMAL,
+        // // Provided by VK_KHR_separate_depth_stencil_layouts
+        // STENCIL_ATTACHMENT_OPTIMAL_KHR = STENCIL_ATTACHMENT_OPTIMAL,
+        // // Provided by VK_KHR_separate_depth_stencil_layouts
+        // STENCIL_READ_ONLY_OPTIMAL_KHR = STENCIL_READ_ONLY_OPTIMAL,
+    };
+
+    MemoryBarrier::AccessFlagBitType sourceAccessFlags;
+    MemoryBarrier::AccessFlagBitType dstAccessFlags;
+
+    ImageLayout oldLayout;
+    ImageLayout newLayout;
+
+    // ownership transfer
+    drv::QueueFamilyPtr srcFamily;
+    drv::QueueFamilyPtr dstFamily;
+
+    drv::ImagePtr image;
+    SubresourceRange subresourceRange;
 };
 
 };  // namespace drv

@@ -32,6 +32,13 @@ Get a triangle on screen:
             ☐ Upon submission, give the pending buffer back to the circulator
             ☐ Dtor/close asserts/waits if there are some pending queues (that might be a problem when in a catch block...)
         ✔ Have a CommandBuffer circulator for each queue family @done (1/22/2021, 9:26:05 PM)
+    ☐ Execution queue
+        ☐ Create a struct which can store: (in union?)
+            ☐ CommandBuffer handle
+            ☐ std::function
+            ☐ messages?
+        ☐ Create a concurrent dequeue for this struct between recording and execution
+        ☐ Execution is reading this pipe for instructions
     ☐ Create a frame memory allocator
         ☐ It needs to support allocation on recording thread and release in the execution thread (multiple frame memory objects?)
         ☐ Use a pool of frame mems? acquire in simulation thread, release in execution thread

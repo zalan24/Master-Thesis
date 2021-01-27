@@ -24,6 +24,7 @@
 #include <drvwindow.h>
 
 #include "drvvulkan.h"
+#include "vulkan_conversions.h"
 #include "vulkan_instance.h"
 #include "vulkan_swapchain_surface.h"
 
@@ -271,7 +272,7 @@ bool DrvVulkan::can_present(drv::PhysicalDevicePtr physicalDevice, IWindow* wind
                             drv::QueueFamilyPtr family) {
     VkBool32 presentSupport = false;
     VkSurfaceKHR surface = static_cast<VulkanWindow*>(window)->getSurface();
-    unsigned int i = static_cast<unsigned int>(reinterpret_cast<long>(family)) - 1;
+    unsigned int i = convertFamily(family);
     vkGetPhysicalDeviceSurfaceSupportKHR(reinterpret_cast<VkPhysicalDevice>(physicalDevice), i,
                                          surface, &presentSupport);
     if (presentSupport == VK_FALSE)
