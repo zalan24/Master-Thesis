@@ -17,6 +17,8 @@
 // #include <resourcemanager.h>
 #include <serializable.h>
 
+class ExecutionQueue;
+
 class Engine
 {
  public:
@@ -26,6 +28,9 @@ class Engine
     {
         int screenWidth;
         int screenHeight;
+        int maxFramesInExecutionQueue;
+        // TODO wait on this
+        int maxFramesOnGPU;
         std::string title;
         std::string driver;
         void gatherEntries(std::vector<ISerializable::Entry>& entries) const override;
@@ -95,12 +100,13 @@ class Engine
         // std::atomic<bool> canExecute = false;
         std::atomic<FrameId> simulationFrame = 0;
         std::atomic<FrameId> recordFrame = 0;
-        // std::atomic<FrameId> executeFrame = 0;
+        std::atomic<FrameId> executeFrame = 0;
         std::mutex simulationMutex;
         std::mutex recordMutex;
         // std::mutex executeMutex;
         std::condition_variable simulationCV;
         std::condition_variable recordCV;
+        ExecutionQueue* executionQueue;
         // std::condition_variable executeCV;
     };
 

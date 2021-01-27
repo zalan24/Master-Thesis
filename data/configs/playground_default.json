@@ -1,6 +1,8 @@
 {
     "screenWidth": 1600,
     "screenHeight": 900,
+    "maxFramesInExecutionQueue": 2,
+    "maxFramesOnGPU": 2,
     "title": "Playground",
     "driver": "Vulkan"
 }

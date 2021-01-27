@@ -12,6 +12,8 @@
 #include <namethreads.h>
 // #include <rendercontext.h>
 
+#include "execution_queue.h"
+
 static void callback(const drv::CallbackData* data) {
     switch (data->type) {
         case drv::CallbackData::Type::VERBOSE:
@@ -34,6 +36,8 @@ static void callback(const drv::CallbackData* data) {
 void Engine::Config::gatherEntries(std::vector<ISerializable::Entry>& entries) const {
     REGISTER_ENTRY(screenWidth, entries);
     REGISTER_ENTRY(screenHeight, entries);
+    REGISTER_ENTRY(maxFramesInExecutionQueue, entries);
+    REGISTER_ENTRY(maxFramesOnGPU, entries);
     REGISTER_ENTRY(title, entries);
     REGISTER_ENTRY(driver, entries);
 }
@@ -138,8 +142,10 @@ void Engine::simulationLoop(RenderState* state) {
             if (state->quit)
                 break;
         }
-        // TODO wait for render (max frames)
+        // TODO latency sleep
+        // TODO sample input
         entityManager.step();
+        std::this_thread::sleep_for(std::chrono::milliseconds(8));  // instead of simulation
         {
             std::unique_lock<std::mutex> lk(state->recordMutex);
             state->canRecord = true;
@@ -147,7 +153,6 @@ void Engine::simulationLoop(RenderState* state) {
         }
         state->simulationFrame.fetch_add(FrameId(1));
     }
-    // *state = SIMULATION_END;
 }
 
 void Engine::recordCommandsLoop(RenderState* state) {
@@ -161,42 +166,98 @@ void Engine::recordCommandsLoop(RenderState* state) {
             if (state->quit)
                 break;
         }
+        // Stuff that depends on simulation, but not recorded yet
+        {
+            std::unique_lock<std::mutex> lk(state->recordMutex);
+            // TODO latency slop
+            state->recordCV.wait(lk, [state, recordFrame, this] {
+                return recordFrame - state->executeFrame.load() + 1
+                         <= config.maxFramesInExecutionQueue
+                       || state->quit;
+            });
+            // ---
+            state->canRecord = false;
+            if (state->quit)
+                break;
+        }
+        state->executionQueue->push(ExecutionPackage(ExecutionPackage::MessagePackage{
+          ExecutionPackage::Message::RECORD_START, state->recordFrame.load(), 0, nullptr}));
         // TODO render entities
         // entityManager.step();
+        std::this_thread::sleep_for(std::chrono::milliseconds(8));  // instead of rendering
         {
             std::unique_lock<std::mutex> lk(state->simulationMutex);
             state->canSimulate = true;
             state->simulationCV.notify_one();
         }
         // Do work here, that's unrelated to simulation
+
+        state->executionQueue->push(ExecutionPackage(ExecutionPackage::MessagePackage{
+          ExecutionPackage::Message::PRESENT_START, state->recordFrame.load(), 0, nullptr}));
         // // TODO
         // drv::PresentInfo info;
         // info.semaphoreCount = ;
         // info.waitSemaphores = ;
-        // drv::present(presentQueue.queue, swapchain, info); -- probably perform on execution thread???
+        // drv::present(presentQueue.queue, swapchain, info);
         // TODO recreate swapchain if necessary
+        state->executionQueue->push(ExecutionPackage(
+          ExecutionPackage::MessagePackage{ExecutionPackage::Message::PRESENT_END, 0, 0, nullptr}));
+
+        state->executionQueue->push(ExecutionPackage(
+          ExecutionPackage::MessagePackage{ExecutionPackage::Message::RECORD_END, 0, 0, nullptr}));
         state->recordFrame.fetch_add(FrameId(1));
     }
+    state->executionQueue->push(ExecutionPackage(
+      ExecutionPackage::MessagePackage{ExecutionPackage::Message::QUIT, 0, 0, nullptr}));
 }
 
 void Engine::executeCommandsLoop(RenderState* state) {
-    // while (!state->quit) {
-    //     FrameId executeFrame = state->executeFrame.load();
-    //     {
-    //         std::unique_lock<std::mutex> lk(state->executeMutex);
-    //         state->executeCV.wait(lk, [state] { return state->canExecute || state->quit; });
-    //         state->canExecute = false;
-    //         if (state->quit)
-    //             break;
-    //     }
-
-    //     state->executeFrame.fetch_add(FrameId(1));
-    // }
+    while (true) {
+        ExecutionPackage package;
+        state->executionQueue->waitForPackage();
+        while (state->executionQueue->pop(package)) {
+            if (std::holds_alternative<ExecutionPackage::MessagePackage>(package.package)) {
+                ExecutionPackage::MessagePackage& message =
+                  std::get<ExecutionPackage::MessagePackage>(package.package);
+                switch (message.msg) {
+                    case ExecutionPackage::Message::RECORD_START: {
+                        std::unique_lock<std::mutex> lk(state->recordMutex);
+                        state->executeFrame.store(message.value1);
+                        state->recordCV.notify_one();
+                    } break;
+                    case ExecutionPackage::Message::RECORD_END:
+                        // TODO latency slop: measure time between execution RECORD_END (here) and time of recording first command for next frame
+                        // It's possible that record end is executed before first next command (nothing to do then)
+                        // first command doesn't need to be record start (first functor or cmd buffer???)
+                        break;
+                    case ExecutionPackage::Message::PRESENT_START:
+                        break;
+                    case ExecutionPackage::Message::PRESENT_END:
+                        break;
+                    case ExecutionPackage::Message::QUIT:
+                        return;
+                }
+            }
+            else if (std::holds_alternative<ExecutionPackage::Functor>(package.package)) {
+                ExecutionPackage::Functor& functor =
+                  std::get<ExecutionPackage::Functor>(package.package);
+                functor();
+            }
+            else if (std::holds_alternative<ExecutionPackage::CommandBufferPackage>(
+                       package.package)) {
+                ExecutionPackage::CommandBufferPackage& cmdBuffer =
+                  std::get<ExecutionPackage::CommandBufferPackage>(package.package);
+                drv::drv_assert(false, "Not implemented");
+            }
+        }
+    }
 }
 
 void Engine::gameLoop() {
     entityManager.start();
+    ExecutionQueue executionQueue;
     RenderState state;
+    state.executionQueue = &executionQueue;
     std::thread simulationThread(&Engine::simulationLoop, this, &state);
     std::thread recordThread(&Engine::recordCommandsLoop, this, &state);
     std::thread executeThread(&Engine::executeCommandsLoop, this, &state);
@@ -207,24 +268,11 @@ void Engine::gameLoop() {
 
     IWindow* w = window;
     while (!w->shouldClose()) {
+        // TODO this sleep could be replaced with a sync with simulation
+        // only need this data for input sampling
+        std::this_thread::sleep_for(std::chrono::milliseconds(4));
         static_cast<IWindow*>(window)->pollEvents();
-
-        // unsigned int width, height;
-        // w->getContentSize(width, height);
-        // {
-        //     std::unique_lock<std::mutex> lk(mutex);
-        //     renderCV.wait(lk, [&state] { return state == RENDER; });
-        //     renderer.render(&entityManager, width, height);
-        //     // UI::UIData data{renderer->getScene(), renderer->getShaderManager()};
-        //     // ui->render(data);
-        //     state = SIMULATE;
-        //     window.pollEvents();
-        // }
-        // simulationCV.notify_one();
-        // window.present();
-        // renderFrame++;
     }
-    std::this_thread::sleep_for(std::chrono::milliseconds(100));
     {
         std::unique_lock<std::mutex> simLk(state.simulationMutex);
         std::unique_lock<std::mutex> recLk(state.recordMutex);

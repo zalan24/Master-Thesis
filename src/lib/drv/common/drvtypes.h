@@ -17,6 +17,7 @@ using CommandBufferPtr = Ptr;
 using BufferPtr = Ptr;
 using ImagePtr = Ptr;
 using SemaphorePtr = Ptr;
+using TimelineSemaphorePtr = Ptr;
 using FencePtr = Ptr;
 using DeviceMemoryPtr = Ptr;
 using DeviceSize = unsigned long long;

@@ -153,6 +153,7 @@ bool cmd_pipeline_barrier(CommandBufferPtr commandBuffer, PipelineStages sourceS
                           uint32_t memoryBarrierCount, const MemoryBarrier* memoryBarriers,
                           uint32_t bufferBarrierCount, const BufferMemoryBarrier* bufferBarriers,
                           uint32_t imageBarrierCount, const ImageMemoryBarrier* imageBarriers);
+// TimelineSemaphorePtr create_timeline_semaphore(LogicalDevicePtr device); // TODO
 
 // ShaderModulePtr get_shader_module(LogicalDevicePtr device, ShaderIdType shaderId);
 // unsigned int get_num_shader_descriptor_set_layouts(LogicalDevicePtr device, ShaderIdType shaderId);

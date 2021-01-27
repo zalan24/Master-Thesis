@@ -9,6 +9,7 @@ set_target_properties(  AnimationsEngine
 target_include_directories(AnimationsEngine PUBLIC . ${CMAKE_CURRENT_BINARY_DIR})
 target_link_libraries(AnimationsEngine PRIVATE
     JSON_LIB
+    CONCURRENT_QUEUE_LIB
 )
 target_link_libraries(AnimationsEngine PUBLIC
     AnimationsEntities
@@ -16,7 +17,6 @@ target_link_libraries(AnimationsEngine PUBLIC
     AnimationsIO
     AnimationsGame
     # AnimationsRenderer
-    # AnimationsWindow
     # AnimationsResources
     AnimationsDrv
 )
