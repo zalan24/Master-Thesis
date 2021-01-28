@@ -36,6 +36,7 @@ static void callback(const drv::CallbackData* data) {
 void Engine::Config::gatherEntries(std::vector<ISerializable::Entry>& entries) const {
     REGISTER_ENTRY(screenWidth, entries);
     REGISTER_ENTRY(screenHeight, entries);
+    REGISTER_ENTRY(imagesInSwapchain, entries);
     REGISTER_ENTRY(maxFramesInExecutionQueue, entries);
     REGISTER_ENTRY(maxFramesOnGPU, entries);
     REGISTER_ENTRY(title, entries);
@@ -83,16 +84,19 @@ Engine::WindowIniter::~WindowIniter() {
 Engine::Engine(const std::string& configFile) : Engine(get_config(configFile)) {
 }
 
-drv::Swapchain::CreateInfo Engine::get_swapchain_create_info() {
+drv::Swapchain::CreateInfo Engine::get_swapchain_create_info(const Config& config) {
     drv::Swapchain::CreateInfo ret;
     ret.clipped = true;
-    ret.preferredImageCount = 3;
+    ret.preferredImageCount = static_cast<uint32_t>(config.imagesInSwapchain);
     ret.formatPreferences = {drv::ImageFormat::B8G8R8A8_SRGB};
     ret.preferredPresentModes = {drv::SwapchainCreateInfo::PresentMode::MAILBOX,
                                  drv::SwapchainCreateInfo::PresentMode::IMMEDIATE,
                                  drv::SwapchainCreateInfo::PresentMode::FIFO_RELAXED,
                                  drv::SwapchainCreateInfo::PresentMode::FIFO};
     return ret;
+}
+
+Engine::SyncBlock::SyncBlock(drv::LogicalDevicePtr device) : imageAvailableSemaphore(device) {
 }
 
 Engine::Engine(const Config& cfg)
@@ -124,9 +128,8 @@ Engine::Engine(const Config& cfg)
     HtoDQueue(queueManager.getQueue({"main", "HtoD"})),
     inputQueue(queueManager.getQueue({"input", "HtoD"})),
     cmdBufferBank(device),
-    swapchain(physicalDevice, device, window, get_swapchain_create_info(),
-              static_cast<IWindow*>(window)->getWidth(),
-              static_cast<IWindow*>(window)->getHeight()) {
+    swapchain(physicalDevice, device, window, get_swapchain_create_info(config)),
+    syncBlock(device) {
 }
 
 Engine::~Engine() {
@@ -155,10 +158,30 @@ void Engine::simulationLoop(RenderState* state) {
     }
 }
 
+void Engine::present(RenderState* state, FrameId presentFrame) {
+    drv::PresentInfo info;
+    info.semaphoreCount = 1;
+    drv::SemaphorePtr semaphore = syncBlock.imageAvailableSemaphore;  // TODO
+    info.waitSemaphores = &semaphore;
+    drv::PresentResult result = swapchain.present(presentQueue.queue, info);
+    drv::drv_assert(result != drv::PresentResult::ERROR, "Present error");
+    if (result == drv::PresentResult::RECREATE_ADVISED
+        || result == drv::PresentResult::RECREATE_REQUIRED) {
+        state->recreateSwapchain = presentFrame;
+    }
+}
+
 void Engine::recordCommandsLoop(RenderState* state) {
     while (!state->quit) {
         FrameId recordFrame = state->recordFrame.load();
         // Do pre-record stuff (allocator, etc.)
+        uint32_t w = window->getWidth();
+        uint32_t h = window->getHeight();
+        if (state->swapchainCreated.load() < state->recreateSwapchain.load()
+            || w != swapchain.getCurrentWidth() || h != swapchain.getCurrentHeight()) {
+            state->swapchainCreated = recordFrame;
+            swapchain.recreate(physicalDevice, window);
+        }
         {
             std::unique_lock<std::mutex> lk(state->recordMutex);
             state->recordCV.wait(lk, [state] { return state->canRecord || state->quit; });
@@ -192,19 +215,17 @@ void Engine::recordCommandsLoop(RenderState* state) {
         }
         // Do work here, that's unrelated to simulation
 
-        state->executionQueue->push(ExecutionPackage(ExecutionPackage::MessagePackage{
-          ExecutionPackage::Message::PRESENT_START, state->recordFrame.load(), 0, nullptr}));
-        // // TODO
-        // drv::PresentInfo info;
-        // info.semaphoreCount = ;
-        // info.waitSemaphores = ;
-        // drv::present(presentQueue.queue, swapchain, info);
-        // TODO recreate swapchain if necessary
-        state->executionQueue->push(ExecutionPackage(
-          ExecutionPackage::MessagePackage{ExecutionPackage::Message::PRESENT_END, 0, 0, nullptr}));
+        // TODO latency slop
+        bool acquiredSuccess = swapchain.acquire(syncBlock.imageAvailableSemaphore);
+        // ---
+        if (acquiredSuccess) {
+            state->executionQueue->push(ExecutionPackage(ExecutionPackage::MessagePackage{
+              ExecutionPackage::Message::PRESENT, state->recordFrame.load(), 0, nullptr}));
+        }
 
         state->executionQueue->push(ExecutionPackage(
           ExecutionPackage::MessagePackage{ExecutionPackage::Message::RECORD_END, 0, 0, nullptr}));
+
         state->recordFrame.fetch_add(FrameId(1));
     }
     state->executionQueue->push(ExecutionPackage(
@@ -230,9 +251,8 @@ void Engine::executeCommandsLoop(RenderState* state) {
                         // It's possible that record end is executed before first next command (nothing to do then)
                         // first command doesn't need to be record start (first functor or cmd buffer???)
                         break;
-                    case ExecutionPackage::Message::PRESENT_START:
-                        break;
-                    case ExecutionPackage::Message::PRESENT_END:
+                    case ExecutionPackage::Message::PRESENT:
+                        present(state, message.value1);
                         break;
                     case ExecutionPackage::Message::QUIT:
                         return;

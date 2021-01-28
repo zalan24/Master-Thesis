@@ -25,8 +25,7 @@ struct ExecutionPackage
     {
         RECORD_START,
         RECORD_END,
-        PRESENT_START,
-        PRESENT_END,
+        PRESENT,
         QUIT
     };
 

@@ -264,9 +264,15 @@ bool drv::destroy_swapchain(LogicalDevicePtr device, SwapchainPtr swapchain) {
     return current_driver_interface->destroy_swapchain(device, swapchain);
 }
 
-drv::PresentReselt drv::present(drv::QueuePtr queue, drv::SwapchainPtr swapchain,
-                                const PresentInfo& info) {
-    return current_driver_interface->present(queue, swapchain, info);
+drv::PresentResult drv::present(drv::QueuePtr queue, drv::SwapchainPtr swapchain,
+                                const PresentInfo& info, uint32_t imageIndex) {
+    return current_driver_interface->present(queue, swapchain, info, imageIndex);
+}
+
+bool drv::acquire_image(LogicalDevicePtr device, SwapchainPtr swapchain, SemaphorePtr semaphore,
+                        FencePtr fence, uint32_t* index, uint64_t timeoutNs) {
+    return current_driver_interface->acquire_image(device, swapchain, semaphore, fence, index,
+                                                   timeoutNs);
 }
 
 drv::EventPtr drv::create_event(LogicalDevicePtr device, const EventCreateInfo* info) {

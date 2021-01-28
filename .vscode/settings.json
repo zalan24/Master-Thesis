@@ -186,6 +186,7 @@
         "stbimage",
         "strequal",
         "struct",
+        "swapchain",
         "symengine",
         "texcoord",
         "thirdparty",

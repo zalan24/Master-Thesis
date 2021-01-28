@@ -79,6 +79,8 @@ class Window
 
     operator bool() const;
     operator IWindow*() const;
+    IWindow* operator->() const { return ptr; }
+    IWindow& operator*() const { return *ptr; }
 
  private:
     IWindow* ptr = nullptr;
@@ -457,6 +459,8 @@ class Swapchain
   , private Exclusive
 {
  public:
+    using SwapchainIndex = uint32_t;
+    constexpr static SwapchainIndex INVALID_INDEX = std::numeric_limits<SwapchainIndex>::max();
     struct CreateInfo
     {
         std::vector<ImageFormat> formatPreferences;
@@ -466,7 +470,7 @@ class Swapchain
     };
 
     Swapchain(PhysicalDevicePtr physicalDevice, LogicalDevicePtr device, IWindow* window,
-              const CreateInfo& info, uint32_t width = 0, uint32_t height = 0);
+              const CreateInfo& info);
     ~Swapchain() noexcept;
 
     Swapchain(Swapchain&& other) noexcept;
@@ -474,12 +478,21 @@ class Swapchain
 
     operator SwapchainPtr() const;
 
-    void recreate(uint32_t width, uint32_t height);
+    void recreate(drv::PhysicalDevicePtr physicalDevice, IWindow* window);
+    bool acquire(SemaphorePtr semaphore = NULL_HANDLE, FencePtr fence = NULL_HANDLE,
+                 uint64_t timeoutNs = UINT16_MAX);
+    PresentResult present(QueuePtr queue, const PresentInfo& info);
+
+    uint32_t getCurrentWidth() const { return currentWidth; }
+    uint32_t getCurrentHeight() const { return currentHeight; }
 
  private:
     CreateInfo createInfo;
     LogicalDevicePtr device;
     SwapchainPtr ptr;
+    uint32_t acquiredIndex = INVALID_INDEX;
+    uint32_t currentWidth = 0;
+    uint32_t currentHeight = 0;
 
     void close();
     SwapchainCreateInfo getSwapchainInfo(uint32_t width, uint32_t height);

@@ -742,7 +742,7 @@ struct PresentInfo
     const SemaphorePtr* waitSemaphores;
 };
 
-enum class PresentReselt
+enum class PresentResult
 {
     ERROR,
     RECREATE_REQUIRED,

@@ -135,7 +135,10 @@ DeviceExtensions get_supported_extensions(PhysicalDevicePtr physicalDevice);
 SwapchainPtr create_swapchain(PhysicalDevicePtr physicalDevice, LogicalDevicePtr device,
                               IWindow* window, const SwapchainCreateInfo* info);
 bool destroy_swapchain(LogicalDevicePtr device, SwapchainPtr swapchain);
-PresentReselt present(drv::QueuePtr queue, drv::SwapchainPtr swapchain, const PresentInfo& info);
+PresentResult present(drv::QueuePtr queue, drv::SwapchainPtr swapchain, const PresentInfo& info,
+                      uint32_t imageIndex);
+bool acquire_image(LogicalDevicePtr device, SwapchainPtr swapchain, SemaphorePtr semaphore,
+                   FencePtr fence, uint32_t* index, uint64_t timeoutNs = UINT64_MAX);
 EventPtr create_event(LogicalDevicePtr device, const EventCreateInfo* info);
 bool destroy_event(LogicalDevicePtr device, EventPtr event);
 bool is_event_set(LogicalDevicePtr device, EventPtr event);

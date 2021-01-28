@@ -28,6 +28,7 @@ class Engine
     {
         int screenWidth;
         int screenHeight;
+        int imagesInSwapchain;
         int maxFramesInExecutionQueue;
         // TODO wait on this
         int maxFramesOnGPU;
@@ -65,6 +66,11 @@ class Engine
         ~WindowIniter();
         IWindow* window;
     };
+    struct SyncBlock
+    {
+        drv::Semaphore imageAvailableSemaphore;
+        SyncBlock(drv::LogicalDevicePtr device);
+    };
 
     using FrameId = size_t;
 
@@ -88,6 +94,7 @@ class Engine
     drv::QueueManager::Queue inputQueue;
     drv::CommandBufferBank cmdBufferBank;
     drv::Swapchain swapchain;
+    SyncBlock syncBlock;
     // ResourceManager resourceMgr;
     EntityManager entityManager;
     // Renderer renderer;
@@ -101,6 +108,8 @@ class Engine
         std::atomic<FrameId> simulationFrame = 0;
         std::atomic<FrameId> recordFrame = 0;
         std::atomic<FrameId> executeFrame = 0;
+        std::atomic<FrameId> recreateSwapchain = 0;
+        std::atomic<FrameId> swapchainCreated = 0;
         std::mutex simulationMutex;
         std::mutex recordMutex;
         // std::mutex executeMutex;
@@ -113,7 +122,9 @@ class Engine
     void simulationLoop(RenderState* state);
     void recordCommandsLoop(RenderState* state);
     void executeCommandsLoop(RenderState* state);
+    void present(RenderState* state, FrameId presentFrame);
+
     static drv::PhysicalDevice::SelectionInfo get_device_selection_info(
       drv::InstancePtr instance, const drv::DeviceExtensions& deviceExtensions);
-    static drv::Swapchain::CreateInfo get_swapchain_create_info();
+    static drv::Swapchain::CreateInfo get_swapchain_create_info(const Config& config);
 };

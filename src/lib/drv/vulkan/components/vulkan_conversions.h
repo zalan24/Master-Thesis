@@ -43,6 +43,10 @@ inline const VkSemaphore* convertSemaphores(const drv::TimelineSemaphorePtr* sem
     return reinterpret_cast<const VkSemaphore*>(semaphores);
 }
 
+inline VkFence convertFence(drv::FencePtr fence) {
+    return reinterpret_cast<VkFence>(fence);
+}
+
 // inline VkSemaphore convertSemaphore(drv::SemaphorePtr semaphore) {
 //     return reinterpret_cast<VkSemaphore>(semaphore);
 // }

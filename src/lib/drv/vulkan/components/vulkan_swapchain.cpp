@@ -8,6 +8,7 @@
 #include <drverror.h>
 #include <drvmemory.h>
 
+#include "vulkan_conversions.h"
 #include "vulkan_enum_compare.h"
 #include "vulkan_swapchain_surface.h"
 
@@ -76,25 +77,37 @@ bool DrvVulkan::destroy_swapchain(drv::LogicalDevicePtr device, drv::SwapchainPt
     return true;
 }
 
-drv::PresentReselt DrvVulkan::present(drv::QueuePtr queue, drv::SwapchainPtr swapchain,
-                                      const drv::PresentInfo& info) {
+drv::PresentResult DrvVulkan::present(drv::QueuePtr queue, drv::SwapchainPtr swapchain,
+                                      const drv::PresentInfo& info, uint32_t imageIndex) {
     VkPresentInfoKHR presentInfo{};
     presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
     presentInfo.pNext = nullptr;
     presentInfo.waitSemaphoreCount = info.semaphoreCount;
-    presentInfo.pWaitSemaphores = reinterpret_cast<const VkSemaphore*>(info.waitSemaphores);
+    presentInfo.pWaitSemaphores = convertSemaphores(info.waitSemaphores);
     presentInfo.swapchainCount = 1;
     presentInfo.pSwapchains = reinterpret_cast<const VkSwapchainKHR*>(&swapchain);
+    presentInfo.pImageIndices = &imageIndex;
     presentInfo.pResults = nullptr;
     VkResult result = vkQueuePresentKHR(reinterpret_cast<VkQueue>(queue), &presentInfo);
     switch (result) {
         case VK_SUCCESS:
-            return drv::PresentReselt::SUCCESS;
+            return drv::PresentResult::SUCCESS;
         case VK_SUBOPTIMAL_KHR:
-            return drv::PresentReselt::RECREATE_ADVISED;
+            return drv::PresentResult::RECREATE_ADVISED;
         case VK_ERROR_OUT_OF_DATE_KHR:
-            return drv::PresentReselt::RECREATE_REQUIRED;
+            return drv::PresentResult::RECREATE_REQUIRED;
         default:
-            return drv::PresentReselt::ERROR;
+            return drv::PresentResult::ERROR;
     }
+}
+
+bool DrvVulkan::acquire_image(drv::LogicalDevicePtr device, drv::SwapchainPtr swapchain,
+                              drv::SemaphorePtr semaphore, drv::FencePtr fence, uint32_t* index,
+                              uint64_t timeoutNs) {
+    VkResult result =
+      vkAcquireNextImageKHR(convertDevice(device), reinterpret_cast<VkSwapchainKHR>(swapchain),
+                            timeoutNs, convertSemaphore(semaphore), convertFence(fence), index);
+    drv::drv_assert(result == VK_SUCCESS || result == VK_SUBOPTIMAL_KHR || result == VK_TIMEOUT
+                    || result == VK_NOT_READY);
+    return result == VK_SUCCESS || result == VK_SUBOPTIMAL_KHR;
 }

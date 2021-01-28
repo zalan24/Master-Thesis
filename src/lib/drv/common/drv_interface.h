@@ -87,8 +87,11 @@ class IDriver
     virtual SwapchainPtr create_swapchain(PhysicalDevicePtr physicalDevice, LogicalDevicePtr device,
                                           IWindow* window, const SwapchainCreateInfo* info) = 0;
     virtual bool destroy_swapchain(LogicalDevicePtr device, SwapchainPtr swapchain) = 0;
-    virtual PresentReselt present(QueuePtr queue, SwapchainPtr swapchain,
-                                  const PresentInfo& info) = 0;
+    virtual PresentResult present(QueuePtr queue, SwapchainPtr swapchain, const PresentInfo& info,
+                                  uint32_t imageIndex) = 0;
+    virtual bool acquire_image(LogicalDevicePtr device, SwapchainPtr swapchain,
+                               SemaphorePtr semaphore, FencePtr fence, uint32_t* index,
+                               uint64_t timeoutNs) = 0;
     virtual EventPtr create_event(LogicalDevicePtr device, const EventCreateInfo* info) = 0;
     virtual bool destroy_event(LogicalDevicePtr device, EventPtr event) = 0;
     virtual bool is_event_set(LogicalDevicePtr device, EventPtr event) = 0;

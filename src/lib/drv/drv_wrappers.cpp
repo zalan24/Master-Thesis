@@ -5,6 +5,7 @@
 
 #include <drverror.h>
 #include <drvmemory.h>
+#include <drvwindow.h>
 
 using namespace drv;
 
@@ -679,7 +680,6 @@ Semaphore& Semaphore::operator=(Semaphore&& other) noexcept {
 }
 
 Semaphore::operator SemaphorePtr() const {
-    CHECK_THREAD;
     return ptr;
 }
 
@@ -720,7 +720,6 @@ TimelineSemaphore& TimelineSemaphore::operator=(TimelineSemaphore&& other) noexc
 }
 
 TimelineSemaphore::operator TimelineSemaphorePtr() const {
-    CHECK_THREAD;
     return ptr;
 }
 
@@ -771,7 +770,6 @@ Fence& Fence::operator=(Fence&& other) noexcept {
 }
 
 Fence::operator FencePtr() const {
-    CHECK_THREAD;
     return ptr;
 }
 
@@ -930,17 +928,27 @@ SwapchainCreateInfo Swapchain::getSwapchainInfo(uint32_t width, uint32_t height)
 }
 
 Swapchain::Swapchain(drv::PhysicalDevicePtr physicalDevice, LogicalDevicePtr _device,
-                     IWindow* window, const CreateInfo& info, uint32_t width, uint32_t height)
+                     IWindow* window, const CreateInfo& info)
   : createInfo(info), device(_device), ptr(NULL_HANDLE) {
-    if (width > 0 && height > 0) {
-        SwapchainCreateInfo swapchainInfo = getSwapchainInfo(width, height);
+    currentWidth = window->getWidth();
+    currentHeight = window->getHeight();
+    if (currentWidth > 0 && currentHeight > 0) {
+        SwapchainCreateInfo swapchainInfo = getSwapchainInfo(currentWidth, currentHeight);
         ptr = create_swapchain(physicalDevice, device, window, &swapchainInfo);
         drv::drv_assert(ptr != NULL_HANDLE, "Could not create Swapchain");
     }
 }
 
-// TODO
-// void Swapchain::recreate(uint32_t width, uint32_t height);
+void Swapchain::recreate(drv::PhysicalDevicePtr physicalDevice, IWindow* window) {
+    currentWidth = window->getWidth();
+    currentHeight = window->getHeight();
+    if (currentWidth > 0 && currentHeight > 0) {
+        SwapchainCreateInfo swapchainInfo = getSwapchainInfo(currentWidth, currentHeight);
+        ptr = create_swapchain(physicalDevice, device, window, &swapchainInfo);
+        drv::drv_assert(ptr != NULL_HANDLE, "Could not create Swapchain");
+    }
+    // TODO free old swapchain???
+}
 
 Swapchain::~Swapchain() noexcept {
     close();
@@ -951,6 +959,9 @@ void Swapchain::close() {
     if (ptr != NULL_HANDLE) {
         drv::drv_assert(destroy_swapchain(device, ptr), "Could not destroy Swapchain");
         ptr = NULL_HANDLE;
+        acquiredIndex = INVALID_INDEX;
+        currentWidth = 0;
+        currentHeight = 0;
     }
 }
 
@@ -958,6 +969,9 @@ Swapchain::Swapchain(Swapchain&& other) noexcept {
     createInfo = std::move(other.createInfo);
     device = std::move(other.device);
     ptr = std::move(other.ptr);
+    acquiredIndex = other.acquiredIndex;
+    currentWidth = other.currentWidth;
+    currentHeight = other.currentHeight;
     other.ptr = NULL_HANDLE;
 }
 
@@ -968,6 +982,9 @@ Swapchain& Swapchain::operator=(Swapchain&& other) noexcept {
     createInfo = std::move(other.createInfo);
     device = std::move(other.device);
     ptr = std::move(other.ptr);
+    acquiredIndex = other.acquiredIndex;
+    currentWidth = other.currentWidth;
+    currentHeight = other.currentHeight;
     other.ptr = NULL_HANDLE;
     return *this;
 }
@@ -975,6 +992,25 @@ Swapchain& Swapchain::operator=(Swapchain&& other) noexcept {
 Swapchain::operator SwapchainPtr() const {
     CHECK_THREAD;
     return ptr;
+}
+
+bool Swapchain::acquire(SemaphorePtr semaphore, FencePtr fence, uint64_t timeoutNs) {
+    if (acquiredIndex != INVALID_INDEX)
+        return true;
+    if (acquire_image(device, ptr, semaphore, fence, &acquiredIndex, timeoutNs)) {
+        return true;
+    }
+    else {
+        acquiredIndex = INVALID_INDEX;
+        return false;
+    }
+}
+
+PresentResult Swapchain::present(QueuePtr queue, const PresentInfo& info) {
+    drv::drv_assert(acquiredIndex != INVALID_INDEX, "Present called without acquiring an image");
+    PresentResult ret = drv::present(queue, ptr, info, acquiredIndex);
+    acquiredIndex = INVALID_INDEX;
+    return ret;
 }
 
 // PipelineLayoutManager::PipelineLayoutManager(LogicalDevicePtr _device) : device(_device) {
