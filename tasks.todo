@@ -98,6 +98,7 @@ Get a triangle on screen:
 Cleanup & other:
     ☐ Remove useless common driver stuff (drv/common)
     ✔ Use abstract driver class instead of function pointer table @done (1/26/2021, 11:31:13 AM)
+    ☐ Maybe use a single large stack memory (thread local) instead of local ones: LOCAL_MEMORY_POOL_DEFAULT(pool)?
 
 
 Questions:

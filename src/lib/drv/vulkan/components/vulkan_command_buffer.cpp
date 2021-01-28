@@ -36,28 +36,111 @@ drv::CommandBufferPtr DrvVulkan::create_command_buffer(drv::LogicalDevicePtr dev
 
 bool DrvVulkan::execute(drv::QueuePtr queue, unsigned int count, const drv::ExecutionInfo* infos,
                         drv::FencePtr fence) {
+    uint32_t waitSemaphoreCount = 0;
+    uint32_t signalSemaphoreCount = 0;
+    for (unsigned int i = 0; i < count; ++i) {
+        waitSemaphoreCount += infos[i].numWaitSemaphores + infos[i].numWaitTimelineSemaphores;
+        signalSemaphoreCount += infos[i].numSignalSemaphores + infos[i].numSignalTimelineSemaphores;
+    }
     LOCAL_MEMORY_POOL_DEFAULT(pool);
     drv::MemoryPool* threadPool = pool.pool();
     drv::MemoryPool::MemoryHolder submitInfosMemory(count * sizeof(VkSubmitInfo), threadPool);
+    drv::MemoryPool::MemoryHolder submitTimelineInfosMemory(
+      count * sizeof(VkTimelineSemaphoreSubmitInfo), threadPool);
+    drv::MemoryPool::MemoryHolder semaphoresMem(
+      (waitSemaphoreCount + signalSemaphoreCount) * sizeof(VkSemaphore), threadPool);
+    drv::MemoryPool::MemoryHolder semaphoreValuesMem(
+      (waitSemaphoreCount + signalSemaphoreCount) * sizeof(uint64_t), threadPool);
+    drv::MemoryPool::MemoryHolder waitStageMem(waitSemaphoreCount * sizeof(VkPipelineStageFlags),
+                                               threadPool);
     VkSubmitInfo* submitInfos = reinterpret_cast<VkSubmitInfo*>(submitInfosMemory.get());
     drv::drv_assert(submitInfos != nullptr, "Could not allocate memory for submit infos");
+    VkTimelineSemaphoreSubmitInfo* submitTimelineInfos =
+      reinterpret_cast<VkTimelineSemaphoreSubmitInfo*>(submitTimelineInfosMemory.get());
+    drv::drv_assert(submitTimelineInfos != nullptr,
+                    "Could not allocate memory for submit timeline infos");
+    VkSemaphore* semaphores = reinterpret_cast<VkSemaphore*>(semaphoresMem.get());
+    drv::drv_assert(semaphores != nullptr, "Could not allocate semaphores memory");
+    uint64_t* values = reinterpret_cast<uint64_t*>(semaphoreValuesMem.get());
+    drv::drv_assert(values != nullptr, "Could not allocate semaphore values memory");
+    VkPipelineStageFlags* waitStages = reinterpret_cast<VkPipelineStageFlags*>(waitStageMem.get());
+    drv::drv_assert(waitStages != nullptr, "Could not allocate wait stages memory");
 
-    // TODO
+    uint32_t semaphoreId = 0;
 
     for (unsigned int i = 0; i < count; ++i) {
+        submitTimelineInfos[i].sType = VK_STRUCTURE_TYPE_TIMELINE_SEMAPHORE_SUBMIT_INFO;
+        submitTimelineInfos[i].pNext = nullptr;
         submitInfos[i].sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 
-        submitInfos[i].waitSemaphoreCount = infos[i].numWaitSemaphores;
-        submitInfos[i].pWaitSemaphores = convertSemaphores(infos[i].waitSemaphores);
-        submitInfos[i].pWaitDstStageMask =
-          reinterpret_cast<VkPipelineStageFlags*>(infos[i].waitStages);
+        submitInfos[i].pNext = nullptr;
 
         submitInfos[i].commandBufferCount = infos[i].numCommandBuffers;
         submitInfos[i].pCommandBuffers =
           reinterpret_cast<VkCommandBuffer*>(infos[i].commandBuffers);
 
-        submitInfos[i].signalSemaphoreCount = infos[i].numSignalSemaphores;
-        submitInfos[i].pSignalSemaphores = convertSemaphores(infos[i].signalSemaphores);
+        submitInfos[i].waitSemaphoreCount =
+          infos[i].numWaitTimelineSemaphores + infos[i].numWaitSemaphores;
+        submitTimelineInfos[i].waitSemaphoreValueCount =
+          infos[i].numWaitTimelineSemaphores + infos[i].numWaitSemaphores;
+        if (infos[i].numWaitTimelineSemaphores == 0) {
+            submitInfos[i].pWaitSemaphores = convertSemaphores(infos[i].waitSemaphores);
+            submitInfos[i].pWaitDstStageMask =
+              reinterpret_cast<VkPipelineStageFlags*>(infos[i].waitStages);
+        }
+        else if (infos[i].numWaitSemaphores == 0) {
+            submitInfos[i].pWaitSemaphores = convertSemaphores(infos[i].waitTimelineSemaphores);
+            submitInfos[i].pWaitDstStageMask =
+              reinterpret_cast<VkPipelineStageFlags*>(infos[i].timelineWaitStages);
+            submitTimelineInfos[i].pWaitSemaphoreValues = infos[i].timelineWaitValues;
+        }
+        else {
+            submitInfos[i].pWaitSemaphores = &semaphores[semaphoreId];
+            submitInfos[i].pWaitDstStageMask = &waitStages[semaphoreId];
+            submitTimelineInfos[i].pWaitSemaphoreValues = &values[semaphoreId];
+            for (uint32_t j = 0; j < infos[i].numWaitTimelineSemaphores; ++j) {
+                semaphores[semaphoreId] = convertSemaphore(infos[i].waitTimelineSemaphores[j]);
+                waitStages[semaphoreId] =
+                  static_cast<VkPipelineStageFlags>(infos[i].timelineWaitStages[j]);
+                values[semaphoreId] = infos[i].timelineWaitValues[j];
+                semaphoreId++;
+            }
+            for (uint32_t j = 0; j < infos[i].numWaitSemaphores; ++j) {
+                semaphores[semaphoreId] = convertSemaphore(infos[i].waitSemaphores[j]);
+                waitStages[semaphoreId] = static_cast<VkPipelineStageFlags>(infos[i].waitStages[j]);
+                values[semaphoreId] = 0;
+                semaphoreId++;
+            }
+        }
+
+        submitInfos[i].signalSemaphoreCount =
+          infos[i].numSignalSemaphores + infos[i].numSignalTimelineSemaphores;
+        submitTimelineInfos[i].signalSemaphoreValueCount =
+          infos[i].numSignalSemaphores + infos[i].numSignalTimelineSemaphores;
+        if (infos[i].numSignalTimelineSemaphores == 0) {
+            submitInfos[i].pSignalSemaphores = convertSemaphores(infos[i].signalSemaphores);
+        }
+        else if (infos[i].numSignalSemaphores == 0) {
+            submitInfos[i].pSignalSemaphores = convertSemaphores(infos[i].signalTimelineSemaphores);
+            submitTimelineInfos[i].pSignalSemaphoreValues = infos[i].timelineSignalValues;
+        }
+        else {
+            submitInfos[i].pSignalSemaphores = &semaphores[semaphoreId];
+            submitTimelineInfos[i].pSignalSemaphoreValues = &values[semaphoreId];
+            for (uint32_t j = 0; j < infos[i].numSignalTimelineSemaphores; ++j) {
+                semaphores[semaphoreId] = convertSemaphore(infos[i].signalTimelineSemaphores[j]);
+                values[semaphoreId] = infos[i].timelineSignalValues[j];
+                semaphoreId++;
+            }
+            for (uint32_t j = 0; j < infos[i].numSignalSemaphores; ++j) {
+                semaphores[semaphoreId] = convertSemaphore(infos[i].signalSemaphores[j]);
+                values[semaphoreId] = 0;
+                semaphoreId++;
+            }
+        }
+
+        if (infos[i].numSignalTimelineSemaphores > 0 || infos[i].numWaitTimelineSemaphores > 0)
+            submitInfos[i].pNext = &submitTimelineInfos[i];
     }
 
     VkResult result = vkQueueSubmit(reinterpret_cast<VkQueue>(queue), count, submitInfos,

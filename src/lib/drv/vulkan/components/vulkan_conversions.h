@@ -43,10 +43,10 @@ inline const VkSemaphore* convertSemaphores(const drv::TimelineSemaphorePtr* sem
     return reinterpret_cast<const VkSemaphore*>(semaphores);
 }
 
-inline VkSemaphore convertSemaphore(drv::SemaphorePtr semaphore) {
-    return reinterpret_cast<VkSemaphore>(semaphore);
-}
+// inline VkSemaphore convertSemaphore(drv::SemaphorePtr semaphore) {
+//     return reinterpret_cast<VkSemaphore>(semaphore);
+// }
 
-inline const VkSemaphore* convertSemaphores(const drv::SemaphorePtr* semaphores) {
-    return reinterpret_cast<const VkSemaphore*>(semaphores);
-}
+// inline const VkSemaphore* convertSemaphores(const drv::SemaphorePtr* semaphores) {
+//     return reinterpret_cast<const VkSemaphore*>(semaphores);
+// }

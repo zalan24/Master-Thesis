@@ -208,6 +208,7 @@ struct ExecutionInfo
     unsigned int numWaitTimelineSemaphores = 0;
     const TimelineSemaphorePtr* waitTimelineSemaphores = nullptr;
     const uint64_t* timelineWaitValues = nullptr;
+    PipelineStages::FlagType* timelineWaitStages = nullptr;
     unsigned int numSignalTimelineSemaphores = 0;
     const TimelineSemaphorePtr* signalTimelineSemaphores = nullptr;
     const uint64_t* timelineSignalValues = nullptr;
