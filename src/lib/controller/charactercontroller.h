@@ -15,6 +15,8 @@ class IControllable
 
     virtual void setController(const ICharacterController* controller) = 0;
     virtual void setController(std::unique_ptr<ICharacterController>&& controller) = 0;
+
+    virtual glm::vec3 getPos() const = 0;
 };
 
 class ICharacterController
@@ -44,5 +46,8 @@ class ICharacterController
 
     virtual ~ICharacterController() = 0;
 
-    virtual ControlData getControls() const = 0;
+    virtual ControlData getControls(const IControllable* controlled) {
+        return const_cast<const ICharacterController*>(this)->getControls(controlled);
+    }
+    virtual ControlData getControls(const IControllable* controlled) const = 0;
 };

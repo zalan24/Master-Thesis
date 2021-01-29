@@ -107,6 +107,30 @@ class ISerializable
         return out;
     }
 
+    static json serialize(const glm::ivec2& value) {
+        json out = json::array();
+        out.push_back(serialize(value.x));
+        out.push_back(serialize(value.y));
+        return out;
+    }
+
+    static json serialize(const glm::ivec3& value) {
+        json out = json::array();
+        out.push_back(serialize(value.x));
+        out.push_back(serialize(value.y));
+        out.push_back(serialize(value.z));
+        return out;
+    }
+
+    static json serialize(const glm::ivec4& value) {
+        json out = json::array();
+        out.push_back(serialize(value.x));
+        out.push_back(serialize(value.y));
+        out.push_back(serialize(value.z));
+        out.push_back(serialize(value.w));
+        return out;
+    }
+
     static json serialize(const glm::mat4& value) {
         json out = json::array();
         out.push_back(serialize(value[0]));
@@ -204,6 +228,36 @@ class ISerializable
         serialize(in[3], value.w);
     }
 
+    static void serialize(const json& in, glm::ivec2& value) {
+        if (!in.is_array())
+            throw std::runtime_error("Input json is not an array: " + in.dump());
+        if (in.size() != 2)
+            throw std::runtime_error("Wrong json array size, expecting size of 2: " + in.dump());
+        serialize(in[0], value.x);
+        serialize(in[1], value.y);
+    }
+
+    static void serialize(const json& in, glm::ivec3& value) {
+        if (!in.is_array())
+            throw std::runtime_error("Input json is not an array: " + in.dump());
+        if (in.size() != 3)
+            throw std::runtime_error("Wrong json array size, expecting size of 3: " + in.dump());
+        serialize(in[0], value.x);
+        serialize(in[1], value.y);
+        serialize(in[2], value.z);
+    }
+
+    static void serialize(const json& in, glm::ivec4& value) {
+        if (!in.is_array())
+            throw std::runtime_error("Input json is not an array: " + in.dump());
+        if (in.size() != 4)
+            throw std::runtime_error("Wrong json array size, expecting size of 4: " + in.dump());
+        serialize(in[0], value.x);
+        serialize(in[1], value.y);
+        serialize(in[2], value.z);
+        serialize(in[3], value.w);
+    }
+
     static void serialize(const json& in, glm::mat4& value) {
         if (!in.is_array())
             throw std::runtime_error("Input json is not an array: " + in.dump());
@@ -217,6 +271,21 @@ class ISerializable
 
  protected:
     ~ISerializable() = default;
+};
+
+class IVirtualSerializable : public ISerializable
+{
+ public:
+    virtual ISerializable* init(const std::string& type) = 0;
+    virtual const ISerializable* getCurrent() const = 0;
+    virtual std::string getCurrentType() const = 0;
+    virtual void reset() = 0;
+
+    void writeJson(json& out) const override final;
+    void readJson(const json& in) override final;
+
+ protected:
+    ~IVirtualSerializable() = default;
 };
 
 #define WRITE_OBJECT(name, json) json[#name] = serialize(name)

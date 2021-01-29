@@ -38,6 +38,8 @@ class Animchar
     void setController(const ICharacterController* controller) override;
     void setController(std::unique_ptr<ICharacterController>&& controller) override;
 
+    glm::vec3 getPos() const override;
+
  private:
     AttributeBinder attributeBinder;
     AttributeBinder skeletonAttributeBinder;
@@ -55,5 +57,4 @@ class Animchar
 
     static std::unique_ptr<Material> getDefaultMaterial();
     void renderBones(const RenderContext& ctx) const;
-    const ICharacterController* getController() const;
 };

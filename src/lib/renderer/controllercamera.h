@@ -31,7 +31,7 @@ class ControllerCamera final
     void setCharacter(EntityManager::EntityId character);
     void resetCharacter();
 
-    ControlData getControls() const override;
+    ControlData getControls(const IControllable* controlled) const override;
 
  protected:
     void _activate() override final;

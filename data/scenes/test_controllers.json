@@ -1,0 +1,39 @@
+{
+    "gridController": {
+        "type": "randomgrid",
+        "content": {
+            "maxSpeed": 2,
+            "speedDistMul": 10,
+            "goalDistance": 0.5,
+            "worldTransform": [
+                [
+                    10,
+                    0,
+                    0,
+                    0
+                ],
+                [
+                    0,
+                    1,
+                    0,
+                    0
+                ],
+                [
+                    0,
+                    0,
+                    10,
+                    0
+                ],
+                [
+                    0,
+                    0,
+                    10,
+                    1
+                ]
+            ],
+            "resolutionX": 10,
+            "resolutionY": 10,
+            "seed": 0
+        }
+    }
+}

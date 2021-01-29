@@ -5,6 +5,7 @@
 #include <nlohmann/json.hpp>
 
 #include <animchar.h>
+#include <controllerholder.h>
 #include <engine.h>
 #include <loadmesh.h>
 
@@ -38,6 +39,20 @@ static Animchar* load_mesh(Engine& engine, const std::string& resName, const glm
     return ret;
 }
 
+static Animchar* get_controlled_character(Engine& engine, const std::string& resName,
+                                          const glm::vec3& pos, const json& controllerJson) {
+    MeshProvider::ResourceDescriptor desc(resName);
+    Animchar::MeshRes mesh(std::move(desc));
+    std::unique_ptr<Animchar> entity = std::make_unique<Animchar>(std::move(mesh));
+    entity->setLocalTransform(glm::translate(glm::mat4(1.f), pos));
+    Animchar* ret = entity.get();
+    std::unique_ptr<ControllerHolder> controller = std::make_unique<ControllerHolder>();
+    ISerializable::serialize(controllerJson, *controller.get());
+    ret->setController(std::move(controller));
+    engine.getEntityManager()->addEntity(std::move(entity));
+    return ret;
+}
+
 static shared_ptr<Material> getMat(Engine& engine, TextureProvider::ResourceDescriptor&& desc) {
     Material::DiffuseRes diffuseRes(std::move(desc));
     return std::make_unique<Material>(std::move(diffuseRes));
@@ -66,6 +81,14 @@ int main(int argc, char* argv[]) {
             return 1;
         }
 
+        json controllers;
+        {
+            std::ifstream in(resourceFolder + "/scenes/test_controllers.json");
+            if (!in.is_open())
+                throw std::runtime_error("Could not open controllers file");
+            in >> controllers;
+        }
+
         ResourceManager::ResourceInfos resourceInfos;
         resourceInfos.resourceFolder = resourceFolder;
         resourceInfos.modelResourcesJson = modelResources;
@@ -74,6 +97,8 @@ int main(int argc, char* argv[]) {
                                                  glm::vec3{0, 1, 0});
 
         create_character(engine, "BH-2", glm::vec3(0, 0.5, -2));
+        get_controlled_character(engine, "BH-2", glm::vec3(10, 0.5, 0),
+                                 controllers["gridController"]);
         // load_mesh(engine, "BH-2", glm::vec3(-4, 0.5, 2));
         // load_mesh(engine, "cartoon_boy", glm::vec3(2, 0.5, 2));
         // load_mesh(engine, "plant", glm::vec3(2, 0.5, 2));

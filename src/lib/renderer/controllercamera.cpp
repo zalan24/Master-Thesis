@@ -122,7 +122,7 @@ void ControllerCamera::setCharacter(EntityManager::EntityId character) {
     }
 }
 
-ICharacterController::ControlData ControllerCamera::getControls() const {
+ICharacterController::ControlData ControllerCamera::getControls(const IControllable*) const {
     glm::vec3 motion;
     motion.x = (input.right ? 1 : 0) - (input.left ? 1 : 0);
     motion.z = (input.forward ? 1 : 0) - (input.backward ? 1 : 0);
