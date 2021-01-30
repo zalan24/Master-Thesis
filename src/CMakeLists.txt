@@ -1,2 +1,5 @@
-add_subdirectory(lib)
+add_subdirectory(core)
+add_subdirectory(drv)
+add_subdirectory(engine)
+add_subdirectory(gameLibs)
 add_subdirectory(apps)

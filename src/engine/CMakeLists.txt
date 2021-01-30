@@ -1,0 +1,8 @@
+add_subdirectory(controller)
+add_subdirectory(engine)
+add_subdirectory(data)
+add_subdirectory(io)
+add_subdirectory(resources)
+add_subdirectory(entities)
+# add_subdirectory(shaders)
+# add_subdirectory(ui)
