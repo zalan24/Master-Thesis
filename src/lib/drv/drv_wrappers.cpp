@@ -65,7 +65,8 @@ Instance::operator InstancePtr() const {
     return ptr;
 }
 
-Window::Window(const WindowOptions& options) : ptr(drv::create_window(options)) {
+Window::Window(Input* input, InputManager* inputManager, const WindowOptions& options)
+  : ptr(drv::create_window(input, inputManager, options)) {
 }
 
 Window::~Window() {

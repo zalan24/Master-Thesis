@@ -10,7 +10,9 @@
       "name": "Playground (linux)",
       "program": "${workspaceFolder}/build/src/apps/playground/Playground",
       "args": [
-        "-c../data/configs/playground_default.json"
+        "-c../data/configs/playground_default.json",
+        "-m../data/resources/models.json",
+        "-d../data/"
       ],
       "cwd": "${workspaceFolder}/build",
       "internalConsoleOptions": "openOnSessionStart"
@@ -26,7 +28,9 @@
       "externalConsole": false,
       "internalConsoleOptions": "openOnSessionStart",
       "args": [
-        "-c../data/configs/playground_default.json"
+        "-c../data/configs/playground_default.json",
+        "-m../data/resources/models.json",
+        "-d../data/"
       ]
     }
   ]

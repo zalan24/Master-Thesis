@@ -22,6 +22,8 @@
 
 #include <drverror.h>
 #include <drvwindow.h>
+#include <input.h>
+#include <inputmanager.h>
 
 #include "drvvulkan.h"
 #include "vulkan_conversions.h"
@@ -69,59 +71,88 @@ SwapChainSupportDetails drv_vulkan::query_swap_chain_support(drv::PhysicalDevice
     return details;
 }
 
-// void VulkanWindow::key_callback(GLFWwindow* window, int key, int, int action, int) {
-//     if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS)
-//         glfwSetWindowShouldClose(window, GLFW_TRUE);
-// }
+void VulkanWindow::key_callback(GLFWwindow* window, int key, int scancode, int action, int) {
+    // if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS)
+    //     glfwSetWindowShouldClose(window, GLFW_TRUE);
+    Input::KeyboardEvent event;
+    switch (action) {
+        case GLFW_PRESS:
+            event.type = Input::KeyboardEvent::PRESS;
+            break;
+        case GLFW_RELEASE:
+            event.type = Input::KeyboardEvent::RELEASE;
+            break;
+        case GLFW_REPEAT:
+            event.type = Input::KeyboardEvent::REPEAT;
+            break;
+        default:
+            return;
+    }
+    event.key = key;
+    event.scancode = scancode;
+    VulkanWindow* instance = static_cast<VulkanWindow*>(glfwGetWindowUserPointer(window));
+    instance->input->pushKeyboard(std::move(event));
+}
 
-// void VulkanWindow::cursor_position_callback(GLFWwindow*, double xpos, double ypos) {
-//     static bool wasPressed = false;
-//     static double prevX = 0;
-//     static double prevY = 0;
+void VulkanWindow::cursor_position_callback(GLFWwindow* window, double xpos, double ypos) {
+    // static bool wasPressed = false;
+    static double prevX = 0;
+    static double prevY = 0;
+    int w, h;
+    glfwGetWindowSize(window, &w, &h);
+    Input::MouseMoveEvent event;
+    event.relX = xpos / w;
+    event.relY = ypos / h;
+    event.dX = event.relX - prevX;
+    event.dY = event.relY - prevY;
+    prevX = event.relX;
+    prevY = event.relY;
+    VulkanWindow* instance = static_cast<VulkanWindow*>(glfwGetWindowUserPointer(window));
+    instance->input->pushMouseMove(std::move(event));
 
-//     bool pressed = getSingleton()->pushedMouseButtons.find(GLFW_MOUSE_BUTTON_LEFT)
-//                    != std::end(getSingleton()->pushedMouseButtons);
-//     if (pressed && wasPressed) {
-//         double dx = xpos - prevX;
-//         double dy = ypos - prevY;
-//         const double moveSpeed = 10;
-//         const double rotateLimit = 10;
-//         Camera& camera = getSingleton()->renderer->getCamera();
-//         camera.rotateAround(camera.getLookAt(), glm::vec3{0, 1, 0},
-//                             static_cast<float>(-dx / getSingleton()->width * moveSpeed));
-//         const glm::vec3 diff = camera.getEyePos() - camera.getLookAt();
-//         float ad = acos(glm::dot(glm::vec3{0, 1, 0}, glm::normalize(diff)));
-//         float yMove = -dy / getSingleton()->height * moveSpeed;
-//         float underMin = std::min(yMove + ad - static_cast<float>(glm::radians(rotateLimit)), 0.0f);
-//         float overMax =
-//           std::max(yMove + ad - static_cast<float>(glm::radians(180 - rotateLimit)), 0.0f);
-//         yMove -= underMin;
-//         yMove -= overMax;
-//         const glm::vec3 yMoveAxis = glm::normalize(glm::cross(glm::vec3{0, 1, 0}, diff));
-//         camera.rotateAround(camera.getLookAt(), yMoveAxis, yMove);
-//     }
+    // bool pressed = getSingleton()->pushedMouseButtons.find(GLFW_MOUSE_BUTTON_LEFT)
+    //                != std::end(getSingleton()->pushedMouseButtons);
+    // if (pressed && wasPressed) {
+    //     double dx = xpos - prevX;
+    //     double dy = ypos - prevY;
+    //     const double moveSpeed = 10;
+    //     const double rotateLimit = 10;
+    //     Camera& camera = getSingleton()->renderer->getCamera();
+    //     camera.rotateAround(camera.getLookAt(), glm::vec3{0, 1, 0},
+    //                         static_cast<float>(-dx / getSingleton()->width * moveSpeed));
+    //     const glm::vec3 diff = camera.getEyePos() - camera.getLookAt();
+    //     float ad = acos(glm::dot(glm::vec3{0, 1, 0}, glm::normalize(diff)));
+    //     float yMove = -dy / getSingleton()->height * moveSpeed;
+    //     float underMin = std::min(yMove + ad - static_cast<float>(glm::radians(rotateLimit)), 0.0f);
+    //     float overMax =
+    //       std::max(yMove + ad - static_cast<float>(glm::radians(180 - rotateLimit)), 0.0f);
+    //     yMove -= underMin;
+    //     yMove -= overMax;
+    //     const glm::vec3 yMoveAxis = glm::normalize(glm::cross(glm::vec3{0, 1, 0}, diff));
+    //     camera.rotateAround(camera.getLookAt(), yMoveAxis, yMove);
+    // }
 
-//     prevX = xpos;
-//     prevY = ypos;
-//     wasPressed = pressed;
-// }
+    // prevX = xpos;
+    // prevY = ypos;
+    // wasPressed = pressed;
+}
 
-// void VulkanWindow::mouse_button_callback(GLFWwindow*, int button, int action, int) {
-//     if (action == GLFW_PRESS) {
-//         // assert(getSingleton()->pushedMouseButtons.find(button)
-//         //        == std::end(getSingleton()->pushedMouseButtons));
-//         getSingleton()->pushedMouseButtons.insert(button);
-//     }
-//     if (action == GLFW_RELEASE) {
-//         // assert(getSingleton()->pushedMouseButtons.find(button) // TODO fails when maximizing the window with double click
-//         //        != std::end(getSingleton()->pushedMouseButtons));
-//         getSingleton()->pushedMouseButtons.erase(button);
-//     }
-// }
+void VulkanWindow::mouse_button_callback(GLFWwindow* window, int button, int action, int) {
+    Input::MouseButtenEvent event;
+    event.type =
+      action == GLFW_PRESS ? Input::MouseButtenEvent::PRESS : Input::MouseButtenEvent::RELEASE;
+    event.buttonId = button;
+    VulkanWindow* instance = static_cast<VulkanWindow*>(glfwGetWindowUserPointer(window));
+    instance->input->pushMouseButton(std::move(event));
+}
 
-// void VulkanWindow::scroll_callback(GLFWwindow*, double, double yoffset) {
-//     getSingleton()->renderer->getCamera().zoom(static_cast<float>(exp(yoffset / 10)));
-// }
+void VulkanWindow::scroll_callback(GLFWwindow* window, double xoffset, double yoffset) {
+    Input::ScrollEvent event;
+    event.x = xoffset;
+    event.y = yoffset;
+    VulkanWindow* instance = static_cast<VulkanWindow*>(glfwGetWindowUserPointer(window));
+    instance->input->pushScroll(std::move(event));
+}
 
 const char* const* VulkanWindow::get_required_extensions(uint32_t& count) {
     return glfwGetRequiredInstanceExtensions(&count);
@@ -148,16 +179,16 @@ VulkanWindow::WindowObject::WindowObject(int width, int height, const std::strin
     //     throw std::runtime_error("failed to create window surface!");
     // }
     // glfwMakeContextCurrent(window);
-    // glfwSetKeyCallback(window, key_callback);
-    // glfwSetCursorPosCallback(window, cursor_position_callback);
-    // glfwSetMouseButtonCallback(window, mouse_button_callback);
-    // glfwSetScrollCallback(window, scroll_callback);
+    glfwSetKeyCallback(window, key_callback);
+    glfwSetCursorPosCallback(window, cursor_position_callback);
+    glfwSetMouseButtonCallback(window, mouse_button_callback);
+    glfwSetScrollCallback(window, scroll_callback);
 }
 
 void VulkanWindow::framebuffer_resize_callback(GLFWwindow* window, int width, int height) {
-    VulkanWindow* w = static_cast<VulkanWindow*>(glfwGetWindowUserPointer(window));
-    w->height = height;
-    w->width = width;
+    VulkanWindow* instance = static_cast<VulkanWindow*>(glfwGetWindowUserPointer(window));
+    instance->height = height;
+    instance->width = width;
 }
 
 bool VulkanWindow::init(drv::InstancePtr instance) {
@@ -169,6 +200,7 @@ bool VulkanWindow::init(drv::InstancePtr instance) {
 }
 
 void VulkanWindow::close() {
+    glfwSetWindowUserPointer(window, nullptr);
     surface = {};
 }
 
@@ -219,10 +251,28 @@ VulkanWindow::Surface::~Surface() {
     close();
 }
 
-VulkanWindow::VulkanWindow(IDriver* _driver, unsigned int _width, unsigned int _height,
-                           const std::string& title)
-  : driver(_driver), initer(), window(_width, _height, title) {
+VulkanWindow::VulkanWindow(IDriver* _driver, Input* _input, InputManager* _inputManager,
+                           unsigned int _width, unsigned int _height, const std::string& title)
+  : driver(_driver),
+    initer(),
+    input(_input),
+    inputManager(_inputManager),
+    window(_width, _height, title) {
     // glfwSwapInterval(1);
+    inputManager->setCursorModeCallbock([this](InputListener::CursorMode mode) {
+        switch (mode) {
+            case InputListener::CursorMode::DONT_CARE:
+            case InputListener::CursorMode::NORMAL:
+                targetCursorMode = GLFW_CURSOR_NORMAL;
+                break;
+            case InputListener::CursorMode::HIDE:
+                targetCursorMode = GLFW_CURSOR_HIDDEN;
+                break;
+            case InputListener::CursorMode::LOCK:
+                targetCursorMode = GLFW_CURSOR_DISABLED;
+                break;
+        }
+    });
 }
 
 VulkanWindow::~VulkanWindow() {
@@ -262,10 +312,17 @@ uint32_t VulkanWindow::getHeight() const {
 
 void VulkanWindow::pollEvents() {
     glfwPollEvents();
+    int targetCursor = targetCursorMode.load();
+    if (targetCursor != currentCursorMode) {
+        currentCursorMode = targetCursor;
+        glfwSetInputMode(window, GLFW_CURSOR, currentCursorMode);
+    }
 }
 
-IWindow* DrvVulkan::create_window(const drv::WindowOptions& options) {
-    return new VulkanWindow(this, options.width, options.height, std::string(options.title));
+IWindow* DrvVulkan::create_window(drv::Input* input, drv::InputManager* inputManager,
+                                  const drv::WindowOptions& options) {
+    return new VulkanWindow(this, input, inputManager, options.width, options.height,
+                            std::string(options.title));
 }
 
 bool DrvVulkan::can_present(drv::PhysicalDevicePtr physicalDevice, IWindow* window,

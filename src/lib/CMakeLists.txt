@@ -8,7 +8,9 @@ add_subdirectory(entities)
 add_subdirectory(game)
 add_subdirectory(engine)
 add_subdirectory(serializable)
-# add_subdirectory(resources)
+add_subdirectory(resources)
+add_subdirectory(controller)
+add_subdirectory(math)
 add_subdirectory(drv)
 # add_subdirectory(ui)
 
@@ -26,4 +28,5 @@ target_link_libraries(AnimationsLibs INTERFACE
                     # AnimationsSerializable
                     # AnimationsResources
                     # AnimationsUI
+                    AnimationsController
 )

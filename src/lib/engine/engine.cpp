@@ -33,14 +33,28 @@ static void callback(const drv::CallbackData* data) {
     }
 }
 
-void Engine::Config::gatherEntries(std::vector<ISerializable::Entry>& entries) const {
-    REGISTER_ENTRY(screenWidth, entries);
-    REGISTER_ENTRY(screenHeight, entries);
-    REGISTER_ENTRY(imagesInSwapchain, entries);
-    REGISTER_ENTRY(maxFramesInExecutionQueue, entries);
-    REGISTER_ENTRY(maxFramesOnGPU, entries);
-    REGISTER_ENTRY(title, entries);
-    REGISTER_ENTRY(driver, entries);
+void Engine::Config::writeJson(json& out) const {
+    WRITE_OBJECT(screenWidth, out);
+    WRITE_OBJECT(screenHeight, out);
+    WRITE_OBJECT(stackMemorySizeKb, out);
+    WRITE_OBJECT(inputBufferSize, out);
+    WRITE_OBJECT(title, out);
+    WRITE_OBJECT(imagesInSwapchain, out);
+    WRITE_OBJECT(maxFramesInExecutionQueue, out);
+    WRITE_OBJECT(maxFramesOnGPU, out);
+    WRITE_OBJECT(driver, out);
+}
+
+void Engine::Config::readJson(const json& in) {
+    READ_OBJECT(screenWidth, in);
+    READ_OBJECT(screenHeight, in);
+    READ_OBJECT(stackMemorySizeKb, in);
+    READ_OBJECT(inputBufferSize, in);
+    READ_OBJECT(title, in);
+    READ_OBJECT(imagesInSwapchain, in);
+    READ_OBJECT(maxFramesInExecutionQueue, in);
+    READ_OBJECT(maxFramesOnGPU, in);
+    READ_OBJECT(driver, in);
 }
 
 static Engine::Config get_config(const std::string& file) {
@@ -81,7 +95,8 @@ Engine::WindowIniter::~WindowIniter() {
     window->close();
 }
 
-Engine::Engine(const std::string& configFile) : Engine(get_config(configFile)) {
+Engine::Engine(const std::string& configFile, ResourceManager::ResourceInfos resource_infos)
+  : Engine(get_config(configFile), std::move(resource_infos)) {
 }
 
 drv::Swapchain::CreateInfo Engine::get_swapchain_create_info(const Config& config) {
@@ -99,10 +114,13 @@ drv::Swapchain::CreateInfo Engine::get_swapchain_create_info(const Config& confi
 Engine::SyncBlock::SyncBlock(drv::LogicalDevicePtr device) : imageAvailableSemaphore(device) {
 }
 
-Engine::Engine(const Config& cfg)
+Engine::Engine(const Config& cfg, ResourceManager::ResourceInfos resource_infos)
   : config(cfg),
+    coreContext({size_t(config.stackMemorySizeKb << 10)}),
+    input(static_cast<size_t>(config.inputBufferSize)),
     driver({get_driver(cfg.driver)}),
-    window(drv::WindowOptions{static_cast<unsigned int>(cfg.screenWidth),
+    window(&input, &inputManager,
+           drv::WindowOptions{static_cast<unsigned int>(cfg.screenWidth),
                               static_cast<unsigned int>(cfg.screenHeight), cfg.title.c_str()}),
     drvInstance(drv::InstanceCreateInfo{cfg.title.c_str()}),
     windowIniter(window, drvInstance),
@@ -129,10 +147,18 @@ Engine::Engine(const Config& cfg)
     inputQueue(queueManager.getQueue({"input", "HtoD"})),
     cmdBufferBank(device),
     swapchain(physicalDevice, device, window, get_swapchain_create_info(config)),
-    syncBlock(device) {
+    syncBlock(device),
+    resourceMgr(std::move(resource_infos)) {
 }
 
 Engine::~Engine() {
+    entityManager.deleteAll();
+}
+
+void Engine::sampleInput() {
+    drv::Input::InputEvent event;
+    while (input.popEvent(event))
+        inputManager.feedInput(std::move(event));
 }
 
 void Engine::simulationLoop(RenderState* state) {
@@ -146,7 +172,7 @@ void Engine::simulationLoop(RenderState* state) {
                 break;
         }
         // TODO latency sleep
-        // TODO sample input
+        sampleInput();
         entityManager.step();
         std::this_thread::sleep_for(std::chrono::milliseconds(8));  // instead of simulation
         {

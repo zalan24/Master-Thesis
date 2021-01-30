@@ -8,20 +8,22 @@ template <typename P, typename D = typename P::ResourceDescriptor>
 class DescribedResource final : public ISerializable
 {
  public:
-    DescribedResource(const P* _provider, D&& _descriptor)
-      : provider(_provider),
-        descriptor(std::move(_descriptor)),
-        resource(provider->getResource(descriptor)) {}
+    DescribedResource() {}
+    DescribedResource(D&& _descriptor) : descriptor(std::move(_descriptor)) {
+        resource = P::getSingleton()->getResource(descriptor);
+    }
 
     const GenericResourcePool::ResourceRef& getRes() const { return resource; }
 
- protected:
-    void gatherEntries(std::vector<Entry>& entries) const override {
-        REGISTER_OBJECT(descriptor, entries);
+    void writeJson(json& out) const override final { WRITE_OBJECT(descriptor, out); }
+    void readJson(const json& in) override final {
+        READ_OBJECT(descriptor, in);
+        // this avoids releasing the resource if it's the same as the new one
+        GenericResourcePool::ResourceRef originalRes = resource;
+        resource = P::getSingleton()->getResource(descriptor);
     }
 
  private:
-    const P* provider;
     D descriptor;
     GenericResourcePool::ResourceRef resource;
 };

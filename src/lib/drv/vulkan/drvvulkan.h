@@ -11,6 +11,12 @@
 
 #define COMPARE_ENUMS(baseType, a, b) COMPARE_ENUMS_MSG(baseType, a, b, "enums mismatch")
 
+namespace drv
+{
+class Input;
+class InputManager;
+}  // namespace drv
+
 class DrvVulkan final : public drv::IDriver
 {
  public:
@@ -100,7 +106,8 @@ class DrvVulkan final : public drv::IDriver
     // drv::ShaderModulePtr create_shader_module(drv::LogicalDevicePtr device,
     //                                           drv::ShaderCreateInfoPtr info) override;
     // bool destroy_shader_module(drv::LogicalDevicePtr device, drv::ShaderModulePtr module) override;
-    IWindow* create_window(const drv::WindowOptions& options) override;
+    IWindow* create_window(drv::Input* input, drv::InputManager* inputManager,
+                           const drv::WindowOptions& options) override;
     bool can_present(drv::PhysicalDevicePtr physicalDevice, IWindow* window,
                      drv::QueueFamilyPtr family) override;
     drv::DeviceExtensions get_supported_extensions(drv::PhysicalDevicePtr physicalDevice) override;

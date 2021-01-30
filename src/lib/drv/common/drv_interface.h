@@ -6,6 +6,9 @@ class IWindow;
 
 namespace drv
 {
+class Input;
+class InputManager;
+
 class IDriver
 {
  public:
@@ -80,7 +83,8 @@ class IDriver
                                          const ComputePipelineCreateInfo* infos,
                                          ComputePipelinePtr* pipelines) = 0;
     virtual bool destroy_compute_pipeline(LogicalDevicePtr device, ComputePipelinePtr pipeline) = 0;
-    virtual IWindow* create_window(const WindowOptions& options) = 0;
+    virtual IWindow* create_window(Input* input, InputManager* inputManager,
+                                   const WindowOptions& options) = 0;
     virtual bool can_present(PhysicalDevicePtr physicalDevice, IWindow* window,
                              QueueFamilyPtr family) = 0;
     virtual DeviceExtensions get_supported_extensions(PhysicalDevicePtr physicalDevice) = 0;

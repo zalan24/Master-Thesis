@@ -18,6 +18,7 @@ if (Vulkan_FOUND)
     target_link_libraries(AnimationsDrvVulkan PUBLIC
         AnimationsDrvCommon
         AnimationsDrvMemory
+        AnimationsDrvInput
     )
     target_link_libraries(AnimationsDrvVulkan PRIVATE
         ${Vulkan_LIBRARIES}

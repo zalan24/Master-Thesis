@@ -2,6 +2,7 @@
 
 #include <memory>
 
+#include <charactercontroller.h>
 #include <glmesh.h>
 #include <material.h>
 #include <meshprovider.h>
@@ -9,10 +10,15 @@
 #include <shadermanager.h>
 #include <describedresource.hpp>
 
+#include "controllercamera.h"
 #include "drawableentity.h"
 
 class Material;
-class Animchar : public DrawableEntity
+class ICharacterController;
+class Animchar
+  : public DrawableEntity
+  , public IFollowable
+  , public IControllable
 {
  public:
     using MeshRes = DescribedResource<MeshProvider>;
@@ -22,9 +28,17 @@ class Animchar : public DrawableEntity
 
     void draw(const RenderContext& ctx) const override final;
     void beforedraw(const RenderContext& ctx) override final;
+    void update(const UpdateData& data) override final;
 
     void setMaterial(const std::shared_ptr<Material>& mat, bool overrideMat);
     void setMaterial(std::unique_ptr<Material>&& mat, bool overrideMat);
+
+    glm::mat4 getFocusOffset() const override;
+
+    void setController(const ICharacterController* controller) override;
+    void setController(std::unique_ptr<ICharacterController>&& controller) override;
+
+    glm::vec3 getPos() const override;
 
  private:
     AttributeBinder attributeBinder;
@@ -32,6 +46,7 @@ class Animchar : public DrawableEntity
     MeshRes mesh;
     std::shared_ptr<Material> material;
     GlMesh::State glMeshState;
+    std::variant<const ICharacterController*, std::unique_ptr<ICharacterController>> controller;
     float alphaClipping = 0.5;
     bool overrideMat = false;
     bool drawBones = true;

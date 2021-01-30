@@ -1,6 +1,7 @@
 #include "loadmesh.h"
 
 #include <algorithm>
+#include <fstream>
 #include <map>
 #include <memory>
 #include <string>
@@ -8,6 +9,8 @@
 #define GLM_FORCE_RADIANS
 #define GLM_LEFT_HAND
 #include <glm/geometric.hpp>
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
 
 #include <assimp/cimport.h>
 #include <assimp/matrix4x4.h>
@@ -17,6 +20,7 @@
 
 #include <material.h>
 #include <mesh.h>
+#include <meshprovider.h>
 #include <textureprovider.h>
 #include <util.hpp>
 
@@ -45,10 +49,13 @@ static glm::mat4 convert_matrix(const aiMatrix4x4& mat) {
     return tm;
 }
 
-static Mesh::Segment process(const aiMesh* mesh, const std::vector<Mesh::MaterialIndex>& materials,
+static Mesh::Segment process(const aiMesh* mesh,
+                             const std::map<std::string, Mesh::MaterialIndex>& materialOverrides,
+                             const std::vector<Mesh::MaterialIndex>& materials,
                              Mesh::BoneIndex& boneId, const Mesh::Skeleton* skeleton,
                              const glm::vec3& default_color) {
     assert(mesh->GetNumUVChannels() <= 1);
+    std::string meshName(mesh->mName.C_Str());
     Mesh::Segment segment;
     // mesh->mAnimMeshes[0]->
     std::map<uint32_t, std::vector<std::pair<uint32_t, float>>> vertexBoneWeights;
@@ -75,8 +82,14 @@ static Mesh::Segment process(const aiMesh* mesh, const std::vector<Mesh::Materia
             }
         }
     }
-    if (mesh->mMaterialIndex <= materials.size())
-        segment.mat = materials[mesh->mMaterialIndex];
+    if (mesh->mMaterialIndex <= materials.size()) {
+        // Materials could be merged here...
+        auto itr = materialOverrides.find(meshName);
+        if (itr == materialOverrides.end())
+            segment.mat = materials[mesh->mMaterialIndex];
+        else
+            segment.mat = itr->second;
+    }
     else
         assert(materials.size() == 0);
     for (uint32_t i = 0; i < mesh->mNumVertices; ++i) {
@@ -148,25 +161,27 @@ static Texture<RGBA> load_texture(const aiTexture* tex) {
 
 static void process(const aiScene* scene, const aiNode* node,
                     std::vector<Mesh::BoneIndex>& meshBones, Mesh::Skeleton* skeleton,
-                    Mesh::BoneIndex parentBone) {
+                    Mesh::BoneIndex parentBone, MeshInfo& meshInfo) {
     assert(node != nullptr);
     Mesh::Bone bone;
     bone.parent = parentBone;
     bone.localTm = convert_matrix(node->mTransformation);
     Mesh::BoneIndex boneId = skeleton->addBone(std::move(bone));
-    if (node->mName.length > 0)
+    if (node->mName.length > 0) {
         skeleton->registerBone(boneId, std::string(node->mName.C_Str()));
+        meshInfo.boneNames.emplace_back(node->mName.C_Str());
+    }
     for (unsigned int i = 0; i < node->mNumMeshes; ++i) {
         // Mesh bone should only be set once per segment
         assert(meshBones[node->mMeshes[i]] == skeleton->getRoot());
         meshBones[node->mMeshes[i]] = boneId;
     }
     for (unsigned int i = 0; i < node->mNumChildren; ++i)
-        process(scene, node->mChildren[i], meshBones, skeleton, boneId);
+        process(scene, node->mChildren[i], meshBones, skeleton, boneId, meshInfo);
 }
 
-Mesh load_mesh(const std::string& filename, const TextureProvider* texProvider,
-               const glm::vec3& default_color) {
+Mesh load_mesh(const std::string& filename, const MeshProvider::ModelResource& resData,
+               const TextureProvider* texProvider) {
     Assimp::Importer importer;
     const aiScene* scene = importer.ReadFile(
       filename, aiProcess_CalcTangentSpace | aiProcess_Triangulate | aiProcess_JoinIdenticalVertices
@@ -177,6 +192,7 @@ Mesh load_mesh(const std::string& filename, const TextureProvider* texProvider,
         throw std::runtime_error("Could not load object from file: " + filename + " (" + vError
                                  + ")");
     }
+    MeshInfo meshInfo;
     Mesh ret;
     std::vector<Mesh::MaterialIndex> materials;
     std::map<std::string, GenericResourcePool::ResourceRef> textures;
@@ -203,8 +219,7 @@ Mesh load_mesh(const std::string& filename, const TextureProvider* texProvider,
                 else {
                     TextureProvider::ResourceDescriptor matDesc{
                       std::string(path.data, path.length)};
-                    mat = ret.addMaterial(
-                      Material(Material::DiffuseRes(texProvider, std::move(matDesc))));
+                    mat = ret.addMaterial(Material(Material::DiffuseRes(std::move(matDesc))));
                     assert(false);  // TODO checks this (never been tried)
                 }
             }
@@ -215,26 +230,77 @@ Mesh load_mesh(const std::string& filename, const TextureProvider* texProvider,
                 matPtr->Get(AI_MATKEY_OPACITY, opacity);
                 glm::vec4 albedo_alpha{albedo.r, albedo.g, albedo.b, opacity};
                 TextureProvider::ResourceDescriptor matDesc{albedo_alpha};
-                mat =
-                  ret.addMaterial(Material(Material::DiffuseRes(texProvider, std::move(matDesc))));
+                mat = ret.addMaterial(Material(Material::DiffuseRes(std::move(matDesc))));
             }
             materials.push_back(std::move(mat));
         }
     }
+    if (resData.globalMaterialOverride) {
+        // This could be merged as well
+        Mesh::MaterialIndex mat = ret.addMaterial(resData.globalMaterialOverride);
+        std::fill(materials.begin(), materials.end(), mat);
+    }
     std::vector<Mesh::BoneIndex> meshBones(scene->mNumMeshes, ret.getSkeleton()->getRoot());
-    process(scene, scene->mRootNode, meshBones, ret.getSkeleton(), ret.getSkeleton()->getRoot());
+    process(scene, scene->mRootNode, meshBones, ret.getSkeleton(), ret.getSkeleton()->getRoot(),
+            meshInfo);
+    std::map<std::string, Mesh::MaterialIndex> materialOverrides;
+    for (const auto& [meshName, mat] : resData.materialOverrides)
+        materialOverrides[meshName] = ret.addMaterial(mat);
     std::vector<Mesh::SegmentIndex> segments;
     if (scene->HasMeshes()) {
         for (unsigned int i = 0; i < scene->mNumMeshes; ++i) {
-            Mesh::Segment segment =
-              process(scene->mMeshes[i], materials, meshBones[i], ret.getSkeleton(), default_color);
-            segments.push_back(ret.addSegment(std::move(segment)));
+            std::string meshName(scene->mMeshes[i]->mName.C_Str());
+            meshInfo.meshNames.push_back(meshName);
+            if (resData.excludeMeshes.count(meshName) > 0)
+                continue;
+            Mesh::Segment segment = process(scene->mMeshes[i], materialOverrides, materials,
+                                            meshBones[i], ret.getSkeleton(), glm::vec3(0, 0, 0));
+            ret.addSegment(std::move(segment));
         }
     }
     // TODO animations
     // scene->mAnimations[0]->mChannels[0]->;
     // scene->mAnimations[0]->mMeshChannels[0]->;
     ret.sortSegments();
+    Mesh::Bone rootBone = ret.getSkeleton()->getBone(ret.getSkeleton()->getRoot());
+    rootBone.localTm =
+      glm::scale(glm::mat4(1.f), glm::vec3(resData.size, resData.size, resData.size))
+      * rootBone.localTm;
+    ret.getSkeleton()->setBone(ret.getSkeleton()->getRoot(), std::move(rootBone));
+
+    std::map<std::string, MeshInfo> meshInfos;
+    {
+        std::ifstream meshInfoIn("meshInfos.json");
+        if (meshInfoIn.is_open()) {
+            json in;
+            meshInfoIn >> in;
+            ISerializable::serialize(in, meshInfos);
+        }
+    }
+    {
+        std::ofstream meshInfoOut("meshInfos.json");
+        meshInfos[filename] = meshInfo;
+        meshInfoOut << ISerializable::serialize(meshInfos);
+    }
+    Mesh::CameraData cameraData;
+    float totalWeight = 0;
+    for (const auto& [name, weight] : resData.cameraConfig.bones) {
+        Mesh::CameraData::BoneInfo info;
+        info.weight = weight;
+        info.index = ret.getSkeleton()->getBoneId(name);
+        if (info.index == Mesh::INVALID_BONE)
+            throw std::runtime_error("Invalid bone in camera config: " + name);
+        // offset = boneTm * info.offset;
+        info.offset =
+          glm::inverse(ret.getSkeleton()->getBoneWtm(info.index)) * resData.cameraConfig.tm;
+        totalWeight += weight;
+        cameraData.bones.push_back(std::move(info));
+    }
+    if (cameraData.bones.size() > 0 && totalWeight <= 0)
+        throw std::runtime_error("Total bone weight in camera config is not positive");
+    for (auto& bone : cameraData.bones)
+        bone.weight /= totalWeight;
+    ret.setCameraData(std::move(cameraData));
     return ret;
 }
 
@@ -312,4 +378,14 @@ Mesh create_sphere(size_t resX, size_t resY, float size, const glm::vec3& color)
     }
     ret.addSegment(std::move(segment));
     return ret;
+}
+
+void MeshInfo::writeJson(json& out) const {
+    WRITE_OBJECT(meshNames, out);
+    WRITE_OBJECT(boneNames, out);
+}
+
+void MeshInfo::readJson(const json& in) {
+    READ_OBJECT_OPT(meshNames, in, {});
+    READ_OBJECT_OPT(boneNames, in, {});
 }

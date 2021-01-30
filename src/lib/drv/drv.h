@@ -18,6 +18,9 @@ enum class Driver : DriverIndex
     NUM_PLATFORMS
 };
 
+class Input;
+class InputManager;
+
 // TODO Shaders
 
 // This struct is used to define driver info outside the engine
@@ -129,7 +132,7 @@ bool create_compute_pipeline(LogicalDevicePtr device, unsigned int count,
                              const ComputePipelineCreateInfo* infos, ComputePipelinePtr* pipelines);
 bool destroy_compute_pipeline(LogicalDevicePtr device, ComputePipelinePtr pipeline);
 
-IWindow* create_window(const WindowOptions& options);
+IWindow* create_window(Input* input, InputManager* inputManager, const WindowOptions& options);
 bool can_present(PhysicalDevicePtr physicalDevice, IWindow* window, QueueFamilyPtr family);
 DeviceExtensions get_supported_extensions(PhysicalDevicePtr physicalDevice);
 SwapchainPtr create_swapchain(PhysicalDevicePtr physicalDevice, LogicalDevicePtr device,

@@ -1,6 +1,8 @@
 {
     "screenWidth": 1600,
     "screenHeight": 900,
+    "inputBufferSize": 2048,
+    "stackMemorySizeKb": 1024,
     "imagesInSwapchain": 3,
     "maxFramesInExecutionQueue": 2,
     "maxFramesOnGPU": 2,

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <atomic>
 #include <memory>
 #include <optional>
 #include <set>
@@ -22,7 +23,9 @@ struct GLFWwindow;
 namespace drv
 {
 class IDriver;
-}
+class Input;
+class InputManager;
+}  // namespace drv
 
 namespace drv_vulkan
 {
@@ -30,8 +33,8 @@ struct SwapChainSupportDetails;
 class VulkanWindow final : public IWindow
 {
  public:
-    VulkanWindow(drv::IDriver* driver, unsigned int _width, unsigned int _height,
-                 const std::string& title);
+    VulkanWindow(drv::IDriver* driver, drv::Input* input, drv::InputManager* inputManager,
+                 unsigned int _width, unsigned int _height, const std::string& title);
     ~VulkanWindow() override;
 
     void getContentSize(unsigned int& width, unsigned int& height) const override;
@@ -85,7 +88,11 @@ class VulkanWindow final : public IWindow
         drv::InstancePtr instance;
     };
     drv::IDriver* driver;
+    int currentCursorMode;
+    std::atomic<int> targetCursorMode;
     GLFWInit initer;
+    drv::Input* input;
+    drv::InputManager* inputManager;
     WindowObject window;
     Surface surface;
     std::unique_ptr<SwapChainSupportDetails> swapchainSupport;
@@ -95,10 +102,10 @@ class VulkanWindow final : public IWindow
     int height = 0;
 
     static void error_callback [[noreturn]] (int error, const char* description);
-    //  static void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods);
-    //  static void cursor_position_callback(GLFWwindow* window, double xpos, double ypos);
-    //  static void mouse_button_callback(GLFWwindow* window, int button, int action, int mods);
-    //  static void scroll_callback(GLFWwindow* window, double xoffset, double yoffset);
+    static void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods);
+    static void cursor_position_callback(GLFWwindow* window, double xpos, double ypos);
+    static void mouse_button_callback(GLFWwindow* window, int button, int action, int mods);
+    static void scroll_callback(GLFWwindow* window, double xoffset, double yoffset);
 
     static void framebuffer_resize_callback(GLFWwindow* window, int width, int height);
 };

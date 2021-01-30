@@ -243,8 +243,9 @@ bool drv::destroy_compute_pipeline(LogicalDevicePtr device, ComputePipelinePtr p
     return current_driver_interface->destroy_compute_pipeline(device, pipeline);
 }
 
-IWindow* drv::create_window(const WindowOptions& options) {
-    return current_driver_interface->create_window(options);
+IWindow* drv::create_window(Input* input, InputManager* inputManager,
+                            const WindowOptions& options) {
+    return current_driver_interface->create_window(input, inputManager, options);
 }
 
 bool drv::can_present(PhysicalDevicePtr physicalDevice, IWindow* window, QueueFamilyPtr family) {

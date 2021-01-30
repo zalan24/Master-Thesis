@@ -23,7 +23,20 @@ class Mesh
 
     static constexpr MaterialIndex INVALID_MATERIAL = std::numeric_limits<MaterialIndex>::max();
     static constexpr BoneIndex INVALID_BONE = std::numeric_limits<BoneIndex>::max();
+    static constexpr BoneIndex INVALID_SEGMENT = std::numeric_limits<SegmentIndex>::max();
     static constexpr size_t MAX_BONES = 4;
+
+    struct CameraData
+    {
+        struct BoneInfo
+        {
+            BoneIndex index;
+            glm::mat4 offset;
+            float weight;
+        };
+
+        std::vector<BoneInfo> bones;
+    };
 
     struct Bone
     {
@@ -110,6 +123,7 @@ class Mesh
 
     size_t getSegmentCount() const { return segments.size(); }
     const Segment& getSegment(size_t id) const { return segments[id]; }
+    Segment& getSegment(size_t id) { return segments[id]; }
 
     const Material* getMaterial(MaterialIndex mat) const;
 
@@ -119,8 +133,13 @@ class Mesh
     size_t getMaterialCount() const { return materials.size(); }
     const Material* getMaterials() const { return materials.data(); }
 
+    const CameraData& getCameraData() const { return cameraData; }
+    void setCameraData(CameraData&& data) { cameraData = std::move(data); }
+    void setCameraData(const CameraData& data) { cameraData = data; }
+
  private:
     std::vector<Material> materials;
     std::vector<Segment> segments;
     Skeleton skeleton;
+    CameraData cameraData;
 };

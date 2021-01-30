@@ -64,6 +64,8 @@ class GlMesh
     State createState(GLuint boneBinding) const;
     void updateState(State& state) const;
 
+    glm::mat4 getBoneWtm(const State& state, Mesh::BoneIndex boneId) const;
+
     void uploadBones(const State& state, const glm::mat4* offsets) const;
 
     const Material& getMat(Mesh::MaterialIndex id) const;
@@ -71,6 +73,8 @@ class GlMesh
     void clear();
 
     size_t getSkeletonIndexCount() const { return boneIndexCount; }
+
+    const Mesh::CameraData& getCameraData() const { return cameraData; }
 
  private:
     Buffer<Mesh::VertexData> glVertices;
@@ -80,5 +84,6 @@ class GlMesh
     std::vector<Segment> segments;
     std::vector<BoneInfo> bones;
     std::vector<Material> materials;
+    Mesh::CameraData cameraData;
     size_t boneIndexCount = 0;
 };

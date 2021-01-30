@@ -71,7 +71,7 @@ class Window
   , private Exclusive
 {
  public:
-    Window(const WindowOptions& options);
+    Window(Input* input, InputManager* inputManager, const WindowOptions& options);
     ~Window();
 
     Window(Window&& other);

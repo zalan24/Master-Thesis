@@ -9,6 +9,6 @@ set_target_properties(  AnimationsResources
 target_include_directories(AnimationsResources PUBLIC . ${CMAKE_CURRENT_BINARY_DIR})
 target_link_libraries(AnimationsResources PUBLIC
     AnimationsData
-    AnimationsBuffer
+    # AnimationsBuffer
     AnimationsIO
 )

@@ -23,30 +23,6 @@
 #define M_SQRT2 1.41421356237309504880
 #define M_SQRT_2 0.707106781186547524401
 
-template <typename T, typename P>
-T assertReturn(T&& value, P&& predicate) {
-    assert(predicate(value));
-    return std::forward<T>(value);
-}
-
-template <typename Target, typename T>
-Target safeCast(T&& value) {
-    return static_cast<Target>(assertReturn(std::forward<T>(value), [](T v) {
-        if constexpr (std::is_signed<T>::value == std::is_signed<Target>::value) {
-            return std::numeric_limits<Target>::min() <= v
-                   && v <= std::numeric_limits<Target>::max();
-        }
-        else {
-            if constexpr (std::is_signed<T>::value)
-                return v >= static_cast<T>(0)
-                       && static_cast<typename std::make_unsigned<std::decay_t<T>>::type>(v)
-                            <= std::numeric_limits<Target>::max();
-            else
-                return v <= static_cast<typename std::make_unsigned<std::decay_t<Target>>::type>(
-                              std::numeric_limits<Target>::max());
-        }
-    }));
-}
 
 using CombinationFlag = unsigned int;
 enum CombinationBits : CombinationFlag
@@ -192,3 +168,127 @@ inline void readData(std::istream& in, std::set<T>& data) {
         data.insert(v);
     }
 }
+
+#ifdef PRINT_STACK
+#    include <backwardcppconfig.h>
+inline void printStack() {
+    using namespace backward;
+    StackTrace st;
+    st.load_here(32);
+    TraceResolver tr;
+    tr.load_stacktrace(st);
+    for (size_t i = 0; i < st.size(); ++i) {
+        ResolvedTrace trace = tr.resolve(st[i]);
+        std::cout << "#" << i << " ";
+        if (trace.source.filename == "")
+            std::cout << trace.object_filename << ": " << trace.object_function << "[" << trace.addr
+                      << "]" << std::endl;
+        else
+            std::cout << trace.source.filename << ":" << trace.source.line << ":"
+                      << trace.source.col << ": " << trace.source.function << std::endl;
+    }
+}
+#else
+inline void printStack() {
+}
+#endif
+
+#ifdef DEBUG
+#    define ASSERT(x)         \
+        do {                  \
+            if (!(x))         \
+                printStack(); \
+            assert(x);        \
+        } while (false)
+#else
+#    define ASSERT(x) (static_cast<void>(sizeof(x)))
+#endif
+
+// template <typename T, typename T2>
+// T safe_cast(const T2& value) {
+// #ifdef DEBUG
+//     ASSERT(static_cast<T2>(static_cast<T>(value)) == value);
+// #endif
+//     return static_cast<T>(value);
+// }
+
+template <typename T, unsigned int D>
+class Range
+{
+ public:
+    constexpr Range(const T& start = 0, const T& end = 0) {
+        for (unsigned int i = 0; i < D; ++i) {
+            a[i] = start;
+            b[i] = end;
+        }
+    }
+
+    void set(const T& start, const T& end, unsigned int d = 0) {
+        a[d] = start;
+        b[d] = end;
+    }
+
+    const T& start(unsigned int d = 0) const { return a[d]; }
+
+    const T& end(unsigned int d = 0) const { return b[d]; }
+
+    T range(unsigned int d = 0) const { return b[d] - a[d]; }
+
+    bool contains(T& value, unsigned d = 0) const { return a[d] <= value && value < b[d]; }
+    T center(unsigned int d = 0) const { return (a[d] + b[d]) / static_cast<T>(2); }
+
+    template <typename F>
+    T lerp(F&& f, unsigned int d = 0) const {
+        return ::lerp(a[d], b[d], std::forward<F>(f));
+    }
+
+    T area() const {
+        T ret{1};
+        for (unsigned int d = 0; d < D; ++d) {
+            if (b[d] < a[d])
+                return T{0};
+            ret *= range(d);
+        }
+        return ret;
+    }
+
+    friend Range intersection(const Range& _a, const Range& _b) {
+        Range ret;
+        for (unsigned int d = 0; d < D; ++d) {
+            ret.set(std::max(_a.start(d), _b.start(d)), std::min(_a.end(d), _b.end(d)), d);
+            if (ret.start(d) > ret.end(d))
+                ret.set(ret.start(d), ret.start(d), d);
+        }
+        return ret;
+    }
+
+ private:
+    T a[D] = {T{0}};
+    T b[D] = {T{0}};
+};
+
+template <typename T, typename P>
+T assert_return(T&& value, P&& predicate) {
+    ASSERT(predicate(value));
+    return std::forward<T>(value);
+}
+
+template <typename Target, typename T>
+Target safe_cast(T&& value) {
+    return static_cast<Target>(assert_return(std::forward<T>(value), [](T v) {
+        if constexpr (std::is_signed<T>::value == std::is_signed<Target>::value) {
+            return std::numeric_limits<Target>::min() <= v
+                   && v <= std::numeric_limits<Target>::max();
+        }
+        else {
+            if constexpr (std::is_signed<T>::value)
+                return v >= static_cast<T>(0)
+                       && static_cast<typename std::make_unsigned<std::decay_t<T>>::type>(v)
+                            <= std::numeric_limits<Target>::max();
+            else
+                return v <= static_cast<typename std::make_unsigned<std::decay_t<Target>>::type>(
+                              std::numeric_limits<Target>::max());
+        }
+    }));
+}
+

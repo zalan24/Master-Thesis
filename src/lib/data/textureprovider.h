@@ -14,11 +14,15 @@
 class TextureProvider
 {
  public:
-    virtual ~TextureProvider() {}
+    TextureProvider();
+    virtual ~TextureProvider();
+
+    static TextureProvider* getSingleton() { return instance; }
 
     class ResourceDescriptor final : public ISerializable
     {
      public:
+        ResourceDescriptor() : ResourceDescriptor(glm::vec4(0, 0, 0, 1)) {}
         ResourceDescriptor(const glm::vec4& value);
         ResourceDescriptor(const std::string& filename);
 
@@ -34,8 +38,8 @@ class TextureProvider
             return filename == "" ? value == other.value : true;
         }
 
-     protected:
-        void gatherEntries(std::vector<Entry>& entries) const override;
+        void writeJson(json& out) const override final;
+        void readJson(const json& in) override final;
 
      private:
         glm::vec4 value;
@@ -49,6 +53,7 @@ class TextureProvider
     virtual GenericResourcePool::ResourceRef createResource(const std::string& filename) const = 0;
 
  private:
+    static TextureProvider* instance;
 };
 
 namespace std

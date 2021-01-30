@@ -2,16 +2,74 @@
 
 #include <glad/glad.h>
 
-#include <entitymanager.h>
+#include <inputlistener.h>
+#include <inputmanager.h>
 
+#include "controllercamera.h"
 #include "drawableentity.h"
+#include "freecam.h"
 #include "rendercontext.h"
+
+class RendererInput final : public InputListener
+{
+ public:
+    RendererInput(Renderer* _renderer) : InputListener(false), renderer(_renderer) {}
+    ~RendererInput() override {}
+
+    CursorMode getCursorMode() override final { return DONT_CARE; }
+
+ protected:
+    bool processKeyboard(const Input::KeyboardEvent& event) override final;
+
+ private:
+    Renderer* renderer;
+};
+
+bool RendererInput::processKeyboard(const Input::KeyboardEvent& event) {
+    if (event.key == KEY_F11) {
+        if (event.type == event.PRESS) {
+            if (renderer->freeCamEntity->isActive()) {
+                renderer->freeCamEntity->deactivate();
+                renderer->cameraController->activate();
+            }
+            else {
+                renderer->cameraController->deactivate();
+                renderer->freeCamEntity->setLocalTransform(renderer->camera.getView());
+                renderer->freeCamEntity->activate();
+            }
+        }
+        return true;
+    }
+    return false;
+}
 
 Renderer::Renderer() {
     GLuint vertexArrayID = 0;
     glGenVertexArrays(1, &vertexArrayID);
     glBindVertexArray(vertexArrayID);
     checkError();
+    std::unique_ptr<FreeCamEntity> freeCam = std::make_unique<FreeCamEntity>(this);
+    freeCamEntity = freeCam.get();
+    EntityManager::getSingleton()->addEntity(std::move(freeCam));
+
+    std::unique_ptr<ControllerCamera> cameraControllerEntity =
+      std::make_unique<ControllerCamera>(this);
+    cameraController = cameraControllerEntity.get();
+    EntityManager::getSingleton()->addEntity(std::move(cameraControllerEntity), -1);
+
+    inputListener = std::make_unique<RendererInput>(this);
+    InputManager::getSingleton()->registerListener(inputListener.get(), 10);
+}
+
+Renderer::~Renderer() {
+    if (inputListener)
+        InputManager::getSingleton()->unregisterListener(inputListener.get());
+}
+
+void Renderer::setCharacter(EntityManager::EntityId character) {
+    cameraController->setCharacter(character);
+    if (!freeCamEntity->isActive())
+        cameraController->activate();
 }
 
 void Renderer::updateFrameBuffer(Framebuffer& framebuffer, unsigned int width,

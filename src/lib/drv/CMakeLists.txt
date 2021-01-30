@@ -1,6 +1,7 @@
 add_subdirectory(profiler)
 add_subdirectory(memory)
 add_subdirectory(common)
+add_subdirectory(input)
 
 option(BUILD_DRV_VULKAN "Build driver for vulkan" ON)
 

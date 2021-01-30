@@ -16,4 +16,5 @@ target_link_libraries(AnimationsIO PUBLIC
     GLM_LIB
     AnimationsData
     AnimationsTools
+    AnimationsSerializable
 )

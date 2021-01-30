@@ -16,12 +16,16 @@ EntityManager::EntityManager() {
     instance = this;
 }
 
-EntityManager::~EntityManager() noexcept {
+void EntityManager::deleteAll() {
     destructing = true;
-    assert(instance == this);
     for (EntityId id = 0; id < entities.size(); ++id)
         if (entities[id].entity != nullptr && entities[id].entity->getParent() == nullptr)
             removeEntity(id);
+}
+
+EntityManager::~EntityManager() noexcept {
+    assert(instance == this);
+    deleteAll();
     instance = nullptr;
 }
 
@@ -152,6 +156,10 @@ void EntityManager::checkAndResetUpdateOrder() {
     for (EntityId id = 0; id < entities.size(); ++id)
         if (entities[id].entity != nullptr)
             updateOrder.push_back(id);
+    std::sort(updateOrder.begin(), updateOrder.end(),
+              [this](const EntityId lhs, const EntityId rhs) {
+                  return entities[lhs].priority > entities[rhs].priority;
+              });
     needReset = false;
 }
 

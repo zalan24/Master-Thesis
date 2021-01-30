@@ -5,9 +5,8 @@
 #include <resourcemanager.h>
 
 std::unique_ptr<Material> Animchar::getDefaultMaterial() {
-    const TextureProvider* texProvider = ResourceManager::getSingleton()->getTexProvider();
     TextureProvider::ResourceDescriptor diffuseDesc(glm::vec4(1, 1, 1, 1));
-    Material::DiffuseRes diffuseRes(texProvider, std::move(diffuseDesc));
+    Material::DiffuseRes diffuseRes(std::move(diffuseDesc));
     return std::make_unique<Material>(std::move(diffuseRes));
 }
 
@@ -42,6 +41,26 @@ void Animchar::bindVertexAttributes() {
     skeletonAttributeBinder.addAttribute(&Mesh::BoneVertex::vId_Depth, "vId_Depth");
     skeletonAttributeBinder.addAttribute(&Mesh::BoneVertex::vPos, "vPos");
     checkError();
+}
+
+void Animchar::update(const UpdateData& data) {
+    ICharacterController::ControlData controlData;
+    if (std::holds_alternative<const ICharacterController*>(controller)) {
+        const ICharacterController* ctrl = std::get<const ICharacterController*>(controller);
+        if (!ctrl)
+            return;
+        controlData = ctrl->getControls(this);
+    }
+    else if (std::holds_alternative<std::unique_ptr<ICharacterController>>(controller))
+        controlData =
+          std::get<std::unique_ptr<ICharacterController>>(controller)->getControls(this);
+    else
+        return;
+    Entity::AffineTransform tm = getLocalTransform();
+    tm[3] += glm::vec4(controlData.movement.speed.x, controlData.movement.speed.y,
+                       controlData.movement.speed.z, 0)
+             * data.dt;
+    setLocalTransform(tm);
 }
 
 void Animchar::beforedraw(const RenderContext&) {
@@ -153,4 +172,27 @@ void Animchar::setMaterial(const std::shared_ptr<Material>& mat, bool _overrideM
     material = std::move(mat);
     overrideMat = _overrideMat;
     fixMat();
+}
+
+glm::mat4 Animchar::getFocusOffset() const {
+    const Mesh::CameraData& cameraData = getGlMesh()->getCameraData();
+    if (cameraData.bones.size() == 0)
+        return glm::mat4(1.f);
+    glm::mat4 ret(0.f);
+    for (const Mesh::CameraData::BoneInfo& bone : cameraData.bones)
+        ret += getGlMesh()->getBoneWtm(glMeshState, bone.index) * bone.offset * bone.weight;
+    ret /= ret[3][3];
+    return ret;
+}
+
+void Animchar::setController(const ICharacterController* _controller) {
+    controller = _controller;
+}
+
+void Animchar::setController(std::unique_ptr<ICharacterController>&& _controller) {
+    controller = std::move(_controller);
+}
+
+glm::vec3 Animchar::getPos() const {
+    return getLocalTransform()[3];
 }

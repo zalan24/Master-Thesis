@@ -13,8 +13,11 @@
 #include <drvlane.h>
 
 #include <entitymanager.h>
+#include <input.h>
+#include <inputmanager.h>
 // #include <renderer.h>
-// #include <resourcemanager.h>
+#include <corecontext.h>
+#include <resourcemanager.h>
 #include <serializable.h>
 
 class ExecutionQueue;
@@ -34,11 +37,14 @@ class Engine
         int maxFramesOnGPU;
         std::string title;
         std::string driver;
-        void gatherEntries(std::vector<ISerializable::Entry>& entries) const override;
+        int inputBufferSize;
+        int stackMemorySizeKb;
+        void writeJson(json& out) const override final;
+        void readJson(const json& in) override final;
     };
 
-    Engine(const Config& config);
-    Engine(const std::string& configFile);
+    Engine(const Config& config, ResourceManager::ResourceInfos resource_infos);
+    Engine(const std::string& configFile, ResourceManager::ResourceInfos resource_infos);
     ~Engine();
 
     Engine(const Engine&) = delete;
@@ -77,6 +83,9 @@ class Engine
     Config config;
 
     ErrorCallback callback;
+    drv::Input input;
+    drv::InputManager inputManager;
+    CoreContext coreContext;
     drv::DriverWrapper driver;
     drv::Window window;
     drv::Instance drvInstance;
@@ -95,7 +104,7 @@ class Engine
     drv::CommandBufferBank cmdBufferBank;
     drv::Swapchain swapchain;
     SyncBlock syncBlock;
-    // ResourceManager resourceMgr;
+    ResourceManager resourceMgr;
     EntityManager entityManager;
     // Renderer renderer;
 
@@ -123,6 +132,7 @@ class Engine
     void recordCommandsLoop(RenderState* state);
     void executeCommandsLoop(RenderState* state);
     void present(RenderState* state, FrameId presentFrame);
+    void sampleInput();
 
     static drv::PhysicalDevice::SelectionInfo get_device_selection_info(
       drv::InstancePtr instance, const drv::DeviceExtensions& deviceExtensions);

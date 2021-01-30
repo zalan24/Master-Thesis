@@ -16,20 +16,21 @@ class Camera
     const glm::mat4& getPV() const { return pv; }
     glm::mat4 getPV() { return pv; }
 
-    void rotateAround(const glm::vec3& point, const glm::vec3& axis, float angle);
-    void zoom(float value);
+    //  void rotateAround(const glm::vec3& point, const glm::vec3& axis, float angle);
+    //  void zoom(float value);
 
-    glm::vec3 getLookAt() const { return lookAt; }
-    glm::vec3 getEyePos() const { return eyePos; }
+    glm::vec3 getEyePos() const { return glm::vec3(view[3].x, view[3].y, view[3].z); }
 
-    void setLookAt(const glm::vec3& p);
-    void setEyePos(const glm::vec3& p);
+    void lookAt(const glm::vec3& eyePos, const glm::vec3& lookAt, glm::vec3 up);
+
+    void setView(const glm::mat4& view);
+
+    glm::mat4 getView() const { return view; }
 
  private:
     glm::mat4 pv;
-    glm::vec3 eyePos{0, 0, -1};
-    glm::vec3 lookAt{0, 0, 0};
-    glm::vec3 up{0, 1, 0};
+    glm::mat4 invView;
+    glm::mat4 view;  // camera -> world
     float fovy = static_cast<float>(M_PI / 2);
     float aspect = 1;
     float near = 0.1f;

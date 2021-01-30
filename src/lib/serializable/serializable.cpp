@@ -2,135 +2,35 @@
 
 void ISerializable::write(std::ostream& out) const {
     json j;
-    write(j);
+    writeJson(j);
     out << j;
 }
 
 void ISerializable::read(std::istream& in) {
     json j;
     in >> j;
-    read(j);
+    readJson(j);
 }
 
-template <>
-ISerializable::Entry::Type getType<int>() {
-    return ISerializable::Entry::INT;
-}
-template <>
-ISerializable::Entry::Type getType<float>() {
-    return ISerializable::Entry::FLOAT;
-}
-template <>
-ISerializable::Entry::Type getType<std::string>() {
-    return ISerializable::Entry::STRING;
-}
-template <>
-ISerializable::Entry::Type getType<bool>() {
-    return ISerializable::Entry::BOOL;
-}
-template <>
-ISerializable::Entry::Type getType<ISerializable*>() {
-    return ISerializable::Entry::OBJECT;
-}
-
-static void write(json& to, const ISerializable::Entry& e) {
-    switch (e.type) {
-        case ISerializable::Entry::INT:
-            to[e.name] = *static_cast<const int*>(e.readPtr);
-            break;
-        case ISerializable::Entry::FLOAT:
-            to[e.name] = *static_cast<const float*>(e.readPtr);
-            break;
-        case ISerializable::Entry::STRING:
-            to[e.name] = *static_cast<const std::string*>(e.readPtr);
-            break;
-        case ISerializable::Entry::BOOL:
-            to[e.name] = *static_cast<const bool*>(e.readPtr);
-            break;
-        case ISerializable::Entry::OBJECT:
-            json obj;
-            (*static_cast<const ISerializable* const*>(e.readPtr))->write(obj);
-            to[e.name] = obj;
-            break;
+void IVirtualSerializable::writeJson(json& out) const {
+    std::string type = getCurrentType();
+    const ISerializable* content = getCurrent();
+    if (content == nullptr) {
+        type = "";
+        WRITE_OBJECT(type, out);
+    }
+    else {
+        WRITE_OBJECT(type, out);
+        WRITE_OBJECT(content, out);
     }
 }
 
-static void push(json& to, const ISerializable::Entry& e) {
-    switch (e.type) {
-        case ISerializable::Entry::INT:
-            to.push_back(*static_cast<const int*>(e.readPtr));
-            break;
-        case ISerializable::Entry::FLOAT:
-            to.push_back(*static_cast<const float*>(e.readPtr));
-            break;
-        case ISerializable::Entry::STRING:
-            to.push_back(*static_cast<const std::string*>(e.readPtr));
-            break;
-        case ISerializable::Entry::BOOL:
-            to.push_back(*static_cast<const bool*>(e.readPtr));
-            break;
-        case ISerializable::Entry::OBJECT:
-            json obj;
-            (*static_cast<const ISerializable* const*>(e.readPtr))->write(obj);
-            to.push_back(obj);
-            break;
-    }
-}
-
-template <typename I>
-static void read(const json& from, ISerializable::Entry::Type type, void* wPtr, const I& index,
-                 size_t arrIndex = 0) {
-    switch (type) {
-        case ISerializable::Entry::INT:
-            static_cast<int*>(wPtr)[arrIndex] = from[index];
-            break;
-        case ISerializable::Entry::FLOAT:
-            static_cast<float*>(wPtr)[arrIndex] = from[index];
-            break;
-        case ISerializable::Entry::STRING:
-            static_cast<std::string*>(wPtr)[arrIndex] = from[index];
-            break;
-        case ISerializable::Entry::BOOL:
-            static_cast<bool*>(wPtr)[arrIndex] = from[index];
-            break;
-        case ISerializable::Entry::OBJECT:
-            static_cast<ISerializable**>(wPtr)[arrIndex]->read(from[index]);
-            break;
-    }
-}
-
-void ISerializable::write(json& out) const {
-    std::vector<Entry> entries;
-    gatherEntries(entries);
-    for (const Entry& e : entries) {
-        if (e.count >= 0) {
-            out[e.name] = json::array();
-            for (int i = 0; i < e.count; ++i)
-                ::push(out[e.name], e);
-        }
-        else
-            ::write(out, e);
-    }
-}
-
-void ISerializable::read(const json& in) {
-    std::vector<Entry> entries;
-    gatherEntries(entries);
-    for (const Entry& e : entries) {
-        if (!in.is_object())
-            throw std::runtime_error("Input json is not an object: " + in.dump());
-        if (!in.count(e.name))
-            throw std::runtime_error("Input json is missing a property (" + e.name
-                                     + "):" + in.dump());
-        if (e.count >= 0) {
-            const json& array = in[e.name];
-            if (!array.is_array())
-                throw std::runtime_error(
-                  "'" + e.name + "' property should be an array in input json: " + in.dump());
-            for (unsigned int i = 0; i < static_cast<unsigned int>(e.count); ++i)
-                ::read(in[e.name], e.type, e.writePtr, i, i);
-        }
-        else
-            ::read(in, e.type, e.writePtr, e.name);
+void IVirtualSerializable::readJson(const json& in) {
+    reset();
+    std::string type;
+    READ_OBJECT_OPT(type, in, "");
+    if (type != "") {
+        ISerializable* content = init(type);
+        READ_OBJECT(content, in);
     }
 }

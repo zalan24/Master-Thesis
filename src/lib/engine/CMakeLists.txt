@@ -16,7 +16,8 @@ target_link_libraries(AnimationsEngine PUBLIC
     AnimationsSerializable
     AnimationsIO
     AnimationsGame
-    # AnimationsRenderer
-    # AnimationsResources
     AnimationsDrv
+    # AnimationsRenderer
+    AnimationsResources
+    AnimationsDrvInput
 )
