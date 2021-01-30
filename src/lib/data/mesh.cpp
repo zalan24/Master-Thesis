@@ -34,20 +34,20 @@ Mesh::Mesh() {
 }
 
 Mesh::VertexIndex Mesh::Segment::addVertex(const VertexData& vert) {
-    VertexIndex ret = safeCast<VertexIndex>(vertices.size());
+    VertexIndex ret = safe_cast<VertexIndex>(vertices.size());
     vertices.push_back(vert);
     return ret;
 }
 
 void Mesh::Segment::addFace() {
     VertexIndex ind =
-      safeCast<VertexIndex>(assertReturn(vertices.size(), [](auto val) { return val >= 3; }) - 3);
+      safe_cast<VertexIndex>(assert_return(vertices.size(), [](auto val) { return val >= 3; }) - 3);
     addFace(ind, ind + 1, ind + 2);
 }
 
 void Mesh::Segment::addFaceRev() {
     VertexIndex ind =
-      safeCast<VertexIndex>(assertReturn(vertices.size(), [](auto val) { return val >= 3; }) - 3);
+      safe_cast<VertexIndex>(assert_return(vertices.size(), [](auto val) { return val >= 3; }) - 3);
     addFace(ind + 2, ind, ind + 1);
 }
 

@@ -11,4 +11,5 @@ target_link_libraries(AnimationsController PUBLIC
     GLM_LIB
     AnimationsTools
     AnimationsSerializable
+    AnimationsMath
 )

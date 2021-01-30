@@ -12,6 +12,7 @@
 #include <resourcemanager.h>
 #include <serializable.h>
 #include <window.h>
+#include <corecontext.h>
 
 class Engine
 {
@@ -21,6 +22,7 @@ class Engine
         int screenWidth;
         int screenHeight;
         int inputBufferSize;
+        int stackMemorySizeKb;
         std::string title;
         void writeJson(json& out) const override final;
         void readJson(const json& in) override final;
@@ -57,6 +59,7 @@ class Engine
 
     Config config;
 
+    CoreContext coreContext;
     Input input;
     InputManager inputManager;
     EntityManager entityManager;
