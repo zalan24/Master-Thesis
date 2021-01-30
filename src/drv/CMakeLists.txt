@@ -1,5 +1,4 @@
 add_subdirectory(profiler)
-add_subdirectory(memory)
 add_subdirectory(common)
 
 option(BUILD_DRV_VULKAN "Build driver for vulkan" ON)
@@ -18,7 +17,6 @@ set_target_properties(  AnimationsDrv
                         LINK_OPTIONS "${TARGET_LINK_FLAGS}")
 target_link_libraries(AnimationsDrv PUBLIC
     AnimationsDrvCommon
-    AnimationsDrvMemory
     AnimationsTools
 )
 

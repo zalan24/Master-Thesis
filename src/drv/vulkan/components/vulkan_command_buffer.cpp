@@ -2,8 +2,9 @@
 
 #include <vulkan/vulkan.h>
 
+#include <corecontext.h>
+
 #include <drverror.h>
-#include <drvmemory.h>
 
 #include "vulkan_buffer.h"
 #include "vulkan_conversions.h"
@@ -42,17 +43,14 @@ bool DrvVulkan::execute(drv::QueuePtr queue, unsigned int count, const drv::Exec
         waitSemaphoreCount += infos[i].numWaitSemaphores + infos[i].numWaitTimelineSemaphores;
         signalSemaphoreCount += infos[i].numSignalSemaphores + infos[i].numSignalTimelineSemaphores;
     }
-    LOCAL_MEMORY_POOL_DEFAULT(pool);
-    drv::MemoryPool* threadPool = pool.pool();
-    drv::MemoryPool::MemoryHolder submitInfosMemory(count * sizeof(VkSubmitInfo), threadPool);
-    drv::MemoryPool::MemoryHolder submitTimelineInfosMemory(
-      count * sizeof(VkTimelineSemaphoreSubmitInfo), threadPool);
-    drv::MemoryPool::MemoryHolder semaphoresMem(
-      (waitSemaphoreCount + signalSemaphoreCount) * sizeof(VkSemaphore), threadPool);
-    drv::MemoryPool::MemoryHolder semaphoreValuesMem(
-      (waitSemaphoreCount + signalSemaphoreCount) * sizeof(uint64_t), threadPool);
-    drv::MemoryPool::MemoryHolder waitStageMem(waitSemaphoreCount * sizeof(VkPipelineStageFlags),
-                                               threadPool);
+    StackMemory::MemoryHandle<VkSubmitInfo> submitInfosMemory(count, TEMPMEM);
+    StackMemory::MemoryHandle<VkTimelineSemaphoreSubmitInfo> submitTimelineInfosMemory(count,
+                                                                                       TEMPMEM);
+    StackMemory::MemoryHandle<VkSemaphore> semaphoresMem(
+      (waitSemaphoreCount + signalSemaphoreCount), TEMPMEM);
+    StackMemory::MemoryHandle<uint64_t> semaphoreValuesMem(
+      (waitSemaphoreCount + signalSemaphoreCount), TEMPMEM);
+    StackMemory::MemoryHandle<VkPipelineStageFlags> waitStageMem(waitSemaphoreCount, TEMPMEM);
     VkSubmitInfo* submitInfos = reinterpret_cast<VkSubmitInfo*>(submitInfosMemory.get());
     drv::drv_assert(submitInfos != nullptr, "Could not allocate memory for submit infos");
     VkTimelineSemaphoreSubmitInfo* submitTimelineInfos =

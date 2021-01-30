@@ -2,8 +2,9 @@
 
 #include <vulkan/vulkan.h>
 
+#include <corecontext.h>
+
 #include <drverror.h>
-#include <drvmemory.h>
 
 #include "vulkan_conversions.h"
 #include "vulkan_enum_compare.h"
@@ -16,14 +17,9 @@ bool DrvVulkan::cmd_pipeline_barrier(
   uint32_t memoryBarrierCount, const drv::MemoryBarrier* memoryBarriers,
   uint32_t bufferBarrierCount, const drv::BufferMemoryBarrier* bufferBarriers,
   uint32_t imageBarrierCount, const drv::ImageMemoryBarrier* imageBarriers) {
-    LOCAL_MEMORY_POOL_DEFAULT(pool);
-    drv::MemoryPool* threadPool = pool.pool();
-    drv::MemoryPool::MemoryHolder barrierMem(memoryBarrierCount * sizeof(VkMemoryBarrier),
-                                             threadPool);
-    drv::MemoryPool::MemoryHolder bufferMem(bufferBarrierCount * sizeof(VkBufferMemoryBarrier),
-                                            threadPool);
-    drv::MemoryPool::MemoryHolder imageMem(imageBarrierCount * sizeof(VkImageMemoryBarrier),
-                                           threadPool);
+    StackMemory::MemoryHandle<VkMemoryBarrier> barrierMem(memoryBarrierCount, TEMPMEM);
+    StackMemory::MemoryHandle<VkBufferMemoryBarrier> bufferMem(bufferBarrierCount, TEMPMEM);
+    StackMemory::MemoryHandle<VkImageMemoryBarrier> imageMem(imageBarrierCount, TEMPMEM);
     VkMemoryBarrier* barriers = reinterpret_cast<VkMemoryBarrier*>(barrierMem.get());
     VkBufferMemoryBarrier* vkBufferBarriers =
       reinterpret_cast<VkBufferMemoryBarrier*>(bufferMem.get());

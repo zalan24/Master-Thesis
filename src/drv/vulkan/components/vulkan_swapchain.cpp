@@ -6,7 +6,6 @@
 #include <vulkan/vulkan.h>
 
 #include <drverror.h>
-#include <drvmemory.h>
 
 #include "vulkan_conversions.h"
 #include "vulkan_enum_compare.h"

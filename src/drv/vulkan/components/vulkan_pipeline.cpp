@@ -2,8 +2,9 @@
 
 #include <vulkan/vulkan.h>
 
+#include <corecontext.h>
+
 #include <drverror.h>
-#include <drvmemory.h>
 
 drv::PipelineLayoutPtr DrvVulkan::create_pipeline_layout(
   drv::LogicalDevicePtr device, const drv::PipelineLayoutCreateInfo* info) {
@@ -22,20 +23,17 @@ drv::PipelineLayoutPtr DrvVulkan::create_pipeline_layout(
 }
 
 bool DrvVulkan::destroy_pipeline_layout(drv::LogicalDevicePtr device,
-                                         drv::PipelineLayoutPtr layout) {
+                                        drv::PipelineLayoutPtr layout) {
     vkDestroyPipelineLayout(reinterpret_cast<VkDevice>(device),
                             reinterpret_cast<VkPipelineLayout>(layout), nullptr);
     return true;
 }
 
 bool DrvVulkan::create_compute_pipeline(drv::LogicalDevicePtr device, unsigned int count,
-                                         const drv::ComputePipelineCreateInfo* infos,
-                                         drv::ComputePipelinePtr* pipelines) {
-    LOCAL_MEMORY_POOL_DEFAULT(pool);
-    drv::MemoryPool* threadPool = pool.pool();
-    drv::MemoryPool::MemoryHolder memroy(count * sizeof(VkComputePipelineCreateInfo), threadPool);
-    VkComputePipelineCreateInfo* createInfos =
-      reinterpret_cast<VkComputePipelineCreateInfo*>(memroy.get());
+                                        const drv::ComputePipelineCreateInfo* infos,
+                                        drv::ComputePipelinePtr* pipelines) {
+    StackMemory::MemoryHandle<VkComputePipelineCreateInfo> memory(count, TEMPMEM);
+    VkComputePipelineCreateInfo* createInfos = memory.get();
     drv::drv_assert(createInfos != nullptr, "Could not allocate memory for pipeline create infos");
 
     for (unsigned int i = 0; i < count; ++i) {
@@ -61,7 +59,7 @@ bool DrvVulkan::create_compute_pipeline(drv::LogicalDevicePtr device, unsigned i
 }
 
 bool DrvVulkan::destroy_compute_pipeline(drv::LogicalDevicePtr device,
-                                          drv::ComputePipelinePtr pipeline) {
+                                         drv::ComputePipelinePtr pipeline) {
     vkDestroyPipeline(reinterpret_cast<VkDevice>(device), reinterpret_cast<VkPipeline>(pipeline),
                       nullptr);
     return true;

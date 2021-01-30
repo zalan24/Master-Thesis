@@ -2,8 +2,9 @@
 
 #include <vulkan/vulkan.h>
 
+#include <corecontext.h>
+
 #include <drverror.h>
-#include <drvmemory.h>
 
 #include "vulkan_buffer.h"
 #include "vulkan_conversions.h"
@@ -33,9 +34,7 @@ drv::BufferPtr DrvVulkan::create_buffer(drv::LogicalDevicePtr device,
                 break;
         }
         bufferCreateInfo.queueFamilyIndexCount = info->familyCount;
-        LOCAL_MEMORY_POOL_DEFAULT(pool);
-        drv::MemoryPool* threadPool = pool.pool();
-        drv::MemoryPool::MemoryHolder mem(info->familyCount * sizeof(uint32_t), threadPool);
+        StackMemory::MemoryHandle<uint32_t> mem(info->familyCount, TEMPMEM);
         if (info->familyCount > 0) {
             uint32_t* queueFamilies = reinterpret_cast<uint32_t*>(mem.get());
             drv::drv_assert(queueFamilies != nullptr,

@@ -17,7 +17,6 @@ if (Vulkan_FOUND)
                             LINK_OPTIONS "${TARGET_LINK_FLAGS}")
     target_link_libraries(AnimationsDrvVulkan PUBLIC
         AnimationsDrvCommon
-        AnimationsDrvMemory # TODO remove
         AnimationsInput
         AnimationsTools
     )

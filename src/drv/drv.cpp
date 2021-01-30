@@ -5,7 +5,6 @@
 
 #include <drivers.h>
 #include <drverror.h>
-#include <drvmemory.h>
 
 #ifdef DRIVER_VULKAN
 #    include <drvvulkan.h>
@@ -31,7 +30,6 @@ static drv::IDriver* current_driver_interface = nullptr;
 // }
 
 bool drv::init(const Driver* drivers, unsigned int count) {
-    drv::MemoryPool::init();
     assert(current_driver_interface == nullptr);
     for (unsigned int i = 0; i < count; ++i) {
         current_driver = drivers[i];
@@ -52,7 +50,6 @@ bool drv::init(const Driver* drivers, unsigned int count) {
 bool drv::close() {
     delete current_driver_interface;
     current_driver_interface = nullptr;
-    drv::MemoryPool::close();
     return true;
 }
 

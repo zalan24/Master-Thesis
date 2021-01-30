@@ -3,8 +3,9 @@
 #include <algorithm>
 #include <vector>
 
+#include <corecontext.h>
+
 #include <drverror.h>
-#include <drvmemory.h>
 #include <drvwindow.h>
 
 using namespace drv;

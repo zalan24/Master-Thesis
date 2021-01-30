@@ -5,8 +5,9 @@
 
 #include <vulkan/vulkan.h>
 
+#include <corecontext.h>
+
 #include <drverror.h>
-#include <drvmemory.h>
 
 #include "vulkan_enum_compare.h"
 
@@ -118,8 +119,7 @@ bool DrvVulkan::update_descriptor_sets(drv::LogicalDevicePtr device, uint32_t de
                                        const drv::CopyDescriptorSet* copies) {
     drv::drv_assert(false, "Unimplemented");
     return false;
-    // LOCAL_MEMORY_POOL_DEFAULT(pool);
-    // drv::MemoryPool* threadPool = pool.pool();
+    // StackMemory::MemoryHandle<> mem(count, TEMPMEM); // TODO
     // drv::MemoryPool::MemoryHolder writeMemory(descriptorWriteCount * sizeof(VkWriteDescriptorSet),
     //                                           threadPool);
     // drv::MemoryPool::MemoryHolder copyMemory(descriptorCopyCount * sizeof(VkCopyDescriptorSet),

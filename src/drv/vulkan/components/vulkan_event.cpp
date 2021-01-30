@@ -2,8 +2,9 @@
 
 #include <vulkan/vulkan.h>
 
+#include <corecontext.h>
+
 #include <drverror.h>
-#include <drvmemory.h>
 
 #include "vulkan_buffer.h"
 #include "vulkan_conversions.h"
@@ -67,14 +68,9 @@ bool DrvVulkan::cmd_wait_events(drv::CommandBufferPtr commandBuffer, uint32_t ev
                                 const drv::BufferMemoryBarrier* bufferBarriers,
                                 uint32_t imageBarrierCount,
                                 const drv::ImageMemoryBarrier* imageBarriers) {
-    LOCAL_MEMORY_POOL_DEFAULT(pool);
-    drv::MemoryPool* threadPool = pool.pool();
-    drv::MemoryPool::MemoryHolder barrierMem(memoryBarrierCount * sizeof(VkMemoryBarrier),
-                                             threadPool);
-    drv::MemoryPool::MemoryHolder bufferMem(bufferBarrierCount * sizeof(VkBufferMemoryBarrier),
-                                            threadPool);
-    drv::MemoryPool::MemoryHolder imageMem(imageBarrierCount * sizeof(VkImageMemoryBarrier),
-                                           threadPool);
+    StackMemory::MemoryHandle<VkMemoryBarrier> barrierMem(memoryBarrierCount, TEMPMEM);
+    StackMemory::MemoryHandle<VkBufferMemoryBarrier> bufferMem(bufferBarrierCount, TEMPMEM);
+    StackMemory::MemoryHandle<VkImageMemoryBarrier> imageMem(imageBarrierCount, TEMPMEM);
     VkMemoryBarrier* barriers = reinterpret_cast<VkMemoryBarrier*>(barrierMem.get());
     VkBufferMemoryBarrier* vkBufferBarriers =
       reinterpret_cast<VkBufferMemoryBarrier*>(bufferMem.get());

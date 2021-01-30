@@ -9,7 +9,6 @@
 
 #include <util.hpp>
 
-
 class StackMemory
 {
  public:
@@ -40,6 +39,9 @@ class StackMemory
 
         T* get() { return ptr; }
         const T* get() const { return ptr; }
+
+        operator T*() { return ptr; }
+        operator const T*() const { return ptr; }
 
      private:
         StackMemory* memory;
