@@ -936,6 +936,12 @@ Swapchain::Swapchain(drv::PhysicalDevicePtr physicalDevice, LogicalDevicePtr _de
         SwapchainCreateInfo swapchainInfo = getSwapchainInfo(currentWidth, currentHeight);
         ptr = create_swapchain(physicalDevice, device, window, &swapchainInfo);
         drv::drv_assert(ptr != NULL_HANDLE, "Could not create Swapchain");
+        uint32_t count = 0;
+        drv::drv_assert(get_swapchain_images(device, ptr, &count, nullptr),
+                        "Could not get swapchain images");
+        drv::drv_assert(count > 0, "No images in swapchain");
+        images.resize(count);
+        get_swapchain_images(device, ptr, &count, images.data());
     }
 }
 
@@ -946,6 +952,12 @@ void Swapchain::recreate(drv::PhysicalDevicePtr physicalDevice, IWindow* window)
         SwapchainCreateInfo swapchainInfo = getSwapchainInfo(currentWidth, currentHeight);
         ptr = create_swapchain(physicalDevice, device, window, &swapchainInfo);
         drv::drv_assert(ptr != NULL_HANDLE, "Could not create Swapchain");
+        uint32_t count = 0;
+        drv::drv_assert(get_swapchain_images(device, ptr, &count, nullptr),
+                        "Could not get swapchain images");
+        drv::drv_assert(count > 0, "No images in swapchain");
+        images.resize(count);
+        get_swapchain_images(device, ptr, &count, images.data());
     }
     // TODO free old swapchain???
 }
@@ -972,6 +984,7 @@ Swapchain::Swapchain(Swapchain&& other) noexcept {
     acquiredIndex = other.acquiredIndex;
     currentWidth = other.currentWidth;
     currentHeight = other.currentHeight;
+    images = std::move(other.images);
     other.ptr = NULL_HANDLE;
 }
 
@@ -985,6 +998,7 @@ Swapchain& Swapchain::operator=(Swapchain&& other) noexcept {
     acquiredIndex = other.acquiredIndex;
     currentWidth = other.currentWidth;
     currentHeight = other.currentHeight;
+    images = std::move(other.images);
     other.ptr = NULL_HANDLE;
     return *this;
 }

@@ -101,6 +101,14 @@ drv::PresentResult DrvVulkan::present(drv::QueuePtr queue, drv::SwapchainPtr swa
     }
 }
 
+bool DrvVulkan::get_swapchain_images(drv::LogicalDevicePtr device, drv::SwapchainPtr swapchain,
+                                     uint32_t* count, drv::ImagePtr* images) {
+    VkResult result =
+      vkGetSwapchainImagesKHR(convertDevice(device), reinterpret_cast<VkSwapchainKHR>(swapchain),
+                              count, convertImages(images));
+    return result == VK_SUCCESS || result == VK_INCOMPLETE && images == nullptr;
+}
+
 bool DrvVulkan::acquire_image(drv::LogicalDevicePtr device, drv::SwapchainPtr swapchain,
                               drv::SemaphorePtr semaphore, drv::FencePtr fence, uint32_t* index,
                               uint64_t timeoutNs) {

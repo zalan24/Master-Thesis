@@ -269,6 +269,11 @@ drv::PresentResult drv::present(drv::QueuePtr queue, drv::SwapchainPtr swapchain
     return current_driver_interface->present(queue, swapchain, info, imageIndex);
 }
 
+bool drv::get_swapchain_images(LogicalDevicePtr device, SwapchainPtr swapchain, uint32_t* count,
+                               drv::ImagePtr* images) {
+    return current_driver_interface->get_swapchain_images(device, swapchain, count, images);
+}
+
 bool drv::acquire_image(LogicalDevicePtr device, SwapchainPtr swapchain, SemaphorePtr semaphore,
                         FencePtr fence, uint32_t* index, uint64_t timeoutNs) {
     return current_driver_interface->acquire_image(device, swapchain, semaphore, fence, index,

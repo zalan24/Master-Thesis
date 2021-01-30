@@ -89,6 +89,8 @@ class IDriver
     virtual bool destroy_swapchain(LogicalDevicePtr device, SwapchainPtr swapchain) = 0;
     virtual PresentResult present(QueuePtr queue, SwapchainPtr swapchain, const PresentInfo& info,
                                   uint32_t imageIndex) = 0;
+    virtual bool get_swapchain_images(LogicalDevicePtr device, SwapchainPtr swapchain,
+                                      uint32_t* count, drv::ImagePtr* images) = 0;
     virtual bool acquire_image(LogicalDevicePtr device, SwapchainPtr swapchain,
                                SemaphorePtr semaphore, FencePtr fence, uint32_t* index,
                                uint64_t timeoutNs) = 0;

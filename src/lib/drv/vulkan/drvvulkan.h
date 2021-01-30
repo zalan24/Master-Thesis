@@ -110,6 +110,8 @@ class DrvVulkan final : public drv::IDriver
     bool destroy_swapchain(drv::LogicalDevicePtr device, drv::SwapchainPtr swapchain) override;
     drv::PresentResult present(drv::QueuePtr queue, drv::SwapchainPtr swapchain,
                                const drv::PresentInfo& info, uint32_t imageIndex) override;
+    bool get_swapchain_images(drv::LogicalDevicePtr device, drv::SwapchainPtr swapchain,
+                              uint32_t* count, drv::ImagePtr* images) override;
     bool acquire_image(drv::LogicalDevicePtr device, drv::SwapchainPtr swapchain,
                        drv::SemaphorePtr semaphore, drv::FencePtr fence, uint32_t* index,
                        uint64_t timeoutNs) override;

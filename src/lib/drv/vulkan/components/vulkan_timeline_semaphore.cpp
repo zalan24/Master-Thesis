@@ -48,8 +48,6 @@ bool DrvVulkan::wait_on_timeline_semaphores(drv::LogicalDevicePtr device, uint32
                                             const drv::TimelineSemaphorePtr* semaphores,
                                             const uint64_t* waitValues, bool waitAll,
                                             uint64_t timeoutNs) {
-    const uint64_t waitValue = 1;
-
     VkSemaphoreWaitInfo waitInfo;
     waitInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_WAIT_INFO;
     waitInfo.pNext = nullptr;

@@ -27,6 +27,10 @@ inline VkImage convertImage(drv::ImagePtr image) {
     return reinterpret_cast<VkImage>(image);
 }
 
+inline VkImage* convertImages(drv::ImagePtr* image) {
+    return reinterpret_cast<VkImage*>(image);
+}
+
 inline drv::ImagePtr convertImage(VkImage image) {
     return reinterpret_cast<drv::ImagePtr>(image);
 }

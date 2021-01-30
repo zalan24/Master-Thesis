@@ -493,6 +493,7 @@ class Swapchain
     uint32_t acquiredIndex = INVALID_INDEX;
     uint32_t currentWidth = 0;
     uint32_t currentHeight = 0;
+    std::vector<ImagePtr> images;
 
     void close();
     SwapchainCreateInfo getSwapchainInfo(uint32_t width, uint32_t height);
