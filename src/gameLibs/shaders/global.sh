@@ -1,0 +1,8 @@
+descriptor {
+    variants {
+
+    }
+    resources {
+
+    }
+}

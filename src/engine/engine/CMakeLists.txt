@@ -14,7 +14,7 @@ target_link_libraries(AnimationsEngine PRIVATE
 target_link_libraries(AnimationsEngine PUBLIC
     AnimationsEntities
     AnimationsSerializable
-    AnimationsIO
+    AnimationsAssetLoaders
     AnimationsDrv
     # AnimationsRenderer
     AnimationsResources
