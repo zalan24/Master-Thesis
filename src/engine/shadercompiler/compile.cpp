@@ -2,59 +2,10 @@
 
 #include <set>
 
-namespace fs = std::filesystem;
+#include <blockfile.h>
+#include <uncomment.h>
 
-bool uncomment(std::istream& in, std::ostream& out) {
-    bool inComment = false;
-    bool inString = false;
-    bool inChar = false;
-    bool lineComment = false;
-    bool wasInComment = false;
-    char lastC = '\0';
-    char c;
-    while (in.get(c)) {
-        const bool canWrite = !wasInComment;
-        wasInComment = inComment;
-        switch (c) {
-            case '\'':
-                if (!inString && !inComment && (!inChar || lastC != '\\'))
-                    inChar = !inChar;
-                break;
-            case '"':
-                if (!inChar && !inComment && (!inString || lastC != '\\'))
-                    inString = !inString;
-                break;
-            case '/':
-                if (lastC == '/' && !inChar && !inString && !inComment) {
-                    inComment = true;
-                    lineComment = true;
-                }
-                else if (lastC == '*' && !inChar && !inString && inComment && !lineComment) {
-                    inComment = false;
-                }
-                break;
-            case '*':
-                if (lastC == '/' && !inChar && !inString && !inComment) {
-                    inComment = true;
-                    lineComment = false;
-                }
-                break;
-            case '\n':
-                if (inComment && lineComment)
-                    inComment = false;
-                break;
-            default:
-                break;
-        }
-        if (lastC != '\0' && !inComment && canWrite) {
-            out.put(lastC);
-        }
-        lastC = c;
-    }
-    if (lastC != '\0' && !inComment && !wasInComment)
-        out.put(lastC);
-    return !inString && !inChar;
-}
+namespace fs = std::filesystem;
 
 static bool include_headers(const std::string& filename, std::ostream& out,
                             const std::unordered_map<std::string, fs::path>& headerPaths,
@@ -74,16 +25,54 @@ static bool include_headers(const std::string& filename, std::ostream& out,
     }
     std::stringstream content;
     uncomment(in, content);
+    std::string contentStr = content.str();
     filesInProgress.insert(filename);
+    bool ret = true;
+    std::regex headerReg{"((\\w+\\/)*(\\w+))"};
     try {
-        // rec
+        BlockFile blocks(content);
+        if (!blocks.hasNodes()) {
+            std::cerr << "Shader must only contian blocks" << std::endl;
+            ret = false;
+        }
+        else {
+            for (size_t i = 0; i < blocks.getBlockCount("include") && ret; ++i) {
+                const BlockFile* inc = blocks.getNode("include", i);
+                if (!inc->hasContent()) {
+                    std::cerr << "Invalid include block in file: " << filename << std::endl;
+                    ret = false;
+                    break;
+                }
+                const std::string* headerContent = inc->getContent();
+                auto headersBegin =
+                  std::sregex_iterator(headerContent->begin(), headerContent->end(), headerReg);
+                auto headersEnd = std::sregex_iterator();
+                for (std::sregex_iterator i = headersBegin; i != headersEnd; ++i) {
+                    std::string headerId = (*i)[0];
+                    auto itr = headerPaths.find(headerId);
+                    if (itr == headerPaths.end()) {
+                        std::cerr << "Could not find header: " << headerId << std::endl;
+                        ret = false;
+                        break;
+                    }
+                    if (!include_headers(itr->second.string(), out, headerPaths, includes,
+                                         filesInProgress)) {
+                        std::cerr << "Error in header " << headerId << " (" << itr->second.string()
+                                  << "), included from " << filename << std::endl;
+                        ret = false;
+                        break;
+                    }
+                }
+            }
+        }
     }
     catch (...) {
         filesInProgress.erase(filename);
         throw;
     }
     filesInProgress.erase(filename);
-    return true;
+    out << contentStr;
+    return ret;
 }
 
 bool compile_shader(const std::string& shaderFile,
@@ -95,6 +84,8 @@ bool compile_shader(const std::string& shaderFile,
         std::cerr << "Could not collect headers for shader: " << shaderFile << std::endl;
         return false;
     }
+
+    std::cout << cu.str() << std::endl;
 
     return true;
 }

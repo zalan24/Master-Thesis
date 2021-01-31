@@ -11,5 +11,3 @@
 
 bool compile_shader(const std::string& shaderFile,
                     const std::unordered_map<std::string, std::filesystem::path>& headerPaths);
-
-bool uncomment(std::istream& in, std::ostream& out);

@@ -72,8 +72,18 @@ int main(int argc, char* argv[]) {
         if (!std::regex_match(f, m, shaderRegex))
             continue;
         std::cout << "Compiling: " << f << std::endl;
-        if (!compile_shader(f, headerPaths)) {
-            std::cerr << "Failed to compile a shader: " << f << std::endl;
+        try {
+            if (!compile_shader(f, headerPaths)) {
+                std::cerr << "Failed to compile a shader: " << f << std::endl;
+                return 1;
+            }
+        }
+        catch (const std::exception& e) {
+            std::cerr << "An exception has ocurred: " << e.what() << std::endl;
+            return 1;
+        }
+        catch (...) {
+            std::cerr << "An unknown exception has ocurred" << std::endl;
             return 1;
         }
     }
