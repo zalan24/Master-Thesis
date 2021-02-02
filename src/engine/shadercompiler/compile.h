@@ -17,6 +17,11 @@ struct Variants
     std::unordered_map<std::string, std::vector<std::string>> values;
 };
 
+struct VariantConfig
+{
+    std::unordered_map<std::string, size_t> variantValues;
+};
+
 bool read_variants(const BlockFile* blockFile, Variants& variants);
 
 bool compile_shader(const std::string& shaderFile,
@@ -24,5 +29,6 @@ bool compile_shader(const std::string& shaderFile,
 
 bool generate_header(const std::string& shaderFile, const std::string& outputFolder);
 
-bool generate_binary(const std::vector<Variants>& variants,
-                     std::vector<std::vector<uint32_t>>& binary, std::istream& shader);
+bool generate_binary(const std::vector<Variants>& variants, const std::stringstream& shader);
+
+VariantConfig get_variant_config(size_t index, const std::vector<Variants>& variants);

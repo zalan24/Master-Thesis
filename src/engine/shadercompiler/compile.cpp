@@ -4,6 +4,9 @@
 #include <fstream>
 #include <set>
 
+#include <simplecpp.h>
+#include <spirv_glsl.hpp>
+
 #include <blockfile.h>
 #include <uncomment.h>
 
@@ -145,18 +148,15 @@ bool compile_shader(const std::string& shaderFile,
         read_variants(descriptor->getNode("variants"), v);
         variants.push_back(std::move(v));
     }
-    std::vector<std::vector<uint32_t>> binary;
-    if (!generate_binary(variants, binary, vs)) {
+    if (!generate_binary(variants, vs)) {
         std::cerr << "Could not generate vs binary: " << shaderFile << std::endl;
         return false;
     }
-    binary.clear();
-    if (!generate_binary(variants, binary, ps)) {
+    if (!generate_binary(variants, ps)) {
         std::cerr << "Could not generate ps binary: " << shaderFile << std::endl;
         return false;
     }
-    binary.clear();
-    // generate_binary(variants, binary, cs); // TODO
+    // generate_binary(variants, cs); // TODO
 
     return true;
 }
@@ -268,9 +268,21 @@ bool read_variants(const BlockFile* blockFile, Variants& variants) {
     return true;
 }
 
-bool generate_binary(const std::vector<Variants>& variants,
-                     std::vector<std::vector<uint32_t>>& binary, std::istream& shader) {
+VariantConfig get_variant_config(size_t index, const std::vector<Variants>& variants) {
+    VariantConfig ret;
+    for (const Variants& v : variants) {
+        for (const auto& [name, values] : v.values) {
+            size_t valueId = index % values.size();
+            ret.variantValues[name] = valueId;
+            index /= values.size();
+        }
+    }
+    return ret;
+}
+
+bool generate_binary(const std::vector<Variants>& variants, const std::stringstream& shader) {
     std::set<std::string> variantParams;
+    size_t count = 1;
     for (const Variants& v : variants) {
         for (const auto& itr : v.values) {
             if (variantParams.count(itr.first) > 0) {
@@ -278,8 +290,30 @@ bool generate_binary(const std::vector<Variants>& variants,
                           << std::endl;
                 return false;
             }
+            count *= itr.second.size();
             variantParams.insert(itr.first);
         }
+    }
+    for (size_t i = 0; i < count; ++i) {
+        VariantConfig config = get_variant_config(i, variants);
+        simplecpp::DUI dui;
+        for (const Variants& v : variants)
+            for (const auto& [key, values] : v.values)
+                for (size_t ind = 0; ind < values.size(); ++ind)
+                    dui.defines.push_back(values[ind] + "=" + std::to_string(ind));
+        for (const auto& [key, value] : config.variantValues)
+            dui.defines.push_back(key + "=" + std::to_string(value));
+        std::stringstream shaderCopy(shader.str());
+        std::vector<std::string> files;
+        simplecpp::TokenList rawtokens(shaderCopy, files);
+        std::map<std::string, simplecpp::TokenList*> included =
+          simplecpp::load(rawtokens, files, dui);
+
+        simplecpp::TokenList outputTokens(files);
+        simplecpp::preprocess(outputTokens, rawtokens, files, included, dui);
+
+        // Output
+        std::cout << outputTokens.stringify() << std::endl;
     }
     return true;
 }
