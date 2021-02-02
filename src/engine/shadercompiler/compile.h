@@ -23,3 +23,6 @@ bool compile_shader(const std::string& shaderFile,
                     const std::unordered_map<std::string, std::filesystem::path>& headerPaths);
 
 bool generate_header(const std::string& shaderFile, const std::string& outputFolder);
+
+bool generate_binary(const std::vector<Variants>& variants,
+                     std::vector<std::vector<uint32_t>>& binary, std::istream& shader);

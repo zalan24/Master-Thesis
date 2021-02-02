@@ -135,10 +135,28 @@ bool compile_shader(const std::string& shaderFile,
         std::cerr << "Could not collect cs shader content in: " << shaderFile << std::endl;
         return false;
     }
-
-    std::cout << "vs: " << vs.str() << std::endl;
-    std::cout << "ps: " << ps.str() << std::endl;
-    std::cout << "cs: " << cs.str() << std::endl;
+    std::vector<Variants> variants;
+    size_t descriptorCount = cuBlocks.getBlockCount("descriptor");
+    for (size_t i = 0; i < descriptorCount; ++i) {
+        const BlockFile* descriptor = cuBlocks.getNode("descriptor", i);
+        if (descriptor->getBlockCount("variants") == 0)
+            continue;
+        Variants v;
+        read_variants(descriptor->getNode("variants"), v);
+        variants.push_back(std::move(v));
+    }
+    std::vector<std::vector<uint32_t>> binary;
+    if (!generate_binary(variants, binary, vs)) {
+        std::cerr << "Could not generate vs binary: " << shaderFile << std::endl;
+        return false;
+    }
+    binary.clear();
+    if (!generate_binary(variants, binary, ps)) {
+        std::cerr << "Could not generate ps binary: " << shaderFile << std::endl;
+        return false;
+    }
+    binary.clear();
+    // generate_binary(variants, binary, cs); // TODO
 
     return true;
 }
@@ -245,6 +263,22 @@ bool read_variants(const BlockFile* blockFile, Variants& variants) {
         for (std::sregex_iterator regJ = valuesBegin; regJ != valuesEnd; ++regJ) {
             std::string value = (*regJ)[1];
             vec.push_back(value);
+        }
+    }
+    return true;
+}
+
+bool generate_binary(const std::vector<Variants>& variants,
+                     std::vector<std::vector<uint32_t>>& binary, std::istream& shader) {
+    std::set<std::string> variantParams;
+    for (const Variants& v : variants) {
+        for (const auto& itr : v.values) {
+            if (variantParams.count(itr.first) > 0) {
+                std::cerr << "A shader variant param name is used multiple times: " << itr.first
+                          << std::endl;
+                return false;
+            }
+            variantParams.insert(itr.first);
         }
     }
     return true;

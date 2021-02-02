@@ -5,7 +5,7 @@ include {
 
 descriptor {
     variants {
-        color: red, black, green;
+        color: red, black, green, green2;
     }
     resources {
 
@@ -32,6 +32,12 @@ ps {
     layout(location = 0) out vec4 outColor;
 
     void main() {
-        outColor = vec4(1.0, 0.0, 0.0, 1.0);
+        #if color == red
+            outColor = vec4(1.0, 0.0, 0.0, 1.0);
+        #elif color == black
+            outColor = vec4(0.0, 0.0, 0.0, 1.0);
+        #elif color == green || color == green2
+            outColor = vec4(0.0, 1.0, 0.0, 1.0);
+        #endif
     }
 }
