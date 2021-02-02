@@ -1,7 +1,6 @@
 file(GLOB SHADER_MANAGER_SOURCES *.cpp *.h *.hpp)
 
 add_library(AnimationsShaderManager STATIC ${SHADER_MANAGER_SOURCES})
-add_dependencies(AnimationsShaderManager ShaderCodes)
 
 set_target_properties(  AnimationsShaderManager
                         PROPERTIES

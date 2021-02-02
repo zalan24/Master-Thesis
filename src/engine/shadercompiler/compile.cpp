@@ -1,5 +1,7 @@
 #include "compile.h"
 
+#include <cctype>
+#include <fstream>
 #include <set>
 
 #include <blockfile.h>
@@ -138,5 +140,112 @@ bool compile_shader(const std::string& shaderFile,
     std::cout << "ps: " << ps.str() << std::endl;
     std::cout << "cs: " << cs.str() << std::endl;
 
+    return true;
+}
+
+bool generate_header(const std::string& shaderFile, const std::string& outputFolder) {
+    if (!fs::exists(fs::path(outputFolder)) && !fs::create_directories(fs::path(outputFolder))) {
+        std::cerr << "Could not create directory for shader headers: " << outputFolder << std::endl;
+        return false;
+    }
+    std::ifstream shaderInput(shaderFile);
+    if (!shaderInput.is_open()) {
+        std::cerr << "Could not open file: " << shaderFile << std::endl;
+        return false;
+    }
+    BlockFile b(shaderInput);
+    shaderInput.close();
+    if (b.hasContent()) {
+        std::cerr << "Shader file has content on the root level (no blocks present): " << shaderFile
+                  << std::endl;
+        return false;
+    }
+    if (!b.hasNodes())
+        return true;
+    size_t descriptorCount = b.getBlockCount("descriptor");
+    if (descriptorCount == 0)
+        return true;
+    if (descriptorCount > 1) {
+        std::cerr << "A shader file may only contain one 'descriptor' block: " << shaderFile
+                  << std::endl;
+        return false;
+    }
+    const BlockFile* descBlock = b.getNode("descriptor");
+    if (descBlock->hasContent()) {
+        std::cerr << "The descriptor block must not have direct content." << std::endl;
+        return false;
+    }
+    size_t variantsBlockCount = descBlock->hasNodes() ? descBlock->getBlockCount("variants") : 0;
+    size_t resourcesBlockCount = descBlock->hasNodes() ? descBlock->getBlockCount("resources") : 0;
+    if (variantsBlockCount > 1 || resourcesBlockCount > 1) {
+        std::cerr << "The descriptor block can only have up to one variants and resources blocks"
+                  << std::endl;
+        return false;
+    }
+    std::string name = fs::path(shaderFile).stem().string();
+    for (char& c : name)
+        c = static_cast<char>(tolower(c));
+    fs::path filePath = fs::path(outputFolder) / fs::path("shader_" + name + ".h");
+    std::ofstream out(filePath.string());
+    if (!out.is_open()) {
+        std::cerr << "Could not open output file: " << filePath.string() << std::endl;
+        return false;
+    }
+    Variants variants;
+    if (variantsBlockCount == 1) {
+        const BlockFile* variantBlock = descBlock->getNode("variants");
+        if (!read_variants(variantBlock, variants)) {
+            std::cerr << "Could not read variants: " << shaderFile << std::endl;
+            return false;
+        }
+    }
+    out << "#pragma once\n\n";
+    out << "namespace shader_" << name << "\n";
+    out << "{\n";
+    for (const auto& [name, values] : variants.values) {
+        if (name.length() == 0 || values.size() == 0)
+            continue;
+        std::string enumName = name;
+        for (char& c : enumName)
+            c = static_cast<char>(tolower(c));
+        enumName[0] = static_cast<char>(toupper(enumName[0]));
+        out << "enum " << enumName << " {\n";
+        for (size_t i = 0; i < values.size(); ++i) {
+            std::string val = values[i];
+            for (char& c : val)
+                c = static_cast<char>(toupper(c));
+            out << "\t" << val << " = " << i << ",\n";
+        }
+        out << "};\n";
+    }
+    out << "} // shader_" << name << "\n";
+    return true;
+}
+
+bool read_variants(const BlockFile* blockFile, Variants& variants) {
+    variants = {};
+    if (blockFile->hasNodes()) {
+        std::cerr << "variants block cannot contain nested blocks" << std::endl;
+        return false;
+    }
+    if (!blockFile->hasContent())
+        return true;
+    const std::string* variantContent = blockFile->getContent();
+    std::regex paramReg{"(\\w+)\\s*:((\\s*\\w+\\s*,)+\\s*\\w+\\s*);"};
+    std::regex valueReg{"\\s*(\\w+)\\s*(,)?"};
+    auto variantsBegin =
+      std::sregex_iterator(variantContent->begin(), variantContent->end(), paramReg);
+    auto variantsEnd = std::sregex_iterator();
+    for (std::sregex_iterator regI = variantsBegin; regI != variantsEnd; ++regI) {
+        std::string paramName = (*regI)[1];
+        std::string values = (*regI)[2];
+        auto& vec = variants.values[paramName] = {};
+        auto valuesBegin = std::sregex_iterator(values.begin(), values.end(), valueReg);
+        auto valuesEnd = std::sregex_iterator();
+        for (std::sregex_iterator regJ = valuesBegin; regJ != valuesEnd; ++regJ) {
+            std::string value = (*regJ)[1];
+            vec.push_back(value);
+        }
+    }
     return true;
 }

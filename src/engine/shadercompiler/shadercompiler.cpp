@@ -32,6 +32,8 @@ int main(int argc, char* argv[]) {
     app.add_option("-s,--sources,sources", files, "Files or folders to open");
     std::string root = "";
     app.add_option("-r,--root", root, "Shaders source root folder");
+    std::string headers = "";
+    app.add_option("-d,--headers", headers, "Headers output dir");
     std::string output = "";
     app.add_option("-o,--output", output, "Output binary file");
 
@@ -39,8 +41,10 @@ int main(int argc, char* argv[]) {
 
     std::unordered_map<std::string, fs::path> headerPaths;
 
-    if (root == "" || output == "") {
-        std::cerr << "Please provide a source root folder and an output bin file" << std::endl;
+    if (root == "" || output == "" || headers == "") {
+        std::cerr
+          << "Please provide a source root folder, a header output dir and an output bin file"
+          << std::endl;
         return 1;
     }
     if (files.size() == 0)
@@ -50,6 +54,31 @@ int main(int argc, char* argv[]) {
     std::regex headerRegex("(.*)\\.sh");
     std::regex shaderRegex("(.*)\\.sd");
 
+    for (const std::string& f : files) {
+        std::smatch m;
+        if (!std::regex_match(f, m, headerRegex) && !std::regex_match(f, m, shaderRegex)) {
+            std::cerr
+              << "An input file doesn't match either the shader header (.sh) or the shader (.sd) file extensions."
+              << std::endl;
+            return 1;
+        }
+        try {
+            if (!::generate_header(f, headers)) {
+                std::cerr << "Could not generate header for: " << f << std::endl;
+                return 1;
+            }
+        }
+        catch (const std::exception& e) {
+            std::cerr << "Could not generate header for: " << f << " (" << e.what() << ")"
+                      << std::endl;
+            return 1;
+        }
+        catch (...) {
+            std::cerr << "Could not generate header for: " << f << " (Unknown exception)"
+                      << std::endl;
+            return 1;
+        }
+    }
     for (const std::string& f : files) {
         std::smatch m;
         if (std::regex_match(f, m, headerRegex)) {
