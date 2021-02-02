@@ -63,6 +63,7 @@
     ],
     "files.associations": {
         "*.sh": "hlsl",
+        "*.sd": "glsl",
         "array": "cpp",
         "atomic": "cpp",
         "*.tcc": "cpp",
