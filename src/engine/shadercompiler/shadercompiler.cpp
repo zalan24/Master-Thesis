@@ -9,6 +9,8 @@
 
 #include <CLI/CLI.hpp>
 
+#include <shaderbin.h>
+
 #include "compile.h"
 
 using namespace std;
@@ -20,9 +22,6 @@ namespace fs = std::filesystem;
 //     std::string name;
 //     size_t texId;
 // };
-
-// #version 450
-// #extension GL_ARB_separate_shader_objects : enable
 
 int main(int argc, char* argv[]) {
     CLI::App app{"Shader compiler"};
@@ -54,67 +53,64 @@ int main(int argc, char* argv[]) {
     std::regex headerRegex("(.*)\\.sh");
     std::regex shaderRegex("(.*)\\.sd");
 
-    for (const std::string& f : files) {
-        std::smatch m;
-        if (!std::regex_match(f, m, headerRegex) && !std::regex_match(f, m, shaderRegex)) {
-            std::cerr
-              << "An input file doesn't match either the shader header (.sh) or the shader (.sd) file extensions."
-              << std::endl;
-            return 1;
-        }
-        try {
+    ShaderBin shaderBin;
+
+    try {
+        for (const std::string& f : files) {
+            std::smatch m;
+            if (!std::regex_match(f, m, headerRegex) && !std::regex_match(f, m, shaderRegex)) {
+                std::cerr
+                  << "An input file doesn't match either the shader header (.sh) or the shader (.sd) file extensions."
+                  << std::endl;
+                return 1;
+            }
             if (!::generate_header(f, headers)) {
                 std::cerr << "Could not generate header for: " << f << std::endl;
                 return 1;
             }
         }
-        catch (const std::exception& e) {
-            std::cerr << "Could not generate header for: " << f << " (" << e.what() << ")"
-                      << std::endl;
-            return 1;
-        }
-        catch (...) {
-            std::cerr << "Could not generate header for: " << f << " (Unknown exception)"
-                      << std::endl;
-            return 1;
-        }
-    }
-    for (const std::string& f : files) {
-        std::smatch m;
-        if (std::regex_match(f, m, headerRegex)) {
-            fs::path p = f;
-            fs::path relPath = fs::relative(p, root);
-            std::string relPathStr = relPath.string();
-            if (std::regex_match(relPathStr, m, headerRegex)) {
-                std::string fileId = m[1];
-                for (char& c : fileId)
-                    if (c == '\\')
-                        c = '/';
-                headerPaths[fileId] = p;
+        for (const std::string& f : files) {
+            std::smatch m;
+            if (std::regex_match(f, m, headerRegex)) {
+                fs::path p = f;
+                fs::path relPath = fs::relative(p, root);
+                std::string relPathStr = relPath.string();
+                if (std::regex_match(relPathStr, m, headerRegex)) {
+                    std::string fileId = m[1];
+                    for (char& c : fileId)
+                        if (c == '\\')
+                            c = '/';
+                    headerPaths[fileId] = p;
+                }
+                else
+                    throw std::runtime_error("Something is wrong with a relative path");
             }
-            else
-                throw std::runtime_error("Something is wrong with a relative path");
         }
-    }
-    for (const std::string& f : files) {
-        std::smatch m;
-        if (!std::regex_match(f, m, shaderRegex))
-            continue;
-        std::cout << "Compiling: " << f << std::endl;
-        try {
-            if (!compile_shader(f, headerPaths)) {
+        for (const std::string& f : files) {
+            std::smatch m;
+            if (!std::regex_match(f, m, shaderRegex))
+                continue;
+            std::cout << "Compiling: " << f << std::endl;
+            if (!compile_shader(shaderBin, f, headerPaths)) {
                 std::cerr << "Failed to compile a shader: " << f << std::endl;
                 return 1;
             }
         }
-        catch (const std::exception& e) {
-            std::cerr << "An exception has ocurred: " << e.what() << std::endl;
+        std::ofstream binOut(output);
+        if (!binOut.is_open()) {
+            std::cerr << "Could not open output file: " << output << std::endl;
             return 1;
         }
-        catch (...) {
-            std::cerr << "An unknown exception has ocurred" << std::endl;
-            return 1;
-        }
+        shaderBin.write(binOut);
+        binOut.close();
+    }
+    catch (const std::exception& e) {
+        std::cerr << "An exception has ocurred: " << e.what() << std::endl;
+        return 1;
+    }
+    catch (...) {
+        std::cerr << "An unknown exception has ocurred" << std::endl;
+        return 1;
     }
 
     // if (argc <= 2) {

@@ -1,9 +1,12 @@
 #include "compile.h"
 
+#include <cassert>
 #include <cctype>
 #include <fstream>
+#include <iterator>
 #include <set>
 
+#include <HashLib4CPP.h>
 #include <simplecpp.h>
 #include <spirv_glsl.hpp>
 
@@ -108,7 +111,7 @@ static bool collect_shader(const BlockFile& blockFile, std::ostream& out, const 
     return true;
 }
 
-bool compile_shader(const std::string& shaderFile,
+bool compile_shader(ShaderBin& shaderBin, const std::string& shaderFile,
                     const std::unordered_map<std::string, fs::path>& headerPaths) {
     std::stringstream cu;
     std::set<std::string> includes;
@@ -148,15 +151,15 @@ bool compile_shader(const std::string& shaderFile,
         read_variants(descriptor->getNode("variants"), v);
         variants.push_back(std::move(v));
     }
-    if (!generate_binary(variants, vs)) {
-        std::cerr << "Could not generate vs binary: " << shaderFile << std::endl;
+    ShaderBin::ShaderData shaderData;
+    if (!generate_binary(shaderData, variants, vs, ps, cs)) {
+        std::cerr << "Could not generate binary: " << shaderFile << std::endl;
         return false;
     }
-    if (!generate_binary(variants, ps)) {
-        std::cerr << "Could not generate ps binary: " << shaderFile << std::endl;
-        return false;
-    }
-    // generate_binary(variants, cs); // TODO
+
+    const std::string shaderName = fs::path{shaderFile}.stem().string();
+
+    shaderBin.addShader(shaderName, std::move(shaderData));
 
     return true;
 }
@@ -280,21 +283,37 @@ VariantConfig get_variant_config(size_t index, const std::vector<Variants>& vari
     return ret;
 }
 
-bool generate_binary(const std::vector<Variants>& variants, const std::stringstream& shader) {
-    std::set<std::string> variantParams;
-    size_t count = 1;
-    for (const Variants& v : variants) {
-        for (const auto& itr : v.values) {
-            if (variantParams.count(itr.first) > 0) {
-                std::cerr << "A shader variant param name is used multiple times: " << itr.first
-                          << std::endl;
-                return false;
-            }
-            count *= itr.second.size();
-            variantParams.insert(itr.first);
-        }
-    }
-    for (size_t i = 0; i < count; ++i) {
+using ShaderHash = std::string;
+
+static ShaderHash hash_code(const std::string& data) {
+    IHash hash = HashLib4CPP::Hash128::CreateMurmurHash3_x64_128();
+    IHashResult res = hash->ComputeString(data);
+    return res->ToString();
+}
+
+static ShaderHash hash_binary(size_t len, const uint32_t* data) {
+    IHash hash = HashLib4CPP::Hash128::CreateMurmurHash3_x64_128();
+    IHashResult res = hash->ComputeUntyped(data, len * sizeof(data[0]));
+    return res->ToString();
+}
+
+static void generate_shader_code(std::ostream& out /* resources */) {
+    out << "#version 450\n";
+    out << "#extension GL_ARB_separate_shader_objects : enable\n";
+}
+
+static std::vector<uint32_t> compile_shader_binary(size_t len, const char* code) {
+    return {};  // TODO
+}
+
+static bool generate_binary(ShaderBin::ShaderData& shaderData,
+                            const std::vector<Variants>& variants, const std::stringstream& shader,
+                            std::unordered_map<ShaderHash, size_t>& codeOffsets,
+                            std::unordered_map<ShaderHash, size_t>& binaryOffsets,
+                            ShaderBin::Stage stage) {
+    std::stringstream shaderCodeSS;
+    generate_shader_code(shaderCodeSS);
+    for (size_t i = 0; i < shaderData.totalVariantCount; ++i) {
         VariantConfig config = get_variant_config(i, variants);
         simplecpp::DUI dui;
         for (const Variants& v : variants)
@@ -308,12 +327,77 @@ bool generate_binary(const std::vector<Variants>& variants, const std::stringstr
         simplecpp::TokenList rawtokens(shaderCopy, files);
         std::map<std::string, simplecpp::TokenList*> included =
           simplecpp::load(rawtokens, files, dui);
-
         simplecpp::TokenList outputTokens(files);
         simplecpp::preprocess(outputTokens, rawtokens, files, included, dui);
+        std::string shaderCode = shaderCodeSS.str() + outputTokens.stringify();
 
-        // Output
-        std::cout << outputTokens.stringify() << std::endl;
+        ShaderHash codeHash = hash_code(shaderCode);
+        if (auto itr = codeOffsets.find(codeHash); itr != codeOffsets.end()) {
+            shaderData.codeOffsets[i].stageOffsets[stage] = itr->second;
+            continue;
+        }
+        std::vector<uint32_t> binary =
+          compile_shader_binary(shaderCode.length(), shaderCode.c_str());
+        ShaderHash binHash = hash_binary(binary.size(), binary.data());
+        if (auto itr = binaryOffsets.find(binHash); itr != binaryOffsets.end()) {
+            shaderData.codeOffsets[i].stageOffsets[stage] = itr->second;
+            codeOffsets[codeHash] = itr->second;
+            continue;
+        }
+        size_t offset = shaderData.codes.size();
+        codeOffsets[codeHash] = offset;
+        binaryOffsets[binHash] = offset;
+        std::copy(binary.begin(), binary.end(),
+                  std::inserter(shaderData.codes, shaderData.codes.end()));
+        shaderData.codeOffsets[i].stageOffsets[stage] = offset;
+    }
+    return true;
+}
+
+bool generate_binary(ShaderBin::ShaderData& shaderData, const std::vector<Variants>& variants,
+                     const std::stringstream& shaderPS, const std::stringstream& shaderVS,
+                     const std::stringstream& shaderCS) {
+    std::set<std::string> variantParams;
+    size_t count = 1;
+    shaderData.variantParamNum = 0;
+    for (const Variants& v : variants) {
+        for (const auto& itr : v.values) {
+            if (shaderData.variantParamNum >= ShaderBin::MAX_VARIANT_PARAM_COUNT) {
+                std::cerr
+                  << "A shader has exceeded the current limit for max shader variant parameters ("
+                  << ShaderBin::MAX_VARIANT_PARAM_COUNT << ")" << std::endl;
+                return false;
+            }
+            shaderData.variantValues[shaderData.variantParamNum] = itr.second.size();
+            shaderData.variantParamNum++;
+            if (variantParams.count(itr.first) > 0) {
+                std::cerr << "A shader variant param name is used multiple times: " << itr.first
+                          << std::endl;
+                return false;
+            }
+            count *= itr.second.size();
+            variantParams.insert(itr.first);
+        }
+    }
+    shaderData.totalVariantCount = count;
+    shaderData.codeOffsets.clear();
+    shaderData.codeOffsets.resize(shaderData.totalVariantCount);
+    std::unordered_map<ShaderHash, size_t> codeOffsets;
+    std::unordered_map<ShaderHash, size_t> binaryOffsets;
+    if (!generate_binary(shaderData, variants, shaderPS, codeOffsets, binaryOffsets,
+                         ShaderBin::PS)) {
+        std::cerr << "Could not generate PS binary." << std::endl;
+        return false;
+    }
+    if (!generate_binary(shaderData, variants, shaderVS, codeOffsets, binaryOffsets,
+                         ShaderBin::VS)) {
+        std::cerr << "Could not generate VS binary." << std::endl;
+        return false;
+    }
+    if (!generate_binary(shaderData, variants, shaderCS, codeOffsets, binaryOffsets,
+                         ShaderBin::CS)) {
+        std::cerr << "Could not generate CS binary." << std::endl;
+        return false;
     }
     return true;
 }

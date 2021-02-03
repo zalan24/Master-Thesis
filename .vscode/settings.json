@@ -164,7 +164,9 @@
         "stack": "cpp",
         "xthread": "cpp",
         "xxatomic": "cpp",
-        "strstream": "cpp"
+        "strstream": "cpp",
+        "csetjmp": "cpp",
+        "scoped_allocator": "cpp"
     },
     "cSpell.words": [
         "alignas",
@@ -174,6 +176,7 @@
         "cmake",
         "cuda",
         "eigen",
+        "elif",
         "file",
         "g",
         "infoer",
