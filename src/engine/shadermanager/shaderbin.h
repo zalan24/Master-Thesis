@@ -20,17 +20,34 @@ class ShaderBin
         NUM_STAGES
     };
 
+    struct StageConfig
+    {
+        struct PsConfig
+        {
+            std::string entryPoint = "";
+        } ps;
+        struct VsConfig
+        {
+            std::string entryPoint = "";
+        } vs;
+        struct CsConfig
+        {
+            std::string entryPoint = "";
+        } cs;
+    };
+
     struct ShaderData
     {
         static constexpr size_t INVALID_SHADER = std::numeric_limits<size_t>::max();
-        struct ShaderOffsets
+        struct StageData
         {
             std::array<size_t, NUM_STAGES> stageOffsets = {INVALID_SHADER};
+            StageConfig configs;
         };
         size_t totalVariantCount;
         size_t variantParamNum;
         std::array<uint16_t, MAX_VARIANT_PARAM_COUNT> variantValues;
-        std::vector<ShaderOffsets> codeOffsets;
+        std::vector<StageData> stages;
         std::vector<uint32_t> codes;
     };
 

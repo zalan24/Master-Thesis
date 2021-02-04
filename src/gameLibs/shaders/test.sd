@@ -12,6 +12,15 @@ descriptor {
     }
 }
 
+stages {
+    ps {
+        entry = main;
+    }
+    vs {
+        entry = main;
+    }
+}
+
 global {
     // just testing, nothing here
 }

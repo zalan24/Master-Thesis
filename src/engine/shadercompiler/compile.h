@@ -24,6 +24,16 @@ struct VariantConfig
     std::unordered_map<std::string, size_t> variantValues;
 };
 
+struct ShaderGenerationInput
+{
+    std::stringstream vs;
+    std::stringstream vsCfg;
+    std::stringstream ps;
+    std::stringstream psCfg;
+    std::stringstream cs;
+    std::stringstream csCfg;
+};
+
 bool read_variants(const BlockFile* blockFile, Variants& variants);
 
 bool compile_shader(ShaderBin& shaderBin, const std::string& shaderFile,
@@ -32,7 +42,6 @@ bool compile_shader(ShaderBin& shaderBin, const std::string& shaderFile,
 bool generate_header(const std::string& shaderFile, const std::string& outputFolder);
 
 bool generate_binary(ShaderBin::ShaderData& shaderData, const std::vector<Variants>& variants,
-                     const std::stringstream& shaderPS, const std::stringstream& shaderVS,
-                     const std::stringstream& shaderCS);
+                     ShaderGenerationInput&& input);
 
 VariantConfig get_variant_config(size_t index, const std::vector<Variants>& variants);

@@ -83,7 +83,32 @@ static bool include_headers(const std::string& filename, std::ostream& out,
     return ret;
 }
 
-static bool collect_shader(const BlockFile& blockFile, std::ostream& out, const std::string& type) {
+static bool collect_shader(const BlockFile& blockFile, std::ostream& out, std::ostream& cfgOut,
+                           const std::string& type) {
+    for (size_t i = 0; i < blockFile.getBlockCount("stages"); ++i) {
+        const BlockFile* b = blockFile.getNode("stages", i);
+        if (b->hasNodes()) {
+            for (size_t j = 0; j < b->getBlockCount(type); ++j) {
+                const BlockFile* b2 = b->getNode(type, j);
+                if (b2->hasContent()) {
+                    cfgOut << *b2->getContent();
+                }
+                else if (b2->hasNodes()) {
+                    // completely empty block is allowed
+                    std::cerr << "A shader block (stages/" << type
+                              << ") contains nested blocks instead of content." << std::endl;
+                    return false;
+                }
+            }
+        }
+        else if (b->hasContent()) {
+            // completely empty block is allowed
+            std::cerr
+              << "A shader block (stages) contains direct content instead of separate blocks for stages."
+              << std::endl;
+            return false;
+        }
+    }
     for (size_t i = 0; i < blockFile.getBlockCount("global"); ++i) {
         const BlockFile* b = blockFile.getNode("global", i);
         if (b->hasContent()) {
@@ -125,19 +150,17 @@ bool compile_shader(ShaderBin& shaderBin, const std::string& shaderFile,
         std::cerr << "Compilation unit doesn't have any blocks: " << shaderFile << std::endl;
         return false;
     }
-    std::stringstream vs;
-    std::stringstream ps;
-    std::stringstream cs;
+    ShaderGenerationInput genInput;
 
-    if (!collect_shader(cuBlocks, vs, "vs")) {
+    if (!collect_shader(cuBlocks, genInput.vs, genInput.vsCfg, "vs")) {
         std::cerr << "Could not collect vs shader content in: " << shaderFile << std::endl;
         return false;
     }
-    if (!collect_shader(cuBlocks, ps, "ps")) {
+    if (!collect_shader(cuBlocks, genInput.ps, genInput.psCfg, "ps")) {
         std::cerr << "Could not collect ps shader content in: " << shaderFile << std::endl;
         return false;
     }
-    if (!collect_shader(cuBlocks, cs, "cs")) {
+    if (!collect_shader(cuBlocks, genInput.cs, genInput.csCfg, "cs")) {
         std::cerr << "Could not collect cs shader content in: " << shaderFile << std::endl;
         return false;
     }
@@ -152,7 +175,7 @@ bool compile_shader(ShaderBin& shaderBin, const std::string& shaderFile,
         variants.push_back(std::move(v));
     }
     ShaderBin::ShaderData shaderData;
-    if (!generate_binary(shaderData, variants, vs, ps, cs)) {
+    if (!generate_binary(shaderData, variants, std::move(genInput))) {
         std::cerr << "Could not generate binary: " << shaderFile << std::endl;
         return false;
     }
@@ -303,60 +326,93 @@ static void generate_shader_code(std::ostream& out /* resources */) {
 }
 
 static std::vector<uint32_t> compile_shader_binary(size_t len, const char* code) {
-    return {};  // TODO
+    static uint32_t val = 0;
+    std::cout << "compile: " << std::string(code, len) << std::endl;
+    return {val++};  // TODO
 }
 
-static bool generate_binary(ShaderBin::ShaderData& shaderData,
+static std::string format_variant(size_t variant, const std::vector<Variants>& variants,
+                                  const std::stringstream& text) {
+    VariantConfig config = get_variant_config(variant, variants);
+    simplecpp::DUI dui;
+    for (const Variants& v : variants)
+        for (const auto& [key, values] : v.values)
+            for (size_t ind = 0; ind < values.size(); ++ind)
+                dui.defines.push_back(values[ind] + "=" + std::to_string(ind));
+    for (const auto& [key, value] : config.variantValues)
+        dui.defines.push_back(key + "=" + std::to_string(value));
+    std::stringstream shaderCopy(text.str());
+    std::vector<std::string> files;
+    simplecpp::TokenList rawtokens(shaderCopy, files);
+    std::map<std::string, simplecpp::TokenList*> included = simplecpp::load(rawtokens, files, dui);
+    simplecpp::TokenList outputTokens(files);
+    simplecpp::preprocess(outputTokens, rawtokens, files, included, dui);
+    return outputTokens.stringify();
+}
+
+static bool generate_binary(ShaderBin::ShaderData& shaderData, size_t variant,
                             const std::vector<Variants>& variants, const std::stringstream& shader,
                             std::unordered_map<ShaderHash, size_t>& codeOffsets,
                             std::unordered_map<ShaderHash, size_t>& binaryOffsets,
                             ShaderBin::Stage stage) {
     std::stringstream shaderCodeSS;
     generate_shader_code(shaderCodeSS);
-    for (size_t i = 0; i < shaderData.totalVariantCount; ++i) {
-        VariantConfig config = get_variant_config(i, variants);
-        simplecpp::DUI dui;
-        for (const Variants& v : variants)
-            for (const auto& [key, values] : v.values)
-                for (size_t ind = 0; ind < values.size(); ++ind)
-                    dui.defines.push_back(values[ind] + "=" + std::to_string(ind));
-        for (const auto& [key, value] : config.variantValues)
-            dui.defines.push_back(key + "=" + std::to_string(value));
-        std::stringstream shaderCopy(shader.str());
-        std::vector<std::string> files;
-        simplecpp::TokenList rawtokens(shaderCopy, files);
-        std::map<std::string, simplecpp::TokenList*> included =
-          simplecpp::load(rawtokens, files, dui);
-        simplecpp::TokenList outputTokens(files);
-        simplecpp::preprocess(outputTokens, rawtokens, files, included, dui);
-        std::string shaderCode = shaderCodeSS.str() + outputTokens.stringify();
+    std::string shaderCode = shaderCodeSS.str() + format_variant(variant, variants, shader);
 
-        ShaderHash codeHash = hash_code(shaderCode);
-        if (auto itr = codeOffsets.find(codeHash); itr != codeOffsets.end()) {
-            shaderData.codeOffsets[i].stageOffsets[stage] = itr->second;
-            continue;
-        }
-        std::vector<uint32_t> binary =
-          compile_shader_binary(shaderCode.length(), shaderCode.c_str());
-        ShaderHash binHash = hash_binary(binary.size(), binary.data());
-        if (auto itr = binaryOffsets.find(binHash); itr != binaryOffsets.end()) {
-            shaderData.codeOffsets[i].stageOffsets[stage] = itr->second;
-            codeOffsets[codeHash] = itr->second;
-            continue;
-        }
-        size_t offset = shaderData.codes.size();
-        codeOffsets[codeHash] = offset;
-        binaryOffsets[binHash] = offset;
-        std::copy(binary.begin(), binary.end(),
-                  std::inserter(shaderData.codes, shaderData.codes.end()));
-        shaderData.codeOffsets[i].stageOffsets[stage] = offset;
+    ShaderHash codeHash = hash_code(shaderCode);
+    if (auto itr = codeOffsets.find(codeHash); itr != codeOffsets.end()) {
+        shaderData.stages[variant].stageOffsets[stage] = itr->second;
+        return true;
     }
+    std::vector<uint32_t> binary = compile_shader_binary(shaderCode.length(), shaderCode.c_str());
+    ShaderHash binHash = hash_binary(binary.size(), binary.data());
+    if (auto itr = binaryOffsets.find(binHash); itr != binaryOffsets.end()) {
+        shaderData.stages[variant].stageOffsets[stage] = itr->second;
+        codeOffsets[codeHash] = itr->second;
+        return true;
+    }
+    size_t offset = shaderData.codes.size();
+    codeOffsets[codeHash] = offset;
+    binaryOffsets[binHash] = offset;
+    std::copy(binary.begin(), binary.end(),
+              std::inserter(shaderData.codes, shaderData.codes.end()));
+    shaderData.stages[variant].stageOffsets[stage] = offset;
     return true;
 }
 
+static std::unordered_map<std::string, std::string> read_values(const std::string& s) {
+    std::regex valueReg{"\\s*(\\w+)\\s*=\\s*(\\w+)\\s*(;|\\Z)"};
+    std::unordered_map<std::string, std::string> ret;
+    auto begin = std::sregex_iterator(s.begin(), s.end(), valueReg);
+    auto end = std::sregex_iterator();
+    for (std::sregex_iterator regI = begin; regI != end; ++regI)
+        ret[(*regI)[1]] = (*regI)[2];
+    return ret;
+}
+
+static ShaderBin::StageConfig read_stage_configs(size_t variant,
+                                                 const std::vector<Variants>& variants,
+                                                 const std::stringstream& vs,
+                                                 const std::stringstream& ps,
+                                                 const std::stringstream& cs) {
+    std::string vsInfo = format_variant(variant, variants, vs);
+    std::string psInfo = format_variant(variant, variants, ps);
+    std::string csInfo = format_variant(variant, variants, cs);
+    std::unordered_map<std::string, std::string> vsValues = read_values(vsInfo);
+    std::unordered_map<std::string, std::string> psValues = read_values(psInfo);
+    std::unordered_map<std::string, std::string> csValues = read_values(csInfo);
+    ShaderBin::StageConfig ret;
+    if (auto itr = vsValues.find("entry"); itr != vsValues.end())
+        ret.vs.entryPoint = itr->second;
+    if (auto itr = psValues.find("entry"); itr != psValues.end())
+        ret.ps.entryPoint = itr->second;
+    if (auto itr = csValues.find("entry"); itr != csValues.end())
+        ret.cs.entryPoint = itr->second;
+    return ret;
+}
+
 bool generate_binary(ShaderBin::ShaderData& shaderData, const std::vector<Variants>& variants,
-                     const std::stringstream& shaderPS, const std::stringstream& shaderVS,
-                     const std::stringstream& shaderCS) {
+                     ShaderGenerationInput&& input) {
     std::set<std::string> variantParams;
     size_t count = 1;
     shaderData.variantParamNum = 0;
@@ -380,24 +436,32 @@ bool generate_binary(ShaderBin::ShaderData& shaderData, const std::vector<Varian
         }
     }
     shaderData.totalVariantCount = count;
-    shaderData.codeOffsets.clear();
-    shaderData.codeOffsets.resize(shaderData.totalVariantCount);
+    shaderData.stages.clear();
+    shaderData.stages.resize(shaderData.totalVariantCount);
     std::unordered_map<ShaderHash, size_t> codeOffsets;
     std::unordered_map<ShaderHash, size_t> binaryOffsets;
-    if (!generate_binary(shaderData, variants, shaderPS, codeOffsets, binaryOffsets,
-                         ShaderBin::PS)) {
-        std::cerr << "Could not generate PS binary." << std::endl;
-        return false;
-    }
-    if (!generate_binary(shaderData, variants, shaderVS, codeOffsets, binaryOffsets,
-                         ShaderBin::VS)) {
-        std::cerr << "Could not generate VS binary." << std::endl;
-        return false;
-    }
-    if (!generate_binary(shaderData, variants, shaderCS, codeOffsets, binaryOffsets,
-                         ShaderBin::CS)) {
-        std::cerr << "Could not generate CS binary." << std::endl;
-        return false;
+    for (size_t variant = 0; variant < shaderData.totalVariantCount; ++variant) {
+        ShaderBin::StageConfig cfg =
+          read_stage_configs(variant, variants, input.vsCfg, input.psCfg, input.csCfg);
+        shaderData.stages[variant].configs = cfg;
+        if (cfg.vs.entryPoint != ""
+            && !generate_binary(shaderData, variant, variants, input.ps, codeOffsets, binaryOffsets,
+                                ShaderBin::PS)) {
+            std::cerr << "Could not generate PS binary." << std::endl;
+            return false;
+        }
+        if (cfg.ps.entryPoint != ""
+            && !generate_binary(shaderData, variant, variants, input.vs, codeOffsets, binaryOffsets,
+                                ShaderBin::VS)) {
+            std::cerr << "Could not generate VS binary." << std::endl;
+            return false;
+        }
+        if (cfg.cs.entryPoint != ""
+            && !generate_binary(shaderData, variant, variants, input.cs, codeOffsets, binaryOffsets,
+                                ShaderBin::CS)) {
+            std::cerr << "Could not generate CS binary." << std::endl;
+            return false;
+        }
     }
     return true;
 }
