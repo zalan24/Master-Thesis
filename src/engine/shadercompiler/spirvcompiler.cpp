@@ -1,6 +1,8 @@
 #include "spirvcompiler.h"
 
 #include <SPIRV/GlslangToSpv.h>
+#include <spirv-tools/libspirv.hpp>
+#include <spirv-tools/optimizer.hpp>
 
 Compiler::Compiler() {
     glslang::InitializeProcess();
@@ -170,5 +172,6 @@ std::vector<uint32_t> Compiler::GLSLtoSPV(const ShaderBin::Stage stage, const ch
 
     std::vector<uint32_t> spirv;
     glslang::GlslangToSpv(*program.getIntermediate(lang), spirv);
+    // TODO optimization
     return spirv;
 }
