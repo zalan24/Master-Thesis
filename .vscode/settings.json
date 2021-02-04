@@ -190,6 +190,8 @@
         "respack",
         "schur",
         "smatch",
+        "spir",
+        "spirv",
         "stbi",
         "stbimage",
         "strequal",

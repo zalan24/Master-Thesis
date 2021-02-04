@@ -8,10 +8,11 @@
 
 #include <HashLib4CPP.h>
 #include <simplecpp.h>
-#include <spirv_glsl.hpp>
 
 #include <blockfile.h>
 #include <uncomment.h>
+
+#include "spirvcompiler.h"
 
 namespace fs = std::filesystem;
 
@@ -136,7 +137,7 @@ static bool collect_shader(const BlockFile& blockFile, std::ostream& out, std::o
     return true;
 }
 
-bool compile_shader(ShaderBin& shaderBin, const std::string& shaderFile,
+bool compile_shader(const Compiler* compiler, ShaderBin& shaderBin, const std::string& shaderFile,
                     const std::unordered_map<std::string, fs::path>& headerPaths) {
     std::stringstream cu;
     std::set<std::string> includes;
@@ -175,7 +176,7 @@ bool compile_shader(ShaderBin& shaderBin, const std::string& shaderFile,
         variants.push_back(std::move(v));
     }
     ShaderBin::ShaderData shaderData;
-    if (!generate_binary(shaderData, variants, std::move(genInput))) {
+    if (!generate_binary(compiler, shaderData, variants, std::move(genInput))) {
         std::cerr << "Could not generate binary: " << shaderFile << std::endl;
         return false;
     }
@@ -325,10 +326,9 @@ static void generate_shader_code(std::ostream& out /* resources */) {
     out << "#extension GL_ARB_separate_shader_objects : enable\n";
 }
 
-static std::vector<uint32_t> compile_shader_binary(size_t len, const char* code) {
-    static uint32_t val = 0;
-    std::cout << "compile: " << std::string(code, len) << std::endl;
-    return {val++};  // TODO
+static std::vector<uint32_t> compile_shader_binary(const Compiler* compiler, ShaderBin::Stage stage,
+                                                   size_t len, const char* code) {
+    return compiler->GLSLtoSPV(stage, code);
 }
 
 static std::string format_variant(size_t variant, const std::vector<Variants>& variants,
@@ -350,8 +350,9 @@ static std::string format_variant(size_t variant, const std::vector<Variants>& v
     return outputTokens.stringify();
 }
 
-static bool generate_binary(ShaderBin::ShaderData& shaderData, size_t variant,
-                            const std::vector<Variants>& variants, const std::stringstream& shader,
+static bool generate_binary(const Compiler* compiler, ShaderBin::ShaderData& shaderData,
+                            size_t variant, const std::vector<Variants>& variants,
+                            const std::stringstream& shader,
                             std::unordered_map<ShaderHash, size_t>& codeOffsets,
                             std::unordered_map<ShaderHash, size_t>& binaryOffsets,
                             ShaderBin::Stage stage) {
@@ -364,7 +365,8 @@ static bool generate_binary(ShaderBin::ShaderData& shaderData, size_t variant,
         shaderData.stages[variant].stageOffsets[stage] = itr->second;
         return true;
     }
-    std::vector<uint32_t> binary = compile_shader_binary(shaderCode.length(), shaderCode.c_str());
+    std::vector<uint32_t> binary =
+      compile_shader_binary(compiler, stage, shaderCode.length(), shaderCode.c_str());
     ShaderHash binHash = hash_binary(binary.size(), binary.data());
     if (auto itr = binaryOffsets.find(binHash); itr != binaryOffsets.end()) {
         shaderData.stages[variant].stageOffsets[stage] = itr->second;
@@ -411,8 +413,8 @@ static ShaderBin::StageConfig read_stage_configs(size_t variant,
     return ret;
 }
 
-bool generate_binary(ShaderBin::ShaderData& shaderData, const std::vector<Variants>& variants,
-                     ShaderGenerationInput&& input) {
+bool generate_binary(const Compiler* compiler, ShaderBin::ShaderData& shaderData,
+                     const std::vector<Variants>& variants, ShaderGenerationInput&& input) {
     std::set<std::string> variantParams;
     size_t count = 1;
     shaderData.variantParamNum = 0;
@@ -445,20 +447,20 @@ bool generate_binary(ShaderBin::ShaderData& shaderData, const std::vector<Varian
           read_stage_configs(variant, variants, input.vsCfg, input.psCfg, input.csCfg);
         shaderData.stages[variant].configs = cfg;
         if (cfg.vs.entryPoint != ""
-            && !generate_binary(shaderData, variant, variants, input.ps, codeOffsets, binaryOffsets,
-                                ShaderBin::PS)) {
+            && !generate_binary(compiler, shaderData, variant, variants, input.ps, codeOffsets,
+                                binaryOffsets, ShaderBin::PS)) {
             std::cerr << "Could not generate PS binary." << std::endl;
             return false;
         }
         if (cfg.ps.entryPoint != ""
-            && !generate_binary(shaderData, variant, variants, input.vs, codeOffsets, binaryOffsets,
-                                ShaderBin::VS)) {
+            && !generate_binary(compiler, shaderData, variant, variants, input.vs, codeOffsets,
+                                binaryOffsets, ShaderBin::VS)) {
             std::cerr << "Could not generate VS binary." << std::endl;
             return false;
         }
         if (cfg.cs.entryPoint != ""
-            && !generate_binary(shaderData, variant, variants, input.cs, codeOffsets, binaryOffsets,
-                                ShaderBin::CS)) {
+            && !generate_binary(compiler, shaderData, variant, variants, input.cs, codeOffsets,
+                                binaryOffsets, ShaderBin::CS)) {
             std::cerr << "Could not generate CS binary." << std::endl;
             return false;
         }

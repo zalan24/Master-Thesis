@@ -12,6 +12,7 @@
 
 #include <shaderbin.h>
 
+class Compiler;
 class BlockFile;
 
 struct Variants
@@ -36,12 +37,12 @@ struct ShaderGenerationInput
 
 bool read_variants(const BlockFile* blockFile, Variants& variants);
 
-bool compile_shader(ShaderBin& shaderBin, const std::string& shaderFile,
+bool compile_shader(const Compiler* compiler, ShaderBin& shaderBin, const std::string& shaderFile,
                     const std::unordered_map<std::string, std::filesystem::path>& headerPaths);
 
 bool generate_header(const std::string& shaderFile, const std::string& outputFolder);
 
-bool generate_binary(ShaderBin::ShaderData& shaderData, const std::vector<Variants>& variants,
+bool generate_binary(const Compiler* compiler, ShaderBin::ShaderData& shaderData, const std::vector<Variants>& variants,
                      ShaderGenerationInput&& input);
 
 VariantConfig get_variant_config(size_t index, const std::vector<Variants>& variants);

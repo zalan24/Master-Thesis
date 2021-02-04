@@ -12,6 +12,7 @@
 #include <shaderbin.h>
 
 #include "compile.h"
+#include "spirvcompiler.h"
 
 using namespace std;
 namespace fs = std::filesystem;
@@ -54,6 +55,7 @@ int main(int argc, char* argv[]) {
     std::regex shaderRegex("(.*)\\.sd");
 
     ShaderBin shaderBin;
+    Compiler compiler;
 
     try {
         for (const std::string& f : files) {
@@ -91,7 +93,7 @@ int main(int argc, char* argv[]) {
             if (!std::regex_match(f, m, shaderRegex))
                 continue;
             std::cout << "Compiling: " << f << std::endl;
-            if (!compile_shader(shaderBin, f, headerPaths)) {
+            if (!compile_shader(&compiler, shaderBin, f, headerPaths)) {
                 std::cerr << "Failed to compile a shader: " << f << std::endl;
                 return 1;
             }
