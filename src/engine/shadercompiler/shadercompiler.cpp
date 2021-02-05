@@ -36,6 +36,8 @@ int main(int argc, char* argv[]) {
     app.add_option("-d,--headers", headers, "Headers output dir");
     std::string output = "";
     app.add_option("-o,--output", output, "Output binary file");
+    std::string cacheF = "";
+    app.add_option("-c,--cache", cacheF, "Cache folder");
 
     CLI11_PARSE(app, argc, argv)
 
@@ -56,6 +58,19 @@ int main(int argc, char* argv[]) {
 
     ShaderBin shaderBin;
     Compiler compiler;
+    Cache cache;
+
+    fs::path cacheFolder = fs::path{cacheF};
+    fs::path cacheFile = cacheFolder / fs::path{"cache.json"};
+
+    {
+        std::ifstream cacheIn(cacheFile.string());
+        if (cacheIn.is_open()) {
+            json cacheJson;
+            cacheIn >> cacheJson;
+            ISerializable::serialize(cacheJson, cache);
+        }
+    }
 
     try {
         for (const std::string& f : files) {
@@ -66,7 +81,7 @@ int main(int argc, char* argv[]) {
                   << std::endl;
                 return 1;
             }
-            if (!::generate_header(f, headers)) {
+            if (!::generate_header(cache, f, headers)) {
                 std::cerr << "Could not generate header for: " << f << std::endl;
                 return 1;
             }
@@ -113,6 +128,22 @@ int main(int argc, char* argv[]) {
     catch (...) {
         std::cerr << "An unknown exception has ocurred" << std::endl;
         return 1;
+    }
+
+    {
+        if (!fs::exists(fs::path(cacheFolder)) && !fs::create_directories(fs::path(cacheFolder))) {
+            std::cerr << "Could not create directory for shader headers: " << cacheFolder
+                      << std::endl;
+            return 1;
+        }
+
+        std::ofstream cacheOut(cacheFile.string());
+        if (!cacheOut.is_open()) {
+            std::cerr << "Could not save cache" << std::endl;
+            return 1;
+        }
+        json cacheJson = ISerializable::serialize(cache);
+        cacheOut << cacheJson;
     }
 
     // if (argc <= 2) {

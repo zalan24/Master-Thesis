@@ -5,7 +5,7 @@ add_custom_target(ShaderCodes ALL DEPENDS ${SHADERBIN})
 
 add_custom_command(
     OUTPUT   ${SHADERBIN}
-    COMMAND  AnimationsShaderCompiler -r${CMAKE_CURRENT_SOURCE_DIR} -d${CMAKE_CURRENT_BINARY_DIR} -o${SHADERBIN} ${SHADERS_SOURCES}
+    COMMAND  AnimationsShaderCompiler -r${CMAKE_CURRENT_SOURCE_DIR} -c${CMAKE_CURRENT_BINARY_DIR}/shadercache -d${CMAKE_CURRENT_BINARY_DIR} -o${SHADERBIN} ${SHADERS_SOURCES}
     DEPENDS  ${SHADERS_SOURCES} AnimationsShaderCompiler
 )
 

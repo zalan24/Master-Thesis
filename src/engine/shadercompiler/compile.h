@@ -10,6 +10,7 @@
 #include <unordered_map>
 #include <vector>
 
+#include <serializable.h>
 #include <shaderbin.h>
 
 class Compiler;
@@ -35,14 +36,23 @@ struct ShaderGenerationInput
     std::stringstream csCfg;
 };
 
+class Cache final : public ISerializable
+{
+ public:
+    std::unordered_map<std::string, std::string> headerHashes;
+
+    void writeJson(json& out) const override;
+    void readJson(const json& in) override;
+};
+
 bool read_variants(const BlockFile* blockFile, Variants& variants);
 
 bool compile_shader(const Compiler* compiler, ShaderBin& shaderBin, const std::string& shaderFile,
                     const std::unordered_map<std::string, std::filesystem::path>& headerPaths);
 
-bool generate_header(const std::string& shaderFile, const std::string& outputFolder);
+bool generate_header(Cache& cache, const std::string& shaderFile, const std::string& outputFolder);
 
-bool generate_binary(const Compiler* compiler, ShaderBin::ShaderData& shaderData, const std::vector<Variants>& variants,
-                     ShaderGenerationInput&& input);
+bool generate_binary(const Compiler* compiler, ShaderBin::ShaderData& shaderData,
+                     const std::vector<Variants>& variants, ShaderGenerationInput&& input);
 
 VariantConfig get_variant_config(size_t index, const std::vector<Variants>& variants);

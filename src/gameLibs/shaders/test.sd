@@ -5,7 +5,7 @@ include {
 
 descriptor {
     variants {
-        color: red, black, green, green2;
+        color: red, black, green, green2, blue;
     }
     resources {
 
@@ -47,6 +47,8 @@ ps {
             outColor = vec4(0.0, 0.0, 0.0, 1.0);
         #elif color == green || color == green2
             outColor = vec4(0.0, 1.0, 0.0, 1.0);
+        #else
+            outColor = vec4(0.0, 0.0, 1.0, 1.0);
         #endif
     }
 }

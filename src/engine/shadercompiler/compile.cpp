@@ -16,6 +16,24 @@
 
 namespace fs = std::filesystem;
 
+using ShaderHash = std::string;
+
+static ShaderHash hash_string(const std::string& data) {
+    IHash hash = HashLib4CPP::Hash128::CreateMurmurHash3_x64_128();
+    IHashResult res = hash->ComputeString(data);
+    return res->ToString();
+}
+
+static ShaderHash hash_code(const std::string& data) {
+    return hash_string(data);
+}
+
+static ShaderHash hash_binary(size_t len, const uint32_t* data) {
+    IHash hash = HashLib4CPP::Hash128::CreateMurmurHash3_x64_128();
+    IHashResult res = hash->ComputeUntyped(data, len * sizeof(data[0]));
+    return res->ToString();
+}
+
 static bool include_headers(const std::string& filename, std::ostream& out,
                             const std::unordered_map<std::string, fs::path>& headerPaths,
                             std::set<std::string>& includes,
@@ -188,7 +206,7 @@ bool compile_shader(const Compiler* compiler, ShaderBin& shaderBin, const std::s
     return true;
 }
 
-bool generate_header(const std::string& shaderFile, const std::string& outputFolder) {
+bool generate_header(Cache& cache, const std::string& shaderFile, const std::string& outputFolder) {
     if (!fs::exists(fs::path(outputFolder)) && !fs::create_directories(fs::path(outputFolder))) {
         std::cerr << "Could not create directory for shader headers: " << outputFolder << std::endl;
         return false;
@@ -230,12 +248,7 @@ bool generate_header(const std::string& shaderFile, const std::string& outputFol
     std::string name = fs::path(shaderFile).stem().string();
     for (char& c : name)
         c = static_cast<char>(tolower(c));
-    fs::path filePath = fs::path(outputFolder) / fs::path("shader_" + name + ".h");
-    std::ofstream out(filePath.string());
-    if (!out.is_open()) {
-        std::cerr << "Could not open output file: " << filePath.string() << std::endl;
-        return false;
-    }
+    std::stringstream out;
     Variants variants;
     if (variantsBlockCount == 1) {
         const BlockFile* variantBlock = descBlock->getNode("variants");
@@ -264,6 +277,19 @@ bool generate_header(const std::string& shaderFile, const std::string& outputFol
         out << "};\n";
     }
     out << "} // shader_" << name << "\n";
+
+    const std::string h = hash_string(out.str());
+    if (auto itr = cache.headerHashes.find(name);
+        itr == cache.headerHashes.end() || itr->second != h) {
+        fs::path filePath = fs::path(outputFolder) / fs::path("shader_" + name + ".h");
+        std::ofstream outFile(filePath.string());
+        if (!outFile.is_open()) {
+            std::cerr << "Could not open output file: " << filePath.string() << std::endl;
+            return false;
+        }
+        outFile << out.str();
+        cache.headerHashes[name] = h;
+    }
     return true;
 }
 
@@ -305,20 +331,6 @@ VariantConfig get_variant_config(size_t index, const std::vector<Variants>& vari
         }
     }
     return ret;
-}
-
-using ShaderHash = std::string;
-
-static ShaderHash hash_code(const std::string& data) {
-    IHash hash = HashLib4CPP::Hash128::CreateMurmurHash3_x64_128();
-    IHashResult res = hash->ComputeString(data);
-    return res->ToString();
-}
-
-static ShaderHash hash_binary(size_t len, const uint32_t* data) {
-    IHash hash = HashLib4CPP::Hash128::CreateMurmurHash3_x64_128();
-    IHashResult res = hash->ComputeUntyped(data, len * sizeof(data[0]));
-    return res->ToString();
 }
 
 static void generate_shader_code(std::ostream& out /* resources */) {
@@ -466,4 +478,12 @@ bool generate_binary(const Compiler* compiler, ShaderBin::ShaderData& shaderData
         }
     }
     return true;
+}
+
+void Cache::writeJson(json& out) const {
+    WRITE_OBJECT(headerHashes, out);
+}
+
+void Cache::readJson(const json& in) {
+    READ_OBJECT_OPT(headerHashes, in, {});
 }
