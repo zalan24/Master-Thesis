@@ -67,6 +67,8 @@ int main(int argc, char* argv[]) {
         // app.add_option("-f,--files,files", files, "Files or folders to open");
         std::string config = "";
         app.add_option("-c,--config", config, "Path to the engine config file");
+        std::string shaderbin = "";
+        app.add_option("-s,--shaderbin", config, "Path to the shader bin file");
         std::string modelResources = "";
         app.add_option("-m,--models", modelResources, "Path to the model resources json file");
         std::string resourceFolder = "";
@@ -92,7 +94,7 @@ int main(int argc, char* argv[]) {
         ResourceManager::ResourceInfos resourceInfos;
         resourceInfos.resourceFolder = resourceFolder;
         resourceInfos.modelResourcesJson = modelResources;
-        Engine engine(config, std::move(resourceInfos));
+        Engine engine(config, shaderbin, std::move(resourceInfos));
         // engine.getRenderer()->getCamera().lookAt(glm::vec3{0, 3, -5}, glm::vec3{0, 1, 0},
         //                                          glm::vec3{0, 1, 0});
 

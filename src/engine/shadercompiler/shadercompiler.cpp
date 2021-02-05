@@ -98,7 +98,7 @@ int main(int argc, char* argv[]) {
                 return 1;
             }
         }
-        std::ofstream binOut(output);
+        std::ofstream binOut(output, std::ios::binary | std::ios::out);
         if (!binOut.is_open()) {
             std::cerr << "Could not open output file: " << output << std::endl;
             return 1;

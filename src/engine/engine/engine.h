@@ -20,6 +20,8 @@
 #include <resourcemanager.h>
 #include <serializable.h>
 
+#include "shaderbin.h"
+
 class ExecutionQueue;
 
 class Engine
@@ -43,8 +45,10 @@ class Engine
         void readJson(const json& in) override final;
     };
 
-    Engine(const Config& config, ResourceManager::ResourceInfos resource_infos);
-    Engine(const std::string& configFile, ResourceManager::ResourceInfos resource_infos);
+    Engine(const Config& config, const std::string& shaderbinFile,
+           ResourceManager::ResourceInfos resource_infos);
+    Engine(const std::string& configFile, const std::string& shaderbinFile,
+           ResourceManager::ResourceInfos resource_infos);
     ~Engine();
 
     Engine(const Engine&) = delete;
@@ -104,6 +108,7 @@ class Engine
     drv::CommandBufferBank cmdBufferBank;
     drv::Swapchain swapchain;
     SyncBlock syncBlock;
+    ShaderBin shaderBin;
     ResourceManager resourceMgr;
     EntityManager entityManager;
     // Renderer renderer;

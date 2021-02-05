@@ -44,17 +44,20 @@ class ShaderBin
             std::array<size_t, NUM_STAGES> stageOffsets = {INVALID_SHADER};
             StageConfig configs;
         };
-        size_t totalVariantCount;
-        size_t variantParamNum;
+        uint32_t totalVariantCount;
+        uint32_t variantParamNum;
         std::array<uint16_t, MAX_VARIANT_PARAM_COUNT> variantValues;
         std::vector<StageData> stages;
         std::vector<uint32_t> codes;
     };
 
     ShaderBin() = default;
+    ShaderBin(const std::string& binfile);
 
     void read(std::istream& in);
     void write(std::ostream& out) const;
+
+    void clear();
 
     void addShader(const std::string& name, ShaderData&& shader);
 

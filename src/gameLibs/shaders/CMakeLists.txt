@@ -1,7 +1,5 @@
-# add_subdirectory(shadermanager)
-
 file(GLOB SHADERS_SOURCES *.sd *.sh)
-set(SHADERBIN "${CMAKE_PROJECT_BINARY_DIR}/shaders/shaders.bin")
+set(SHADERBIN "${CMAKE_BINARY_DIR}/shaders/shaders.bin")
 
 add_custom_target(ShaderCodes ALL DEPENDS ${SHADERBIN})
 
@@ -15,5 +13,3 @@ add_library(AnimationShaders INTERFACE)
 add_dependencies(AnimationShaders ShaderCodes)
 
 target_include_directories(AnimationShaders INTERFACE ${CMAKE_CURRENT_BINARY_DIR})
-
-# TODO add clang proprecosser to shaders using -E

@@ -19,4 +19,5 @@ target_link_libraries(AnimationsEngine PUBLIC
     # AnimationsRenderer
     AnimationsResources
     AnimationsInput
+    AnimationsShaderManager
 )

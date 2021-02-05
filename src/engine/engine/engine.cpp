@@ -95,8 +95,9 @@ Engine::WindowIniter::~WindowIniter() {
     window->close();
 }
 
-Engine::Engine(const std::string& configFile, ResourceManager::ResourceInfos resource_infos)
-  : Engine(get_config(configFile), std::move(resource_infos)) {
+Engine::Engine(const std::string& configFile, const std::string& shaderbinFile,
+               ResourceManager::ResourceInfos resource_infos)
+  : Engine(get_config(configFile), shaderbinFile, std::move(resource_infos)) {
 }
 
 drv::Swapchain::CreateInfo Engine::get_swapchain_create_info(const Config& config) {
@@ -114,7 +115,8 @@ drv::Swapchain::CreateInfo Engine::get_swapchain_create_info(const Config& confi
 Engine::SyncBlock::SyncBlock(drv::LogicalDevicePtr device) : imageAvailableSemaphore(device) {
 }
 
-Engine::Engine(const Config& cfg, ResourceManager::ResourceInfos resource_infos)
+Engine::Engine(const Config& cfg, const std::string& shaderbinFile,
+               ResourceManager::ResourceInfos resource_infos)
   : config(cfg),
     coreContext({size_t(config.stackMemorySizeKb << 10)}),
     input(static_cast<size_t>(config.inputBufferSize)),
@@ -148,6 +150,7 @@ Engine::Engine(const Config& cfg, ResourceManager::ResourceInfos resource_infos)
     cmdBufferBank(device),
     swapchain(physicalDevice, device, window, get_swapchain_create_info(config)),
     syncBlock(device),
+    shaderBin(shaderbinFile),
     resourceMgr(std::move(resource_infos)) {
 }
 

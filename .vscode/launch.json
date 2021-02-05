@@ -12,7 +12,8 @@
       "args": [
         "-c../data/configs/playground_default.json",
         "-m../data/resources/models.json",
-        "-d../data/"
+        "-d../data/",
+        "-sshaders/shaders.bin"
       ],
       "cwd": "${workspaceFolder}/build",
       "internalConsoleOptions": "openOnSessionStart"
@@ -30,7 +31,8 @@
       "args": [
         "-c../data/configs/playground_default.json",
         "-m../data/resources/models.json",
-        "-d../data/"
+        "-d../data/",
+        "-sshaders/shaders.bin"
       ]
     }
   ]
