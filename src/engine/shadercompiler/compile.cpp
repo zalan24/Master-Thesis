@@ -208,10 +208,21 @@ bool compile_shader(const Compiler* compiler, ShaderBin& shaderBin, Cache& cache
     const std::string className = "shader_obj_" + shaderName;
 
     shaderObj << "#pragma once\n\n";
-    shaderObj << "#include <shaderobject.h>\n\n";
-    shaderObj << "#include descritpors...;\n\n";
+    shaderObj << "#include <shaderobject.h>\n";
+    shaderObj << "#include <shaderbin.h>\n\n";
+    // shaderObj << "#include descritpors...;\n\n"; // TODO
     shaderObj << "class " << className << " final : public ShaderObject {\n";
     shaderObj << "  public:\n";
+    shaderObj
+      << "    " << className
+      << "(drv::LogicalDevicePtr device, const ShaderBin &shaderBin) : ShaderObject(device) {\n";
+    shaderObj << "        const ShaderBin::ShaderData *shader = shaderBin.getShader(\""
+              << shaderName << "\");\n";
+    shaderObj << "        if (shader == nullptr)\n";
+    shaderObj << "            throw std::runtime_error(\"Shader not found: " << shaderName
+              << "\");\n";
+    shaderObj << "        loadShader(*shader);\n";
+    shaderObj << "    }\n";
     shaderObj << "    ~" << className << "() override {}\n";
     shaderObj << "  private:\n";
     shaderObj << "};\n";
@@ -412,35 +423,39 @@ static std::string format_variant(size_t variant, const std::vector<Variants>& v
     return outputTokens.stringify();
 }
 
-static bool generate_binary(const Compiler* compiler, ShaderBin::ShaderData& shaderData,
-                            size_t variant, const std::vector<Variants>& variants,
-                            const std::stringstream& shader,
-                            std::unordered_map<ShaderHash, size_t>& codeOffsets,
-                            std::unordered_map<ShaderHash, size_t>& binaryOffsets,
-                            ShaderBin::Stage stage) {
+static bool generate_binary(
+  const Compiler* compiler, ShaderBin::ShaderData& shaderData, size_t variant,
+  const std::vector<Variants>& variants, const std::stringstream& shader,
+  std::unordered_map<ShaderHash, std::pair<size_t, size_t>>& codeOffsets,
+  std::unordered_map<ShaderHash, std::pair<size_t, size_t>>& binaryOffsets,
+  ShaderBin::Stage stage) {
     std::stringstream shaderCodeSS;
     generate_shader_code(shaderCodeSS);
     std::string shaderCode = shaderCodeSS.str() + format_variant(variant, variants, shader);
 
     ShaderHash codeHash = hash_code(shaderCode);
     if (auto itr = codeOffsets.find(codeHash); itr != codeOffsets.end()) {
-        shaderData.stages[variant].stageOffsets[stage] = itr->second;
+        shaderData.stages[variant].stageOffsets[stage] = itr->second.first;
+        shaderData.stages[variant].stageCodeSizes[stage] = itr->second.second;
         return true;
     }
     std::vector<uint32_t> binary =
       compile_shader_binary(compiler, stage, shaderCode.length(), shaderCode.c_str());
     ShaderHash binHash = hash_binary(binary.size(), binary.data());
     if (auto itr = binaryOffsets.find(binHash); itr != binaryOffsets.end()) {
-        shaderData.stages[variant].stageOffsets[stage] = itr->second;
+        shaderData.stages[variant].stageOffsets[stage] = itr->second.first;
+        shaderData.stages[variant].stageCodeSizes[stage] = itr->second.second;
         codeOffsets[codeHash] = itr->second;
         return true;
     }
     size_t offset = shaderData.codes.size();
-    codeOffsets[codeHash] = offset;
-    binaryOffsets[binHash] = offset;
+    size_t codeSize = binary.size();
+    codeOffsets[codeHash] = std::make_pair(offset, codeSize);
+    binaryOffsets[binHash] = std::make_pair(offset, codeSize);
     std::copy(binary.begin(), binary.end(),
               std::inserter(shaderData.codes, shaderData.codes.end()));
     shaderData.stages[variant].stageOffsets[stage] = offset;
+    shaderData.stages[variant].stageCodeSizes[stage] = codeSize;
     return true;
 }
 
@@ -502,8 +517,8 @@ bool generate_binary(const Compiler* compiler, ShaderBin::ShaderData& shaderData
     shaderData.totalVariantCount = count;
     shaderData.stages.clear();
     shaderData.stages.resize(shaderData.totalVariantCount);
-    std::unordered_map<ShaderHash, size_t> codeOffsets;
-    std::unordered_map<ShaderHash, size_t> binaryOffsets;
+    std::unordered_map<ShaderHash, std::pair<size_t, size_t>> codeOffsets;
+    std::unordered_map<ShaderHash, std::pair<size_t, size_t>> binaryOffsets;
     for (size_t variant = 0; variant < shaderData.totalVariantCount; ++variant) {
         ShaderBin::StageConfig cfg =
           read_stage_configs(variant, variants, input.vsCfg, input.psCfg, input.csCfg);

@@ -47,9 +47,11 @@ void ShaderBin::read(std::istream& in) {
         data.stages.resize(data.totalVariantCount);
         for (uint32_t i = 0; i < data.totalVariantCount; ++i) {
             read_data(in, data.stages[i].stageOffsets);
+            read_data(in, data.stages[i].stageCodeSizes);
             read_configs(in, data.stages[i].configs);
         }
         read_vector(in, data.codes);
+        shaders[name] = std::move(data);
     }
 }
 
@@ -66,6 +68,7 @@ void ShaderBin::write(std::ostream& out) const {
         assert(data.stages.size() == data.totalVariantCount);
         for (uint32_t i = 0; i < data.totalVariantCount; ++i) {
             write_data(out, data.stages[i].stageOffsets);
+            write_data(out, data.stages[i].stageCodeSizes);
             write_configs(out, data.stages[i].configs);
         }
         write_vector(out, data.codes);
@@ -80,4 +83,11 @@ void ShaderBin::addShader(const std::string& name, ShaderData&& shader) {
 
 void ShaderBin::clear() {
     shaders.clear();
+}
+
+const ShaderBin::ShaderData* ShaderBin::getShader(const std::string& name) const {
+    auto itr = shaders.find(name);
+    if (itr == shaders.end())
+        return nullptr;
+    return &itr->second;
 }

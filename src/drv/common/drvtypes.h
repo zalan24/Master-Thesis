@@ -22,7 +22,6 @@ using FencePtr = Ptr;
 using DeviceMemoryPtr = Ptr;
 using DeviceSize = unsigned long long;
 using DeviceMemoryTypeId = uint32_t;
-using ShaderCreateInfoPtr = Ptr;
 using DescriptorSetLayoutPtr = Ptr;
 using DescriptorPoolPtr = Ptr;
 using DescriptorSetPtr = Ptr;
@@ -431,13 +430,13 @@ struct CopyDescriptorSet
     uint32_t descriptorCount;
 };
 
-struct ShaderInfo
-{
-    ShaderCreateInfoPtr createInfo;
-    ShaderStage::FlagType stage;
-    unsigned int numDescriptorSetLayouts;
-    DescriptorSetLayoutCreateInfo* descriptorSetLayoutInfos;
-};
+// struct ShaderInfo
+// {
+//     ShaderCreateInfoPtr createInfo;
+//     ShaderStage::FlagType stage;
+//     unsigned int numDescriptorSetLayouts;
+//     DescriptorSetLayoutCreateInfo* descriptorSetLayoutInfos;
+// };
 
 struct PipelineLayoutCreateInfo
 {
@@ -932,6 +931,12 @@ enum class DependencyFlagBits
 struct TimelineSemaphoreCreateInfo
 {
     uint64_t startValue;
+};
+
+struct ShaderCreateInfo
+{
+    size_t codeSize;
+    const uint32_t* code;
 };
 
 };  // namespace drv

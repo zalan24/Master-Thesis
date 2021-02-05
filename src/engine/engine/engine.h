@@ -65,6 +65,9 @@ class Engine
     // ResourceManager* getResMgr() { return &resourceMgr; }
     // const ResourceManager* getResMgr() const { return &resourceMgr; }
 
+    drv::LogicalDevicePtr getDevice() const { return device; }
+    const ShaderBin* getShaderBin() const { return &shaderBin; }
+
  private:
     struct ErrorCallback
     {

@@ -100,9 +100,9 @@ class DrvVulkan final : public drv::IDriver
                                  drv::ComputePipelinePtr* pipelines) override;
     bool destroy_compute_pipeline(drv::LogicalDevicePtr device,
                                   drv::ComputePipelinePtr pipeline) override;
-    // drv::ShaderModulePtr create_shader_module(drv::LogicalDevicePtr device,
-    //                                           drv::ShaderCreateInfoPtr info) override;
-    // bool destroy_shader_module(drv::LogicalDevicePtr device, drv::ShaderModulePtr module) override;
+    drv::ShaderModulePtr create_shader_module(drv::LogicalDevicePtr device,
+                                              const drv::ShaderCreateInfo* info) override;
+    bool destroy_shader_module(drv::LogicalDevicePtr device, drv::ShaderModulePtr module) override;
     IWindow* create_window(Input* input, InputManager* inputManager,
                            const drv::WindowOptions& options) override;
     bool can_present(drv::PhysicalDevicePtr physicalDevice, IWindow* window,

@@ -142,22 +142,25 @@ class LogicalDevice
     void close();
 };
 
-// class ShaderLoader
-//   : public NoCopy
-//   , private Exclusive
-// {
-//  public:
-//     ShaderLoader(LogicalDevicePtr device);
-//     ~ShaderLoader();
+class ShaderModule
+  : public NoCopy
+  , private Exclusive
+{
+ public:
+    ShaderModule(LogicalDevicePtr device, const ShaderCreateInfo& info);
+    ~ShaderModule();
 
-//     ShaderLoader(ShaderLoader&& other);
-//     ShaderLoader& operator=(ShaderLoader&& other);
+    ShaderModule(ShaderModule&& other);
+    ShaderModule& operator=(ShaderModule&& other);
 
-//  private:
-//     LogicalDevicePtr device;
+    operator ShaderModulePtr() const;
 
-//     void close();
-// };
+ private:
+    LogicalDevicePtr device;
+    ShaderModulePtr ptr;
+
+    void close();
+};
 
 class CommandPool
   : public NoCopy

@@ -59,8 +59,6 @@ class IDriver
     virtual bool map_memory(LogicalDevicePtr device, DeviceMemoryPtr memory, DeviceSize offset,
                             DeviceSize size, void** data) = 0;
     virtual bool unmap_memory(LogicalDevicePtr device, DeviceMemoryPtr memory) = 0;
-    // virtual bool load_shaders(LogicalDevicePtr device) = 0;
-    // virtual bool free_shaders(LogicalDevicePtr device) = 0;
     virtual DescriptorSetLayoutPtr create_descriptor_set_layout(
       LogicalDevicePtr device, const DescriptorSetLayoutCreateInfo* info) = 0;
     virtual bool destroy_descriptor_set_layout(LogicalDevicePtr device,
@@ -75,7 +73,6 @@ class IDriver
                                         const WriteDescriptorSet* writes,
                                         uint32_t descriptorCopyCount,
                                         const CopyDescriptorSet* copies) = 0;
-    // virtual bool destroy_shader_create_info(ShaderCreateInfoPtr info) = 0;
     virtual PipelineLayoutPtr create_pipeline_layout(LogicalDevicePtr device,
                                                      const PipelineLayoutCreateInfo* info) = 0;
     virtual bool destroy_pipeline_layout(LogicalDevicePtr device, PipelineLayoutPtr layout) = 0;
@@ -134,8 +131,8 @@ class IDriver
                                              uint64_t timeoutNs) = 0;
     virtual uint64_t get_timeline_semaphore_value(LogicalDevicePtr device,
                                                   TimelineSemaphorePtr semaphore) = 0;
-    // virtual ShaderModulePtr create_shader_module(LogicalDevicePtr device,
-    //                                              ShaderCreateInfoPtr info) = 0;
-    // virtual bool destroy_shader_module(LogicalDevicePtr device, ShaderModulePtr module) = 0;
+    virtual ShaderModulePtr create_shader_module(LogicalDevicePtr device,
+                                                 const ShaderCreateInfo* info) = 0;
+    virtual bool destroy_shader_module(LogicalDevicePtr device, ShaderModulePtr module) = 0;
 };
 }  // namespace drv

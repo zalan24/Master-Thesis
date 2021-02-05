@@ -176,7 +176,7 @@ uint64_t get_timeline_semaphore_value(LogicalDevicePtr device, TimelineSemaphore
 // DescriptorSetLayoutPtr* get_shader_descriptor_set_layouts(LogicalDevicePtr device,
 //                                                           ShaderIdType shaderId);
 
-// ShaderModulePtr create_shader_module(LogicalDevicePtr device, ShaderCreateInfoPtr info);
-// bool destroy_shader_module(LogicalDevicePtr device, ShaderModulePtr module);
+ShaderModulePtr create_shader_module(LogicalDevicePtr device, const ShaderCreateInfo* info);
+bool destroy_shader_module(LogicalDevicePtr device, ShaderModulePtr module);
 
 };  // namespace drv

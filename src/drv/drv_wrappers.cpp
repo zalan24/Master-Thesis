@@ -231,33 +231,42 @@ void LogicalDevice::close() {
     }
 }
 
-// ShaderLoader::ShaderLoader(LogicalDevicePtr _device) : device(_device) {
-//     drv_assert(load_shaders(device), "Could not load shaders");
-// }
+ShaderModule::ShaderModule(LogicalDevicePtr _device, const ShaderCreateInfo& info)
+  : device(_device), ptr(create_shader_module(device, &info)) {
+}
 
-// ShaderLoader::~ShaderLoader() {
-//     close();
-// }
+ShaderModule::~ShaderModule() {
+    close();
+}
 
-// ShaderLoader::ShaderLoader(ShaderLoader&& other) {
-//     device = other.device;
-//     other.device = NULL_HANDLE;
-// }
+ShaderModule::ShaderModule(ShaderModule&& other) {
+    device = other.device;
+    ptr = other.ptr;
+    other.device = NULL_HANDLE;
+    other.ptr = NULL_HANDLE;
+}
 
-// ShaderLoader& ShaderLoader::operator=(ShaderLoader&& other) {
-//     if (&other == this)
-//         return *this;
-//     close();
-//     device = other.device;
-//     other.device = NULL_HANDLE;
-//     return *this;
-// }
+ShaderModule& ShaderModule::operator=(ShaderModule&& other) {
+    if (&other == this)
+        return *this;
+    close();
+    device = other.device;
+    ptr = other.ptr;
+    other.device = NULL_HANDLE;
+    return *this;
+}
 
-// void ShaderLoader::close() {
-//     CHECK_THREAD;
-//     if (device != NULL_HANDLE)
-//         drv_assert(free_shaders(device), "Could not free shaders");
-// }
+void ShaderModule::close() {
+    CHECK_THREAD;
+    if (ptr != drv::NULL_HANDLE) {
+        drv::destroy_shader_module(device, ptr);
+        ptr = NULL_HANDLE;
+    }
+}
+
+ShaderModule::operator ShaderModulePtr() const {
+    return ptr;
+}
 
 LogicalDevice& LogicalDevice::operator=(LogicalDevice&& other) {
     if (this == &other)

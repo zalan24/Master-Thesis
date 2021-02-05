@@ -358,13 +358,14 @@ uint64_t drv::get_timeline_semaphore_value(LogicalDevicePtr device,
     return current_driver_interface->get_timeline_semaphore_value(device, semaphore);
 }
 
-// drv::ShaderModulePtr drv::create_shader_module(LogicalDevicePtr device, ShaderCreateInfoPtr info) {
-//     return current_driver_interface->create_shader_module(device, info);
-// }
+drv::ShaderModulePtr drv::create_shader_module(LogicalDevicePtr device,
+                                               const ShaderCreateInfo* info) {
+    return current_driver_interface->create_shader_module(device, info);
+}
 
-// bool drv::destroy_shader_module(LogicalDevicePtr device, ShaderModulePtr module) {
-//     return current_driver_interface->destroy_shader_module(device, module);
-// }
+bool drv::destroy_shader_module(LogicalDevicePtr device, ShaderModulePtr module) {
+    return current_driver_interface->destroy_shader_module(device, module);
+}
 
 // TODO
 

@@ -38,10 +38,11 @@ class ShaderBin
 
     struct ShaderData
     {
-        static constexpr size_t INVALID_SHADER = std::numeric_limits<size_t>::max();
+        static constexpr uint64_t INVALID_SHADER = std::numeric_limits<uint64_t>::max();
         struct StageData
         {
-            std::array<size_t, NUM_STAGES> stageOffsets = {INVALID_SHADER};
+            std::array<uint64_t, NUM_STAGES> stageOffsets = {INVALID_SHADER};
+            std::array<uint64_t, NUM_STAGES> stageCodeSizes = {INVALID_SHADER};
             StageConfig configs;
         };
         uint32_t totalVariantCount;
@@ -60,6 +61,8 @@ class ShaderBin
     void clear();
 
     void addShader(const std::string& name, ShaderData&& shader);
+
+    const ShaderData* getShader(const std::string& name) const;
 
  private:
     std::unordered_map<std::string, ShaderData> shaders;

@@ -15,26 +15,13 @@ struct ShaderCreateData
 }  // namespace drv_vulkan
 
 using namespace drv_vulkan;
-// TODO
-/*
-drv::ShaderCreateInfoPtr DrvVulkan::add_shader_create_info(ShaderCreateInfo&& info) {
-    unsigned long long int count = info.sizeInBytes / sizeof(uint32_t);
-    return reinterpret_cast<drv::ShaderCreateInfoPtr>(
-      new ShaderCreateData{std::vector<uint32_t>(info.data, info.data + count)});
-}
-
-bool DrvVulkan::destroy_shader_create_info(drv::ShaderCreateInfoPtr info) {
-    delete reinterpret_cast<ShaderCreateData*>(info);
-    return true;
-}
 
 drv::ShaderModulePtr DrvVulkan::create_shader_module(drv::LogicalDevicePtr device,
-                                                     drv::ShaderCreateInfoPtr info) {
-    ShaderCreateData* data = reinterpret_cast<ShaderCreateData*>(info);
+                                                     const drv::ShaderCreateInfo* info) {
     VkShaderModuleCreateInfo createInfo = {};
     createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
-    createInfo.codeSize = data->data.size() * sizeof(data->data[0]);
-    createInfo.pCode = data->data.data();
+    createInfo.codeSize = info->codeSize;
+    createInfo.pCode = info->code;
 
     VkShaderModule shaderModule;
     VkResult result =
@@ -48,4 +35,3 @@ bool DrvVulkan::destroy_shader_module(drv::LogicalDevicePtr device, drv::ShaderM
                           reinterpret_cast<VkShaderModule>(module), nullptr);
     return true;
 }
-*/
