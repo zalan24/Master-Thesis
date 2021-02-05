@@ -13,3 +13,4 @@ add_library(AnimationShaders INTERFACE)
 add_dependencies(AnimationShaders ShaderCodes)
 
 target_include_directories(AnimationShaders INTERFACE ${CMAKE_CURRENT_BINARY_DIR})
+target_link_libraries(AnimationShaders INTERFACE AnimationsShaderManager)

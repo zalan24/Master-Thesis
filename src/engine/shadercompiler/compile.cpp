@@ -155,9 +155,11 @@ static bool collect_shader(const BlockFile& blockFile, std::ostream& out, std::o
     return true;
 }
 
-bool compile_shader(const Compiler* compiler, ShaderBin& shaderBin, const std::string& shaderFile,
+bool compile_shader(const Compiler* compiler, ShaderBin& shaderBin, Cache& cache,
+                    const std::string& shaderFile, const std::string& outputFolder,
                     const std::unordered_map<std::string, fs::path>& headerPaths) {
     std::stringstream cu;
+    std::stringstream shaderObj;
     std::set<std::string> includes;
     std::set<std::string> progress;
     if (!include_headers(shaderFile, cu, headerPaths, includes, progress)) {
@@ -203,7 +205,45 @@ bool compile_shader(const Compiler* compiler, ShaderBin& shaderBin, const std::s
 
     shaderBin.addShader(shaderName, std::move(shaderData));
 
+    const std::string className = "shader_obj_" + shaderName;
+
+    shaderObj << "#pragma once\n\n";
+    shaderObj << "#include <shaderobject.h>\n\n";
+    shaderObj << "#include descritpors...;\n\n";
+    shaderObj << "class " << className << " final : public ShaderObject {\n";
+    shaderObj << "  public:\n";
+    shaderObj << "    ~" << className << "() override {}\n";
+    shaderObj << "  private:\n";
+    shaderObj << "};\n";
+
+    const std::string h = hash_string(shaderObj.str());
+    const std::string cacheEntry = shaderName + "_obj";
+    if (auto itr = cache.headerHashes.find(cacheEntry);
+        itr == cache.headerHashes.end() || itr->second != h) {
+        fs::path filePath = fs::path(outputFolder) / fs::path("shader_obj_" + shaderName + ".h");
+        std::ofstream outFile(filePath.string());
+        if (!outFile.is_open()) {
+            std::cerr << "Could not open output file: " << filePath.string() << std::endl;
+            return false;
+        }
+        outFile << shaderObj.str();
+        cache.headerHashes[cacheEntry] = h;
+    }
+
     return true;
+}
+
+static std::string get_variant_enum_name(std::string name) {
+    for (char& c : name)
+        c = static_cast<char>(tolower(c));
+    name[0] = static_cast<char>(toupper(name[0]));
+    return name;
+}
+
+static std::string get_variant_enum_val_name(std::string name) {
+    for (char& c : name)
+        c = static_cast<char>(tolower(c));
+    return name;
 }
 
 bool generate_header(Cache& cache, const std::string& shaderFile, const std::string& outputFolder) {
@@ -258,25 +298,35 @@ bool generate_header(Cache& cache, const std::string& shaderFile, const std::str
         }
     }
     out << "#pragma once\n\n";
-    out << "namespace shader_" << name << "\n";
+    out << "class shader_" << name << "_descriptor\n";
     out << "{\n";
+    out << "  public:\n";
     for (const auto& [name, values] : variants.values) {
         if (name.length() == 0 || values.size() == 0)
             continue;
-        std::string enumName = name;
-        for (char& c : enumName)
-            c = static_cast<char>(tolower(c));
-        enumName[0] = static_cast<char>(toupper(enumName[0]));
-        out << "enum " << enumName << " {\n";
+        std::string enumName = get_variant_enum_name(name);
+        out << "    enum class " << enumName << " {\n";
         for (size_t i = 0; i < values.size(); ++i) {
             std::string val = values[i];
             for (char& c : val)
                 c = static_cast<char>(toupper(c));
-            out << "\t" << val << " = " << i << ",\n";
+            out << "        " << val << " = " << i << ",\n";
         }
-        out << "};\n";
+        out << "    };\n";
+        std::string valName = get_variant_enum_val_name(name);
+        out << "    void setVariant_" << name << "(" << enumName << " value) {\n";
+        out << "        " << valName << " = value;\n";
+        out << "    }\n";
     }
-    out << "} // shader_" << name << "\n";
+    out << "  private:\n";
+    for (const auto& [name, values] : variants.values) {
+        if (name.length() == 0 || values.size() == 0)
+            continue;
+        std::string enumName = get_variant_enum_name(name);
+        std::string valName = get_variant_enum_val_name(name);
+        out << "    " << enumName << " " << valName << ";\n";
+    }
+    out << "};\n";
 
     const std::string h = hash_string(out.str());
     if (auto itr = cache.headerHashes.find(name);

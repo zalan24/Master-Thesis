@@ -47,7 +47,9 @@ class Cache final : public ISerializable
 
 bool read_variants(const BlockFile* blockFile, Variants& variants);
 
-bool compile_shader(const Compiler* compiler, ShaderBin& shaderBin, const std::string& shaderFile,
+bool compile_shader(const Compiler* compiler, ShaderBin& shaderBin, Cache& cache,
+                    const std::string& shaderFile,
+                    const std::string& outputFolder,
                     const std::unordered_map<std::string, std::filesystem::path>& headerPaths);
 
 bool generate_header(Cache& cache, const std::string& shaderFile, const std::string& outputFolder);

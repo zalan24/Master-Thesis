@@ -16,7 +16,7 @@ target_link_libraries(AnimationsEngine PUBLIC
     AnimationsSerializable
     AnimationsAssetLoaders
     AnimationsDrv
-    # AnimationsRenderer
+    AnimationsIRenderer
     AnimationsResources
     AnimationsInput
     AnimationsShaderManager

@@ -108,7 +108,7 @@ int main(int argc, char* argv[]) {
             if (!std::regex_match(f, m, shaderRegex))
                 continue;
             std::cout << "Compiling: " << f << std::endl;
-            if (!compile_shader(&compiler, shaderBin, f, headerPaths)) {
+            if (!compile_shader(&compiler, shaderBin, cache, f, headers, headerPaths)) {
                 std::cerr << "Failed to compile a shader: " << f << std::endl;
                 return 1;
             }
