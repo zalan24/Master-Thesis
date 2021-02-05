@@ -22,11 +22,35 @@ static void write_configs(std::ostream& out, const ShaderBin::StageConfig& confi
     write_string(out, configs.cs.entryPoint);
 }
 
+static void read_configs(std::istream& in, ShaderBin::StageConfig& configs) {
+    // vs
+    read_string(in, configs.vs.entryPoint);
+    // ps
+    read_string(in, configs.ps.entryPoint);
+    // cs
+    read_string(in, configs.cs.entryPoint);
+}
+
 void ShaderBin::read(std::istream& in) {
     clear();
-    throw std::runtime_error("Cannot read yet");
     if (!in.binary)
         throw std::runtime_error("Binary file expected for shaderBin input");
+    uint32_t shaderCount = 0;
+    read_data(in, shaderCount);
+    for (size_t i = 0; i < shaderCount; ++i) {
+        std::string name;
+        read_string(in, name);
+        ShaderData data;
+        read_data(in, data.totalVariantCount);
+        read_data(in, data.variantParamNum);
+        read_data(in, data.variantValues);
+        data.stages.resize(data.totalVariantCount);
+        for (uint32_t i = 0; i < data.totalVariantCount; ++i) {
+            read_data(in, data.stages[i].stageOffsets);
+            read_configs(in, data.stages[i].configs);
+        }
+        read_vector(in, data.codes);
+    }
 }
 
 void ShaderBin::write(std::ostream& out) const {

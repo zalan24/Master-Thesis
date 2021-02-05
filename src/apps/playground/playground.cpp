@@ -68,7 +68,7 @@ int main(int argc, char* argv[]) {
         std::string config = "";
         app.add_option("-c,--config", config, "Path to the engine config file");
         std::string shaderbin = "";
-        app.add_option("-s,--shaderbin", config, "Path to the shader bin file");
+        app.add_option("-s,--shaderbin", shaderbin, "Path to the shader bin file");
         std::string modelResources = "";
         app.add_option("-m,--models", modelResources, "Path to the model resources json file");
         std::string resourceFolder = "";
