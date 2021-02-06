@@ -257,6 +257,12 @@ static std::string get_variant_enum_val_name(std::string name) {
     return name;
 }
 
+static std::string get_variant_enum_value(std::string value) {
+    for (char& c : value)
+        c = static_cast<char>(toupper(c));
+    return value;
+}
+
 bool generate_header(Cache& cache, const std::string& shaderFile, const std::string& outputFolder) {
     if (!fs::exists(fs::path(outputFolder)) && !fs::create_directories(fs::path(outputFolder))) {
         std::cerr << "Could not create directory for shader headers: " << outputFolder << std::endl;
@@ -308,33 +314,79 @@ bool generate_header(Cache& cache, const std::string& shaderFile, const std::str
             return false;
         }
     }
+    const std::string className = "shader_" + name + "_descriptor";
     out << "#pragma once\n\n";
-    out << "class shader_" << name << "_descriptor\n";
+    out << "#include <shaderdescriptor.h>\n\n";
+    out << "class " << className << " final : public ShaderDescriptor\n";
     out << "{\n";
     out << "  public:\n";
-    for (const auto& [name, values] : variants.values) {
-        if (name.length() == 0 || values.size() == 0)
+    out << "    ~" << className << "() override {}\n";
+    for (const auto& [variantName, values] : variants.values) {
+        if (variantName.length() == 0 || values.size() == 0)
             continue;
-        std::string enumName = get_variant_enum_name(name);
+        std::string enumName = get_variant_enum_name(variantName);
         out << "    enum class " << enumName << " {\n";
         for (size_t i = 0; i < values.size(); ++i) {
-            std::string val = values[i];
-            for (char& c : val)
-                c = static_cast<char>(toupper(c));
+            std::string val = get_variant_enum_value(values[i]);
             out << "        " << val << " = " << i << ",\n";
         }
         out << "    };\n";
-        std::string valName = get_variant_enum_val_name(name);
-        out << "    void setVariant_" << name << "(" << enumName << " value) {\n";
+        std::string valName = get_variant_enum_val_name(variantName);
+        out << "    void setVariant_" << variantName << "(" << enumName << " value) {\n";
         out << "        " << valName << " = value;\n";
         out << "    }\n";
     }
-    out << "  private:\n";
-    for (const auto& [name, values] : variants.values) {
-        if (name.length() == 0 || values.size() == 0)
+    out
+      << "    void setVariant(const std::string& vairantName, const std::string& value) override {\n";
+    std::string ifString = "if";
+    for (const auto& [variantName, values] : variants.values) {
+        if (variantName.length() == 0 || values.size() == 0)
             continue;
-        std::string enumName = get_variant_enum_name(name);
-        std::string valName = get_variant_enum_val_name(name);
+        std::string enumName = get_variant_enum_name(variantName);
+        std::string valName = get_variant_enum_val_name(variantName);
+        out << "        " << ifString << " (variantName == \"" << variantName << "\") {\n";
+        std::string ifString2 = "if";
+        for (const std::string& variantVal : values) {
+            const std::string val = get_variant_enum_value(variantVal);
+            out << "            " << ifString2 << " (value == \"" << variantVal << "\")\n";
+            out << "                " << valName << " = " << enumName << "::" << val << ";\n";
+            ifString2 = "else if";
+        }
+        if (ifString2 != "if")
+            out << "            else\n    ";
+        out
+          << "            throw std::runtime_error(\"Unknown value (\" + value + \") for shader variant param: "
+          << variantName << "\");\n";
+        out << "        }";
+        ifString = " else if";
+    }
+    if (ifString != "if")
+        out << " else\n    ";
+    else
+        out << "\n";
+    out << "        throw std::runtime_error(\"Unknown variant param: \" + variantName);\n";
+    out << "    }\n";
+    out << "    void setVariant(const std::string& vairantName, int value) override {\n";
+    ifString = "if";
+    for (const auto& [variantName, values] : variants.values) {
+        if (variantName.length() == 0 || values.size() == 0)
+            continue;
+        std::string enumName = get_variant_enum_name(variantName);
+        std::string valName = get_variant_enum_val_name(variantName);
+        out << "        " << ifString << " (variantName == \"" << variantName << "\")\n";
+        out << "            " << valName << " = static_cast<" << enumName << ">(value);\n";
+        ifString = "else if";
+    }
+    if (ifString != "if")
+        out << "        else\n    ";
+    out << "        throw std::runtime_error(\"Unknown variant param: \" + variantName);\n";
+    out << "    }\n";
+    out << "  private:\n";
+    for (const auto& [variantName, values] : variants.values) {
+        if (variantName.length() == 0 || values.size() == 0)
+            continue;
+        std::string enumName = get_variant_enum_name(variantName);
+        std::string valName = get_variant_enum_val_name(variantName);
         out << "    " << enumName << " " << valName << ";\n";
     }
     out << "};\n";
