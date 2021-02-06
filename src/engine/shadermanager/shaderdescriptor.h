@@ -1,6 +1,7 @@
 #pragma once
 
 #include <string>
+#include <vector>
 
 class ShaderDescriptor
 {
@@ -13,8 +14,9 @@ class ShaderDescriptor
     ShaderDescriptor(ShaderDescriptor&&) = default;
     ShaderDescriptor& operator=(ShaderDescriptor&&) = default;
 
-    virtual void setVariant(const std::string& vairantName, const std::string& value) = 0;
-    virtual void setVariant(const std::string& vairantName, int value) = 0;
+    virtual void setVariant(const std::string& variantName, const std::string& value) = 0;
+    virtual void setVariant(const std::string& variantName, int value) = 0;
+    virtual std::vector<std::string> getVariantParamNames() const = 0;
 
  private:
 };

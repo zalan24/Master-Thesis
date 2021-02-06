@@ -28,8 +28,10 @@ struct VariantConfig
 
 struct IncludeData
 {
+    std::string name;
     std::filesystem::path shaderFileName;
     std::filesystem::path headerFileName;
+    std::string desriptorClassName;
     std::vector<std::string> included;
 };
 struct ShaderGenerationInput
