@@ -59,6 +59,7 @@ int main(int argc, char* argv[]) {
     ShaderBin shaderBin;
     Compiler compiler;
     Cache cache;
+    std::unordered_map<std::string, IncludeData> includeData;
 
     fs::path cacheFolder = fs::path{cacheF};
     fs::path cacheFile = cacheFolder / fs::path{"cache.json"};
@@ -81,34 +82,34 @@ int main(int argc, char* argv[]) {
                   << std::endl;
                 return 1;
             }
-            if (!::generate_header(cache, f, headers)) {
+            if (!::generate_header(cache, f, headers, includeData)) {
                 std::cerr << "Could not generate header for: " << f << std::endl;
                 return 1;
             }
         }
-        for (const std::string& f : files) {
-            std::smatch m;
-            if (std::regex_match(f, m, headerRegex)) {
-                fs::path p = f;
-                fs::path relPath = fs::relative(p, root);
-                std::string relPathStr = relPath.string();
-                if (std::regex_match(relPathStr, m, headerRegex)) {
-                    std::string fileId = m[1];
-                    for (char& c : fileId)
-                        if (c == '\\')
-                            c = '/';
-                    headerPaths[fileId] = p;
-                }
-                else
-                    throw std::runtime_error("Something is wrong with a relative path");
-            }
-        }
+        // for (const std::string& f : files) {
+        //     std::smatch m;
+        //     if (std::regex_match(f, m, headerRegex)) {
+        //         fs::path p = f;
+        //         fs::path relPath = fs::relative(p, root);
+        //         std::string relPathStr = relPath.string();
+        //         if (std::regex_match(relPathStr, m, headerRegex)) {
+        //             std::string fileId = m[1];
+        //             for (char& c : fileId)
+        //                 if (c == '\\')
+        //                     c = '/';
+        //             headerPaths[fileId] = p;
+        //         }
+        //         else
+        //             throw std::runtime_error("Something is wrong with a relative path");
+        //     }
+        // }
         for (const std::string& f : files) {
             std::smatch m;
             if (!std::regex_match(f, m, shaderRegex))
                 continue;
             std::cout << "Compiling: " << f << std::endl;
-            if (!compile_shader(&compiler, shaderBin, cache, f, headers, headerPaths)) {
+            if (!compile_shader(&compiler, shaderBin, cache, f, headers, includeData)) {
                 std::cerr << "Failed to compile a shader: " << f << std::endl;
                 return 1;
             }
