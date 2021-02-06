@@ -87,23 +87,6 @@ int main(int argc, char* argv[]) {
                 return 1;
             }
         }
-        // for (const std::string& f : files) {
-        //     std::smatch m;
-        //     if (std::regex_match(f, m, headerRegex)) {
-        //         fs::path p = f;
-        //         fs::path relPath = fs::relative(p, root);
-        //         std::string relPathStr = relPath.string();
-        //         if (std::regex_match(relPathStr, m, headerRegex)) {
-        //             std::string fileId = m[1];
-        //             for (char& c : fileId)
-        //                 if (c == '\\')
-        //                     c = '/';
-        //             headerPaths[fileId] = p;
-        //         }
-        //         else
-        //             throw std::runtime_error("Something is wrong with a relative path");
-        //     }
-        // }
         for (const std::string& f : files) {
             std::smatch m;
             if (!std::regex_match(f, m, shaderRegex))

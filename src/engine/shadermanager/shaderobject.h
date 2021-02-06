@@ -6,6 +6,7 @@
 #include <drv_wrappers.h>
 
 #include "shaderbin.h"
+#include "shaderdescriptorcollection.h"
 
 class ShaderObject
 {
@@ -20,13 +21,17 @@ class ShaderObject
 
     void loadShader(const ShaderBin::ShaderData& data);
 
+ protected:
+    using VariantId = uint32_t;
+    static constexpr VariantId INVALID_SHADER = std::numeric_limits<VariantId>::max();
+    virtual VariantId getShaderVariant(const ShaderDescriptorCollection* descriptors) const = 0;
+
  private:
-    static constexpr uint32_t INVALID_SHADER = std::numeric_limits<uint32_t>::max();
     struct VariantInfo
     {
-        uint32_t psOffset = INVALID_SHADER;
-        uint32_t vsOffset = INVALID_SHADER;
-        uint32_t csOffset = INVALID_SHADER;
+        VariantId psOffset = INVALID_SHADER;
+        VariantId vsOffset = INVALID_SHADER;
+        VariantId csOffset = INVALID_SHADER;
     };
     drv::LogicalDevicePtr device;
     std::vector<VariantInfo> variants;

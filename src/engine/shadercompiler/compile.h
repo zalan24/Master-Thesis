@@ -33,6 +33,8 @@ struct IncludeData
     std::filesystem::path headerFileName;
     std::string desriptorClassName;
     std::vector<std::string> included;
+    uint64_t totalVarintMultiplier;
+    std::unordered_map<std::string, uint64_t> variantMultiplier;
 };
 struct ShaderGenerationInput
 {
@@ -61,8 +63,3 @@ bool compile_shader(const Compiler* compiler, ShaderBin& shaderBin, Cache& cache
 
 bool generate_header(Cache& cache, const std::string& shaderFile, const std::string& outputFolder,
                      std::unordered_map<std::string, IncludeData>& includeData);
-
-bool generate_binary(const Compiler* compiler, ShaderBin::ShaderData& shaderData,
-                     const std::vector<Variants>& variants, ShaderGenerationInput&& input);
-
-VariantConfig get_variant_config(size_t index, const std::vector<Variants>& variants);

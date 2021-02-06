@@ -17,6 +17,7 @@ class ShaderDescriptor
     virtual void setVariant(const std::string& variantName, const std::string& value) = 0;
     virtual void setVariant(const std::string& variantName, int value) = 0;
     virtual std::vector<std::string> getVariantParamNames() const = 0;
+    virtual uint32_t getLocalVariantId() const = 0;
 
  private:
 };
