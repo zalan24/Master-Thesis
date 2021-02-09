@@ -7,5 +7,5 @@ set_target_properties(  AnimationsShaderCompiler
                         COMPILE_FLAGS ${TARGETCOMPILEFLAGS}
                         LINK_OPTIONS "${TARGET_LINK_FLAGS}")
 target_include_directories(AnimationsShaderCompiler PRIVATE . ${CMAKE_CURRENT_BINARY_DIR})
-target_link_libraries(AnimationsShaderCompiler PRIVATE CLI11_LIB Glslang_LIB SPIRV_TOOLS_LIB SimpleCpp_LIB HashLib4CPP_LIB)
+target_link_libraries(AnimationsShaderCompiler PRIVATE CLI11_LIB glslang_external SPIRV_TOOLS_LIB SimpleCpp_LIB HashLib4CPP_LIB)
 target_link_libraries(AnimationsShaderCompiler PUBLIC AnimationsIO AnimationsShaderManager)

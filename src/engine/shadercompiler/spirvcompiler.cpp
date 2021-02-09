@@ -1,6 +1,6 @@
 #include "spirvcompiler.h"
 
-#include <SPIRV/GlslangToSpv.h>
+#include <glslang/SPIRV/GlslangToSpv.h>
 #include <spirv-tools/libspirv.hpp>
 #include <spirv-tools/optimizer.hpp>
 
@@ -27,7 +27,7 @@ static EShLanguage find_language(const ShaderBin::Stage stage) {
         case ShaderBin::Stage::CS:
             return EShLangCompute;
         default:
-            return EShLangVertex;
+            throw std::runtime_error("Unhandled shader stage");
     }
 }
 
