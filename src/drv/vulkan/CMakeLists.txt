@@ -22,8 +22,8 @@ if (Vulkan_FOUND)
     )
     target_link_libraries(AnimationsDrvVulkan PRIVATE
         ${Vulkan_LIBRARIES}
-        Vulkan_LIB
-        VulkanHeaders_LIB
+        vulkan_hpp_external
+        vulkan_headers_external
         GLFW_LIB
     )
 endif()
