@@ -1,17 +1,9 @@
-include(FetchContent)
+include(external)
 
-FetchContent_Declare(
-    mapbox_external
+download_external(
+    mapbox
     GIT_REPOSITORY https://github.com/mapbox/eternal.git
 )
 
-FetchContent_GetProperties(mapbox_external)
-if(NOT mapbox_externalPOPULATED)
-  FetchContent_Populate(mapbox_external)
-  prep_thirdparty(${mapbox_external_SOURCE_DIR} "${mapbox_external_SOURCE_DIR}_fixed")
-endif()
-set(FIXED "${mapbox_external_SOURCE_DIR}_fixed")
-
-add_library(MAPBOX_LIB INTERFACE)
-add_dependencies(MAPBOX_LIB mapbox_external)
-target_include_directories(MAPBOX_LIB SYSTEM INTERFACE ${FIXED}/include)
+add_library(mapbox_external INTERFACE)
+target_include_directories(mapbox_external SYSTEM INTERFACE ${PROJECT_BINARY_DIR}/3rdParty/mapbox/src/include)

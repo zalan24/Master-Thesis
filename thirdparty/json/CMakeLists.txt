@@ -1,18 +1,10 @@
-include(FetchContent)
+include(external)
 
-FetchContent_Declare(
-    json_external
+download_external(
+    json
     GIT_REPOSITORY https://github.com/nlohmann/json.git
     GIT_TAG        v3.9.1
 )
 
-FetchContent_GetProperties(json_external)
-if(NOT json_externalPOPULATED)
-  FetchContent_Populate(json_external)
-  prep_thirdparty(${json_external_SOURCE_DIR} "${json_external_SOURCE_DIR}_fixed")
-endif()
-set(FIXED "${json_external_SOURCE_DIR}_fixed")
-
-add_library(JSON_LIB INTERFACE)
-add_dependencies(JSON_LIB json_external)
-target_include_directories(JSON_LIB SYSTEM INTERFACE ${FIXED}/include)
+add_library(json_external INTERFACE)
+target_include_directories(json_external SYSTEM INTERFACE ${PROJECT_BINARY_DIR}/3rdParty/json/src/include)

@@ -8,6 +8,6 @@ set_target_properties(  AnimationsSerializable
                         LINK_OPTIONS "${TARGET_LINK_FLAGS}")
 target_include_directories(AnimationsSerializable PUBLIC . ${CMAKE_CURRENT_BINARY_DIR})
 target_link_libraries(AnimationsSerializable PUBLIC
-    JSON_LIB
-    GLM_LIB
+    json_external
+    glm_external
 )

@@ -13,7 +13,7 @@ target_link_libraries(AnimationsAssetLoaders PRIVATE
     base64_external
 )
 target_link_libraries(AnimationsAssetLoaders PUBLIC
-    GLM_LIB
+    glm_external
     AnimationsData
     AnimationsTools
     AnimationsSerializable
