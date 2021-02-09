@@ -8,7 +8,7 @@ set_target_properties(  AnimationsIO
                         LINK_OPTIONS "${TARGET_LINK_FLAGS}")
 target_include_directories(AnimationsIO PUBLIC . ${CMAKE_CURRENT_BINARY_DIR})
 target_link_libraries(AnimationsIO PRIVATE
-    BASE64_LIB
+base64_external
 )
 target_link_libraries(AnimationsIO PUBLIC
     AnimationsTools

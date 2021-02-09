@@ -10,7 +10,7 @@ target_include_directories(AnimationsAssetLoaders PUBLIC . ${CMAKE_CURRENT_BINAR
 target_link_libraries(AnimationsAssetLoaders PRIVATE
     ASSIMP_LIB
     STB_LIB
-    BASE64_LIB
+    base64_external
 )
 target_link_libraries(AnimationsAssetLoaders PUBLIC
     GLM_LIB

@@ -4,5 +4,5 @@ target_link_libraries(Playground PRIVATE
     AnimationsEngine
     AnimationsController
     AnimationsRenderer
-    CLI11_LIB
+    cli11_external
 )

@@ -7,4 +7,4 @@ set_target_properties(  AnimationsInput
                         COMPILE_FLAGS ${TARGETCOMPILEFLAGS}
                         LINK_OPTIONS "${TARGET_LINK_FLAGS}")
 target_include_directories(AnimationsInput PUBLIC . ${CMAKE_CURRENT_BINARY_DIR})
-target_link_libraries(AnimationsInput PUBLIC CONCURRENT_QUEUE_LIB)
+target_link_libraries(AnimationsInput PUBLIC concurrent_queue_external)
