@@ -7,4 +7,4 @@ set_target_properties(  AnimationsUI
                         COMPILE_FLAGS ${TARGETCOMPILEFLAGS}
                         LINK_OPTIONS "${TARGET_LINK_FLAGS}")
 target_include_directories(AnimationsUI PUBLIC . ${CMAKE_CURRENT_BINARY_DIR})
-target_link_libraries(AnimationsUI PRIVATE GLFW_LIB GLAD_LIB AnimationsAssetLoaders)
+target_link_libraries(AnimationsUI PRIVATE GLAD_LIB AnimationsAssetLoaders)

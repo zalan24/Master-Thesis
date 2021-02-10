@@ -1,17 +1,3 @@
-# include(FetchContent)
-
-# FetchContent_Declare(
-#     hash_library_external
-#     GIT_REPOSITORY https://github.com/stbrumme/hash-library.git
-# )
-
-# FetchContent_GetProperties(hash_library_external)
-# if(NOT hash_library_externalPOPULATED)
-#   FetchContent_Populate(hash_library_external)
-#   prep_thirdparty(${hash_library_external_SOURCE_DIR} "${hash_library_external_SOURCE_DIR}_fixed")
-# endif()
-# set(FIXED "${hash_library_external_SOURCE_DIR}_fixed")
-
 include(external)
 
 download_external(

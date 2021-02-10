@@ -1,19 +1,18 @@
-include(FetchContent)
+include(external)
 
-FetchContent_Declare(
-    spriv_tools_external
+download_external(
+    spirv_tools
     GIT_REPOSITORY https://github.com/KhronosGroup/SPIRV-Tools.git
     GIT_TAG        v2020.6
 )
 
-FetchContent_GetProperties(spriv_tools_external)
-if(NOT spriv_tools_external_POPULATED)
-  FetchContent_Populate(spriv_tools_external)
-  prep_thirdparty(${spriv_tools_external_SOURCE_DIR} "${spriv_tools_external_SOURCE_DIR}_fixed")
-  add_subdirectory("${spriv_tools_external_SOURCE_DIR}_fixed" ${spriv_tools_external_BINARY_DIR})
-endif()
-set(FIXED "${spriv_tools_external_SOURCE_DIR}_fixed")
+external(
+  spirv_tools
+    INSTALL ON
+    # TARGETS
+    PROJECT_OPTIONS
+        -DSPIRV_SKIP_TESTS=ON
+        "-DSPIRV-Headers_SOURCE_DIR:FILEPATH=${PROJECT_BINARY_DIR}/3rdParty/spirv_headers/src"
+)
 
-add_library(SPIRV_TOOLS_LIB INTERFACE)
-target_include_directories(SPIRV_TOOLS_LIB SYSTEM INTERFACE "${FIXED}/include")
-target_link_libraries(SPIRV_TOOLS_LIB INTERFACE SPIRV_HEADERS_LIB)
+target_link_libraries(spirv_tools_external INTERFACE spirv_headers_external spirv_cross_external)

@@ -24,6 +24,6 @@ if (Vulkan_FOUND)
         ${Vulkan_LIBRARIES}
         vulkan_hpp_external
         vulkan_headers_external
-        GLFW_LIB
+        glfw_external
     )
 endif()

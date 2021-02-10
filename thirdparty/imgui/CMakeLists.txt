@@ -15,6 +15,7 @@ endif()
 set(FIXED "${imgui_external_SOURCE_DIR}_fixed")
 
 # TODO vulkan
+# TODO replace downloader
 
 file(GLOB IMGUI_SOURCES ${FIXED}/*.cpp ${FIXED}/*.h ${FIXED}/*.hpp)
 file(GLOB IMGUI_SOURCES_EXAMPLES ${FIXED}/examples/*.cpp ${FIXED}/examples/*.h ${FIXED}/examples/*.hpp)
@@ -29,5 +30,5 @@ set(IMGUI_SOURCES_EXAMPLES
 add_library(IMGUI_LIB STATIC ${IMGUI_SOURCES} ${IMGUI_SOURCES_EXAMPLES})
 target_include_directories(IMGUI_LIB SYSTEM PUBLIC "${imgui_external_BINARY_DIR}" "${FIXED}")
 target_include_directories(IMGUI_LIB SYSTEM PRIVATE "${imgui_external_BINARY_DIR}/examples" "${FIXED}/examples")
-target_link_libraries(IMGUI_LIB PRIVATE GLFW_LIB GLAD_LIB)
-target_compile_definitions(IMGUI_LIB PRIVATE IMGUI_IMPL_OPENGL_LOADER_GLAD)
+# target_link_libraries(IMGUI_LIB PRIVATE glfw_external GLAD_LIB)
+# target_compile_definitions(IMGUI_LIB PRIVATE IMGUI_IMPL_OPENGL_LOADER_GLAD)

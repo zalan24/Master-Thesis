@@ -24,6 +24,7 @@
         "dbuild",
         "dcmake",
         "drvvulkan",
+        "dspirv",
         "dward",
         "endforeach",
         "endfunction",
