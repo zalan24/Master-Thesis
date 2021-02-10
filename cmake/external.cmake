@@ -1,38 +1,24 @@
 function(download_external namespace)
-    # get_filename_component(name "${directory}" NAME)
-    # message(STATUS "Downloading/updating ${name}")
-    # get_filename_component(directory "${directory}" ABSOLUTE)
-
     include(download)
-    include(AddExternal)
-
     download(
-        # destination directory, source code will be in subdirectory `src`
         ${PROJECT_BINARY_DIR}/3rdParty/${namespace}
-        # Standard CMAKE ExternalProject parameters starting from here
         ${ARGN}
-        # UPDATE_DISCONNECTED ON
-        # CMAKE_CACHE_ARGS
-        #     "-DCMAKE_CXX_COMPILER:PATH=${CMAKE_CXX_COMPILER}"
-        #     "-DCMAKE_CXX_COMPILER_AR:PATH=${CMAKE_CXX_COMPILER_AR}"
-        #     "-DCMAKE_CXX_COMPILER_RANLIB:PATH=${CMAKE_CXX_COMPILER_RANLIB}"
-        #     "-DCMAKE_C_COMPILER:PATH=${CMAKE_C_COMPILER}"
-        #     "-DCMAKE_C_COMPILER_AR:PATH=${CMAKE_C_COMPILER_AR}"
-        #     "-DCMAKE_C_COMPILER_RANLIB:PATH=${CMAKE_C_COMPILER_RANLIB}"
-        #     "-DCMAKE_LINKER:PATH=${CMAKE_LINKER}"
-        # CMAKE_ARGS
-        #     "-DCMAKE_INSTALL_PREFIX:PATH=${PROJECT_BINARY_DIR}/external/${namespace}"
     )
 endfunction()
 
 function(external namespace)
 
+    include(AddExternal)
+
     set(options)
     set(oneValueArgs INSTALL)
-    set(multiValueArgs TARGETS PROJECT_OPTIONS)
+    set(multiValueArgs TARGETS PROJECT_OPTIONS EXTERNAL_CXX_FLAGS EXTERNAL_C_FLAGS)
     cmake_parse_arguments(EXTERNAL "${options}" "${oneValueArgs}"
                                     "${multiValueArgs}" ${ARGN} )
 
+
+    list(JOIN EXTERNAL_EXTERNAL_CXX_FLAGS " " external_cxx_flags)
+    list(JOIN EXTERNAL_EXTERNAL_C_FLAGS " " external_c_flags)
 
     # F you, cmake
     add_external(
@@ -53,12 +39,12 @@ function(external namespace)
             "-DCMAKE_C_COMPILER_AR:PATH=${CMAKE_C_COMPILER_AR}"
             "-DCMAKE_C_COMPILER_RANLIB:PATH=${CMAKE_C_COMPILER_RANLIB}"
             "-DCMAKE_LINKER:PATH=${CMAKE_LINKER}"
-            "-DCMAKE_CXX_FLAGS:STRING=${CMAKE_CXX_FLAGS}"
+            "-DCMAKE_CXX_FLAGS:STRING=${CMAKE_CXX_FLAGS} ${external_cxx_flags}"
             "-DCMAKE_CXX_FLAGS_DEBUG:STRING=${CMAKE_CXX_FLAGS_DEBUG}"
             "-DCMAKE_CXX_FLAGS_MINSIZEREL:STRING=${CMAKE_CXX_FLAGS_MINSIZEREL}"
             "-DCMAKE_CXX_FLAGS_RELEASE:STRING=${CMAKE_CXX_FLAGS_RELEASE}"
             "-DCMAKE_CXX_FLAGS_RELWITHDEBINFO:STRING=${CMAKE_CXX_FLAGS_RELWITHDEBINFO}"
-            "-DCMAKE_C_FLAGS:STRING=${CMAKE_C_FLAGS}"
+            "-DCMAKE_C_FLAGS:STRING=${CMAKE_C_FLAGS} ${external_c_flags}"
             "-DCMAKE_C_FLAGS_DEBUG:STRING=${CMAKE_C_FLAGS_DEBUG}"
             "-DCMAKE_C_FLAGS_MINSIZEREL:STRING=${CMAKE_C_FLAGS_MINSIZEREL}"
             "-DCMAKE_C_FLAGS_RELEASE:STRING=${CMAKE_C_FLAGS_RELEASE}"

@@ -25,7 +25,6 @@ function(add_external namespace source_dir)
     # message("${namespace} ------ ${ADD_EXTERNAL_TARGETS}")
     # message("${namespace} ------ ${ADD_EXTERNAL_PROJECT_OPTIONS}")
 
-
     # set(collect_snippet [=[
     # cmake_policy(SET CMP0026 OLD)
     # set(_all_targets "" CACHE INTERNAL "")
@@ -41,7 +40,6 @@ function(add_external namespace source_dir)
     # ]=])
 
     set(export_snippet [=[
-        set(_targets_file "@cmake_dir@/@namespace@Targets.cmake")
         set(_out_str "")
         foreach(target @ADD_EXTERNAL_TARGETS@)
             set(location "$<TARGET_FILE:${target}>")
@@ -50,9 +48,18 @@ function(add_external namespace source_dir)
         endforeach()
         set(_out_str "${_out_str}\nadd_library(@namespace@_external INTERFACE)")
         set(_out_str "${_out_str}\ntarget_link_libraries(@namespace@_external INTERFACE @ADD_EXTERNAL_TARGETS@)")
-        set(_out_str "${_out_str}\ntarget_include_directories(@namespace@_external SYSTEM INTERFACE \"@source_dir@\")")
+        set(_out_str "${_out_str}\nif (EXISTS \"@source_dir@/include\")")
+        set(_out_str "${_out_str}\n    target_include_directories(@namespace@_external SYSTEM INTERFACE \"@source_dir@/include\")")
+        set(_out_str "${_out_str}\nelse()")
+        set(_out_str "${_out_str}\n    target_include_directories(@namespace@_external SYSTEM INTERFACE \"@source_dir@\")")
+        set(_out_str "${_out_str}\nendif()")
+        set(_out_str "${_out_str}\nif (EXISTS \"@binary_dir@/include\")")
+        set(_out_str "${_out_str}\n    target_include_directories(@namespace@_external SYSTEM INTERFACE \"@binary_dir@/include\")")
+        set(_out_str "${_out_str}\nelse()")
+        set(_out_str "${_out_str}\n    target_include_directories(@namespace@_external SYSTEM INTERFACE \"@binary_dir@\")")
+        set(_out_str "${_out_str}\nendif()")
 
-        file(GENERATE OUTPUT "${_targets_file}" CONTENT "${_out_str}")
+        file(GENERATE OUTPUT "@_targets_file@" CONTENT "${_out_str}")
         add_library(_@namespace@_external INTERFACE)
         target_link_libraries(_@namespace@_external INTERFACE @ADD_EXTERNAL_TARGETS@)
         # add_dependencies(_@namespace@_external _@namespace@_external_gen)
@@ -64,7 +71,6 @@ function(add_external namespace source_dir)
     #                   COMMENT "Creating cmake targets file for @namespace@: ${target_file}"
     # )
 
-    # set(_targets_file "@binary_dir@/_external_targets.cmake")
     # set(_out_str "")
     # foreach(target @ADD_EXTERNAL_TARGETS@)
     #     set(location "$<TARGET_FILE:${target}>")
@@ -119,6 +125,9 @@ function(add_external namespace source_dir)
     file(MAKE_DIRECTORY "${cmake_dir}")
     # file(MAKE_DIRECTORY "${install_dir}")
 
+
+    set(_targets_file "${cmake_dir}/${namespace}Targets.cmake")
+
     # patch CMakeLists.txt if not patched or updated
     if(EXISTS "${source_dir}/CMakeLists.txt.hash")
         file(READ "${source_dir}/CMakeLists.txt.hash" should_hash)
@@ -130,8 +139,6 @@ function(add_external namespace source_dir)
         file(SHA1 "${source_dir}/CMakeLists.txt" hash)
         file(WRITE "${source_dir}/CMakeLists.txt.hash" "${hash}")
     endif()
-    string(CONFIGURE "${export_snippet}" target_export @ONLY)
-    file(WRITE "${source_dir}/_target_export.cmake" "${target_export}")
 
     foreach(param IN LISTS ADD_EXTERNAL_PROJECT_OPTIONS)
         if(param MATCHES "^[A-Za-z_]+=.+$")
@@ -143,8 +150,10 @@ function(add_external namespace source_dir)
         endif()
     endforeach()
 
-    if (NOT EXISTS "${binary_dir}/_external_targets.cmake")
+    if (NOT EXISTS "${_targets_file}")
         message("Building external: ${namespace}")
+        string(CONFIGURE "${export_snippet}" target_export @ONLY)
+        file(WRITE "${source_dir}/_target_export.cmake" "${target_export}")
         execute_process(COMMAND "${CMAKE_COMMAND}" -G${CMAKE_GENERATOR} -DCMAKE_GENERATOR_PLATFORM=${CMAKE_GENERATOR_PLATFORM} -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE} -Wno-dev ${cmake_params} "${source_dir}"
                         RESULT_VARIABLE result
                         WORKING_DIRECTORY "${binary_dir}"
@@ -156,13 +165,16 @@ function(add_external namespace source_dir)
                         RESULT_VARIABLE result
                         WORKING_DIRECTORY "${binary_dir}"
         )
+        if(result)
+            message(FATAL_ERROR "CMake build for ${namespace} failed: ${result}")
+        endif()
         if (${ADD_EXTERNAL_INSTALL})
             execute_process(COMMAND "${CMAKE_COMMAND}" --install . --config ${CMAKE_BUILD_TYPE} # --target _${namespace}_external
                             RESULT_VARIABLE result
                             WORKING_DIRECTORY "${binary_dir}"
             )
             if(result)
-                message(FATAL_ERROR "CMake build for ${namespace} failed: ${result}")
+                message(FATAL_ERROR "CMake install for ${namespace} failed: ${result}")
             endif()
         endif()
     endif()
@@ -175,7 +187,7 @@ function(add_external namespace source_dir)
         endforeach()
         target_link_libraries(${namespace}_external INTERFACE ${ADD_EXTERNAL_TARGETS})
     else()
-        include("${cmake_dir}/${namespace}Targets.cmake")
+        include("${_targets_file}")
     endif()
 
     # # foreach(target IN LISTS _${namespace}_targets)

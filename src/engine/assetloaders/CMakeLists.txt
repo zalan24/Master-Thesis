@@ -8,7 +8,7 @@ set_target_properties(  AnimationsAssetLoaders
                         LINK_OPTIONS "${TARGET_LINK_FLAGS}")
 target_include_directories(AnimationsAssetLoaders PUBLIC . ${CMAKE_CURRENT_BINARY_DIR})
 target_link_libraries(AnimationsAssetLoaders PRIVATE
-    ASSIMP_LIB
+    assimp_external
     stb_external
     base64_external
 )
