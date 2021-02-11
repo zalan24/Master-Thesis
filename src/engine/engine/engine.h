@@ -10,6 +10,7 @@
 #include <drv_queue_manager.h>
 #include <drv_wrappers.h>
 #include <drvcmdbufferbank.h>
+#include <drvframegraph.h>
 #include <drvlane.h>
 
 #include <entitymanager.h>
@@ -27,8 +28,6 @@ class ExecutionQueue;
 class Engine
 {
  public:
-    using FrameId = size_t;
-
     struct Config final : public ISerializable
     {
         int screenWidth;
@@ -114,7 +113,7 @@ class Engine
     ShaderBin shaderBin;
     ResourceManager resourceMgr;
     EntityManager entityManager;
-    // Renderer renderer;
+    drv::FrameGraph frameGraph;
 
     struct RenderState
     {

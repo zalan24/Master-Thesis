@@ -2,13 +2,84 @@
 
 #include <limits>
 #include <memory>
+#include <string>
 #include <vector>
 
 #include <drvtypes.h>
 #include <exclusive.h>
 
-#include "drv_queue_manager.h"
+// #include "drv_queue_manager.h"
 #include "drv_wrappers.h"
+
+namespace drv
+{
+class FrameGraph
+{
+ public:
+    using FrameId = uint64_t;
+    using NodeId = uint32_t;
+    static constexpr NodeId INVALID_NODE = std::numeric_limits<NodeId>::max();
+    struct NodeDependency
+    {
+        static constexpr uint32_t NO_SYNC = std::numeric_limits<uint32_t>::max();
+        // sync between src#(frameId-offset) and currentNode#frameId
+        // offset of 0 means serial execution
+        NodeId srcNode;
+        uint32_t cpu_cpuOffset = 0;
+        uint32_t cpu_gpuOffset = NO_SYNC;
+        uint32_t gpu_cpuOffset = NO_SYNC;
+        uint32_t gpu_gpuOffset = NO_SYNC;
+    };
+    class Node
+    {
+     public:
+        Node(const std::string& name);  // current node can only run serially with itself
+        Node(const std::string& name,
+             NodeDependency selfDependency);  // for parallel execution for several frameIds
+
+        void addDependency(NodeDependency dep);
+
+     private:
+        std::string name;
+        std::vector<NodeDependency> deps;
+    };
+
+    class NodeHandle
+    {
+     public:
+        NodeHandle(const NodeHandle&) = delete;
+        NodeHandle& operator=(const NodeHandle&) = delete;
+        NodeHandle(NodeHandle&& other);
+        NodeHandle& operator=(NodeHandle&& other);
+        ~NodeHandle();
+
+        friend class FrameGraph;
+
+        operator bool() const;
+
+     private:
+        NodeHandle();
+        FrameGraph* frameGraph;
+        NodeId node;
+        FrameId frameId;
+    };
+
+    NodeId addNode(Node&& node);
+    Node* getNode(NodeId);
+    const Node* getNode(NodeId) const;
+    void addDependency(NodeId target, NodeDependency dep);
+
+    NodeHandle acquireNode(NodeId node, FrameId frame);
+    NodeHandle tryAcquireNode(NodeId node, FrameId frame, uint64_t timeoutNsec);
+    // no blocking, returns a handle if currently available
+    NodeHandle tryAcquireNode(NodeId node, FrameId frame);
+    void skipNode(NodeId, FrameId);
+
+ private:
+    std::vector<Node> nodes;
+};
+}  // namespace drv
+
 /*
 
 namespace drv

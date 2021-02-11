@@ -152,6 +152,106 @@ Engine::Engine(const Config& cfg, const std::string& shaderbinFile,
     syncBlock(device),
     shaderBin(shaderbinFile),
     resourceMgr(std::move(resource_infos)) {
+    drv::FrameGraph::NodeId inputSample = frameGraph.addNode(drv::FrameGraph::Node("sample_input"));
+    // drv::FrameGraph::NodeId simEntities =
+    //   frameGraph.addNode(drv::FrameGraph::Node("entities/simulate"));
+    // drv::FrameGraph::NodeId beforeDrawEntities =
+    //   frameGraph.addNode(drv::FrameGraph::Node("entities/beforeDraw"));
+    // drv::FrameGraph::NodeId recordEntities =
+    //   frameGraph.addNode(drv::FrameGraph::Node("entities/record"));
+    // drv::FrameGraph::NodeId clearGbuffer =
+    //   frameGraph.addNode(drv::FrameGraph::Node("gbuffer/clear"));
+    // drv::FrameGraph::NodeId resolveGbuffer =
+    //   frameGraph.addNode(drv::FrameGraph::Node("gbuffer/resolve"));
+    drv::FrameGraph::NodeId presentFrame =
+      frameGraph.addNode(drv::FrameGraph::Node("presentFrame"));
+    // These are just marker nodes
+    // no actual work is done in them
+    drv::FrameGraph::NodeId simStart =
+      frameGraph.addNode(drv::FrameGraph::Node("simulation/start"));
+    drv::FrameGraph::NodeId simEnd = frameGraph.addNode(drv::FrameGraph::Node("simulation/end"));
+    drv::FrameGraph::NodeId recordStart = frameGraph.addNode(drv::FrameGraph::Node("record/start"));
+    drv::FrameGraph::NodeId recordEnd = frameGraph.addNode(drv::FrameGraph::Node("record/end"));
+    drv::FrameGraph::NodeId executeStart =
+      frameGraph.addNode(drv::FrameGraph::Node("execute/start"));
+    drv::FrameGraph::NodeId executeEnd = frameGraph.addNode(drv::FrameGraph::Node("execute/end"));
+
+    drv::FrameGraph::NodeDependency inputDep;
+    inputDep.srcNode = inputSample;
+
+    // drv::FrameGraph::NodeDependency entitySimDep;
+    // entitySimDep.srcNode = simEntities;
+
+    // TODO fill out offset fields
+    // TODO review framegraph design (not complete)
+
+    drv::FrameGraph::NodeDependency simEnd_nextFrameDep;
+    simEnd_nextFrameDep.srcNode = simEnd;
+    simEnd_nextFrameDep.cpu_cpuOffset = 1;
+
+    drv::FrameGraph::NodeDependency simStartDep;
+    simStartDep.srcNode = simStart;
+
+    drv::FrameGraph::NodeDependency recordStartDep;
+    recordStartDep.srcNode = recordStart;
+
+    drv::FrameGraph::NodeDependency executionStartDep;
+    executionStartDep.srcNode = recordStart;
+
+    drv::FrameGraph::NodeDependency presentDep;
+    presentDep.srcNode = presentFrame;
+
+    // drv::FrameGraph::NodeDependency gbufferClearDep;
+    // gbufferClearDep.srcNode = clearGbuffer;
+    // gbufferClearDep.cpu_cpuOffset = drv::FrameGraph::NodeDependency::NO_SYNC;
+    // gbufferClearDep.gpu_gpuOffset = 0;
+
+    // drv::FrameGraph::NodeDependency gbufferResolveDep;
+    // gbufferResolveDep.srcNode = resolveGbuffer;
+    // gbufferResolveDep.cpu_cpuOffset = drv::FrameGraph::NodeDependency::NO_SYNC;
+    // gbufferResolveDep.gpu_gpuOffset = 0;
+
+    // TODO commented nodes should be moved to the renderer implementation
+    // also, entity manager should not be part of the engine
+
+    // drv::FrameGraph::NodeDependency entityBeforeDrawDep;
+    // entityBeforeDrawDep.srcNode = beforeDrawEntities;
+    // entityBeforeDrawDep.gpu_gpuOffset = 0;
+
+    // drv::FrameGraph::NodeDependency entityRecord_entitySimDep;
+    // entityRecord_entitySimDep.srcNode = recordEntities;
+    // entityRecord_entitySimDep.cpu_cpuOffset = 1;
+
+    // drv::FrameGraph::NodeDependency entityRecord_gbufferResolveDep;
+    // entityRecord_gbufferResolveDep.srcNode = recordEntities;
+    // entityRecord_gbufferResolveDep.cpu_cpuOffset = drv::FrameGraph::NodeDependency::NO_SYNC;
+    // entityRecord_gbufferResolveDep.gpu_gpuOffset = 0;
+
+    // drv::FrameGraph::NodeDependency finalize_clearDep;
+    // finalize_clearDep.srcNode = finalizeFrame;
+    // finalize_clearDep.cpu_cpuOffset = drv::FrameGraph::NodeDependency::NO_SYNC;
+    // finalize_clearDep.gpu_gpuOffset = 1;
+
+    // TODO wait for present at some point?
+
+    // frameGraph.addDependency(simEntities, inputDep);
+    // frameGraph.addDependency(beforeDrawEntities, entitySimDep);
+    // frameGraph.addDependency(recordEntities, entityBeforeDrawDep);
+    // frameGraph.addDependency(simEntities, entityRecord_entitySimDep);
+    // frameGraph.addDependency(resolveGbuffer, entityRecord_gbufferResolveDep);
+    // frameGraph.addDependency(recordEntities, gbufferClearDep);
+    // frameGraph.addDependency(finalizeFrame, gbufferResolveDep);
+    // frameGraph.addDependency(clearGbuffer, finalize_clearDep);
+    // frameGraph.addDependency(simEnd, entitySimDep);
+    frameGraph.addDependency(simStart, simEnd_nextFrameDep);
+    frameGraph.addDependency(inputSample, simStartDep);
+    frameGraph.addDependency(simEnd, simStartDep);
+    frameGraph.addDependency(simEnd, inputDep);
+    frameGraph.addDependency(recordStart, simStartDep);  // can be parallel with sim
+    frameGraph.addDependency(presentFrame, recordStartDep);
+    frameGraph.addDependency(recordEnd, presentDep);
+    frameGraph.addDependency(executeStart, recordStartDep);  // can be parallel with record
+    frameGraph.addDependency(executeEnd, executionStartDep);
 }
 
 Engine::~Engine() {
@@ -164,6 +264,7 @@ void Engine::sampleInput() {
         inputManager.feedInput(std::move(event));
 }
 
+// TODO remove sync with record thread, rely on frameGraph instead
 void Engine::simulationLoop(RenderState* state) {
     while (!state->quit) {
         FrameId simulationFrame = state->simulationFrame.load();
