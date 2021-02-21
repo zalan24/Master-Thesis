@@ -1,6 +1,7 @@
 #pragma once
 
-#include <drvframegraph.h>
+#include <framegraph.h>
+
 class IRenderer
 {
  public:
@@ -13,13 +14,16 @@ class IRenderer
     struct FrameGraphData
     {
         // TODO
-        drv::FrameGraph::NodeId simEnd;
-        drv::FrameGraph::NodeId gbufferResolve;
-        drv::FrameGraph::NodeId gbufferClear;
-        drv::FrameGraph::NodeId finalizeFrame;
+        FrameGraph::NodeId recStart;
+        FrameGraph::NodeId recEnd;
+        FrameGraph::NodeId present;
+        // FrameGraph::NodeId gbufferResolve;
+        // FrameGraph::NodeId gbufferClear;
+        // FrameGraph::NodeId finalizeFrame;
     };
 
-    virtual void initFrameGraph(FrameGraph& frameGraph, const FrameGraphData& data) = 0;
+    virtual void initRenderFrameGraph(FrameGraph& frameGraph, const FrameGraphData& data) = 0;
+    virtual void record(FrameGraph::FrameId frameId) = 0;
 
  private:
 };

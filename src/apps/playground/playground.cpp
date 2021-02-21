@@ -7,8 +7,8 @@
 // #include <animchar.h>
 #include <controllerholder.h>
 #include <engine.h>
+#include <game.h>
 #include <loadmesh.h>
-#include <renderer.h>
 
 using json = nlohmann::json;
 
@@ -96,7 +96,8 @@ int main(int argc, char* argv[]) {
         resourceInfos.resourceFolder = resourceFolder;
         resourceInfos.modelResourcesJson = modelResources;
         Engine engine(config, shaderbin, std::move(resourceInfos));
-        Renderer renderer(&engine);
+        Game game(&engine);
+        engine.initGame(&game, &game);
         // engine.getRenderer()->getCamera().lookAt(glm::vec3{0, 3, -5}, glm::vec3{0, 1, 0},
         //                                          glm::vec3{0, 1, 0});
 

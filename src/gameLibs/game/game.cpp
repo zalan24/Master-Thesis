@@ -1,10 +1,10 @@
-#include "renderer.h"
+#include "game.h"
 
 #include <engine.h>
 
 #include <shader_obj_test.h>
 
-Renderer::Renderer(Engine* _engine) : engine(_engine) {
+Game::Game(Engine* _engine) : engine(_engine) {
     shader_obj_test testShader(engine->getDevice(), *engine->getShaderBin());
     shader_obj_test::Descriptor descriptor;
     descriptor.setVariant("Color", "red");
@@ -16,5 +16,22 @@ Renderer::Renderer(Engine* _engine) : engine(_engine) {
     std::cout << descriptor.getLocalVariantId() << std::endl;
 }
 
-Renderer::~Renderer() {
+Game::~Game() {
+}
+
+void Game::initRenderFrameGraph(FrameGraph& frameGraph, const IRenderer::FrameGraphData& data) {
+    // TODO
+}
+
+void Game::initSimulationFrameGraph(FrameGraph& frameGraph,
+                                    const ISimulation::FrameGraphData& data) {
+    // TODO
+}
+
+void Game::record(FrameGraph::FrameId frameId) {
+    std::this_thread::sleep_for(std::chrono::milliseconds(4));
+}
+
+void Game::simulate(FrameGraph::FrameId frameId) {
+    std::this_thread::sleep_for(std::chrono::milliseconds(4));
 }

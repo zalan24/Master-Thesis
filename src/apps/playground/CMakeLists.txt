@@ -3,6 +3,6 @@ add_executable(Playground playground.cpp)
 target_link_libraries(Playground PRIVATE
     AnimationsEngine
     AnimationsController
-    AnimationsRenderer
+    AnimationsGame
     cli11_external
 )

@@ -10,10 +10,10 @@
 #include <drv_queue_manager.h>
 #include <drv_wrappers.h>
 #include <drvcmdbufferbank.h>
-#include <drvframegraph.h>
 #include <drvlane.h>
+#include <framegraph.h>
 
-#include <entitymanager.h>
+// #include <entitymanager.h>
 #include <input.h>
 #include <inputmanager.h>
 // #include <renderer.h>
@@ -24,6 +24,8 @@
 #include "shaderbin.h"
 
 class ExecutionQueue;
+class ISimulation;
+class IRenderer;
 
 class Engine
 {
@@ -53,16 +55,11 @@ class Engine
     Engine(const Engine&) = delete;
     Engine& operator=(const Engine&) = delete;
 
+    void initGame(IRenderer* renderer, ISimulation* simulation);
     void gameLoop();
 
-    EntityManager* getEntityManager() { return &entityManager; }
-    const EntityManager* getEntityManager() const { return &entityManager; }
-
-    // Renderer* getRenderer() { return &renderer; }
-    // const Renderer* getRenderer() const { return &renderer; }
-
-    // ResourceManager* getResMgr() { return &resourceMgr; }
-    // const ResourceManager* getResMgr() const { return &resourceMgr; }
+    // EntityManager* getEntityManager() { return &entityManager; }
+    // const EntityManager* getEntityManager() const { return &entityManager; }
 
     drv::LogicalDevicePtr getDevice() const { return device; }
     const ShaderBin* getShaderBin() const { return &shaderBin; }
@@ -78,13 +75,11 @@ class Engine
         ~WindowIniter();
         IWindow* window;
     };
-    struct SyncBlock
-    {
-        drv::Semaphore imageAvailableSemaphore;
-        SyncBlock(drv::LogicalDevicePtr device);
-    };
-
-    using FrameId = size_t;
+    // struct SyncBlock
+    // {
+    //     drv::Semaphore imageAvailableSemaphore;
+    //     SyncBlock(drv::LogicalDevicePtr device);
+    // };
 
     Config config;
 
@@ -109,37 +104,46 @@ class Engine
     drv::QueueManager::Queue inputQueue;
     drv::CommandBufferBank cmdBufferBank;
     drv::Swapchain swapchain;
-    SyncBlock syncBlock;
+    // SyncBlock syncBlock;
     ShaderBin shaderBin;
     ResourceManager resourceMgr;
-    EntityManager entityManager;
-    drv::FrameGraph frameGraph;
+    // EntityManager entityManager;
+    FrameGraph frameGraph;
 
-    struct RenderState
-    {
-        std::atomic<bool> quit = false;
-        std::atomic<bool> canSimulate = true;
-        std::atomic<bool> canRecord = false;
-        // std::atomic<bool> canExecute = false;
-        std::atomic<FrameId> simulationFrame = 0;
-        std::atomic<FrameId> recordFrame = 0;
-        std::atomic<FrameId> executeFrame = 0;
-        std::atomic<FrameId> recreateSwapchain = 0;
-        std::atomic<FrameId> swapchainCreated = 0;
-        std::mutex simulationMutex;
-        std::mutex recordMutex;
-        // std::mutex executeMutex;
-        std::condition_variable simulationCV;
-        std::condition_variable recordCV;
-        ExecutionQueue* executionQueue;
-        // std::condition_variable executeCV;
-    };
+    ISimulation* simulation = nullptr;
+    IRenderer* renderer = nullptr;
+    FrameGraph::NodeId inputSampleNode;
+    FrameGraph::NodeId simStartNode;
+    FrameGraph::NodeId simEndNode;
+    FrameGraph::NodeId recordStartNode;
+    FrameGraph::NodeId recordEndNode;
+    FrameGraph::NodeId presentFrameNode;
 
-    void simulationLoop(RenderState* state);
-    void recordCommandsLoop(RenderState* state);
-    void executeCommandsLoop(RenderState* state);
-    void present(RenderState* state, FrameId presentFrame);
-    void sampleInput();
+    // struct RenderState
+    // {
+    //     std::atomic<bool> quit = false;
+    // std::atomic<bool> canSimulate = true;
+    // std::atomic<bool> canRecord = false;
+    // // std::atomic<bool> canExecute = false;
+    // std::atomic<FrameId> simulationFrame = 0;
+    // std::atomic<FrameId> recordFrame = 0;
+    // std::atomic<FrameId> executeFrame = 0;
+    // std::atomic<FrameId> recreateSwapchain = 0;
+    // std::atomic<FrameId> swapchainCreated = 0;
+    // std::mutex simulationMutex;
+    // std::mutex recordMutex;
+    // // std::mutex executeMutex;
+    // std::condition_variable simulationCV;
+    // std::condition_variable recordCV;
+    // ExecutionQueue* executionQueue;
+    // std::condition_variable executeCV;
+    // };
+
+    void simulationLoop();
+    void recordCommandsLoop();
+    void executeCommandsLoop();
+    void present(FrameGraph::FrameId presentFrame);
+    bool sampleInput(FrameGraph::FrameId frameId);
 
     static drv::PhysicalDevice::SelectionInfo get_device_selection_info(
       drv::InstancePtr instance, const drv::DeviceExtensions& deviceExtensions);

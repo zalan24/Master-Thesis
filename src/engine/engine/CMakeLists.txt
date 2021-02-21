@@ -17,7 +17,9 @@ target_link_libraries(AnimationsEngine PUBLIC
     AnimationsAssetLoaders
     AnimationsDrv
     AnimationsIRenderer
+    AnimationsISimulation
     AnimationsResources
     AnimationsInput
     AnimationsShaderManager
+    AnimationsFramegraph
 )
