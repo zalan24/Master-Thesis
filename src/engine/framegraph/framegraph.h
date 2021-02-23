@@ -2,6 +2,7 @@
 
 #include <atomic>
 #include <condition_variable>
+#include <functional>
 #include <limits>
 #include <memory>
 #include <mutex>
@@ -9,6 +10,8 @@
 #include <vector>
 
 #include <drv_wrappers.h>
+
+#include <execution_queue.h>
 
 class FrameGraph
 {
@@ -24,6 +27,7 @@ class FrameGraph
         // offset of 0 means serial execution
         NodeId srcNode;
         uint32_t cpu_cpuOffset = 0;
+        uint32_t enq_enqOffset = NO_SYNC;
         // uint32_t cpu_gpuOffset = NO_SYNC;
         // uint32_t gpu_cpuOffset = NO_SYNC;
         // uint32_t gpu_gpuOffset = NO_SYNC;
@@ -31,9 +35,11 @@ class FrameGraph
     class Node
     {
      public:
-        Node(const std::string& name);  // current node can only run serially with itself
         Node(const std::string& name,
-             NodeDependency selfDependency);  // for parallel execution for several frameIds
+             bool hasExecution);  // current node can only run serially with itself
+
+        //   Node(const std::string& name, NodeDependency selfDependency,
+        //        bool hasExecution);  // for parallel execution for several frameIds
 
         Node(Node&& other);
         Node& operator=(Node&& other);
@@ -42,13 +48,24 @@ class FrameGraph
 
         friend class FrameGraph;
 
+        bool hasExecution() const;
+
      private:
         std::string name;
+        // TODO these could be organized into multiple vectors based on dependency type
         std::vector<NodeDependency> deps;
         NodeDependency selfDep;  // srcNode is ignored
+        std::unique_ptr<ExecutionQueue> localExecutionQueue;
+        std::vector<NodeId> enqIndirectChildren;
+
         std::atomic<FrameId> completedFrame = INVALID_FRAME;
-        mutable std::mutex mutex;
-        std::condition_variable cv;
+        mutable std::mutex cpuMutex;
+        std::condition_variable cpuCv;
+
+        std::atomic<FrameId> enqueuedFrame = INVALID_FRAME;
+        FrameId enqueueFrameClearance = INVALID_FRAME;
+        //   mutable std::mutex enqMutex;
+        //   std::condition_variable enqCv;
     };
 
     class NodeHandle
@@ -71,6 +88,11 @@ class FrameGraph
         FrameGraph::NodeId node;
         FrameGraph::FrameId frameId;
 
+        struct NodeExecutionData
+        {
+            bool hasLocalCommands = false;
+        } nodeExecutionData;
+
         void close();
     };
 
@@ -85,13 +107,21 @@ class FrameGraph
     NodeHandle tryAcquireNode(NodeId node, FrameId frame);
     // void skipNode(NodeId, FrameId); // blocking???
 
+    ExecutionQueue* getExecutionQueue(NodeHandle& handle);
+
     void validate() const;
     void stopExecution();  // used when quitting the app
     bool isStopped() const;
 
  private:
+    ExecutionQueue executionQueue;
     std::vector<Node> nodes;
     std::atomic<bool> quit = false;
 
-    void release(NodeId nodeId, FrameId frameId);
+    mutable std::mutex enqueueMutex;
+
+    void release(const NodeHandle& handle);
+    void validateFlowGraph(const std::function<uint32_t(const NodeDependency)>& f) const;
+    FrameId calcMaxEnqueueFrame(NodeId nodeId, FrameId frameId) const;
+    void checkAndEnqueue(NodeId nodeId, FrameId frameId, bool traverse);
 };

@@ -10,6 +10,7 @@
 #include <drvcmdbufferbank.h>
 #include <drvtypes.h>
 
+class ExecutionQueue;
 struct ExecutionPackage
 {
     struct CommandBufferPackage
@@ -26,6 +27,7 @@ struct ExecutionPackage
         RECORD_START,
         RECORD_END,
         PRESENT,
+        RECURSIVE_END_MARKER,  // end of recursive command list
         QUIT
     };
 
@@ -37,13 +39,19 @@ struct ExecutionPackage
         const void* valuePtr;
     };
 
-    std::variant<CommandBufferPackage, Functor, MessagePackage> package;
+    struct RecursiveQueue
+    {
+        ExecutionQueue* queue;  // reads until next RECURSIVE_END_MARKER
+    };
+
+    std::variant<CommandBufferPackage, Functor, MessagePackage, RecursiveQueue> package;
     // An optional mutex maybe?
 
     ExecutionPackage() = default;
     ExecutionPackage(CommandBufferPackage&& p) : package(std::move(p)) {}
     ExecutionPackage(Functor&& f) : package(std::move(f)) {}
     ExecutionPackage(MessagePackage&& m) : package(std::move(m)) {}
+    ExecutionPackage(RecursiveQueue&& q) : package(std::move(q)) {}
 };
 
 class ExecutionQueue

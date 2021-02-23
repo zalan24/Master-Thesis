@@ -164,7 +164,7 @@ Engine::~Engine() {
 void Engine::initGame(IRenderer* _renderer, ISimulation* _simulation) {
     simulation = _simulation;
     renderer = _renderer;
-    inputSampleNode = frameGraph.addNode(FrameGraph::Node("sample_input"));
+    inputSampleNode = frameGraph.addNode(FrameGraph::Node("sample_input", false));
     // FrameGraph::NodeId simEntities =
     //   frameGraph.addNode(FrameGraph::Node("entities/simulate"));
     // FrameGraph::NodeId beforeDrawEntities =
@@ -175,13 +175,13 @@ void Engine::initGame(IRenderer* _renderer, ISimulation* _simulation) {
     //   frameGraph.addNode(FrameGraph::Node("gbuffer/clear"));
     // FrameGraph::NodeId resolveGbuffer =
     //   frameGraph.addNode(FrameGraph::Node("gbuffer/resolve"));
-    presentFrameNode = frameGraph.addNode(FrameGraph::Node("presentFrame"));
+    presentFrameNode = frameGraph.addNode(FrameGraph::Node("presentFrame", true));
     // These are just marker nodes
     // no actual work is done in them
-    simStartNode = frameGraph.addNode(FrameGraph::Node("simulation/start"));
-    simEndNode = frameGraph.addNode(FrameGraph::Node("simulation/end"));
-    recordStartNode = frameGraph.addNode(FrameGraph::Node("record/start"));
-    recordEndNode = frameGraph.addNode(FrameGraph::Node("record/end"));
+    simStartNode = frameGraph.addNode(FrameGraph::Node("simulation/start", false));
+    simEndNode = frameGraph.addNode(FrameGraph::Node("simulation/end", false));
+    recordStartNode = frameGraph.addNode(FrameGraph::Node("record/start", true));
+    recordEndNode = frameGraph.addNode(FrameGraph::Node("record/end", true));
     // FrameGraph::NodeId executeStart =
     //   frameGraph.addNode(FrameGraph::Node("execute/start"));
     // FrameGraph::NodeId executeEnd = frameGraph.addNode(FrameGraph::Node("execute/end"));
@@ -203,17 +203,24 @@ void Engine::initGame(IRenderer* _renderer, ISimulation* _simulation) {
     recEnd_nextFrameDep.srcNode = recordEndNode;
     recEnd_nextFrameDep.cpu_cpuOffset = 1;
 
+    FrameGraph::NodeDependency recEnd_nextFrameEnqDep;
+    recEnd_nextFrameEnqDep.srcNode = recordEndNode;
+    recEnd_nextFrameEnqDep.cpu_cpuOffset = FrameGraph::NodeDependency::NO_SYNC;
+    recEnd_nextFrameEnqDep.enq_enqOffset = 1;
+
     FrameGraph::NodeDependency simStartDep;
     simStartDep.srcNode = simStartNode;
 
     FrameGraph::NodeDependency recordStartDep;
     recordStartDep.srcNode = recordStartNode;
+    recordStartDep.enq_enqOffset = 0;
 
     // FrameGraph::NodeDependency executionStartDep;
     // executionStartDep.srcNode = recordStart;
 
     FrameGraph::NodeDependency presentDep;
     presentDep.srcNode = presentFrameNode;
+    presentDep.enq_enqOffset = 0;
 
     // FrameGraph::NodeDependency gbufferClearDep;
     // gbufferClearDep.srcNode = clearGbuffer;
@@ -261,6 +268,7 @@ void Engine::initGame(IRenderer* _renderer, ISimulation* _simulation) {
     frameGraph.addDependency(simStartNode, inputDep);
     frameGraph.addDependency(simStartNode, recEnd_nextFrameDep);
     frameGraph.addDependency(recordStartNode, simStartDep);
+    frameGraph.addDependency(recordStartNode, recEnd_nextFrameEnqDep);
     frameGraph.addDependency(simEndNode, simStartDep);
     frameGraph.addDependency(presentFrameNode, recordStartDep);
     frameGraph.addDependency(recordEndNode, presentDep);
