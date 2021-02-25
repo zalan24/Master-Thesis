@@ -277,7 +277,8 @@ void FrameGraph::release(const NodeHandle& handle) {
     }
     if (node->hasExecution()) {  // enqueue sync
         if (!handle.nodeExecutionData.hasLocalCommands) {
-            assert(node->enqueuedFrame < handle.frameId);
+            assert(node->enqueuedFrame < handle.frameId
+                   || node->enqueuedFrame == FrameGraph::INVALID_FRAME);
             node->enqueuedFrame = handle.frameId;
             checkAndEnqueue(handle.node, handle.frameId, true);
         }
@@ -344,4 +345,8 @@ ExecutionQueue* FrameGraph::getExecutionQueue(NodeHandle& handle) {
     }
     handle.nodeExecutionData.hasLocalCommands = true;
     return node->localExecutionQueue.get();
+}
+
+ExecutionQueue* FrameGraph::getGlobalExecutionQueue() {
+    return &executionQueue;
 }

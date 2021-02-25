@@ -108,6 +108,7 @@ class FrameGraph
     // void skipNode(NodeId, FrameId); // blocking???
 
     ExecutionQueue* getExecutionQueue(NodeHandle& handle);
+    ExecutionQueue* getGlobalExecutionQueue();
 
     void validate() const;
     void stopExecution();  // used when quitting the app

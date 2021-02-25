@@ -23,7 +23,7 @@
 
 #include "shaderbin.h"
 
-// class ExecutionQueue;
+class ExecutionPackage;
 class ISimulation;
 class IRenderer;
 
@@ -117,6 +117,8 @@ class Engine
     FrameGraph::NodeId simEndNode;
     FrameGraph::NodeId recordStartNode;
     FrameGraph::NodeId recordEndNode;
+    FrameGraph::NodeId executeStartNode;
+    FrameGraph::NodeId executeEndNode;
     FrameGraph::NodeId presentFrameNode;
 
     // struct RenderState
@@ -139,9 +141,13 @@ class Engine
     // std::condition_variable executeCV;
     // };
 
-    void simulationLoop();
-    void recordCommandsLoop();
+    mutable std::shared_mutex stopFrameMutex;
+
+    void simulationLoop(volatile std::atomic<FrameGraph::FrameId>* simulationFrame,
+                        const volatile std::atomic<FrameGraph::FrameId>* stopFrame);
+    void recordCommandsLoop(const volatile std::atomic<FrameGraph::FrameId>* stopFrame);
     void executeCommandsLoop();
+    bool execute(ExecutionPackage&& package);
     void present(FrameGraph::FrameId presentFrame);
     bool sampleInput(FrameGraph::FrameId frameId);
 

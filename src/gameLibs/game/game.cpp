@@ -1,5 +1,7 @@
 #include "game.h"
 
+// #include <iostream>
+
 #include <engine.h>
 
 #include <shader_obj_test.h>
@@ -30,8 +32,10 @@ void Game::initSimulationFrameGraph(FrameGraph& frameGraph,
 
 void Game::record(FrameGraph::FrameId frameId) {
     std::this_thread::sleep_for(std::chrono::milliseconds(4));
+    // std::cout << "Simulation: " << frameId << std::endl;
 }
 
 void Game::simulate(FrameGraph::FrameId frameId) {
     std::this_thread::sleep_for(std::chrono::milliseconds(4));
+    // std::cout << "Record: " << frameId << std::endl;
 }
