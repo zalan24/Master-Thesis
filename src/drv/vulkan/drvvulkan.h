@@ -161,6 +161,9 @@ class DrvVulkan final : public drv::IDriver
                            drv::DeviceMemoryPtr memory, drv::DeviceSize offset) override;
     bool get_image_memory_requirements(drv::LogicalDevicePtr device, drv::ImagePtr image,
                                        drv::MemoryRequirements& memoryRequirements) override;
+    drv::ImageViewPtr create_image_view(drv::LogicalDevicePtr device,
+                                        const drv::ImageViewCreateInfo* info) override;
+    bool destroy_image_view(drv::LogicalDevicePtr device, drv::ImageViewPtr view) override;
 };
 
 // TODO

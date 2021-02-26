@@ -868,45 +868,45 @@ enum class ImageLayout
     // STENCIL_READ_ONLY_OPTIMAL_KHR = STENCIL_READ_ONLY_OPTIMAL,
 };
 
+struct ImageSubresourceRange
+{
+    using ImageAspectBitType = uint32_t;
+    enum AspectFlagBits : ImageAspectBitType
+    {
+        COLOR_BIT = 0x00000001,
+        DEPTH_BIT = 0x00000002,
+        STENCIL_BIT = 0x00000004,
+        METADATA_BIT = 0x00000008,
+        // Provided by VK_VERSION_1_1
+        // PLANE_0_BIT = 0x00000010,
+        // // Provided by VK_VERSION_1_1
+        // PLANE_1_BIT = 0x00000020,
+        // // Provided by VK_VERSION_1_1
+        // PLANE_2_BIT = 0x00000040,
+        // // Provided by VK_EXT_image_drm_format_modifier
+        // MEMORY_PLANE_0_BIT_EXT = 0x00000080,
+        // // Provided by VK_EXT_image_drm_format_modifier
+        // MEMORY_PLANE_1_BIT_EXT = 0x00000100,
+        // // Provided by VK_EXT_image_drm_format_modifier
+        // MEMORY_PLANE_2_BIT_EXT = 0x00000200,
+        // // Provided by VK_EXT_image_drm_format_modifier
+        // MEMORY_PLANE_3_BIT_EXT = 0x00000400,
+        // // Provided by VK_KHR_sampler_ycbcr_conversion
+        // PLANE_0_BIT_KHR = PLANE_0_BIT,
+        // // Provided by VK_KHR_sampler_ycbcr_conversion
+        // PLANE_1_BIT_KHR = PLANE_1_BIT,
+        // // Provided by VK_KHR_sampler_ycbcr_conversion
+        // PLANE_2_BIT_KHR = PLANE_2_BIT,
+    };
+    ImageAspectBitType aspectMask;
+    uint32_t baseMipLevel;
+    uint32_t levelCount;
+    uint32_t baseArrayLayer;
+    uint32_t layerCount;
+};
+
 struct ImageMemoryBarrier
 {
-    struct SubresourceRange
-    {
-        using ImageAspectBitType = uint32_t;
-        enum AspectFlagBits : ImageAspectBitType
-        {
-            COLOR_BIT = 0x00000001,
-            DEPTH_BIT = 0x00000002,
-            STENCIL_BIT = 0x00000004,
-            METADATA_BIT = 0x00000008,
-            // Provided by VK_VERSION_1_1
-            // PLANE_0_BIT = 0x00000010,
-            // // Provided by VK_VERSION_1_1
-            // PLANE_1_BIT = 0x00000020,
-            // // Provided by VK_VERSION_1_1
-            // PLANE_2_BIT = 0x00000040,
-            // // Provided by VK_EXT_image_drm_format_modifier
-            // MEMORY_PLANE_0_BIT_EXT = 0x00000080,
-            // // Provided by VK_EXT_image_drm_format_modifier
-            // MEMORY_PLANE_1_BIT_EXT = 0x00000100,
-            // // Provided by VK_EXT_image_drm_format_modifier
-            // MEMORY_PLANE_2_BIT_EXT = 0x00000200,
-            // // Provided by VK_EXT_image_drm_format_modifier
-            // MEMORY_PLANE_3_BIT_EXT = 0x00000400,
-            // // Provided by VK_KHR_sampler_ycbcr_conversion
-            // PLANE_0_BIT_KHR = PLANE_0_BIT,
-            // // Provided by VK_KHR_sampler_ycbcr_conversion
-            // PLANE_1_BIT_KHR = PLANE_1_BIT,
-            // // Provided by VK_KHR_sampler_ycbcr_conversion
-            // PLANE_2_BIT_KHR = PLANE_2_BIT,
-        };
-        ImageAspectBitType aspectMask;
-        uint32_t baseMipLevel;
-        uint32_t levelCount;
-        uint32_t baseArrayLayer;
-        uint32_t layerCount;
-    };
-
     MemoryBarrier::AccessFlagBitType sourceAccessFlags;
     MemoryBarrier::AccessFlagBitType dstAccessFlags;
 
@@ -918,7 +918,7 @@ struct ImageMemoryBarrier
     drv::QueueFamilyPtr dstFamily;
 
     drv::ImagePtr image;
-    SubresourceRange subresourceRange;
+    ImageSubresourceRange subresourceRange;
 };
 
 enum class DependencyFlagBits
@@ -995,6 +995,37 @@ struct ImageCreateInfo
 };
 
 struct ImageViewCreateInfo
-{};
+{
+    ImagePtr image;
+    enum Type
+    {
+        TYPE_1D = 0,
+        TYPE_2D = 1,
+        TYPE_3D = 2,
+        TYPE_CUBE = 3,
+        TYPE_1D_ARRAY = 4,
+        TYPE_2D_ARRAY = 5,
+        TYPE_CUBE_ARRAY = 6,
+    } type;
+    ImageFormat format;
+    enum class ComponentSwizzle
+    {
+        IDENTITY = 0,
+        ZERO = 1,
+        ONE = 2,
+        R = 3,
+        G = 4,
+        B = 5,
+        A = 6,
+    };
+    struct ComponentMapping
+    {
+        ComponentSwizzle r;
+        ComponentSwizzle g;
+        ComponentSwizzle b;
+        ComponentSwizzle a;
+    } components;
+    ImageSubresourceRange subresourceRange;
+};
 
 };  // namespace drv

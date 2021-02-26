@@ -456,6 +456,26 @@ class Event
     void close();
 };
 
+class ImageView
+  : public NoCopy
+  , private Exclusive
+{
+ public:
+    ImageView(LogicalDevicePtr device, const ImageViewCreateInfo& info);
+    ~ImageView() noexcept;
+
+    ImageView(ImageView&& other) noexcept;
+    ImageView& operator=(ImageView&& other) noexcept;
+
+    operator ImageViewPtr() const;
+
+ private:
+    LogicalDevicePtr device;
+    ImageViewPtr ptr;
+
+    void close();
+};
+
 class MemoryMapper : private Exclusive
 {
  public:

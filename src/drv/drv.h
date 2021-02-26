@@ -176,6 +176,8 @@ bool bind_image_memory(LogicalDevicePtr device, ImagePtr image, DeviceMemoryPtr 
                        DeviceSize offset);
 bool get_image_memory_requirements(LogicalDevicePtr device, ImagePtr image,
                                    MemoryRequirements& memoryRequirements);
+ImageViewPtr create_image_view(LogicalDevicePtr device, const ImageViewCreateInfo* info);
+bool destroy_image_view(LogicalDevicePtr device, ImageViewPtr view);
 
 // ShaderModulePtr get_shader_module(LogicalDevicePtr device, ShaderIdType shaderId);
 // unsigned int get_num_shader_descriptor_set_layouts(LogicalDevicePtr device, ShaderIdType shaderId);

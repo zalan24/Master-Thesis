@@ -61,16 +61,8 @@ bool DrvVulkan::cmd_pipeline_barrier(
         vkImageBarriers[i].dstQueueFamilyIndex = convertFamily(imageBarriers[i].dstFamily);
         vkImageBarriers[i].newLayout = static_cast<VkImageLayout>(imageBarriers[i].newLayout);
         vkImageBarriers[i].oldLayout = static_cast<VkImageLayout>(imageBarriers[i].oldLayout);
-        vkImageBarriers[i].subresourceRange.aspectMask =
-          static_cast<VkImageAspectFlags>(imageBarriers[i].subresourceRange.aspectMask);
-        vkImageBarriers[i].subresourceRange.baseMipLevel =
-          imageBarriers[i].subresourceRange.baseMipLevel;
-        vkImageBarriers[i].subresourceRange.levelCount =
-          imageBarriers[i].subresourceRange.levelCount;
-        vkImageBarriers[i].subresourceRange.baseArrayLayer =
-          imageBarriers[i].subresourceRange.baseArrayLayer;
-        vkImageBarriers[i].subresourceRange.layerCount =
-          imageBarriers[i].subresourceRange.layerCount;
+        vkImageBarriers[i].subresourceRange =
+          convertSubresourceRange(imageBarriers[i].subresourceRange);
     }
 
     vkCmdPipelineBarrier(reinterpret_cast<VkCommandBuffer>(commandBuffer),

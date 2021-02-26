@@ -974,6 +974,43 @@ bool Fence::isSignalled() const {
     return drv::is_fence_signalled(device, ptr);
 }
 
+ImageView::ImageView(LogicalDevicePtr _device, const ImageViewCreateInfo& info) : device(_device) {
+    ptr = create_image_view(device, &info);
+    drv::drv_assert(ptr != NULL_HANDLE, "Could not create image view");
+}
+
+ImageView::~ImageView() noexcept {
+    close();
+}
+
+void ImageView::close() {
+    CHECK_THREAD;
+    if (ptr != NULL_HANDLE) {
+        drv::drv_assert(destroy_image_view(device, ptr), "Could not destroy image view");
+        ptr = NULL_HANDLE;
+    }
+}
+
+ImageView::ImageView(ImageView&& other) noexcept {
+    device = std::move(other.device);
+    ptr = std::move(other.ptr);
+    other.ptr = NULL_HANDLE;
+}
+
+ImageView& ImageView::operator=(ImageView&& other) noexcept {
+    if (&other == this)
+        return *this;
+    close();
+    device = std::move(other.device);
+    ptr = std::move(other.ptr);
+    other.ptr = NULL_HANDLE;
+    return *this;
+}
+
+ImageView::operator ImageViewPtr() const {
+    return ptr;
+}
+
 Event::Event(LogicalDevicePtr _device, const EventCreateInfo& info) : device(_device) {
     ptr = create_event(device, &info);
     drv::drv_assert(ptr != NULL_HANDLE, "Could not create Event");

@@ -387,6 +387,15 @@ bool drv::get_image_memory_requirements(LogicalDevicePtr device, ImagePtr image,
                                                                    memoryRequirements);
 }
 
+drv::ImageViewPtr drv::create_image_view(drv::LogicalDevicePtr device,
+                                         const drv::ImageViewCreateInfo* info) {
+    return current_driver_interface->create_image_view(device, info);
+}
+
+bool drv::destroy_image_view(drv::LogicalDevicePtr device, drv::ImageViewPtr view) {
+    return current_driver_interface->destroy_image_view(device, view);
+}
+
 // TODO
 
 // bool drv::load_shaders(LogicalDevicePtr device) {

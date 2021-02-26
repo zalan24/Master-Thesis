@@ -35,6 +35,18 @@ inline drv::ImagePtr convertImage(VkImage image) {
     return reinterpret_cast<drv::ImagePtr>(image);
 }
 
+inline VkImageView convertImageView(drv::ImageViewPtr view) {
+    return reinterpret_cast<VkImageView>(view);
+}
+
+inline VkImageView* convertImageViews(drv::ImageViewPtr* views) {
+    return reinterpret_cast<VkImageView*>(views);
+}
+
+inline drv::ImageViewPtr convertImageView(VkImageView view) {
+    return reinterpret_cast<drv::ImageViewPtr>(view);
+}
+
 inline VkDevice convertDevice(drv::LogicalDevicePtr device) {
     return reinterpret_cast<VkDevice>(device);
 }
@@ -64,6 +76,27 @@ inline VkExtent3D convertExtent(drv::Extent3D extent) {
     ret.width = extent.width;
     ret.height = extent.height;
     ret.depth = extent.depth;
+    return ret;
+}
+
+inline VkComponentMapping convertComponentMapping(
+  const drv::ImageViewCreateInfo::ComponentMapping& mapping) {
+    VkComponentMapping ret;
+    ret.a = static_cast<VkComponentSwizzle>(mapping.a);
+    ret.r = static_cast<VkComponentSwizzle>(mapping.r);
+    ret.g = static_cast<VkComponentSwizzle>(mapping.g);
+    ret.b = static_cast<VkComponentSwizzle>(mapping.b);
+    return ret;
+}
+
+inline VkImageSubresourceRange convertSubresourceRange(
+  const drv::ImageSubresourceRange& subresource) {
+    VkImageSubresourceRange ret;
+    ret.aspectMask = static_cast<VkImageAspectFlags>(subresource.aspectMask);
+    ret.baseMipLevel = subresource.baseMipLevel;
+    ret.levelCount = subresource.levelCount;
+    ret.baseArrayLayer = subresource.baseArrayLayer;
+    ret.layerCount = subresource.layerCount;
     return ret;
 }
 

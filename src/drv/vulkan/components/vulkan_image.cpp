@@ -65,3 +65,26 @@ bool DrvVulkan::get_image_memory_requirements(drv::LogicalDevicePtr device, drv:
     memoryRequirements.memoryTypeBits = memRequirements.memoryTypeBits;
     return true;
 }
+
+drv::ImageViewPtr DrvVulkan::create_image_view(drv::LogicalDevicePtr device,
+                                               const drv::ImageViewCreateInfo* info) {
+    VkImageViewCreateInfo viewInfo{};
+    viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+    viewInfo.pNext = nullptr;
+    viewInfo.flags = 0;
+    viewInfo.image = convertImage(info->image);
+    viewInfo.viewType = static_cast<VkImageViewType>(info->type);
+    viewInfo.format = static_cast<VkFormat>(info->format);
+    viewInfo.components = convertComponentMapping(info->components);
+    viewInfo.subresourceRange = convertSubresourceRange(info->subresourceRange);
+
+    VkImageView ret;
+    VkResult result = vkCreateImageView(convertDevice(device), &viewInfo, nullptr, &ret);
+    drv::drv_assert(result == VK_SUCCESS, "Could not create buffer");
+    return reinterpret_cast<drv::ImageViewPtr>(ret);
+}
+
+bool DrvVulkan::destroy_image_view(drv::LogicalDevicePtr device, drv::ImageViewPtr view) {
+    vkDestroyImageView(convertDevice(device), convertImageView(view), nullptr);
+    return true;
+}

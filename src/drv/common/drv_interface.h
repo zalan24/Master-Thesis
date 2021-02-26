@@ -140,5 +140,8 @@ class IDriver
                                    DeviceSize offset) = 0;
     virtual bool get_image_memory_requirements(LogicalDevicePtr device, ImagePtr image,
                                                MemoryRequirements& memoryRequirements) = 0;
+    virtual ImageViewPtr create_image_view(LogicalDevicePtr device,
+                                           const ImageViewCreateInfo* info) = 0;
+    virtual bool destroy_image_view(LogicalDevicePtr device, ImageViewPtr view) = 0;
 };
 }  // namespace drv
