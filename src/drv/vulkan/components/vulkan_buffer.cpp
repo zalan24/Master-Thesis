@@ -26,10 +26,10 @@ drv::BufferPtr DrvVulkan::create_buffer(drv::LogicalDevicePtr device,
         bufferCreateInfo.size = info->size;
         bufferCreateInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
         switch (info->sharingType) {
-            case drv::BufferCreateInfo::EXCLUSIVE:
+            case drv::SharingType::EXCLUSIVE:
                 bufferCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
                 break;
-            case drv::BufferCreateInfo::CONCURRENT:
+            case drv::SharingType::CONCURRENT:
                 bufferCreateInfo.sharingMode = VK_SHARING_MODE_CONCURRENT;
                 break;
         }

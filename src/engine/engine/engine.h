@@ -23,7 +23,7 @@
 
 #include "shaderbin.h"
 
-class ExecutionPackage;
+struct ExecutionPackage;
 class ISimulation;
 class IRenderer;
 

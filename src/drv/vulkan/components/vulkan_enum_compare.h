@@ -415,23 +415,21 @@ COMPARE_ENUMS(unsigned int, drv::MemoryBarrier::AccessFlagBits::MEMORY_READ_BIT,
 COMPARE_ENUMS(unsigned int, drv::MemoryBarrier::AccessFlagBits::MEMORY_WRITE_BIT,
               VK_ACCESS_MEMORY_WRITE_BIT);
 
-COMPARE_ENUMS(unsigned int, drv::ImageMemoryBarrier::ImageLayout::UNDEFINED,
-              VK_IMAGE_LAYOUT_UNDEFINED);
-COMPARE_ENUMS(unsigned int, drv::ImageMemoryBarrier::ImageLayout::GENERAL, VK_IMAGE_LAYOUT_GENERAL);
-COMPARE_ENUMS(unsigned int, drv::ImageMemoryBarrier::ImageLayout::COLOR_ATTACHMENT_OPTIMAL,
+COMPARE_ENUMS(unsigned int, drv::ImageLayout::UNDEFINED, VK_IMAGE_LAYOUT_UNDEFINED);
+COMPARE_ENUMS(unsigned int, drv::ImageLayout::GENERAL, VK_IMAGE_LAYOUT_GENERAL);
+COMPARE_ENUMS(unsigned int, drv::ImageLayout::COLOR_ATTACHMENT_OPTIMAL,
               VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
-COMPARE_ENUMS(unsigned int, drv::ImageMemoryBarrier::ImageLayout::DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+COMPARE_ENUMS(unsigned int, drv::ImageLayout::DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
               VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
-COMPARE_ENUMS(unsigned int, drv::ImageMemoryBarrier::ImageLayout::DEPTH_STENCIL_READ_ONLY_OPTIMAL,
+COMPARE_ENUMS(unsigned int, drv::ImageLayout::DEPTH_STENCIL_READ_ONLY_OPTIMAL,
               VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL);
-COMPARE_ENUMS(unsigned int, drv::ImageMemoryBarrier::ImageLayout::SHADER_READ_ONLY_OPTIMAL,
+COMPARE_ENUMS(unsigned int, drv::ImageLayout::SHADER_READ_ONLY_OPTIMAL,
               VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-COMPARE_ENUMS(unsigned int, drv::ImageMemoryBarrier::ImageLayout::TRANSFER_SRC_OPTIMAL,
+COMPARE_ENUMS(unsigned int, drv::ImageLayout::TRANSFER_SRC_OPTIMAL,
               VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
-COMPARE_ENUMS(unsigned int, drv::ImageMemoryBarrier::ImageLayout::TRANSFER_DST_OPTIMAL,
+COMPARE_ENUMS(unsigned int, drv::ImageLayout::TRANSFER_DST_OPTIMAL,
               VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
-COMPARE_ENUMS(unsigned int, drv::ImageMemoryBarrier::ImageLayout::PREINITIALIZED,
-              VK_IMAGE_LAYOUT_PREINITIALIZED);
+COMPARE_ENUMS(unsigned int, drv::ImageLayout::PREINITIALIZED, VK_IMAGE_LAYOUT_PREINITIALIZED);
 
 COMPARE_ENUMS(unsigned int, drv::ImageMemoryBarrier::SubresourceRange::AspectFlagBits::COLOR_BIT,
               VK_IMAGE_ASPECT_COLOR_BIT);
@@ -446,3 +444,27 @@ COMPARE_ENUMS(unsigned int, drv::DependencyFlagBits::BY_REGION_BIT, VK_DEPENDENC
 COMPARE_ENUMS(unsigned int, drv::DependencyFlagBits::DEVICE_GROUP_BIT,
               VK_DEPENDENCY_DEVICE_GROUP_BIT);
 COMPARE_ENUMS(unsigned int, drv::DependencyFlagBits::VIEW_LOCAL_BIT, VK_DEPENDENCY_VIEW_LOCAL_BIT);
+
+COMPARE_ENUMS(unsigned int, drv::ImageCreateInfo::Type::TYPE_1D, VK_IMAGE_TYPE_1D);
+COMPARE_ENUMS(unsigned int, drv::ImageCreateInfo::Type::TYPE_2D, VK_IMAGE_TYPE_2D);
+COMPARE_ENUMS(unsigned int, drv::ImageCreateInfo::Type::TYPE_3D, VK_IMAGE_TYPE_3D);
+
+COMPARE_ENUMS(unsigned int, drv::ImageCreateInfo::Tiling::TILING_OPTIMAL, VK_IMAGE_TILING_OPTIMAL);
+COMPARE_ENUMS(unsigned int, drv::ImageCreateInfo::Tiling::TILING_LINEAR, VK_IMAGE_TILING_LINEAR);
+
+COMPARE_ENUMS(unsigned int, drv::ImageCreateInfo::UsageFlagBits::TRANSFER_SRC_BIT,
+              VK_IMAGE_USAGE_TRANSFER_SRC_BIT);
+COMPARE_ENUMS(unsigned int, drv::ImageCreateInfo::UsageFlagBits::TRANSFER_DST_BIT,
+              VK_IMAGE_USAGE_TRANSFER_DST_BIT);
+COMPARE_ENUMS(unsigned int, drv::ImageCreateInfo::UsageFlagBits::SAMPLED_BIT,
+              VK_IMAGE_USAGE_SAMPLED_BIT);
+COMPARE_ENUMS(unsigned int, drv::ImageCreateInfo::UsageFlagBits::STORAGE_BIT,
+              VK_IMAGE_USAGE_STORAGE_BIT);
+COMPARE_ENUMS(unsigned int, drv::ImageCreateInfo::UsageFlagBits::COLOR_ATTACHMENT_BIT,
+              VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT);
+COMPARE_ENUMS(unsigned int, drv::ImageCreateInfo::UsageFlagBits::DEPTH_STENCIL_ATTACHMENT_BIT,
+              VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT);
+COMPARE_ENUMS(unsigned int, drv::ImageCreateInfo::UsageFlagBits::TRANSIENT_ATTACHMENT_BIT,
+              VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT);
+COMPARE_ENUMS(unsigned int, drv::ImageCreateInfo::UsageFlagBits::INPUT_ATTACHMENT_BIT,
+              VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT);

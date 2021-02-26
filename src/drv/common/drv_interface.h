@@ -134,5 +134,7 @@ class IDriver
     virtual ShaderModulePtr create_shader_module(LogicalDevicePtr device,
                                                  const ShaderCreateInfo* info) = 0;
     virtual bool destroy_shader_module(LogicalDevicePtr device, ShaderModulePtr module) = 0;
+    virtual ImagePtr create_image(LogicalDevicePtr device, const ImageCreateInfo* info) = 0;
+    virtual bool destroy_image(LogicalDevicePtr device, ImagePtr image) = 0;
 };
 }  // namespace drv

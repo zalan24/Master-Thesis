@@ -851,6 +851,43 @@ void Event::cmdReset(CommandBufferPtr commandBuffer, PipelineStages sourceStage)
                     "Could not cmd reset event");
 }
 
+Image::Image(LogicalDevicePtr _device, const ImageCreateInfo& info) : device(_device) {
+    ptr = create_image(device, &info);
+    drv::drv_assert(ptr != NULL_HANDLE, "Could not create image");
+}
+
+Image::~Image() noexcept {
+    close();
+}
+
+void Image::close() {
+    CHECK_THREAD;
+    if (ptr != NULL_HANDLE) {
+        drv::drv_assert(destroy_image(device, ptr), "Could not destroy image");
+        ptr = NULL_HANDLE;
+    }
+}
+
+Image::Image(Image&& other) noexcept {
+    device = std::move(other.device);
+    ptr = std::move(other.ptr);
+    other.ptr = NULL_HANDLE;
+}
+
+Image& Image::operator=(Image&& other) noexcept {
+    if (&other == this)
+        return *this;
+    close();
+    device = std::move(other.device);
+    ptr = std::move(other.ptr);
+    other.ptr = NULL_HANDLE;
+    return *this;
+}
+
+Image::operator ImagePtr() const {
+    return ptr;
+}
+
 DescriptorSetLayout::DescriptorSetLayout(LogicalDevicePtr _device,
                                          const DescriptorSetLayoutCreateInfo& info)
   : device(_device) {

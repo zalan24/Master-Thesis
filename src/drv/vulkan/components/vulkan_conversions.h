@@ -51,6 +51,22 @@ inline VkFence convertFence(drv::FencePtr fence) {
     return reinterpret_cast<VkFence>(fence);
 }
 
+inline drv::Extent3D convertExtent(VkExtent3D extent) {
+    drv::Extent3D ret;
+    ret.width = extent.width;
+    ret.height = extent.height;
+    ret.depth = extent.depth;
+    return ret;
+}
+
+inline VkExtent3D convertExtent(drv::Extent3D extent) {
+    VkExtent3D ret;
+    ret.width = extent.width;
+    ret.height = extent.height;
+    ret.depth = extent.depth;
+    return ret;
+}
+
 // inline VkSemaphore convertSemaphore(drv::SemaphorePtr semaphore) {
 //     return reinterpret_cast<VkSemaphore>(semaphore);
 // }

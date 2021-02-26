@@ -367,6 +367,14 @@ bool drv::destroy_shader_module(LogicalDevicePtr device, ShaderModulePtr module)
     return current_driver_interface->destroy_shader_module(device, module);
 }
 
+drv::ImagePtr drv::create_image(LogicalDevicePtr device, const ImageCreateInfo* info) {
+    return current_driver_interface->create_image(device, info);
+}
+
+bool drv::destroy_image(LogicalDevicePtr device, ImagePtr image) {
+    return current_driver_interface->destroy_image(device, image);
+}
+
 // TODO
 
 // bool drv::load_shaders(LogicalDevicePtr device) {

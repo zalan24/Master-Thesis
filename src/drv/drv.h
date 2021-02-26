@@ -170,6 +170,8 @@ bool wait_on_timeline_semaphores(LogicalDevicePtr device, uint32_t count,
                                  const TimelineSemaphorePtr* semaphores, const uint64_t* waitValues,
                                  bool waitAll, uint64_t timeoutNs = UINT64_MAX);
 uint64_t get_timeline_semaphore_value(LogicalDevicePtr device, TimelineSemaphorePtr semaphore);
+ImagePtr create_image(LogicalDevicePtr device, const ImageCreateInfo* info);
+bool destroy_image(LogicalDevicePtr device, ImagePtr image);
 
 // ShaderModulePtr get_shader_module(LogicalDevicePtr device, ShaderIdType shaderId);
 // unsigned int get_num_shader_descriptor_set_layouts(LogicalDevicePtr device, ShaderIdType shaderId);

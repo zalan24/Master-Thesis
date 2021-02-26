@@ -213,14 +213,16 @@ struct ExecutionInfo
     const uint64_t* timelineSignalValues = nullptr;
 };
 
+enum class SharingType
+{
+    EXCLUSIVE,
+    CONCURRENT
+};
+
 struct BufferCreateInfo
 {
     unsigned long size = 0;
-    enum SharingType
-    {
-        EXCLUSIVE,
-        CONCURRENT
-    } sharingType;
+    SharingType sharingType;
     unsigned int familyCount = 0;
     QueueFamilyPtr* families = nullptr;
     using UsageType = unsigned int;
@@ -818,6 +820,53 @@ struct BufferMemoryBarrier
     DeviceSize size;
 };
 
+enum class ImageLayout
+{
+    UNDEFINED = 0,
+    GENERAL = 1,
+    COLOR_ATTACHMENT_OPTIMAL = 2,
+    DEPTH_STENCIL_ATTACHMENT_OPTIMAL = 3,
+    DEPTH_STENCIL_READ_ONLY_OPTIMAL = 4,
+    SHADER_READ_ONLY_OPTIMAL = 5,
+    TRANSFER_SRC_OPTIMAL = 6,
+    TRANSFER_DST_OPTIMAL = 7,
+    PREINITIALIZED = 8,
+    // Provided by VK_VERSION_1_1
+    // DEPTH_READ_ONLY_STENCIL_ATTACHMENT_OPTIMAL = 1000117000,
+    // // Provided by VK_VERSION_1_1
+    // DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL = 1000117001,
+    // // Provided by VK_VERSION_1_2
+    // DEPTH_ATTACHMENT_OPTIMAL = 1000241000,
+    // // Provided by VK_VERSION_1_2
+    // DEPTH_READ_ONLY_OPTIMAL = 1000241001,
+    // // Provided by VK_VERSION_1_2
+    // STENCIL_ATTACHMENT_OPTIMAL = 1000241002,
+    // // Provided by VK_VERSION_1_2
+    // STENCIL_READ_ONLY_OPTIMAL = 1000241003,
+    // // Provided by VK_KHR_swapchain
+    // PRESENT_SRC_KHR = 1000001002,
+    // // Provided by VK_KHR_shared_presentable_image
+    // SHARED_PRESENT_KHR = 1000111000,
+    // // Provided by VK_NV_shading_rate_image
+    // SHADING_RATE_OPTIMAL_NV = 1000164003,
+    // // Provided by VK_EXT_fragment_density_map
+    // FRAGMENT_DENSITY_MAP_OPTIMAL_EXT = 1000218000,
+    // // Provided by VK_KHR_maintenance2
+    // DEPTH_READ_ONLY_STENCIL_ATTACHMENT_OPTIMAL_KHR = DEPTH_READ_ONLY_STENCIL_ATTACHMENT_OPTIMAL,
+    // // Provided by VK_KHR_maintenance2
+    // DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL_KHR = DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL,
+    // // Provided by VK_KHR_fragment_shading_rate
+    // FRAGMENT_SHADING_RATE_ATTACHMENT_OPTIMAL_KHR = SHADING_RATE_OPTIMAL_NV,
+    // // Provided by VK_KHR_separate_depth_stencil_layouts
+    // DEPTH_ATTACHMENT_OPTIMAL_KHR = DEPTH_ATTACHMENT_OPTIMAL,
+    // // Provided by VK_KHR_separate_depth_stencil_layouts
+    // DEPTH_READ_ONLY_OPTIMAL_KHR = DEPTH_READ_ONLY_OPTIMAL,
+    // // Provided by VK_KHR_separate_depth_stencil_layouts
+    // STENCIL_ATTACHMENT_OPTIMAL_KHR = STENCIL_ATTACHMENT_OPTIMAL,
+    // // Provided by VK_KHR_separate_depth_stencil_layouts
+    // STENCIL_READ_ONLY_OPTIMAL_KHR = STENCIL_READ_ONLY_OPTIMAL,
+};
+
 struct ImageMemoryBarrier
 {
     struct SubresourceRange
@@ -856,52 +905,6 @@ struct ImageMemoryBarrier
         uint32_t baseArrayLayer;
         uint32_t layerCount;
     };
-    enum ImageLayout
-    {
-        UNDEFINED = 0,
-        GENERAL = 1,
-        COLOR_ATTACHMENT_OPTIMAL = 2,
-        DEPTH_STENCIL_ATTACHMENT_OPTIMAL = 3,
-        DEPTH_STENCIL_READ_ONLY_OPTIMAL = 4,
-        SHADER_READ_ONLY_OPTIMAL = 5,
-        TRANSFER_SRC_OPTIMAL = 6,
-        TRANSFER_DST_OPTIMAL = 7,
-        PREINITIALIZED = 8,
-        // Provided by VK_VERSION_1_1
-        // DEPTH_READ_ONLY_STENCIL_ATTACHMENT_OPTIMAL = 1000117000,
-        // // Provided by VK_VERSION_1_1
-        // DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL = 1000117001,
-        // // Provided by VK_VERSION_1_2
-        // DEPTH_ATTACHMENT_OPTIMAL = 1000241000,
-        // // Provided by VK_VERSION_1_2
-        // DEPTH_READ_ONLY_OPTIMAL = 1000241001,
-        // // Provided by VK_VERSION_1_2
-        // STENCIL_ATTACHMENT_OPTIMAL = 1000241002,
-        // // Provided by VK_VERSION_1_2
-        // STENCIL_READ_ONLY_OPTIMAL = 1000241003,
-        // // Provided by VK_KHR_swapchain
-        // PRESENT_SRC_KHR = 1000001002,
-        // // Provided by VK_KHR_shared_presentable_image
-        // SHARED_PRESENT_KHR = 1000111000,
-        // // Provided by VK_NV_shading_rate_image
-        // SHADING_RATE_OPTIMAL_NV = 1000164003,
-        // // Provided by VK_EXT_fragment_density_map
-        // FRAGMENT_DENSITY_MAP_OPTIMAL_EXT = 1000218000,
-        // // Provided by VK_KHR_maintenance2
-        // DEPTH_READ_ONLY_STENCIL_ATTACHMENT_OPTIMAL_KHR = DEPTH_READ_ONLY_STENCIL_ATTACHMENT_OPTIMAL,
-        // // Provided by VK_KHR_maintenance2
-        // DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL_KHR = DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL,
-        // // Provided by VK_KHR_fragment_shading_rate
-        // FRAGMENT_SHADING_RATE_ATTACHMENT_OPTIMAL_KHR = SHADING_RATE_OPTIMAL_NV,
-        // // Provided by VK_KHR_separate_depth_stencil_layouts
-        // DEPTH_ATTACHMENT_OPTIMAL_KHR = DEPTH_ATTACHMENT_OPTIMAL,
-        // // Provided by VK_KHR_separate_depth_stencil_layouts
-        // DEPTH_READ_ONLY_OPTIMAL_KHR = DEPTH_READ_ONLY_OPTIMAL,
-        // // Provided by VK_KHR_separate_depth_stencil_layouts
-        // STENCIL_ATTACHMENT_OPTIMAL_KHR = STENCIL_ATTACHMENT_OPTIMAL,
-        // // Provided by VK_KHR_separate_depth_stencil_layouts
-        // STENCIL_READ_ONLY_OPTIMAL_KHR = STENCIL_READ_ONLY_OPTIMAL,
-    };
 
     MemoryBarrier::AccessFlagBitType sourceAccessFlags;
     MemoryBarrier::AccessFlagBitType dstAccessFlags;
@@ -937,6 +940,57 @@ struct ShaderCreateInfo
 {
     size_t codeSize;
     const uint32_t* code;
+};
+
+struct Extent3D
+{
+    uint32_t width;
+    uint32_t height;
+    uint32_t depth;
+};
+
+struct ImageCreateInfo
+{
+    // flags?
+    enum Type
+    {
+        TYPE_1D = 0,
+        TYPE_2D = 1,
+        TYPE_3D = 2,
+    } type;
+    ImageFormat format;
+    Extent3D extent;
+    uint32_t mipLevels;
+    uint32_t arrayLayers;
+    // samples
+    enum Tiling
+    {
+        TILING_OPTIMAL = 0,
+        TILING_LINEAR = 1
+    } tiling;
+    using UsageType = unsigned int;
+    enum UsageFlagBits : UsageType
+    {
+        TRANSFER_SRC_BIT = 0x00000001,
+        TRANSFER_DST_BIT = 0x00000002,
+        SAMPLED_BIT = 0x00000004,
+        STORAGE_BIT = 0x00000008,
+        COLOR_ATTACHMENT_BIT = 0x00000010,
+        DEPTH_STENCIL_ATTACHMENT_BIT = 0x00000020,
+        TRANSIENT_ATTACHMENT_BIT = 0x00000040,
+        INPUT_ATTACHMENT_BIT = 0x00000080,
+        //   // Provided by VK_NV_shading_rate_image
+        //     VK_IMAGE_USAGE_SHADING_RATE_IMAGE_BIT_NV = 0x00000100,
+        //   // Provided by VK_EXT_fragment_density_map
+        //     VK_IMAGE_USAGE_FRAGMENT_DENSITY_MAP_BIT_EXT = 0x00000200,
+        //   // Provided by VK_KHR_fragment_shading_rate
+        //     VK_IMAGE_USAGE_FRAGMENT_SHADING_RATE_ATTACHMENT_BIT_KHR = VK_IMAGE_USAGE_SHADING_RATE_IMAGE_BIT_NV,
+    };
+    UsageType usage;
+    SharingType sharingType;
+    unsigned int familyCount = 0;
+    QueueFamilyPtr* families = nullptr;
+    ImageLayout initialLayout;
 };
 
 };  // namespace drv

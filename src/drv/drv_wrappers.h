@@ -390,6 +390,26 @@ class Event
     void close();
 };
 
+class Image
+  : public NoCopy
+  , private Exclusive
+{
+ public:
+    Image(LogicalDevicePtr device, const ImageCreateInfo& info);
+    ~Image() noexcept;
+
+    Image(Image&& other) noexcept;
+    Image& operator=(Image&& other) noexcept;
+
+    operator ImagePtr() const;
+
+ private:
+    LogicalDevicePtr device;
+    ImagePtr ptr;
+
+    void close();
+};
+
 class MemoryMapper : private Exclusive
 {
  public:

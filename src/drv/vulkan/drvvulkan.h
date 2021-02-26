@@ -154,6 +154,9 @@ class DrvVulkan final : public drv::IDriver
                                      uint64_t timeoutNs) override;
     uint64_t get_timeline_semaphore_value(drv::LogicalDevicePtr device,
                                           drv::TimelineSemaphorePtr semaphore) override;
+    drv::ImagePtr create_image(drv::LogicalDevicePtr device,
+                               const drv::ImageCreateInfo* info) override;
+    bool destroy_image(drv::LogicalDevicePtr device, drv::ImagePtr image) override;
 };
 
 // TODO
