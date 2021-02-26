@@ -49,12 +49,12 @@ class IDriver
     virtual DeviceMemoryPtr allocate_memory(LogicalDevicePtr device,
                                             const MemoryAllocationInfo* info) = 0;
     virtual bool free_memory(LogicalDevicePtr device, DeviceMemoryPtr memory) = 0;
-    virtual bool bind_memory(LogicalDevicePtr device, BufferPtr buffer, DeviceMemoryPtr memory,
-                             DeviceSize offset) = 0;
+    virtual bool bind_buffer_memory(LogicalDevicePtr device, BufferPtr buffer,
+                                    DeviceMemoryPtr memory, DeviceSize offset) = 0;
     virtual bool get_memory_properties(PhysicalDevicePtr physicalDevice,
                                        MemoryProperties& props) = 0;
-    virtual bool get_memory_requirements(LogicalDevicePtr device, BufferPtr buffer,
-                                         MemoryRequirements& memoryRequirements) = 0;
+    virtual bool get_buffer_memory_requirements(LogicalDevicePtr device, BufferPtr buffer,
+                                                MemoryRequirements& memoryRequirements) = 0;
     virtual BufferMemoryInfo get_buffer_memory_info(LogicalDevicePtr device, BufferPtr buffer) = 0;
     virtual bool map_memory(LogicalDevicePtr device, DeviceMemoryPtr memory, DeviceSize offset,
                             DeviceSize size, void** data) = 0;
@@ -136,5 +136,9 @@ class IDriver
     virtual bool destroy_shader_module(LogicalDevicePtr device, ShaderModulePtr module) = 0;
     virtual ImagePtr create_image(LogicalDevicePtr device, const ImageCreateInfo* info) = 0;
     virtual bool destroy_image(LogicalDevicePtr device, ImagePtr image) = 0;
+    virtual bool bind_image_memory(LogicalDevicePtr device, ImagePtr image, DeviceMemoryPtr memory,
+                                   DeviceSize offset) = 0;
+    virtual bool get_image_memory_requirements(LogicalDevicePtr device, ImagePtr image,
+                                               MemoryRequirements& memoryRequirements) = 0;
 };
 }  // namespace drv

@@ -89,13 +89,13 @@ bool destroy_buffer(LogicalDevicePtr device, BufferPtr buffer);
 DeviceMemoryPtr allocate_memory(LogicalDevicePtr device, const MemoryAllocationInfo* info);
 bool free_memory(LogicalDevicePtr device, DeviceMemoryPtr memory);
 
-bool bind_memory(LogicalDevicePtr device, BufferPtr buffer, DeviceMemoryPtr memory,
-                 DeviceSize offset);
+bool bind_buffer_memory(LogicalDevicePtr device, BufferPtr buffer, DeviceMemoryPtr memory,
+                        DeviceSize offset);
 
 bool get_memory_properties(PhysicalDevicePtr physicalDevice, MemoryProperties& props);
 
-bool get_memory_requirements(LogicalDevicePtr device, BufferPtr buffer,
-                             MemoryRequirements& memoryRequirements);
+bool get_buffer_memory_requirements(LogicalDevicePtr device, BufferPtr buffer,
+                                    MemoryRequirements& memoryRequirements);
 
 BufferMemoryInfo get_buffer_memory_info(LogicalDevicePtr device, BufferPtr buffer);
 
@@ -172,6 +172,10 @@ bool wait_on_timeline_semaphores(LogicalDevicePtr device, uint32_t count,
 uint64_t get_timeline_semaphore_value(LogicalDevicePtr device, TimelineSemaphorePtr semaphore);
 ImagePtr create_image(LogicalDevicePtr device, const ImageCreateInfo* info);
 bool destroy_image(LogicalDevicePtr device, ImagePtr image);
+bool bind_image_memory(LogicalDevicePtr device, ImagePtr image, DeviceMemoryPtr memory,
+                       DeviceSize offset);
+bool get_image_memory_requirements(LogicalDevicePtr device, ImagePtr image,
+                                   MemoryRequirements& memoryRequirements);
 
 // ShaderModulePtr get_shader_module(LogicalDevicePtr device, ShaderIdType shaderId);
 // unsigned int get_num_shader_descriptor_set_layouts(LogicalDevicePtr device, ShaderIdType shaderId);

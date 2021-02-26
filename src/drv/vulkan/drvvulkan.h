@@ -63,12 +63,12 @@ class DrvVulkan final : public drv::IDriver
     drv::DeviceMemoryPtr allocate_memory(drv::LogicalDevicePtr device,
                                          const drv::MemoryAllocationInfo* info) override;
     bool free_memory(drv::LogicalDevicePtr device, drv::DeviceMemoryPtr memory) override;
-    bool bind_memory(drv::LogicalDevicePtr device, drv::BufferPtr buffer,
-                     drv::DeviceMemoryPtr memory, drv::DeviceSize offset) override;
+    bool bind_buffer_memory(drv::LogicalDevicePtr device, drv::BufferPtr buffer,
+                            drv::DeviceMemoryPtr memory, drv::DeviceSize offset) override;
     bool get_memory_properties(drv::PhysicalDevicePtr physicalDevice,
                                drv::MemoryProperties& props) override;
-    bool get_memory_requirements(drv::LogicalDevicePtr device, drv::BufferPtr buffer,
-                                 drv::MemoryRequirements& memoryRequirements) override;
+    bool get_buffer_memory_requirements(drv::LogicalDevicePtr device, drv::BufferPtr buffer,
+                                        drv::MemoryRequirements& memoryRequirements) override;
     drv::BufferMemoryInfo get_buffer_memory_info(drv::LogicalDevicePtr device,
                                                  drv::BufferPtr buffer) override;
     bool map_memory(drv::LogicalDevicePtr device, drv::DeviceMemoryPtr memory,
@@ -157,6 +157,10 @@ class DrvVulkan final : public drv::IDriver
     drv::ImagePtr create_image(drv::LogicalDevicePtr device,
                                const drv::ImageCreateInfo* info) override;
     bool destroy_image(drv::LogicalDevicePtr device, drv::ImagePtr image) override;
+    bool bind_image_memory(drv::LogicalDevicePtr device, drv::ImagePtr image,
+                           drv::DeviceMemoryPtr memory, drv::DeviceSize offset) override;
+    bool get_image_memory_requirements(drv::LogicalDevicePtr device, drv::ImagePtr image,
+                                       drv::MemoryRequirements& memoryRequirements) override;
 };
 
 // TODO

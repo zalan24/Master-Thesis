@@ -267,9 +267,9 @@ class BufferSet : private Exclusive
               const BufferInfo* infos, const MemorySelector* selector);
     ~BufferSet();
 
-    BufferSet(const BufferSet& other);
+    BufferSet(const BufferSet& other) = delete;
     BufferSet(BufferSet&& other);
-    BufferSet& operator=(const BufferSet& other);
+    BufferSet& operator=(const BufferSet& other) = delete;
     BufferSet& operator=(BufferSet&& other);
 
     void get_buffers(drv::BufferPtr* buffers);
@@ -286,7 +286,73 @@ class BufferSet : private Exclusive
     std::vector<BufferPtr> buffers;
     // if not all buffers are compatible, they will allocate new memory
     std::vector<DeviceMemoryPtr> extraMemories;
-    std::vector<BufferInfo> createInfos;
+
+    static bool pick_memory(const MemorySelector* selector, const MemoryProperties& props,
+                            MaskType mask, DeviceMemoryTypeId& id);
+
+    void close();
+};
+
+class ImageSet : private Exclusive
+{
+ public:
+    using ImageInfo = ImageCreateInfo;
+    class MemorySelector
+    {
+     public:
+        MemorySelector(MemoryType::PropertyType require,
+                       MemoryType::PropertyType allow = MemoryType::FLAG_BITS_MAX_ENUM);
+        virtual ~MemorySelector();
+
+        bool isAccepted(const MemoryType& type) const;
+
+        virtual const MemoryType& prefer(const MemoryType& a, const MemoryType& b) const;
+
+     private:
+        MemoryType::PropertyType requireMask = 0;
+        MemoryType::PropertyType allowMask = MemoryType::FLAG_BITS_MAX_ENUM;
+    };
+
+    class PreferenceSelector : public MemorySelector
+    {
+     public:
+        PreferenceSelector(MemoryType::PropertyType prefer, MemoryType::PropertyType require);
+        PreferenceSelector(MemoryType::PropertyType prefer, MemoryType::PropertyType require,
+                           MemoryType::PropertyType allow);
+
+        const MemoryType& prefer(const MemoryType& a, const MemoryType& b) const override;
+
+     private:
+        MemoryType::PropertyType preferenceMask = 0;
+    };
+
+    ImageSet(PhysicalDevicePtr physicalDevice, LogicalDevicePtr device,
+             const std::vector<ImageInfo>& infos, const MemorySelector& selector);
+    ImageSet(PhysicalDevicePtr physicalDevice, LogicalDevicePtr device,
+             const std::vector<ImageInfo>& infos, const MemorySelector* selector);
+    ImageSet(PhysicalDevicePtr physicalDevice, LogicalDevicePtr device, unsigned int count,
+             const ImageInfo* infos, const MemorySelector* selector);
+    ~ImageSet();
+
+    ImageSet(const ImageSet& other) = delete;
+    ImageSet(ImageSet&& other);
+    ImageSet& operator=(const ImageSet& other) = delete;
+    ImageSet& operator=(ImageSet&& other);
+
+    void get_images(drv::ImagePtr* buffers);
+    void get_images(drv::ImagePtr* buffers, unsigned int from, unsigned int count);
+
+ private:
+    using MaskType = uint32_t;
+    static_assert(std::is_same_v<MaskType, decltype(MemoryRequirements::memoryTypeBits)>,
+                  "Type mismatch");
+
+    PhysicalDevicePtr physicalDevice = NULL_HANDLE;
+    LogicalDevicePtr device = NULL_HANDLE;
+    DeviceMemoryPtr memory = NULL_HANDLE;
+    std::vector<ImagePtr> images;
+    // if not all buffers are compatible, they will allocate new memory
+    std::vector<DeviceMemoryPtr> extraMemories;
 
     static bool pick_memory(const MemorySelector* selector, const MemoryProperties& props,
                             MaskType mask, DeviceMemoryTypeId& id);
@@ -386,26 +452,6 @@ class Event
  private:
     LogicalDevicePtr device;
     EventPtr ptr;
-
-    void close();
-};
-
-class Image
-  : public NoCopy
-  , private Exclusive
-{
- public:
-    Image(LogicalDevicePtr device, const ImageCreateInfo& info);
-    ~Image() noexcept;
-
-    Image(Image&& other) noexcept;
-    Image& operator=(Image&& other) noexcept;
-
-    operator ImagePtr() const;
-
- private:
-    LogicalDevicePtr device;
-    ImagePtr ptr;
 
     void close();
 };

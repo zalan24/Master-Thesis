@@ -32,6 +32,7 @@ using ComputePipelinePtr = Ptr;
 using ShaderModulePtr = Ptr;
 using SwapchainPtr = Ptr;
 using EventPtr = Ptr;
+using ImageViewPtr = Ptr;
 
 using ShaderIdType = StrHash;
 #define SHADER(name) (#name##_hash)
@@ -992,5 +993,8 @@ struct ImageCreateInfo
     QueueFamilyPtr* families = nullptr;
     ImageLayout initialLayout;
 };
+
+struct ImageViewCreateInfo
+{};
 
 };  // namespace drv

@@ -82,8 +82,8 @@ bool DrvVulkan::free_memory(drv::LogicalDevicePtr device, drv::DeviceMemoryPtr m
     return true;
 }
 
-bool DrvVulkan::bind_memory(drv::LogicalDevicePtr device, drv::BufferPtr _buffer,
-                            drv::DeviceMemoryPtr memory, drv::DeviceSize offset) {
+bool DrvVulkan::bind_buffer_memory(drv::LogicalDevicePtr device, drv::BufferPtr _buffer,
+                                   drv::DeviceMemoryPtr memory, drv::DeviceSize offset) {
     Buffer* buffer = reinterpret_cast<Buffer*>(_buffer);
     buffer->memoryPtr = memory;
     buffer->offset = offset;
@@ -106,8 +106,8 @@ bool DrvVulkan::get_memory_properties(drv::PhysicalDevicePtr physicalDevice,
     return true;
 }
 
-bool DrvVulkan::get_memory_requirements(drv::LogicalDevicePtr device, drv::BufferPtr buffer,
-                                        drv::MemoryRequirements& memoryRequirements) {
+bool DrvVulkan::get_buffer_memory_requirements(drv::LogicalDevicePtr device, drv::BufferPtr buffer,
+                                               drv::MemoryRequirements& memoryRequirements) {
     VkMemoryRequirements memRequirements;
     vkGetBufferMemoryRequirements(reinterpret_cast<VkDevice>(device),
                                   reinterpret_cast<Buffer*>(buffer)->buffer, &memRequirements);

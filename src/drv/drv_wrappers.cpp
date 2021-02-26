@@ -492,7 +492,6 @@ BufferSet::BufferSet(PhysicalDevicePtr _physicalDevice, LogicalDevicePtr _device
             defaultMask = defaultMask xor (1 << i);
     }
     drv_assert(defaultMask != 0, "There is no suitable memory type");
-    createInfos.reserve(count);
     buffers.reserve(count);
     unsigned int bufferInd = 0;
     DeviceSize size = 0;
@@ -513,15 +512,14 @@ BufferSet::BufferSet(PhysicalDevicePtr _physicalDevice, LogicalDevicePtr _device
         *mem = allocate_memory(device, &allocInfo);
         drv_assert(*mem != NULL_HANDLE, "Could not allocate memory");
         for (unsigned int i = 0; i < offsets.size(); ++i)
-            drv_assert(bind_memory(device, buffers[bufferInd + i], *mem, offsets[i]),
+            drv_assert(bind_buffer_memory(device, buffers[bufferInd + i], *mem, offsets[i]),
                        "Could not bind buffer");
     };
     for (unsigned int i = 0; i < count; ++i) {
-        createInfos.push_back(infos[i]);
         BufferPtr buffer = create_buffer(device, &infos[i]);
         drv_assert(buffer != nullptr, "Could not create buffer");
         MemoryRequirements req;
-        drv_assert(get_memory_requirements(device, buffer, req),
+        drv_assert(get_buffer_memory_requirements(device, buffer, req),
                    "Could not get memory requirements");
         drv_assert((req.memoryTypeBits & defaultMask) != 0, "No memory type is acceptable");
         if ((mask & req.memoryTypeBits) == 0) {
@@ -559,21 +557,14 @@ void BufferSet::close() {
     device = NULL_HANDLE;
 }
 
-// TODO implement copy first
-// BufferSet::BufferSet(const BufferSet& other);
-
 BufferSet::BufferSet(BufferSet&& other) {
     physicalDevice = std::move(other.physicalDevice);
     device = std::move(other.device);
     memory = std::move(other.memory);
     buffers = std::move(other.buffers);
     extraMemories = std::move(other.extraMemories);
-    createInfos = std::move(other.createInfos);
     other.device = NULL_HANDLE;
 }
-
-// TODO implement copy first
-// BufferSet& BufferSet::operator=(const BufferSet& other);
 
 BufferSet& BufferSet::operator=(BufferSet&& other) {
     if (&other == this)
@@ -584,7 +575,6 @@ BufferSet& BufferSet::operator=(BufferSet&& other) {
     memory = std::move(other.memory);
     buffers = std::move(other.buffers);
     extraMemories = std::move(other.extraMemories);
-    createInfos = std::move(other.createInfos);
     other.device = NULL_HANDLE;
     return *this;
 }
@@ -597,6 +587,198 @@ void BufferSet::get_buffers(drv::BufferPtr* _buffers, unsigned int from, unsigne
     CHECK_THREAD;
     for (unsigned int i = 0; i < count; ++i)
         _buffers[i] = buffers[i + from];
+}
+
+ImageSet::MemorySelector::MemorySelector(MemoryType::PropertyType require,
+                                         MemoryType::PropertyType allow)
+  : requireMask(require), allowMask(allow) {
+}
+ImageSet::MemorySelector::~MemorySelector() {
+}
+
+bool ImageSet::MemorySelector::isAccepted(const MemoryType& type) const {
+    return (type.properties & requireMask) == requireMask
+           && (type.properties & allowMask) == type.properties;
+}
+
+const MemoryType& ImageSet::MemorySelector::prefer(const MemoryType& a, const MemoryType& b) const {
+    if (isAccepted(a))
+        return a;
+    return b;
+}
+
+ImageSet::PreferenceSelector::PreferenceSelector(MemoryType::PropertyType prefer,
+                                                 MemoryType::PropertyType require)
+  : MemorySelector(require), preferenceMask(prefer) {
+}
+
+ImageSet::PreferenceSelector::PreferenceSelector(MemoryType::PropertyType prefer,
+                                                 MemoryType::PropertyType require,
+                                                 MemoryType::PropertyType allow)
+  : MemorySelector(require, allow), preferenceMask(prefer) {
+}
+
+const MemoryType& ImageSet::PreferenceSelector::prefer(const MemoryType& a,
+                                                       const MemoryType& b) const {
+    if (!isAccepted(a))
+        return b;
+    if (isAccepted(b))
+        return a;
+    MemoryType::PropertyType ap = a.properties & preferenceMask;
+    MemoryType::PropertyType bp = b.properties & preferenceMask;
+    MemoryType::PropertyType common = ap & bp;
+    ap ^= common;
+    bp ^= common;
+    if (ap == 0)
+        return b;
+    if (bp == 0)
+        return a;
+    int count = 0;
+    for (unsigned int i = 0; i < MemoryProperties::MAX_MEMORY_TYPES; ++i) {
+        if ((ap & (1 << i)) != 0)
+            count++;
+        if ((bp & (1 << i)) != 0)
+            count--;
+    }
+    return count < 0 ? b : a;
+}
+
+ImageSet::ImageSet(PhysicalDevicePtr _physicalDevice, LogicalDevicePtr _device,
+                   const std::vector<ImageInfo>& infos, const MemorySelector& selector)
+  : ImageSet(_physicalDevice, _device, static_cast<unsigned int>(infos.size()), infos.data(),
+             &selector) {
+}
+
+ImageSet::ImageSet(PhysicalDevicePtr _physicalDevice, LogicalDevicePtr _device,
+                   const std::vector<ImageInfo>& infos, const MemorySelector* selector)
+  : ImageSet(_physicalDevice, _device, static_cast<unsigned int>(infos.size()), infos.data(),
+             selector) {
+}
+
+bool ImageSet::pick_memory(const MemorySelector* selector, const MemoryProperties& props,
+                           MaskType mask, DeviceMemoryTypeId& id) {
+    MemoryType type;
+    bool found = false;
+    for (unsigned int i = 0; i < MemoryProperties::MAX_MEMORY_TYPES; ++i) {
+        if ((mask & (1 << i)) == 0)
+            continue;
+        if (!selector->isAccepted(props.memoryTypes[i]))
+            continue;
+        if (!found || &selector->prefer(type, props.memoryTypes[i]) == &props.memoryTypes[i]) {
+            type = props.memoryTypes[i];
+            id = i;
+            found = true;
+        }
+    }
+    return found;
+}
+
+ImageSet::ImageSet(PhysicalDevicePtr _physicalDevice, LogicalDevicePtr _device, unsigned int count,
+                   const ImageInfo* infos, const MemorySelector* selector)
+  : physicalDevice(_physicalDevice), device(_device) {
+    MaskType defaultMask = std::numeric_limits<uint32_t>::max();
+    MemoryProperties props;
+    drv_assert(get_memory_properties(physicalDevice, props), "Could not get memory props");
+    for (unsigned int i = 0; i < MemoryProperties::MAX_MEMORY_TYPES; ++i) {
+        if (!selector->isAccepted(props.memoryTypes[i]))
+            defaultMask = defaultMask xor (1 << i);
+    }
+    drv_assert(defaultMask != 0, "There is no suitable memory type");
+    images.reserve(count);
+    unsigned int imageInd = 0;
+    DeviceSize size = 0;
+    MaskType mask = defaultMask;
+    std::vector<DeviceSize> offsets;
+    const auto createMemory = [&, this] {
+        DeviceMemoryPtr* mem = nullptr;
+        if (memory == NULL_HANDLE)
+            mem = &memory;
+        else {
+            extraMemories.push_back(NULL_HANDLE);
+            mem = &extraMemories.back();
+        }
+        MemoryAllocationInfo allocInfo;
+        drv_assert(pick_memory(selector, props, mask, allocInfo.memoryType),
+                   "Could not pick any acceptable memory");
+        allocInfo.size = size;
+        *mem = allocate_memory(device, &allocInfo);
+        drv_assert(*mem != NULL_HANDLE, "Could not allocate memory");
+        for (unsigned int i = 0; i < offsets.size(); ++i)
+            drv_assert(bind_buffer_memory(device, images[imageInd + i], *mem, offsets[i]),
+                       "Could not bind buffer");
+    };
+    for (unsigned int i = 0; i < count; ++i) {
+        ImagePtr image = create_image(device, &infos[i]);
+        drv_assert(image != nullptr, "Could not create buffer");
+        MemoryRequirements req;
+        drv_assert(get_buffer_memory_requirements(device, image, req),
+                   "Could not get memory requirements");
+        drv_assert((req.memoryTypeBits & defaultMask) != 0, "No memory type is acceptable");
+        if ((mask & req.memoryTypeBits) == 0) {
+            createMemory();
+            mask = defaultMask;
+            size = 0;
+            imageInd = i;
+            offsets.clear();
+        }
+        mask &= req.memoryTypeBits;
+        if (size % req.alignment > 0)
+            size += req.alignment - size % req.alignment;
+        offsets.push_back(size);
+        size += req.size;
+        images.push_back(image);
+    }
+    drv_assert(size != 0, "Something went wrong");
+    createMemory();
+}
+
+ImageSet::~ImageSet() {
+    close();
+}
+
+void ImageSet::close() {
+    CHECK_THREAD;
+    // already deleted
+    if (device == NULL_HANDLE)
+        return;
+    for (auto& image : images)
+        drv_assert(destroy_image(device, image), "Could not destroy image");
+    drv_assert(free_memory(device, memory), "Could not free memory");
+    for (auto& mem : extraMemories)
+        drv_assert(free_memory(device, mem), "Could not free memory");
+    device = NULL_HANDLE;
+}
+
+ImageSet::ImageSet(ImageSet&& other) {
+    physicalDevice = std::move(other.physicalDevice);
+    device = std::move(other.device);
+    memory = std::move(other.memory);
+    images = std::move(other.images);
+    extraMemories = std::move(other.extraMemories);
+    other.device = NULL_HANDLE;
+}
+
+ImageSet& ImageSet::operator=(ImageSet&& other) {
+    if (&other == this)
+        return *this;
+    close();
+    physicalDevice = std::move(other.physicalDevice);
+    device = std::move(other.device);
+    memory = std::move(other.memory);
+    images = std::move(other.images);
+    extraMemories = std::move(other.extraMemories);
+    other.device = NULL_HANDLE;
+    return *this;
+}
+
+void ImageSet::get_images(drv::ImagePtr* _images) {
+    get_images(_images, 0, static_cast<unsigned int>(images.size()));
+}
+
+void ImageSet::get_images(drv::ImagePtr* _images, unsigned int from, unsigned int count) {
+    CHECK_THREAD;
+    for (unsigned int i = 0; i < count; ++i)
+        _images[i] = images[i + from];
 }
 
 MemoryMapper::MemoryMapper(LogicalDevicePtr _device, DeviceSize offset, DeviceSize size,
@@ -849,43 +1031,6 @@ void Event::cmdSet(CommandBufferPtr commandBuffer, PipelineStages sourceStage) {
 void Event::cmdReset(CommandBufferPtr commandBuffer, PipelineStages sourceStage) {
     drv::drv_assert(drv::cmd_reset_event(commandBuffer, ptr, sourceStage),
                     "Could not cmd reset event");
-}
-
-Image::Image(LogicalDevicePtr _device, const ImageCreateInfo& info) : device(_device) {
-    ptr = create_image(device, &info);
-    drv::drv_assert(ptr != NULL_HANDLE, "Could not create image");
-}
-
-Image::~Image() noexcept {
-    close();
-}
-
-void Image::close() {
-    CHECK_THREAD;
-    if (ptr != NULL_HANDLE) {
-        drv::drv_assert(destroy_image(device, ptr), "Could not destroy image");
-        ptr = NULL_HANDLE;
-    }
-}
-
-Image::Image(Image&& other) noexcept {
-    device = std::move(other.device);
-    ptr = std::move(other.ptr);
-    other.ptr = NULL_HANDLE;
-}
-
-Image& Image::operator=(Image&& other) noexcept {
-    if (&other == this)
-        return *this;
-    close();
-    device = std::move(other.device);
-    ptr = std::move(other.ptr);
-    other.ptr = NULL_HANDLE;
-    return *this;
-}
-
-Image::operator ImagePtr() const {
-    return ptr;
 }
 
 DescriptorSetLayout::DescriptorSetLayout(LogicalDevicePtr _device,

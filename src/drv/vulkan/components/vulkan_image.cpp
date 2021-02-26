@@ -48,3 +48,20 @@ bool DrvVulkan::destroy_image(drv::LogicalDevicePtr device, drv::ImagePtr image)
     vkDestroyImage(convertDevice(device), convertImage(image), nullptr);
     return true;
 }
+
+bool DrvVulkan::bind_image_memory(drv::LogicalDevicePtr device, drv::ImagePtr image,
+                                  drv::DeviceMemoryPtr memory, drv::DeviceSize offset) {
+    VkResult result = vkBindImageMemory(convertDevice(device), convertImage(image),
+                                        reinterpret_cast<VkDeviceMemory>(memory), offset);
+    return result == VK_SUCCESS;
+}
+
+bool DrvVulkan::get_image_memory_requirements(drv::LogicalDevicePtr device, drv::ImagePtr image,
+                                              drv::MemoryRequirements& memoryRequirements) {
+    VkMemoryRequirements memRequirements;
+    vkGetImageMemoryRequirements(convertDevice(device), convertImage(image), &memRequirements);
+    memoryRequirements.alignment = memRequirements.alignment;
+    memoryRequirements.size = memRequirements.size;
+    memoryRequirements.memoryTypeBits = memRequirements.memoryTypeBits;
+    return true;
+}

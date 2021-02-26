@@ -159,18 +159,19 @@ bool drv::free_memory(LogicalDevicePtr device, DeviceMemoryPtr memory) {
     return current_driver_interface->free_memory(device, memory);
 }
 
-bool drv::bind_memory(LogicalDevicePtr device, BufferPtr buffer, DeviceMemoryPtr memory,
-                      DeviceSize offset) {
-    return current_driver_interface->bind_memory(device, buffer, memory, offset);
+bool drv::bind_buffer_memory(LogicalDevicePtr device, BufferPtr buffer, DeviceMemoryPtr memory,
+                             DeviceSize offset) {
+    return current_driver_interface->bind_buffer_memory(device, buffer, memory, offset);
 }
 
 bool drv::get_memory_properties(PhysicalDevicePtr physicalDevice, MemoryProperties& props) {
     return current_driver_interface->get_memory_properties(physicalDevice, props);
 }
 
-bool drv::get_memory_requirements(LogicalDevicePtr device, BufferPtr buffer,
-                                  MemoryRequirements& memoryRequirements) {
-    return current_driver_interface->get_memory_requirements(device, buffer, memoryRequirements);
+bool drv::get_buffer_memory_requirements(LogicalDevicePtr device, BufferPtr buffer,
+                                         MemoryRequirements& memoryRequirements) {
+    return current_driver_interface->get_buffer_memory_requirements(device, buffer,
+                                                                    memoryRequirements);
 }
 
 drv::BufferMemoryInfo drv::get_buffer_memory_info(LogicalDevicePtr device, BufferPtr buffer) {
@@ -373,6 +374,17 @@ drv::ImagePtr drv::create_image(LogicalDevicePtr device, const ImageCreateInfo* 
 
 bool drv::destroy_image(LogicalDevicePtr device, ImagePtr image) {
     return current_driver_interface->destroy_image(device, image);
+}
+
+bool drv::bind_image_memory(LogicalDevicePtr device, ImagePtr image, DeviceMemoryPtr memory,
+                            DeviceSize offset) {
+    return current_driver_interface->bind_image_memory(device, image, memory, offset);
+}
+
+bool drv::get_image_memory_requirements(LogicalDevicePtr device, ImagePtr image,
+                                        MemoryRequirements& memoryRequirements) {
+    return current_driver_interface->get_image_memory_requirements(device, image,
+                                                                   memoryRequirements);
 }
 
 // TODO
