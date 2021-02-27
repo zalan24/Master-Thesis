@@ -1257,6 +1257,12 @@ PresentResult Swapchain::present(QueuePtr queue, const PresentInfo& info) {
     return ret;
 }
 
+ImagePtr Swapchain::getAcquiredImage() const {
+    if (acquiredIndex == INVALID_INDEX)
+        return NULL_HANDLE;
+    return images[acquiredIndex];
+}
+
 // PipelineLayoutManager::PipelineLayoutManager(LogicalDevicePtr _device) : device(_device) {
 // }
 

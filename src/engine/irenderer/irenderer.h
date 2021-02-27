@@ -27,7 +27,7 @@ class IRenderer
     virtual bool initRenderFrameGraph(FrameGraph& frameGraph, const FrameGraphData& data,
                                       FrameGraph::NodeId& presentDepNode,
                                       drv::QueuePtr& depQueue) = 0;
-    virtual void record(FrameGraph::FrameId frameId) = 0;
+    virtual void record(FrameGraph& frameGraph, FrameGraph::FrameId frameId) = 0;
 
  private:
 };

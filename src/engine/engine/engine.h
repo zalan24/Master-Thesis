@@ -63,6 +63,25 @@ class Engine
     drv::LogicalDevicePtr getDevice() const { return device; }
     const ShaderBin* getShaderBin() const { return &shaderBin; }
 
+    struct AcquiredImageData
+    {
+        drv::ImagePtr image;
+        drv::SemaphorePtr imageAvailableSemaphore;
+        drv::SemaphorePtr renderFinishedSemaphore;
+    };
+    AcquiredImageData acquiredSwapchainImage(FrameGraph::NodeHandle acquiringNodeHandle);
+
+    struct QueueInfo
+    {
+        drv::QueuePtr renderQueue;
+        drv::QueuePtr presentQueue;
+        drv::QueuePtr computeQueue;
+        drv::QueuePtr DtoHQueue;
+        drv::QueuePtr HtoDQueue;
+        drv::QueuePtr inputQueue;
+    };
+    QueueInfo getQueues() const;
+
  private:
     struct ErrorCallback
     {
@@ -74,11 +93,12 @@ class Engine
         ~WindowIniter();
         IWindow* window;
     };
-    // struct SyncBlock
-    // {
-    //     drv::Semaphore imageAvailableSemaphore;
-    //     SyncBlock(drv::LogicalDevicePtr device);
-    // };
+    struct SyncBlock
+    {
+        std::vector<drv::Semaphore> imageAvailableSemaphores;
+        std::vector<drv::Semaphore> renderFinishedSemaphores;
+        SyncBlock(drv::LogicalDevicePtr device, uint32_t maxFramesInFlight);
+    };
 
     Config config;
 
@@ -103,7 +123,7 @@ class Engine
     drv::QueueManager::Queue inputQueue;
     drv::CommandBufferBank cmdBufferBank;
     drv::Swapchain swapchain;
-    // SyncBlock syncBlock;
+    SyncBlock syncBlock;
     ShaderBin shaderBin;
     ResourceManager resourceMgr;
     // EntityManager entityManager;
@@ -119,6 +139,8 @@ class Engine
     FrameGraph::NodeId executeStartNode;
     FrameGraph::NodeId executeEndNode;
     FrameGraph::NodeId presentFrameNode;
+
+    uint32_t acquireImageSemaphoreId = 0;
 
     // struct RenderState
     // {

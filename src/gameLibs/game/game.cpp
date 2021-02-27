@@ -23,8 +23,15 @@ Game::~Game() {
 
 bool Game::initRenderFrameGraph(FrameGraph& frameGraph, const IRenderer::FrameGraphData& data,
                                 FrameGraph::NodeId& presentDepNode, drv::QueuePtr& depQueue) {
-    // TODO
-    return false;
+    testDraw = frameGraph.addNode(FrameGraph::Node("testDraw", true));
+    frameGraph.addDependency(testDraw, FrameGraph::CpuDependency{data.recStart, 0});
+    frameGraph.addDependency(testDraw, FrameGraph::EnqueueDependency{data.recStart, 0});
+    frameGraph.addDependency(data.recEnd, FrameGraph::CpuDependency{testDraw, 0});
+    frameGraph.addDependency(data.recEnd, FrameGraph::EnqueueDependency{testDraw, 0});
+
+    presentDepNode = testDraw;
+    depQueue = engine->getQueues().renderQueue;
+    return true;
 }
 
 void Game::initSimulationFrameGraph(FrameGraph& frameGraph,
@@ -32,12 +39,18 @@ void Game::initSimulationFrameGraph(FrameGraph& frameGraph,
     // TODO
 }
 
-void Game::record(FrameGraph::FrameId frameId) {
-    std::this_thread::sleep_for(std::chrono::milliseconds(4));
-    // std::cout << "Simulation: " << frameId << std::endl;
+void Game::record(FrameGraph& frameGraph, FrameGraph::FrameId frameId) {
+    std::cout << "Record: " << frameId << std::endl;
+    FrameGraph::NodeHandle testDrawHandle = frameGraph.acquireNode(testDraw, frameId);
+    if (testDrawHandle) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(4));
+        // Engine::AcquiredImageData engine->acquiredSwapchainImage(testDrawHandle); // TODO
+    }
+    else
+        assert(frameGraph.isStopped());
 }
 
-void Game::simulate(FrameGraph::FrameId frameId) {
+void Game::simulate(FrameGraph& frameGraph, FrameGraph::FrameId frameId) {
     std::this_thread::sleep_for(std::chrono::milliseconds(4));
-    // std::cout << "Record: " << frameId << std::endl;
+    std::cout << "Simulate: " << frameId << std::endl;
 }

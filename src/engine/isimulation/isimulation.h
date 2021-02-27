@@ -20,7 +20,7 @@ class ISimulation
     };
 
     virtual void initSimulationFrameGraph(FrameGraph& frameGraph, const FrameGraphData& data) = 0;
-    virtual void simulate(FrameGraph::FrameId frameId) = 0;
+    virtual void simulate(FrameGraph& frameGraph, FrameGraph::FrameId frameId) = 0;
 
  private:
 };

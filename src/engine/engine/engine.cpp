@@ -115,8 +115,14 @@ drv::Swapchain::CreateInfo Engine::get_swapchain_create_info(const Config& confi
     return ret;
 }
 
-// Engine::SyncBlock::SyncBlock(drv::LogicalDevicePtr device) : imageAvailableSemaphore(device) {
-// }
+Engine::SyncBlock::SyncBlock(drv::LogicalDevicePtr device, uint32_t maxFramesInFlight) {
+    imageAvailableSemaphores.reserve(maxFramesInFlight);
+    renderFinishedSemaphores.reserve(maxFramesInFlight);
+    for (uint32_t i = 0; i < maxFramesInFlight; ++i) {
+        imageAvailableSemaphores.emplace_back(device);
+        renderFinishedSemaphores.emplace_back(device);
+    }
+}
 
 Engine::Engine(const Config& cfg, const std::string& shaderbinFile,
                ResourceManager::ResourceInfos resource_infos)
@@ -152,7 +158,7 @@ Engine::Engine(const Config& cfg, const std::string& shaderbinFile,
     inputQueue(queueManager.getQueue({"input", "HtoD"})),
     cmdBufferBank(device),
     swapchain(physicalDevice, device, window, get_swapchain_create_info(config)),
-    // syncBlock(device),
+    syncBlock(device, config.maxFramesInFlight),
     shaderBin(shaderbinFile),
     resourceMgr(std::move(resource_infos)) {
 }
@@ -221,6 +227,7 @@ void Engine::initGame(IRenderer* _renderer, ISimulation* _simulation) {
         frameGraph.addDependency(
           presentFrameNode,
           FrameGraph::QueueQueueDependency{renderNode, renderQueue, presentQueue.queue, 0});
+        frameGraph.addDependency(presentFrameNode, FrameGraph::EnqueueDependency{renderNode, 0});
     }
 
     frameGraph.validate();
@@ -252,7 +259,7 @@ void Engine::simulationLoop(volatile std::atomic<FrameGraph::FrameId>* simulatio
             assert(frameGraph.isStopped());
             break;
         }
-        simulation->simulate(*simulationFrame);
+        simulation->simulate(frameGraph, *simulationFrame);
         {
             FrameGraph::NodeHandle simEndHandle =
               frameGraph.acquireNode(simEndNode, *simulationFrame);
@@ -270,16 +277,49 @@ void Engine::simulationLoop(volatile std::atomic<FrameGraph::FrameId>* simulatio
 
 void Engine::present(FrameGraph::FrameId presentFrame) {
     // TODO
-    // drv::PresentInfo info;
-    // info.semaphoreCount = 1;
-    // drv::SemaphorePtr semaphore = syncBlock.imageAvailableSemaphore;  // TODO
-    // info.waitSemaphores = &semaphore;
+    drv::PresentInfo info;
+    info.semaphoreCount = 1;
+    drv::SemaphorePtr semaphore = syncBlock.renderFinishedSemaphores[acquireImageSemaphoreId];
+    info.waitSemaphores = &semaphore;
     // drv::PresentResult result = swapchain.present(presentQueue.queue, info);
     // drv::drv_assert(result != drv::PresentResult::ERROR, "Present error");
     // if (result == drv::PresentResult::RECREATE_ADVISED
     //     || result == drv::PresentResult::RECREATE_REQUIRED) {
     //     state->recreateSwapchain = presentFrame;
     // }
+}
+
+Engine::QueueInfo Engine::getQueues() const {
+    QueueInfo ret;
+    ret.computeQueue = computeQueue.queue;
+    ret.DtoHQueue = DtoHQueue.queue;
+    ret.HtoDQueue = HtoDQueue.queue;
+    ret.inputQueue = inputQueue.queue;
+    ret.presentQueue = presentQueue.queue;
+    ret.renderQueue = renderQueue.queue;
+    return ret;
+}
+
+Engine::AcquiredImageData Engine::acquiredSwapchainImage(
+  FrameGraph::NodeHandle acquiringNodeHandle) {
+    // TODO latency slop -> acquiringNodeHandle
+    bool acquiredSuccess =
+      swapchain.acquire(syncBlock.imageAvailableSemaphores[acquireImageSemaphoreId]);
+    // ---
+    Engine::AcquiredImageData ret;
+    if (acquiredSuccess) {
+        ret.image = swapchain.getAcquiredImage();
+        ret.imageAvailableSemaphore = syncBlock.imageAvailableSemaphores[acquireImageSemaphoreId];
+        ret.renderFinishedSemaphore = syncBlock.renderFinishedSemaphores[acquireImageSemaphoreId];
+    }
+    else {
+        ret.image = drv::NULL_HANDLE;
+        ret.imageAvailableSemaphore = drv::NULL_HANDLE;
+        ret.renderFinishedSemaphore = drv::NULL_HANDLE;
+    }
+    acquireImageSemaphoreId =
+      (acquireImageSemaphoreId + 1) % syncBlock.imageAvailableSemaphores.size();
+    return ret;
 }
 
 void Engine::recordCommandsLoop(const volatile std::atomic<FrameGraph::FrameId>* stopFrame) {
@@ -297,7 +337,7 @@ void Engine::recordCommandsLoop(const volatile std::atomic<FrameGraph::FrameId>*
               ->push(ExecutionPackage(ExecutionPackage::MessagePackage{
                 ExecutionPackage::Message::RECORD_START, recordFrame, 0, nullptr}));
         }
-        renderer->record(recordFrame);
+        renderer->record(frameGraph, recordFrame);
         {
             FrameGraph::NodeHandle presentHandle =
               frameGraph.acquireNode(presentFrameNode, recordFrame);
@@ -305,13 +345,11 @@ void Engine::recordCommandsLoop(const volatile std::atomic<FrameGraph::FrameId>*
                 assert(frameGraph.isStopped());
                 break;
             }
-            //         // TODO latency slop
-            //         bool acquiredSuccess = swapchain.acquire(syncBlock.imageAvailableSemaphore);
-            //         // ---
-            //         if (acquiredSuccess) {
-            //             state->executionQueue->push(ExecutionPackage(ExecutionPackage::MessagePackage{
-            //               ExecutionPackage::Message::PRESENT, state->recordFrame.load(), 0, nullptr}));
-            //         }
+            if (swapchain.getAcquiredImage() != drv::NULL_HANDLE) {
+                frameGraph.getExecutionQueue(presentHandle)
+                  ->push(ExecutionPackage(ExecutionPackage::MessagePackage{
+                    ExecutionPackage::Message::PRESENT, recordFrame, 0, nullptr}));
+            }
         }
         {
             FrameGraph::NodeHandle recEndHandle =
@@ -447,6 +485,8 @@ void Engine::gameLoop() {
         executeThread.join();
     }
     catch (...) {
+        std::cerr << "An exception happend during gameLoop. Waiting for threads to join..."
+                  << std::endl;
         frameGraph.stopExecution();
         simulationThread.join();
         recordThread.join();

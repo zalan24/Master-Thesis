@@ -575,6 +575,8 @@ class Swapchain
     uint32_t getCurrentWidth() const { return currentWidth; }
     uint32_t getCurrentHeight() const { return currentHeight; }
 
+    ImagePtr getAcquiredImage() const;
+
  private:
     CreateInfo createInfo;
     LogicalDevicePtr device;
