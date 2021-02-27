@@ -16,8 +16,8 @@ class Game final
     Game(Engine* engine);
     ~Game() override;
 
-    void initRenderFrameGraph(FrameGraph& frameGraph,
-                              const IRenderer::FrameGraphData& data) override;
+    bool initRenderFrameGraph(FrameGraph& frameGraph, const IRenderer::FrameGraphData& data,
+                              FrameGraph::NodeId& presentDepNode, drv::QueuePtr& depQueue) override;
     void initSimulationFrameGraph(FrameGraph& frameGraph,
                                   const ISimulation::FrameGraphData& data) override;
 

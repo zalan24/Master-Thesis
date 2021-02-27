@@ -36,8 +36,7 @@ class Engine
         int screenHeight;
         int imagesInSwapchain;
         int maxFramesInExecutionQueue;
-        // TODO wait on this
-        int maxFramesOnGPU;
+        int maxFramesInFlight;
         std::string title;
         std::string driver;
         int inputBufferSize;

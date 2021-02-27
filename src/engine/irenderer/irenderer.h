@@ -1,5 +1,7 @@
 #pragma once
 
+#include <drvtypes.h>
+
 #include <framegraph.h>
 
 class IRenderer
@@ -22,7 +24,9 @@ class IRenderer
         // FrameGraph::NodeId finalizeFrame;
     };
 
-    virtual void initRenderFrameGraph(FrameGraph& frameGraph, const FrameGraphData& data) = 0;
+    virtual bool initRenderFrameGraph(FrameGraph& frameGraph, const FrameGraphData& data,
+                                      FrameGraph::NodeId& presentDepNode,
+                                      drv::QueuePtr& depQueue) = 0;
     virtual void record(FrameGraph::FrameId frameId) = 0;
 
  private:

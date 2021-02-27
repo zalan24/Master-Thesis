@@ -21,8 +21,10 @@ Game::Game(Engine* _engine) : engine(_engine) {
 Game::~Game() {
 }
 
-void Game::initRenderFrameGraph(FrameGraph& frameGraph, const IRenderer::FrameGraphData& data) {
+bool Game::initRenderFrameGraph(FrameGraph& frameGraph, const IRenderer::FrameGraphData& data,
+                                FrameGraph::NodeId& presentDepNode, drv::QueuePtr& depQueue) {
     // TODO
+    return false;
 }
 
 void Game::initSimulationFrameGraph(FrameGraph& frameGraph,

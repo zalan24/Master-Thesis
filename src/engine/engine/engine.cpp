@@ -44,7 +44,7 @@ void Engine::Config::writeJson(json& out) const {
     WRITE_OBJECT(title, out);
     WRITE_OBJECT(imagesInSwapchain, out);
     WRITE_OBJECT(maxFramesInExecutionQueue, out);
-    WRITE_OBJECT(maxFramesOnGPU, out);
+    WRITE_OBJECT(maxFramesInFlight, out);
     WRITE_OBJECT(driver, out);
 }
 
@@ -56,7 +56,7 @@ void Engine::Config::readJson(const json& in) {
     READ_OBJECT(title, in);
     READ_OBJECT(imagesInSwapchain, in);
     READ_OBJECT(maxFramesInExecutionQueue, in);
-    READ_OBJECT(maxFramesOnGPU, in);
+    READ_OBJECT(maxFramesInFlight, in);
     READ_OBJECT(driver, in);
 }
 
@@ -166,8 +166,7 @@ void Engine::initGame(IRenderer* _renderer, ISimulation* _simulation) {
     renderer = _renderer;
     inputSampleNode = frameGraph.addNode(FrameGraph::Node("sample_input", false));
     presentFrameNode = frameGraph.addNode(FrameGraph::Node("presentFrame", true));
-    // These are just marker nodes
-    // no actual work is done in them
+    // These are just marker nodes, no actual work is done in them
     simStartNode = frameGraph.addNode(FrameGraph::Node("simulation/start", false));
     simEndNode = frameGraph.addNode(FrameGraph::Node("simulation/end", false));
     recordStartNode = frameGraph.addNode(FrameGraph::Node("record/start", true));
@@ -175,57 +174,34 @@ void Engine::initGame(IRenderer* _renderer, ISimulation* _simulation) {
     executeStartNode = frameGraph.addNode(FrameGraph::Node("execute/start", false));
     executeEndNode = frameGraph.addNode(FrameGraph::Node("execute/end", false));
 
-    FrameGraph::NodeDependency inputDep;
-    inputDep.srcNode = inputSampleNode;
-
-    FrameGraph::NodeDependency simEnd_nextFrameDep;
-    simEnd_nextFrameDep.srcNode = simEndNode;
-    simEnd_nextFrameDep.cpu_cpuOffset = 1;
-
-    FrameGraph::NodeDependency recEnd_nextFrameDep;
-    recEnd_nextFrameDep.srcNode = recordEndNode;
-    recEnd_nextFrameDep.cpu_cpuOffset = 1;
-
-    FrameGraph::NodeDependency recEnd_nextFrameEnqDep;
-    recEnd_nextFrameEnqDep.srcNode = recordEndNode;
-    recEnd_nextFrameEnqDep.cpu_cpuOffset = FrameGraph::NodeDependency::NO_SYNC;
-    recEnd_nextFrameEnqDep.enq_enqOffset = 1;
-
-    FrameGraph::NodeDependency simStartDep;
-    simStartDep.srcNode = simStartNode;
-
-    FrameGraph::NodeDependency recordStartDep;
-    recordStartDep.srcNode = recordStartNode;
-    recordStartDep.enq_enqOffset = 0;
-
-    FrameGraph::NodeDependency recordStartDepCpu;
-    recordStartDepCpu.srcNode = recordStartNode;
-
-    FrameGraph::NodeDependency presentDep;
-    presentDep.srcNode = presentFrameNode;
-    presentDep.enq_enqOffset = 0;
-
-    FrameGraph::NodeDependency executeStartDep;
-    executeStartDep.srcNode = executeStartNode;
-
-    FrameGraph::NodeDependency executeEnd_OffsetDep;
-    executeEnd_OffsetDep.srcNode = executeEndNode;
-    if (config.maxFramesInExecutionQueue <= 0)
+    if (config.maxFramesInExecutionQueue < 1)
         throw std::runtime_error("maxFramesInExecutionQueue must be at least 1");
-    executeEnd_OffsetDep.cpu_cpuOffset =
-      static_cast<uint32_t>(config.maxFramesInExecutionQueue - 1);
+    const uint32_t executionDepOffset = static_cast<uint32_t>(config.maxFramesInExecutionQueue);
+    if (config.maxFramesInFlight < 2)
+        throw std::runtime_error("maxFramesInFlight must be at least 2");
+    if (config.maxFramesInFlight < config.maxFramesInExecutionQueue)
+        throw std::runtime_error(
+          "maxFramesInFlight must be at least the value of maxFramesInExecutionQueue");
+    const uint32_t presentDepOffset = static_cast<uint32_t>(config.maxFramesInFlight - 1);
 
-    frameGraph.addDependency(inputSampleNode, simEnd_nextFrameDep);
-    frameGraph.addDependency(simStartNode, inputDep);
-    frameGraph.addDependency(simStartNode, recEnd_nextFrameDep);
-    frameGraph.addDependency(recordStartNode, simStartDep);
-    frameGraph.addDependency(recordStartNode, executeEnd_OffsetDep);
-    frameGraph.addDependency(recordStartNode, recEnd_nextFrameEnqDep);
-    frameGraph.addDependency(simEndNode, simStartDep);
-    frameGraph.addDependency(presentFrameNode, recordStartDep);
-    frameGraph.addDependency(recordEndNode, presentDep);
-    frameGraph.addDependency(executeStartNode, recordStartDepCpu);
-    frameGraph.addDependency(executeEndNode, executeStartDep);
+    frameGraph.addDependency(inputSampleNode, FrameGraph::CpuDependency{simStartNode, 0});
+    frameGraph.addDependency(simStartNode, FrameGraph::CpuDependency{simEndNode, 1});
+    frameGraph.addDependency(simStartNode, FrameGraph::CpuDependency{recordEndNode, 1});
+    frameGraph.addDependency(recordStartNode, FrameGraph::CpuDependency{simStartNode, 0});
+    frameGraph.addDependency(recordStartNode,
+                             FrameGraph::CpuDependency{executeEndNode, executionDepOffset});
+    frameGraph.addDependency(recordStartNode, FrameGraph::EnqueueDependency{recordEndNode, 1});
+    frameGraph.addDependency(simEndNode, FrameGraph::CpuDependency{simStartNode, 0});
+    frameGraph.addDependency(simEndNode, FrameGraph::CpuDependency{inputSampleNode, 0});
+    frameGraph.addDependency(presentFrameNode, FrameGraph::CpuDependency{recordStartNode, 0});
+    frameGraph.addDependency(presentFrameNode, FrameGraph::EnqueueDependency{recordStartNode, 0});
+    frameGraph.addDependency(recordEndNode, FrameGraph::CpuDependency{presentFrameNode, 0});
+    frameGraph.addDependency(recordEndNode, FrameGraph::EnqueueDependency{presentFrameNode, 0});
+    frameGraph.addDependency(executeStartNode, FrameGraph::CpuDependency{recordStartNode, 0});
+    frameGraph.addDependency(executeEndNode, FrameGraph::CpuDependency{executeStartNode, 0});
+    frameGraph.addDependency(
+      presentFrameNode,
+      FrameGraph::QueueCpuDependency{presentFrameNode, presentQueue.queue, presentDepOffset});
 
     ISimulation::FrameGraphData simData;
     simData.simStart = simStartNode;
@@ -238,7 +214,14 @@ void Engine::initGame(IRenderer* _renderer, ISimulation* _simulation) {
     renderData.present = presentFrameNode;
 
     simulation->initSimulationFrameGraph(frameGraph, simData);
-    renderer->initRenderFrameGraph(frameGraph, renderData);
+    FrameGraph::NodeId renderNode = FrameGraph::INVALID_NODE;
+    drv::QueuePtr renderQueue = nullptr;
+    if (renderer->initRenderFrameGraph(frameGraph, renderData, renderNode, renderQueue)) {
+        assert(renderNode != FrameGraph::INVALID_NODE && renderQueue != nullptr);
+        frameGraph.addDependency(
+          presentFrameNode,
+          FrameGraph::QueueQueueDependency{renderNode, renderQueue, presentQueue.queue, 0});
+    }
 
     frameGraph.validate();
 }
@@ -257,10 +240,6 @@ void Engine::simulationLoop(volatile std::atomic<FrameGraph::FrameId>* simulatio
                             const volatile std::atomic<FrameGraph::FrameId>* stopFrame) {
     simulationFrame->store(0);
     while (!frameGraph.isStopped() && *simulationFrame <= *stopFrame) {
-        if (!sampleInput(*simulationFrame)) {
-            assert(frameGraph.isStopped());
-            break;
-        }
         {
             FrameGraph::NodeHandle simStartHandle =
               frameGraph.acquireNode(simStartNode, *simulationFrame);
@@ -268,6 +247,10 @@ void Engine::simulationLoop(volatile std::atomic<FrameGraph::FrameId>* simulatio
                 assert(frameGraph.isStopped());
                 break;
             }
+        }
+        if (!sampleInput(*simulationFrame)) {
+            assert(frameGraph.isStopped());
+            break;
         }
         simulation->simulate(*simulationFrame);
         {

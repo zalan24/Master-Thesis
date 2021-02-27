@@ -20,17 +20,35 @@ class FrameGraph
     using NodeId = uint32_t;
     static constexpr NodeId INVALID_NODE = std::numeric_limits<NodeId>::max();
     static constexpr FrameId INVALID_FRAME = std::numeric_limits<FrameId>::max();
-    struct NodeDependency
+    //  static constexpr uint32_t NO_SYNC = std::numeric_limits<uint32_t>::max();
+    struct CpuDependency
     {
-        static constexpr uint32_t NO_SYNC = std::numeric_limits<uint32_t>::max();
-        // sync between src#(frameId-offset) and currentNode#frameId
-        // offset of 0 means serial execution
         NodeId srcNode;
-        uint32_t cpu_cpuOffset = 0;
-        uint32_t enq_enqOffset = NO_SYNC;
-        // uint32_t cpu_gpuOffset = NO_SYNC;
-        // uint32_t gpu_cpuOffset = NO_SYNC;
-        // uint32_t gpu_gpuOffset = NO_SYNC;
+        uint32_t offset = 0;
+    };
+    struct EnqueueDependency
+    {
+        NodeId srcNode;
+        uint32_t offset = 0;
+    };
+    struct CpuQueueDependency
+    {
+        NodeId srcNode;
+        drv::QueuePtr dstQueue;
+        uint32_t offset = 0;
+    };
+    struct QueueCpuDependency
+    {
+        NodeId srcNode;
+        drv::QueuePtr srcQueue;
+        uint32_t offset = 0;
+    };
+    struct QueueQueueDependency
+    {
+        NodeId srcNode;
+        drv::QueuePtr srcQueue;
+        drv::QueuePtr dstQueue;
+        uint32_t offset = 0;
     };
     class Node
     {
@@ -38,13 +56,14 @@ class FrameGraph
         Node(const std::string& name,
              bool hasExecution);  // current node can only run serially with itself
 
-        //   Node(const std::string& name, NodeDependency selfDependency,
-        //        bool hasExecution);  // for parallel execution for several frameIds
-
         Node(Node&& other);
         Node& operator=(Node&& other);
 
-        void addDependency(NodeDependency dep);
+        void addDependency(CpuDependency dep);
+        void addDependency(EnqueueDependency dep);
+        void addDependency(CpuQueueDependency dep);
+        void addDependency(QueueCpuDependency dep);
+        void addDependency(QueueQueueDependency dep);
 
         friend class FrameGraph;
 
@@ -53,8 +72,11 @@ class FrameGraph
      private:
         std::string name;
         // TODO these could be organized into multiple vectors based on dependency type
-        std::vector<NodeDependency> deps;
-        NodeDependency selfDep;  // srcNode is ignored
+        std::vector<CpuDependency> cpuDeps;
+        std::vector<EnqueueDependency> enqDeps;
+        std::vector<CpuQueueDependency> cpuQueDeps;
+        std::vector<QueueCpuDependency> queCpuDeps;
+        std::vector<QueueQueueDependency> queQueDeps;
         std::unique_ptr<ExecutionQueue> localExecutionQueue;
         std::vector<NodeId> enqIndirectChildren;
 
@@ -99,7 +121,11 @@ class FrameGraph
     NodeId addNode(Node&& node);
     Node* getNode(NodeId id);
     const Node* getNode(NodeId id) const;
-    void addDependency(NodeId target, NodeDependency dep);
+    void addDependency(NodeId target, CpuDependency dep);
+    void addDependency(NodeId target, EnqueueDependency dep);
+    void addDependency(NodeId target, CpuQueueDependency dep);
+    void addDependency(NodeId target, QueueCpuDependency dep);
+    void addDependency(NodeId target, QueueQueueDependency dep);
 
     NodeHandle acquireNode(NodeId node, FrameId frame);
     NodeHandle tryAcquireNode(NodeId node, FrameId frame, uint64_t timeoutNsec);
@@ -122,7 +148,13 @@ class FrameGraph
     mutable std::mutex enqueueMutex;
 
     void release(const NodeHandle& handle);
-    void validateFlowGraph(const std::function<uint32_t(const NodeDependency)>& f) const;
+    struct DependencyInfo
+    {
+        NodeId srcNode;
+        uint32_t offset;
+    };
+    void validateFlowGraph(const std::function<uint32_t(const Node&)>& depCountF,
+                           const std::function<DependencyInfo(const Node&, uint32_t)>& depF) const;
     FrameId calcMaxEnqueueFrame(NodeId nodeId, FrameId frameId) const;
     void checkAndEnqueue(NodeId nodeId, FrameId frameId, bool traverse);
 };
