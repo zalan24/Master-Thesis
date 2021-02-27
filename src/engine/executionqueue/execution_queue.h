@@ -1,5 +1,6 @@
 #pragma once
 
+#include <atomic>
 #include <condition_variable>
 #include <functional>
 #include <mutex>
@@ -68,4 +69,5 @@ class ExecutionQueue
     moodycamel::ConcurrentQueue<ExecutionPackage> q;
     std::mutex mutex;
     std::condition_variable cv;
+    std::atomic<bool> isEmpty = true;
 };

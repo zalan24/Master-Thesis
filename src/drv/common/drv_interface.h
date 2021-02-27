@@ -2,6 +2,8 @@
 
 #include "drvtypes.h"
 
+#include <mutex>
+
 class IWindow;
 
 class Input;
@@ -143,5 +145,7 @@ class IDriver
     virtual ImageViewPtr create_image_view(LogicalDevicePtr device,
                                            const ImageViewCreateInfo* info) = 0;
     virtual bool destroy_image_view(LogicalDevicePtr device, ImageViewPtr view) = 0;
+    virtual std::unique_lock<std::mutex> lock_queue(LogicalDevicePtr device, QueuePtr queue) = 0;
+    virtual QueueFamilyPtr get_queue_family(LogicalDevicePtr device, QueuePtr queue) = 0;
 };
 }  // namespace drv

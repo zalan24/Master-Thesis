@@ -41,10 +41,13 @@ void Game::initSimulationFrameGraph(FrameGraph& frameGraph,
 
 void Game::record(FrameGraph& frameGraph, FrameGraph::FrameId frameId) {
     std::cout << "Record: " << frameId << std::endl;
+    Engine::QueueInfo queues = engine->getQueues();
     FrameGraph::NodeHandle testDrawHandle = frameGraph.acquireNode(testDraw, frameId);
     if (testDrawHandle) {
         std::this_thread::sleep_for(std::chrono::milliseconds(4));
         // Engine::AcquiredImageData engine->acquiredSwapchainImage(testDrawHandle); // TODO
+        Engine::CommandBufferRecorder recorder =
+          engine->acquireCommandRecorder(testDrawHandle, frameId, queues.renderQueue);
     }
     else
         assert(frameGraph.isStopped());

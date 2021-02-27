@@ -209,7 +209,6 @@ LogicalDevice::LogicalDevice(CreateInfo&& info) {
 }
 
 LogicalDevice::operator LogicalDevicePtr() const {
-    CHECK_THREAD;
     return ptr;
 }
 
@@ -296,7 +295,6 @@ CommandPool::~CommandPool() noexcept {
 }
 
 void CommandPool::close() {
-    CHECK_THREAD;
     if (ptr != NULL_HANDLE) {
         destroy_command_pool(device, ptr);
         ptr = NULL_HANDLE;
@@ -366,7 +364,6 @@ CommandBuffer::operator bool() const {
 }
 
 void CommandBuffer::close() {
-    CHECK_THREAD;
     if (ptr == NULL_HANDLE)
         return;
     drv_assert(free_command_buffer(device, pool, 1, &ptr), "Could not free command buffer");

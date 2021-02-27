@@ -69,7 +69,7 @@ class Engine
         drv::SemaphorePtr imageAvailableSemaphore;
         drv::SemaphorePtr renderFinishedSemaphore;
     };
-    AcquiredImageData acquiredSwapchainImage(FrameGraph::NodeHandle acquiringNodeHandle);
+    AcquiredImageData acquiredSwapchainImage(FrameGraph::NodeHandle& acquiringNodeHandle);
 
     struct QueueInfo
     {
@@ -81,6 +81,38 @@ class Engine
         drv::QueuePtr inputQueue;
     };
     QueueInfo getQueues() const;
+
+    class CommandBufferRecorder
+    {
+     public:
+        friend class Engine;
+
+        CommandBufferRecorder(const CommandBufferRecorder&) = delete;
+        CommandBufferRecorder& operator=(const CommandBufferRecorder&) = delete;
+        CommandBufferRecorder(CommandBufferRecorder&& other);
+        CommandBufferRecorder& operator=(CommandBufferRecorder&& other);
+
+        ~CommandBufferRecorder();
+
+     private:
+        CommandBufferRecorder(std::unique_lock<std::mutex>&& queueLock, drv::QueuePtr queue, FrameGraph* frameGraph,
+                              Engine* engine, FrameGraph::NodeHandle* nodeHandle,
+                              FrameGraph::FrameId frameId,
+                              drv::CommandBufferCirculator::CommandBufferHandle&& cmdBuffer);
+
+        std::unique_lock<std::mutex> queueLock;
+        drv::QueuePtr queue;
+        FrameGraph* frameGraph;
+        Engine* engine;
+        FrameGraph::NodeHandle* nodeHandle;
+        FrameGraph::FrameId frameId;
+        drv::CommandBufferCirculator::CommandBufferHandle cmdBuffer;
+
+        void close();
+    };
+
+    CommandBufferRecorder acquireCommandRecorder(FrameGraph::NodeHandle& acquiringNodeHandle,
+                                                 FrameGraph::FrameId frameId, drv::QueuePtr queue);
 
  private:
     struct ErrorCallback

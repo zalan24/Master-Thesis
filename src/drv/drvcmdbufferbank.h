@@ -73,6 +73,7 @@ class CommandBufferCirculator
     CommandBufferHandle acquire();
     bool tryAcquire(CommandBufferHandle& handle);
 
+    void startExecution(CommandBufferHandle& handle);
     void finished(CommandBufferHandle&& handle);
 
     static CommandPoolCreateInfo get_create_info();

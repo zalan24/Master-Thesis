@@ -301,7 +301,7 @@ Engine::QueueInfo Engine::getQueues() const {
 }
 
 Engine::AcquiredImageData Engine::acquiredSwapchainImage(
-  FrameGraph::NodeHandle acquiringNodeHandle) {
+  FrameGraph::NodeHandle& acquiringNodeHandle) {
     // TODO latency slop -> acquiringNodeHandle
     bool acquiredSuccess =
       swapchain.acquire(syncBlock.imageAvailableSemaphores[acquireImageSemaphoreId]);
@@ -320,6 +320,15 @@ Engine::AcquiredImageData Engine::acquiredSwapchainImage(
     acquireImageSemaphoreId =
       (acquireImageSemaphoreId + 1) % syncBlock.imageAvailableSemaphores.size();
     return ret;
+}
+
+Engine::CommandBufferRecorder Engine::acquireCommandRecorder(
+  FrameGraph::NodeHandle& acquiringNodeHandle, FrameGraph::FrameId frameId, drv::QueuePtr queue) {
+    drv::CommandBufferBankGroupInfo acquireInfo(drv::get_queue_family(device, queue), false,
+                                                drv::CommandBufferType::PRIMARY);
+    std::unique_lock<std::mutex> lock = drv::lock_queue(device, queue);
+    return CommandBufferRecorder(std::move(lock), queue, &frameGraph, this, &acquiringNodeHandle,
+                                 frameId, cmdBufferBank.acquire(acquireInfo));
 }
 
 void Engine::recordCommandsLoop(const volatile std::atomic<FrameGraph::FrameId>* stopFrame) {
@@ -384,6 +393,7 @@ bool Engine::execute(ExecutionPackage&& package) {
                     assert(frameGraph.isStopped());
                     return false;
                 }
+                // std::cout << "Execute start: " << message.value1 << std::endl;
             } break;
             case ExecutionPackage::Message::RECORD_END: {
                 FrameGraph::NodeHandle executionEndHandle = frameGraph.acquireNode(
@@ -393,9 +403,10 @@ bool Engine::execute(ExecutionPackage&& package) {
                     assert(frameGraph.isStopped());
                     return false;
                 }
+                // std::cout << "Execute end: " << message.value1 << std::endl;
             } break;
             case ExecutionPackage::Message::PRESENT:
-                // present(state, message.value1);
+                present(message.value1);
                 break;
             case ExecutionPackage::Message::RECURSIVE_END_MARKER:
                 break;
@@ -410,7 +421,10 @@ bool Engine::execute(ExecutionPackage&& package) {
     else if (std::holds_alternative<ExecutionPackage::CommandBufferPackage>(package.package)) {
         ExecutionPackage::CommandBufferPackage& cmdBuffer =
           std::get<ExecutionPackage::CommandBufferPackage>(package.package);
-        drv::drv_assert(false, "Not implemented");
+        // TODO
+        cmdBuffer.bufferHandle.circulator->startExecution(cmdBuffer.bufferHandle);
+        cmdBuffer.bufferHandle.circulator->finished(
+          std::move(cmdBuffer.bufferHandle));  // TODO move to a separate thread and wait
     }
     else if (std::holds_alternative<ExecutionPackage::RecursiveQueue>(package.package)) {
         ExecutionPackage::RecursiveQueue& queue =
@@ -493,4 +507,57 @@ void Engine::gameLoop() {
         executeThread.join();
         throw;
     }
+}
+
+Engine::CommandBufferRecorder::CommandBufferRecorder(
+  std::unique_lock<std::mutex>&& _queueLock, drv::QueuePtr _queue, FrameGraph* _frameGraph,
+  Engine* _engine, FrameGraph::NodeHandle* _nodeHandle, FrameGraph::FrameId _frameId,
+  drv::CommandBufferCirculator::CommandBufferHandle&& _cmdBuffer)
+  : queueLock(std::move(_queueLock)),
+    queue(_queue),
+    frameGraph(_frameGraph),
+    engine(_engine),
+    nodeHandle(_nodeHandle),
+    frameId(_frameId),
+    cmdBuffer(std::move(_cmdBuffer)) {
+    assert(cmdBuffer);
+}
+
+Engine::CommandBufferRecorder::CommandBufferRecorder(CommandBufferRecorder&& other)
+  : queueLock(std::move(other.queueLock)),
+    queue(other.queue),
+    frameGraph(other.frameGraph),
+    engine(other.engine),
+    nodeHandle(other.nodeHandle),
+    frameId(other.frameId),
+    cmdBuffer(std::move(other.cmdBuffer)) {
+    other.engine = nullptr;
+}
+
+Engine::CommandBufferRecorder& Engine::CommandBufferRecorder::operator=(
+  CommandBufferRecorder&& other) {
+    if (&other == this)
+        return *this;
+    close();
+    queueLock = std::move(other.queueLock);
+    queue = other.queue;
+    frameGraph = other.frameGraph;
+    engine = other.engine;
+    nodeHandle = other.nodeHandle;
+    frameId = other.frameId;
+    cmdBuffer = std::move(other.cmdBuffer);
+    other.engine = nullptr;
+    return *this;
+}
+
+Engine::CommandBufferRecorder::~CommandBufferRecorder() {
+    close();
+}
+
+void Engine::CommandBufferRecorder::close() {
+    if (engine == nullptr)
+        return;
+    ExecutionQueue* queue = frameGraph->getExecutionQueue(*nodeHandle);
+    queue->push(
+      ExecutionPackage(ExecutionPackage::CommandBufferPackage{queue, std::move(cmdBuffer)}));
 }

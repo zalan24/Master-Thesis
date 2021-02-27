@@ -1,5 +1,7 @@
 #pragma once
 
+#include <mutex>
+#include <unordered_map>
 #include <vector>
 
 #include <drv_interface.h>
@@ -164,6 +166,18 @@ class DrvVulkan final : public drv::IDriver
     drv::ImageViewPtr create_image_view(drv::LogicalDevicePtr device,
                                         const drv::ImageViewCreateInfo* info) override;
     bool destroy_image_view(drv::LogicalDevicePtr device, drv::ImageViewPtr view) override;
+    std::unique_lock<std::mutex> lock_queue(drv::LogicalDevicePtr device,
+                                            drv::QueuePtr queue) override;
+    drv::QueueFamilyPtr get_queue_family(drv::LogicalDevicePtr device, drv::QueuePtr queue) override;
+
+ private:
+    struct LogicalDeviceData
+    {
+        std::unordered_map<drv::QueuePtr, drv::QueueFamilyPtr> queueToFamily;
+        std::unordered_map<drv::QueueFamilyPtr, std::mutex> queueFamilyMutexes;
+    };
+    std::mutex devicesDataMutex;
+    std::unordered_map<drv::LogicalDevicePtr, LogicalDeviceData> devicesData;
 };
 
 // TODO

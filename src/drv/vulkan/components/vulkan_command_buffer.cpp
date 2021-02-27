@@ -16,12 +16,12 @@ drv::CommandBufferPtr DrvVulkan::create_command_buffer(drv::LogicalDevicePtr dev
     VkCommandBufferAllocateInfo allocInfo = {};
     allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
     allocInfo.commandPool = reinterpret_cast<VkCommandPool>(pool);
-    drv::drv_assert(false, "Implement secondary command buffer");
     switch (info->type) {
         case drv::CommandBufferType::PRIMARY:
             allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
             break;
         case drv::CommandBufferType::SECONDARY:
+            drv::drv_assert(false, "Implement secondary command buffer");
             allocInfo.level = VK_COMMAND_BUFFER_LEVEL_SECONDARY;
             break;
     }

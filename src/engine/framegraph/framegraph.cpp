@@ -413,6 +413,8 @@ FrameGraph::FrameId FrameGraph::calcMaxEnqueueFrame(NodeId nodeId, FrameId frame
 
 ExecutionQueue* FrameGraph::getExecutionQueue(NodeHandle& handle) {
     Node* node = getNode(handle.node);
+    if (!node->hasExecution())
+        throw std::runtime_error("Execution queue acquired for a node, that has no execution");
     if (node->enqueueFrameClearance >= handle.frameId
         && node->enqueueFrameClearance != INVALID_FRAME)
         return &executionQueue;
