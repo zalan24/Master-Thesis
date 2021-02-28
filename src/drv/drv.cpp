@@ -400,9 +400,12 @@ std::unique_lock<std::mutex> drv::lock_queue(LogicalDevicePtr device, QueuePtr q
     return current_driver_interface->lock_queue(device, queue);
 }
 
-drv::QueueFamilyPtr drv::get_queue_family(LogicalDevicePtr device, QueuePtr queue)
-{
+drv::QueueFamilyPtr drv::get_queue_family(LogicalDevicePtr device, QueuePtr queue) {
     return current_driver_interface->get_queue_family(device, queue);
+}
+
+bool drv::device_wait_idle(LogicalDevicePtr device) {
+    return current_driver_interface->device_wait_idle(device);
 }
 
 // TODO

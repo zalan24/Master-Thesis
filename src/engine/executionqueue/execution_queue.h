@@ -37,7 +37,7 @@ struct ExecutionPackage
         Message msg;
         size_t value1;
         size_t value2;
-        const void* valuePtr;
+        void* valuePtr;
     };
 
     struct RecursiveQueue
@@ -45,7 +45,15 @@ struct ExecutionPackage
         ExecutionQueue* queue;  // reads until next RECURSIVE_END_MARKER
     };
 
-    std::variant<CommandBufferPackage, Functor, MessagePackage, RecursiveQueue> package;
+    struct CustomFunctor
+    {
+        virtual void call() = 0;
+        virtual ~CustomFunctor() {}
+    };
+
+    std::variant<CommandBufferPackage, Functor, MessagePackage, RecursiveQueue,
+                 std::unique_ptr<CustomFunctor>>
+      package;
     // An optional mutex maybe?
 
     ExecutionPackage() = default;
@@ -53,13 +61,13 @@ struct ExecutionPackage
     ExecutionPackage(Functor&& f) : package(std::move(f)) {}
     ExecutionPackage(MessagePackage&& m) : package(std::move(m)) {}
     ExecutionPackage(RecursiveQueue&& q) : package(std::move(q)) {}
+    ExecutionPackage(std::unique_ptr<CustomFunctor>&& f) : package(std::move(f)) {}
 };
 
 class ExecutionQueue
 {
  public:
-    void push(ExecutionPackage&& package);
-    void push(const ExecutionPackage& package);
+    void push(ExecutionPackage package);
 
     bool pop(ExecutionPackage& package);
 

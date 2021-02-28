@@ -75,3 +75,8 @@ drv::QueuePtr DrvVulkan::get_queue(drv::LogicalDevicePtr device, drv::QueueFamil
     }
     return reinterpret_cast<drv::QueuePtr>(queue);
 }
+
+bool DrvVulkan::device_wait_idle(drv::LogicalDevicePtr device) {
+    VkResult result = vkDeviceWaitIdle(convertDevice(device));
+    return result == VK_SUCCESS;
+}

@@ -172,6 +172,7 @@ void Engine::initGame(IRenderer* _renderer, ISimulation* _simulation) {
     renderer = _renderer;
     inputSampleNode = frameGraph.addNode(FrameGraph::Node("sample_input", false));
     presentFrameNode = frameGraph.addNode(FrameGraph::Node("presentFrame", true));
+    cleanUpNode = frameGraph.addNode(FrameGraph::Node("cleanUp", false));
     // These are just marker nodes, no actual work is done in them
     simStartNode = frameGraph.addNode(FrameGraph::Node("simulation/start", false));
     simEndNode = frameGraph.addNode(FrameGraph::Node("simulation/end", false));
@@ -189,6 +190,7 @@ void Engine::initGame(IRenderer* _renderer, ISimulation* _simulation) {
         throw std::runtime_error(
           "maxFramesInFlight must be at least the value of maxFramesInExecutionQueue");
     const uint32_t presentDepOffset = static_cast<uint32_t>(config.maxFramesInFlight - 1);
+    const uint32_t cleanUpCpuOffset = static_cast<uint32_t>(config.maxFramesInFlight + 1);
 
     frameGraph.addDependency(inputSampleNode, FrameGraph::CpuDependency{simStartNode, 0});
     frameGraph.addDependency(simStartNode, FrameGraph::CpuDependency{simEndNode, 1});
@@ -208,6 +210,11 @@ void Engine::initGame(IRenderer* _renderer, ISimulation* _simulation) {
     frameGraph.addDependency(
       presentFrameNode,
       FrameGraph::QueueCpuDependency{presentFrameNode, presentQueue.queue, presentDepOffset});
+    frameGraph.addDependency(
+      cleanUpNode, FrameGraph::QueueCpuDependency{presentFrameNode, presentQueue.queue, 0});
+    frameGraph.addDependency(cleanUpNode, FrameGraph::CpuDependency{executeEndNode, 0});
+    frameGraph.addDependency(recordStartNode,
+                             FrameGraph::CpuDependency{cleanUpNode, cleanUpCpuOffset});
 
     ISimulation::FrameGraphData simData;
     simData.simStart = simStartNode;
@@ -335,6 +342,7 @@ void Engine::recordCommandsLoop(const volatile std::atomic<FrameGraph::FrameId>*
     FrameGraph::FrameId recordFrame = 0;
     while (!frameGraph.isStopped() && recordFrame <= *stopFrame) {
         // TODO preframe stuff (resize)
+        std::unique_ptr<Garbage> garbage;
         {
             FrameGraph::NodeHandle recStartHandle =
               frameGraph.acquireNode(recordStartNode, recordFrame);
@@ -342,9 +350,11 @@ void Engine::recordCommandsLoop(const volatile std::atomic<FrameGraph::FrameId>*
                 assert(frameGraph.isStopped());
                 break;
             }
+            garbage = std::make_unique<Garbage>(recordFrame);  // TODO create in frame mem
             frameGraph.getExecutionQueue(recStartHandle)
               ->push(ExecutionPackage(ExecutionPackage::MessagePackage{
-                ExecutionPackage::Message::RECORD_START, recordFrame, 0, nullptr}));
+                ExecutionPackage::Message::RECORD_START, recordFrame, 0,
+                static_cast<void*>(garbage.get())}));
         }
         renderer->record(frameGraph, recordFrame);
         {
@@ -367,6 +377,20 @@ void Engine::recordCommandsLoop(const volatile std::atomic<FrameGraph::FrameId>*
                 assert(frameGraph.isStopped());
                 break;
             }
+            struct ResetGarbageFunctor : ExecutionPackage::CustomFunctor
+            {
+                moodycamel::ConcurrentQueue<std::unique_ptr<Garbage>>* garbageQueue;
+                std::unique_ptr<Garbage> garb;
+                ResetGarbageFunctor(
+                  moodycamel::ConcurrentQueue<std::unique_ptr<Garbage>>* _garbageQueue,
+                  std::unique_ptr<Garbage>&& _garb)
+                  : garbageQueue(_garbageQueue), garb(std::move(_garb)) {}
+                ~ResetGarbageFunctor() override {}
+                void call() override { garbageQueue->enqueue(std::move(garb)); }
+            };
+            frameGraph.getExecutionQueue(recEndHandle)
+              ->push(ExecutionPackage(std::make_unique<ResetGarbageFunctor>(
+                &garbageQueue, std::move(garbage))));  // TODO create in frame mem
             frameGraph.getExecutionQueue(recEndHandle)
               ->push(ExecutionPackage(ExecutionPackage::MessagePackage{
                 ExecutionPackage::Message::RECORD_END, recordFrame, 0, nullptr}));
@@ -381,23 +405,27 @@ void Engine::recordCommandsLoop(const volatile std::atomic<FrameGraph::FrameId>*
       ExecutionPackage::MessagePackage{ExecutionPackage::Message::QUIT, 0, 0, nullptr}));
 }
 
-bool Engine::execute(ExecutionPackage&& package) {
+bool Engine::execute(Garbage*& garbage, FrameGraph::FrameId& executionFrame,
+                     ExecutionPackage&& package) {
     if (std::holds_alternative<ExecutionPackage::MessagePackage>(package.package)) {
         ExecutionPackage::MessagePackage& message =
           std::get<ExecutionPackage::MessagePackage>(package.package);
         switch (message.msg) {
             case ExecutionPackage::Message::RECORD_START: {
-                FrameGraph::NodeHandle executionStartHandle = frameGraph.acquireNode(
-                  executeStartNode, static_cast<FrameGraph::FrameId>(message.value1));
+                executionFrame = static_cast<FrameGraph::FrameId>(message.value1);
+                FrameGraph::NodeHandle executionStartHandle =
+                  frameGraph.acquireNode(executeStartNode, executionFrame);
                 if (!executionStartHandle) {
                     assert(frameGraph.isStopped());
                     return false;
                 }
+                garbage = static_cast<Garbage*>(message.valuePtr);
                 // std::cout << "Execute start: " << message.value1 << std::endl;
             } break;
             case ExecutionPackage::Message::RECORD_END: {
-                FrameGraph::NodeHandle executionEndHandle = frameGraph.acquireNode(
-                  executeEndNode, static_cast<FrameGraph::FrameId>(message.value1));
+                assert(executionFrame == static_cast<FrameGraph::FrameId>(message.value1));
+                FrameGraph::NodeHandle executionEndHandle =
+                  frameGraph.acquireNode(executeEndNode, executionFrame);
                 // queued work gets finished
                 if (!executionEndHandle) {
                     assert(frameGraph.isStopped());
@@ -418,13 +446,19 @@ bool Engine::execute(ExecutionPackage&& package) {
         ExecutionPackage::Functor& functor = std::get<ExecutionPackage::Functor>(package.package);
         functor();
     }
+    else if (std::holds_alternative<std::unique_ptr<ExecutionPackage::CustomFunctor>>(
+               package.package)) {
+        std::unique_ptr<ExecutionPackage::CustomFunctor>& functor =
+          std::get<std::unique_ptr<ExecutionPackage::CustomFunctor>>(package.package);
+        functor->call();
+    }
     else if (std::holds_alternative<ExecutionPackage::CommandBufferPackage>(package.package)) {
         ExecutionPackage::CommandBufferPackage& cmdBuffer =
           std::get<ExecutionPackage::CommandBufferPackage>(package.package);
         // TODO
         cmdBuffer.bufferHandle.circulator->startExecution(cmdBuffer.bufferHandle);
-        cmdBuffer.bufferHandle.circulator->finished(
-          std::move(cmdBuffer.bufferHandle));  // TODO move to a separate thread and wait
+        assert(garbage != nullptr && garbage->getFrameId() == executionFrame);
+        garbage->resetCommandBuffer(std::move(cmdBuffer.bufferHandle));
     }
     else if (std::holds_alternative<ExecutionPackage::RecursiveQueue>(package.package)) {
         ExecutionPackage::RecursiveQueue& queue =
@@ -437,7 +471,7 @@ bool Engine::execute(ExecutionPackage&& package) {
                 if (message.msg == ExecutionPackage::Message::RECURSIVE_END_MARKER)
                     break;
             }
-            if (!execute(std::move(p)))
+            if (!execute(garbage, executionFrame, std::move(p)))
                 return false;
         }
     }
@@ -445,13 +479,43 @@ bool Engine::execute(ExecutionPackage&& package) {
 }
 
 void Engine::executeCommandsLoop() {
+    std::unique_lock<std::mutex> executionLock(executionMutex);
+    Garbage* garbage = nullptr;
+    FrameGraph::FrameId executionFrame = 0;
     while (true) {
         ExecutionPackage package;
         ExecutionQueue* executionQueue = frameGraph.getGlobalExecutionQueue();
         executionQueue->waitForPackage();
         while (executionQueue->pop(package))
-            if (!execute(std::move(package)))
+            if (!execute(garbage, executionFrame, std::move(package)))
                 return;
+    }
+}
+
+void Engine::cleanUpLoop(const volatile std::atomic<FrameGraph::FrameId>* stopFrame) {
+    FrameGraph::FrameId cleanUpFrame = 0;
+    while (!frameGraph.isStopped() && cleanUpFrame <= *stopFrame) {
+        FrameGraph::NodeHandle cleanUpHandle = frameGraph.acquireNode(cleanUpNode, cleanUpFrame);
+        if (!cleanUpHandle) {
+            assert(frameGraph.isStopped());
+            break;
+        }
+        std::unique_ptr<Garbage> garbage;
+        assert(garbageQueue.try_dequeue(garbage));
+        assert(garbage && garbage->getFrameId() == cleanUpFrame);
+        garbage.reset();  // this does the cleanup
+        {
+            std::shared_lock<std::shared_mutex> lock(stopFrameMutex);
+            cleanUpFrame++;
+        }
+    }
+    {
+        // wait for execution queue to finish
+        std::unique_lock<std::mutex> executionLock(executionMutex);
+        drv::device_wait_idle(device);
+        std::unique_ptr<Garbage> garbage;
+        while (garbageQueue.try_dequeue(garbage))
+            garbage.reset();
     }
 }
 
@@ -469,11 +533,13 @@ void Engine::gameLoop() {
     std::thread simulationThread(&Engine::simulationLoop, this, &simulationFrame, &stopFrame);
     std::thread recordThread(&Engine::recordCommandsLoop, this, &stopFrame);
     std::thread executeThread(&Engine::executeCommandsLoop, this);
+    std::thread cleanUpThread(&Engine::cleanUpLoop, this, &stopFrame);
 
     try {
         set_thread_name(&simulationThread, "simulation");
         set_thread_name(&recordThread, "record");
         set_thread_name(&executeThread, "execute");
+        set_thread_name(&cleanUpThread, "cleanUp");
 
         IWindow* w = window;
         while (!w->shouldClose()) {
@@ -497,6 +563,7 @@ void Engine::gameLoop() {
         simulationThread.join();
         recordThread.join();
         executeThread.join();
+        cleanUpThread.join();
     }
     catch (...) {
         std::cerr << "An exception happend during gameLoop. Waiting for threads to join..."
@@ -505,6 +572,7 @@ void Engine::gameLoop() {
         simulationThread.join();
         recordThread.join();
         executeThread.join();
+        cleanUpThread.join();
         throw;
     }
 }
@@ -560,4 +628,40 @@ void Engine::CommandBufferRecorder::close() {
     ExecutionQueue* queue = frameGraph->getExecutionQueue(*nodeHandle);
     queue->push(
       ExecutionPackage(ExecutionPackage::CommandBufferPackage{queue, std::move(cmdBuffer)}));
+}
+
+Engine::Garbage::Garbage(FrameGraph::FrameId _frameId) : frameId(_frameId) {
+}
+
+Engine::Garbage::Garbage(Garbage&& other)
+  : frameId(other.frameId), cmdBuffersToReset(std::move(other.cmdBuffersToReset)) {
+}
+
+Engine::Garbage& Engine::Garbage::operator=(Garbage&& other) {
+    if (&other == this)
+        return *this;
+    close();
+    frameId = other.frameId;
+    cmdBuffersToReset = std::move(other.cmdBuffersToReset);
+    return *this;
+}
+
+Engine::Garbage::~Garbage() {
+    close();
+}
+
+void Engine::Garbage::resetCommandBuffer(
+  drv::CommandBufferCirculator::CommandBufferHandle&& cmdBuffer) {
+    std::unique_lock<std::mutex> lock(mutex);
+    cmdBuffersToReset.push_back(std::move(cmdBuffer));
+}
+
+FrameGraph::FrameId Engine::Garbage::getFrameId() const {
+    return frameId;
+}
+
+void Engine::Garbage::close() noexcept {
+    for (auto& cmdBuffer : cmdBuffersToReset)
+        cmdBuffer.circulator->finished(std::move(cmdBuffer));
+    cmdBuffersToReset.clear();
 }

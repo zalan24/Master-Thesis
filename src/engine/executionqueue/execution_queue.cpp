@@ -1,16 +1,7 @@
 #include "execution_queue.h"
 
-void ExecutionQueue::push(ExecutionPackage&& package) {
+void ExecutionQueue::push(ExecutionPackage package) {
     q.enqueue(std::move(package));
-    bool expected = true;
-    if (isEmpty.compare_exchange_strong(expected, false)) {
-        std::unique_lock<std::mutex> lk(mutex);
-        cv.notify_one();
-    }
-}
-
-void ExecutionQueue::push(const ExecutionPackage& package) {
-    q.enqueue(package);
     bool expected = true;
     if (isEmpty.compare_exchange_strong(expected, false)) {
         std::unique_lock<std::mutex> lk(mutex);

@@ -9,7 +9,6 @@ set_target_properties(  AnimationsEngine
 target_include_directories(AnimationsEngine PUBLIC . ${CMAKE_CURRENT_BINARY_DIR})
 target_link_libraries(AnimationsEngine PRIVATE
     json_external
-    concurrent_queue_external
 )
 target_link_libraries(AnimationsEngine PUBLIC
     AnimationsEntities
@@ -23,4 +22,5 @@ target_link_libraries(AnimationsEngine PUBLIC
     AnimationsShaderManager
     AnimationsFramegraph
     AnimationsExecutionQueue
+    concurrent_queue_external
 )

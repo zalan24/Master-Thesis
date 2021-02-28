@@ -291,6 +291,8 @@ FrameGraph::NodeHandle FrameGraph::acquireNode(NodeId nodeId, FrameId frame) {
     if (isStopped())
         return NodeHandle();
     Node* node = getNode(nodeId);
+    assert(node->completedFrame + 1 == frame
+           || frame == 0 && node->completedFrame == INVALID_FRAME);
     for (const CpuDependency& dep : node->cpuDeps) {
         if (dep.offset <= frame) {
             FrameId requiredFrame = frame - dep.offset;

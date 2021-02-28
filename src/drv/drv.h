@@ -182,6 +182,7 @@ ImageViewPtr create_image_view(LogicalDevicePtr device, const ImageViewCreateInf
 bool destroy_image_view(LogicalDevicePtr device, ImageViewPtr view);
 std::unique_lock<std::mutex> lock_queue(LogicalDevicePtr device, QueuePtr queue);
 QueueFamilyPtr get_queue_family(LogicalDevicePtr device, QueuePtr queue);
+bool device_wait_idle(LogicalDevicePtr device);
 
 // ShaderModulePtr get_shader_module(LogicalDevicePtr device, ShaderIdType shaderId);
 // unsigned int get_num_shader_descriptor_set_layouts(LogicalDevicePtr device, ShaderIdType shaderId);

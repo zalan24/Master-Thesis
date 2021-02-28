@@ -6,6 +6,8 @@
 #include <string>
 #include <thread>
 
+#include <concurrentqueue.h>
+
 #include <drv.h>
 #include <drv_queue_manager.h>
 #include <drv_wrappers.h>
@@ -95,9 +97,9 @@ class Engine
         ~CommandBufferRecorder();
 
      private:
-        CommandBufferRecorder(std::unique_lock<std::mutex>&& queueLock, drv::QueuePtr queue, FrameGraph* frameGraph,
-                              Engine* engine, FrameGraph::NodeHandle* nodeHandle,
-                              FrameGraph::FrameId frameId,
+        CommandBufferRecorder(std::unique_lock<std::mutex>&& queueLock, drv::QueuePtr queue,
+                              FrameGraph* frameGraph, Engine* engine,
+                              FrameGraph::NodeHandle* nodeHandle, FrameGraph::FrameId frameId,
                               drv::CommandBufferCirculator::CommandBufferHandle&& cmdBuffer);
 
         std::unique_lock<std::mutex> queueLock;
@@ -130,6 +132,30 @@ class Engine
         std::vector<drv::Semaphore> imageAvailableSemaphores;
         std::vector<drv::Semaphore> renderFinishedSemaphores;
         SyncBlock(drv::LogicalDevicePtr device, uint32_t maxFramesInFlight);
+    };
+
+    class Garbage
+    {
+     public:
+        Garbage(FrameGraph::FrameId frameId);
+
+        Garbage(const Garbage&) = delete;
+        Garbage& operator=(const Garbage&) = delete;
+        Garbage(Garbage&& other);
+        Garbage& operator=(Garbage&& other);
+
+        ~Garbage();
+
+        void resetCommandBuffer(drv::CommandBufferCirculator::CommandBufferHandle&& cmdBuffer);
+        FrameGraph::FrameId getFrameId() const;
+
+     private:
+        FrameGraph::FrameId frameId;
+        mutable std::mutex mutex;
+
+        std::vector<drv::CommandBufferCirculator::CommandBufferHandle> cmdBuffersToReset;
+
+        void close() noexcept;
     };
 
     Config config;
@@ -171,36 +197,21 @@ class Engine
     FrameGraph::NodeId executeStartNode;
     FrameGraph::NodeId executeEndNode;
     FrameGraph::NodeId presentFrameNode;
+    FrameGraph::NodeId cleanUpNode;
+    moodycamel::ConcurrentQueue<std::unique_ptr<Garbage>> garbageQueue;
 
     uint32_t acquireImageSemaphoreId = 0;
 
-    // struct RenderState
-    // {
-    //     std::atomic<bool> quit = false;
-    // std::atomic<bool> canSimulate = true;
-    // std::atomic<bool> canRecord = false;
-    // // std::atomic<bool> canExecute = false;
-    // std::atomic<FrameId> simulationFrame = 0;
-    // std::atomic<FrameId> recordFrame = 0;
-    // std::atomic<FrameId> executeFrame = 0;
-    // std::atomic<FrameId> recreateSwapchain = 0;
-    // std::atomic<FrameId> swapchainCreated = 0;
-    // std::mutex simulationMutex;
-    // std::mutex recordMutex;
-    // // std::mutex executeMutex;
-    // std::condition_variable simulationCV;
-    // std::condition_variable recordCV;
-    // ExecutionQueue* executionQueue;
-    // std::condition_variable executeCV;
-    // };
-
     mutable std::shared_mutex stopFrameMutex;
+    mutable std::mutex executionMutex;
 
     void simulationLoop(volatile std::atomic<FrameGraph::FrameId>* simulationFrame,
                         const volatile std::atomic<FrameGraph::FrameId>* stopFrame);
     void recordCommandsLoop(const volatile std::atomic<FrameGraph::FrameId>* stopFrame);
     void executeCommandsLoop();
-    bool execute(ExecutionPackage&& package);
+    void cleanUpLoop(const volatile std::atomic<FrameGraph::FrameId>* stopFrame);
+    bool execute(Garbage*& garbage, FrameGraph::FrameId& executionFrame,
+                 ExecutionPackage&& package);
     void present(FrameGraph::FrameId presentFrame);
     bool sampleInput(FrameGraph::FrameId frameId);
 
