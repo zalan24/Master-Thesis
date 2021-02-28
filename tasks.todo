@@ -28,50 +28,24 @@ Get a triangle on screen:
                     ✔ Prefer queues with lower index @done (1/22/2021, 9:25:47 PM)
                 ✔ If not, create more command buffers @done (1/22/2021, 9:25:51 PM)
                 ☐ If utilization is low for a long time, decrease the size by releasing the last X command buffers
-            ☐ Upon recording the buffer, it should be sent to the execution thread with the circulator ptr
-            ☐ Upon submission, give the pending buffer back to the circulator
-            ☐ Dtor/close asserts/waits if there are some pending queues (that might be a problem when in a catch block...)
+            ✔ Upon recording the buffer, it should be sent to the execution thread with the circulator ptr @done (2/28/2021, 3:48:51 PM)
+            ✔ Upon submission, give the pending buffer back to the circulator @done (2/28/2021, 3:48:53 PM)
+            ✔ Dtor/close asserts/waits if there are some pending queues (that might be a problem when in a catch block...) @done (2/28/2021, 3:48:57 PM)
         ✔ Have a CommandBuffer circulator for each queue family @done (1/22/2021, 9:26:05 PM)
-    ☐ Execution queue
+    ✔ Execution queue @done (2/28/2021, 3:49:10 PM)
         ✔ Create a struct which can store: (in union?) @done (1/27/2021, 10:20:31 PM)
             ✔ CommandBuffer handle @done (1/27/2021, 10:20:31 PM)
             ✔ std::function @done (1/27/2021, 10:20:32 PM)
             ✔ messages? @done (1/27/2021, 10:20:32 PM)
         ✔ Create a concurrent dequeue for this struct between recording and execution @done (1/27/2021, 10:20:34 PM)
         ✔ Execution is reading this pipe for instructions @done (1/27/2021, 10:20:36 PM)
-        ☐ Execute command buffers
+        ✔ Execute command buffers @done (2/28/2021, 3:49:09 PM)
     ☐ Create a frame memory allocator
         ☐ It needs to support allocation on recording thread and release in the execution thread (multiple frame memory objects?)
         ☐ Use a pool of frame mems? acquire in simulation thread, release in execution thread
-    ☐ Rework frame graph
-        ☐ Nodes will be assigned to specific queues
-        ☐ Use frame mem
-        ☐ Remove unnecessary stuff
-        ☐ Reuse objects, where possible
-        ☐ Single time nodes:
-            ☐ They are given a single time command buffer from the circulator
-            ☐ Execution removes executed dynamic nodes
-
-        ☐ Static nodes
-            ☐ Some nodes should be pre-created before recording starts (these should be fairly constant nodes)
-            ☐ Don't create them every frame
-            ☐ These nodes need the same queues every frame (until recreation)
-            ☐ Nodes can have single-time submission (recorded every frame)
-            ☐ Nodes can have a fixed command buffer. For such nodes, the renderer needs to have a function to fill them (before normal render)
-                ☐ If they need recreating, add their command buffer to a separate list, paired with a fence, which is added to the assigned queue
-                ☐ Have a cleanup thread (or use the callback wait thread), which waits for these fences and removes objects (later different types of resources can be added)
-
-        ☐ Add extra info to dependencies? (for barriers and buffer grouping)
-        ☐ Nodes should create command buffers directly and later record into them
-            ☐ Nodes could have a list of command buffers??? (these would be in the same synchronization unit)
-        ☐ Nodes should be assigned to a command lane
-        ☐ Nodes need to be closeable (no more dependencies can be created)
-        ☐ Allow partial execution of closed nodes
-            ☐ Instead of actual execution, just return a queue and the command buffer
-        ☐ Frame graph should be concurrent (adding nodes in one thread, partial executions in the other)
-        ☐ Are semaphores needed within a single queue (events might be better)
+    ✔ Rework frame graph @done (2/28/2021, 3:49:29 PM)
     ✔ Implement barriers @done (1/27/2021, 11:38:06 AM)
-    ☐ Implement timeline semaphores
+    ✔ Implement timeline semaphores @done (2/28/2021, 3:49:41 PM)
     ✔ Implement events @done (1/26/2021, 11:30:31 AM)
     ☐ Implement graphical pipeline
     ☐ Implement render pass
@@ -79,26 +53,57 @@ Get a triangle on screen:
     ☐ Add a new thread for callbacks
         ☐ Pair of fences or events + std::function can be added to it
         ☐ Wait for fence/event execute function
-    ☐ Execute frame graph
-        ☐ When a node is complete (closed):
-            ☐ Have two command buffers (or two lists if lists are used)
-            ☐ Wait for the execution buffer to be empty (executed)
-            ☐ Swap buffer pointers
-            ☐ Execution thread will execute the execution buffer and reset it, then signal the recorder thread, that the buffer is ready to swap
-        ☐ Dynamic nodes: just remove them from frame graph and then execute
-        ☐ Static nodes:
-            ☐ constant nodes:
-                ☐ Use transient command queues and just submit the same stuff every time
-            ☐ one-time nodes:
-                ☐ Use the command pool as in dynamic nodes
-                ☐ Move the command buffer out of the node, execute at later
     ☐ Shader manager
     ☐ Finish descriptors
+    ☐ Resource tracking
+        ☐ Inside a command buffer
+            ☐ Track any resource used in the commands
+            ☐ Track resource usage in the command buffer recorder
+                ☐ Resource
+                ☐ Sub-resource range
+                ☐ Pipeline stage mask
+                ☐ Access mask
+                ☐ Write/Read flags
+            ☐ Add a memory barrier of the proper type (based on resource) to writing operations from history
+            ☐ For write operations, also add barriers for any reading operations in history
+            ☐ Ignore history entries, which are implicitly waited upon
+        ☐ Inside a framegraph node (inter command buffer sync)
+            ☐ Also track any resource
+            ☐ Signal events???
+            ☐ ???
+        ☐ Track resources globally
+            ☐ Created resource ids in the framegraph
+            ☐ Register the resource ids in the queue -> ... and ... -> queue dependencies
+                ☐ Res id
+                ☐ Read/write mask
+            ☐ Validate registered resource usage
+            ☐ Have a method in command buffer recorder for supplying a registered resource
+                ☐ supplyRegisteredResource(resId, resource, sub_resource_range, pipelineStageMask, accessMask)
+                ☐ signal semaphores and events based on dependencies in framegraph
+                ☐ The exact event and semaphore should be known in the waiter commands (they might be recorded earlier)
+            ☐ Have a method for demanding a registered resource
+                ☐ demandRegisteredResource(resId, resource, sub_resource_range, pipelineStageMask, accessMask)
+                ☐ This command buffer should wait on the proper semaphores and events
+                ☐ Signal events and semaphores for writing nodes
+            ☐ Maybe merge these two and add a mask for reading / writing???
+            ☐ In case of a recorded usage of the resource doesn't conflict, there is no need to wait
+            ☐ What about missing demand or supply operations???
+            ☐ What about rarely supplied resources???
+        ☐ Validate resource usage
+            ☐ Any resource
+            ☐ Only debug mode
+            ☐ Track resources globally in the framegraph (same way as in command buffer recorder)
+            ☐ Use a mutex for recording usage history
+            ☐ Find conflicting usages
+            ☐ Allowed conflicting usage:
+                ☐ Inside same node and same frame (need to register nodeId and frameId)
+                ☐ Usage in a node/frame which has an appropriate dependency and the resource is registered
+                    ☐ Need to check dependency offset and place of usage (cpu/queue)
 
 Cleanup & other:
     ☐ Remove useless common driver stuff (drv/common)
     ✔ Use abstract driver class instead of function pointer table @done (1/26/2021, 11:31:13 AM)
-    ☐ Maybe use a single large stack memory (thread local) instead of local ones: LOCAL_MEMORY_POOL_DEFAULT(pool)?
+    ✔ Maybe use a single large stack memory (thread local) instead of local ones: LOCAL_MEMORY_POOL_DEFAULT(pool)? @done (2/28/2021, 3:50:11 PM)
 
 
 Questions:

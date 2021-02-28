@@ -22,7 +22,8 @@ Game::~Game() {
 }
 
 bool Game::initRenderFrameGraph(FrameGraph& frameGraph, const IRenderer::FrameGraphData& data,
-                                FrameGraph::NodeId& presentDepNode, drv::QueuePtr& depQueue) {
+                                FrameGraph::NodeId& presentDepNode,
+                                FrameGraph::QueueId& depQueueId) {
     testDraw = frameGraph.addNode(FrameGraph::Node("testDraw", true));
     frameGraph.addDependency(testDraw, FrameGraph::CpuDependency{data.recStart, 0});
     frameGraph.addDependency(testDraw, FrameGraph::EnqueueDependency{data.recStart, 0});
@@ -30,7 +31,7 @@ bool Game::initRenderFrameGraph(FrameGraph& frameGraph, const IRenderer::FrameGr
     frameGraph.addDependency(data.recEnd, FrameGraph::EnqueueDependency{testDraw, 0});
 
     presentDepNode = testDraw;
-    depQueue = engine->getQueues().renderQueue;
+    depQueueId = engine->getQueues().renderQueue.id;
     return true;
 }
 
@@ -45,9 +46,17 @@ void Game::record(FrameGraph& frameGraph, FrameGraph::FrameId frameId) {
     FrameGraph::NodeHandle testDrawHandle = frameGraph.acquireNode(testDraw, frameId);
     if (testDrawHandle) {
         std::this_thread::sleep_for(std::chrono::milliseconds(4));
-        // Engine::AcquiredImageData engine->acquiredSwapchainImage(testDrawHandle); // TODO
+        Engine::AcquiredImageData swapChainData = engine->acquiredSwapchainImage(testDrawHandle);
         Engine::CommandBufferRecorder recorder =
-          engine->acquireCommandRecorder(testDrawHandle, frameId, queues.renderQueue);
+          engine->acquireCommandRecorder(testDrawHandle, frameId, queues.renderQueue.id);
+        drv::ClearColorValue clearValue(255u, 255u, 0u, 255u);
+        // recorder.cmdWaitSemaphore(swapChainData.imageAvailableSemaphore,
+        //                           drv::PipelineStages::COLOR_ATTACHMENT_OUTPUT_BIT);
+        recorder.cmdWaitSemaphore(swapChainData.imageAvailableSemaphore,
+                                  drv::PipelineStages::ALL_GRAPHICS_BIT);
+        recorder.cmdClearImage(swapChainData.image, &clearValue);
+        recorder.cmdSignalSemaphore(swapChainData.renderFinishedSemaphore);
+        recorder.finishQueueWork();
     }
     else
         assert(frameGraph.isStopped());

@@ -192,6 +192,9 @@ bool device_wait_idle(LogicalDevicePtr device);
 ShaderModulePtr create_shader_module(LogicalDevicePtr device, const ShaderCreateInfo* info);
 bool destroy_shader_module(LogicalDevicePtr device, ShaderModulePtr module);
 
+bool begin_primary_command_buffer(CommandBufferPtr cmdBuffer, bool singleTime,
+                                  bool simultaneousUse);
+bool end_primary_command_buffer(CommandBufferPtr cmdBuffer);
 void cmd_clear_image(CommandBufferPtr cmdBuffer, ImagePtr image, ImageLayout currentLayout,
                      const ClearColorValue* clearColors, uint32_t ranges,
                      const ImageSubresourceRange* subresourceRanges);

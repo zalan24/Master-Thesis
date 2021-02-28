@@ -94,9 +94,13 @@ inline VkImageSubresourceRange convertSubresourceRange(
     VkImageSubresourceRange ret;
     ret.aspectMask = static_cast<VkImageAspectFlags>(subresource.aspectMask);
     ret.baseMipLevel = subresource.baseMipLevel;
-    ret.levelCount = subresource.levelCount;
+    ret.levelCount = subresource.levelCount == drv::ImageSubresourceRange::REMAINING_MIP_LEVELS
+                       ? VK_REMAINING_MIP_LEVELS
+                       : subresource.levelCount;
     ret.baseArrayLayer = subresource.baseArrayLayer;
-    ret.layerCount = subresource.layerCount;
+    ret.layerCount = subresource.layerCount == drv::ImageSubresourceRange::REMAINING_ARRAY_LAYERS
+                       ? VK_REMAINING_ARRAY_LAYERS
+                       : subresource.layerCount;
     return ret;
 }
 

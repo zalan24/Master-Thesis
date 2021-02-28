@@ -218,6 +218,7 @@
         "luint",
         "mapbox",
         "matplotlib",
+        "mutex",
         "nlohmann",
         "prepend",
         "ransac",

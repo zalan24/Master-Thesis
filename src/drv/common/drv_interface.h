@@ -149,6 +149,9 @@ class IDriver
     virtual QueueFamilyPtr get_queue_family(LogicalDevicePtr device, QueuePtr queue) = 0;
     virtual bool device_wait_idle(LogicalDevicePtr device) = 0;
 
+    virtual bool begin_primary_command_buffer(CommandBufferPtr cmdBuffer, bool singleTime,
+                                              bool simultaneousUse) = 0;
+    virtual bool end_primary_command_buffer(CommandBufferPtr cmdBuffer) = 0;
     virtual void cmd_clear_image(CommandBufferPtr cmdBuffer, ImagePtr image,
                                  ImageLayout currentLayout, const ClearColorValue* clearColors,
                                  uint32_t ranges,

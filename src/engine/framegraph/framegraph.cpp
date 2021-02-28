@@ -61,15 +61,10 @@ FrameGraph::NodeId FrameGraph::addNode(Node&& node) {
     if (node.hasExecution())
         node.addDependency(EnqueueDependency{id, 1});
     node.enqIndirectChildren.clear();
-    for (uint32_t i = 0; i < node.queQueDeps.size(); ++i) {
-        while (i < node.queQueDeps.size()
-               && node.queQueDeps[i].srcQueue == node.queQueDeps[i].dstQueue) {
+    for (uint32_t i = 0; i < node.queQueDeps.size(); ++i)
+        if (getQueue(node.queQueDeps[i].srcQueue) == getQueue(node.queQueDeps[i].dstQueue))
             node.addDependency(
               EnqueueDependency{node.queQueDeps[i].srcNode, node.queQueDeps[i].offset});
-            node.queQueDeps[i] = std::move(node.queQueDeps.back());
-            node.queQueDeps.resize(node.queQueDeps.size() - 1);
-        }
-    }
     for (uint32_t i = 0; i < node.enqDeps.size(); ++i) {
         while (i < node.enqDeps.size()) {
             bool unique = true;
@@ -259,7 +254,10 @@ FrameGraph::NodeHandle::NodeHandle(FrameGraph* _frameGraph, FrameGraph::NodeId _
 }
 
 FrameGraph::NodeHandle::NodeHandle(NodeHandle&& other)
-  : frameGraph(other.frameGraph), node(other.node), frameId(other.frameId) {
+  : frameGraph(other.frameGraph),
+    node(other.node),
+    frameId(other.frameId),
+    gpuWorkDone(other.gpuWorkDone) {
     other.frameGraph = nullptr;
 }
 
@@ -270,13 +268,18 @@ FrameGraph::NodeHandle& FrameGraph::NodeHandle::operator=(NodeHandle&& other) {
     frameGraph = other.frameGraph;
     node = other.node;
     frameId = other.frameId;
+    gpuWorkDone = other.gpuWorkDone;
     other.frameGraph = nullptr;
     return *this;
 }
 
 void FrameGraph::NodeHandle::close() {
-    if (frameGraph)
+    if (frameGraph) {
+        if (!gpuWorkDone) {
+            TODO;
+        }
         frameGraph->release(*this);
+    }
 }
 
 FrameGraph::NodeHandle::~NodeHandle() {

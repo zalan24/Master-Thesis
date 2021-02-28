@@ -5,6 +5,7 @@
 #include <mutex>
 #include <string>
 #include <thread>
+#include <vector>
 
 #include <concurrentqueue.h>
 
@@ -73,16 +74,22 @@ class Engine
     };
     AcquiredImageData acquiredSwapchainImage(FrameGraph::NodeHandle& acquiringNodeHandle);
 
+    struct QueueData
+    {
+        drv::QueuePtr handle;
+        FrameGraph::QueueId id;
+    };
+
     struct QueueInfo
     {
-        drv::QueuePtr renderQueue;
-        drv::QueuePtr presentQueue;
-        drv::QueuePtr computeQueue;
-        drv::QueuePtr DtoHQueue;
-        drv::QueuePtr HtoDQueue;
-        drv::QueuePtr inputQueue;
+        QueueData renderQueue;
+        QueueData presentQueue;
+        QueueData computeQueue;
+        QueueData DtoHQueue;
+        QueueData HtoDQueue;
+        QueueData inputQueue;
     };
-    QueueInfo getQueues() const;
+    const QueueInfo& getQueues() const;
 
     class CommandBufferRecorder
     {
@@ -96,25 +103,44 @@ class Engine
 
         ~CommandBufferRecorder();
 
+        void cmdWaitSemaphore(drv::SemaphorePtr semaphore, drv::PipelineStages::FlagType waitStage);
+        void cmdWaitTimelineSemaphore(drv::TimelineSemaphorePtr semaphore, uint64_t waitValue,
+                                      drv::PipelineStages::FlagType waitStage);
+        void cmdSignalSemaphore(drv::SemaphorePtr semaphore);
+        void cmdSignalTimelineSemaphore(drv::TimelineSemaphorePtr semaphore, uint64_t signalValue);
+        void cmdClearImage(drv::ImagePtr image, const drv::ClearColorValue* clearColors,
+                           uint32_t ranges = 0,
+                           const drv::ImageSubresourceRange* subresourceRanges = nullptr);
+
+        // allows nodes, that depend on the current node's gpu work (on current queue) to run after this submission completion
+        void finishQueueWork();
+
      private:
         CommandBufferRecorder(std::unique_lock<std::mutex>&& queueLock, drv::QueuePtr queue,
-                              FrameGraph* frameGraph, Engine* engine,
+                              FrameGraph::QueueId queueId, FrameGraph* frameGraph, Engine* engine,
                               FrameGraph::NodeHandle* nodeHandle, FrameGraph::FrameId frameId,
                               drv::CommandBufferCirculator::CommandBufferHandle&& cmdBuffer);
 
         std::unique_lock<std::mutex> queueLock;
         drv::QueuePtr queue;
+        FrameGraph::QueueId queueId;
         FrameGraph* frameGraph;
         Engine* engine;
         FrameGraph::NodeHandle* nodeHandle;
         FrameGraph::FrameId frameId;
         drv::CommandBufferCirculator::CommandBufferHandle cmdBuffer;
 
+        // TODO frame mem allocator
+        std::vector<ExecutionPackage::CommandBufferPackage::SemaphoreSignalInfo> signalSemaphores;
+        std::vector<ExecutionPackage::CommandBufferPackage::TimelineSemaphoreSignalInfo>
+          signalTimelineSemaphores;
+
         void close();
     };
 
     CommandBufferRecorder acquireCommandRecorder(FrameGraph::NodeHandle& acquiringNodeHandle,
-                                                 FrameGraph::FrameId frameId, drv::QueuePtr queue);
+                                                 FrameGraph::FrameId frameId,
+                                                 FrameGraph::QueueId queueId);
 
  private:
     struct ErrorCallback
@@ -198,6 +224,7 @@ class Engine
     FrameGraph::NodeId executeEndNode;
     FrameGraph::NodeId presentFrameNode;
     FrameGraph::NodeId cleanUpNode;
+    QueueInfo queueInfos;
     moodycamel::ConcurrentQueue<std::unique_ptr<Garbage>> garbageQueue;
 
     uint32_t acquireImageSemaphoreId = 0;

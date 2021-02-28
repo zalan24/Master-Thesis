@@ -5,6 +5,8 @@
 #include <iostream>
 #include <map>
 
+#include <corecontext.h>
+
 #include <drv.h>
 #include <drverror.h>
 #include <drvwindow.h>
@@ -170,6 +172,14 @@ Engine::~Engine() {
 void Engine::initGame(IRenderer* _renderer, ISimulation* _simulation) {
     simulation = _simulation;
     renderer = _renderer;
+
+    queueInfos.computeQueue = {computeQueue.queue, frameGraph.registerQueue(computeQueue.queue)};
+    queueInfos.DtoHQueue = {DtoHQueue.queue, frameGraph.registerQueue(DtoHQueue.queue)};
+    queueInfos.HtoDQueue = {HtoDQueue.queue, frameGraph.registerQueue(HtoDQueue.queue)};
+    queueInfos.inputQueue = {inputQueue.queue, frameGraph.registerQueue(inputQueue.queue)};
+    queueInfos.presentQueue = {presentQueue.queue, frameGraph.registerQueue(presentQueue.queue)};
+    queueInfos.renderQueue = {renderQueue.queue, frameGraph.registerQueue(renderQueue.queue)};
+
     inputSampleNode = frameGraph.addNode(FrameGraph::Node("sample_input", false));
     presentFrameNode = frameGraph.addNode(FrameGraph::Node("presentFrame", true));
     cleanUpNode = frameGraph.addNode(FrameGraph::Node("cleanUp", false));
@@ -208,10 +218,10 @@ void Engine::initGame(IRenderer* _renderer, ISimulation* _simulation) {
     frameGraph.addDependency(executeStartNode, FrameGraph::CpuDependency{recordStartNode, 0});
     frameGraph.addDependency(executeEndNode, FrameGraph::CpuDependency{executeStartNode, 0});
     frameGraph.addDependency(
-      presentFrameNode,
-      FrameGraph::QueueCpuDependency{presentFrameNode, presentQueue.queue, presentDepOffset});
+      presentFrameNode, FrameGraph::QueueCpuDependency{presentFrameNode, queueInfos.presentQueue.id,
+                                                       presentDepOffset});
     frameGraph.addDependency(
-      cleanUpNode, FrameGraph::QueueCpuDependency{presentFrameNode, presentQueue.queue, 0});
+      cleanUpNode, FrameGraph::QueueCpuDependency{presentFrameNode, queueInfos.presentQueue.id, 0});
     frameGraph.addDependency(cleanUpNode, FrameGraph::CpuDependency{executeEndNode, 0});
     frameGraph.addDependency(recordStartNode,
                              FrameGraph::CpuDependency{cleanUpNode, cleanUpCpuOffset});
@@ -228,12 +238,12 @@ void Engine::initGame(IRenderer* _renderer, ISimulation* _simulation) {
 
     simulation->initSimulationFrameGraph(frameGraph, simData);
     FrameGraph::NodeId renderNode = FrameGraph::INVALID_NODE;
-    drv::QueuePtr renderQueue = nullptr;
-    if (renderer->initRenderFrameGraph(frameGraph, renderData, renderNode, renderQueue)) {
-        assert(renderNode != FrameGraph::INVALID_NODE && renderQueue != nullptr);
-        frameGraph.addDependency(
-          presentFrameNode,
-          FrameGraph::QueueQueueDependency{renderNode, renderQueue, presentQueue.queue, 0});
+    FrameGraph::QueueId renderQueueId;
+    if (renderer->initRenderFrameGraph(frameGraph, renderData, renderNode, renderQueueId)) {
+        assert(renderNode != FrameGraph::INVALID_NODE);
+        frameGraph.addDependency(presentFrameNode,
+                                 FrameGraph::QueueQueueDependency{renderNode, renderQueueId,
+                                                                  queueInfos.presentQueue.id, 0});
         frameGraph.addDependency(presentFrameNode, FrameGraph::EnqueueDependency{renderNode, 0});
     }
 
@@ -283,28 +293,22 @@ void Engine::simulationLoop(volatile std::atomic<FrameGraph::FrameId>* simulatio
 }
 
 void Engine::present(FrameGraph::FrameId presentFrame) {
-    // TODO
     drv::PresentInfo info;
     info.semaphoreCount = 1;
     drv::SemaphorePtr semaphore = syncBlock.renderFinishedSemaphores[acquireImageSemaphoreId];
     info.waitSemaphores = &semaphore;
-    // drv::PresentResult result = swapchain.present(presentQueue.queue, info);
-    // drv::drv_assert(result != drv::PresentResult::ERROR, "Present error");
-    // if (result == drv::PresentResult::RECREATE_ADVISED
-    //     || result == drv::PresentResult::RECREATE_REQUIRED) {
-    //     state->recreateSwapchain = presentFrame;
-    // }
+    drv::PresentResult result = swapchain.present(presentQueue.queue, info);
+    TODO;  // what's gonna wait on this?
+    drv::drv_assert(result != drv::PresentResult::ERROR, "Present error");
+    if (result == drv::PresentResult::RECREATE_ADVISED
+        || result == drv::PresentResult::RECREATE_REQUIRED) {
+        throw std::runtime_error("Implement swapchain recreation");
+        // state->recreateSwapchain = presentFrame;
+    }
 }
 
-Engine::QueueInfo Engine::getQueues() const {
-    QueueInfo ret;
-    ret.computeQueue = computeQueue.queue;
-    ret.DtoHQueue = DtoHQueue.queue;
-    ret.HtoDQueue = HtoDQueue.queue;
-    ret.inputQueue = inputQueue.queue;
-    ret.presentQueue = presentQueue.queue;
-    ret.renderQueue = renderQueue.queue;
-    return ret;
+const Engine::QueueInfo& Engine::getQueues() const {
+    return queueInfos;
 }
 
 Engine::AcquiredImageData Engine::acquiredSwapchainImage(
@@ -330,12 +334,14 @@ Engine::AcquiredImageData Engine::acquiredSwapchainImage(
 }
 
 Engine::CommandBufferRecorder Engine::acquireCommandRecorder(
-  FrameGraph::NodeHandle& acquiringNodeHandle, FrameGraph::FrameId frameId, drv::QueuePtr queue) {
+  FrameGraph::NodeHandle& acquiringNodeHandle, FrameGraph::FrameId frameId,
+  FrameGraph::QueueId queueId) {
+    drv::QueuePtr queue = frameGraph.getQueue(queueId);
     drv::CommandBufferBankGroupInfo acquireInfo(drv::get_queue_family(device, queue), false,
                                                 drv::CommandBufferType::PRIMARY);
     std::unique_lock<std::mutex> lock = drv::lock_queue(device, queue);
-    return CommandBufferRecorder(std::move(lock), queue, &frameGraph, this, &acquiringNodeHandle,
-                                 frameId, cmdBufferBank.acquire(acquireInfo));
+    return CommandBufferRecorder(std::move(lock), queue, queueId, &frameGraph, this,
+                                 &acquiringNodeHandle, frameId, cmdBufferBank.acquire(acquireInfo));
 }
 
 void Engine::recordCommandsLoop(const volatile std::atomic<FrameGraph::FrameId>* stopFrame) {
@@ -455,7 +461,42 @@ bool Engine::execute(Garbage*& garbage, FrameGraph::FrameId& executionFrame,
     else if (std::holds_alternative<ExecutionPackage::CommandBufferPackage>(package.package)) {
         ExecutionPackage::CommandBufferPackage& cmdBuffer =
           std::get<ExecutionPackage::CommandBufferPackage>(package.package);
-        // TODO
+        StackMemory::MemoryHandle<drv::TimelineSemaphorePtr> signalTimelineSemaphoresMem(
+          cmdBuffer.signalTimelineSemaphores.size(), TEMPMEM);
+        drv::TimelineSemaphorePtr* signalTimelineSemaphores = signalTimelineSemaphoresMem.get();
+        drv::drv_assert(signalTimelineSemaphores != nullptr
+                        || cmdBuffer.signalTimelineSemaphores.size() == 0);
+        StackMemory::MemoryHandle<uint64_t> signalTimelineSemaphoreValuesMem(
+          cmdBuffer.signalTimelineSemaphores.size(), TEMPMEM);
+        uint64_t* signalTimelineSemaphoreValues = signalTimelineSemaphoreValuesMem.get();
+        drv::drv_assert(signalTimelineSemaphoreValues != nullptr
+                        || cmdBuffer.signalTimelineSemaphores.size() == 0);
+        for (uint32_t i = 0; i < cmdBuffer.signalTimelineSemaphores.size(); ++i) {
+            signalTimelineSemaphores[i] = cmdBuffer.signalTimelineSemaphores[i].semaphore;
+            signalTimelineSemaphoreValues[i] = cmdBuffer.signalTimelineSemaphores[i].signalValue;
+        }
+        drv::ExecutionInfo executionInfo;
+        executionInfo.numWaitSemaphores = ;
+        executionInfo.waitSemaphores = ;
+        executionInfo.waitStages = ;
+        if (cmdBuffer.bufferHandle.commandBufferPtr != drv::NULL_HANDLE) {
+            executionInfo.numCommandBuffers = 1;
+            executionInfo.commandBuffers = &cmdBuffer.bufferHandle.commandBufferPtr;
+        }
+        else {
+            executionInfo.numCommandBuffers = 0;
+            executionInfo.commandBuffers = nullptr;
+        }
+        executionInfo.numSignalSemaphores = cmdBuffer.signalSemaphores.size();
+        executionInfo.signalSemaphores = cmdBuffer.signalSemaphores.data();
+        executionInfo.numWaitTimelineSemaphores = ;
+        executionInfo.waitTimelineSemaphores = ;
+        executionInfo.timelineWaitValues = ;
+        executionInfo.timelineWaitStages = ;
+        executionInfo.numSignalTimelineSemaphores = cmdBuffer.signalTimelineSemaphores.size();
+        executionInfo.signalTimelineSemaphores = signalTimelineSemaphores;
+        executionInfo.timelineSignalValues = signalTimelineSemaphoreValues;
+        drv::execute(cmdBuffer.queue, 1, &executionInfo);
         cmdBuffer.bufferHandle.circulator->startExecution(cmdBuffer.bufferHandle);
         assert(garbage != nullptr && garbage->getFrameId() == executionFrame);
         garbage->resetCommandBuffer(std::move(cmdBuffer.bufferHandle));
@@ -578,27 +619,32 @@ void Engine::gameLoop() {
 }
 
 Engine::CommandBufferRecorder::CommandBufferRecorder(
-  std::unique_lock<std::mutex>&& _queueLock, drv::QueuePtr _queue, FrameGraph* _frameGraph,
-  Engine* _engine, FrameGraph::NodeHandle* _nodeHandle, FrameGraph::FrameId _frameId,
-  drv::CommandBufferCirculator::CommandBufferHandle&& _cmdBuffer)
+  std::unique_lock<std::mutex>&& _queueLock, drv::QueuePtr _queue, FrameGraph::QueueId _queueId,
+  FrameGraph* _frameGraph, Engine* _engine, FrameGraph::NodeHandle* _nodeHandle,
+  FrameGraph::FrameId _frameId, drv::CommandBufferCirculator::CommandBufferHandle&& _cmdBuffer)
   : queueLock(std::move(_queueLock)),
     queue(_queue),
+    queueId(_queueId),
     frameGraph(_frameGraph),
     engine(_engine),
     nodeHandle(_nodeHandle),
     frameId(_frameId),
     cmdBuffer(std::move(_cmdBuffer)) {
     assert(cmdBuffer);
+    assert(drv::begin_primary_command_buffer(cmdBuffer.commandBufferPtr, true, false));
 }
 
 Engine::CommandBufferRecorder::CommandBufferRecorder(CommandBufferRecorder&& other)
   : queueLock(std::move(other.queueLock)),
     queue(other.queue),
+    queueId(other.queueId),
     frameGraph(other.frameGraph),
     engine(other.engine),
     nodeHandle(other.nodeHandle),
     frameId(other.frameId),
-    cmdBuffer(std::move(other.cmdBuffer)) {
+    cmdBuffer(std::move(other.cmdBuffer)),
+    signalSemaphores(std::move(other.signalSemaphores)),
+    signalTimelineSemaphores(std::move(other.signalTimelineSemaphores)) {
     other.engine = nullptr;
 }
 
@@ -609,11 +655,14 @@ Engine::CommandBufferRecorder& Engine::CommandBufferRecorder::operator=(
     close();
     queueLock = std::move(other.queueLock);
     queue = other.queue;
+    queueId = other.queueId;
     frameGraph = other.frameGraph;
     engine = other.engine;
     nodeHandle = other.nodeHandle;
     frameId = other.frameId;
     cmdBuffer = std::move(other.cmdBuffer);
+    signalSemaphores = std::move(other.signalSemaphores);
+    signalTimelineSemaphores = std::move(other.signalTimelineSemaphores);
     other.engine = nullptr;
     return *this;
 }
@@ -625,9 +674,11 @@ Engine::CommandBufferRecorder::~CommandBufferRecorder() {
 void Engine::CommandBufferRecorder::close() {
     if (engine == nullptr)
         return;
+    assert(drv::end_primary_command_buffer(cmdBuffer.commandBufferPtr));
     ExecutionQueue* queue = frameGraph->getExecutionQueue(*nodeHandle);
-    queue->push(
-      ExecutionPackage(ExecutionPackage::CommandBufferPackage{queue, std::move(cmdBuffer)}));
+    queue->push(ExecutionPackage(ExecutionPackage::CommandBufferPackage{
+      queue, std::move(cmdBuffer), std::move(signalSemaphores),
+      std::move(signalTimelineSemaphores)}));
 }
 
 Engine::Garbage::Garbage(FrameGraph::FrameId _frameId) : frameId(_frameId) {

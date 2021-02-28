@@ -415,6 +415,16 @@ void drv::cmd_clear_image(CommandBufferPtr cmdBuffer, ImagePtr image, ImageLayou
                                                      ranges, subresourceRanges);
 }
 
+bool drv::begin_primary_command_buffer(CommandBufferPtr cmdBuffer, bool singleTime,
+                                       bool simultaneousUse) {
+    return current_driver_interface->begin_primary_command_buffer(cmdBuffer, singleTime,
+                                                                  simultaneousUse);
+}
+
+bool drv::end_primary_command_buffer(CommandBufferPtr cmdBuffer) {
+    return current_driver_interface->end_primary_command_buffer(cmdBuffer);
+}
+
 // TODO
 
 // bool drv::load_shaders(LogicalDevicePtr device) {

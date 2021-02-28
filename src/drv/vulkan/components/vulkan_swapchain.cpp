@@ -105,7 +105,7 @@ bool DrvVulkan::get_swapchain_images(drv::LogicalDevicePtr device, drv::Swapchai
     VkResult result =
       vkGetSwapchainImagesKHR(convertDevice(device), reinterpret_cast<VkSwapchainKHR>(swapchain),
                               count, convertImages(images));
-    return result == VK_SUCCESS || result == VK_INCOMPLETE && images == nullptr;
+    return result == VK_SUCCESS || (result == VK_INCOMPLETE && images == nullptr);
 }
 
 bool DrvVulkan::acquire_image(drv::LogicalDevicePtr device, drv::SwapchainPtr swapchain,

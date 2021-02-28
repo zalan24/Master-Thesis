@@ -9,6 +9,26 @@
 #include "vulkan_conversions.h"
 #include "vulkan_enum_compare.h"
 
+bool DrvVulkan::begin_primary_command_buffer(drv::CommandBufferPtr cmdBuffer, bool singleTime,
+                                             bool simultaneousUse) {
+    VkCommandBufferBeginInfo info;
+    info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+    info.pNext = nullptr;
+    info.flags = 0;
+    if (singleTime)
+        info.flags |= VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+    if (simultaneousUse)
+        info.flags |= VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
+    info.pInheritanceInfo = nullptr;
+    VkResult result = vkBeginCommandBuffer(convertCommandBuffer(cmdBuffer), &info);
+    return result == VK_SUCCESS;
+}
+
+bool DrvVulkan::end_primary_command_buffer(drv::CommandBufferPtr cmdBuffer) {
+    VkResult result = vkEndCommandBuffer(convertCommandBuffer(cmdBuffer));
+    return result == VK_SUCCESS;
+}
+
 void DrvVulkan::cmd_clear_image(drv::CommandBufferPtr cmdBuffer, drv::ImagePtr image,
                                 drv::ImageLayout currentLayout,
                                 const drv::ClearColorValue* clearColors, uint32_t ranges,

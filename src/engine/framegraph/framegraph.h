@@ -18,6 +18,7 @@ class FrameGraph
  public:
     using FrameId = uint64_t;
     using NodeId = uint32_t;
+    using QueueId = uint32_t;
     static constexpr NodeId INVALID_NODE = std::numeric_limits<NodeId>::max();
     static constexpr FrameId INVALID_FRAME = std::numeric_limits<FrameId>::max();
     //  static constexpr uint32_t NO_SYNC = std::numeric_limits<uint32_t>::max();
@@ -34,20 +35,20 @@ class FrameGraph
     struct CpuQueueDependency
     {
         NodeId srcNode;
-        drv::QueuePtr dstQueue;
+        QueueId dstQueue;
         uint32_t offset = 0;
     };
     struct QueueCpuDependency
     {
         NodeId srcNode;
-        drv::QueuePtr srcQueue;
+        QueueId srcQueue;
         uint32_t offset = 0;
     };
     struct QueueQueueDependency
     {
         NodeId srcNode;
-        drv::QueuePtr srcQueue;
-        drv::QueuePtr dstQueue;
+        QueueId srcQueue;
+        QueueId dstQueue;
         uint32_t offset = 0;
     };
     class Node
@@ -110,6 +111,8 @@ class FrameGraph
         FrameGraph::NodeId node;
         FrameGraph::FrameId frameId;
 
+        // bool gpuWorkDone = false;
+
         struct NodeExecutionData
         {
             bool hasLocalCommands = false;
@@ -139,6 +142,9 @@ class FrameGraph
     void validate() const;
     void stopExecution();  // used when quitting the app
     bool isStopped() const;
+
+    QueueId registerQueue(drv::QueuePtr queue);
+    drv::QueuePtr getQueue(QueueId queueId) const;
 
  private:
     ExecutionQueue executionQueue;

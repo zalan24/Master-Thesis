@@ -870,6 +870,8 @@ enum class ImageLayout
 
 struct ImageSubresourceRange
 {
+    static constexpr uint32_t REMAINING_MIP_LEVELS = std::numeric_limits<uint32_t>::max();
+    static constexpr uint32_t REMAINING_ARRAY_LAYERS = std::numeric_limits<uint32_t>::max();
     using ImageAspectBitType = uint32_t;
     enum AspectFlagBits : ImageAspectBitType
     {
@@ -1036,6 +1038,25 @@ struct ClearColorValue
         int32_t int32[4];
         uint32_t uint32[4];
     } value;
+    ClearColorValue() = default;
+    ClearColorValue(uint32_t r, uint32_t g, uint32_t b, uint32_t a) {
+        value.uint32[0] = r;
+        value.uint32[1] = g;
+        value.uint32[2] = b;
+        value.uint32[3] = a;
+    }
+    ClearColorValue(int32_t r, int32_t g, int32_t b, int32_t a) {
+        value.int32[0] = r;
+        value.int32[1] = g;
+        value.int32[2] = b;
+        value.int32[3] = a;
+    }
+    ClearColorValue(float r, float g, float b, float a) {
+        value.float32[0] = r;
+        value.float32[1] = g;
+        value.float32[2] = b;
+        value.float32[3] = a;
+    }
 };
 
 };  // namespace drv

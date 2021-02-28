@@ -5,6 +5,7 @@
 #include <functional>
 #include <mutex>
 #include <variant>
+#include <vector>
 
 #include <concurrentqueue.h>
 
@@ -16,8 +17,28 @@ struct ExecutionPackage
 {
     struct CommandBufferPackage
     {
+        struct SemaphoreWaitInfo
+        {
+            drv::SemaphorePtr semaphore;
+            drv::PipelineStages::FlagType waitStage;
+        };
+        struct TimelineSemaphoreWaitInfo
+        {
+            drv::TimelineSemaphorePtr semaphore;
+            drv::PipelineStages::FlagType waitStage;
+            uint64_t waitValue;
+        };
+        using SemaphoreSignalInfo = drv::SemaphorePtr semaphore;
+        struct TimelineSemaphoreSignalInfo
+        {
+            drv::TimelineSemaphorePtr semaphore;
+            uint64_t signalValue;
+        };
         drv::QueuePtr queue;
         drv::CommandBufferCirculator::CommandBufferHandle bufferHandle;
+        // TODO use frame mem for this
+        std::vector<SemaphoreSignalInfo> signalSemaphores;
+        std::vector<TimelineSemaphoreSignalInfo> signalTimelineSemaphores;
         // TODO
     };
 
