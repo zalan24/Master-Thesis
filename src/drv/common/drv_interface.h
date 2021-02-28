@@ -148,5 +148,10 @@ class IDriver
     virtual std::unique_lock<std::mutex> lock_queue(LogicalDevicePtr device, QueuePtr queue) = 0;
     virtual QueueFamilyPtr get_queue_family(LogicalDevicePtr device, QueuePtr queue) = 0;
     virtual bool device_wait_idle(LogicalDevicePtr device) = 0;
+
+    virtual void cmd_clear_image(CommandBufferPtr cmdBuffer, ImagePtr image,
+                                 ImageLayout currentLayout, const ClearColorValue* clearColors,
+                                 uint32_t ranges,
+                                 const ImageSubresourceRange* subresourceRanges) = 0;
 };
 }  // namespace drv

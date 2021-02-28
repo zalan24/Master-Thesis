@@ -118,7 +118,7 @@ CommandBufferCirculator::CommandBufferHandle CommandBufferBank::acquire(
     }
     CommandBufferCirculator* circulator = nullptr;
     {
-        std::shared_lock lock(mutex);
+        std::shared_lock<std::shared_mutex> lock(mutex);
         auto itr = pools.find(groupInfo);
         if (itr != pools.end())
             circulator = itr->second.get();

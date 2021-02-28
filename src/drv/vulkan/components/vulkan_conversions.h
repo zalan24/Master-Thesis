@@ -100,6 +100,21 @@ inline VkImageSubresourceRange convertSubresourceRange(
     return ret;
 }
 
+inline VkClearColorValue convertClearColor(const drv::ClearColorValue& values) {
+    VkClearColorValue ret;
+    for (uint32_t i = 0; i < 4; ++i)
+        ret.uint32[i] = values.value.uint32[i];
+    return ret;
+}
+
+inline VkCommandBuffer convertCommandBuffer(drv::CommandBufferPtr buffer) {
+    return reinterpret_cast<VkCommandBuffer>(buffer);
+}
+
+inline VkCommandBuffer* convertCommandBuffers(drv::CommandBufferPtr* buffer) {
+    return reinterpret_cast<VkCommandBuffer*>(buffer);
+}
+
 // inline VkSemaphore convertSemaphore(drv::SemaphorePtr semaphore) {
 //     return reinterpret_cast<VkSemaphore>(semaphore);
 // }

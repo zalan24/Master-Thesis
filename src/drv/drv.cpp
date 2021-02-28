@@ -408,6 +408,13 @@ bool drv::device_wait_idle(LogicalDevicePtr device) {
     return current_driver_interface->device_wait_idle(device);
 }
 
+void drv::cmd_clear_image(CommandBufferPtr cmdBuffer, ImagePtr image, ImageLayout currentLayout,
+                          const ClearColorValue* clearColors, uint32_t ranges,
+                          const ImageSubresourceRange* subresourceRanges) {
+    return current_driver_interface->cmd_clear_image(cmdBuffer, image, currentLayout, clearColors,
+                                                     ranges, subresourceRanges);
+}
+
 // TODO
 
 // bool drv::load_shaders(LogicalDevicePtr device) {

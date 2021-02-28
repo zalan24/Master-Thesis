@@ -172,6 +172,11 @@ class DrvVulkan final : public drv::IDriver
                                          drv::QueuePtr queue) override;
     bool device_wait_idle(drv::LogicalDevicePtr device) override;
 
+    void cmd_clear_image(drv::CommandBufferPtr cmdBuffer, drv::ImagePtr image,
+                         drv::ImageLayout currentLayout, const drv::ClearColorValue* clearColors,
+                         uint32_t ranges,
+                         const drv::ImageSubresourceRange* subresourceRanges) override;
+
  private:
     struct LogicalDeviceData
     {
