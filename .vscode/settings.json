@@ -30,6 +30,7 @@
         "endforeach",
         "endfunction",
         "endmacro",
+        "eventpool",
         "executionqueue",
         "ffast",
         "filehash",

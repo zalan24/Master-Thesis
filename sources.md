@@ -82,3 +82,7 @@ class Goal
 
 # Assimp
 * http://www.ogldev.org/www/tutorial38/tutorial38.html - skeletal animations
+
+
+# Vulkan
+* Synchronization https://themaister.net/blog/2019/08/14/yet-another-blog-explaining-vulkan-synchronization/

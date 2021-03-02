@@ -1,6 +1,6 @@
-file(GLOB ENGINE_SOURCES *.cpp *.h *.hpp)
+file(GLOB EXECUTION_QUEUE_SOURCES *.cpp *.h *.hpp)
 
-add_library(AnimationsExecutionQueue STATIC ${ENGINE_SOURCES})
+add_library(AnimationsExecutionQueue STATIC ${EXECUTION_QUEUE_SOURCES})
 
 set_target_properties(  AnimationsExecutionQueue
                         PROPERTIES

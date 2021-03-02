@@ -55,8 +55,11 @@ Get a triangle on screen:
         ☐ Wait for fence/event execute function
     ☐ Shader manager
     ☐ Finish descriptors
+    ✔ Add an event pool @done (3/2/2021, 9:34:57 AM)
+        ✔ Use garbage system for recycling @done (3/2/2021, 9:34:57 AM)
     ☐ Resource tracking
         ☐ Inside a command buffer
+            ☐ Create a resource tracker object on the driver level
             ☐ Track any resource used in the commands
             ☐ Track resource usage in the command buffer recorder
                 ☐ Resource
@@ -73,6 +76,13 @@ Get a triangle on screen:
             ☐ ???
         ☐ Track resources globally
             ☐ Created resource ids in the framegraph
+                ☐ Flag for last write (after which no sync is needed for read operations)
+                    ☐ Command buffer recorder should call a command to mark the last write
+                    ☐ Intended to be used with Garbage system
+                ☐ No auto sync flag
+                ☐ Special semaphore supplier
+                    ☐ Instead of using the auto sync system, use a custom functor/something to know when and how to sync current resource usage
+                    ☐ Intended for resources that are written only once (textures, meshes) and other custom resources
             ☐ Register the resource ids in the queue -> ... and ... -> queue dependencies
                 ☐ Res id
                 ☐ Read/write mask
@@ -87,8 +97,9 @@ Get a triangle on screen:
                 ☐ Signal events and semaphores for writing nodes
             ☐ Maybe merge these two and add a mask for reading / writing???
             ☐ In case of a recorded usage of the resource doesn't conflict, there is no need to wait
+            ☐ If there are no depending write operations for a resource, reads may not need to signal anything???
+                ☐ Later frame writes can wait on frame finish instead???
             ☐ What about missing demand or supply operations???
-            ☐ What about rarely supplied resources???
         ☐ Validate resource usage
             ☐ Any resource
             ☐ Only debug mode

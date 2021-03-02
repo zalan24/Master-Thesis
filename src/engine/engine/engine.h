@@ -14,6 +14,7 @@
 #include <drv_wrappers.h>
 #include <drvcmdbufferbank.h>
 #include <drvlane.h>
+#include <eventpool.h>
 #include <framegraph.h>
 
 // #include <entitymanager.h>
@@ -173,6 +174,7 @@ class Engine
         ~Garbage();
 
         void resetCommandBuffer(drv::CommandBufferCirculator::CommandBufferHandle&& cmdBuffer);
+        void releaseEvent(EventPool::EventHandle&& event);
         FrameGraph::FrameId getFrameId() const;
 
      private:
@@ -180,6 +182,7 @@ class Engine
         mutable std::mutex mutex;
 
         std::vector<drv::CommandBufferCirculator::CommandBufferHandle> cmdBuffersToReset;
+        std::vector<EventPool::EventHandle> events;
 
         void close() noexcept;
     };
@@ -207,6 +210,7 @@ class Engine
     drv::QueueManager::Queue inputQueue;
     drv::CommandBufferBank cmdBufferBank;
     drv::Swapchain swapchain;
+    EventPool eventPool;
     SyncBlock syncBlock;
     ShaderBin shaderBin;
     ResourceManager resourceMgr;

@@ -160,6 +160,7 @@ Engine::Engine(const Config& cfg, const std::string& shaderbinFile,
     inputQueue(queueManager.getQueue({"input", "HtoD"})),
     cmdBufferBank(device),
     swapchain(physicalDevice, device, window, get_swapchain_create_info(config)),
+    eventPool(device),
     syncBlock(device, config.maxFramesInFlight),
     shaderBin(shaderbinFile),
     resourceMgr(std::move(resource_infos)) {
@@ -707,6 +708,10 @@ void Engine::Garbage::resetCommandBuffer(
     cmdBuffersToReset.push_back(std::move(cmdBuffer));
 }
 
+void Engine::Garbage::releaseEvent(EventPool::EventHandle&& event) {
+    events.push_back(std::move(event));
+}
+
 FrameGraph::FrameId Engine::Garbage::getFrameId() const {
     return frameId;
 }
@@ -715,4 +720,5 @@ void Engine::Garbage::close() noexcept {
     for (auto& cmdBuffer : cmdBuffersToReset)
         cmdBuffer.circulator->finished(std::move(cmdBuffer));
     cmdBuffersToReset.clear();
+    events.clear();
 }
