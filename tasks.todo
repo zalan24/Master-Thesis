@@ -58,9 +58,31 @@ Get a triangle on screen:
     ✔ Add an event pool @done (3/2/2021, 9:34:57 AM)
         ✔ Use garbage system for recycling @done (3/2/2021, 9:34:57 AM)
     ☐ Resource tracking
-        ☐ Inside a command buffer
-            ☐ Create a resource tracker object on the driver level
+        ☐ Implement several levels of sync precision
+            ☐ Default: sync only as much as necessary
+            ☐ Add a pipeline barrier to the end of the command buffer to make everything available
+            ☐ Use general memory barriers instead of sub-resource based barriers
+            ☐ More sync: remove sync optimizations
+            ☐ Debug sync: always sync everything (all pipeline, all access mask, always)
+        ☐ Create a resource tracker object on the driver level
             ☐ Track any resource used in the commands
+                ☐ Add an optional argument for the resource tracker object in the cmd calls
+            ☐ Use a greedy algorithm for both availability and visibility and place pipeline barriers in cmd calls
+            ☐ Add an optional arg to the cmd calls for event ptr
+                ☐ If an event ptr is given, the cmd call should record a set event call
+                ☐ This set event call should depend on the resources written in this call
+                ☐ Event ptr should be registered in the tracking history
+                ☐ Later calls can automatically wait on this event instead of using pipeline barriers
+                ☐ Sync levels should apply to these events too
+                ☐ API could make suggestions of event usage in debug mode???
+                    ☐ If the pipeline barrier waits for extra pipeline stages, suggest event???
+                    ☐ If event was not used, suggest to remove it???
+        ☐ Inside a framegraph node (inter command buffer sync)
+            ☐ Track any resources
+            ☐ Framegraph nodes with gpu work should have their own resource tracker (for every queue)
+                ☐ Keep only unregistered resources when ending the node
+                ☐ Unregistered resources should keep tracking information for the next frame
+                ☐ Only release acquired events (used in cmd calls), after they are released from tracking history
             ☐ Track resource usage in the command buffer recorder
                 ☐ Resource
                 ☐ Sub-resource range
@@ -70,10 +92,10 @@ Get a triangle on screen:
             ☐ Add a memory barrier of the proper type (based on resource) to writing operations from history
             ☐ For write operations, also add barriers for any reading operations in history
             ☐ Ignore history entries, which are implicitly waited upon
-        ☐ Inside a framegraph node (inter command buffer sync)
-            ☐ Also track any resource
-            ☐ Signal events???
-            ☐ ???
+            ☐ Resource trackers should be able to handle unregistered read only resources
+                ☐ Tracker needs to see if the resource has been made visible to the proper shader stages
+                ☐ If not, make it visible, but only once
+                ☐ If the resource is visible by default, no sync should ever happen
         ☐ Track resources globally
             ☐ Created resource ids in the framegraph
                 ☐ Flag for last write (after which no sync is needed for read operations)
