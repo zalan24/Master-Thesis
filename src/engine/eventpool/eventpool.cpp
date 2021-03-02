@@ -74,6 +74,7 @@ EventPool::EventHandle EventPool::acquire() {
 void EventPool::release(size_t eventIndex) {
     assert(device != drv::NULL_HANDLE);
     std::shared_lock<std::shared_mutex> lock(vectorMutex);
+    items[eventIndex].event.reset();
     assert(items[eventIndex].used.exchange(false) == true);
     assert(acquiredCount.fetch_sub(1) > 0);
 }
