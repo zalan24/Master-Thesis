@@ -102,25 +102,6 @@ class IDriver
     virtual bool is_event_set(LogicalDevicePtr device, EventPtr event) = 0;
     virtual bool reset_event(LogicalDevicePtr device, EventPtr event) = 0;
     virtual bool set_event(LogicalDevicePtr device, EventPtr event) = 0;
-    virtual bool cmd_reset_event(CommandBufferPtr commandBuffer, EventPtr event,
-                                 PipelineStages sourceStage) = 0;
-    virtual bool cmd_set_event(CommandBufferPtr commandBuffer, EventPtr event,
-                               PipelineStages sourceStage) = 0;
-    virtual bool cmd_wait_events(CommandBufferPtr commandBuffer, uint32_t eventCount,
-                                 const EventPtr* events, PipelineStages sourceStage,
-                                 PipelineStages dstStage, uint32_t memoryBarrierCount,
-                                 const MemoryBarrier* memoryBarriers, uint32_t bufferBarrierCount,
-                                 const BufferMemoryBarrier* bufferBarriers,
-                                 uint32_t imageBarrierCount,
-                                 const ImageMemoryBarrier* imageBarriers) = 0;
-    virtual bool cmd_pipeline_barrier(CommandBufferPtr commandBuffer, PipelineStages sourceStage,
-                                      PipelineStages dstStage, DependencyFlagBits dependencyFlags,
-                                      uint32_t memoryBarrierCount,
-                                      const MemoryBarrier* memoryBarriers,
-                                      uint32_t bufferBarrierCount,
-                                      const BufferMemoryBarrier* bufferBarriers,
-                                      uint32_t imageBarrierCount,
-                                      const ImageMemoryBarrier* imageBarriers) = 0;
     virtual TimelineSemaphorePtr create_timeline_semaphore(
       LogicalDevicePtr device, const TimelineSemaphoreCreateInfo* info) = 0;
     virtual bool destroy_timeline_semaphore(LogicalDevicePtr device,
@@ -152,9 +133,29 @@ class IDriver
     virtual bool begin_primary_command_buffer(CommandBufferPtr cmdBuffer, bool singleTime,
                                               bool simultaneousUse) = 0;
     virtual bool end_primary_command_buffer(CommandBufferPtr cmdBuffer) = 0;
-    virtual void cmd_clear_image(CommandBufferPtr cmdBuffer, ImagePtr image,
-                                 ImageLayout currentLayout, const ClearColorValue* clearColors,
-                                 uint32_t ranges,
-                                 const ImageSubresourceRange* subresourceRanges) = 0;
+
+    // virtual bool cmd_reset_event(CommandBufferPtr commandBuffer, EventPtr event,
+    //                              PipelineStages sourceStage) = 0;
+    // virtual bool cmd_set_event(CommandBufferPtr commandBuffer, EventPtr event,
+    //                            PipelineStages sourceStage) = 0;
+    // virtual bool cmd_wait_events(CommandBufferPtr commandBuffer, uint32_t eventCount,
+    //                              const EventPtr* events, PipelineStages sourceStage,
+    //                              PipelineStages dstStage, uint32_t memoryBarrierCount,
+    //                              const MemoryBarrier* memoryBarriers, uint32_t bufferBarrierCount,
+    //                              const BufferMemoryBarrier* bufferBarriers,
+    //                              uint32_t imageBarrierCount,
+    //                              const ImageMemoryBarrier* imageBarriers) = 0;
+    // virtual bool cmd_pipeline_barrier(CommandBufferPtr commandBuffer, PipelineStages sourceStage,
+    //                                   PipelineStages dstStage, DependencyFlagBits dependencyFlags,
+    //                                   uint32_t memoryBarrierCount,
+    //                                   const MemoryBarrier* memoryBarriers,
+    //                                   uint32_t bufferBarrierCount,
+    //                                   const BufferMemoryBarrier* bufferBarriers,
+    //                                   uint32_t imageBarrierCount,
+    //                                   const ImageMemoryBarrier* imageBarriers) = 0;
+    // virtual void cmd_clear_image(CommandBufferPtr cmdBuffer, ImagePtr image,
+    //                              ImageLayout currentLayout, const ClearColorValue* clearColors,
+    //                              uint32_t ranges,
+    //                              const ImageSubresourceRange* subresourceRanges) = 0;
 };
 }  // namespace drv

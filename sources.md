@@ -86,3 +86,4 @@ class Goal
 
 # Vulkan
 * Synchronization https://themaister.net/blog/2019/08/14/yet-another-blog-explaining-vulkan-synchronization/
+* Validate synchronization https://www.lunarg.com/wp-content/uploads/2021/01/Final_Guide-to-Vulkan-Synchronization-Validation_Jan_21.pdf

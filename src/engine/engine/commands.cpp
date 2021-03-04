@@ -15,8 +15,8 @@ void Engine::CommandBufferRecorder::cmdClearImage(
     }
     TODO;  // resource tracking;
     // TODO layout tracing
-    drv::cmd_clear_image(cmdBuffer.commandBufferPtr, image, , clearColors, ranges,
-                         subresourceRanges);
+    nodeHandle->getNode().getResourceTracker(queue)->cmd_clear_image(
+      cmdBuffer.commandBufferPtr, image, , clearColors, ranges, subresourceRanges);
 }
 
 // void cmdWaitSemaphore(drv::SemaphorePtr semaphore, drv::PipelineStages::FlagType waitStage);

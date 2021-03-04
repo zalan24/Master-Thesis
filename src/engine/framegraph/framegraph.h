@@ -9,6 +9,7 @@
 #include <string>
 #include <vector>
 
+#include <drv_resource_tracker.h>
 #include <drv_wrappers.h>
 
 #include <execution_queue.h>
@@ -70,8 +71,11 @@ class FrameGraph
 
         bool hasExecution() const;
 
+        drv::IResourceTracker* getResourceTracker(drv::QueuePtr queue);
+
      private:
         std::string name;
+        std::unordered_map<drv::QueuePtr, std::unique_ptr<drv::IResourceTracker>> resourceTrackers;
         // TODO these could be organized into multiple vectors based on dependency type
         std::vector<CpuDependency> cpuDeps;
         std::vector<EnqueueDependency> enqDeps;
@@ -103,6 +107,8 @@ class FrameGraph
         friend class FrameGraph;
 
         operator bool() const;
+
+        Node& getNode() const;
 
      private:
         NodeHandle();

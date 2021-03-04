@@ -61,12 +61,12 @@ Get a triangle on screen:
         ☐ Implement several levels of sync precision
             ☐ Default: sync only as much as necessary
             ☐ Add a pipeline barrier to the end of the command buffer to make everything available
+            ☐ Make everything available immediately
             ☐ Use general memory barriers instead of sub-resource based barriers
             ☐ More sync: remove sync optimizations
             ☐ Debug sync: always sync everything (all pipeline, all access mask, always)
         ☐ Create a resource tracker object on the driver level
-            ☐ Track any resource used in the commands
-                ☐ Add an optional argument for the resource tracker object in the cmd calls
+            ✔ Track any resource used in the commands @done (3/4/2021, 10:13:23 AM)
             ☐ Use a greedy algorithm for both availability and visibility and place pipeline barriers in cmd calls
             ☐ Add an optional arg to the cmd calls for event ptr
                 ☐ If an event ptr is given, the cmd call should record a set event call
@@ -77,6 +77,7 @@ Get a triangle on screen:
                 ☐ API could make suggestions of event usage in debug mode???
                     ☐ If the pipeline barrier waits for extra pipeline stages, suggest event???
                     ☐ If event was not used, suggest to remove it???
+            ☐ Handle semaphores (semaphores could bind with an other/self resource tracker)
         ☐ Inside a framegraph node (inter command buffer sync)
             ☐ Track any resources
             ☐ Framegraph nodes with gpu work should have their own resource tracker (for every queue)
@@ -98,9 +99,18 @@ Get a triangle on screen:
                 ☐ If the resource is visible by default, no sync should ever happen
         ☐ Track resources globally
             ☐ Created resource ids in the framegraph
-                ☐ Flag for last write (after which no sync is needed for read operations)
+                ☐ Resources are resolved in every frame (first usage of the res id)
+                    ☐ Multiple physical resources can be bound to a res id (eg. images from gbuffer)
+                ☐ Flag for last write (after which no sync is needed for read operations)???
                     ☐ Command buffer recorder should call a command to mark the last write
                     ☐ Intended to be used with Garbage system
+                ☐ Flag for different resource every frame
+                    ☐ No need to sync inter frame
+                    ☐ This basically means the signalling of sync objects intended for the next frame
+                ☐ Flag for global sub-resource range
+                    ☐ When set, the sub-resource range is also recorded at resource resolution
+                    ☐ Finer sync with events
+                    ☐ Extra validation is needed
                 ☐ No auto sync flag
                 ☐ Special semaphore supplier
                     ☐ Instead of using the auto sync system, use a custom functor/something to know when and how to sync current resource usage
@@ -119,6 +129,8 @@ Get a triangle on screen:
                 ☐ Signal events and semaphores for writing nodes
             ☐ Maybe merge these two and add a mask for reading / writing???
             ☐ In case of a recorded usage of the resource doesn't conflict, there is no need to wait
+            ☐ Once a resource is resolved by the supplier node, no sync is needed to different resource values (other image was used in the last frame)
+            ☐ When waiting for a registered resource by event, just add it to the local tracker and it should do the work
             ☐ If there are no depending write operations for a resource, reads may not need to signal anything???
                 ☐ Later frame writes can wait on frame finish instead???
             ☐ What about missing demand or supply operations???
@@ -132,6 +144,7 @@ Get a triangle on screen:
                 ☐ Inside same node and same frame (need to register nodeId and frameId)
                 ☐ Usage in a node/frame which has an appropriate dependency and the resource is registered
                     ☐ Need to check dependency offset and place of usage (cpu/queue)
+        ☐ Validate synchronization using the link in sources
 
 Cleanup & other:
     ☐ Remove useless common driver stuff (drv/common)

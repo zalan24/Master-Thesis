@@ -194,6 +194,9 @@ struct PipelineStages
         FLAG_BITS_MAX_ENUM = 0x7FFFFFFF
     };
     FlagType stageFlags;
+    PipelineStages() : stageFlags(TOP_OF_PIPE_BIT) {}
+    PipelineStages(FlagType flags) : stageFlags(flags) {}
+    PipelineStages(PipelineStageFlagBits stage) : stageFlags(stage) {}
 };
 
 struct ExecutionInfo

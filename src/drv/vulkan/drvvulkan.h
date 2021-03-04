@@ -5,6 +5,7 @@
 #include <vector>
 
 #include <drv_interface.h>
+#include <drv_resource_tracker.h>
 
 #include <drvtypes.h>
 
@@ -127,23 +128,6 @@ class DrvVulkan final : public drv::IDriver
     bool is_event_set(drv::LogicalDevicePtr device, drv::EventPtr event) override;
     bool reset_event(drv::LogicalDevicePtr device, drv::EventPtr event) override;
     bool set_event(drv::LogicalDevicePtr device, drv::EventPtr event) override;
-    bool cmd_reset_event(drv::CommandBufferPtr commandBuffer, drv::EventPtr event,
-                         drv::PipelineStages sourceStage) override;
-    bool cmd_set_event(drv::CommandBufferPtr commandBuffer, drv::EventPtr event,
-                       drv::PipelineStages sourceStage) override;
-    bool cmd_wait_events(drv::CommandBufferPtr commandBuffer, uint32_t eventCount,
-                         const drv::EventPtr* events, drv::PipelineStages sourceStage,
-                         drv::PipelineStages dstStage, uint32_t memoryBarrierCount,
-                         const drv::MemoryBarrier* memoryBarriers, uint32_t bufferBarrierCount,
-                         const drv::BufferMemoryBarrier* bufferBarriers, uint32_t imageBarrierCount,
-                         const drv::ImageMemoryBarrier* imageBarriers) override;
-    bool cmd_pipeline_barrier(drv::CommandBufferPtr commandBuffer, drv::PipelineStages sourceStage,
-                              drv::PipelineStages dstStage, drv::DependencyFlagBits dependencyFlags,
-                              uint32_t memoryBarrierCount, const drv::MemoryBarrier* memoryBarriers,
-                              uint32_t bufferBarrierCount,
-                              const drv::BufferMemoryBarrier* bufferBarriers,
-                              uint32_t imageBarrierCount,
-                              const drv::ImageMemoryBarrier* imageBarriers) override;
     drv::TimelineSemaphorePtr create_timeline_semaphore(
       drv::LogicalDevicePtr device, const drv::TimelineSemaphoreCreateInfo* info) override;
     bool destroy_timeline_semaphore(drv::LogicalDevicePtr device,
@@ -175,10 +159,6 @@ class DrvVulkan final : public drv::IDriver
     bool begin_primary_command_buffer(drv::CommandBufferPtr cmdBuffer, bool singleTime,
                                       bool simultaneousUse) override;
     bool end_primary_command_buffer(drv::CommandBufferPtr cmdBuffer) override;
-    void cmd_clear_image(drv::CommandBufferPtr cmdBuffer, drv::ImagePtr image,
-                         drv::ImageLayout currentLayout, const drv::ClearColorValue* clearColors,
-                         uint32_t ranges,
-                         const drv::ImageSubresourceRange* subresourceRanges) override;
 
  private:
     struct LogicalDeviceData
@@ -188,6 +168,82 @@ class DrvVulkan final : public drv::IDriver
     };
     std::mutex devicesDataMutex;
     std::unordered_map<drv::LogicalDevicePtr, LogicalDeviceData> devicesData;
+};
+
+class DrvVulkanResourceTracker final : public drv::IResourceTracker
+{
+ public:
+    DrvVulkanResourceTracker(DrvVulkan* driver, drv::QueuePtr queue)
+      : IResourceTracker(driver, queue) {}
+    ~DrvVulkanResourceTracker() override {}
+
+    bool cmd_reset_event(drv::CommandBufferPtr commandBuffer, drv::EventPtr event,
+                         drv::PipelineStages sourceStage) override;
+    bool cmd_set_event(drv::CommandBufferPtr commandBuffer, drv::EventPtr event,
+                       drv::PipelineStages sourceStage) override;
+    bool cmd_wait_events(drv::CommandBufferPtr commandBuffer, uint32_t eventCount,
+                         const drv::EventPtr* events, drv::PipelineStages sourceStage,
+                         drv::PipelineStages dstStage, uint32_t memoryBarrierCount,
+                         const drv::MemoryBarrier* memoryBarriers, uint32_t bufferBarrierCount,
+                         const drv::BufferMemoryBarrier* bufferBarriers, uint32_t imageBarrierCount,
+                         const drv::ImageMemoryBarrier* imageBarriers) override;
+    bool cmd_pipeline_barrier(drv::CommandBufferPtr commandBuffer, drv::PipelineStages sourceStage,
+                              drv::PipelineStages dstStage, drv::DependencyFlagBits dependencyFlags,
+                              uint32_t memoryBarrierCount, const drv::MemoryBarrier* memoryBarriers,
+                              uint32_t bufferBarrierCount,
+                              const drv::BufferMemoryBarrier* bufferBarriers,
+                              uint32_t imageBarrierCount,
+                              const drv::ImageMemoryBarrier* imageBarriers) override;
+    void cmd_clear_image(drv::CommandBufferPtr cmdBuffer, drv::ImagePtr image,
+                         drv::ImageLayout currentLayout, const drv::ClearColorValue* clearColors,
+                         uint32_t ranges,
+                         const drv::ImageSubresourceRange* subresourceRanges) override;
+
+ private:
+    struct TrackedMemoryBarrier
+    {
+        //drv::Ptr data; // maybe??? TODO
+        drv::MemoryBarrier::AccessFlagBitType accessMask;
+    };
+
+    struct TrackedBufferMemoryBarrier
+    {
+        drv::MemoryBarrier::AccessFlagBitType accessMask;
+
+        // ownership transfer
+        // drv::QueueFamilyPtr srcFamily;
+        TODO;  // family transfer
+
+        drv::BufferPtr buffer;
+        drv::DeviceSize offset;
+        drv::DeviceSize size;
+    };
+
+    struct TrackedImageMemoryBarrier
+    {
+        drv::MemoryBarrier::AccessFlagBitType accessMask;
+
+        // ImageLayout oldLayout;
+        TODO;  // track layout
+        // drv::ImageLayout requestedLayoutMask = drv::ImageLayout::UNDEFINED;
+        // bool layoutChanged = false;
+        // drv::ImageLayout resultLayout = drv::ImageLayout::UNDEFINED;
+
+        // ownership transfer
+        // drv::QueueFamilyPtr srcFamily;
+        TODO;  // family transfer
+
+        drv::ImagePtr image;
+        drv::ImageSubresourceRange subresourceRange;
+    };
+
+    // TODO DependencyFlagBits dependencyFlags??
+    void addMemoryAccess(drv::CommandBufferPtr commandBuffer, drv::PipelineStages stages,
+                         /*drv::DependencyFlagBits dependencyFlags,*/ uint32_t memoryBarrierCount,
+                         const TrackedMemoryBarrier* accessTypes, uint32_t bufferBarrierCount,
+                         const TrackedBufferMemoryBarrier* bufferBarriers,
+                         uint32_t imageBarrierCount,
+                         const TrackedImageMemoryBarrier* imageBarriers);
 };
 
 // TODO

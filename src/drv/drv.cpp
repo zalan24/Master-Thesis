@@ -47,6 +47,22 @@ bool drv::init(const Driver* drivers, unsigned int count) {
     return current_driver_interface != nullptr;
 }
 
+std::unique_ptr<drv::IResourceTracker> drv::create_resource_tracker(QueuePtr queue) {
+    assert(current_driver_interface == nullptr);
+    switch (current_driver) {
+        case Driver::VULKAN:
+#ifdef DRIVER_VULKAN
+            return std::make_unique<DrvVulkanResourceTracker>(
+              static_cast<DrvVulkan*>(current_driver_interface), queue);
+#else
+            break;
+#endif
+        case Driver::NUM_PLATFORMS:
+            break;
+    }
+    return nullptr;
+}
+
 bool drv::close() {
     delete current_driver_interface;
     current_driver_interface = nullptr;
@@ -299,38 +315,38 @@ bool drv::set_event(LogicalDevicePtr device, EventPtr event) {
     return current_driver_interface->set_event(device, event);
 }
 
-bool drv::cmd_reset_event(CommandBufferPtr commandBuffer, EventPtr event,
-                          PipelineStages sourceStage) {
-    return current_driver_interface->cmd_reset_event(commandBuffer, event, sourceStage);
-}
+// bool drv::cmd_reset_event(CommandBufferPtr commandBuffer, EventPtr event,
+//                           PipelineStages sourceStage) {
+//     return current_driver_interface->cmd_reset_event(commandBuffer, event, sourceStage);
+// }
 
-bool drv::cmd_set_event(CommandBufferPtr commandBuffer, EventPtr event,
-                        PipelineStages sourceStage) {
-    return current_driver_interface->cmd_set_event(commandBuffer, event, sourceStage);
-}
+// bool drv::cmd_set_event(CommandBufferPtr commandBuffer, EventPtr event,
+//                         PipelineStages sourceStage) {
+//     return current_driver_interface->cmd_set_event(commandBuffer, event, sourceStage);
+// }
 
-bool drv::cmd_wait_events(CommandBufferPtr commandBuffer, uint32_t eventCount,
-                          const EventPtr* events, PipelineStages sourceStage,
-                          PipelineStages dstStage, uint32_t memoryBarrierCount,
-                          const MemoryBarrier* memoryBarriers, uint32_t bufferBarrierCount,
-                          const BufferMemoryBarrier* bufferBarriers, uint32_t imageBarrierCount,
-                          const ImageMemoryBarrier* imageBarriers) {
-    return current_driver_interface->cmd_wait_events(
-      commandBuffer, eventCount, events, sourceStage, dstStage, memoryBarrierCount, memoryBarriers,
-      bufferBarrierCount, bufferBarriers, imageBarrierCount, imageBarriers);
-}
+// bool drv::cmd_wait_events(CommandBufferPtr commandBuffer, uint32_t eventCount,
+//                           const EventPtr* events, PipelineStages sourceStage,
+//                           PipelineStages dstStage, uint32_t memoryBarrierCount,
+//                           const MemoryBarrier* memoryBarriers, uint32_t bufferBarrierCount,
+//                           const BufferMemoryBarrier* bufferBarriers, uint32_t imageBarrierCount,
+//                           const ImageMemoryBarrier* imageBarriers) {
+//     return current_driver_interface->cmd_wait_events(
+//       commandBuffer, eventCount, events, sourceStage, dstStage, memoryBarrierCount, memoryBarriers,
+//       bufferBarrierCount, bufferBarriers, imageBarrierCount, imageBarriers);
+// }
 
-bool drv::cmd_pipeline_barrier(CommandBufferPtr commandBuffer, PipelineStages sourceStage,
-                               PipelineStages dstStage, DependencyFlagBits dependencyFlags,
-                               uint32_t memoryBarrierCount, const MemoryBarrier* memoryBarriers,
-                               uint32_t bufferBarrierCount,
-                               const BufferMemoryBarrier* bufferBarriers,
-                               uint32_t imageBarrierCount,
-                               const ImageMemoryBarrier* imageBarriers) {
-    return current_driver_interface->cmd_pipeline_barrier(
-      commandBuffer, sourceStage, dstStage, dependencyFlags, memoryBarrierCount, memoryBarriers,
-      bufferBarrierCount, bufferBarriers, imageBarrierCount, imageBarriers);
-}
+// bool drv::cmd_pipeline_barrier(CommandBufferPtr commandBuffer, PipelineStages sourceStage,
+//                                PipelineStages dstStage, DependencyFlagBits dependencyFlags,
+//                                uint32_t memoryBarrierCount, const MemoryBarrier* memoryBarriers,
+//                                uint32_t bufferBarrierCount,
+//                                const BufferMemoryBarrier* bufferBarriers,
+//                                uint32_t imageBarrierCount,
+//                                const ImageMemoryBarrier* imageBarriers) {
+//     return current_driver_interface->cmd_pipeline_barrier(
+//       commandBuffer, sourceStage, dstStage, dependencyFlags, memoryBarrierCount, memoryBarriers,
+//       bufferBarrierCount, bufferBarriers, imageBarrierCount, imageBarriers);
+// }
 
 drv::TimelineSemaphorePtr drv::create_timeline_semaphore(LogicalDevicePtr device,
                                                          const TimelineSemaphoreCreateInfo* info) {
@@ -408,12 +424,12 @@ bool drv::device_wait_idle(LogicalDevicePtr device) {
     return current_driver_interface->device_wait_idle(device);
 }
 
-void drv::cmd_clear_image(CommandBufferPtr cmdBuffer, ImagePtr image, ImageLayout currentLayout,
-                          const ClearColorValue* clearColors, uint32_t ranges,
-                          const ImageSubresourceRange* subresourceRanges) {
-    return current_driver_interface->cmd_clear_image(cmdBuffer, image, currentLayout, clearColors,
-                                                     ranges, subresourceRanges);
-}
+// void drv::cmd_clear_image(CommandBufferPtr cmdBuffer, ImagePtr image, ImageLayout currentLayout,
+//                           const ClearColorValue* clearColors, uint32_t ranges,
+//                           const ImageSubresourceRange* subresourceRanges) {
+//     return current_driver_interface->cmd_clear_image(cmdBuffer, image, currentLayout, clearColors,
+//                                                      ranges, subresourceRanges);
+// }
 
 bool drv::begin_primary_command_buffer(CommandBufferPtr cmdBuffer, bool singleTime,
                                        bool simultaneousUse) {

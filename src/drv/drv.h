@@ -2,6 +2,7 @@
 
 #include <drvtypes.h>
 
+#include <memory>
 #include <mutex>
 
 extern "C"
@@ -22,6 +23,7 @@ enum class Driver : DriverIndex
     VULKAN = 0,
     NUM_PLATFORMS
 };
+class IResourceTracker;
 
 // TODO Shaders
 
@@ -44,6 +46,8 @@ enum class Driver : DriverIndex
 // Registers the first available driver on the list
 bool init(const Driver* drivers, unsigned int count);
 bool close();
+
+std::unique_ptr<IResourceTracker> create_resource_tracker(QueuePtr queue);
 
 InstancePtr create_instance(const InstanceCreateInfo* info, bool _default = true);
 bool delete_instance(InstancePtr ptr);
@@ -151,18 +155,6 @@ bool destroy_event(LogicalDevicePtr device, EventPtr event);
 bool is_event_set(LogicalDevicePtr device, EventPtr event);
 bool reset_event(LogicalDevicePtr device, EventPtr event);
 bool set_event(LogicalDevicePtr device, EventPtr event);
-bool cmd_reset_event(CommandBufferPtr commandBuffer, EventPtr event, PipelineStages sourceStage);
-bool cmd_set_event(CommandBufferPtr commandBuffer, EventPtr event, PipelineStages sourceStage);
-bool cmd_wait_events(CommandBufferPtr commandBuffer, uint32_t eventCount, const EventPtr* events,
-                     PipelineStages sourceStage, PipelineStages dstStage,
-                     uint32_t memoryBarrierCount, const MemoryBarrier* memoryBarriers,
-                     uint32_t bufferBarrierCount, const BufferMemoryBarrier* bufferBarriers,
-                     uint32_t imageBarrierCount, const ImageMemoryBarrier* imageBarriers);
-bool cmd_pipeline_barrier(CommandBufferPtr commandBuffer, PipelineStages sourceStage,
-                          PipelineStages dstStage, DependencyFlagBits dependencyFlags,
-                          uint32_t memoryBarrierCount, const MemoryBarrier* memoryBarriers,
-                          uint32_t bufferBarrierCount, const BufferMemoryBarrier* bufferBarriers,
-                          uint32_t imageBarrierCount, const ImageMemoryBarrier* imageBarriers);
 TimelineSemaphorePtr create_timeline_semaphore(LogicalDevicePtr device,
                                                const TimelineSemaphoreCreateInfo* info);
 bool destroy_timeline_semaphore(LogicalDevicePtr device, TimelineSemaphorePtr semaphore);
@@ -195,8 +187,20 @@ bool destroy_shader_module(LogicalDevicePtr device, ShaderModulePtr module);
 bool begin_primary_command_buffer(CommandBufferPtr cmdBuffer, bool singleTime,
                                   bool simultaneousUse);
 bool end_primary_command_buffer(CommandBufferPtr cmdBuffer);
-void cmd_clear_image(CommandBufferPtr cmdBuffer, ImagePtr image, ImageLayout currentLayout,
-                     const ClearColorValue* clearColors, uint32_t ranges,
-                     const ImageSubresourceRange* subresourceRanges);
+// void cmd_clear_image(CommandBufferPtr cmdBuffer, ImagePtr image, ImageLayout currentLayout,
+//                      const ClearColorValue* clearColors, uint32_t ranges,
+//                      const ImageSubresourceRange* subresourceRanges);
+// bool cmd_reset_event(CommandBufferPtr commandBuffer, EventPtr event, PipelineStages sourceStage);
+// bool cmd_set_event(CommandBufferPtr commandBuffer, EventPtr event, PipelineStages sourceStage);
+// bool cmd_wait_events(CommandBufferPtr commandBuffer, uint32_t eventCount, const EventPtr* events,
+//                      PipelineStages sourceStage, PipelineStages dstStage,
+//                      uint32_t memoryBarrierCount, const MemoryBarrier* memoryBarriers,
+//                      uint32_t bufferBarrierCount, const BufferMemoryBarrier* bufferBarriers,
+//                      uint32_t imageBarrierCount, const ImageMemoryBarrier* imageBarriers);
+// bool cmd_pipeline_barrier(CommandBufferPtr commandBuffer, PipelineStages sourceStage,
+//                           PipelineStages dstStage, DependencyFlagBits dependencyFlags,
+//                           uint32_t memoryBarrierCount, const MemoryBarrier* memoryBarriers,
+//                           uint32_t bufferBarrierCount, const BufferMemoryBarrier* bufferBarriers,
+//                           uint32_t imageBarrierCount, const ImageMemoryBarrier* imageBarriers);
 
 };  // namespace drv

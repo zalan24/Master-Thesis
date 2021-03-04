@@ -55,6 +55,13 @@ void FrameGraph::Node::addDependency(QueueQueueDependency dep) {
     queQueDeps.push_back(std::move(dep));
 }
 
+drv::IResourceTracker* FrameGraph::Node::getResourceTracker(drv::QueuePtr queue) {
+    std::unique_ptr<drv::IResourceTracker>& ret = resourceTrackers[queue];
+    if (!ret)
+        ret = drv::create_resource_tracker(queue);
+    return ret.get();
+}
+
 FrameGraph::NodeId FrameGraph::addNode(Node&& node) {
     FrameGraph::NodeId id = nodes.size();
     node.addDependency(CpuDependency{id, 1});
@@ -251,6 +258,10 @@ FrameGraph::NodeHandle::NodeHandle() : frameGraph(nullptr) {
 FrameGraph::NodeHandle::NodeHandle(FrameGraph* _frameGraph, FrameGraph::NodeId _node,
                                    FrameGraph::FrameId _frameId)
   : frameGraph(_frameGraph), node(_node), frameId(_frameId) {
+}
+
+FrameGraph::Node& FrameGraph::NodeHandle::getNode() const {
+    return *frameGraph->getNode(node);
 }
 
 FrameGraph::NodeHandle::NodeHandle(NodeHandle&& other)
