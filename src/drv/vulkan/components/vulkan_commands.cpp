@@ -30,6 +30,38 @@ bool DrvVulkan::end_primary_command_buffer(drv::CommandBufferPtr cmdBuffer) {
 }
 
 #if USE_RESOURCE_TRACKER
+
+void DrvVulkanResourceTracker::invalidate(
+  drv::PipelineStages& autoWaitSrcStages, drv::PipelineStages& autoWaitDstStages,
+  drv::MemoryBarrier::AccessFlagBitType& availableMask,
+  drv::MemoryBarrier::AccessFlagBitType& visibleMask, drv::PipelineStages::FlagType srcStages,
+  drv::PipelineStages::FlagType dstStages, drv::MemoryBarrier::AccessFlagBitType unavailable,
+  drv::MemoryBarrier::AccessFlagBitType invisible, const char* message) const {
+    drv::drv_assert(!(srcStages & drv::PipelineStages::ALL_COMMANDS_BIT),
+                    "Resolve the pipeline stages first");
+    drv::drv_assert(!(srcStages & drv::PipelineStages::ALL_GRAPHICS_BIT),
+                    "Resolve the pipeline stages first");
+    drv::drv_assert(!(dstStages & drv::PipelineStages::ALL_COMMANDS_BIT),
+                    "Resolve the pipeline stages first");
+    drv::drv_assert(!(dstStages & drv::PipelineStages::ALL_GRAPHICS_BIT),
+                    "Resolve the pipeline stages first");
+    drv::drv_assert(!(unavailable & drv::MemoryBarrier::get_all_read_bits()),
+                    "Src access mask may only contain write accesses");
+    drv::drv_assert(!(invisible & drv::MemoryBarrier::get_all_write_bits()),
+                    "Dst access mask may only contain read accesses");
+    drv::drv_assert(
+      !(unavailable & (drv::MemoryBarrier::MEMORY_WRITE_BIT | drv::MemoryBarrier::MEMORY_READ_BIT)),
+      "Resolve the access mask first");
+    drv::drv_assert(
+      !(invisible & (drv::MemoryBarrier::MEMORY_WRITE_BIT | drv::MemoryBarrier::MEMORY_READ_BIT)),
+      "Resolve the access mask first");
+    autoWaitSrcStages.add(srcStages);
+    autoWaitDstStages.add(dstStages);
+    availableMask |= unavailable;
+    visibleMask |= invisible;
+    TODO;  // error / warn for invalidation
+}
+
 void DrvVulkanResourceTracker::addMemoryAccess(
   drv::CommandBufferPtr commandBuffer, drv::PipelineStages stages,
   /*drv::DependencyFlagBits dependencyFlags,*/ uint32_t memoryBarrierCount,
@@ -57,7 +89,6 @@ void DrvVulkanResourceTracker::addMemoryAccess(
 
     TODO;
     // TODO impelement sync levels here
-    // TODO make memory visible
     for (uint32_t i = 0; i < memoryBarrierCount; ++i) {
         waitedMarker++;
         TODO;
@@ -74,6 +105,11 @@ void DrvVulkanResourceTracker::addMemoryAccess(
         const bool isRead = drv::MemoryBarrier::is_read(imageBarrier.accessMask);
         for (uint32_t j = 0; j < dstStageCount; ++j)
             dstStagesPtr[j].transitiveStages = dstStagesPtr[j].originalStage;
+
+        drv::MemoryBarrier::AccessFlagBitType currentReadAccess =
+          drv::MemoryBarrier::get_read_bits(imageBarrier.accessMask);
+        const uint32_t currentReadAccessCount =
+          drv::MemoryBarrier::get_access_count(currentReadAccess);
 
         for (auto entry = imageHistory.rbegin(); entry != imageHistory.rend(); ++entry) {
             // TODO early break?
@@ -93,9 +129,10 @@ void DrvVulkanResourceTracker::addMemoryAccess(
                             drv::PipelineStages::FlagType remainingStages =
                               entryStages & (allStages ^ dstStagesPtr[j].transitiveStages);
                             if (remainingStages != 0) {
-                                TODO;  // invalidate (remainingStages, dstStagesPtr[j].originalStage)
-                                autoWaitSrcStages.add(remainingStages);
-                                autoWaitDstStages.add(dstStagesPtr[j].originalStage);
+                                invalidate(autoWaitSrcStages, autoWaitDstStages, availableMask,
+                                           visibleMask, remainingStages,
+                                           dstStagesPtr[j].originalStage, 0, 0,
+                                           "Image access is not waited upon");
                             }
                         }
                     }
@@ -126,60 +163,76 @@ void DrvVulkanResourceTracker::addMemoryAccess(
                                         continue;
                                     if (availabilityItr->entry.sync.waitedMarker[j]
                                         != waitedMarker) {
-                                        TODO;  // invalidate, need to wait on this barrier
-                                        autoWaitSrcStages.add(
-                                          availabilityItr->entry.sync.dstStages);
-                                        autoWaitDstStages.add(dstStagesPtr[j].originalStage);
+                                        invalidate(
+                                          autoWaitSrcStages, autoWaitDstStages, availableMask,
+                                          visibleMask,
+                                          availabilityItr->entry.sync.dstStages.resolve(
+                                            queueSupport),
+                                          dstStagesPtr[j].originalStage, 0, 0,
+                                          "Image access needs to wait on the barrier that flushes the memory");
                                     }
                                     available = true;
                                     break;
                                 }
                                 if (available) {
-                                    TODO;  // consider own access types...
-                                      // auto visibilityItr = availabilityItr;
-                                      // bool visible = false;
-                                      // for (; visibilityItr != imageHistory.end() && !visible;
-                                      //      ++visibilityItr) {
-                                      //     if (visibilityItr->type != ImageHistoryEntry::SYNC)
-                                      //         continue;
-                                      //     // doesn't flush the cache of the current access type
-                                      //     if ((visibilityItr->entry.sync.visibleMask & accessType)
-                                      //         == 0)
-                                      //         continue;
-                                      //     drv::PipelineStages::FlagType dstStages =
-                                      //       availabilityItr->entry.sync.dstStages.resolve(
-                                      //         queueSupport);
-                                      //     drv::PipelineStages::FlagType srcStages =
-                                      //       visibilityItr->entry.sync.srcStages.resolve(queueSupport);
-                                      //     // No dependency between availability and this visibility
-                                      //     if ((dstStages & srcStages) == 0)
-                                      //         continue;
-                                      //     if (visibilityItr->entry.sync.waitedMarker[j]
-                                      //         != waitedMarker) {
-                                      //         TODO;  // invalidate, need to wait on this barrier
-                                      //         autoWaitSrcStages.add(
-                                      //           visibilityItr->entry.sync.dstStages);
-                                      //         autoWaitDstStages.add(dstStagesPtr[j].originalStage);
-                                      //     }
-                                      //     visible = true;
-                                      //     break;
-                                      // }
-                                      // if (!visible) {
-                                      //     TODO;  // invalidate
-                                      //     autoWaitSrcStages.add(
-                                      //       availabilityItr->entry.sync.dstStages);
-                                      //     autoWaitDstStages.add(dstStagesPtr[j].originalStage);
-                                      //     visibleMask |= accessType;
-                                      // }
+                                    drv::PipelineStages::FlagType dstStages =
+                                      availabilityItr->entry.sync.dstStages.resolve(queueSupport);
+                                    for (uint32_t l = 0; l < currentReadAccessCount; ++l) {
+                                        drv::MemoryBarrier::AccessFlagBits readAccessType =
+                                          drv::MemoryBarrier::get_access(currentReadAccess, l);
+                                        auto visibilityItr = availabilityItr;
+                                        bool visible = false;
+                                        for (; visibilityItr != imageHistory.end() && !visible;
+                                             ++visibilityItr) {
+                                            if (visibilityItr->type != ImageHistoryEntry::SYNC)
+                                                continue;
+                                            // doesn't invalidate the cache of the current access type
+                                            if ((visibilityItr->entry.sync.visibleMask
+                                                 & readAccessType)
+                                                == 0)
+                                                continue;
+                                            drv::PipelineStages::FlagType srcStages =
+                                              visibilityItr->entry.sync.srcStages.resolve(
+                                                queueSupport);
+                                            // No dependency between availability and this visibility
+                                            if ((dstStages & srcStages) == 0)
+                                                continue;
+                                            if (visibilityItr->entry.sync.waitedMarker[j]
+                                                != waitedMarker) {
+                                                invalidate(
+                                                  autoWaitSrcStages, autoWaitDstStages,
+                                                  availableMask, visibleMask,
+                                                  availabilityItr->entry.sync.dstStages.resolve(
+                                                    queueSupport),
+                                                  dstStagesPtr[j].originalStage, 0, 0,
+                                                  "Image access needs to wait on the barrier that invalidates the cache");
+                                            }
+                                            visible = true;
+                                            break;
+                                        }
+                                        if (!visible) {
+                                            invalidate(
+                                              autoWaitSrcStages, autoWaitDstStages, availableMask,
+                                              visibleMask,
+                                              availabilityItr->entry.sync.dstStages.resolve(
+                                                queueSupport),
+                                              dstStagesPtr[j].originalStage, 0, readAccessType,
+                                              "Image access tries to read memory without invalidating the its cache.");
+                                        }
+                                    }
                                 }
                                 else {
-                                    TODO;  // invalidate, memory not available
-                                    autoWaitSrcStages.add(entryStages);
-                                    autoWaitDstStages.add(dstStagesPtr[j].originalStage);
-                                    availableMask |= accessType;
+                                    invalidate(autoWaitSrcStages, autoWaitDstStages, availableMask,
+                                               visibleMask, entryStages,
+                                               dstStagesPtr[j].originalStage, accessType, 0,
+                                               "Image access tries to read unavailable memory");
                                 }
                             }
                         }
+                    }
+                    else if (drv::MemoryBarrier::is_write(entry->entry.access.accessMask)
+                             && isWrite) {
+                        TODO;  // in case of write/write -> wait on flushes of the original writes
                     }
                     break;
                 case ImageHistoryEntry::SYNC:
@@ -197,18 +250,59 @@ void DrvVulkanResourceTracker::addMemoryAccess(
                             && entry->image == imageBarrier.image) {
                             // availability
                             if (entry->entry.sync.waitedMarker[j] != waitedMarker) {
-                                TODO;  // invalidate, it has to be waited on
-                                autoWaitSrcStages.add(entry->entry.sync.dstStages);
-                                autoWaitDstStages.add(dstStagesPtr[j].originalStage);
+                                invalidate(
+                                  autoWaitSrcStages, autoWaitDstStages, availableMask, visibleMask,
+                                  entry->entry.sync.dstStages.resolve(queueSupport),
+                                  dstStagesPtr[j].originalStage, 0, 0,
+                                  "Image layout transition needs to be waited on when accessing the image");
                             }  // otherwise availability is provided
-                            TODO;
-                            // for visibility use the same strategy as for write access operations
+                            drv::PipelineStages::FlagType dstStages =
+                              entry->entry.sync.dstStages.resolve(queueSupport);
+                            for (uint32_t l = 0; l < currentReadAccessCount; ++l) {
+                                drv::MemoryBarrier::AccessFlagBits readAccessType =
+                                  drv::MemoryBarrier::get_access(currentReadAccess, l);
+                                auto visibilityItr = std::make_reverse_iterator(entry);
+                                bool visible = false;
+                                for (; visibilityItr != imageHistory.end() && !visible;
+                                     ++visibilityItr) {
+                                    if (visibilityItr->type != ImageHistoryEntry::SYNC)
+                                        continue;
+                                    // doesn't invalidate the cache of the current access type
+                                    if ((visibilityItr->entry.sync.visibleMask & readAccessType)
+                                        == 0)
+                                        continue;
+                                    drv::PipelineStages::FlagType srcStages =
+                                      visibilityItr->entry.sync.srcStages.resolve(queueSupport);
+                                    // No dependency between availability and this visibility
+                                    if ((dstStages & srcStages) == 0)
+                                        continue;
+                                    if (visibilityItr->entry.sync.waitedMarker[j] != waitedMarker) {
+                                        invalidate(
+                                          autoWaitSrcStages, autoWaitDstStages, availableMask,
+                                          visibleMask,
+                                          visibilityItr->entry.sync.dstStages.resolve(queueSupport),
+                                          dstStagesPtr[j].originalStage, 0, 0,
+                                          "Result of image transition as available to the accessing operation, but it's not visible");
+                                    }
+                                    visible = true;
+                                    break;
+                                }
+                                if (!visible) {
+                                    invalidate(
+                                      autoWaitSrcStages, autoWaitDstStages, availableMask,
+                                      visibleMask,
+                                      entry->entry.sync.dstStages.resolve(queueSupport),
+                                      dstStagesPtr[j].originalStage, 0, readAccessType,
+                                      "Result of image transition as available to the accessing operation, but it's not visible");
+                                }
+                            }
                         }
                     }
                     break;
             }
         }
     }
+    TODO;  // auto create pipeline barrier if necessary (or wait event) -- based on settings
     // Add access to history
     for (uint32_t i = 0; i < imageBarrierCount; ++i) {
         const TrackedImageMemoryBarrier& imageBarrier = imageBarriers[i];

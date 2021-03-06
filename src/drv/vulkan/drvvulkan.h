@@ -291,6 +291,14 @@ class DrvVulkanResourceTracker final : public drv::IResourceTracker
                          const TrackedBufferMemoryBarrier* bufferBarriers,
                          uint32_t imageBarrierCount,
                          const TrackedImageMemoryBarrier* imageBarriers);
+
+    void invalidate(drv::PipelineStages& autoWaitSrcStages, drv::PipelineStages& autoWaitDstStages,
+                    drv::MemoryBarrier::AccessFlagBitType& availableMask,
+                    drv::MemoryBarrier::AccessFlagBitType& visibleMask,
+                    drv::PipelineStages::FlagType srcStages,
+                    drv::PipelineStages::FlagType dstStages,
+                    drv::MemoryBarrier::AccessFlagBitType unavailable,
+                    drv::MemoryBarrier::AccessFlagBitType invisible, const char* message) const;
 #endif
 };
 
