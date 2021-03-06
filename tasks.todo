@@ -60,6 +60,7 @@ Get a triangle on screen:
     ☐ Resource tracking
         ☐ Implement several levels of sync precision
             ☐ Auto sync / just validate (auto sync is only for debug)
+                ☐ Validate can assert or just warn
             ☐ Default: sync only as much as necessary
             ☐ Add a pipeline barrier to the end of the command buffer to make everything available
             ☐ Make everything available immediately

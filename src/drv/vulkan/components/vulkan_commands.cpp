@@ -36,30 +36,44 @@ void DrvVulkanResourceTracker::addMemoryAccess(
   const TrackedMemoryBarrier* accessTypes, uint32_t bufferBarrierCount,
   const TrackedBufferMemoryBarrier* bufferBarriers, uint32_t imageBarrierCount,
   const TrackedImageMemoryBarrier* imageBarriers) {
+    const drv::CommandTypeBase queueSupport = ;
+    const uint32_t dstStageCount = stages.getStageCount(queueSupport);
+    const drv::PipelineStages::FlagType allStages = drv::PipelineStages::get_all_bits(queueSupport);
+    struct StageData
+    {
+        drv::PipelineStages::PipelineStageFlagBits originalStage;
+        drv::PipelineStages::FlagType transitiveStages;
+    };
+    StackMemory::MemoryHandle<StageData> dstStagesMem(dstStageCount, TEMPMEM);
+    StageData* dstStagesPtr = dstStagesMem.get();
+    drv::drv_assert(dstStagesPtr != nullptr || dstStageCount == 0);
+    for (uint32_t j = 0; j < dstStageCount; ++j)
+        dstStagesPtr[j].originalStage = stages.getStage(queueSupport, j);
+    drv::PipelineStages autoWaitSrcStages(drv::PipelineStages::TOP_OF_PIPE_BIT);
+    drv::PipelineStages autoWaitDstStages(drv::PipelineStages::TOP_OF_PIPE_BIT);
+
+    drv::MemoryBarrier::AccessFlagBitType availableMask = 0;
+    drv::MemoryBarrier::AccessFlagBitType visibleMask = 0;
+
     TODO;
     // TODO impelement sync levels here
-    // TODO make memory available
     // TODO make memory visible
     for (uint32_t i = 0; i < memoryBarrierCount; ++i) {
+        waitedMarker++;
         TODO;
         // find all conflicting writes and append them to a pipeline barrier structure
     }
     for (uint32_t i = 0; i < bufferBarrierCount; ++i) {
+        waitedMarker++;
         TODO;
     }
     for (uint32_t i = 0; i < imageBarrierCount; ++i) {
+        waitedMarker++;
         const TrackedImageMemoryBarrier& imageBarrier = imageBarriers[i];
         const bool isWrite = drv::MemoryBarrier::is_write(imageBarrier.accessMask);
         const bool isRead = drv::MemoryBarrier::is_read(imageBarrier.accessMask);
-        // drv::PipelineStages waitStages(drv::PipelineStages::TOP_OF_PIPE_BIT);
-        // drv::MemoryBarrier::AccessFlagBitType availableMask = 0;
-        // drv::MemoryBarrier::AccessFlagBitType visibleMask = 0;
-
-        // drv::PipelineStages syncSrcStages(drv::PipelineStages::TOP_OF_PIPE_BIT);
-        // drv::PipelineStages syncDstStages = stages;
-
-        // TODO have a map of Pipeline stage (a bit of (dstStage = current stage)) -> Src stages
-        // these are the transitively waited stages of a single dst stage
+        for (uint32_t j = 0; j < dstStageCount; ++j)
+            dstStagesPtr[j].transitiveStages = dstStagesPtr[j].originalStage;
 
         for (auto entry = imageHistory.rbegin(); entry != imageHistory.rend(); ++entry) {
             // TODO early break?
@@ -70,63 +84,127 @@ void DrvVulkanResourceTracker::addMemoryAccess(
                     if (!drv::ImageSubresourceRange::overlap(entry->subresourceRange,
                                                              imageBarrier.subresourceRange))
                         break;
-                    if (drv::MemoryBarrier::is_write(entry->entry.access.accessMask)) {
-                        // TODO loop over pairs of (entry->stage, imageBarrier.stage)
-                        // TODO check the map if src stage bit is part of the map[dstBit]
-                        // if so -> ignore
-                        // otherwise -> wait on pair or log invalid usage
-                        // ++ instead of pairs, just loop over dst bit and check src masks -> wait on remaining (src, dst bit)
-                        drv::PipelineStages srcStage = ;
-                        drv::PipelineStages dstStage = ;
-                        //     waitStages.add(entry->entry.access.stages);
-                        // if (isRead) {
-                        // TODO loop over waited sync operations in forward order
-                        // first one that covers entire entry.stages and entry.access mask -> availability ok
-                        // from this point, look for any sync (including itself) that depends on this and is waited -> visibility ok
-                        // warn about partial wait with flush? (barrier doesn't contain the entire entry.stages)
-                        // if availabilty or visibility was not found, wait entrire thing or report invalid usage
-                        //     availableMask |= entry.entry.access.accessMask;
-                        //     visibleMask |= entry.entry.access.accessMask;
-                        // }
-                    }
-                    if (drv::MemoryBarrier::is_read(entry->entry.access.accessMask)) {
-                        // if (isWrite)
-                        // TODO same as prev stuff without cache management
-                        //     waitStages.add(entry.entry.access.stages);
-                    }
-                    break;
-                case ImageHistoryEntry::SYNC:
-                    // TODO check if barrier is waited on based on pipeline stage map
-                    // if so, expand pipeline stage map
-                    // set a mutable waited on flag on the history entry??? it could be set to a monotonically increasing number
-                    // TODO if barrier does layout transition on image -> need to wait on this barrier (as a write operation)
-                    // this barrier implies availability (still need visibility)
-                    // for visibility use the same strategy as for write access operations
-                    break;
-            }
-
-            // --- nooo ----
-
-            if (entry->image != imageBarrier.image)
-                continue;
-            if (!drv::ImageSubresourceRange::overlap(entry->subresourceRange,
-                                                     imageBarrier.subresourceRange))
-                continue;
-            switch (entry->type) {
-                case ImageHistoryEntry::ACCESS:
-                    if (drv::MemoryBarrier::is_write(entry.entry.access.accessMask)) {
-                        waitStages.add(entry.entry.access.stages);
-                        if (isRead) {
-                            availableMask |= entry.entry.access.accessMask;
-                            visibleMask |= entry.entry.access.accessMask;
+                    const drv::PipelineStages::FlagType entryStages =
+                      entry->entry.access.stages.resolve(queueSupport);
+                    if (drv::MemoryBarrier::is_write(entry->entry.access.accessMask)
+                        || (drv::MemoryBarrier::is_read(entry->entry.access.accessMask)
+                            && isWrite)) {
+                        for (uint32_t j = 0; j < dstStageCount; ++j) {
+                            drv::PipelineStages::FlagType remainingStages =
+                              entryStages & (allStages ^ dstStagesPtr[j].transitiveStages);
+                            if (remainingStages != 0) {
+                                TODO;  // invalidate (remainingStages, dstStagesPtr[j].originalStage)
+                                autoWaitSrcStages.add(remainingStages);
+                                autoWaitDstStages.add(dstStagesPtr[j].originalStage);
+                            }
                         }
                     }
-                    if (drv::MemoryBarrier::is_read(entry.entry.access.accessMask)) {
-                        if (isWrite)
-                            waitStages.add(entry.entry.access.stages);
+                    if (drv::MemoryBarrier::is_write(entry->entry.access.accessMask) && isRead) {
+                        drv::MemoryBarrier::AccessFlagBitType writeAccess =
+                          drv::MemoryBarrier::get_write_bits(entry->entry.access.accessMask);
+                        const uint32_t accessCount =
+                          drv::MemoryBarrier::get_access_count(writeAccess);
+                        for (uint32_t j = 0; j < dstStageCount; ++j) {
+                            for (uint32_t k = 0; k < accessCount; ++k) {
+                                drv::MemoryBarrier::AccessFlagBits accessType =
+                                  drv::MemoryBarrier::get_access(writeAccess, k);
+                                auto availabilityItr = std::make_reverse_iterator(entry);
+                                bool available = false;
+                                for (; availabilityItr != imageHistory.end() && !available;
+                                     ++availabilityItr) {
+                                    if (availabilityItr->type != ImageHistoryEntry::SYNC)
+                                        continue;
+                                    // doesn't flush the cache of the current access type
+                                    if ((availabilityItr->entry.sync.availableMask & accessType)
+                                        == 0)
+                                        continue;
+                                    drv::PipelineStages::FlagType srcStages =
+                                      availabilityItr->entry.sync.srcStages.resolve(queueSupport);
+                                    // doesn't wait all stages to flush memory
+                                    // partial wait is invalidated in the cmd pipeline barrier function
+                                    if ((entryStages & srcStages) != entryStages)
+                                        continue;
+                                    if (availabilityItr->entry.sync.waitedMarker[j]
+                                        != waitedMarker) {
+                                        TODO;  // invalidate, need to wait on this barrier
+                                        autoWaitSrcStages.add(
+                                          availabilityItr->entry.sync.dstStages);
+                                        autoWaitDstStages.add(dstStagesPtr[j].originalStage);
+                                    }
+                                    available = true;
+                                    break;
+                                }
+                                if (available) {
+                                    TODO;  // consider own access types...
+                                      // auto visibilityItr = availabilityItr;
+                                      // bool visible = false;
+                                      // for (; visibilityItr != imageHistory.end() && !visible;
+                                      //      ++visibilityItr) {
+                                      //     if (visibilityItr->type != ImageHistoryEntry::SYNC)
+                                      //         continue;
+                                      //     // doesn't flush the cache of the current access type
+                                      //     if ((visibilityItr->entry.sync.visibleMask & accessType)
+                                      //         == 0)
+                                      //         continue;
+                                      //     drv::PipelineStages::FlagType dstStages =
+                                      //       availabilityItr->entry.sync.dstStages.resolve(
+                                      //         queueSupport);
+                                      //     drv::PipelineStages::FlagType srcStages =
+                                      //       visibilityItr->entry.sync.srcStages.resolve(queueSupport);
+                                      //     // No dependency between availability and this visibility
+                                      //     if ((dstStages & srcStages) == 0)
+                                      //         continue;
+                                      //     if (visibilityItr->entry.sync.waitedMarker[j]
+                                      //         != waitedMarker) {
+                                      //         TODO;  // invalidate, need to wait on this barrier
+                                      //         autoWaitSrcStages.add(
+                                      //           visibilityItr->entry.sync.dstStages);
+                                      //         autoWaitDstStages.add(dstStagesPtr[j].originalStage);
+                                      //     }
+                                      //     visible = true;
+                                      //     break;
+                                      // }
+                                      // if (!visible) {
+                                      //     TODO;  // invalidate
+                                      //     autoWaitSrcStages.add(
+                                      //       availabilityItr->entry.sync.dstStages);
+                                      //     autoWaitDstStages.add(dstStagesPtr[j].originalStage);
+                                      //     visibleMask |= accessType;
+                                      // }
+                                }
+                                else {
+                                    TODO;  // invalidate, memory not available
+                                    autoWaitSrcStages.add(entryStages);
+                                    autoWaitDstStages.add(dstStagesPtr[j].originalStage);
+                                    availableMask |= accessType;
+                                }
+                            }
+                        }
                     }
                     break;
                 case ImageHistoryEntry::SYNC:
+                    for (uint32_t j = 0; j < dstStageCount; ++j) {
+                        drv::PipelineStages::FlagType commonStages =
+                          entry->entry.sync.dstStages.resolve(queueSupport)
+                          & dstStagesPtr[j].transitiveStages;
+                        if (commonStages != 0) {
+                            dstStagesPtr[j].transitiveStages |=
+                              entry->entry.sync.srcStages.resolve(queueSupport);
+                            entry->entry.sync.waitedMarker[j] = waitedMarker;
+                            break;
+                        }
+                        if (entry->entry.sync.transitionImage
+                            && entry->image == imageBarrier.image) {
+                            // availability
+                            if (entry->entry.sync.waitedMarker[j] != waitedMarker) {
+                                TODO;  // invalidate, it has to be waited on
+                                autoWaitSrcStages.add(entry->entry.sync.dstStages);
+                                autoWaitDstStages.add(dstStagesPtr[j].originalStage);
+                            }  // otherwise availability is provided
+                            TODO;
+                            // for visibility use the same strategy as for write access operations
+                        }
+                    }
                     break;
             }
         }
@@ -265,6 +343,8 @@ bool DrvVulkanResourceTracker::cmd_pipeline_barrier(
   uint32_t imageBarrierCount, const drv::ImageMemoryBarrier* imageBarriers) {
     TODO;
     // TODO implement versions for single barrier (to avoid stack mem usage)
+    // TODO invalidate if barrier causes cache flush, but waits on stages only partially
+    // TODO invalidate if there is already a barrier, that flushes the same memory, but it's not waited upon by this barrier
     StackMemory::MemoryHandle<VkMemoryBarrier> barrierMem(memoryBarrierCount, TEMPMEM);
     StackMemory::MemoryHandle<VkBufferMemoryBarrier> bufferMem(bufferBarrierCount, TEMPMEM);
     StackMemory::MemoryHandle<VkImageMemoryBarrier> imageMem(imageBarrierCount, TEMPMEM);

@@ -262,7 +262,9 @@ class DrvVulkanResourceTracker final : public drv::IResourceTracker
             drv::PipelineStages dstStages;
             drv::MemoryBarrier::AccessFlagBitType availableMask;
             drv::MemoryBarrier::AccessFlagBitType visibleMask;
+            bool transitionImage;
             drv::ImageLayout resultLayout;
+            mutable uint64_t waitedMarker[drv::PipelineStages::get_total_stage_count()] = {0};
         };
         enum Type
         {
@@ -278,7 +280,9 @@ class DrvVulkanResourceTracker final : public drv::IResourceTracker
         drv::ImageSubresourceRange subresourceRange;
     };
 
-    std::deque<ImageHistoryEntry> imageHistory;
+    uint64_t waitedMarker = 0;
+    std::deque<ImageHistoryEntry>
+      imageHistory;  // TODO add all syncs here (and other histories). Non image sync entry should have a nullptr
 
     // TODO DependencyFlagBits dependencyFlags??
     void addMemoryAccess(drv::CommandBufferPtr commandBuffer, drv::PipelineStages stages,

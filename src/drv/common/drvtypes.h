@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cassert>
 #include <cstdint>
 
 #include <string_hash.h>
@@ -182,16 +183,17 @@ struct PipelineStages
         HOST_BIT = 0x00004000,
         ALL_GRAPHICS_BIT = 0x00008000,
         ALL_COMMANDS_BIT = 0x00010000,
-        TRANSFORM_FEEDBACK_BIT_EXT = 0x01000000,
-        CONDITIONAL_RENDERING_BIT_EXT = 0x00040000,
-        COMMAND_PREPROCESS_BIT_NV = 0x00020000,
-        SHADING_RATE_IMAGE_BIT_NV = 0x00400000,
-        RAY_TRACING_SHADER_BIT_NV = 0x00200000,
-        ACCELERATION_STRUCTURE_BUILD_BIT_NV = 0x02000000,
-        TASK_SHADER_BIT_NV = 0x00080000,
-        MESH_SHADER_BIT_NV = 0x00100000,
-        FRAGMENT_DENSITY_PROCESS_BIT_EXT = 0x00800000,
-        FLAG_BITS_MAX_ENUM = 0x7FFFFFFF
+        STAGES_END
+        // TRANSFORM_FEEDBACK_BIT_EXT = 0x01000000,
+        // CONDITIONAL_RENDERING_BIT_EXT = 0x00040000,
+        // COMMAND_PREPROCESS_BIT_NV = 0x00020000,
+        // SHADING_RATE_IMAGE_BIT_NV = 0x00400000,
+        // RAY_TRACING_SHADER_BIT_NV = 0x00200000,
+        // ACCELERATION_STRUCTURE_BUILD_BIT_NV = 0x02000000,
+        // TASK_SHADER_BIT_NV = 0x00080000,
+        // MESH_SHADER_BIT_NV = 0x00100000,
+        // FRAGMENT_DENSITY_PROCESS_BIT_EXT = 0x00800000,
+        // FLAG_BITS_MAX_ENUM = 0x7FFFFFFF
     };
     FlagType stageFlags;
     PipelineStages() : stageFlags(TOP_OF_PIPE_BIT) {}
@@ -200,6 +202,58 @@ struct PipelineStages
     void add(FlagType flags) { stageFlags |= flags; }
     void add(PipelineStageFlagBits stage) { stageFlags |= stage; }
     void add(const PipelineStages& stages) { stageFlags |= stages.stageFlags; }
+    static FlagType get_graphics_bits() {
+        return DRAW_INDIRECT_BIT | VERTEX_INPUT_BIT | VERTEX_SHADER_BIT
+               | TESSELLATION_CONTROL_SHADER_BIT | TESSELLATION_EVALUATION_SHADER_BIT
+               | GEOMETRY_SHADER_BIT | FRAGMENT_SHADER_BIT | EARLY_FRAGMENT_TESTS_BIT
+               | LATE_FRAGMENT_TESTS_BIT | COLOR_ATTACHMENT_OUTPUT_BIT;
+        //     | MESH_SHADER_BIT_NV
+        //    | CONDITIONAL_RENDERING_BIT_EXT | TRANSFORM_FEEDBACK_BIT_EXT
+        //    | FRAGMENT_SHADING_RATE_ATTACHMENT_BIT_KHR | TASK_SHADER_BIT_NV
+        //    | FRAGMENT_DENSITY_PROCESS_BIT_EXT;
+    }
+    static FlagType get_all_bits(CommandTypeBase queueSupport) {
+        FlagType ret = HOST_BIT | TOP_OF_PIPE_BIT | BOTTOM_OF_PIPE_BIT;
+        if (queueSupport & CMD_TYPE_TRANSFER)
+            ret |= TRANSFER_BIT;
+        if (queueSupport & CMD_TYPE_GRAPHICS)
+            ret |= get_graphics_bits();
+        if (queueSupport & CMD_TYPE_COMPUTE)
+            ret |= COMPUTE_SHADER_BIT;
+        return ret;
+    }
+    FlagType resolve(CommandTypeBase queueSupport) const {
+        FlagType ret = stageFlags;
+        if (ret & ALL_GRAPHICS_BIT)
+            ret = (ret ^ ALL_GRAPHICS_BIT) | get_graphics_bits();
+        if (ret & ALL_COMMANDS_BIT)
+            ret = (ret ^ ALL_COMMANDS_BIT) | get_all_bits(queueSupport);
+        return ret;
+    }
+    uint32_t getStageCount(CommandTypeBase queueSupport) const {
+        FlagType stages = resolve(queueSupport);
+        uint32_t ret = 0;
+        while (stages) {
+            ret += stages & 0b1;
+            stages >>= 1;
+        }
+        return ret;
+    }
+    PipelineStageFlagBits getStage(CommandTypeBase queueSupport, uint32_t index) const {
+        FlagType stages = resolve(queueSupport);
+        FlagType ret = 1;
+        while (ret <= stages) {
+            if (stages & ret)
+                if (index-- == 0)
+                    return static_cast<PipelineStageFlagBits>(ret);
+            ret <<= 1;
+        }
+        assert(false);
+    }
+    static constexpr uint32_t get_total_stage_count() {
+        static_assert(STAGES_END == ALL_COMMANDS_BIT + 1, "Update this function");
+        return 7;
+    }
 };
 
 struct ExecutionInfo
@@ -811,17 +865,50 @@ struct MemoryBarrier
     };
     AccessFlagBitType sourceAccessFlags;
     AccessFlagBitType dstAccessFlags;
-    static bool is_write(AccessFlagBitType accessMask) {
-        return accessMask
-               & (SHADER_WRITE_BIT | COLOR_ATTACHMENT_WRITE_BIT | DEPTH_STENCIL_ATTACHMENT_WRITE_BIT
-                  | TRANSFER_WRITE_BIT | HOST_WRITE_BIT | MEMORY_WRITE_BIT);
+    static AccessFlagBitType get_all_read_bits() {
+        return INDIRECT_COMMAND_READ_BIT | INDEX_READ_BIT | VERTEX_ATTRIBUTE_READ_BIT
+               | UNIFORM_READ_BIT | INPUT_ATTACHMENT_READ_BIT | SHADER_READ_BIT
+               | COLOR_ATTACHMENT_READ_BIT | DEPTH_STENCIL_ATTACHMENT_READ_BIT | TRANSFER_READ_BIT
+               | HOST_READ_BIT;
     }
-    static bool is_read(AccessFlagBitType accessMask) {
-        return accessMask
-               & (INDIRECT_COMMAND_READ_BIT | INDEX_READ_BIT | VERTEX_ATTRIBUTE_READ_BIT
-                  | UNIFORM_READ_BIT | INPUT_ATTACHMENT_READ_BIT | SHADER_READ_BIT
-                  | COLOR_ATTACHMENT_READ_BIT | DEPTH_STENCIL_ATTACHMENT_READ_BIT
-                  | TRANSFER_READ_BIT | HOST_READ_BIT | MEMORY_READ_BIT);
+    static AccessFlagBitType get_all_write_bits() {
+        return SHADER_WRITE_BIT | COLOR_ATTACHMENT_WRITE_BIT | DEPTH_STENCIL_ATTACHMENT_WRITE_BIT
+               | TRANSFER_WRITE_BIT | HOST_WRITE_BIT;
+    }
+    static AccessFlagBitType resolve(AccessFlagBitType mask) {
+        if (mask & MEMORY_READ_BIT)
+            mask = (mask ^ MEMORY_READ_BIT) | get_all_read_bits();
+        if (mask & MEMORY_WRITE_BIT)
+            mask = (mask ^ MEMORY_WRITE_BIT) | get_all_write_bits();
+        return mask;
+    }
+    static AccessFlagBitType get_write_bits(AccessFlagBitType accessMask) {
+        return resolve(accessMask) & get_all_write_bits();
+    }
+    static AccessFlagBitType get_read_bits(AccessFlagBitType accessMask) {
+        return resolve(accessMask) & get_all_read_bits();
+    }
+    static bool is_write(AccessFlagBitType accessMask) { return get_write_bits(accessMask); }
+    static bool is_read(AccessFlagBitType accessMask) { return get_read_bits(accessMask); }
+    static uint32_t get_access_count(AccessFlagBitType mask) {
+        mask = resolve(mask);
+        uint32_t ret = 0;
+        while (mask) {
+            ret += mask & 0b1;
+            mask >>= 1;
+        }
+        return ret;
+    }
+    static AccessFlagBits get_access(AccessFlagBitType mask, uint32_t index) {
+        mask = resolve(mask);
+        AccessFlagBitType ret = 1;
+        while (ret <= mask) {
+            if (mask & ret)
+                if (index-- == 0)
+                    return static_cast<AccessFlagBits>(ret);
+            ret <<= 1;
+        }
+        assert(false);
     }
 };
 
