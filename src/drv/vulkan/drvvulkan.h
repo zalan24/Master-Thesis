@@ -1,5 +1,6 @@
 #pragma once
 
+#include <deque>
 #include <mutex>
 #include <unordered_map>
 #include <vector>
@@ -8,6 +9,14 @@
 #include <drv_resource_tracker.h>
 
 #include <drvtypes.h>
+
+#ifndef USE_RESOURCE_TRACKER
+#    ifdef DEBUG
+#        define USE_RESOURCE_TRACKER 1
+#    else
+#        define USE_RESOURCE_TRACKER 0
+#    endif
+#endif
 
 #define COMPARE_ENUMS_MSG(baseType, a, b, msg) \
     static_assert(static_cast<baseType>(a) == static_cast<baseType>(b), msg)
@@ -200,6 +209,7 @@ class DrvVulkanResourceTracker final : public drv::IResourceTracker
                          const drv::ImageSubresourceRange* subresourceRanges) override;
 
  private:
+#if USE_RESOURCE_TRACKER
     struct TrackedMemoryBarrier
     {
         //drv::Ptr data; // maybe??? TODO
@@ -237,6 +247,39 @@ class DrvVulkanResourceTracker final : public drv::IResourceTracker
         drv::ImageSubresourceRange subresourceRange;
     };
 
+    struct ImageHistoryEntry
+    {
+        TODO;  // store frame id and clean up
+        struct ImageAccess
+        {
+            drv::PipelineStages stages;
+            drv::MemoryBarrier::AccessFlagBitType accessMask;
+            drv::ImageLayout resultLayout;
+        };
+        struct ImageSync
+        {
+            drv::PipelineStages srcStages;
+            drv::PipelineStages dstStages;
+            drv::MemoryBarrier::AccessFlagBitType availableMask;
+            drv::MemoryBarrier::AccessFlagBitType visibleMask;
+            drv::ImageLayout resultLayout;
+        };
+        enum Type
+        {
+            ACCESS,
+            SYNC,
+        } type;
+        union Entry
+        {
+            ImageAccess access;
+            ImageSync sync;
+        } entry;
+        drv::ImagePtr image;
+        drv::ImageSubresourceRange subresourceRange;
+    };
+
+    std::deque<ImageHistoryEntry> imageHistory;
+
     // TODO DependencyFlagBits dependencyFlags??
     void addMemoryAccess(drv::CommandBufferPtr commandBuffer, drv::PipelineStages stages,
                          /*drv::DependencyFlagBits dependencyFlags,*/ uint32_t memoryBarrierCount,
@@ -244,6 +287,7 @@ class DrvVulkanResourceTracker final : public drv::IResourceTracker
                          const TrackedBufferMemoryBarrier* bufferBarriers,
                          uint32_t imageBarrierCount,
                          const TrackedImageMemoryBarrier* imageBarriers);
+#endif
 };
 
 // TODO

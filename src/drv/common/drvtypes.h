@@ -197,6 +197,9 @@ struct PipelineStages
     PipelineStages() : stageFlags(TOP_OF_PIPE_BIT) {}
     PipelineStages(FlagType flags) : stageFlags(flags) {}
     PipelineStages(PipelineStageFlagBits stage) : stageFlags(stage) {}
+    void add(FlagType flags) { stageFlags |= flags; }
+    void add(PipelineStageFlagBits stage) { stageFlags |= stage; }
+    void add(const PipelineStages& stages) { stageFlags |= stages.stageFlags; }
 };
 
 struct ExecutionInfo
@@ -808,6 +811,18 @@ struct MemoryBarrier
     };
     AccessFlagBitType sourceAccessFlags;
     AccessFlagBitType dstAccessFlags;
+    static bool is_write(AccessFlagBitType accessMask) {
+        return accessMask
+               & (SHADER_WRITE_BIT | COLOR_ATTACHMENT_WRITE_BIT | DEPTH_STENCIL_ATTACHMENT_WRITE_BIT
+                  | TRANSFER_WRITE_BIT | HOST_WRITE_BIT | MEMORY_WRITE_BIT);
+    }
+    static bool is_read(AccessFlagBitType accessMask) {
+        return accessMask
+               & (INDIRECT_COMMAND_READ_BIT | INDEX_READ_BIT | VERTEX_ATTRIBUTE_READ_BIT
+                  | UNIFORM_READ_BIT | INPUT_ATTACHMENT_READ_BIT | SHADER_READ_BIT
+                  | COLOR_ATTACHMENT_READ_BIT | DEPTH_STENCIL_ATTACHMENT_READ_BIT
+                  | TRANSFER_READ_BIT | HOST_READ_BIT | MEMORY_READ_BIT);
+    }
 };
 
 struct BufferMemoryBarrier
@@ -908,6 +923,10 @@ struct ImageSubresourceRange
     uint32_t levelCount;
     uint32_t baseArrayLayer;
     uint32_t layerCount;
+    static bool overlap(const ImageSubresourceRange& a, const ImageSubresourceRange& b) {
+        // if (baseMip)
+        // TODO
+    }
 };
 
 struct ImageMemoryBarrier

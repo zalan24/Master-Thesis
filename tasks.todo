@@ -59,6 +59,7 @@ Get a triangle on screen:
         ✔ Use garbage system for recycling @done (3/2/2021, 9:34:57 AM)
     ☐ Resource tracking
         ☐ Implement several levels of sync precision
+            ☐ Auto sync / just validate (auto sync is only for debug)
             ☐ Default: sync only as much as necessary
             ☐ Add a pipeline barrier to the end of the command buffer to make everything available
             ☐ Make everything available immediately
