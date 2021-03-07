@@ -180,11 +180,11 @@ class DrvVulkan final : public drv::IDriver
     std::unordered_map<drv::LogicalDevicePtr, LogicalDeviceData> devicesData;
 };
 
-class DrvVulkanResourceTracker final : public drv::IResourceTracker
+class DrvVulkanResourceTracker final : public drv::ResourceTracker
 {
  public:
-    DrvVulkanResourceTracker(DrvVulkan* driver, drv::QueuePtr queue)
-      : IResourceTracker(driver, queue) {}
+    DrvVulkanResourceTracker(DrvVulkan* driver, drv::LogicalDevicePtr device, drv::QueuePtr queue)
+      : ResourceTracker(driver, device, queue) {}
     ~DrvVulkanResourceTracker() override {}
 
     bool cmd_reset_event(drv::CommandBufferPtr commandBuffer, drv::EventPtr event,
@@ -224,17 +224,12 @@ class DrvVulkanResourceTracker final : public drv::IResourceTracker
 #if USE_RESOURCE_TRACKER
     struct TrackedMemoryBarrier
     {
-        //drv::Ptr data; // maybe??? TODO
         drv::MemoryBarrier::AccessFlagBitType accessMask;
     };
 
     struct TrackedBufferMemoryBarrier
     {
         drv::MemoryBarrier::AccessFlagBitType accessMask;
-
-        // ownership transfer
-        // drv::QueueFamilyPtr srcFamily;
-        TODO;  // family transfer
 
         drv::BufferPtr buffer;
         drv::DeviceSize offset;
@@ -249,10 +244,6 @@ class DrvVulkanResourceTracker final : public drv::IResourceTracker
         drv::ImageLayoutMask requestedLayoutMask;
         bool layoutChanged = false;
         drv::ImageLayout resultLayout;
-
-        // ownership transfer
-        // drv::QueueFamilyPtr srcFamily;
-        TODO;  // family transfer
 
         drv::ImagePtr image;
         drv::ImageSubresourceRange subresourceRange;
@@ -388,6 +379,8 @@ class DrvVulkanResourceTracker final : public drv::IResourceTracker
 
     void getImageLayout(drv::ImagePtr image, drv::ImageLayout& layout,
                         drv::PipelineStages& transitionStages) const;
+    drv::QueueFamilyPtr getImageOwnership(drv::ImagePtr image) const;
+    drv::QueueFamilyPtr getBufferOwnership(drv::BufferPtr image) const;
 #endif
 };
 

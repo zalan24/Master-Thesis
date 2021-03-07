@@ -9,11 +9,12 @@ TODO;  // add a debug info struct & macro into cmd function.
 
 namespace drv
 {
-class IResourceTracker
+class ResourceTracker
 {
  public:
-    IResourceTracker(IDriver* _driver, QueuePtr _queue) : driver(_driver), queue(_queue) {}
-    virtual ~IResourceTracker() {}
+    ResourceTracker(IDriver* _driver, LogicalDevicePtr _device, QueuePtr _queue)
+      : driver(_driver), device(_device), queue(_queue) {}
+    virtual ~ResourceTracker() {}
 
     virtual bool cmd_reset_event(CommandBufferPtr commandBuffer, EventPtr event,
                                  PipelineStages sourceStage) = 0;
@@ -53,6 +54,7 @@ class IResourceTracker
 
  protected:
     IDriver* driver;
+    LogicalDevicePtr device;
     QueuePtr queue;
 };
 }  // namespace drv

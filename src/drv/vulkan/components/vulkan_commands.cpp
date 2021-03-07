@@ -308,6 +308,16 @@ void DrvVulkanResourceTracker::getImageLayout(drv::ImagePtr image, drv::ImageLay
     TODO;  // use outsider resources
 }
 
+drv::QueueFamilyPtr DrvVulkanResourceTracker::getImageOwnership(drv::ImagePtr image) const {
+    TODO;  // if resource has shared memory -> return current family
+           // otherwise check the outsider resources
+}
+
+drv::QueueFamilyPtr DrvVulkanResourceTracker::getBufferOwnership(drv::BufferPtr image) const {
+    TODO;  // if resource has shared memory -> return current family
+           // otherwise check the outsider resources
+}
+
 void DrvVulkanResourceTracker::addMemoryAccess(
   drv::CommandBufferPtr commandBuffer, drv::PipelineStages stages,
   /*drv::DependencyFlagBits dependencyFlags,*/ uint32_t memoryBarrierCount,
@@ -350,13 +360,20 @@ void DrvVulkanResourceTracker::addMemoryAccess(
         const TrackedBufferMemoryBarrier& bufferBarrier = bufferBarriers[i];
         DrvVulkanResourceTracker::BarrierAccessData barrierAccessData;
         processBufferAccess(barrierStageData, barrierAccessData, stages, bufferBarrier);
+        if (getBufferOwnership(bufferBarrier.buffer) != driver->get_queue_family(device, queue)) {
+            invalidate(barrierStageData, barrierAccessData, drv::PipelineStages::TOP_OF_PIPE_BIT,
+                       stages.resolve(queueSupport), 0, 0,
+                       "Buffer ownership needs to be transferred");
+        }
         if (barrierAccessData.availableMask != 0 || barrierAccessData.visibleMask != 0) {
             autoBufferBarriers[autoBufferBarrierCount].sourceAccessFlags =
               barrierAccessData.availableMask;
             autoBufferBarriers[autoBufferBarrierCount].dstAccessFlags =
               barrierAccessData.visibleMask;
-            autoBufferBarriers[autoBufferBarrierCount].srcFamily = ;
-            autoBufferBarriers[autoBufferBarrierCount].dstFamily = ;
+            autoBufferBarriers[autoBufferBarrierCount].srcFamily =
+              getBufferOwnership(bufferBarrier.buffer);
+            autoBufferBarriers[autoBufferBarrierCount].dstFamily =
+              driver->get_queue_family(device, queue);
             autoBufferBarriers[autoBufferBarrierCount].buffer = bufferBarrier.buffer;
             autoBufferBarriers[autoBufferBarrierCount].offset = bufferBarrier.offset;
             autoBufferBarriers[autoBufferBarrierCount].size = bufferBarrier.size;
@@ -387,14 +404,21 @@ void DrvVulkanResourceTracker::addMemoryAccess(
         }
         else
             newLayout = layout;
+        if (getImageOwnership(imageBarrier.image) != getImageOwnership(imageBarrier.image)) {
+            invalidate(barrierStageData, barrierAccessData, drv::PipelineStages::TOP_OF_PIPE_BIT,
+                       stages.resolve(queueSupport), 0, 0,
+                       "Image ownership needs to be transferred");
+        }
         if (barrierAccessData.availableMask != 0 || barrierAccessData.visibleMask != 0) {
             autoImageBarriers[autoImageBarrierCount].sourceAccessFlags =
               barrierAccessData.availableMask;
             autoImageBarriers[autoImageBarrierCount].dstAccessFlags = barrierAccessData.visibleMask;
             autoImageBarriers[autoImageBarrierCount].oldLayout = layout;
             autoImageBarriers[autoImageBarrierCount].newLayout = newLayout;
-            autoImageBarriers[autoImageBarrierCount].srcFamily = ;
-            autoImageBarriers[autoImageBarrierCount].dstFamily = ;
+            autoImageBarriers[autoImageBarrierCount].srcFamily =
+              getImageOwnership(imageBarrier.image);
+            autoImageBarriers[autoImageBarrierCount].dstFamily =
+              driver->get_queue_family(device, queue);
             autoImageBarriers[autoImageBarrierCount].image = imageBarrier.image;
             autoImageBarriers[autoImageBarrierCount].subresourceRange =
               imageBarrier.subresourceRange;
