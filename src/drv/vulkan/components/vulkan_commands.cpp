@@ -287,12 +287,34 @@ void DrvVulkanResourceTracker::processImageAccess(
                                imageHistory.begin(), imageHistory.end(), imageBarrier);
 }
 
+void DrvVulkanResourceTracker::getImageLayout(drv::ImagePtr image, drv::ImageLayout& layout,
+                                              drv::PipelineStages& transitionStages) const {
+    for (auto entry = imageHistory.rbegin(); entry != imageHistory.rend(); ++entry) {
+        if (entry->image != image)
+            continue;
+        switch (entry->type) {
+            case ImageHistoryEntry::ACCESS:
+                layout = entry->entry.access.resultLayout;
+                transitionStages = entry->entry.access.stages;
+                return;
+            case ImageHistoryEntry::SYNC:
+                layout = entry->entry.sync.resultLayout;
+                transitionStages = entry->entry.sync.dstStages;
+                return;
+        }
+    }
+    transitionStages = drv::PipelineStages(drv::PipelineStages::TOP_OF_PIPE_BIT);
+    layout = ;
+    TODO;  // use outsider resources
+}
+
 void DrvVulkanResourceTracker::addMemoryAccess(
   drv::CommandBufferPtr commandBuffer, drv::PipelineStages stages,
   /*drv::DependencyFlagBits dependencyFlags,*/ uint32_t memoryBarrierCount,
   const TrackedMemoryBarrier* memoryBarriers, uint32_t bufferBarrierCount,
   const TrackedBufferMemoryBarrier* bufferBarriers, uint32_t imageBarrierCount,
   const TrackedImageMemoryBarrier* imageBarriers) {
+    const drv::CommandTypeBase queueSupport = ;
     // drv::PipelineStages autoWaitSrcStages(drv::PipelineStages::TOP_OF_PIPE_BIT);
     // drv::PipelineStages autoWaitDstStages(drv::PipelineStages::TOP_OF_PIPE_BIT);
 
@@ -345,12 +367,32 @@ void DrvVulkanResourceTracker::addMemoryAccess(
         const TrackedImageMemoryBarrier& imageBarrier = imageBarriers[i];
         DrvVulkanResourceTracker::BarrierAccessData barrierAccessData;
         processImageAccess(barrierStageData, barrierAccessData, stages, imageBarrier);
+        bool layoutFound = false;
+        drv::ImageLayout layout;
+        drv::PipelineStages layoutStages;
+        getImageLayout(imageBarrier.image, layout, layoutStages);
+
+        drv::ImageLayout newLayout;
+        if (!(static_cast<drv::ImageLayoutMask>(layout) & imageBarrier.requestedLayoutMask)) {
+            invalidate(barrierStageData, barrierAccessData, layoutStages.resolve(queueSupport),
+                       stages.resolve(queueSupport), 0, 0, "Image is in the wrong layout");
+            drv::ImageLayoutMask newMask = imageBarrier.requestedLayoutMask;
+            drv::ImageLayoutMask bit = 1;
+            while (newMask && newMask != bit) {
+                if (newMask & bit)
+                    newMask ^= bit;
+                bit <<= 1;
+            }
+            newLayout = static_cast<drv::ImageLayout>(newMask);
+        }
+        else
+            newLayout = layout;
         if (barrierAccessData.availableMask != 0 || barrierAccessData.visibleMask != 0) {
             autoImageBarriers[autoImageBarrierCount].sourceAccessFlags =
               barrierAccessData.availableMask;
             autoImageBarriers[autoImageBarrierCount].dstAccessFlags = barrierAccessData.visibleMask;
-            autoImageBarriers[autoImageBarrierCount].oldLayout = ;
-            autoImageBarriers[autoImageBarrierCount].newLayout = ;
+            autoImageBarriers[autoImageBarrierCount].oldLayout = layout;
+            autoImageBarriers[autoImageBarrierCount].newLayout = newLayout;
             autoImageBarriers[autoImageBarrierCount].srcFamily = ;
             autoImageBarriers[autoImageBarrierCount].dstFamily = ;
             autoImageBarriers[autoImageBarrierCount].image = imageBarrier.image;
@@ -386,7 +428,14 @@ void DrvVulkanResourceTracker::addMemoryAccess(
         access.subresourceRange = imageBarrier.subresourceRange;
         access.entry.access.accessMask = imageBarrier.accessMask;
         access.entry.access.stages = stages;
-        access.entry.access.resultLayout = ;
+        if (imageBarrier.layoutChanged) {
+            access.entry.access.resultLayout = imageBarrier.resultLayout;
+        }
+        else {
+            drv::PipelineStages stages;
+            getImageLayout(imageBarrier.image, access.entry.access.resultLayout, stages);
+        }
+        imageHistory.push_back(std::move(access));
     }
 }
 #endif
@@ -411,8 +460,12 @@ void DrvVulkanResourceTracker::cmd_clear_image(
         barriers[i].accessMask = drv::MemoryBarrier::AccessFlagBits::TRANSFER_WRITE_BIT;
         barriers[i].image = image;
         barriers[i].subresourceRange = subresourceRanges[i];
+        barriers[i].requestLayout = true;
+        barriers[i].requestedLayoutMask = VK_IMAGE_LAYOUT_SHARED_PRESENT_KHR
+                                          | VK_IMAGE_LAYOUT_GENERAL
+                                          | VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+        barriers[i].layoutChanged = false;
     }
-    // accepted layouts: VK_IMAGE_LAYOUT_SHARED_PRESENT_KHR, VK_IMAGE_LAYOUT_GENERAL or VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL.
     addMemoryAccess(cmdBuffer, drv::PipelineStages::TRANSFER_BIT, 0, nullptr, 0, nullptr, ranges,
                     barriers);
 #endif

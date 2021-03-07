@@ -39,6 +39,7 @@ using ShaderIdType = StrHash;
 #define SHADER(name) (#name##_hash)
 
 static const Ptr NULL_HANDLE = nullptr;
+static const QueueFamilyPtr IGNORE_FAMILY = nullptr;
 
 struct InstanceCreateInfo
 {
@@ -926,7 +927,8 @@ struct BufferMemoryBarrier
     DeviceSize size;
 };
 
-enum class ImageLayout
+using ImageLayoutMask = unsigned int;
+enum class ImageLayout : ImageLayoutMask
 {
     UNDEFINED = 0,
     GENERAL = 1,

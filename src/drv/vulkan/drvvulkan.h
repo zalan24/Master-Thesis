@@ -245,11 +245,10 @@ class DrvVulkanResourceTracker final : public drv::IResourceTracker
     {
         drv::MemoryBarrier::AccessFlagBitType accessMask;
 
-        // ImageLayout oldLayout;
-        TODO;  // track layout
-        // drv::ImageLayout requestedLayoutMask = drv::ImageLayout::UNDEFINED;
-        // bool layoutChanged = false;
-        // drv::ImageLayout resultLayout = drv::ImageLayout::UNDEFINED;
+        bool requestLayout = false;
+        drv::ImageLayoutMask requestedLayoutMask;
+        bool layoutChanged = false;
+        drv::ImageLayout resultLayout;
 
         // ownership transfer
         // drv::QueueFamilyPtr srcFamily;
@@ -386,6 +385,9 @@ class DrvVulkanResourceTracker final : public drv::IResourceTracker
                              BarrierAccessData& barrierAccessData, drv::PipelineStages stages,
                              /*drv::DependencyFlagBits dependencyFlags,*/
                              const TrackedMemoryBarrier& memoryBarrier);
+
+    void getImageLayout(drv::ImagePtr image, drv::ImageLayout& layout,
+                        drv::PipelineStages& transitionStages) const;
 #endif
 };
 
