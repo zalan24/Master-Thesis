@@ -67,6 +67,7 @@ Get a triangle on screen:
             ☐ Use general memory barriers instead of sub-resource based barriers
             ☐ More sync: remove sync optimizations
             ☐ Debug sync: always sync everything (all pipeline, all access mask, always)
+            ☐ Do extra tracking and try to detect unnecessary syncs (export this data)
         ☐ Create a resource tracker object on the driver level
             ✔ Track any resource used in the commands @done (3/4/2021, 10:13:23 AM)
             ☐ Use a greedy algorithm for both availability and visibility and place pipeline barriers in cmd calls

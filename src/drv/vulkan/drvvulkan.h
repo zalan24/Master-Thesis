@@ -324,12 +324,15 @@ class DrvVulkanResourceTracker final : public drv::IResourceTracker
         }
     };
 
-    struct MemoryAccessData
+    struct BarrierStageData
     {
         drv::PipelineStages autoWaitSrcStages =
           drv::PipelineStages(drv::PipelineStages::TOP_OF_PIPE_BIT);
         drv::PipelineStages autoWaitDstStages =
           drv::PipelineStages(drv::PipelineStages::TOP_OF_PIPE_BIT);
+    };
+    struct BarrierAccessData
+    {
         drv::MemoryBarrier::AccessFlagBitType availableMask = 0;
         drv::MemoryBarrier::AccessFlagBitType visibleMask = 0;
     };
@@ -347,18 +350,22 @@ class DrvVulkanResourceTracker final : public drv::IResourceTracker
                          const TrackedImageMemoryBarrier* imageBarriers);
 
     // Depending on validation level: auto sync and/or show a warning/error/assert
-    void invalidate(MemoryAccessData& data, drv::PipelineStages::FlagType srcStages,
+    void invalidate(BarrierStageData& barrierStageData, BarrierAccessData& barrierAccessData,
+                    drv::PipelineStages::FlagType srcStages,
                     drv::PipelineStages::FlagType dstStages,
                     drv::MemoryBarrier::AccessFlagBitType unavailable,
                     drv::MemoryBarrier::AccessFlagBitType invisible, const char* message) const;
 
-    void processImageAccess(MemoryAccessData& data, drv::PipelineStages stages,
+    void processImageAccess(BarrierStageData& barrierStageData,
+                            BarrierAccessData& barrierAccessData, drv::PipelineStages stages,
                             /*drv::DependencyFlagBits dependencyFlags,*/
                             const TrackedImageMemoryBarrier& imageBarrier);
-    void processBufferAccess(MemoryAccessData& data, drv::PipelineStages stages,
+    void processBufferAccess(BarrierStageData& barrierStageData,
+                             BarrierAccessData& barrierAccessData, drv::PipelineStages stages,
                              /*drv::DependencyFlagBits dependencyFlags,*/
                              const TrackedBufferMemoryBarrier& bufferBarrier);
-    void processMemoryAccess(MemoryAccessData& data, drv::PipelineStages stages,
+    void processMemoryAccess(BarrierStageData& barrierStageData,
+                             BarrierAccessData& barrierAccessData, drv::PipelineStages stages,
                              /*drv::DependencyFlagBits dependencyFlags,*/
                              const TrackedMemoryBarrier& memoryBarrier);
 #endif

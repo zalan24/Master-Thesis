@@ -3,6 +3,10 @@
 #include "drv_interface.h"
 #include "drvtypes.h"
 
+TODO;  // add a debug info struct & macro into cmd function.
+// in debug mode, this struct holds a lot of information
+// in other modes, nothing at all (or not even passed to functions)
+
 namespace drv
 {
 class IResourceTracker

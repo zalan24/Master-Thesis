@@ -31,7 +31,8 @@ bool DrvVulkan::end_primary_command_buffer(drv::CommandBufferPtr cmdBuffer) {
 
 #if USE_RESOURCE_TRACKER
 
-void DrvVulkanResourceTracker::invalidate(MemoryAccessData& data,
+void DrvVulkanResourceTracker::invalidate(BarrierStageData& barrierStageData,
+                                          BarrierAccessData& barrierAccessData,
                                           drv::PipelineStages::FlagType srcStages,
                                           drv::PipelineStages::FlagType dstStages,
                                           drv::MemoryBarrier::AccessFlagBitType unavailable,
@@ -55,10 +56,10 @@ void DrvVulkanResourceTracker::invalidate(MemoryAccessData& data,
     drv::drv_assert(
       !(invisible & (drv::MemoryBarrier::MEMORY_WRITE_BIT | drv::MemoryBarrier::MEMORY_READ_BIT)),
       "Resolve the access mask first");
-    data.autoWaitSrcStages.add(srcStages);
-    data.autoWaitDstStages.add(dstStages);
-    data.availableMask |= unavailable;
-    data.visibleMask |= invisible;
+    barrierStageData.autoWaitSrcStages.add(srcStages);
+    barrierStageData.autoWaitDstStages.add(dstStages);
+    barrierAccessData.availableMask |= unavailable;
+    barrierAccessData.visibleMask |= invisible;
     TODO;  // error / warn for invalidation
 }
 
@@ -82,10 +83,11 @@ static HItr find_next_sync_in_history(HItr entry, HItr end, F&& condition) {
 // current adding an access and proccessing the history -> a sync entry is found and now processed here
 template <typename HItr, typename A>
 static void process_access_history_sync_entry(
-  DrvVulkanResourceTracker* tracker, DrvVulkanResourceTracker::MemoryAccessData& accessData,
-  drv::CommandTypeBase queueSupport, HItr entry, HItr historyEnd, const A& access,
-  uint32_t dstStageCount, StageData* dstStagesPtr, const uint64_t waitedMarker,
-  uint32_t currentReadAccessCount, drv::MemoryBarrier::AccessFlagBitType currentReadAccess) {
+  DrvVulkanResourceTracker* tracker, DrvVulkanResourceTracker::BarrierStageData& barrierStageData,
+  DrvVulkanResourceTracker::BarrierAccessData& barrierAccessData, drv::CommandTypeBase queueSupport,
+  HItr entry, HItr historyEnd, const A& access, uint32_t dstStageCount, StageData* dstStagesPtr,
+  const uint64_t waitedMarker, uint32_t currentReadAccessCount,
+  drv::MemoryBarrier::AccessFlagBitType currentReadAccess) {
     drv::PipelineStages::FlagType dstStages = entry->getSyncDstStages().resolve(queueSupport);
     for (uint32_t j = 0; j < dstStageCount; ++j) {
         drv::PipelineStages::FlagType commonStages = dstStages & dstStagesPtr[j].transitiveStages;
@@ -97,8 +99,8 @@ static void process_access_history_sync_entry(
             // availability
             if (entry->getWaitedOnMarkers()[j] != waitedMarker) {
                 tracker->invalidate(
-                  accessData, dstStages, dstStagesPtr[j].originalStage, 0, 0,
-                  "Memory transition needs to be waited on when accessing the memory");
+                  barrierStageData, barrierAccessData, dstStages, dstStagesPtr[j].originalStage, 0,
+                  0, "Memory transition needs to be waited on when accessing the memory");
             }  // otherwise availability is provided
             for (uint32_t l = 0; l < currentReadAccessCount; ++l) {
                 drv::MemoryBarrier::AccessFlagBits readAccessType =
@@ -117,14 +119,16 @@ static void process_access_history_sync_entry(
                     itr != historyEnd) {
                     if (itr->getWaitedOnMarkers()[j] != waitedMarker) {
                         tracker->invalidate(
-                          accessData, itr->getSyncDstStages().resolve(queueSupport),
+                          barrierStageData, barrierAccessData,
+                          itr->getSyncDstStages().resolve(queueSupport),
                           dstStagesPtr[j].originalStage, 0, 0,
                           "Result of memory transition as available to the accessing operation, but it's not visible");
                     }
                 }
                 else {
                     tracker->invalidate(
-                      accessData, dstStages, dstStagesPtr[j].originalStage, 0, readAccessType,
+                      barrierStageData, barrierAccessData, dstStages, dstStagesPtr[j].originalStage,
+                      0, readAccessType,
                       "Result of memory transition is available to the accessing operation, but it's not visible");
                 }
             }
@@ -135,10 +139,10 @@ static void process_access_history_sync_entry(
 // current adding an access and proccessing the history -> an access entry is found and now processed here
 template <typename HItr, typename A>
 static void process_access_history_access_entry(
-  DrvVulkanResourceTracker* tracker, DrvVulkanResourceTracker::MemoryAccessData& accessData,
-  drv::CommandTypeBase queueSupport, HItr entry, HItr historyEnd, const A& access,
-  uint32_t dstStageCount, StageData* dstStagesPtr, uint32_t currentReadAccessCount,
-  drv::MemoryBarrier::AccessFlagBitType currentReadAccess,
+  DrvVulkanResourceTracker* tracker, DrvVulkanResourceTracker::BarrierStageData& barrierStageData,
+  DrvVulkanResourceTracker::BarrierAccessData& barrierAccessData, drv::CommandTypeBase queueSupport,
+  HItr entry, HItr historyEnd, const A& access, uint32_t dstStageCount, StageData* dstStagesPtr,
+  uint32_t currentReadAccessCount, drv::MemoryBarrier::AccessFlagBitType currentReadAccess,
   drv::MemoryBarrier::AccessFlagBitType currentAccess) {
     if (!entry->overlap(access))
         return;
@@ -157,8 +161,9 @@ static void process_access_history_access_entry(
             drv::PipelineStages::FlagType remainingStages =
               entryStages & (allStages ^ dstStagesPtr[j].transitiveStages);
             if (remainingStages != 0)
-                tracker->invalidate(accessData, remainingStages, dstStagesPtr[j].originalStage, 0,
-                                    0, "Memory access is not waited upon");
+                tracker->invalidate(barrierStageData, barrierAccessData, remainingStages,
+                                    dstStagesPtr[j].originalStage, 0, 0,
+                                    "Memory access is not waited upon");
         }
     }
     if (drv::MemoryBarrier::is_write(entryAccess)) {
@@ -184,7 +189,8 @@ static void process_access_history_access_entry(
                     availableItr != historyEnd) {
                     if (availabilityItr->entry.sync.waitedMarker[j] != waitedMarker) {
                         invalidate(
-                          accessData, availabilityItr->getSyncDstStages().resolve(queueSupport),
+                          barrierStageData, barrierAccessData,
+                          availabilityItr->getSyncDstStages().resolve(queueSupport),
                           dstStagesPtr[j].originalStage, 0, 0,
                           "Memory access needs to wait on the barrier that flushes the memory");
                     }
@@ -199,7 +205,7 @@ static void process_access_history_access_entry(
                                 visibleItr != historyEnd) {
                                 if (visibilityItr->entry.sync.waitedMarker[j] != waitedMarker) {
                                     invalidate(
-                                      accessData,
+                                      barrierStageData, barrierAccessData,
                                       visibilityItr->getSyncDstStages().resolve(queueSupport),
                                       dstStagesPtr[j].originalStage, 0, 0,
                                       "Image access needs to wait on the barrier that invalidates the cache");
@@ -207,7 +213,7 @@ static void process_access_history_access_entry(
                             }
                             else {
                                 invalidate(
-                                  accessData,
+                                  barrierStageData, barrierAccessData,
                                   availabilityItr->getSyncDstStages().resolve(queueSupport),
                                   dstStagesPtr[j].originalStage, 0, readAccessType,
                                   "Memory access tries to read memory without invalidating the its cache.");
@@ -217,8 +223,8 @@ static void process_access_history_access_entry(
                 }
                 else {
                     invalidate(
-                      accessData, entryStages, dstStagesPtr[j].originalStage, accessType,
-                      hasRead ? accessType : 0,
+                      barrierStageData, barrierAccessData, entryStages,
+                      dstStagesPtr[j].originalStage, accessType, hasRead ? accessType : 0,
                       "Image access tries to read unavailable memory / write without waiting on an other flush");
                 }
             }
@@ -227,12 +233,12 @@ static void process_access_history_access_entry(
 }
 
 template <typename HItr, typename A>
-static void process_history_for_access(DrvVulkanResourceTracker* tracker,
-                                       DrvVulkanResourceTracker::MemoryAccessData& accessData,
-                                       drv::CommandTypeBase queueSupport,
-                                       drv::PipelineStages stages, uint64_t& waitedMarker,
-                                       drv::MemoryBarrier::AccessFlagBitType currentAccess,
-                                       HItr historyBegin, HItr historyEnd, const A& access) {
+static void process_history_for_access(
+  DrvVulkanResourceTracker* tracker, DrvVulkanResourceTracker::BarrierStageData& barrierStageData,
+  DrvVulkanResourceTracker::BarrierAccessData& barrierAccessData, drv::CommandTypeBase queueSupport,
+  drv::PipelineStages stages, uint64_t& waitedMarker,
+  drv::MemoryBarrier::AccessFlagBitType currentAccess, HItr historyBegin, HItr historyEnd,
+  const A& access) {
     drv::drv_assert(
       !(currentAccess
         & (drv::MemoryBarrier::MEMORY_WRITE_BIT | drv::MemoryBarrier::MEMORY_READ_BIT)),
@@ -258,24 +264,26 @@ static void process_history_for_access(DrvVulkanResourceTracker* tracker,
         entry--;
         if (entry->isAccess())
             process_access_history_access_entry(
-              tracker, accessData, queueSupport, entry, historyEnd, access, dstStageCount,
-              dstStagePtr, waitedMarker, currentReadAccessCount, currentReadAccess, currentAccess);
+              tracker, barrierStageData, barrierAccessData, queueSupport, entry, historyEnd, access,
+              dstStageCount, dstStagePtr, waitedMarker, currentReadAccessCount, currentReadAccess,
+              currentAccess);
         else if (entry->isSync())
-            process_access_history_sync_entry(tracker, accessData, queueSupport, entry, historyEnd,
-                                              access, dstStageCount, dstStagePtr, waitedMarker,
-                                              currentReadAccessCount, currentReadAccess);
+            process_access_history_sync_entry(
+              tracker, barrierStageData, barrierAccessData, queueSupport, entry, historyEnd, access,
+              dstStageCount, dstStagePtr, waitedMarker, currentReadAccessCount, currentReadAccess);
         else
             drv::drv_assert(false);
     }
 }
 
-void DrvVulkanResourceTracker::processImageAccess(MemoryAccessData& accessData,
-                                                  drv::PipelineStages stages,
-                                                  /*drv::DependencyFlagBits dependencyFlags,*/
-                                                  const TrackedImageMemoryBarrier& imageBarrier) {
+void DrvVulkanResourceTracker::processImageAccess(
+  DrvVulkanResourceTracker::BarrierStageData& barrierStageData,
+  DrvVulkanResourceTracker::BarrierAccessData& barrierAccessData, drv::PipelineStages stages,
+  /*drv::DependencyFlagBits dependencyFlags,*/
+  const TrackedImageMemoryBarrier& imageBarrier) {
     const drv::CommandTypeBase queueSupport = ;
-    process_history_for_access(this, accessData, queueSupport, stages, waitedMarker,
-                               drv::MemoryBarrier::resolve(imageBarrier.accessMask),
+    process_history_for_access(this, barrierStageData, barrierAccessData, queueSupport, stages,
+                               waitedMarker, drv::MemoryBarrier::resolve(imageBarrier.accessMask),
                                imageHistory.begin(), imageHistory.end(), imageBarrier);
 }
 
@@ -291,7 +299,22 @@ void DrvVulkanResourceTracker::addMemoryAccess(
     // drv::MemoryBarrier::AccessFlagBitType availableMask = 0;
     // drv::MemoryBarrier::AccessFlagBitType visibleMask = 0;
 
-    MemoryAccessData accessData;
+    DrvVulkanResourceTracker::BarrierStageData barrierStageData;
+
+    uint32_t autoMemoryBarrierCount = 0;
+    StackMemory::MemoryHandle<drv::MemoryBarrier> autoMemoryBarrierMem(memoryBarrierCount, TEMPMEM);
+    drv::MemoryBarrier* autoMemoryBarriers = autoMemoryBarrierMem.get();
+    drv::drv_assert(autoMemoryBarriers != nullptr || memoryBarrierCount == 0);
+    uint32_t autoBufferBarrierCount = 0;
+    StackMemory::MemoryHandle<drv::BufferMemoryBarrier> autoBufferBarrierMem(bufferBarrierCount,
+                                                                             TEMPMEM);
+    drv::BufferMemoryBarrier* autoBufferBarriers = autoBufferBarrierMem.get();
+    drv::drv_assert(autoBufferBarriers != nullptr || bufferBarrierCount == 0);
+    uint32_t autoImageBarrierCount = 0;
+    StackMemory::MemoryHandle<drv::ImageMemoryBarrier> autoImageBarrierMem(imageBarrierCount,
+                                                                           TEMPMEM);
+    drv::ImageMemoryBarrier* autoImageBarriers = autoImageBarrierMem.get();
+    drv::drv_assert(autoImageBarriers != nullptr || imageBarrierCount == 0);
 
     TODO;
     // TODO impelement sync levels here
@@ -303,14 +326,58 @@ void DrvVulkanResourceTracker::addMemoryAccess(
     }
     for (uint32_t i = 0; i < bufferBarrierCount; ++i) {
         const TrackedBufferMemoryBarrier& bufferBarrier = bufferBarriers[i];
-        processBufferAccess(accessData, stages, bufferBarrier);
+        DrvVulkanResourceTracker::BarrierAccessData barrierAccessData;
+        processBufferAccess(barrierStageData, barrierAccessData, stages, bufferBarrier);
+        if (barrierAccessData.availableMask != 0 || barrierAccessData.visibleMask != 0) {
+            autoBufferBarriers[autoBufferBarrierCount].sourceAccessFlags =
+              barrierAccessData.availableMask;
+            autoBufferBarriers[autoBufferBarrierCount].dstAccessFlags =
+              barrierAccessData.visibleMask;
+            autoBufferBarriers[autoBufferBarrierCount].srcFamily = ;
+            autoBufferBarriers[autoBufferBarrierCount].dstFamily = ;
+            autoBufferBarriers[autoBufferBarrierCount].buffer = bufferBarrier.buffer;
+            autoBufferBarriers[autoBufferBarrierCount].offset = bufferBarrier.offset;
+            autoBufferBarriers[autoBufferBarrierCount].size = bufferBarrier.size;
+            autoBufferBarrierCount++;
+        }
     }
     for (uint32_t i = 0; i < imageBarrierCount; ++i) {
         const TrackedImageMemoryBarrier& imageBarrier = imageBarriers[i];
-        processImageAccess(accessData, stages, imageBarrier);
+        DrvVulkanResourceTracker::BarrierAccessData barrierAccessData;
+        processImageAccess(barrierStageData, barrierAccessData, stages, imageBarrier);
+        if (barrierAccessData.availableMask != 0 || barrierAccessData.visibleMask != 0) {
+            autoImageBarriers[autoImageBarrierCount].sourceAccessFlags =
+              barrierAccessData.availableMask;
+            autoImageBarriers[autoImageBarrierCount].dstAccessFlags = barrierAccessData.visibleMask;
+            autoImageBarriers[autoImageBarrierCount].oldLayout = ;
+            autoImageBarriers[autoImageBarrierCount].newLayout = ;
+            autoImageBarriers[autoImageBarrierCount].srcFamily = ;
+            autoImageBarriers[autoImageBarrierCount].dstFamily = ;
+            autoImageBarriers[autoImageBarrierCount].image = imageBarrier.image;
+            autoImageBarriers[autoImageBarrierCount].subresourceRange =
+              imageBarrier.subresourceRange;
+            autoImageBarrierCount++;
+        }
     }
-    TODO;  // auto create pipeline barrier if necessary (or wait event) -- based on settings
-    // Add access to history
+    if (barrierStageData.autoWaitDstStages.stageFlags != drv::PipelineStages::TOP_OF_PIPE_BIT
+        || barrierStageData.autoWaitSrcStages.stageFlags != drv::PipelineStages::TOP_OF_PIPE_BIT) {
+        cmd_pipeline_barrier(commandBuffer, barrierStageData.autoWaitSrcStages,
+                             barrierStageData.autoWaitDstStages, , autoMemoryBarrierCount,
+                             autoMemoryBarriers, autoBufferBarrierCount, autoBufferBarriers,
+                             autoImageBarrierCount, autoImageBarriers);
+    }
+    else {
+        drv::drv_assert(
+          autoImageBarrierCount == 0,
+          "Image access flags are added to the auto generated barrier, but no stages");
+        drv::drv_assert(
+          autoBufferBarrierCount == 0,
+          "Buffer access flags are added to the auto generated barrier, but no stages");
+        drv::drv_assert(
+          autoMemoryBarrierCount == 0,
+          "Memory access flags are added to the auto generated barrier, but no stages");
+    }
+    TODO;  // Add access to history
     for (uint32_t i = 0; i < imageBarrierCount; ++i) {
         const TrackedImageMemoryBarrier& imageBarrier = imageBarriers[i];
         ImageHistoryEntry access;
