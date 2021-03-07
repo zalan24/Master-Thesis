@@ -34,6 +34,18 @@ class IResourceTracker
                                       const BufferMemoryBarrier* bufferBarriers,
                                       uint32_t imageBarrierCount,
                                       const ImageMemoryBarrier* imageBarriers) = 0;
+    virtual bool cmd_pipeline_barrier(CommandBufferPtr commandBuffer, PipelineStages sourceStage,
+                                      PipelineStages dstStage,
+                                      DependencyFlagBits dependencyFlags) = 0;
+    virtual bool cmd_pipeline_barrier(CommandBufferPtr commandBuffer, PipelineStages sourceStage,
+                                      PipelineStages dstStage, DependencyFlagBits dependencyFlags,
+                                      const MemoryBarrier& memoryBarrier) = 0;
+    virtual bool cmd_pipeline_barrier(CommandBufferPtr commandBuffer, PipelineStages sourceStage,
+                                      PipelineStages dstStage, DependencyFlagBits dependencyFlags,
+                                      const BufferMemoryBarrier& bufferBarrier) = 0;
+    virtual bool cmd_pipeline_barrier(CommandBufferPtr commandBuffer, PipelineStages sourceStage,
+                                      PipelineStages dstStage, DependencyFlagBits dependencyFlags,
+                                      const ImageMemoryBarrier& imageBarrier) = 0;
     virtual void cmd_clear_image(CommandBufferPtr cmdBuffer, ImagePtr image,
                                  ImageLayout currentLayout, const ClearColorValue* clearColors,
                                  uint32_t ranges,

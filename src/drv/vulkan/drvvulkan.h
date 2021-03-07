@@ -204,6 +204,18 @@ class DrvVulkanResourceTracker final : public drv::IResourceTracker
                               const drv::BufferMemoryBarrier* bufferBarriers,
                               uint32_t imageBarrierCount,
                               const drv::ImageMemoryBarrier* imageBarriers) override;
+    bool cmd_pipeline_barrier(drv::CommandBufferPtr commandBuffer, drv::PipelineStages sourceStage,
+                              drv::PipelineStages dstStage,
+                              drv::DependencyFlagBits dependencyFlags) override;
+    bool cmd_pipeline_barrier(drv::CommandBufferPtr commandBuffer, drv::PipelineStages sourceStage,
+                              drv::PipelineStages dstStage, drv::DependencyFlagBits dependencyFlags,
+                              const drv::MemoryBarrier& memoryBarrier) override;
+    bool cmd_pipeline_barrier(drv::CommandBufferPtr commandBuffer, drv::PipelineStages sourceStage,
+                              drv::PipelineStages dstStage, drv::DependencyFlagBits dependencyFlags,
+                              const drv::BufferMemoryBarrier& bufferBarrier) override;
+    bool cmd_pipeline_barrier(drv::CommandBufferPtr commandBuffer, drv::PipelineStages sourceStage,
+                              drv::PipelineStages dstStage, drv::DependencyFlagBits dependencyFlags,
+                              const drv::ImageMemoryBarrier& imageBarrier) override;
     void cmd_clear_image(drv::CommandBufferPtr cmdBuffer, drv::ImagePtr image,
                          drv::ImageLayout currentLayout, const drv::ClearColorValue* clearColors,
                          uint32_t ranges,
@@ -348,6 +360,12 @@ class DrvVulkanResourceTracker final : public drv::IResourceTracker
                          const TrackedBufferMemoryBarrier* bufferBarriers,
                          uint32_t imageBarrierCount,
                          const TrackedImageMemoryBarrier* imageBarriers);
+    // // TODO DependencyFlagBits dependencyFlags??
+    // void addMemorySync(drv::CommandBufferPtr commandBuffer, drv::PipelineStages stages,
+    //                    /*drv::DependencyFlagBits dependencyFlags,*/ uint32_t memoryBarrierCount,
+    //                    const TrackedMemoryBarrier* memoryBarriers, uint32_t bufferBarrierCount,
+    //                    const TrackedBufferMemoryBarrier* bufferBarriers, uint32_t imageBarrierCount,
+    //                    const TrackedImageMemoryBarrier* imageBarriers);
 
     // Depending on validation level: auto sync and/or show a warning/error/assert
     void invalidate(BarrierStageData& barrierStageData, BarrierAccessData& barrierAccessData,

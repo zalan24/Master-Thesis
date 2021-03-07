@@ -509,8 +509,9 @@ bool DrvVulkanResourceTracker::cmd_pipeline_barrier(
   uint32_t memoryBarrierCount, const drv::MemoryBarrier* memoryBarriers,
   uint32_t bufferBarrierCount, const drv::BufferMemoryBarrier* bufferBarriers,
   uint32_t imageBarrierCount, const drv::ImageMemoryBarrier* imageBarriers) {
+#if USE_RESOURCE_TRACKER
+#endif
     TODO;
-    // TODO implement versions for single barrier (to avoid stack mem usage)
     // TODO invalidate if barrier causes cache flush, but waits on stages only partially
     // TODO invalidate if there is already a barrier, that flushes the same memory, but it's not waited upon by this barrier
     StackMemory::MemoryHandle<VkMemoryBarrier> barrierMem(memoryBarrierCount, TEMPMEM);
@@ -520,9 +521,12 @@ bool DrvVulkanResourceTracker::cmd_pipeline_barrier(
     VkBufferMemoryBarrier* vkBufferBarriers =
       reinterpret_cast<VkBufferMemoryBarrier*>(bufferMem.get());
     VkImageMemoryBarrier* vkImageBarriers = reinterpret_cast<VkImageMemoryBarrier*>(imageMem.get());
-    drv::drv_assert(barriers != nullptr, "Could not allocate memory for barriers");
-    drv::drv_assert(bufferBarriers != nullptr, "Could not allocate memory for buffer barriers");
-    drv::drv_assert(imageBarriers != nullptr, "Could not allocate memory for image barriers");
+    drv::drv_assert(barriers != nullptr || memoryBarrierCount == 0,
+                    "Could not allocate memory for barriers");
+    drv::drv_assert(bufferBarriers != nullptr || bufferBarrierCount == 0,
+                    "Could not allocate memory for buffer barriers");
+    drv::drv_assert(imageBarriers != nullptr || imageBarrierCount == 0,
+                    "Could not allocate memory for image barriers");
 
     for (uint32_t i = 0; i < memoryBarrierCount; ++i) {
         barriers[i].sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER;
@@ -561,11 +565,100 @@ bool DrvVulkanResourceTracker::cmd_pipeline_barrier(
           convertSubresourceRange(imageBarriers[i].subresourceRange);
     }
 
-    vkCmdPipelineBarrier(reinterpret_cast<VkCommandBuffer>(commandBuffer),
+    vkCmdPipelineBarrier(convertCommandBuffer(commandBuffer),
                          static_cast<VkPipelineStageFlags>(sourceStage.stageFlags),
                          static_cast<VkPipelineStageFlags>(dstStage.stageFlags),
                          static_cast<VkDependencyFlags>(dependencyFlags), memoryBarrierCount,
                          barriers, bufferBarrierCount, vkBufferBarriers, imageBarrierCount,
                          vkImageBarriers);
+    return true;
+}
+
+bool DrvVulkanResourceTracker::cmd_pipeline_barrier(drv::CommandBufferPtr commandBuffer,
+                                                    drv::PipelineStages sourceStage,
+                                                    drv::PipelineStages dstStage,
+                                                    drv::DependencyFlagBits dependencyFlags) {
+#if USE_RESOURCE_TRACKER
+#endif
+    TODO;
+    vkCmdPipelineBarrier(convertCommandBuffer(commandBuffer),
+                         static_cast<VkPipelineStageFlags>(sourceStage.stageFlags),
+                         static_cast<VkPipelineStageFlags>(dstStage.stageFlags),
+                         static_cast<VkDependencyFlags>(dependencyFlags), 0, nullptr, 0, nullptr, 0,
+                         nullptr);
+    return true;
+}
+
+bool DrvVulkanResourceTracker::cmd_pipeline_barrier(drv::CommandBufferPtr commandBuffer,
+                                                    drv::PipelineStages sourceStage,
+                                                    drv::PipelineStages dstStage,
+                                                    drv::DependencyFlagBits dependencyFlags,
+                                                    const drv::MemoryBarrier& memoryBarrier) {
+#if USE_RESOURCE_TRACKER
+#endif
+    TODO;
+    VkMemoryBarrier barrier;
+    barrier.sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER;
+    barrier.pNext = nullptr;
+    barrier.srcAccessMask = static_cast<VkAccessFlags>(memoryBarrier.sourceAccessFlags);
+    barrier.dstAccessMask = static_cast<VkAccessFlags>(memoryBarrier.dstAccessFlags);
+    vkCmdPipelineBarrier(convertCommandBuffer(commandBuffer),
+                         static_cast<VkPipelineStageFlags>(sourceStage.stageFlags),
+                         static_cast<VkPipelineStageFlags>(dstStage.stageFlags),
+                         static_cast<VkDependencyFlags>(dependencyFlags), 1, &barrier, 0, nullptr,
+                         0, nullptr);
+    return true;
+}
+
+bool DrvVulkanResourceTracker::cmd_pipeline_barrier(drv::CommandBufferPtr commandBuffer,
+                                                    drv::PipelineStages sourceStage,
+                                                    drv::PipelineStages dstStage,
+                                                    drv::DependencyFlagBits dependencyFlags,
+                                                    const drv::BufferMemoryBarrier& bufferBarrier) {
+#if USE_RESOURCE_TRACKER
+#endif
+    TODO;
+    VkBufferMemoryBarrier buffer;
+    buffer.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
+    buffer.pNext = nullptr;
+    buffer.srcAccessMask = static_cast<VkAccessFlags>(bufferBarrier.sourceAccessFlags);
+    buffer.dstAccessMask = static_cast<VkAccessFlags>(bufferBarrier.dstAccessFlags);
+    buffer.srcQueueFamilyIndex = convertFamily(bufferBarrier.srcFamily);
+    buffer.dstQueueFamilyIndex = convertFamily(bufferBarrier.dstFamily);
+    buffer.buffer = convertBuffer(bufferBarrier.buffer);
+    buffer.size = bufferBarrier.size;
+    buffer.offset = bufferBarrier.offset;
+    vkCmdPipelineBarrier(convertCommandBuffer(commandBuffer),
+                         static_cast<VkPipelineStageFlags>(sourceStage.stageFlags),
+                         static_cast<VkPipelineStageFlags>(dstStage.stageFlags),
+                         static_cast<VkDependencyFlags>(dependencyFlags), 0, nullptr, 1, &buffer, 0,
+                         nullptr);
+    return true;
+}
+
+bool DrvVulkanResourceTracker::cmd_pipeline_barrier(drv::CommandBufferPtr commandBuffer,
+                                                    drv::PipelineStages sourceStage,
+                                                    drv::PipelineStages dstStage,
+                                                    drv::DependencyFlagBits dependencyFlags,
+                                                    const drv::ImageMemoryBarrier& imageBarrier) {
+#if USE_RESOURCE_TRACKER
+#endif
+    TODO;
+    VkImageMemoryBarrier image;
+    image.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+    image.pNext = nullptr;
+    image.srcAccessMask = static_cast<VkAccessFlags>(imageBarrier.sourceAccessFlags);
+    image.dstAccessMask = static_cast<VkAccessFlags>(imageBarrier.dstAccessFlags);
+    image.image = convertImage(imageBarrier.image);
+    image.srcQueueFamilyIndex = convertFamily(imageBarrier.srcFamily);
+    image.dstQueueFamilyIndex = convertFamily(imageBarrier.dstFamily);
+    image.newLayout = static_cast<VkImageLayout>(imageBarrier.newLayout);
+    image.oldLayout = static_cast<VkImageLayout>(imageBarrier.oldLayout);
+    image.subresourceRange = convertSubresourceRange(imageBarrier.subresourceRange);
+    vkCmdPipelineBarrier(convertCommandBuffer(commandBuffer),
+                         static_cast<VkPipelineStageFlags>(sourceStage.stageFlags),
+                         static_cast<VkPipelineStageFlags>(dstStage.stageFlags),
+                         static_cast<VkDependencyFlags>(dependencyFlags), 0, nullptr, 0, nullptr, 1,
+                         &image);
     return true;
 }
