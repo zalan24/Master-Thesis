@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cassert>
 #include <deque>
 #include <mutex>
 #include <unordered_map>
@@ -208,7 +209,6 @@ class DrvVulkanResourceTracker final : public drv::IResourceTracker
                          uint32_t ranges,
                          const drv::ImageSubresourceRange* subresourceRanges) override;
 
- private:
 #if USE_RESOURCE_TRACKER
     struct TrackedMemoryBarrier
     {
@@ -278,6 +278,60 @@ class DrvVulkanResourceTracker final : public drv::IResourceTracker
         } entry;
         drv::ImagePtr image;
         drv::ImageSubresourceRange subresourceRange;
+        bool isAccess() const { return type == ACCESS; }
+        bool isSync() const { return type == SYNC; }
+        drv::PipelineStages getSyncDstStages() const {
+            assert(isSync());
+            return entry.sync.dstStages;
+        }
+        drv::PipelineStages getSyncSrcStages() const {
+            assert(isSync());
+            return entry.sync.srcStages;
+        }
+        drv::PipelineStages getAccessStages() const {
+            assert(isAccess());
+            return entry.access.stages;
+        }
+        auto& getWaitedOnMarkers() {
+            assert(isSync());
+            return entry.sync.waitedMarker;
+        }
+        const auto& getWaitedOnMarkers() const {
+            assert(isSync());
+            return entry.sync.waitedMarker;
+        }
+        bool hasTransitionsFor(const ImageHistoryEntry& other) const {
+            assert(isSync());
+            assert(other.isAccess());
+            TODO;  // or ownership transition
+            return entry.sync.transitionImage && image == other.image;
+        }
+        drv::MemoryBarrier::AccessFlagBitType getSyncVisibleMask() const {
+            assert(isSync());
+            return entry.sync.visibleMask;
+        }
+        drv::MemoryBarrier::AccessFlagBitType getSyncAvailableMask() const {
+            assert(isSync());
+            return entry.sync.availableMask;
+        }
+        drv::MemoryBarrier::AccessFlagBitType getAccessMask() const {
+            assert(isAccess());
+            return entry.access.accessMask;
+        }
+        bool overlap(const ImageHistoryEntry& other) {
+            return image == other.image
+                   && drv::ImageSubresourceRange::overlap(subresourceRange, other.subresourceRange);
+        }
+    };
+
+    struct MemoryAccessData
+    {
+        drv::PipelineStages autoWaitSrcStages =
+          drv::PipelineStages(drv::PipelineStages::TOP_OF_PIPE_BIT);
+        drv::PipelineStages autoWaitDstStages =
+          drv::PipelineStages(drv::PipelineStages::TOP_OF_PIPE_BIT);
+        drv::MemoryBarrier::AccessFlagBitType availableMask = 0;
+        drv::MemoryBarrier::AccessFlagBitType visibleMask = 0;
     };
 
     uint64_t waitedMarker = 0;
@@ -287,18 +341,26 @@ class DrvVulkanResourceTracker final : public drv::IResourceTracker
     // TODO DependencyFlagBits dependencyFlags??
     void addMemoryAccess(drv::CommandBufferPtr commandBuffer, drv::PipelineStages stages,
                          /*drv::DependencyFlagBits dependencyFlags,*/ uint32_t memoryBarrierCount,
-                         const TrackedMemoryBarrier* accessTypes, uint32_t bufferBarrierCount,
+                         const TrackedMemoryBarrier* memoryBarriers, uint32_t bufferBarrierCount,
                          const TrackedBufferMemoryBarrier* bufferBarriers,
                          uint32_t imageBarrierCount,
                          const TrackedImageMemoryBarrier* imageBarriers);
 
-    void invalidate(drv::PipelineStages& autoWaitSrcStages, drv::PipelineStages& autoWaitDstStages,
-                    drv::MemoryBarrier::AccessFlagBitType& availableMask,
-                    drv::MemoryBarrier::AccessFlagBitType& visibleMask,
-                    drv::PipelineStages::FlagType srcStages,
+    // Depending on validation level: auto sync and/or show a warning/error/assert
+    void invalidate(MemoryAccessData& data, drv::PipelineStages::FlagType srcStages,
                     drv::PipelineStages::FlagType dstStages,
                     drv::MemoryBarrier::AccessFlagBitType unavailable,
                     drv::MemoryBarrier::AccessFlagBitType invisible, const char* message) const;
+
+    void processImageAccess(MemoryAccessData& data, drv::PipelineStages stages,
+                            /*drv::DependencyFlagBits dependencyFlags,*/
+                            const TrackedImageMemoryBarrier& imageBarrier);
+    void processBufferAccess(MemoryAccessData& data, drv::PipelineStages stages,
+                             /*drv::DependencyFlagBits dependencyFlags,*/
+                             const TrackedBufferMemoryBarrier& bufferBarrier);
+    void processMemoryAccess(MemoryAccessData& data, drv::PipelineStages stages,
+                             /*drv::DependencyFlagBits dependencyFlags,*/
+                             const TrackedMemoryBarrier& memoryBarrier);
 #endif
 };
 
