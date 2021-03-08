@@ -350,12 +350,19 @@ class DrvVulkanResourceTracker final : public drv::ResourceTracker
                          const TrackedBufferMemoryBarrier* bufferBarriers,
                          uint32_t imageBarrierCount,
                          const TrackedImageMemoryBarrier* imageBarriers);
-    // // TODO DependencyFlagBits dependencyFlags??
-    // void addMemorySync(drv::CommandBufferPtr commandBuffer, drv::PipelineStages stages,
-    //                    /*drv::DependencyFlagBits dependencyFlags,*/ uint32_t memoryBarrierCount,
-    //                    const TrackedMemoryBarrier* memoryBarriers, uint32_t bufferBarrierCount,
-    //                    const TrackedBufferMemoryBarrier* bufferBarriers, uint32_t imageBarrierCount,
-    //                    const TrackedImageMemoryBarrier* imageBarriers);
+
+    enum SyncResult
+    {
+        BARRIER_AUTO_ADDED,
+        SUCCESS
+    };
+    //TODO DependencyFlagBits dependencyFlags??
+    SyncResult addMemorySync(
+      drv::CommandBufferPtr commandBuffer, drv::PipelineStages sourceStage,
+      drv::PipelineStages dstStage, /*drv::DependencyFlagBits dependencyFlags,*/
+      uint32_t memoryBarrierCount, const drv::MemoryBarrier* memoryBarriers,
+      uint32_t bufferBarrierCount, const drv::BufferMemoryBarrier* bufferBarriers,
+      uint32_t imageBarrierCount, const drv::ImageMemoryBarrier* imageBarriers);
 
     // Depending on validation level: auto sync and/or show a warning/error/assert
     void invalidate(BarrierStageData& barrierStageData, BarrierAccessData& barrierAccessData,

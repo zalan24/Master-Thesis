@@ -61,6 +61,7 @@ void DrvVulkanResourceTracker::invalidate(BarrierStageData& barrierStageData,
     barrierAccessData.availableMask |= unavailable;
     barrierAccessData.visibleMask |= invisible;
     TODO;  // error / warn for invalidation
+    // TODO add debug information into the command args (involved operations???)
 }
 
 struct StageData
@@ -260,7 +261,7 @@ static void process_history_for_access(
     const uint32_t currentReadAccessCount = drv::MemoryBarrier::get_access_count(currentReadAccess);
 
     auto entry = historyEnd;
-    while (entry != historyBegin;) {
+    while (entry != historyBegin) {
         entry--;
         if (entry->isAccess())
             process_access_history_access_entry(
@@ -350,6 +351,7 @@ void DrvVulkanResourceTracker::addMemoryAccess(
 
     TODO;
     // TODO impelement sync levels here
+    // TODO validate that memory barriers are disjunk
     for (uint32_t i = 0; i < memoryBarrierCount; ++i) {
         const TrackedMemoryBarrier& memoryBarrier = memoryBarriers[i];
         // waitedMarker++;
@@ -446,6 +448,165 @@ void DrvVulkanResourceTracker::addMemoryAccess(
     TODO;  // Add access to history
     for (uint32_t i = 0; i < imageBarrierCount; ++i) {
         const TrackedImageMemoryBarrier& imageBarrier = imageBarriers[i];
+        ImageHistoryEntry access;
+        access.type = ImageHistoryEntry::ACCESS;
+        access.image = imageBarrier.image;
+        access.subresourceRange = imageBarrier.subresourceRange;
+        access.entry.access.accessMask = imageBarrier.accessMask;
+        access.entry.access.stages = stages;
+        if (imageBarrier.layoutChanged) {
+            access.entry.access.resultLayout = imageBarrier.resultLayout;
+        }
+        else {
+            drv::PipelineStages stages;
+            getImageLayout(imageBarrier.image, access.entry.access.resultLayout, stages);
+        }
+        imageHistory.push_back(std::move(access));
+    }
+}
+
+struct MemorySyncInfo
+{
+    uint8_t writesMemory : 1;
+    uint8_t flushesCache : 1;
+    uint8_t invalidatesCache : 1;
+};
+
+template <typename HItr, typename AF, typename SF>
+static void process_sync(DrvVulkanResourceTracker* tracker, const drv::CommandTypeBase queueSupport,
+                         DrvVulkanResourceTracker::BarrierStageData& barrierStageData,
+                         DrvVulkanResourceTracker::BarrierAccessData& barrierAccessData,
+                         drv::MemoryBarrier::AccessFlagBitType flushMask,
+                         //  drv::MemoryBarrier::AccessFlagBitType invalidateMask,
+                         HItr historyBegin, HItr historyEnd, AF&& writesResource, SF&& syncInfo) {
+    const drv::PipelineStages::FlagType waitStages =
+      barrierStageData.autoWaitSrcStages.resolve(queueSupport);
+    drv::PipelineStages::FlagType transitiveStages = waitStages;
+    TODO;
+    // TODO detect excess cache invalidation (dst access mask)???
+    auto entry = historyEnd;
+    while (entry != historyBegin) {
+        entry--;
+        if (entry->isAccess()) {
+            if (writesResource(*entry)) {
+                const drv::PipelineStages::FlagType writeStages =
+                  entry->getAccessStages().resolve(queueSupport);
+                const drv::MemoryBarrier::AccessFlagBitType commonFlushMask =
+                  entry->getAccessMask() & flushMask;
+                if (commonFlushMask != 0) {
+                    flushMask ^= commonFlushMask;
+                    if ((transitiveStages & writeStages) != writeStages) {
+                        tracker->invalidate(
+                          barrierStageData, barrierAccessData, writeStages, waitStages, 0, 0,
+                          "Barrier partially flushes the results of an operation");
+                    }
+                }
+            }
+        }
+        else if (entry->isSync()) {
+            const MemorySyncInfo info = syncInfo(*entry);
+            const drv::PipelineStages::FlagType stages =
+              entry->getSyncDstStages().resolve(queueSupport);
+            const drv::MemoryBarrier::AccessFlagBitType commonFlushMask =
+              entry->getSyncAvailableMask() & flushMask;
+            if (stages & transitiveStages) {
+                // waited on
+                transitiveStages |= entry->getSyncSrcStages();
+                if (commonFlushMask != 0) {
+                    tracker->invalidate(
+                      barrierStageData, barrierAccessData, 0, 0, 0, 0,
+                      "A pipeline barrier flushes memory, that's already flushed by an other barrier");
+                    flushMask ^= commonFlushMask;
+                }
+            }
+            else {
+                // async
+                if (info.flushesCache && commonFlushMask != 0) {
+                    tracker->invalidate(
+                      barrierStageData, barrierAccessData, stages, waitStages, 0, 0,
+                      "An earlier pipeline barriers also flushes the same memory, but it's not synced with this barrier");
+                    flushMask ^= commonFlushMask;
+                }
+            }
+            TODO;
+            // TODO detect double cache invalidation
+            // TODO current flush needs to wait on entry invalidations as well
+        }
+        else
+            drv::drv_assert(false);
+    }
+    if (flushMask != 0) {
+        tracker->invalidate(
+          barrierStageData, barrierAccessData, 0, 0, 0, 0,
+          "A pipeline barrier performs a cache flush, but writer operations is not found in history");
+    }
+}
+
+DrvVulkanResourceTracker::SyncResult DrvVulkanResourceTracker::addMemorySync(
+  drv::CommandBufferPtr commandBuffer, drv::PipelineStages sourceStage,
+  drv::PipelineStages dstStage, /*drv::DependencyFlagBits dependencyFlags,*/
+  uint32_t memoryBarrierCount, const drv::MemoryBarrier* memoryBarriers,
+  uint32_t bufferBarrierCount, const drv::BufferMemoryBarrier* bufferBarriers,
+  uint32_t imageBarrierCount, const drv::ImageMemoryBarrier* imageBarriers) {
+    const drv::CommandTypeBase queueSupport = ;
+
+    DrvVulkanResourceTracker::BarrierStageData barrierStageData;
+    barrierStageData.autoWaitSrcStages.add(sourceStage);
+    barrierStageData.autoWaitDstStages.add(dstStage);
+
+    // uint32_t autoMemoryBarrierCount = 0;
+    // StackMemory::MemoryHandle<drv::MemoryBarrier> autoMemoryBarrierMem(memoryBarrierCount, TEMPMEM);
+    // drv::MemoryBarrier* autoMemoryBarriers = autoMemoryBarrierMem.get();
+    // drv::drv_assert(autoMemoryBarriers != nullptr || memoryBarrierCount == 0);
+    // uint32_t autoBufferBarrierCount = 0;
+    // StackMemory::MemoryHandle<drv::BufferMemoryBarrier> autoBufferBarrierMem(bufferBarrierCount,
+    //                                                                          TEMPMEM);
+    // drv::BufferMemoryBarrier* autoBufferBarriers = autoBufferBarrierMem.get();
+    // drv::drv_assert(autoBufferBarriers != nullptr || bufferBarrierCount == 0);
+    // uint32_t autoImageBarrierCount = 0;
+    // StackMemory::MemoryHandle<drv::ImageMemoryBarrier> autoImageBarrierMem(imageBarrierCount,
+    //                                                                        TEMPMEM);
+    // drv::ImageMemoryBarrier* autoImageBarriers = autoImageBarrierMem.get();
+    // drv::drv_assert(autoImageBarriers != nullptr || imageBarrierCount == 0);
+
+    TODO;
+    // TODO impelement sync levels here
+    // TODO validate that memory barriers are disjunk
+    for (uint32_t i = 0; i < memoryBarrierCount; ++i) {
+        const drv::MemoryBarrier& memoryBarrier = memoryBarriers[i];
+        // waitedMarker++;
+        TODO;
+        // find all conflicting writes and append them to a pipeline barrier structure
+    }
+    for (uint32_t i = 0; i < bufferBarrierCount; ++i) {
+        const drv::BufferMemoryBarrier& bufferBarrier = bufferBarriers[i];
+        DrvVulkanResourceTracker::BarrierAccessData barrierAccessData;
+    }
+    for (uint32_t i = 0; i < imageBarrierCount; ++i) {
+        const drv::ImageMemoryBarrier& imageBarrier = imageBarriers[i];
+        DrvVulkanResourceTracker::BarrierAccessData barrierAccessData;
+    }
+    if (barrierStageData.autoWaitDstStages.stageFlags != dstStage.stageFlags
+        || barrierStageData.autoWaitSrcStages.stageFlags != sourceStage.stageFlags) {
+        cmd_pipeline_barrier(commandBuffer, barrierStageData.autoWaitSrcStages,
+                             barrierStageData.autoWaitDstStages, , autoMemoryBarrierCount,
+                             autoMemoryBarriers, autoBufferBarrierCount, autoBufferBarriers,
+                             autoImageBarrierCount, autoImageBarriers);
+    }
+    else {
+        drv::drv_assert(
+          autoImageBarrierCount == 0,
+          "Image access flags are added to the auto generated barrier, but no stages");
+        drv::drv_assert(
+          autoBufferBarrierCount == 0,
+          "Buffer access flags are added to the auto generated barrier, but no stages");
+        drv::drv_assert(
+          autoMemoryBarrierCount == 0,
+          "Memory access flags are added to the auto generated barrier, but no stages");
+    }
+    TODO;  // Add access to history
+    for (uint32_t i = 0; i < imageBarrierCount; ++i) {
+        const drv::ImageMemoryBarrier& imageBarrier = imageBarriers[i];
         ImageHistoryEntry access;
         access.type = ImageHistoryEntry::ACCESS;
         access.image = imageBarrier.image;
@@ -587,6 +748,7 @@ bool DrvVulkanResourceTracker::cmd_pipeline_barrier(
   uint32_t bufferBarrierCount, const drv::BufferMemoryBarrier* bufferBarriers,
   uint32_t imageBarrierCount, const drv::ImageMemoryBarrier* imageBarriers) {
 #if USE_RESOURCE_TRACKER
+    // if auto added, just return
 #endif
     TODO;
     // TODO invalidate if barrier causes cache flush, but waits on stages only partially
