@@ -58,6 +58,140 @@ Get a triangle on screen:
     ✔ Add an event pool @done (3/2/2021, 9:34:57 AM)
         ✔ Use garbage system for recycling @done (3/2/2021, 9:34:57 AM)
     ☐ Resource tracking
+        ☐ Image and buffer tracking info
+            ☐ Images and buffers need a separate struct under vulkan api
+            ☐ This struct needs to store tracking slots
+                ☐ These are for parallel state tracking
+                ☐ Values stored per slot
+                    ☐ Common
+                        ☐ Ownership
+                        ☐ Event to wait on before usage????
+                    ☐ Images store data per mip level per array index (have max values for this)
+                        ☐ Layout
+                        ☐ Ongoing writing pipeline stages (src mask for next barrier)
+                        ☐ Ongoing reading pipeline stages (src mask for next barrier for writing operations)
+                        ☐ Ongoing flushing pipeline stages
+                        ☐ Ongoing invalidating pipeline stages
+                        ☐ Dirty access mask for availability (which access types have un-flushed memory)
+                        ☐ Visibility access mask (which access types have un-flushed memory)
+                        ☐ Upon writing
+                            ☐ Requirements
+                                ☐ Wait on flushing an invalidating stages if they are not 0
+                                ☐ Need to wait on other writes and reads (ongoing operations)
+                                ☐ Correct ownership or shared access
+                                ☐ Proper layout
+                                ☐ Overwritten writes could be logged here for performance improvement suggestions
+                            ☐ dirty access mask := writing access mask
+                            ☐ Visibility mask := 0 (Memory not visible on any access type)
+                            ☐ Ongoing writing := to current stages
+                            ☐ Ongoing reading := 0
+                            ☐ Ongoing flushing := 0
+                            ☐ Ongoing invalidations := 0
+                            ☐ Set layout if it's changed
+                        ☐ Upon reading
+                            ☐ Requirements
+                                ☐ Need to wait on invalidating operations
+                                ☐ Dirty access mask for visibility & currentMask = currentMask (implies availability)
+                                ☐ Correct ownership or shared access
+                                ☐ Proper layout
+                            ☐ Ongoing reading pipeline stages |= current stages
+                        ☐ Upon inserting pipeline barrier
+                            ☐ Parameters
+                                ☐ Does it need to flush
+                                ☐ Required visibility mask
+                                ☐ Dst stages
+                                ☐ Layout transition
+                                ☐ Ownership transition
+                            ☐ If it flushes the memory (needs to flush all access types)
+                                ☐ src stages := ongoing writing stages
+                                ☐ Ongoing flushing := dst stages
+                                ☐ Src access mask := Dirty access mask for availability
+                                ☐ Dirty access mask for availability := 0
+                                ☐ Ongoing invalidations := 0
+                            ☐ If it invalidates cache
+                                ☐ Src := ongoing flushing stages OR writing stages (if it's the same barrier)
+                                ☐ Ongoing invalidations |= dst stages
+                                ☐ Dst access mask for pipeline barrier := required visibility mask & Dirty access mask for visibility
+                                ☐ Dirty access mask for visibility ^= Dst access mask for pipeline barrier
+                        ☐ Pay attention to memory layout (probably array index should be the first index, 2nd should be the mip level)
+                    ☐ Buffer????
+                        ☐ Have a small history of sub+resource ranges + an extra fix slot for the entire buffer (instead of arrays and mip levels)
+                        ☐ Per history/fixed slot
+                            ☐ A slot stores sub-resource ranges (with a fixed max number)
+                            ☐ When doing on operation, find the correct slot:
+                                ☐ If there is an exact match, use that
+                                ☐ If not, try to create a new slot
+                                ☐ If no more free slots, create a virtual slot and perform a slot merge
+                            ☐ Do the exact same as for the image without the layout
+                        ☐ History management
+                            ☐ When accessing a slot, merge all overlapping slots into it (if the fixed slot is updated, history is cleared)
+                        ☐ Slot merge
+                            ☐ Calculate resulting sub-resource ranges
+                                ☐ If the new slots needs to many ranges, merge the ranges
+                            ☐ Find all slots in the history than conflict with this slot...
+                            ☐ ... ???
+                ☐ Most of the state data should be in a struct that is used by both the image and the buffer
+                ☐ There is a fixed number of slots (use a define for this, could be a build option)
+                ☐ Slot ids are acquired from the driver (not the resource)
+                    ☐ Nodes acquire the slot id from the framegraph
+                    ☐ The framegraph can reuse ids, where there is no parallel usage (must be same queue as well)
+                ☐ Have a cmd function to create barrier for an image (using the current state of the image)
+                    ☐ Input
+                        ☐ Option A: pipeline stages; access mask; required layout
+                        ☐ Option B: enum for operations -> mask of operations? or operation types???
+                    ☐ Parameters for barrier???
+                        ☐ auto flush if needed (when is it needed?)
+                        ☐ required visibility mask := access mask of the required operation(s)
+                        ☐ dst stages := all stages of the required operation(s)
+                        ☐ layout transition := manual input
+                        ☐ ownership transfer := auto place if needed
+                    ☐ cmd pipeline barrier should not be exposed to the engine
+                ☐ When placing a pipeline barrier it should not be recorded to the cmd buffer immediately
+                    ☐ Merge all barriers and flush them when a new operations is done or the recording ended
+                ☐ When submitting the command buffer with semaphores, states might be changed??? or not
+            ☐ Create state objects for images and buffers to share state between tracking slots
+                ☐ Object content
+                    ☐ full resource state
+                ☐ Have some simple initializers for this object
+                ☐ Object implementation should be hidden in driver api
+                ☐ Exposed initializers:
+                    ☐ A couple of simple ones (full flushed, fully visible, nothing to wait on, etc.)
+                    ☐ Have an initializer specifically to be used with semaphores (a signal semaphore and a wait semaphore version)
+                        ☐ In this case, add the semaphore to the submit info automatically (if it's not already added)
+                        ☐ If it's already added check the wait stages (in case of wait semaphore)
+                        ☐ This can be handled with command buffer recorder
+                        ☐ Remove manual semaphore placement???
+                    ☐ Initialize by current images state
+                    ☐ Have a modifier call, that can change state for a specific sub-resource range (to allow precise state definition)
+                ☐ Create an init_resource function in the tracker
+                    ☐ Explicit version without state info: use when resource state is not modified outside of this tracker (local resources)
+                    ☐ Version with incoming state and outgoing state
+                ☐ Validations
+                    ☐ Tracker checks resource state against outgoing state, if it was set with the init resource (exact match is not needed)
+                        ☐ Wait stage masks should be narrower than the required state probably
+                        ☐ Access masks should be narrower than teh required masks probably
+                        ☐ Check ownership (if resource was not actually used, it's not set...)
+                    ☐ Validate the init resource is called exactly once
+                    ☐ In debug mode
+                        ☐ Try to build a graph of resource usage?
+                        ☐ Graph could be built per resource
+                        ☐ Nodes are submissions (= cmd recorder) with in/out state objects; semaphores and events
+                        ☐ Edges could be built from semaphore and event usage
+                        ☐ Result needs to be a flow graph
+                        ☐ Edges can be checked to validate state object compatibility
+                        ☐ Validate the local resources (without in/out states) are actually not used with different tracking slots / on different queues
+            ☐ Sync by framegraph (registered resources)
+                ☐ Try to reuse tracking ids as much as possible
+                ☐ For same tracking id usage, with cpu dependency, use empty resource initializers for shared resources (enq dep implied, tracking info ok)
+                ☐ For other nodes with same queue
+                    ☐ Enq dep is implied, so normal barriers can be used. Declare a state object somewhere and auto use it
+                    ☐ Consider using an event though (maybe optional auto event?)
+                ☐ For other nodes with different queue
+                    ☐ Declare basic states (layout only???)
+                    ☐ Auto create semaphore based state objects and use them
+                ☐ In same queue and different queue case, one (partial) state is declared by the user, the in/out states are generated to be valid
+
+
         ☐ Implement several levels of sync precision
             ☐ Auto sync / just validate (auto sync is only for debug)
                 ☐ Validate can assert or just warn
