@@ -8,6 +8,7 @@
 
 #include "vulkan_buffer.h"
 #include "vulkan_enum_compare.h"
+#include "vulkan_image.h"
 
 inline uint32_t convertFamily(drv::QueueFamilyPtr family) {
     return static_cast<uint32_t>(
@@ -23,15 +24,11 @@ inline VkBuffer convertBuffer(drv::BufferPtr buffer) {
     return reinterpret_cast<drv_vulkan::Buffer*>(buffer)->buffer;
 }
 
-inline VkImage convertImage(drv::ImagePtr image) {
-    return reinterpret_cast<VkImage>(image);
+inline drv_vulkan::Image* convertImage(drv::ImagePtr image) {
+    return reinterpret_cast<drv_vulkan::Image*>(image);
 }
 
-inline VkImage* convertImages(drv::ImagePtr* image) {
-    return reinterpret_cast<VkImage*>(image);
-}
-
-inline drv::ImagePtr convertImage(VkImage image) {
+inline drv::ImagePtr convertImage(drv_vulkan::Image* image) {
     return reinterpret_cast<drv::ImagePtr>(image);
 }
 

@@ -3,6 +3,8 @@
 #include <algorithm>
 #include <limits>
 
+#include <corecontext.h>
+
 #include <vulkan/vulkan.h>
 
 #include <drverror.h>
@@ -102,10 +104,23 @@ drv::PresentResult DrvVulkan::present(drv::QueuePtr queue, drv::SwapchainPtr swa
 
 bool DrvVulkan::get_swapchain_images(drv::LogicalDevicePtr device, drv::SwapchainPtr swapchain,
                                      uint32_t* count, drv::ImagePtr* images) {
-    VkResult result =
-      vkGetSwapchainImagesKHR(convertDevice(device), reinterpret_cast<VkSwapchainKHR>(swapchain),
-                              count, convertImages(images));
-    return result == VK_SUCCESS || (result == VK_INCOMPLETE && images == nullptr);
+    VkResult result = vkGetSwapchainImagesKHR(
+      convertDevice(device), reinterpret_cast<VkSwapchainKHR>(swapchain), count, nullptr);
+    if (result != VK_SUCCESS && result != VK_INCOMPLETE)
+        return false;
+    StackMemory::MemoryHandle<VkImage> imageMem(*count, TEMPMEM);
+    VkImage* vkImages = imageMem.get();
+    drv::drv_assert(vkImages != nullptr || *count == 0);
+    result = vkGetSwapchainImagesKHR(convertDevice(device),
+                                     reinterpret_cast<VkSwapchainKHR>(swapchain), count, vkImages);
+    if (result != VK_SUCCESS && (result != VK_INCOMPLETE || images != nullptr))
+        return false;
+    for (uint32_t i = 0; i < *count; ++i) {
+        images[i] = new drv_vulkan::Image();
+        convertImage(images[i])->image = vkImages[i];
+        convertImage(images[i])->swapchainImage = true;
+    }
+    return true;
 }
 
 bool DrvVulkan::acquire_image(drv::LogicalDevicePtr device, drv::SwapchainPtr swapchain,

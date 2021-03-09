@@ -20,6 +20,8 @@ class StackMemory
             *itr = nullptr;
     }
 
+    // TODO add an argument for 'bool required' to allocation and avoid repeated asserts
+    // also add some more operators, so the ::get() function doesn't need to be called
     template <typename T>
     class MemoryHandle
     {
