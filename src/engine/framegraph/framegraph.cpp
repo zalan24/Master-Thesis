@@ -58,11 +58,12 @@ void FrameGraph::Node::addDependency(QueueQueueDependency dep) {
 drv::IResourceTracker* FrameGraph::Node::getResourceTracker(drv::QueuePtr queue) {
     std::unique_ptr<drv::IResourceTracker>& ret = resourceTrackers[queue];
     if (!ret)
-        ret = drv::create_resource_tracker(queue);
+        ret = drv::create_resource_tracker(queue, frameGraph->device, );
     return ret.get();
 }
 
 FrameGraph::NodeId FrameGraph::addNode(Node&& node) {
+    node.frameGraph = this;
     FrameGraph::NodeId id = nodes.size();
     node.addDependency(CpuDependency{id, 1});
     if (node.hasExecution())
@@ -194,6 +195,13 @@ void FrameGraph::validateFlowGraph(
 }
 
 void FrameGraph::validate() const {
+    uint32_t numTrackingNodes = 0;
+    for (const Node& node : nodes)
+        if (node.hasExecution())
+            numTrackingNodes++;
+    if (numTrackingNodes * numQueues > drv::get_num_tracking_slots()) {
+        // TODO log issue a warning
+    }
     std::vector<bool> cpuChildrenIndirect(nodes.size(), false);
     for (NodeId i = 0; i < nodes.size(); ++i) {
         bool hasCpuIndirectDep = false;

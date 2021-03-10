@@ -47,13 +47,15 @@ bool drv::init(const Driver* drivers, unsigned int count) {
     return current_driver_interface != nullptr;
 }
 
-std::unique_ptr<drv::IResourceTracker> drv::create_resource_tracker(QueuePtr queue) {
+std::unique_ptr<drv::IResourceTracker> drv::create_resource_tracker(QueuePtr queue,
+                                                                    LogicalDevicePtr device,
+                                                                    uint32_t trackingSlot) {
     assert(current_driver_interface == nullptr);
     switch (current_driver) {
         case Driver::VULKAN:
 #ifdef DRIVER_VULKAN
             return std::make_unique<DrvVulkanResourceTracker>(
-              static_cast<DrvVulkan*>(current_driver_interface), queue);
+              static_cast<DrvVulkan*>(current_driver_interface), device, queue, trackingSlot);
 #else
             break;
 #endif
@@ -422,6 +424,18 @@ drv::QueueFamilyPtr drv::get_queue_family(LogicalDevicePtr device, QueuePtr queu
 
 bool drv::device_wait_idle(LogicalDevicePtr device) {
     return current_driver_interface->device_wait_idle(device);
+}
+
+uint32_t drv::acquire_tracking_slot() {
+    return current_driver_interface->acquire_tracking_slot();
+}
+
+void drv::release_tracking_slot(uint32_t id) {
+    return current_driver_interface->release_tracking_slot(id);
+}
+
+uint32_t drv::get_num_tracking_slots() {
+    return current_driver_interface->get_num_tracking_slots();
 }
 
 // void drv::cmd_clear_image(CommandBufferPtr cmdBuffer, ImagePtr image, ImageLayout currentLayout,

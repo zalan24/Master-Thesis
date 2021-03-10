@@ -876,6 +876,7 @@ struct MemoryBarrier
         return SHADER_WRITE_BIT | COLOR_ATTACHMENT_WRITE_BIT | DEPTH_STENCIL_ATTACHMENT_WRITE_BIT
                | TRANSFER_WRITE_BIT | HOST_WRITE_BIT;
     }
+    static AccessFlagBitType get_all_bits() { return get_all_read_bits() | get_all_write_bits(); }
     static AccessFlagBitType resolve(AccessFlagBitType mask) {
         if (mask & MEMORY_READ_BIT)
             mask = (mask ^ MEMORY_READ_BIT) | get_all_read_bits();

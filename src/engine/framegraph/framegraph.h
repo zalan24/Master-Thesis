@@ -75,6 +75,7 @@ class FrameGraph
 
      private:
         std::string name;
+        FrameGraph* frameGraph = nullptr;
         std::unordered_map<drv::QueuePtr, std::unique_ptr<drv::IResourceTracker>> resourceTrackers;
         // TODO these could be organized into multiple vectors based on dependency type
         std::vector<CpuDependency> cpuDeps;
@@ -152,7 +153,10 @@ class FrameGraph
     QueueId registerQueue(drv::QueuePtr queue);
     drv::QueuePtr getQueue(QueueId queueId) const;
 
+    explicit FrameGraph(drv::LogicalDevicePtr _device) : device(_device) {}
+
  private:
+    drv::LogicalDevicePtr device;
     ExecutionQueue executionQueue;
     std::vector<Node> nodes;
     std::atomic<bool> quit = false;

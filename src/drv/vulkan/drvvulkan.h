@@ -1,5 +1,6 @@
 #pragma once
 
+#include <atomic>
 #include <cassert>
 #include <deque>
 #include <mutex>
@@ -11,12 +12,18 @@
 
 #include <drvtypes.h>
 
+// TODO remove this
 #ifndef USE_RESOURCE_TRACKER
 #    ifdef DEBUG
 #        define USE_RESOURCE_TRACKER 1
 #    else
 #        define USE_RESOURCE_TRACKER 0
 #    endif
+#endif
+
+// Limit for independent linear tracking states
+#ifndef MAX_NUM_TRACKING_SLOTS
+#    define MAX_NUM_TRACKING_SLOTS 32
 #endif
 
 #define COMPARE_ENUMS_MSG(baseType, a, b, msg) \
@@ -30,7 +37,7 @@ class InputManager;
 class DrvVulkan final : public drv::IDriver
 {
  public:
-    ~DrvVulkan() override {}
+    ~DrvVulkan() override;
 
     // --- Interface ---
 
@@ -170,6 +177,10 @@ class DrvVulkan final : public drv::IDriver
                                       bool simultaneousUse) override;
     bool end_primary_command_buffer(drv::CommandBufferPtr cmdBuffer) override;
 
+    uint32_t acquire_tracking_slot() override;
+    void release_tracking_slot(uint32_t id) override;
+    uint32_t get_num_tracking_slots() override;
+
  private:
     struct LogicalDeviceData
     {
@@ -178,13 +189,15 @@ class DrvVulkan final : public drv::IDriver
     };
     std::mutex devicesDataMutex;
     std::unordered_map<drv::LogicalDevicePtr, LogicalDeviceData> devicesData;
+
+    std::atomic<bool> freeTrackingSlot[MAX_NUM_TRACKING_SLOTS] = {true};
 };
 
 class DrvVulkanResourceTracker final : public drv::ResourceTracker
 {
  public:
-    DrvVulkanResourceTracker(DrvVulkan* driver, drv::LogicalDevicePtr device, drv::QueuePtr queue)
-      : ResourceTracker(driver, device, queue) {}
+    DrvVulkanResourceTracker(DrvVulkan* driver, drv::LogicalDevicePtr device, drv::QueuePtr queue, uint32_t trackingSlot)
+      : ResourceTracker(driver, device, queue, trackingSlot) {}
     ~DrvVulkanResourceTracker() override {}
 
     bool cmd_reset_event(drv::CommandBufferPtr commandBuffer, drv::EventPtr event,
@@ -389,6 +402,8 @@ class DrvVulkanResourceTracker final : public drv::ResourceTracker
     drv::QueueFamilyPtr getImageOwnership(drv::ImagePtr image) const;
     drv::QueueFamilyPtr getBufferOwnership(drv::BufferPtr image) const;
 #endif
+ private:
+    uint32_t trackingId;
 };
 
 // TODO

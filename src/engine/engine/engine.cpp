@@ -163,7 +163,8 @@ Engine::Engine(const Config& cfg, const std::string& shaderbinFile,
     eventPool(device),
     syncBlock(device, config.maxFramesInFlight),
     shaderBin(shaderbinFile),
-    resourceMgr(std::move(resource_infos)) {
+    resourceMgr(std::move(resource_infos)),
+    frameGraph(device) {
 }
 
 Engine::~Engine() {

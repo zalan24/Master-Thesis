@@ -64,16 +64,16 @@ Get a triangle on screen:
                 ☐ These are for parallel state tracking
                 ☐ Values stored per slot
                     ☐ Common
-                        ☐ Ownership
+                        ✔ Ownership @done (3/9/2021, 2:53:36 PM)
                         ☐ Event to wait on before usage????
                     ☐ Images store data per mip level per array index (have max values for this)
-                        ☐ Layout
-                        ☐ Ongoing writing pipeline stages (src mask for next barrier)
-                        ☐ Ongoing reading pipeline stages (src mask for next barrier for writing operations)
-                        ☐ Ongoing flushing pipeline stages
-                        ☐ Ongoing invalidating pipeline stages
-                        ☐ Dirty access mask for availability (which access types have un-flushed memory)
-                        ☐ Visibility access mask (which access types have un-flushed memory)
+                        ✔ Layout @done (3/10/2021, 9:00:26 AM)
+                        ✔ Ongoing writing pipeline stages (src mask for next barrier) @done (3/9/2021, 2:55:48 PM)
+                        ✔ Ongoing reading pipeline stages (src mask for next barrier for writing operations) @done (3/9/2021, 2:55:48 PM)
+                        ✔ Ongoing flushing pipeline stages @done (3/9/2021, 2:55:49 PM)
+                        ✔ Ongoing invalidating pipeline stages @done (3/9/2021, 2:55:50 PM)
+                        ✔ Dirty access mask for availability (which access types have un-flushed memory) @done (3/9/2021, 2:57:24 PM)
+                        ✔ Visibility access mask (which access types have un-flushed memory) @done (3/9/2021, 2:57:24 PM)
                         ☐ Upon writing
                             ☐ Requirements
                                 ☐ Wait on flushing an invalidating stages if they are not 0
@@ -132,7 +132,7 @@ Get a triangle on screen:
                             ☐ ... ???
                 ☐ Most of the state data should be in a struct that is used by both the image and the buffer
                 ☐ There is a fixed number of slots (use a define for this, could be a build option)
-                ☐ Slot ids are acquired from the driver (not the resource)
+                ✔ Slot ids are acquired from the driver (not the resource) @done (3/10/2021, 9:26:28 AM)
                     ☐ Nodes acquire the slot id from the framegraph
                     ☐ The framegraph can reuse ids, where there is no parallel usage (must be same queue as well)
                 ☐ Have a cmd function to create barrier for an image (using the current state of the image)
@@ -150,6 +150,7 @@ Get a triangle on screen:
                     ☐ Merge all barriers and flush them when a new operations is done or the recording ended
                 ☐ When submitting the command buffer with semaphores, states might be changed??? or not
             ☐ Create state objects for images and buffers to share state between tracking slots
+                ☐ Is resource readable/writable in this linear context? (use this info in validator later)
                 ☐ Object content
                     ☐ full resource state
                 ☐ Have some simple initializers for this object

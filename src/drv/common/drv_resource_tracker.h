@@ -12,8 +12,9 @@ namespace drv
 class ResourceTracker
 {
  public:
-    ResourceTracker(IDriver* _driver, LogicalDevicePtr _device, QueuePtr _queue)
-      : driver(_driver), device(_device), queue(_queue) {}
+    ResourceTracker(IDriver* _driver, LogicalDevicePtr _device, QueuePtr _queue,
+                    uint32_t _trackingSlot)
+      : driver(_driver), device(_device), queue(_queue), trackingSlot(_trackingSlot) {}
     virtual ~ResourceTracker() {}
 
     virtual bool cmd_reset_event(CommandBufferPtr commandBuffer, EventPtr event,
@@ -52,9 +53,12 @@ class ResourceTracker
                                  uint32_t ranges,
                                  const ImageSubresourceRange* subresourceRanges) = 0;
 
+    uint32_t getTrackingSlot() const { return trackingSlot; }
+
  protected:
     IDriver* driver;
     LogicalDevicePtr device;
     QueuePtr queue;
+    uint32_t trackingSlot;
 };
 }  // namespace drv
