@@ -134,9 +134,7 @@ class IDriver
                                               bool simultaneousUse) = 0;
     virtual bool end_primary_command_buffer(CommandBufferPtr cmdBuffer) = 0;
 
-    virtual uint32_t acquire_tracking_slot() = 0;
-    virtual void release_tracking_slot(uint32_t id) = 0;
-    virtual uint32_t get_num_tracking_slots() = 0;
+    virtual uint32_t get_num_trackers() = 0;
 
     // virtual bool cmd_reset_event(CommandBufferPtr commandBuffer, EventPtr event,
     //                              PipelineStages sourceStage) = 0;

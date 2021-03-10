@@ -195,11 +195,11 @@ void FrameGraph::validateFlowGraph(
 }
 
 void FrameGraph::validate() const {
-    uint32_t numTrackingNodes = 0;
-    for (const Node& node : nodes)
-        if (node.hasExecution())
-            numTrackingNodes++;
-    if (numTrackingNodes * numQueues > drv::get_num_tracking_slots()) {
+    // uint32_t numTrackingNodes = 0;
+    // for (const Node& node : nodes)
+    //     if (node.hasExecution())
+    //         numTrackingNodes++;
+    if (> drv::get_num_trackers()) {
         // TODO log issue a warning
     }
     std::vector<bool> cpuChildrenIndirect(nodes.size(), false);

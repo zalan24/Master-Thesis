@@ -65,6 +65,7 @@ Get a triangle on screen:
                 ☐ Values stored per slot
                     ☐ Common
                         ✔ Ownership @done (3/9/2021, 2:53:36 PM)
+                        ✔ Usable stages (src for prev barrier) @done (3/10/2021, 11:34:17 AM)
                         ☐ Event to wait on before usage????
                     ☐ Images store data per mip level per array index (have max values for this)
                         ✔ Layout @done (3/10/2021, 9:00:26 AM)
@@ -74,27 +75,27 @@ Get a triangle on screen:
                         ✔ Ongoing invalidating pipeline stages @done (3/9/2021, 2:55:50 PM)
                         ✔ Dirty access mask for availability (which access types have un-flushed memory) @done (3/9/2021, 2:57:24 PM)
                         ✔ Visibility access mask (which access types have un-flushed memory) @done (3/9/2021, 2:57:24 PM)
-                        ☐ Upon writing
-                            ☐ Requirements
-                                ☐ Wait on flushing an invalidating stages if they are not 0
-                                ☐ Need to wait on other writes and reads (ongoing operations)
-                                ☐ Correct ownership or shared access
-                                ☐ Proper layout
-                                ☐ Overwritten writes could be logged here for performance improvement suggestions
-                            ☐ dirty access mask := writing access mask
-                            ☐ Visibility mask := 0 (Memory not visible on any access type)
-                            ☐ Ongoing writing := to current stages
-                            ☐ Ongoing reading := 0
-                            ☐ Ongoing flushing := 0
-                            ☐ Ongoing invalidations := 0
-                            ☐ Set layout if it's changed
-                        ☐ Upon reading
-                            ☐ Requirements
-                                ☐ Need to wait on invalidating operations
-                                ☐ Dirty access mask for visibility & currentMask = currentMask (implies availability)
-                                ☐ Correct ownership or shared access
-                                ☐ Proper layout
-                            ☐ Ongoing reading pipeline stages |= current stages
+                        ✔ Upon writing @done (3/10/2021, 11:19:54 AM)
+                            ✔ Requirements @done (3/10/2021, 10:47:39 AM)
+                                ✔ Wait on flushing and invalidating stages if they are not 0 @done (3/10/2021, 10:40:35 AM)
+                                ✔ Need to wait on other writes and reads (ongoing operations) @done (3/10/2021, 10:41:15 AM)
+                                ✔ Correct ownership or shared access @done (3/10/2021, 10:47:36 AM)
+                                ✔ Proper layout @done (3/10/2021, 10:43:45 AM)
+                                ✔ Overwritten writes could be logged here for performance improvement suggestions @done (3/10/2021, 10:42:25 AM)
+                            ✔ dirty access mask := writing access mask @done (3/10/2021, 10:50:00 AM)
+                            ✔ Visibility mask := 0 (Memory not visible on any access type) @done (3/10/2021, 10:50:18 AM)
+                            ✔ Ongoing writing := to current stages @done (3/10/2021, 10:51:28 AM)
+                            ✔ Ongoing reading := 0 @done (3/10/2021, 10:51:29 AM)
+                            ✔ Ongoing flushing := 0 @done (3/10/2021, 10:51:29 AM)
+                            ✔ Ongoing invalidations := 0 @done (3/10/2021, 11:16:47 AM)
+                            ✔ Set layout if it's changed @done (3/10/2021, 10:52:16 AM)
+                        ✔ Upon reading @done (3/10/2021, 11:04:10 AM)
+                            ✔ Requirements @done (3/10/2021, 11:01:21 AM)
+                                ✔ Need to wait on invalidating operations @done (3/10/2021, 10:55:08 AM)
+                                ✔ Dirty access mask for visibility & currentMask = currentMask (implies availability) @done (3/10/2021, 11:01:03 AM)
+                                ✔ Correct ownership or shared access @done (3/10/2021, 10:57:56 AM)
+                                ✔ Proper layout @done (3/10/2021, 11:01:20 AM)
+                            ✔ Ongoing reading pipeline stages |= current stages @done (3/10/2021, 11:04:09 AM)
                         ☐ Upon inserting pipeline barrier
                             ☐ Parameters
                                 ☐ Does it need to flush
@@ -102,6 +103,7 @@ Get a triangle on screen:
                                 ☐ Dst stages
                                 ☐ Layout transition
                                 ☐ Ownership transition
+                            ☐ Handle usable mask
                             ☐ If it flushes the memory (needs to flush all access types)
                                 ☐ src stages := ongoing writing stages
                                 ☐ Ongoing flushing := dst stages
@@ -133,8 +135,9 @@ Get a triangle on screen:
                 ☐ Most of the state data should be in a struct that is used by both the image and the buffer
                 ☐ There is a fixed number of slots (use a define for this, could be a build option)
                 ✔ Slot ids are acquired from the driver (not the resource) @done (3/10/2021, 9:26:28 AM)
-                    ☐ Nodes acquire the slot id from the framegraph
-                    ☐ The framegraph can reuse ids, where there is no parallel usage (must be same queue as well)
+                    ☐ A tracking slot = resource tracker object
+                    ☐ The framegraph can reuse trackers, where there is no parallel usage (must be same queue as well)
+                    ☐ Reuse as much as possible
                 ☐ Have a cmd function to create barrier for an image (using the current state of the image)
                     ☐ Input
                         ☐ Option A: pipeline stages; access mask; required layout

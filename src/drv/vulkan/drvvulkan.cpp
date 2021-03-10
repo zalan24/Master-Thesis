@@ -28,7 +28,7 @@ drv::QueueFamilyPtr DrvVulkan::get_queue_family(drv::LogicalDevicePtr device, dr
 }
 
 uint32_t DrvVulkan::acquire_tracking_slot() {
-    for (uint32_t id = 0; id < get_num_tracking_slots(); ++id) {
+    for (uint32_t id = 0; id < get_num_trackers(); ++id) {
         bool expected = true;
         if (freeTrackingSlot[id].compare_exchange_strong(expected, false))
             return id;
@@ -44,12 +44,12 @@ void DrvVulkan::release_tracking_slot(uint32_t id) {
                     "A tracking slot is released twice");
 }
 
-uint32_t DrvVulkan::get_num_tracking_slots() {
+uint32_t DrvVulkan::get_num_trackers() {
     return MAX_NUM_TRACKING_SLOTS;
 }
 
 DrvVulkan::~DrvVulkan() {
-    for (uint32_t id = 0; id < get_num_tracking_slots(); ++id) {
+    for (uint32_t id = 0; id < get_num_trackers(); ++id) {
         bool expected = true;
         drv::drv_assert(freeTrackingSlot[id].compare_exchange_strong(expected, false),
                         "Not all resource trackering slots were released");

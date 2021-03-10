@@ -47,8 +47,7 @@ class IResourceTracker;
 bool init(const Driver* drivers, unsigned int count);
 bool close();
 
-std::unique_ptr<IResourceTracker> create_resource_tracker(QueuePtr queue, LogicalDevicePtr device,
-                                                          uint32_t trackingSlot);
+std::unique_ptr<IResourceTracker> create_resource_tracker(QueuePtr queue, LogicalDevicePtr device);
 
 InstancePtr create_instance(const InstanceCreateInfo* info, bool _default = true);
 bool delete_instance(InstancePtr ptr);
@@ -177,9 +176,7 @@ std::unique_lock<std::mutex> lock_queue(LogicalDevicePtr device, QueuePtr queue)
 QueueFamilyPtr get_queue_family(LogicalDevicePtr device, QueuePtr queue);
 bool device_wait_idle(LogicalDevicePtr device);
 
-uint32_t acquire_tracking_slot();
-void release_tracking_slot(uint32_t id);
-uint32_t get_num_tracking_slots();
+uint32_t get_num_trackers();
 
 // ShaderModulePtr get_shader_module(LogicalDevicePtr device, ShaderIdType shaderId);
 // unsigned int get_num_shader_descriptor_set_layouts(LogicalDevicePtr device, ShaderIdType shaderId);

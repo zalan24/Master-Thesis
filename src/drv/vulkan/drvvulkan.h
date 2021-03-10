@@ -34,6 +34,12 @@
 class Input;
 class InputManager;
 
+namespace drv_vulkan
+{
+struct PerSubresourceRangeTrackData;
+struct PerResourceTrackData;
+}  // namespace drv_vulkan
+
 class DrvVulkan final : public drv::IDriver
 {
  public:
@@ -177,9 +183,9 @@ class DrvVulkan final : public drv::IDriver
                                       bool simultaneousUse) override;
     bool end_primary_command_buffer(drv::CommandBufferPtr cmdBuffer) override;
 
-    uint32_t acquire_tracking_slot() override;
-    void release_tracking_slot(uint32_t id) override;
-    uint32_t get_num_tracking_slots() override;
+    uint32_t acquire_tracking_slot();
+    void release_tracking_slot(uint32_t id);
+    uint32_t get_num_trackers() override;
 
  private:
     struct LogicalDeviceData
@@ -196,9 +202,15 @@ class DrvVulkan final : public drv::IDriver
 class DrvVulkanResourceTracker final : public drv::ResourceTracker
 {
  public:
-    DrvVulkanResourceTracker(DrvVulkan* driver, drv::LogicalDevicePtr device, drv::QueuePtr queue, uint32_t trackingSlot)
-      : ResourceTracker(driver, device, queue, trackingSlot) {}
-    ~DrvVulkanResourceTracker() override {}
+    DrvVulkanResourceTracker(DrvVulkan* _driver, drv::LogicalDevicePtr _device,
+                             drv::QueuePtr _queue)
+      : ResourceTracker(_driver, _device, _queue), trackingSlot(_driver->acquire_tracking_slot()) {}
+    ~DrvVulkanResourceTracker() override {
+        static_cast<DrvVulkan*>(driver)->release_tracking_slot(trackingSlot);
+    }
+
+    DrvVulkanResourceTracker(const DrvVulkanResourceTracker&) = delete;
+    DrvVulkanResourceTracker& operator=(const DrvVulkanResourceTracker&) = delete;
 
     bool cmd_reset_event(drv::CommandBufferPtr commandBuffer, drv::EventPtr event,
                          drv::PipelineStages sourceStage) override;
@@ -233,6 +245,29 @@ class DrvVulkanResourceTracker final : public drv::ResourceTracker
                          drv::ImageLayout currentLayout, const drv::ClearColorValue* clearColors,
                          uint32_t ranges,
                          const drv::ImageSubresourceRange* subresourceRanges) override;
+
+    enum AddAccessResult
+    {
+        NEED_BARRIER,
+        SUCCESSFUL
+    };
+
+    AddAccessResult add_memory_access(drv_vulkan::PerResourceTrackData& resourceData,
+                                      drv_vulkan::PerSubresourceRangeTrackData& subresourceData,
+                                      bool read, bool write, bool sharedRes,
+                                      drv::PipelineStages stages,
+                                      drv::MemoryBarrier::AccessFlagBitType accessMask);
+    AddAccessResult add_memory_access(drv::ImagePtr image, uint32_t mipLevel, uint32_t arrayIndex,
+                                      bool read, bool write, drv::PipelineStages stages,
+                                      drv::MemoryBarrier::AccessFlagBitType accessMask,
+                                      uint32_t requiredLayoutMask, bool changeLayout,
+                                      drv::ImageLayout resultLayout);
+    AddAccessResult add_memory_access(drv::ImagePtr image, uint32_t numSubresourceRanges,
+                                      const drv::ImageSubresourceRange* subresourceRanges,
+                                      bool read, bool write, drv::PipelineStages stages,
+                                      drv::MemoryBarrier::AccessFlagBitType accessMask,
+                                      uint32_t requiredLayoutMask, bool changeLayout,
+                                      drv::ImageLayout resultLayout);
 
 #if USE_RESOURCE_TRACKER
     struct TrackedMemoryBarrier
@@ -403,7 +438,7 @@ class DrvVulkanResourceTracker final : public drv::ResourceTracker
     drv::QueueFamilyPtr getBufferOwnership(drv::BufferPtr image) const;
 #endif
  private:
-    uint32_t trackingId;
+    uint32_t trackingSlot;
 };
 
 // TODO

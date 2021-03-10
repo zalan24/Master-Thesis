@@ -116,6 +116,53 @@ inline VkCommandBuffer* convertCommandBuffers(drv::CommandBufferPtr* buffer) {
     return reinterpret_cast<VkCommandBuffer*>(buffer);
 }
 
+constexpr inline VkImageLayout convertImageLayout(drv::ImageLayout layout) {
+    uint32_t ret = 0;
+    uint32_t l = static_cast<uint32_t>(layout);
+    while (l > 1) {
+        ret++;
+        l >>= 1;
+    }
+    return static_cast<VkImageLayout>(ret);
+}
+
+constexpr inline drv::ImageLayout convertImageLayout(VkImageLayout layout) {
+    return static_cast<drv::ImageLayout>(1 << static_cast<uint32_t>(layout));
+}
+
+static_assert(convertImageLayout(drv::ImageLayout::UNDEFINED) == VK_IMAGE_LAYOUT_UNDEFINED);
+static_assert(drv::ImageLayout::UNDEFINED == convertImageLayout(VK_IMAGE_LAYOUT_UNDEFINED));
+static_assert(convertImageLayout(drv::ImageLayout::GENERAL) == VK_IMAGE_LAYOUT_GENERAL);
+static_assert(drv::ImageLayout::GENERAL == convertImageLayout(VK_IMAGE_LAYOUT_GENERAL));
+static_assert(convertImageLayout(drv::ImageLayout::COLOR_ATTACHMENT_OPTIMAL)
+              == VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+static_assert(drv::ImageLayout::COLOR_ATTACHMENT_OPTIMAL
+              == convertImageLayout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL));
+static_assert(convertImageLayout(drv::ImageLayout::DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
+              == VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
+static_assert(drv::ImageLayout::DEPTH_STENCIL_ATTACHMENT_OPTIMAL
+              == convertImageLayout(VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL));
+static_assert(convertImageLayout(drv::ImageLayout::DEPTH_STENCIL_READ_ONLY_OPTIMAL)
+              == VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL);
+static_assert(drv::ImageLayout::DEPTH_STENCIL_READ_ONLY_OPTIMAL
+              == convertImageLayout(VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL));
+static_assert(convertImageLayout(drv::ImageLayout::SHADER_READ_ONLY_OPTIMAL)
+              == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+static_assert(drv::ImageLayout::SHADER_READ_ONLY_OPTIMAL
+              == convertImageLayout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL));
+static_assert(convertImageLayout(drv::ImageLayout::TRANSFER_SRC_OPTIMAL)
+              == VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
+static_assert(drv::ImageLayout::TRANSFER_SRC_OPTIMAL
+              == convertImageLayout(VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL));
+static_assert(convertImageLayout(drv::ImageLayout::TRANSFER_DST_OPTIMAL)
+              == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+static_assert(drv::ImageLayout::TRANSFER_DST_OPTIMAL
+              == convertImageLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL));
+static_assert(convertImageLayout(drv::ImageLayout::PREINITIALIZED)
+              == VK_IMAGE_LAYOUT_PREINITIALIZED);
+static_assert(drv::ImageLayout::PREINITIALIZED
+              == convertImageLayout(VK_IMAGE_LAYOUT_PREINITIALIZED));
+
 // inline VkSemaphore convertSemaphore(drv::SemaphorePtr semaphore) {
 //     return reinterpret_cast<VkSemaphore>(semaphore);
 // }

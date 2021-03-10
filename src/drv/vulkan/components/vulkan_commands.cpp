@@ -654,8 +654,8 @@ void DrvVulkanResourceTracker::cmd_clear_image(
     addMemoryAccess(cmdBuffer, drv::PipelineStages::TRANSFER_BIT, 0, nullptr, 0, nullptr, ranges,
                     barriers);
 #endif
-    vkCmdClearColorImage(convertCommandBuffer(cmdBuffer), convertImage(image),
-                         static_cast<VkImageLayout>(currentLayout), vkValues, ranges, vkRanges);
+    vkCmdClearColorImage(convertCommandBuffer(cmdBuffer), convertImage(image)->image,
+                         convertImageLayout(currentLayout), vkValues, ranges, vkRanges);
 }
 
 bool DrvVulkanResourceTracker::cmd_reset_event(drv::CommandBufferPtr commandBuffer,
@@ -723,11 +723,11 @@ bool DrvVulkanResourceTracker::cmd_wait_events(
           static_cast<VkAccessFlags>(imageBarriers[i].sourceAccessFlags);
         vkImageBarriers[i].dstAccessMask =
           static_cast<VkAccessFlags>(imageBarriers[i].dstAccessFlags);
-        vkImageBarriers[i].image = convertImage(imageBarriers[i].image);
+        vkImageBarriers[i].image = convertImage(imageBarriers[i].image)->image;
         vkImageBarriers[i].srcQueueFamilyIndex = convertFamily(imageBarriers[i].srcFamily);
         vkImageBarriers[i].dstQueueFamilyIndex = convertFamily(imageBarriers[i].dstFamily);
-        vkImageBarriers[i].newLayout = static_cast<VkImageLayout>(imageBarriers[i].newLayout);
-        vkImageBarriers[i].oldLayout = static_cast<VkImageLayout>(imageBarriers[i].oldLayout);
+        vkImageBarriers[i].newLayout = convertImageLayout(imageBarriers[i].newLayout);
+        vkImageBarriers[i].oldLayout = convertImageLayout(imageBarriers[i].oldLayout);
         vkImageBarriers[i].subresourceRange =
           convertSubresourceRange(imageBarriers[i].subresourceRange);
     }
@@ -795,11 +795,11 @@ bool DrvVulkanResourceTracker::cmd_pipeline_barrier(
           static_cast<VkAccessFlags>(imageBarriers[i].sourceAccessFlags);
         vkImageBarriers[i].dstAccessMask =
           static_cast<VkAccessFlags>(imageBarriers[i].dstAccessFlags);
-        vkImageBarriers[i].image = convertImage(imageBarriers[i].image);
+        vkImageBarriers[i].image = convertImage(imageBarriers[i].image)->image;
         vkImageBarriers[i].srcQueueFamilyIndex = convertFamily(imageBarriers[i].srcFamily);
         vkImageBarriers[i].dstQueueFamilyIndex = convertFamily(imageBarriers[i].dstFamily);
-        vkImageBarriers[i].newLayout = static_cast<VkImageLayout>(imageBarriers[i].newLayout);
-        vkImageBarriers[i].oldLayout = static_cast<VkImageLayout>(imageBarriers[i].oldLayout);
+        vkImageBarriers[i].newLayout = convertImageLayout(imageBarriers[i].newLayout);
+        vkImageBarriers[i].oldLayout = convertImageLayout(imageBarriers[i].oldLayout);
         vkImageBarriers[i].subresourceRange =
           convertSubresourceRange(imageBarriers[i].subresourceRange);
     }
@@ -888,11 +888,11 @@ bool DrvVulkanResourceTracker::cmd_pipeline_barrier(drv::CommandBufferPtr comman
     image.pNext = nullptr;
     image.srcAccessMask = static_cast<VkAccessFlags>(imageBarrier.sourceAccessFlags);
     image.dstAccessMask = static_cast<VkAccessFlags>(imageBarrier.dstAccessFlags);
-    image.image = convertImage(imageBarrier.image);
+    image.image = convertImage(imageBarrier.image)->image;
     image.srcQueueFamilyIndex = convertFamily(imageBarrier.srcFamily);
     image.dstQueueFamilyIndex = convertFamily(imageBarrier.dstFamily);
-    image.newLayout = static_cast<VkImageLayout>(imageBarrier.newLayout);
-    image.oldLayout = static_cast<VkImageLayout>(imageBarrier.oldLayout);
+    image.newLayout = convertImageLayout(imageBarrier.newLayout);
+    image.oldLayout = convertImageLayout(imageBarrier.oldLayout);
     image.subresourceRange = convertSubresourceRange(imageBarrier.subresourceRange);
     vkCmdPipelineBarrier(convertCommandBuffer(commandBuffer),
                          static_cast<VkPipelineStageFlags>(sourceStage.stageFlags),

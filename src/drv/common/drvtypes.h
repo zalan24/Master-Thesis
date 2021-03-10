@@ -931,15 +931,15 @@ struct BufferMemoryBarrier
 using ImageLayoutMask = unsigned int;
 enum class ImageLayout : ImageLayoutMask
 {
-    UNDEFINED = 0,
-    GENERAL = 1,
-    COLOR_ATTACHMENT_OPTIMAL = 2,
-    DEPTH_STENCIL_ATTACHMENT_OPTIMAL = 3,
-    DEPTH_STENCIL_READ_ONLY_OPTIMAL = 4,
-    SHADER_READ_ONLY_OPTIMAL = 5,
-    TRANSFER_SRC_OPTIMAL = 6,
-    TRANSFER_DST_OPTIMAL = 7,
-    PREINITIALIZED = 8,
+    UNDEFINED = 1 << 0,
+    GENERAL = 1 << 1,
+    COLOR_ATTACHMENT_OPTIMAL = 1 << 2,
+    DEPTH_STENCIL_ATTACHMENT_OPTIMAL = 1 << 3,
+    DEPTH_STENCIL_READ_ONLY_OPTIMAL = 1 << 4,
+    SHADER_READ_ONLY_OPTIMAL = 1 << 5,
+    TRANSFER_SRC_OPTIMAL = 1 << 6,
+    TRANSFER_DST_OPTIMAL = 1 << 7,
+    PREINITIALIZED = 1 << 8,
     // Provided by VK_VERSION_1_1
     // DEPTH_READ_ONLY_STENCIL_ATTACHMENT_OPTIMAL = 1000117000,
     // // Provided by VK_VERSION_1_1
@@ -1105,7 +1105,7 @@ struct ImageCreateInfo
     SharingType sharingType;
     unsigned int familyCount = 0;
     QueueFamilyPtr* families = nullptr;
-    ImageLayout initialLayout;
+    ImageLayout initialLayout = ImageLayout::UNDEFINED;
 };
 
 struct ImageViewCreateInfo
