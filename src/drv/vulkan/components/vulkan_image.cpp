@@ -109,6 +109,7 @@ DrvVulkanResourceTracker::AddAccessResult DrvVulkanResourceTracker::add_memory_a
   PerResourceTrackData& resourceData, PerSubresourceRangeTrackData& subresourceData, bool read,
   bool write, bool sharedRes, drv::PipelineStages stages,
   drv::MemoryBarrier::AccessFlagBitType accessMask) {
+    // TODO resolve accessMask
     drv::QueueFamilyPtr currentFamily = driver->get_queue_family(device, queue);
     // validation
     if (!sharedRes && resourceData.ownership != currentFamily) {
@@ -228,5 +229,117 @@ DrvVulkanResourceTracker::AddAccessResult DrvVulkanResourceTracker::add_memory_a
             for (uint32_t j = 0; j < image->numMipLevels; ++j)
                 add_memory_access(_image, i, j, read, write, stages, accessMask, requiredLayoutMask,
                                   changeLayout, resultLayout);
+    }
+}
+
+void DrvVulkanResourceTracker::add_memory_sync(
+  drv_vulkan::PerResourceTrackData& resourceData,
+  drv_vulkan::PerSubresourceRangeTrackData& subresourceData, bool flush,
+  drv::PipelineStages dstStages, drv::MemoryBarrier::AccessFlagBitType invalidateMask,
+  bool transferOwnership, drv::QueueFamilyPtr newOwner) {
+    const drv::PipelineStages::FlagType stages = dstStages.resolve();
+    if (transferOwnership && resourceData.ownership != newOwner) {
+        srcOwnership = resourceData.ownership;
+        dstOwnership = newOwner;
+        resourceData.ownership = newOwner;
+    }
+    if (flush && subresourceData.dirtyMask != 0) {
+        dstStages |= stages;
+        waitStages |= subresourceData.ongoingWrites | subresourceData.usableStages
+                      | subresourceData.ongoingFlushes | subresourceData.ongoingInvalidations;
+        srcAccessMask = subresourceData.dirtyMask;
+        if (subresourceData.ongoingFlushes != 0 || subresourceData.ongoingInvalidations != 0) {
+            TODO;  // invalidate
+        }
+        subresourceData.ongoingWrites = 0;
+        subresourceData.ongoingFlushes = stages;
+        subresourceData.dirtyMask = 0;
+        subresourceData.ongoingInvalidations = 0;
+        subresourceData.visible = 0;
+        subresourceData.usableStages = stages;
+    }
+    const drv::PipelineStages::FlagType missingVisibility =
+      invalidateMask ^ (invalidateMask & subresourceData.visible);
+    if (missingVisibility != 0) {
+        waitStages |= subresourceData.ongoingFlushes | subresourceData.usableStages;
+        dstStages |= stages;
+        dstAccessMask |= missingVisibility;
+        subresourceData.ongoingInvalidations |= stages;
+        subresourceData.usableStages |= stages;
+        subresourceData.visible |= missingVisibility;
+    }
+    const drv::PipelineStages::FlagType missingUsability =
+      stages ^ (stages & subresourceData.usableStages);
+    if (missingUsability != 0) {
+        // TODO log this is the result of invalid barrier usage
+        waitStages |= subresourceData.usableStages;
+        dstStages |= missingUsability;
+        subresourceData.usableStages |= missingUsability;
+    }
+}
+
+void DrvVulkanResourceTracker::add_memory_sync(drv::ImagePtr _image, uint32_t mipLevel,
+                                               uint32_t arrayIndex, bool flush,
+                                               drv::PipelineStages dstStages,
+                                               drv::MemoryBarrier::AccessFlagBitType invalidateMask,
+                                               bool transferOwnership, drv::QueueFamilyPtr newOwner,
+                                               bool transitionLayout,
+                                               drv::ImageLayout resultLayout) {
+    drv_vulkan::Image* image = convertImage(_image);
+    add_memory_sync(image->trackingStates[trackingSlot].trackData,
+                    image->trackingStates[trackingSlot].subresourceTrackInfo[arrayIndex][mipLevel],
+                    flush, dstStages, invalidateMask, transferOwnership,
+                    newOwner);  // TODO result of this???
+    if (transitionLayout
+        && image->trackingStates[trackingSlot].subresourceTrackInfo[arrayIndex][mipLevel].layout
+             != resultLayout) {
+        TODO;  // sync
+        layoutTransition = ;
+    }
+    if (changeLayout) {
+        drv::drv_assert(write, "Only writing operations can transform the image layout");
+        image->trackingStates[trackingSlot].subresourceTrackInfo[arrayIndex][mipLevel].layout =
+          resultLayout;
+    }
+    // TODO return (check earlier add_memory_access)
+}
+
+void DrvVulkanResourceTracker::add_memory_sync(drv::ImagePtr _image, uint32_t numSubresourceRanges,
+                                               const drv::ImageSubresourceRange* subresourceRanges,
+                                               bool flush, drv::PipelineStages dstStages,
+                                               drv::MemoryBarrier::AccessFlagBitType invalidateMask,
+                                               bool transferOwnership, drv::QueueFamilyPtr newOwner,
+                                               bool transitionLayout,
+                                               drv::ImageLayout resultLayout) {
+    drv::drv_assert(numSubresourceRanges > 0, "No subresource ranges given for add_memory_sync");
+    drv_vulkan::Image* image = convertImage(_image);
+    if (numSubresourceRanges) {
+        static_assert(Image::MAX_MIP_LEVELS <= 32, "Too many mip levels allowed");
+        uint32_t subresourcesHandled[Image::MAX_ARRAY_SIZE] = {0};
+        for (uint32_t i = 0; i < numSubresourceRanges; ++i) {
+            const uint32_t numMips =
+              subresourceRanges[i].levelCount == drv::ImageSubresourceRange::REMAINING_MIP_LEVELS
+                ? image->numMipLevels - subresourceRanges[i].baseMipLevel
+                : subresourceRanges[i].levelCount;
+            const uint32_t numArrayImages =
+              subresourceRanges[i].layerCount == drv::ImageSubresourceRange::REMAINING_ARRAY_LAYERS
+                ? image->arraySize - subresourceRanges[i].baseArrayLayer
+                : subresourceRanges[i].layerCount;
+            for (uint32_t i = 0; i < image->arraySize; ++i) {
+                for (uint32_t j = 0; j < image->numMipLevels; ++j) {
+                    if (subresourcesHandled[i] & (1 << j))
+                        continue;
+                    subresourcesHandled[i] |= 1 << j;
+                    add_memory_sync(_image, i, j, flush, dstStages, invalidateMask,
+                                    transferOwnership, newOwner, transitionLayout, resultLayout);
+                }
+            }
+        }
+    }
+    else {
+        for (uint32_t i = 0; i < image->arraySize; ++i)
+            for (uint32_t j = 0; j < image->numMipLevels; ++j)
+                add_memory_sync(_image, i, j, flush, dstStages, invalidateMask, transferOwnership,
+                                newOwner, transitionLayout, resultLayout);
     }
 }

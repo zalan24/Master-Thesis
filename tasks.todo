@@ -97,25 +97,25 @@ Get a triangle on screen:
                                 ✔ Proper layout @done (3/10/2021, 11:01:20 AM)
                             ✔ Ongoing reading pipeline stages |= current stages @done (3/10/2021, 11:04:09 AM)
                         ☐ Upon inserting pipeline barrier
-                            ☐ Parameters
-                                ☐ Does it need to flush
-                                ☐ Required visibility mask
-                                ☐ Dst stages
-                                ☐ Layout transition
-                                ☐ Ownership transition
-                            ☐ Handle usable mask
-                            ☐ If it flushes the memory (needs to flush all access types)
-                                ☐ src stages := ongoing writing stages
-                                ☐ Ongoing flushing := dst stages
-                                ☐ Src access mask := Dirty access mask for availability
-                                ☐ Dirty access mask for availability := 0
-                                ☐ Ongoing invalidations := 0
-                            ☐ If it invalidates cache
-                                ☐ Src := ongoing flushing stages OR writing stages (if it's the same barrier)
-                                ☐ Ongoing invalidations |= dst stages
-                                ☐ Dst access mask for pipeline barrier := required visibility mask & Dirty access mask for visibility
-                                ☐ Dirty access mask for visibility ^= Dst access mask for pipeline barrier
-                        ☐ Pay attention to memory layout (probably array index should be the first index, 2nd should be the mip level)
+                            ✔ Parameters @done (3/11/2021, 7:36:07 AM)
+                                ✔ Does it need to flush @done (3/11/2021, 7:36:04 AM)
+                                ✔ Required visibility mask @done (3/11/2021, 7:36:05 AM)
+                                ✔ Dst stages @done (3/11/2021, 7:36:05 AM)
+                                ✔ Layout transition @done (3/11/2021, 7:36:06 AM)
+                                ✔ Ownership transition @done (3/11/2021, 7:36:06 AM)
+                            ✔ Handle usable mask @done (3/11/2021, 7:53:07 AM)
+                            ✔ If it flushes the memory (needs to flush all access types) @done (3/11/2021, 7:45:05 AM)
+                                ✔ src stages := ongoing writing stages @done (3/11/2021, 7:44:29 AM)
+                                ✔ Ongoing flushing := dst stages @done (3/11/2021, 7:44:30 AM)
+                                ✔ Src access mask := Dirty access mask for availability @done (3/11/2021, 7:44:43 AM)
+                                ✔ Dirty access mask for availability := 0 @done (3/11/2021, 7:44:54 AM)
+                                ✔ Ongoing invalidations := 0 @done (3/11/2021, 7:44:55 AM)
+                            ✔ If it invalidates cache @done (3/11/2021, 7:54:20 AM)
+                                ✔ Src := ongoing flushing stages OR writing stages (if it's the same barrier) @done (3/11/2021, 7:53:54 AM)
+                                ✔ Ongoing invalidations |= dst stages @done (3/11/2021, 7:53:57 AM)
+                                ✔ Dst access mask for pipeline barrier := required visibility mask & Dirty access mask for visibility @done (3/11/2021, 7:54:08 AM)
+                                ✔ Dirty access mask for visibility ^= Dst access mask for pipeline barrier @done (3/11/2021, 7:54:18 AM)
+                        ✔ Pay attention to memory layout (probably array index should be the first index, 2nd should be the mip level) @done (3/10/2021, 12:03:27 PM)
                     ☐ Buffer????
                         ☐ Have a small history of sub+resource ranges + an extra fix slot for the entire buffer (instead of arrays and mip levels)
                         ☐ Per history/fixed slot
@@ -132,25 +132,35 @@ Get a triangle on screen:
                                 ☐ If the new slots needs to many ranges, merge the ranges
                             ☐ Find all slots in the history than conflict with this slot...
                             ☐ ... ???
-                ☐ Most of the state data should be in a struct that is used by both the image and the buffer
-                ☐ There is a fixed number of slots (use a define for this, could be a build option)
+                ✔ Most of the state data should be in a struct that is used by both the image and the buffer @done (3/10/2021, 1:15:36 PM)
+                ✔ There is a fixed number of slots (use a define for this, could be a build option) @done (3/10/2021, 1:15:41 PM)
                 ✔ Slot ids are acquired from the driver (not the resource) @done (3/10/2021, 9:26:28 AM)
-                    ☐ A tracking slot = resource tracker object
+                    ✔ A tracking slot = resource tracker object @done (3/10/2021, 1:37:12 PM)
                     ☐ The framegraph can reuse trackers, where there is no parallel usage (must be same queue as well)
                     ☐ Reuse as much as possible
-                ☐ Have a cmd function to create barrier for an image (using the current state of the image)
-                    ☐ Input
-                        ☐ Option A: pipeline stages; access mask; required layout
-                        ☐ Option B: enum for operations -> mask of operations? or operation types???
-                    ☐ Parameters for barrier???
-                        ☐ auto flush if needed (when is it needed?)
-                        ☐ required visibility mask := access mask of the required operation(s)
-                        ☐ dst stages := all stages of the required operation(s)
-                        ☐ layout transition := manual input
-                        ☐ ownership transfer := auto place if needed
-                    ☐ cmd pipeline barrier should not be exposed to the engine
-                ☐ When placing a pipeline barrier it should not be recorded to the cmd buffer immediately
-                    ☐ Merge all barriers and flush them when a new operations is done or the recording ended
+                ☐ Placing barriers
+                    ☐ Auto placed barriers:
+                        ☐ Separate access function into validation and execution
+                        ☐ Validation should be called before execution and it should create a pipeline barrier if necessary
+                        ☐ If needed use the existing memory_sync function(s)
+                        ☐ Execution will now only apply the new state, assuming correct resource state
+                    ☐ Barriers are collected until the next access operation or the end of recording instead of immediate placement???
+                    ☐ Create an enum of possible resource usages (separate for buffer and texture?)
+                        ☐ Have a mapping from usage -> (pipeline stage mask, memory access mask)
+                    ☐ Barriers are originally created for sub-resource ranges (later can be merged)
+                    ☐ Barriers for a single sub-resource are merged
+                    ☐ Barriers are flushed when accessing the memory (or doing a layout transition / ownership transfer)
+                        ☐ Merge all barriers from the sub-resource ranges specified by the operations (if possible)
+                            ☐ Different layout transitions would need separate barriers
+                        ☐ These could be merged with layout transition if the flushed barriers don't have a layout transition
+                    ☐ Create a cmd for memory barrier
+                        ☐ Input
+                            ☐ Required usages
+                            ☐ Resource & sub-resources
+                            ☐ Ownership (could be deduced from current queue)
+                            ☐ Layout transition for images (could be deduced from usage)
+                        ☐ Resource needs to have a clear state regarding the selected usages
+                        ☐ cmd pipeline barrier should not be exposed to the engine
                 ☐ When submitting the command buffer with semaphores, states might be changed??? or not
             ☐ Create state objects for images and buffers to share state between tracking slots
                 ☐ Is resource readable/writable in this linear context? (use this info in validator later)
@@ -194,9 +204,8 @@ Get a triangle on screen:
                     ☐ Declare basic states (layout only???)
                     ☐ Auto create semaphore based state objects and use them
                 ☐ In same queue and different queue case, one (partial) state is declared by the user, the in/out states are generated to be valid
-
-
         ☐ Implement several levels of sync precision
+
             ☐ Auto sync / just validate (auto sync is only for debug)
                 ☐ Validate can assert or just warn
             ☐ Default: sync only as much as necessary

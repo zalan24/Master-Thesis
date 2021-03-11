@@ -269,6 +269,23 @@ class DrvVulkanResourceTracker final : public drv::ResourceTracker
                                       uint32_t requiredLayoutMask, bool changeLayout,
                                       drv::ImageLayout resultLayout);
 
+    void add_memory_sync(drv_vulkan::PerResourceTrackData& resourceData,
+                         drv_vulkan::PerSubresourceRangeTrackData& subresourceData, bool flush,
+                         drv::PipelineStages dstStages,
+                         drv::MemoryBarrier::AccessFlagBitType invalidateMask,
+                         bool transferOwnership, drv::QueueFamilyPtr newOwner);
+    void add_memory_sync(drv::ImagePtr image, uint32_t mipLevel, uint32_t arrayIndex, bool flush,
+                         drv::PipelineStages dstStages,
+                         drv::MemoryBarrier::AccessFlagBitType invalidateMask,
+                         bool transferOwnership, drv::QueueFamilyPtr newOwner,
+                         bool transitionLayout, drv::ImageLayout resultLayout);
+    void add_memory_sync(drv::ImagePtr image, uint32_t numSubresourceRanges,
+                         const drv::ImageSubresourceRange* subresourceRanges, bool flush,
+                         drv::PipelineStages dstStages,
+                         drv::MemoryBarrier::AccessFlagBitType invalidateMask,
+                         bool transferOwnership, drv::QueueFamilyPtr newOwner,
+                         bool transitionLayout, drv::ImageLayout resultLayout);
+
 #if USE_RESOURCE_TRACKER
     struct TrackedMemoryBarrier
     {
