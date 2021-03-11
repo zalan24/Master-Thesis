@@ -140,7 +140,7 @@ Get a triangle on screen:
                     ☐ Reuse as much as possible
                 ☐ Placing barriers
                     ☐ Auto placed barriers:
-                        ☐ Separate access function into validation and execution
+                        ✔ Separate access function into validation and execution @done (3/11/2021, 8:44:33 PM)
                         ☐ Validation should be called before execution and it should create a pipeline barrier if necessary
                         ☐ If needed use the existing memory_sync function(s)
                         ☐ Execution will now only apply the new state, assuming correct resource state
