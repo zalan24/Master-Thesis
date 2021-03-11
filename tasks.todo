@@ -67,7 +67,7 @@ Get a triangle on screen:
                         ✔ Ownership @done (3/9/2021, 2:53:36 PM)
                         ✔ Usable stages (src for prev barrier) @done (3/10/2021, 11:34:17 AM)
                         ☐ Event to wait on before usage????
-                    ☐ Images store data per mip level per array index (have max values for this)
+                    ✔ Images store data per mip level per array index (have max values for this) @done (3/11/2021, 9:20:12 PM)
                         ✔ Layout @done (3/10/2021, 9:00:26 AM)
                         ✔ Ongoing writing pipeline stages (src mask for next barrier) @done (3/9/2021, 2:55:48 PM)
                         ✔ Ongoing reading pipeline stages (src mask for next barrier for writing operations) @done (3/9/2021, 2:55:48 PM)
@@ -142,8 +142,8 @@ Get a triangle on screen:
                     ☐ Auto placed barriers:
                         ✔ Separate access function into validation and execution @done (3/11/2021, 8:44:33 PM)
                         ☐ Validation should be called before execution and it should create a pipeline barrier if necessary
-                        ☐ If needed use the existing memory_sync function(s)
-                        ☐ Execution will now only apply the new state, assuming correct resource state
+                        ✔ If needed use the existing memory_sync function(s) @done (3/11/2021, 9:12:18 PM)
+                        ✔ Execution will now only apply the new state, assuming correct resource state @done (3/11/2021, 9:12:25 PM)
                     ☐ Barriers are collected until the next access operation or the end of recording instead of immediate placement???
                     ☐ Create an enum of possible resource usages (separate for buffer and texture?)
                         ☐ Have a mapping from usage -> (pipeline stage mask, memory access mask)
@@ -204,49 +204,15 @@ Get a triangle on screen:
                     ☐ Declare basic states (layout only???)
                     ☐ Auto create semaphore based state objects and use them
                 ☐ In same queue and different queue case, one (partial) state is declared by the user, the in/out states are generated to be valid
-        ☐ Implement several levels of sync precision
+        ☐ Tracker settings
+            ☐ Verbosity / assertations
+                ☐ Silent fixes (warn about invalid states, nothing for suboptimal states)
+                ☐ Debug (error on invalid states, error on suboptimal states)
+                ☐ Barrier focus (error on everything)
+            ☐ Sync options
+                ☐ Default: sync when needed only, as much as needed
+                ☐ ... extra sync options ...
 
-            ☐ Auto sync / just validate (auto sync is only for debug)
-                ☐ Validate can assert or just warn
-            ☐ Default: sync only as much as necessary
-            ☐ Add a pipeline barrier to the end of the command buffer to make everything available
-            ☐ Make everything available immediately
-            ☐ Use general memory barriers instead of sub-resource based barriers
-            ☐ More sync: remove sync optimizations
-            ☐ Debug sync: always sync everything (all pipeline, all access mask, always)
-            ☐ Do extra tracking and try to detect unnecessary syncs (export this data)
-        ☐ Create a resource tracker object on the driver level
-            ✔ Track any resource used in the commands @done (3/4/2021, 10:13:23 AM)
-            ☐ Use a greedy algorithm for both availability and visibility and place pipeline barriers in cmd calls
-            ☐ Add an optional arg to the cmd calls for event ptr
-                ☐ If an event ptr is given, the cmd call should record a set event call
-                ☐ This set event call should depend on the resources written in this call
-                ☐ Event ptr should be registered in the tracking history
-                ☐ Later calls can automatically wait on this event instead of using pipeline barriers
-                ☐ Sync levels should apply to these events too
-                ☐ API could make suggestions of event usage in debug mode???
-                    ☐ If the pipeline barrier waits for extra pipeline stages, suggest event???
-                    ☐ If event was not used, suggest to remove it???
-            ☐ Handle semaphores (semaphores could bind with an other/self resource tracker)
-        ☐ Inside a framegraph node (inter command buffer sync)
-            ☐ Track any resources
-            ☐ Framegraph nodes with gpu work should have their own resource tracker (for every queue)
-                ☐ Keep only unregistered resources when ending the node
-                ☐ Unregistered resources should keep tracking information for the next frame
-                ☐ Only release acquired events (used in cmd calls), after they are released from tracking history
-            ☐ Track resource usage in the command buffer recorder
-                ☐ Resource
-                ☐ Sub-resource range
-                ☐ Pipeline stage mask
-                ☐ Access mask
-                ☐ Write/Read flags
-            ☐ Add a memory barrier of the proper type (based on resource) to writing operations from history
-            ☐ For write operations, also add barriers for any reading operations in history
-            ☐ Ignore history entries, which are implicitly waited upon
-            ☐ Resource trackers should be able to handle unregistered read only resources
-                ☐ Tracker needs to see if the resource has been made visible to the proper shader stages
-                ☐ If not, make it visible, but only once
-                ☐ If the resource is visible by default, no sync should ever happen
         ☐ Track resources globally
             ☐ Created resource ids in the framegraph
                 ☐ Resources are resolved in every frame (first usage of the res id)

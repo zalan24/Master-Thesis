@@ -246,28 +246,29 @@ class DrvVulkanResourceTracker final : public drv::ResourceTracker
                          uint32_t ranges,
                          const drv::ImageSubresourceRange* subresourceRanges) override;
 
-    enum AddAccessResult
+    // TODO add debug info about involved commands
+    enum InvalidationLevel
     {
-        NEED_BARRIER,
-        SUCCESSFUL
+        SUBOPTIMAL,
+        INVALID
     };
+    void invalidate(InvalidationLevel level, const char* message) const;
 
-    AddAccessResult validate_memory_access(
-      drv_vulkan::PerResourceTrackData& resourceData,
-      drv_vulkan::PerSubresourceRangeTrackData& subresourceData, bool read, bool write,
-      bool sharedRes, drv::PipelineStages stages, drv::MemoryBarrier::AccessFlagBitType accessMask);
-    AddAccessResult validate_memory_access(drv::ImagePtr image, uint32_t mipLevel,
-                                           uint32_t arrayIndex, bool read, bool write,
-                                           drv::PipelineStages stages,
-                                           drv::MemoryBarrier::AccessFlagBitType accessMask,
-                                           uint32_t requiredLayoutMask, bool changeLayout,
-                                           drv::ImageLayout resultLayout);
-    AddAccessResult validate_memory_access(drv::ImagePtr image, uint32_t numSubresourceRanges,
-                                           const drv::ImageSubresourceRange* subresourceRanges,
-                                           bool read, bool write, drv::PipelineStages stages,
-                                           drv::MemoryBarrier::AccessFlagBitType accessMask,
-                                           uint32_t requiredLayoutMask, bool changeLayout,
-                                           drv::ImageLayout resultLayout);
+    void validate_memory_access(drv_vulkan::PerResourceTrackData& resourceData,
+                                drv_vulkan::PerSubresourceRangeTrackData& subresourceData,
+                                bool read, bool write, bool sharedRes, drv::PipelineStages stages,
+                                drv::MemoryBarrier::AccessFlagBitType accessMask);
+    void validate_memory_access(drv::ImagePtr image, uint32_t mipLevel, uint32_t arrayIndex,
+                                bool read, bool write, drv::PipelineStages stages,
+                                drv::MemoryBarrier::AccessFlagBitType accessMask,
+                                uint32_t requiredLayoutMask, bool changeLayout,
+                                drv::ImageLayout resultLayout);
+    void validate_memory_access(drv::ImagePtr image, uint32_t numSubresourceRanges,
+                                const drv::ImageSubresourceRange* subresourceRanges, bool read,
+                                bool write, drv::PipelineStages stages,
+                                drv::MemoryBarrier::AccessFlagBitType accessMask,
+                                uint32_t requiredLayoutMask, bool changeLayout,
+                                drv::ImageLayout resultLayout);
 
     void add_memory_access(drv_vulkan::PerResourceTrackData& resourceData,
                            drv_vulkan::PerSubresourceRangeTrackData& subresourceData, bool read,
