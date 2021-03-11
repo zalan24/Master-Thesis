@@ -286,22 +286,28 @@ void DrvVulkanResourceTracker::add_memory_sync(drv::ImagePtr _image, uint32_t mi
                                                bool transitionLayout,
                                                drv::ImageLayout resultLayout) {
     drv_vulkan::Image* image = convertImage(_image);
-    add_memory_sync(image->trackingStates[trackingSlot].trackData,
-                    image->trackingStates[trackingSlot].subresourceTrackInfo[arrayIndex][mipLevel],
-                    flush, dstStages, invalidateMask, transferOwnership,
-                    newOwner);  // TODO result of this???
-    if (transitionLayout
-        && image->trackingStates[trackingSlot].subresourceTrackInfo[arrayIndex][mipLevel].layout
-             != resultLayout) {
+    const drv::PipelineStages::FlagType stages = dstStages.resolve();
+    drv_vulkan::PerSubresourceRangeTrackData& subresourceData =
+      image->trackingStates[trackingSlot].subresourceTrackInfo[arrayIndex][mipLevel];
+    // 'subresourceData.layout != resultLayout' excluded for consistent behaviour
+    if (transitionLayout)
+        flush = true;
+    add_memory_sync(image->trackingStates[trackingSlot].trackData, subresourceData, flush,
+                    dstStages, invalidateMask, transferOwnership, newOwner);
+    if (transitionLayout && subresourceData.layout != resultLayout) {
         TODO;  // sync
-        layoutTransition = ;
+        waitStages |= subresourceData.ongoingWrites | subresourceData.ongoingInvalidations
+                      | subresourceData.ongoingReads | subresourceData.ongoingFlushes;
+        dstStages |= stages;
+        subresourceData.ongoingWrites = 0;
+        subresourceData.ongoingInvalidations = invalidateMask;
+        subresourceData.ongoingReads = 0;
+        subresourceData.ongoingFlushes = 0;
+        subresourceData.dirtyMask = 0;
+        subresourceData.visible = invalidateMask;
+        subresourceData.usableStages = stages;
+        layoutTransition = resultLayout;
     }
-    if (changeLayout) {
-        drv::drv_assert(write, "Only writing operations can transform the image layout");
-        image->trackingStates[trackingSlot].subresourceTrackInfo[arrayIndex][mipLevel].layout =
-          resultLayout;
-    }
-    // TODO return (check earlier add_memory_access)
 }
 
 void DrvVulkanResourceTracker::add_memory_sync(drv::ImagePtr _image, uint32_t numSubresourceRanges,

@@ -96,7 +96,7 @@ Get a triangle on screen:
                                 ✔ Correct ownership or shared access @done (3/10/2021, 10:57:56 AM)
                                 ✔ Proper layout @done (3/10/2021, 11:01:20 AM)
                             ✔ Ongoing reading pipeline stages |= current stages @done (3/10/2021, 11:04:09 AM)
-                        ☐ Upon inserting pipeline barrier
+                        ✔ Upon inserting pipeline barrier @done (3/11/2021, 7:47:21 PM)
                             ✔ Parameters @done (3/11/2021, 7:36:07 AM)
                                 ✔ Does it need to flush @done (3/11/2021, 7:36:04 AM)
                                 ✔ Required visibility mask @done (3/11/2021, 7:36:05 AM)
