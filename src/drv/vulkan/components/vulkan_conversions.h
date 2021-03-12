@@ -117,6 +117,10 @@ inline VkCommandBuffer* convertCommandBuffers(drv::CommandBufferPtr* buffer) {
 }
 
 constexpr inline VkImageLayout convertImageLayout(drv::ImageLayout layout) {
+    if (layout == drv::ImageLayout::SHARED_PRESENT_KHR)
+        return VK_IMAGE_LAYOUT_SHARED_PRESENT_KHR;
+    if (layout == drv::ImageLayout::PRESENT_SRC_KHR)
+        return VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
     drv::ImageLayoutMask ret = 0;
     drv::ImageLayoutMask l = static_cast<drv::ImageLayoutMask>(layout);
     while (l > 1) {
@@ -127,6 +131,10 @@ constexpr inline VkImageLayout convertImageLayout(drv::ImageLayout layout) {
 }
 
 constexpr inline drv::ImageLayout convertImageLayout(VkImageLayout layout) {
+    if (layout == VK_IMAGE_LAYOUT_SHARED_PRESENT_KHR)
+        return drv::ImageLayout::SHARED_PRESENT_KHR;
+    if (layout == VK_IMAGE_LAYOUT_PRESENT_SRC_KHR)
+        return drv::ImageLayout::PRESENT_SRC_KHR;
     return static_cast<drv::ImageLayout>(1 << static_cast<drv::ImageLayoutMask>(layout));
 }
 
@@ -162,6 +170,14 @@ static_assert(convertImageLayout(drv::ImageLayout::PREINITIALIZED)
               == VK_IMAGE_LAYOUT_PREINITIALIZED);
 static_assert(drv::ImageLayout::PREINITIALIZED
               == convertImageLayout(VK_IMAGE_LAYOUT_PREINITIALIZED));
+static_assert(convertImageLayout(drv::ImageLayout::PRESENT_SRC_KHR)
+              == VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
+static_assert(drv::ImageLayout::PRESENT_SRC_KHR
+              == convertImageLayout(VK_IMAGE_LAYOUT_PRESENT_SRC_KHR));
+static_assert(convertImageLayout(drv::ImageLayout::SHARED_PRESENT_KHR)
+              == VK_IMAGE_LAYOUT_SHARED_PRESENT_KHR);
+static_assert(drv::ImageLayout::SHARED_PRESENT_KHR
+              == convertImageLayout(VK_IMAGE_LAYOUT_SHARED_PRESENT_KHR));
 
 // inline VkSemaphore convertSemaphore(drv::SemaphorePtr semaphore) {
 //     return reinterpret_cast<VkSemaphore>(semaphore);

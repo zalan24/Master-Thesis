@@ -28,6 +28,8 @@ bool ImageMemoryBarrier::pick_layout(ImageResourceUsageFlag usages, ImageLayout&
                                                ImageLayout::SHADER_READ_ONLY_OPTIMAL,
                                                ImageLayout::TRANSFER_SRC_OPTIMAL,
                                                ImageLayout::TRANSFER_DST_OPTIMAL,
+                                               ImageLayout::PRESENT_SRC_KHR,
+                                               ImageLayout::SHARED_PRESENT_KHR,
                                                ImageLayout::GENERAL,
                                                ImageLayout::PREINITIALIZED,
                                                ImageLayout::UNDEFINED};

@@ -940,6 +940,8 @@ enum class ImageLayout : ImageLayoutMask
     TRANSFER_SRC_OPTIMAL = 1 << 6,
     TRANSFER_DST_OPTIMAL = 1 << 7,
     PREINITIALIZED = 1 << 8,
+    PRESENT_SRC_KHR = 1 << 9,
+    SHARED_PRESENT_KHR = 1 << 10
     // Provided by VK_VERSION_1_1
     // DEPTH_READ_ONLY_STENCIL_ATTACHMENT_OPTIMAL = 1000117000,
     // // Provided by VK_VERSION_1_1
@@ -1175,8 +1177,8 @@ struct ClearColorValue
 using ImageResourceUsageFlag = uint64_t;
 enum ImageResourceUsage : ImageResourceUsageFlag
 {
-    IMAGE_USAGE_TRANSFER_DESTINATION = 1 << 0
-    // IMAGE_USAGE_PRESENT = 1 << 1
+    IMAGE_USAGE_TRANSFER_DESTINATION = 1 << 0,
+    IMAGE_USAGE_PRESENT = 1 << 1
 };
 
 PipelineStages get_image_usage_stages(ImageResourceUsage usage);
