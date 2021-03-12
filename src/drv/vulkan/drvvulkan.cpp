@@ -119,7 +119,12 @@ void DrvVulkanResourceTracker::add_memory_access(PerResourceTrackData& resourceD
                                                  PerSubresourceRangeTrackData& subresourceData,
                                                  bool read, bool write, bool sharedRes,
                                                  drv::PipelineStages stages,
-                                                 drv::MemoryBarrier::AccessFlagBitType accessMask) {
+                                                 drv::MemoryBarrier::AccessFlagBitType accessMask,
+                                                 bool manualValidation = false) {
+    if (!manualValidation)
+        validate_memory_access(resourceData, subresourceData, read, write, sharedRes, stages,
+                               accessMask);
+
     accessMask = drv::MemoryBarrier::resolve(accessMask);
     drv::QueueFamilyPtr currentFamily = driver->get_queue_family(device, queue);
     drv::PipelineStages::FlagType currentStages = stages.resolve();

@@ -928,7 +928,7 @@ struct BufferMemoryBarrier
     DeviceSize size;
 };
 
-using ImageLayoutMask = unsigned int;
+using ImageLayoutMask = uint32_t;
 enum class ImageLayout : ImageLayoutMask
 {
     UNDEFINED = 1 << 0,
@@ -975,6 +975,7 @@ enum class ImageLayout : ImageLayoutMask
     // // Provided by VK_KHR_separate_depth_stencil_layouts
     // STENCIL_READ_ONLY_OPTIMAL_KHR = STENCIL_READ_ONLY_OPTIMAL,
 };
+ImageLayoutMask get_all_layouts_mask();
 
 struct ImageSubresourceRange
 {
@@ -1019,21 +1020,21 @@ struct ImageSubresourceRange
     }
 };
 
-struct ImageMemoryBarrier
-{
-    MemoryBarrier::AccessFlagBitType sourceAccessFlags;
-    MemoryBarrier::AccessFlagBitType dstAccessFlags;
+// struct ImageMemoryBarrier
+// {
+//     MemoryBarrier::AccessFlagBitType sourceAccessFlags;
+//     MemoryBarrier::AccessFlagBitType dstAccessFlags;
 
-    ImageLayout oldLayout;
-    ImageLayout newLayout;
+//     ImageLayout oldLayout;
+//     ImageLayout newLayout;
 
-    // ownership transfer
-    drv::QueueFamilyPtr srcFamily;
-    drv::QueueFamilyPtr dstFamily;
+//     // ownership transfer
+//     drv::QueueFamilyPtr srcFamily;
+//     drv::QueueFamilyPtr dstFamily;
 
-    drv::ImagePtr image;
-    ImageSubresourceRange subresourceRange;
-};
+//     drv::ImagePtr image;
+//     ImageSubresourceRange subresourceRange;
+// };
 
 enum class DependencyFlagBits
 {
@@ -1170,5 +1171,16 @@ struct ClearColorValue
         value.float32[3] = a;
     }
 };
+
+using ImageResourceUsageFlag = uint64_t;
+enum ImageResourceUsage : ImageResourceUsageFlag
+{
+    IMAGE_USAGE_TRANSFER_DESTINATION = 1 << 0
+    // IMAGE_USAGE_PRESENT = 1 << 1
+};
+
+PipelineStages get_image_usage_stages(ImageResourceUsage usage);
+MemoryBarrier::AccessFlagBitType get_image_usage_accesses(ImageResourceUsage usage);
+uint32_t get_accepted_image_layouts(ImageResourceUsage usage);
 
 };  // namespace drv

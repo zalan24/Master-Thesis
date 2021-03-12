@@ -135,29 +135,5 @@ class IDriver
     virtual bool end_primary_command_buffer(CommandBufferPtr cmdBuffer) = 0;
 
     virtual uint32_t get_num_trackers() = 0;
-
-    // virtual bool cmd_reset_event(CommandBufferPtr commandBuffer, EventPtr event,
-    //                              PipelineStages sourceStage) = 0;
-    // virtual bool cmd_set_event(CommandBufferPtr commandBuffer, EventPtr event,
-    //                            PipelineStages sourceStage) = 0;
-    // virtual bool cmd_wait_events(CommandBufferPtr commandBuffer, uint32_t eventCount,
-    //                              const EventPtr* events, PipelineStages sourceStage,
-    //                              PipelineStages dstStage, uint32_t memoryBarrierCount,
-    //                              const MemoryBarrier* memoryBarriers, uint32_t bufferBarrierCount,
-    //                              const BufferMemoryBarrier* bufferBarriers,
-    //                              uint32_t imageBarrierCount,
-    //                              const ImageMemoryBarrier* imageBarriers) = 0;
-    // virtual bool cmd_pipeline_barrier(CommandBufferPtr commandBuffer, PipelineStages sourceStage,
-    //                                   PipelineStages dstStage, DependencyFlagBits dependencyFlags,
-    //                                   uint32_t memoryBarrierCount,
-    //                                   const MemoryBarrier* memoryBarriers,
-    //                                   uint32_t bufferBarrierCount,
-    //                                   const BufferMemoryBarrier* bufferBarriers,
-    //                                   uint32_t imageBarrierCount,
-    //                                   const ImageMemoryBarrier* imageBarriers) = 0;
-    // virtual void cmd_clear_image(CommandBufferPtr cmdBuffer, ImagePtr image,
-    //                              ImageLayout currentLayout, const ClearColorValue* clearColors,
-    //                              uint32_t ranges,
-    //                              const ImageSubresourceRange* subresourceRanges) = 0;
 };
 }  // namespace drv

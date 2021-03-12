@@ -1,6 +1,7 @@
 #pragma once
 
 #include "drv_interface.h"
+#include "drvbarrier.h"
 #include "drvtypes.h"
 
 TODO;  // add a debug info struct & macro into cmd function.
@@ -16,40 +17,23 @@ class ResourceTracker
       : driver(_driver), device(_device), queue(_queue) {}
     virtual ~ResourceTracker() {}
 
-    virtual bool cmd_reset_event(CommandBufferPtr commandBuffer, EventPtr event,
-                                 PipelineStages sourceStage) = 0;
-    virtual bool cmd_set_event(CommandBufferPtr commandBuffer, EventPtr event,
-                               PipelineStages sourceStage) = 0;
-    virtual bool cmd_wait_events(CommandBufferPtr commandBuffer, uint32_t eventCount,
-                                 const EventPtr* events, PipelineStages sourceStage,
-                                 PipelineStages dstStage, uint32_t memoryBarrierCount,
-                                 const MemoryBarrier* memoryBarriers, uint32_t bufferBarrierCount,
-                                 const BufferMemoryBarrier* bufferBarriers,
-                                 uint32_t imageBarrierCount,
-                                 const ImageMemoryBarrier* imageBarriers) = 0;
-    virtual bool cmd_pipeline_barrier(CommandBufferPtr commandBuffer, PipelineStages sourceStage,
-                                      PipelineStages dstStage, DependencyFlagBits dependencyFlags,
-                                      uint32_t memoryBarrierCount,
-                                      const MemoryBarrier* memoryBarriers,
-                                      uint32_t bufferBarrierCount,
-                                      const BufferMemoryBarrier* bufferBarriers,
-                                      uint32_t imageBarrierCount,
-                                      const ImageMemoryBarrier* imageBarriers) = 0;
-    virtual bool cmd_pipeline_barrier(CommandBufferPtr commandBuffer, PipelineStages sourceStage,
-                                      PipelineStages dstStage,
-                                      DependencyFlagBits dependencyFlags) = 0;
-    virtual bool cmd_pipeline_barrier(CommandBufferPtr commandBuffer, PipelineStages sourceStage,
-                                      PipelineStages dstStage, DependencyFlagBits dependencyFlags,
-                                      const MemoryBarrier& memoryBarrier) = 0;
-    virtual bool cmd_pipeline_barrier(CommandBufferPtr commandBuffer, PipelineStages sourceStage,
-                                      PipelineStages dstStage, DependencyFlagBits dependencyFlags,
-                                      const BufferMemoryBarrier& bufferBarrier) = 0;
-    virtual bool cmd_pipeline_barrier(CommandBufferPtr commandBuffer, PipelineStages sourceStage,
-                                      PipelineStages dstStage, DependencyFlagBits dependencyFlags,
-                                      const ImageMemoryBarrier& imageBarrier) = 0;
+    // TODO
+    // virtual bool cmd_reset_event(CommandBufferPtr commandBuffer, EventPtr event,
+    //                              PipelineStages sourceStage) = 0;
+    // virtual bool cmd_set_event(CommandBufferPtr commandBuffer, EventPtr event,
+    //                            PipelineStages sourceStage) = 0;
+    // virtual bool cmd_wait_events(CommandBufferPtr commandBuffer, uint32_t eventCount,
+    //                              const EventPtr* events, PipelineStages sourceStage,
+    //                              PipelineStages dstStage, uint32_t memoryBarrierCount,
+    //                              const MemoryBarrier* memoryBarriers, uint32_t bufferBarrierCount,
+    //                              const BufferMemoryBarrier* bufferBarriers,
+    //                              uint32_t imageBarrierCount,
+    //                              const ImageMemoryBarrier* imageBarriers) = 0;
+
+    virtual void cmd_image_barrier(CommandBufferPtr cmdBuffer, ImageMemoryBarrier&& barrier) = 0;
+
     virtual void cmd_clear_image(CommandBufferPtr cmdBuffer, ImagePtr image,
-                                 ImageLayout currentLayout, const ClearColorValue* clearColors,
-                                 uint32_t ranges,
+                                 const ClearColorValue* clearColors, uint32_t ranges,
                                  const ImageSubresourceRange* subresourceRanges) = 0;
 
  protected:

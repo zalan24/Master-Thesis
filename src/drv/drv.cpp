@@ -316,39 +316,6 @@ bool drv::set_event(LogicalDevicePtr device, EventPtr event) {
     return current_driver_interface->set_event(device, event);
 }
 
-// bool drv::cmd_reset_event(CommandBufferPtr commandBuffer, EventPtr event,
-//                           PipelineStages sourceStage) {
-//     return current_driver_interface->cmd_reset_event(commandBuffer, event, sourceStage);
-// }
-
-// bool drv::cmd_set_event(CommandBufferPtr commandBuffer, EventPtr event,
-//                         PipelineStages sourceStage) {
-//     return current_driver_interface->cmd_set_event(commandBuffer, event, sourceStage);
-// }
-
-// bool drv::cmd_wait_events(CommandBufferPtr commandBuffer, uint32_t eventCount,
-//                           const EventPtr* events, PipelineStages sourceStage,
-//                           PipelineStages dstStage, uint32_t memoryBarrierCount,
-//                           const MemoryBarrier* memoryBarriers, uint32_t bufferBarrierCount,
-//                           const BufferMemoryBarrier* bufferBarriers, uint32_t imageBarrierCount,
-//                           const ImageMemoryBarrier* imageBarriers) {
-//     return current_driver_interface->cmd_wait_events(
-//       commandBuffer, eventCount, events, sourceStage, dstStage, memoryBarrierCount, memoryBarriers,
-//       bufferBarrierCount, bufferBarriers, imageBarrierCount, imageBarriers);
-// }
-
-// bool drv::cmd_pipeline_barrier(CommandBufferPtr commandBuffer, PipelineStages sourceStage,
-//                                PipelineStages dstStage, DependencyFlagBits dependencyFlags,
-//                                uint32_t memoryBarrierCount, const MemoryBarrier* memoryBarriers,
-//                                uint32_t bufferBarrierCount,
-//                                const BufferMemoryBarrier* bufferBarriers,
-//                                uint32_t imageBarrierCount,
-//                                const ImageMemoryBarrier* imageBarriers) {
-//     return current_driver_interface->cmd_pipeline_barrier(
-//       commandBuffer, sourceStage, dstStage, dependencyFlags, memoryBarrierCount, memoryBarriers,
-//       bufferBarrierCount, bufferBarriers, imageBarrierCount, imageBarriers);
-// }
-
 drv::TimelineSemaphorePtr drv::create_timeline_semaphore(LogicalDevicePtr device,
                                                          const TimelineSemaphoreCreateInfo* info) {
     return current_driver_interface->create_timeline_semaphore(device, info);

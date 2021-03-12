@@ -117,8 +117,8 @@ inline VkCommandBuffer* convertCommandBuffers(drv::CommandBufferPtr* buffer) {
 }
 
 constexpr inline VkImageLayout convertImageLayout(drv::ImageLayout layout) {
-    uint32_t ret = 0;
-    uint32_t l = static_cast<uint32_t>(layout);
+    drv::ImageLayoutMask ret = 0;
+    drv::ImageLayoutMask l = static_cast<drv::ImageLayoutMask>(layout);
     while (l > 1) {
         ret++;
         l >>= 1;
@@ -127,7 +127,7 @@ constexpr inline VkImageLayout convertImageLayout(drv::ImageLayout layout) {
 }
 
 constexpr inline drv::ImageLayout convertImageLayout(VkImageLayout layout) {
-    return static_cast<drv::ImageLayout>(1 << static_cast<uint32_t>(layout));
+    return static_cast<drv::ImageLayout>(1 << static_cast<drv::ImageLayoutMask>(layout));
 }
 
 static_assert(convertImageLayout(drv::ImageLayout::UNDEFINED) == VK_IMAGE_LAYOUT_UNDEFINED);

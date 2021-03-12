@@ -54,7 +54,14 @@ void Game::record(FrameGraph& frameGraph, FrameGraph::FrameId frameId) {
         //                           drv::PipelineStages::COLOR_ATTACHMENT_OUTPUT_BIT);
         recorder.cmdWaitSemaphore(swapChainData.imageAvailableSemaphore,
                                   drv::PipelineStages::ALL_GRAPHICS_BIT);
+        recorder.cmdImageBarrier(
+          {swapChainData.image, drv::IMAGE_USAGE_TRANSFER_DESTINATION,
+           drv::ImageMemoryBarrier::AUTO_TRANSITION,
+           drv::get_queue_family(engine->getDevice(), queues.renderQueue.handle)});
         recorder.cmdClearImage(swapChainData.image, &clearValue);
+        recorder.cmdImageBarrier(
+          {swapChainData.image, drv::IMAGE_USAGE_PRESENT, drv::ImageMemoryBarrier::AUTO_TRANSITION,
+           drv::get_queue_family(engine->getDevice(), queues.presentQueue.handle)});
         recorder.cmdSignalSemaphore(swapChainData.renderFinishedSemaphore);
         recorder.finishQueueWork();
     }

@@ -108,15 +108,19 @@ bool DrvVulkan::destroy_image_view(drv::LogicalDevicePtr device, drv::ImageViewP
 void DrvVulkanResourceTracker::validate_memory_access(
   drv::ImagePtr _image, uint32_t mipLevel, uint32_t arrayIndex, bool read, bool write,
   drv::PipelineStages stages, drv::MemoryBarrier::AccessFlagBitType accessMask,
-  uint32_t requiredLayoutMask, bool changeLayout, drv::ImageLayout resultLayout) {
+  drv::ImageLayoutMask requiredLayoutMask, bool changeLayout, drv::ImageLayout resultLayout) {
     drv_vulkan::Image* image = convertImage(_image);
     drv_vulkan::Image::SubresourceTrackData& subresourceData =
       image->trackingStates[trackingSlot].subresourceTrackInfo[arrayIndex][mipLevel];
     add_memory_access(image->trackingStates[trackingSlot].trackData, subresourceData, read, write,
-                      image->sharedResource, stages, accessMask);  // TODO result of this???
-    if (!(static_cast<uint32_t>(subresourceData.layout) & requiredLayoutMask)) {
+                      image->sharedResource, stages, accessMask);
+    if (!(static_cast<drv::ImageLayoutMask>(subresourceData.layout) & requiredLayoutMask)) {
         invalidate(INVALID, "Layout transitions must be placed manually");
         drv::drv_assert(write, "Cannot auto place layout transition for a read only access");
+        if (write) {
+            transitionLayout = ;
+            transitionLayoutAfter = currentLayout;  // TODO this should be used after the access
+        }
     }
     if (changeLayout)
         drv::drv_assert(write, "Only writing operations can transform the image layout");
@@ -126,7 +130,7 @@ void DrvVulkanResourceTracker::validate_memory_access(
   drv::ImagePtr _image, uint32_t numSubresourceRanges,
   const drv::ImageSubresourceRange* subresourceRanges, bool read, bool write,
   drv::PipelineStages stages, drv::MemoryBarrier::AccessFlagBitType accessMask,
-  uint32_t requiredLayoutMask, bool changeLayout, drv::ImageLayout resultLayout) {
+  drv::ImageLayoutMask requiredLayoutMask, bool changeLayout, drv::ImageLayout resultLayout) {
     drv::drv_assert(numSubresourceRanges > 0, "No subresource ranges given for add_memory_access");
     drv_vulkan::Image* image = convertImage(_image);
     if (numSubresourceRanges) {
@@ -164,14 +168,18 @@ void DrvVulkanResourceTracker::add_memory_access(drv::ImagePtr _image, uint32_t 
                                                  uint32_t arrayIndex, bool read, bool write,
                                                  drv::PipelineStages stages,
                                                  drv::MemoryBarrier::AccessFlagBitType accessMask,
-                                                 uint32_t requiredLayoutMask, bool changeLayout,
-                                                 drv::ImageLayout resultLayout) {
+                                                 drv::ImageLayoutMask requiredLayoutMask,
+                                                 bool changeLayout, drv::ImageLayout resultLayout,
+                                                 bool manualValidation = false) {
+    if (!manualValidation)
+        validate_memory_access(_image, mipLevel, arrayIndex, read, write, stages, accessMask,
+                               requiredLayoutMask, changeLayout, resultLayout);
     drv_vulkan::Image* image = convertImage(_image);
     drv_vulkan::Image::SubresourceTrackData& subresourceData =
       image->trackingStates[trackingSlot].subresourceTrackInfo[arrayIndex][mipLevel];
     add_memory_access(image->trackingStates[trackingSlot].trackData, subresourceData, read, write,
-                      image->sharedResource, stages, accessMask);
-    drv::drv_assert(static_cast<uint32_t>(subresourceData.layout) & requiredLayoutMask);
+                      image->sharedResource, stages, accessMask, true);
+    drv::drv_assert(static_cast<drv::ImageLayoutMask>(subresourceData.layout) & requiredLayoutMask);
     if (changeLayout) {
         drv::drv_assert(write);
         subresourceData.layout = resultLayout;
@@ -182,7 +190,11 @@ void DrvVulkanResourceTracker::add_memory_access(
   drv::ImagePtr _image, uint32_t numSubresourceRanges,
   const drv::ImageSubresourceRange* subresourceRanges, bool read, bool write,
   drv::PipelineStages stages, drv::MemoryBarrier::AccessFlagBitType accessMask,
-  uint32_t requiredLayoutMask, bool changeLayout, drv::ImageLayout resultLayout) {
+  drv::ImageLayoutMask requiredLayoutMask, bool requireSameLayout, drv::ImageLayout* currentLayout,
+  bool changeLayout, drv::ImageLayout resultLayout, bool manualValidation = false) {
+    if (!manualValidation)
+        validate_memory_access(_image, numSubresourceRanges, subresourceRanges, read, write, stages,
+                               accessMask, requiredLayoutMask, changeLayout, resultLayout);
     drv::drv_assert(numSubresourceRanges > 0, "No subresource ranges given for add_memory_access");
     drv_vulkan::Image* image = convertImage(_image);
     if (numSubresourceRanges) {
@@ -203,16 +215,31 @@ void DrvVulkanResourceTracker::add_memory_access(
                         continue;
                     subresourcesHandled[i] |= 1 << j;
                     add_memory_access(_image, i, j, read, write, stages, accessMask,
-                                      requiredLayoutMask, changeLayout, resultLayout);
+                                      requiredLayoutMask, changeLayout, resultLayout, true);
+                    const drv_vulkan::Image::SubresourceTrackData& subresourceData =
+                      image->trackingStates[trackingSlot].subresourceTrackInfo[i][j];
+                    if (currentLayout)
+                        *currentLayout = subresourceData.layout;
+                    if (requireSameLayout)
+                        requiredLayoutMask ^=
+                          static_cast<drv::ImageLayoutMask>(subresourceData.layout);
                 }
             }
         }
     }
     else {
-        for (uint32_t i = 0; i < image->arraySize; ++i)
-            for (uint32_t j = 0; j < image->numMipLevels; ++j)
+        for (uint32_t i = 0; i < image->arraySize; ++i) {
+            for (uint32_t j = 0; j < image->numMipLevels; ++j) {
                 add_memory_access(_image, i, j, read, write, stages, accessMask, requiredLayoutMask,
-                                  changeLayout, resultLayout);
+                                  changeLayout, resultLayout, true);
+                const drv_vulkan::Image::SubresourceTrackData& subresourceData =
+                  image->trackingStates[trackingSlot].subresourceTrackInfo[i][j];
+                if (currentLayout)
+                    *currentLayout = subresourceData.layout;
+                if (requireSameLayout)
+                    requiredLayoutMask ^= static_cast<drv::ImageLayoutMask>(subresourceData.layout);
+            }
+        }
     }
 }
 

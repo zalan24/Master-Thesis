@@ -1,5 +1,14 @@
 #include "engine.h"
 
+#include <drv_resource_tracker.h>
+
+#include <framegraph.h>
+
+void Engine::CommandBufferRecorder::cmdImageBarrier(drv::ImageMemoryBarrier&& barrier) {
+    nodeHandle->getNode().getResourceTracker(queue)->cmd_image_barrier(cmdBuffer.commandBufferPtr,
+                                                                       std::move(barrier));
+}
+
 void Engine::CommandBufferRecorder::cmdClearImage(
   drv::ImagePtr image, const drv::ClearColorValue* clearColors, uint32_t ranges,
   const drv::ImageSubresourceRange* subresourceRanges) {
@@ -13,10 +22,8 @@ void Engine::CommandBufferRecorder::cmdClearImage(
         ranges = 1;
         subresourceRanges = &defVal;
     }
-    TODO;  // resource tracking;
-    // TODO layout tracing
     nodeHandle->getNode().getResourceTracker(queue)->cmd_clear_image(
-      cmdBuffer.commandBufferPtr, image, , clearColors, ranges, subresourceRanges);
+      cmdBuffer.commandBufferPtr, image, clearColors, ranges, subresourceRanges);
 }
 
 // void cmdWaitSemaphore(drv::SemaphorePtr semaphore, drv::PipelineStages::FlagType waitStage);

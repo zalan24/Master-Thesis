@@ -189,20 +189,5 @@ bool destroy_shader_module(LogicalDevicePtr device, ShaderModulePtr module);
 bool begin_primary_command_buffer(CommandBufferPtr cmdBuffer, bool singleTime,
                                   bool simultaneousUse);
 bool end_primary_command_buffer(CommandBufferPtr cmdBuffer);
-// void cmd_clear_image(CommandBufferPtr cmdBuffer, ImagePtr image, ImageLayout currentLayout,
-//                      const ClearColorValue* clearColors, uint32_t ranges,
-//                      const ImageSubresourceRange* subresourceRanges);
-// bool cmd_reset_event(CommandBufferPtr commandBuffer, EventPtr event, PipelineStages sourceStage);
-// bool cmd_set_event(CommandBufferPtr commandBuffer, EventPtr event, PipelineStages sourceStage);
-// bool cmd_wait_events(CommandBufferPtr commandBuffer, uint32_t eventCount, const EventPtr* events,
-//                      PipelineStages sourceStage, PipelineStages dstStage,
-//                      uint32_t memoryBarrierCount, const MemoryBarrier* memoryBarriers,
-//                      uint32_t bufferBarrierCount, const BufferMemoryBarrier* bufferBarriers,
-//                      uint32_t imageBarrierCount, const ImageMemoryBarrier* imageBarriers);
-// bool cmd_pipeline_barrier(CommandBufferPtr commandBuffer, PipelineStages sourceStage,
-//                           PipelineStages dstStage, DependencyFlagBits dependencyFlags,
-//                           uint32_t memoryBarrierCount, const MemoryBarrier* memoryBarriers,
-//                           uint32_t bufferBarrierCount, const BufferMemoryBarrier* bufferBarriers,
-//                           uint32_t imageBarrierCount, const ImageMemoryBarrier* imageBarriers);
 
 };  // namespace drv

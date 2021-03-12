@@ -12,6 +12,7 @@
 #include <drv.h>
 #include <drv_queue_manager.h>
 #include <drv_wrappers.h>
+#include <drvbarrier.h>
 #include <drvcmdbufferbank.h>
 #include <drvlane.h>
 #include <eventpool.h>
@@ -109,6 +110,7 @@ class Engine
                                       drv::PipelineStages::FlagType waitStage);
         void cmdSignalSemaphore(drv::SemaphorePtr semaphore);
         void cmdSignalTimelineSemaphore(drv::TimelineSemaphorePtr semaphore, uint64_t signalValue);
+        void cmdImageBarrier(drv::ImageMemoryBarrier&& barrier);
         void cmdClearImage(drv::ImagePtr image, const drv::ClearColorValue* clearColors,
                            uint32_t ranges = 0,
                            const drv::ImageSubresourceRange* subresourceRanges = nullptr);
