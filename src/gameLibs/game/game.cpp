@@ -56,12 +56,12 @@ void Game::record(FrameGraph& frameGraph, FrameGraph::FrameId frameId) {
                                   drv::PipelineStages::ALL_COMMANDS_BIT);
         recorder.cmdImageBarrier(
           {swapChainData.image, drv::IMAGE_USAGE_TRANSFER_DESTINATION,
-           drv::ImageMemoryBarrier::AUTO_TRANSITION,
+           drv::ImageMemoryBarrier::AUTO_TRANSITION, true,
            drv::get_queue_family(engine->getDevice(), queues.renderQueue.handle)});
         recorder.cmdClearImage(swapChainData.image, &clearValue);
         recorder.cmdImageBarrier(
           {swapChainData.image, drv::IMAGE_USAGE_PRESENT, drv::ImageMemoryBarrier::AUTO_TRANSITION,
-           drv::get_queue_family(engine->getDevice(), queues.presentQueue.handle)});
+           false, drv::get_queue_family(engine->getDevice(), queues.presentQueue.handle)});
         // TODO according to vulkan spec https://khronos.org/registry/vulkan/specs/1.2-extensions/man/html/vkQueuePresentKHR.html
         // memory is made visible to all read operations (add this to tracker?) -- only available memory
         recorder.cmdSignalSemaphore(swapChainData.renderFinishedSemaphore);

@@ -306,5 +306,6 @@ void DrvVulkanResourceTracker::cmd_image_barrier(drv::CommandBufferPtr cmdBuffer
     // extra sync is only placed, if it has dirty cache
     add_memory_sync(cmdBuffer, barrier.image, barrier.numSubresourceRanges, barrier.ranges, flush,
                     dstStages, invalidateMask, barrier.requestedOwnership != drv::NULL_HANDLE,
-                    barrier.requestedOwnership, barrier.transitionLayout, barrier.resultLayout);
+                    barrier.requestedOwnership, barrier.transitionLayout,
+                    barrier.discardCurrentContent, barrier.resultLayout);
 }

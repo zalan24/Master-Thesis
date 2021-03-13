@@ -6,6 +6,7 @@
 
 #include <drverror.h>
 
+#include "components/vulkan_conversions.h"
 #include "components/vulkan_resource_track_data.h"
 
 using namespace drv_vulkan;
@@ -395,12 +396,12 @@ void DrvVulkanResourceTracker::flushBarrier(drv::CommandBufferPtr cmdBuffer, Bar
     //           convertSubresourceRange(imageBarriers[i].subresourceRange);
     //     }
 
-    //     vkCmdPipelineBarrier(convertCommandBuffer(commandBuffer),
-    //                          static_cast<VkPipelineStageFlags>(sourceStage.stageFlags),
-    //                          static_cast<VkPipelineStageFlags>(dstStage.stageFlags),
-    //                          static_cast<VkDependencyFlags>(dependencyFlags), memoryBarrierCount,
-    //                          barriers, bufferBarrierCount, vkBufferBarriers, imageBarrierCount,
-    //                          vkImageBarriers);
+    vkCmdPipelineBarrier(convertCommandBuffer(cmdBuffer),
+                         static_cast<VkPipelineStageFlags>(barrier.srcStage.stageFlags),
+                         static_cast<VkPipelineStageFlags>(barrier.dstStage.stageFlags),
+                         static_cast<VkDependencyFlags>(dependencyFlags),  // TODO
+                         0, nullptr, 0, nullptr,                           // TODO add buffers here
+                         imageBarrierCount, vkImageBarriers);
 
     barrier.dstStage = 0;
     barrier.srcStage = 0;

@@ -13,15 +13,18 @@ class ImageMemoryBarrier
         AUTO_TRANSITION
     };
     ImageMemoryBarrier(ImagePtr image, ImageResourceUsageFlag usages,
-                       TransitionLayoutOption transition,
+                       TransitionLayoutOption transition, bool discardCurrentContent = false,
                        QueueFamilyPtr targetFamily = NULL_HANDLE);
     ImageMemoryBarrier(ImagePtr image, ImageResourceUsageFlag usages, ImageLayout transition,
+                       bool discardCurrentContent = false,
                        QueueFamilyPtr targetFamily = NULL_HANDLE);
     ImageMemoryBarrier(ImagePtr image, uint32_t numRanges, const ImageSubresourceRange* ranges,
                        ImageResourceUsageFlag usages, TransitionLayoutOption transition,
+                       bool discardCurrentContent = false,
                        QueueFamilyPtr targetFamily = NULL_HANDLE);
     ImageMemoryBarrier(ImagePtr image, uint32_t numRanges, const ImageSubresourceRange* ranges,
                        ImageResourceUsageFlag usages, ImageLayout transition,
+                       bool discardCurrentContent = false,
                        QueueFamilyPtr targetFamily = NULL_HANDLE);
 
     // ImageMemoryBarrier(ImagePtr _image, ImageResourceUsage usage, TransitionLayoutOption transition,
@@ -51,6 +54,7 @@ class ImageMemoryBarrier
     ImageResourceUsageFlag usages = 0;
     QueueFamilyPtr requestedOwnership = NULL_HANDLE;
     bool transitionLayout = false;
+    bool discardCurrentContent = false;  // for layout transition
     ImageLayout resultLayout;
 
  private:

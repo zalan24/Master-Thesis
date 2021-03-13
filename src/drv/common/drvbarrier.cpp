@@ -44,7 +44,7 @@ bool ImageMemoryBarrier::pick_layout(ImageResourceUsageFlag usages, ImageLayout&
 
 ImageMemoryBarrier::ImageMemoryBarrier(ImagePtr _image, ImageResourceUsageFlag _usages,
                                        TransitionLayoutOption transition,
-                                       QueueFamilyPtr targetFamily = NULL_HANDLE)
+                                       bool _discardCurrentContent, QueueFamilyPtr targetFamily)
   : image(_image), usages(_usages) {
     switch (transition) {
         case NO_TRANSITION:
@@ -52,6 +52,7 @@ ImageMemoryBarrier::ImageMemoryBarrier(ImagePtr _image, ImageResourceUsageFlag _
             break;
         case AUTO_TRANSITION:
             transitionLayout = pick_layout(usages, resultLayout);
+            discandCurrentContent = _discardCurrentContent;
             drv_assert(transitionLayout,
                        "There is no commonly accepted image layout for the selected usages");
     }
@@ -59,9 +60,13 @@ ImageMemoryBarrier::ImageMemoryBarrier(ImagePtr _image, ImageResourceUsageFlag _
 }
 
 ImageMemoryBarrier::ImageMemoryBarrier(ImagePtr _image, ImageResourceUsageFlag _usages,
-                                       ImageLayout transition,
-                                       QueueFamilyPtr targetFamily = NULL_HANDLE)
-  : image(_image), usages(_usages) {
+                                       ImageLayout transition, bool _discardCurrentContent,
+                                       QueueFamilyPtr targetFamily)
+  : image(_image),
+    usages(_usages),
+    transitionLayout(true),
+    discandCurrentContent(_discardCurrentContent),
+    resultLayout(transition) {
     drv_assert(get_accepted_layouts(usages) & static_cast<ImageLayoutMask>(transition),
                "Transition target layout is not supported by all specified usages");
     requestedOwnership = targetFamily;
@@ -71,19 +76,15 @@ ImageMemoryBarrier::ImageMemoryBarrier(ImagePtr _image, uint32_t numRanges,
                                        const ImageSubresourceRange* _ranges,
                                        ImageResourceUsageFlag _usages,
                                        TransitionLayoutOption transition,
-                                       QueueFamilyPtr targetFamily = NULL_HANDLE)
-  : image(_image),
-    numSubresourceRanges(numRanges),
-    ranges(_ranges),
-    usages(_usages),
-    transitionLayout(true),
-    resultLayout(transition) {
+                                       bool _discardCurrentContent, QueueFamilyPtr targetFamily)
+  : image(_image), numSubresourceRanges(numRanges), ranges(_ranges), usages(_usages) {
     switch (transition) {
         case NO_TRANSITION:
             transitionLayout = false;
             break;
         case AUTO_TRANSITION:
             transitionLayout = pick_layout(usages, resultLayout);
+            discandCurrentContent = _discardCurrentContent;
             drv_assert(transitionLayout,
                        "There is no commonly accepted image layout for the selected usages");
     }
@@ -93,12 +94,13 @@ ImageMemoryBarrier::ImageMemoryBarrier(ImagePtr _image, uint32_t numRanges,
 ImageMemoryBarrier::ImageMemoryBarrier(ImagePtr _image, uint32_t numRanges,
                                        const ImageSubresourceRange* _ranges,
                                        ImageResourceUsageFlag _usages, ImageLayout transition,
-                                       QueueFamilyPtr targetFamily = NULL_HANDLE)
+                                       bool _discardCurrentContent, QueueFamilyPtr targetFamily)
   : image(_image),
     numSubresourceRanges(numRanges),
     ranges(_ranges),
     usages(_usages),
     transitionLayout(true),
+    discandCurrentContent(_discardCurrentContent),
     resultLayout(transition) {
     drv_assert(get_accepted_layouts(usages) & static_cast<ImageLayoutMask>(transition),
                "Transition target layout is not supported by all specified usages");

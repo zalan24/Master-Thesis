@@ -285,7 +285,7 @@ Get a triangle on screen:
         ☐ Validate synchronization using the link in sources
     ☐ Create an api consts header file and put all const values there (barrier limits, tracker limits, etc.)
     ☐ Add logging
-    ☐ Discard image data using undefined oldLayout in transition (add a cmd for this, or add this to the barrier struct???)
+    ✔ Discard image data using undefined oldLayout in transition (add a cmd for this, or add this to the barrier struct???) @done (3/13/2021, 7:52:00 PM)
 
 Cleanup & other:
     ☐ Remove useless common driver stuff (drv/common)

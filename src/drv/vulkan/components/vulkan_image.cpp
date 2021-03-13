@@ -129,16 +129,8 @@ void DrvVulkanResourceTracker::validate_memory_access(
         //     transitionLayoutAfter = currentLayout;  // TODO this should be used after the access
         // }
     }
-    if (changeLayout) {
+    if (changeLayout)
         drv::drv_assert(write, "Only writing operations can transform the image layout");
-        barrier.oldLayout =
-          /*subresourceData.layout*/;  // TODO or undefined if current data is not needed
-        barrier.newLayout = resultLayout;
-    }
-    else {
-        barrier.oldLayout = subresourceData.layout;
-        barrier.newLayout = subresourceData.layout;
-    }
 }
 
 // void DrvVulkanResourceTracker::validate_memory_access(
@@ -256,11 +248,14 @@ void DrvVulkanResourceTracker::add_memory_access(
     }
 }
 
-void DrvVulkanResourceTracker::add_memory_sync(
-  drv::CommandBufferPtr cmdBuffer, drv::ImagePtr _image, uint32_t mipLevel, uint32_t arrayIndex,
-  drv::AspectFlagBits aspect, bool flush, drv::PipelineStages dstStages,
-  drv::MemoryBarrier::AccessFlagBitType invalidateMask, bool transferOwnership,
-  drv::QueueFamilyPtr newOwner, bool transitionLayout, drv::ImageLayout resultLayout) {
+void DrvVulkanResourceTracker::add_memory_sync(drv::CommandBufferPtr cmdBuffer,
+                                               drv::ImagePtr _image, uint32_t mipLevel,
+                                               uint32_t arrayIndex, drv::AspectFlagBits aspect,
+                                               bool flush, drv::PipelineStages dstStages,
+                                               drv::MemoryBarrier::AccessFlagBitType invalidateMask,
+                                               bool transferOwnership, drv::QueueFamilyPtr newOwner,
+                                               bool transitionLayout, bool discardContent,
+                                               drv::ImageLayout resultLayout) {
     drv_vulkan::Image* image = convertImage(_image);
     const drv::PipelineStages::FlagType stages = dstStages.resolve();
     drv_vulkan::Image::SubresourceTrackData& subresourceData =
@@ -291,8 +286,7 @@ void DrvVulkanResourceTracker::add_memory_sync(
         subresourceData.dirtyMask = 0;
         subresourceData.visible = invalidateMask;
         subresourceData.usableStages = stages;
-        barrier.oldLayout =
-          /*subresourceData.layout*/;  // TODO or undefined if current data is not needed
+        barrier.oldLayout = discardContent ? drv::ImageLayout::UNDEFINED : subresourceData.layout;
         barrier.newLayout = resultLayout;
     }
     else {
@@ -302,11 +296,14 @@ void DrvVulkanResourceTracker::add_memory_sync(
     appendBarrier(cmdBuffer, barrierSrcStages, barrierDstStages, std::move(barrier));
 }
 
-void DrvVulkanResourceTracker::add_memory_sync(
-  drv::CommandBufferPtr cmdBuffer, drv::ImagePtr _image, uint32_t numSubresourceRanges,
-  const drv::ImageSubresourceRange* subresourceRanges, bool flush, drv::PipelineStages dstStages,
-  drv::MemoryBarrier::AccessFlagBitType invalidateMask, bool transferOwnership,
-  drv::QueueFamilyPtr newOwner, bool transitionLayout, drv::ImageLayout resultLayout) {
+void DrvVulkanResourceTracker::add_memory_sync(drv::CommandBufferPtr cmdBuffer,
+                                               drv::ImagePtr _image, uint32_t numSubresourceRanges,
+                                               const drv::ImageSubresourceRange* subresourceRanges,
+                                               bool flush, drv::PipelineStages dstStages,
+                                               drv::MemoryBarrier::AccessFlagBitType invalidateMask,
+                                               bool transferOwnership, drv::QueueFamilyPtr newOwner,
+                                               bool transitionLayout, bool discardContent,
+                                               drv::ImageLayout resultLayout) {
     drv::drv_assert(numSubresourceRanges > 0, "No subresource ranges given for add_memory_sync");
     drv_vulkan::Image* image = convertImage(_image);
     if (numSubresourceRanges) {
@@ -320,7 +317,7 @@ void DrvVulkanResourceTracker::add_memory_sync(
                   subresourcesHandled[mip][drv::get_aspect_id(aspect)] |= 1 << layer;
                   add_memory_sync(cmdBuffer, _image, mip, layer, aspect, flush, dstStages,
                                   invalidateMask, transferOwnership, newOwner, transitionLayout,
-                                  resultLayout);
+                                  discardContent, resultLayout);
               });
         }
     }
@@ -330,6 +327,6 @@ void DrvVulkanResourceTracker::add_memory_sync(
                 for (uint32_t aspectId = 0; aspectId < drv::ASPECTS_COUNT; ++aspectId)
                     add_memory_sync(cmdBuffer, _image, mip, layer, drv::get_aspect_by_id(aspectId),
                                     flush, dstStages, invalidateMask, transferOwnership, newOwner,
-                                    transitionLayout, resultLayout);
+                                    transitionLayout, discardContent, resultLayout);
     }
 }

@@ -362,14 +362,14 @@ class DrvVulkanResourceTracker final : public drv::ResourceTracker
                          drv::PipelineStages dstStages,
                          drv::MemoryBarrier::AccessFlagBitType invalidateMask,
                          bool transferOwnership, drv::QueueFamilyPtr newOwner,
-                         bool transitionLayout, drv::ImageLayout resultLayout);
+                         bool transitionLayout, bool discardContent, drv::ImageLayout resultLayout);
     void add_memory_sync(drv::CommandBufferPtr cmdBuffer, drv::ImagePtr image,
                          uint32_t numSubresourceRanges,
                          const drv::ImageSubresourceRange* subresourceRanges, bool flush,
                          drv::PipelineStages dstStages,
                          drv::MemoryBarrier::AccessFlagBitType invalidateMask,
                          bool transferOwnership, drv::QueueFamilyPtr newOwner,
-                         bool transitionLayout, drv::ImageLayout resultLayout);
+                         bool transitionLayout, bool discardContent, drv::ImageLayout resultLayout);
 
     void appendBarrier(drv::CommandBufferPtr cmdBuffer, drv::PipelineStages srcStage,
                        drv::PipelineStages dstStage,
