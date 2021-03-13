@@ -9,8 +9,6 @@ namespace drv_vulkan
 {
 struct Image
 {
-    static constexpr uint32_t MAX_MIP_LEVELS = 16;
-    static constexpr uint32_t MAX_ARRAY_SIZE = 32;
     VkImage image = VK_NULL_HANDLE;
     uint32_t numMipLevels = 1;
     uint32_t arraySize = 1;
@@ -27,7 +25,9 @@ struct Image
     struct TrackingState
     {
         PerResourceTrackData trackData;
-        SubresourceTrackData subresourceTrackInfo[MAX_ARRAY_SIZE][MAX_MIP_LEVELS];
+        SubresourceTrackData subresourceTrackInfo[drv::ImageSubresourceSet::MAX_ARRAY_SIZE]
+                                                 [drv::ImageSubresourceSet::MAX_MIP_LEVELS]
+                                                 [drv::ASPECTS_COUNT];
     };
 
     TrackingState trackingStates[MAX_NUM_TRACKING_SLOTS];

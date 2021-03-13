@@ -415,14 +415,10 @@ COMPARE_ENUMS(unsigned int, drv::MemoryBarrier::AccessFlagBits::MEMORY_READ_BIT,
 COMPARE_ENUMS(unsigned int, drv::MemoryBarrier::AccessFlagBits::MEMORY_WRITE_BIT,
               VK_ACCESS_MEMORY_WRITE_BIT);
 
-COMPARE_ENUMS(unsigned int, drv::ImageSubresourceRange::AspectFlagBits::COLOR_BIT,
-              VK_IMAGE_ASPECT_COLOR_BIT);
-COMPARE_ENUMS(unsigned int, drv::ImageSubresourceRange::AspectFlagBits::DEPTH_BIT,
-              VK_IMAGE_ASPECT_DEPTH_BIT);
-COMPARE_ENUMS(unsigned int, drv::ImageSubresourceRange::AspectFlagBits::STENCIL_BIT,
-              VK_IMAGE_ASPECT_STENCIL_BIT);
-COMPARE_ENUMS(unsigned int, drv::ImageSubresourceRange::AspectFlagBits::METADATA_BIT,
-              VK_IMAGE_ASPECT_METADATA_BIT);
+COMPARE_ENUMS(unsigned int, drv::AspectFlagBits::COLOR_BIT, VK_IMAGE_ASPECT_COLOR_BIT);
+COMPARE_ENUMS(unsigned int, drv::AspectFlagBits::DEPTH_BIT, VK_IMAGE_ASPECT_DEPTH_BIT);
+COMPARE_ENUMS(unsigned int, drv::AspectFlagBits::STENCIL_BIT, VK_IMAGE_ASPECT_STENCIL_BIT);
+COMPARE_ENUMS(unsigned int, drv::AspectFlagBits::METADATA_BIT, VK_IMAGE_ASPECT_METADATA_BIT);
 
 COMPARE_ENUMS(unsigned int, drv::DependencyFlagBits::BY_REGION_BIT, VK_DEPENDENCY_BY_REGION_BIT);
 COMPARE_ENUMS(unsigned int, drv::DependencyFlagBits::DEVICE_GROUP_BIT,

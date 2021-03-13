@@ -396,13 +396,6 @@ uint32_t drv::get_num_trackers() {
     return current_driver_interface->get_num_trackers();
 }
 
-// void drv::cmd_clear_image(CommandBufferPtr cmdBuffer, ImagePtr image, ImageLayout currentLayout,
-//                           const ClearColorValue* clearColors, uint32_t ranges,
-//                           const ImageSubresourceRange* subresourceRanges) {
-//     return current_driver_interface->cmd_clear_image(cmdBuffer, image, currentLayout, clearColors,
-//                                                      ranges, subresourceRanges);
-// }
-
 bool drv::begin_primary_command_buffer(CommandBufferPtr cmdBuffer, bool singleTime,
                                        bool simultaneousUse) {
     return current_driver_interface->begin_primary_command_buffer(cmdBuffer, singleTime,
@@ -412,18 +405,3 @@ bool drv::begin_primary_command_buffer(CommandBufferPtr cmdBuffer, bool singleTi
 bool drv::end_primary_command_buffer(CommandBufferPtr cmdBuffer) {
     return current_driver_interface->end_primary_command_buffer(cmdBuffer);
 }
-
-// TODO
-
-// bool drv::load_shaders(LogicalDevicePtr device) {
-//     const DriverRegistry::ShaderLoaders& shaderLoaders = get_driver_registry().shaderLoaders;
-//     drv_assert(shaderLoaders.load_shaders != nullptr || shaderLoaders.free_shaders != nullptr,
-//                "Shader loader has not been initialized");
-//     return shaderLoaders.load_shaders(device);
-// }
-
-// bool drv::free_shaders(LogicalDevicePtr device) {
-//     const DriverRegistry::ShaderLoaders& shaderLoaders = get_driver_registry().shaderLoaders;
-//     drv_assert(shaderLoaders.free_shaders != nullptr, "Shader loader has not been initialized");
-//     return shaderLoaders.free_shaders(device);
-// }

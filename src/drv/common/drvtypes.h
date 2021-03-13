@@ -2,6 +2,7 @@
 
 #include <cassert>
 #include <cstdint>
+#include <limits>
 
 #include <string_hash.h>
 
@@ -979,51 +980,152 @@ enum class ImageLayout : ImageLayoutMask
 };
 ImageLayoutMask get_all_layouts_mask();
 
+using ImageAspectBitType = uint32_t;
+enum AspectFlagBits : ImageAspectBitType
+{
+    COLOR_BIT = 0x00000001,
+    DEPTH_BIT = 0x00000002,
+    STENCIL_BIT = 0x00000004,
+    METADATA_BIT = 0x00000008,
+    // Provided by VK_VERSION_1_1
+    // PLANE_0_BIT = 0x00000010,
+    // // Provided by VK_VERSION_1_1
+    // PLANE_1_BIT = 0x00000020,
+    // // Provided by VK_VERSION_1_1
+    // PLANE_2_BIT = 0x00000040,
+    // // Provided by VK_EXT_image_drm_format_modifier
+    // MEMORY_PLANE_0_BIT_EXT = 0x00000080,
+    // // Provided by VK_EXT_image_drm_format_modifier
+    // MEMORY_PLANE_1_BIT_EXT = 0x00000100,
+    // // Provided by VK_EXT_image_drm_format_modifier
+    // MEMORY_PLANE_2_BIT_EXT = 0x00000200,
+    // // Provided by VK_EXT_image_drm_format_modifier
+    // MEMORY_PLANE_3_BIT_EXT = 0x00000400,
+    // // Provided by VK_KHR_sampler_ycbcr_conversion
+    // PLANE_0_BIT_KHR = PLANE_0_BIT,
+    // // Provided by VK_KHR_sampler_ycbcr_conversion
+    // PLANE_1_BIT_KHR = PLANE_1_BIT,
+    // // Provided by VK_KHR_sampler_ycbcr_conversion
+    // PLANE_2_BIT_KHR = PLANE_2_BIT,
+};
+static constexpr ImageAspectBitType ALL_ASPECTS =
+  COLOR_BIT | DEPTH_BIT | STENCIL_BIT | METADATA_BIT;
+static constexpr ImageAspectBitType ASPECTS_COUNT = 4;
+static_assert(ALL_ASPECTS + 1 == 1 << ASPECTS_COUNT);
+
+static constexpr uint32_t get_aspect_id(AspectFlagBits aspect) {
+    switch (aspect) {
+        case COLOR_BIT:
+            return 0;
+        case DEPTH_BIT:
+            return 1;
+        case STENCIL_BIT:
+            return 2;
+        case METADATA_BIT:
+            return 3;
+    }
+}
+static constexpr AspectFlagBits get_aspect_by_id(uint32_t id) {
+    return static_cast<AspectFlagBits>(1 << id);
+}
+static_assert(get_aspect_by_id(get_aspect_id(COLOR_BIT)) == COLOR_BIT);
+static_assert(get_aspect_by_id(get_aspect_id(DEPTH_BIT)) == DEPTH_BIT);
+static_assert(get_aspect_by_id(get_aspect_id(STENCIL_BIT)) == STENCIL_BIT);
+static_assert(get_aspect_by_id(get_aspect_id(METADATA_BIT)) == METADATA_BIT);
+
 struct ImageSubresourceRange
 {
     static constexpr uint32_t REMAINING_MIP_LEVELS = std::numeric_limits<uint32_t>::max();
     static constexpr uint32_t REMAINING_ARRAY_LAYERS = std::numeric_limits<uint32_t>::max();
-    using ImageAspectBitType = uint32_t;
-    enum AspectFlagBits : ImageAspectBitType
-    {
-        COLOR_BIT = 0x00000001,
-        DEPTH_BIT = 0x00000002,
-        STENCIL_BIT = 0x00000004,
-        METADATA_BIT = 0x00000008,
-        // Provided by VK_VERSION_1_1
-        // PLANE_0_BIT = 0x00000010,
-        // // Provided by VK_VERSION_1_1
-        // PLANE_1_BIT = 0x00000020,
-        // // Provided by VK_VERSION_1_1
-        // PLANE_2_BIT = 0x00000040,
-        // // Provided by VK_EXT_image_drm_format_modifier
-        // MEMORY_PLANE_0_BIT_EXT = 0x00000080,
-        // // Provided by VK_EXT_image_drm_format_modifier
-        // MEMORY_PLANE_1_BIT_EXT = 0x00000100,
-        // // Provided by VK_EXT_image_drm_format_modifier
-        // MEMORY_PLANE_2_BIT_EXT = 0x00000200,
-        // // Provided by VK_EXT_image_drm_format_modifier
-        // MEMORY_PLANE_3_BIT_EXT = 0x00000400,
-        // // Provided by VK_KHR_sampler_ycbcr_conversion
-        // PLANE_0_BIT_KHR = PLANE_0_BIT,
-        // // Provided by VK_KHR_sampler_ycbcr_conversion
-        // PLANE_1_BIT_KHR = PLANE_1_BIT,
-        // // Provided by VK_KHR_sampler_ycbcr_conversion
-        // PLANE_2_BIT_KHR = PLANE_2_BIT,
-    };
     ImageAspectBitType aspectMask;
     uint32_t baseMipLevel;
     uint32_t levelCount;
     uint32_t baseArrayLayer;
     uint32_t layerCount;
-    bool overlap(const ImageSubresourceRange& b) {
-        // if (baseMip)
-        // TODO
+
+    template <typename F>
+    void traverse(F&& f) const {
+        for (uint32_t layer = baseArrayLayer; layer < ; ++layer)
+            for (uint32_t mip = baseMipLevel; mip < ; ++mip)
+                for (uint32_t aspect = 0; aspect < ASPECTS_COUNT; ++aspect)
+                    if (aspectMask & get_aspect_by_id(aspect))
+                        f(layer, mip, get_aspect_by_id(aspect));
     }
-    // bool contains(const ImageSubresourceRange& b) {
-    //     // if (baseMip)
-    //     // TODO
-    // }
+};
+
+struct ImageSubresourceSet
+{
+    static constexpr uint32_t MAX_MIP_LEVELS = 16;
+    static constexpr uint32_t MAX_ARRAY_SIZE = 32;
+    using LayerBit = uint32_t;
+    using UsedMap = uint64_t;
+    UsedMap usedLayers = std::numeric_limits<UsedMap>::max();
+    LayerBit layerBits[MAX_MIP_LEVELS][ASPECTS_COUNT] = {std::numeric_limits<LayerBit>::max()};
+    static_assert(sizeof(LayerBit) * 8 <= MAX_ARRAY_SIZE);
+    static_assert(sizeof(UsedMap) * 8 <= MAX_MIP_LEVELS * ASPECTS_COUNT);
+    void set0() {
+        usedLayers = 0;
+        std::memset(&layerBits[0][0], 0, sizeof(LayerBit) * MAX_MIP_LEVELS * ASPECTS_COUNT);
+    }
+    void set(uint32_t baseLayer, uint32_t numLayers, uint32_t baseMip, uint32_t numMips,
+             ImageAspectBitType aspect) {
+        set0();
+        LayerBit layer = 0;
+        for (uint32_t i = 0; i < numLayers; ++i)
+            layer = (layer << 1) | 1;
+        layer <<= baseLayer;
+        if (!layer)
+            return;
+        for (uint32_t i = 0; i < numMips; ++i) {
+            for (uint32_t j = 0; j < ASPECTS_COUNT; ++j) {
+                if (aspect & get_aspect_by_id(j)) {
+                    layerBits[i + baseMip][j] = layer;
+                    usedLayers |= 1 << ((i + baseMip) * ASPECTS_COUNT + j);
+                }
+            }
+        }
+    }
+    void set(const ImageSubresourceRange& range) {
+        set(range.baseArrayLayer, , range.baseMipLevel, , range.aspectMask);
+    }
+
+    void add(uint32_t layer, uint32_t mip, AspectFlagBits aspect) {
+        usedLayers |= 1 << (mip * ASPECTS_COUNT + get_aspect_id(aspect));
+        layerBits[mip][get_aspect_id(aspect)] |= 1 << layer;
+    }
+
+    bool overlap(const ImageSubresourceSet& b) {
+        UsedMap common = usedLayers & b.usedLayers;
+        if (!common)
+            return false;
+        for (uint32_t i = 0; i < MAX_MIP_LEVELS * ASPECTS_COUNT; ++i) {
+            if (!(common & (1 << i)))
+                continue;
+            if (layerBits[i / ASPECTS_COUNT][i % ASPECTS_COUNT]
+                & b.layerBits[i / ASPECTS_COUNT][i % ASPECTS_COUNT])
+                return true;
+        }
+        return false;
+    }
+    void merge(const ImageSubresourceSet& b) {
+        usedLayers |= b.usedLayers;
+        for (uint32_t i = 0; i < MAX_MIP_LEVELS; ++i)
+            for (uint32_t j = 0; j < ASPECTS_COUNT; ++j)
+                layerBits[i][j] |= b.layerBits[i][j];
+    }
+    template <typename F>
+    void traverse(F&& f) const {
+        if (!usedLayers)
+            return;
+        for (uint32_t i = 0; i < MAX_MIP_LEVELS * ASPECTS_COUNT; ++i) {
+            if (!(usedLayers & (1 << i)))
+                continue;
+            const LayerBit& currentLayerBits = layerBits[i / ASPECTS_COUNT][i % ASPECTS_COUNT];
+            for (uint32_t layer = 0; layer < MAX_ARRAY_SIZE && (currentLayerBits >> layer); ++layer)
+                if ((1 << layer) & currentLayerBits)
+                    f(layer, i / ASPECTS_COUNT, get_aspect_by_id(i % ASPECTS_COUNT));
+        }
+    }
 };
 
 // struct ImageMemoryBarrier

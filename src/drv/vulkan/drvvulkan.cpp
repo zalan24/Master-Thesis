@@ -207,6 +207,17 @@ void DrvVulkanResourceTracker::add_memory_sync(
 
 void DrvVulkanResourceTracker::appendBarrier(drv::PipelineStages srcStage,
                                              drv::PipelineStages dstStage,
+                                             ImageSingleSubresourceMemoryBarrier&& imageBarrier) {
+    ImageMemoryBarrier barrier;
+    static_cast<ResourceBarrier&>(barrier) = static_cast<ResourceBarrier&>(imageBarrier);
+    barrier.image = imageBarrier.image;
+    barrier.subresourceSet.set0();
+    barrier.subresourceSet.add(imageBarrier.layer, imageBarrier.mipLevel, imageBarrier.aspect);
+    appendBarrier(srcStage, dstStage, std::move(barrier));
+}
+
+void DrvVulkanResourceTracker::appendBarrier(drv::PipelineStages srcStage,
+                                             drv::PipelineStages dstStage,
                                              ImageMemoryBarrier&& imageBarrier) {
     if (!(srcStages.resolve() & (~drv::PipelineStages::TOP_OF_PIPE_BIT)))
         return;
@@ -263,18 +274,17 @@ bool DrvVulkanResourceTracker::merge(const BarrierInfo& barrier0, BarrierInfo& b
             if (barrier0.imageBarriers[i].dstFamily != barrier.imageBarriers[j].dstFamily)
                 return false;
 
-            if (!barrier0.imageBarriers[i].subresourceRange.overlap(
-                  barrier.imageBarriers[j].subresourceRange))
-                continue;
-            // subresource dependent data
-            if (barrier0.imageBarriers[i].oldLayout != barrier.imageBarriers[j].oldLayout)
-                return false;
-            if (barrier0.imageBarriers[i].newLayout != barrier.imageBarriers[j].newLayout)
-                return false;
+            if (barrier0.imageBarriers[i].subresourceRange.overlap(
+                  barrier.imageBarriers[j].subresourceRange)) {
+                // subresource dependent data
+                if (barrier0.imageBarriers[i].oldLayout != barrier.imageBarriers[j].oldLayout)
+                    return false;
+                if (barrier0.imageBarriers[i].newLayout != barrier.imageBarriers[j].newLayout)
+                    return false;
+            }
         }
     }
-    if (barrier0.numImageRanges + barrier.numImageRanges - commonImages
-        > MAX_SUBRESOURCE_RANGES_IN_BARRIER)
+    if (barrier0.numImageRanges + barrier.numImageRanges - commonImages > MAX_RESOURCE_IN_BARRIER)
         return false;
     TODO;  // image subresource has to be refactored
 }

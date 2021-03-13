@@ -247,7 +247,7 @@ class DrvVulkanResourceTracker final : public drv::ResourceTracker
  private:
     uint32_t trackingSlot;
 
-    static constexpr uint32_t MAX_SUBRESOURCE_RANGES_IN_BARRIER = 16;
+    static constexpr uint32_t MAX_RESOURCE_IN_BARRIER = 8;
     static constexpr uint32_t MAX_UNFLUSHED_BARRIER = 4;
 
     struct ResourceBarrier
@@ -260,13 +260,24 @@ class DrvVulkanResourceTracker final : public drv::ResourceTracker
         drv::QueueFamilyPtr dstFamily = drv::NULL_HANDLE;
     };
 
+    struct ImageSingleSubresourceMemoryBarrier : ResourceBarrier
+    {
+        drv::ImageLayout oldLayout;
+        drv::ImageLayout newLayout;
+
+        drv::ImagePtr image;
+        uint32_t layer;
+        uint32_t mipLevel;
+        drv::AspectFlagBits aspect;
+    };
+
     struct ImageMemoryBarrier : ResourceBarrier
     {
         drv::ImageLayout oldLayout;
         drv::ImageLayout newLayout;
 
         drv::ImagePtr image;
-        drv::ImageSubresourceRange subresourceRange;
+        drv::ImageSubresourceSet subresourceSet;
     };
 
     struct BarrierInfo
@@ -278,7 +289,7 @@ class DrvVulkanResourceTracker final : public drv::ResourceTracker
         // uint32_t numBufferRanges = 0;
         // drv::BufferSubresourceRange
         uint32_t numImageRanges = 0;
-        ImageMemoryBarrier imageBarriers[MAX_SUBRESOURCE_RANGES_IN_BARRIER];
+        ImageMemoryBarrier imageBarriers[MAX_RESOURCE_IN_BARRIER];
 
         operator bool() const { return srcStage.stageFlags != 0; }
     };
@@ -299,7 +310,8 @@ class DrvVulkanResourceTracker final : public drv::ResourceTracker
                                 bool read, bool write, bool sharedRes, drv::PipelineStages stages,
                                 drv::MemoryBarrier::AccessFlagBitType accessMask);
     void validate_memory_access(drv::ImagePtr image, uint32_t mipLevel, uint32_t arrayIndex,
-                                bool read, bool write, drv::PipelineStages stages,
+                                drv::AspectFlagBits aspect, bool read, bool write,
+                                drv::PipelineStages stages,
                                 drv::MemoryBarrier::AccessFlagBitType accessMask,
                                 uint32_t requiredLayoutMask, bool changeLayout,
                                 drv::ImageLayout resultLayout);
@@ -315,8 +327,9 @@ class DrvVulkanResourceTracker final : public drv::ResourceTracker
                            bool write, bool sharedRes, drv::PipelineStages stages,
                            drv::MemoryBarrier::AccessFlagBitType accessMask,
                            bool manualValidation = false);
-    void add_memory_access(drv::ImagePtr image, uint32_t mipLevel, uint32_t arrayIndex, bool read,
-                           bool write, drv::PipelineStages stages,
+    void add_memory_access(drv::ImagePtr image, uint32_t mipLevel, uint32_t arrayIndex,
+                           drv::AspectFlagBits aspect, bool read, bool write,
+                           drv::PipelineStages stages,
                            drv::MemoryBarrier::AccessFlagBitType accessMask,
                            uint32_t requiredLayoutMask, bool changeLayout,
                            drv::ImageLayout resultLayout, bool manualValidation = false);
@@ -337,8 +350,8 @@ class DrvVulkanResourceTracker final : public drv::ResourceTracker
                          bool transferOwnership, drv::QueueFamilyPtr newOwner,
                          drv::PipelineStages& barrierSrcStage, drv::PipelineStages& barrierDstStage,
                          ResourceBarrier& barrier);
-    void add_memory_sync(drv::ImagePtr image, uint32_t mipLevel, uint32_t arrayIndex, bool flush,
-                         drv::PipelineStages dstStages,
+    void add_memory_sync(drv::ImagePtr image, uint32_t mipLevel, uint32_t arrayIndex,
+                         drv::AspectFlagBits aspect, bool flush, drv::PipelineStages dstStages,
                          drv::MemoryBarrier::AccessFlagBitType invalidateMask,
                          bool transferOwnership, drv::QueueFamilyPtr newOwner,
                          bool transitionLayout, drv::ImageLayout resultLayout);
@@ -349,6 +362,8 @@ class DrvVulkanResourceTracker final : public drv::ResourceTracker
                          bool transferOwnership, drv::QueueFamilyPtr newOwner,
                          bool transitionLayout, drv::ImageLayout resultLayout);
 
+    void appendBarrier(drv::PipelineStages srcStage, drv::PipelineStages dstStage,
+                       ImageSingleSubresourceMemoryBarrier&& imageBarrier);
     void appendBarrier(drv::PipelineStages srcStage, drv::PipelineStages dstStage,
                        ImageMemoryBarrier&& imageBarrier);
 

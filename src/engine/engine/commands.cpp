@@ -13,13 +13,9 @@ void Engine::CommandBufferRecorder::cmdClearImage(
   drv::ImagePtr image, const drv::ClearColorValue* clearColors, uint32_t ranges,
   const drv::ImageSubresourceRange* subresourceRanges) {
     drv::ImageSubresourceRange defVal;
-    defVal.aspectMask = drv::ImageSubresourceRange::COLOR_BIT;
-    defVal.baseMipLevel = 0;
-    defVal.levelCount = drv::ImageSubresourceRange::REMAINING_MIP_LEVELS;
-    defVal.baseArrayLayer = 0;
-    defVal.layerCount = drv::ImageSubresourceRange::REMAINING_ARRAY_LAYERS;
     if (ranges == 0) {
         ranges = 1;
+        defVal.set(numLayers, numMips, drv::ImageSubresourceRange::COLOR_BIT);
         subresourceRanges = &defVal;
     }
     nodeHandle->getNode().getResourceTracker(queue)->cmd_clear_image(
