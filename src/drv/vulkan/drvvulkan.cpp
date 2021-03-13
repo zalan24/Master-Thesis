@@ -159,21 +159,25 @@ void DrvVulkanResourceTracker::add_memory_sync(
   drv_vulkan::PerResourceTrackData& resourceData,
   drv_vulkan::PerSubresourceRangeTrackData& subresourceData, bool flush,
   drv::PipelineStages dstStages, drv::MemoryBarrier::AccessFlagBitType invalidateMask,
-  bool transferOwnership, drv::QueueFamilyPtr newOwner) {
+  bool transferOwnership, drv::QueueFamilyPtr newOwner, drv::PipelineStages& barrierSrcStage,
+  drv::PipelineStages& barrierDstStage, ResourceBarrier& barrier) {
     const drv::PipelineStages::FlagType stages = dstStages.resolve();
     if (transferOwnership && resourceData.ownership != newOwner) {
-        srcOwnership = resourceData.ownership;
-        dstOwnership = newOwner;
+        barrier.srcFamily = resourceData.ownership;
+        barrier.dstFamily = newOwner;
         resourceData.ownership = newOwner;
+        barrierDstStage.add(dstStages);
+        subresourceData.usableStages = stages;
     }
     if (flush && subresourceData.dirtyMask != 0) {
+        barrierDstStage.add(dstStages);
         dstStages |= stages;
-        waitStages |= subresourceData.ongoingWrites | subresourceData.usableStages
-                      | subresourceData.ongoingFlushes | subresourceData.ongoingInvalidations;
-        srcAccessMask = subresourceData.dirtyMask;
-        if (subresourceData.ongoingFlushes != 0 || subresourceData.ongoingInvalidations != 0) {
-            TODO;  // invalidate
-        }
+        barrierSrcStage.add(subresourceData.ongoingWrites | subresourceData.usableStages
+                            | subresourceData.ongoingFlushes
+                            | subresourceData.ongoingInvalidations);
+        barrier.sourceAccessFlags = subresourceData.dirtyMask;
+        if (subresourceData.ongoingFlushes != 0 || subresourceData.ongoingInvalidations != 0)
+            invalidate(BAD_USAGE, "Memory flushed twice");
         subresourceData.ongoingWrites = 0;
         subresourceData.ongoingFlushes = stages;
         subresourceData.dirtyMask = 0;
@@ -184,19 +188,97 @@ void DrvVulkanResourceTracker::add_memory_sync(
     const drv::PipelineStages::FlagType missingVisibility =
       invalidateMask ^ (invalidateMask & subresourceData.visible);
     if (missingVisibility != 0) {
-        waitStages |= subresourceData.ongoingFlushes | subresourceData.usableStages;
-        dstStages |= stages;
-        dstAccessMask |= missingVisibility;
+        barrierSrcStage.add(subresourceData.ongoingFlushes | subresourceData.usableStages);
+        barrierDstStage.add(dstStages);
+        barrier.dstAccessFlags |= missingVisibility;
         subresourceData.ongoingInvalidations |= stages;
         subresourceData.usableStages |= stages;
         subresourceData.visible |= missingVisibility;
     }
     const drv::PipelineStages::FlagType missingUsability =
       stages ^ (stages & subresourceData.usableStages);
-    if (missingUsability != 0) {
-        // TODO log this is the result of invalid barrier usage
-        waitStages |= subresourceData.usableStages;
-        dstStages |= missingUsability;
+    if (missingUsability != 0 && subresourceData.usableStages != 0) {
+        invalidate(BAD_USAGE, "Memory barrier with this kind of usage is missing");
+        barrierSrcStage.add(subresourceData.usableStages);
+        barrierDstStage.add(missingUsability);
         subresourceData.usableStages |= missingUsability;
     }
 }
+
+void DrvVulkanResourceTracker::appendBarrier(drv::PipelineStages srcStage,
+                                             drv::PipelineStages dstStage,
+                                             ImageMemoryBarrier&& imageBarrier) {
+    if (!(srcStages.resolve() & (~drv::PipelineStages::TOP_OF_PIPE_BIT)))
+        return;
+    if (dstStages.stageFlags == 0)
+        return;
+    BarrierInfo barrier;
+    barrier.srcStage = srcStage;
+    barrier.dstStage = dstStage;
+    barrier.numImageRanges = 1;
+    barrier.imageBarriers[0] = std::move(imageBarrier);
+    uint32_t freeSpot = MAX_UNFLUSHED_BARRIER;
+    for (uint32_t i = 0; i < MAX_UNFLUSHED_BARRIER; ++i) {
+        if (!barriers[i]) {
+            freeSpot = i;
+            continue;
+        }
+        if (swappable(barriers[i], barrier))
+            continue;
+        if (!merge(barriers[i], barrier)) {
+            freeSpot = i;
+            flushBarrier(barriers[i]);
+        }
+    }
+    if (freeSpot == MAX_UNFLUSHED_BARRIER) {
+        // TODO this can be improved with a better selection strategy
+        flushBarrier(barriers[0]);
+        freeSpot = 0;
+    }
+    barriers[freeSpot] = std::move(barrier);
+}
+
+bool DrvVulkanResourceTracker::swappable(const BarrierInfo& barrier0,
+                                         const BarrierInfo& barrier1) const {
+    return (barrier0.dstStage.resolve() & barrier1.srcStage.resolve()) == 0
+           && (barrier0.srcStage.resolve() & barrier1.dstStage.resolve()) == 0;
+}
+
+bool DrvVulkanResourceTracker::merge(const BarrierInfo& barrier0, BarrierInfo& barrier) const {
+    if ((barrier0.dstStage.resolve() & barrier.srcStage.resolve()) == 0)
+        return false;
+    uint32_t i = 0;
+    uint32_t j = 0;
+    uint32_t commonImages = 0;
+    while (i < barrier0.numImageRanges && j < barrier.numImageRanges) {
+        if (barrier0.imageBarriers[i].image < barrier.imageBarriers[j].image)
+            i++;
+        else if (barrier0.imageBarriers[j].image < barrier.imageBarriers[i].image)
+            j++;
+        else {  // equals
+            commonImages++;
+            // image dependent data
+            if (barrier0.imageBarriers[i].srcFamily != barrier.imageBarriers[j].srcFamily)
+                return false;
+            if (barrier0.imageBarriers[i].dstFamily != barrier.imageBarriers[j].dstFamily)
+                return false;
+
+            if (!barrier0.imageBarriers[i].subresourceRange.overlap(
+                  barrier.imageBarriers[j].subresourceRange))
+                continue;
+            // subresource dependent data
+            if (barrier0.imageBarriers[i].oldLayout != barrier.imageBarriers[j].oldLayout)
+                return false;
+            if (barrier0.imageBarriers[i].newLayout != barrier.imageBarriers[j].newLayout)
+                return false;
+        }
+    }
+    if (barrier0.numImageRanges + barrier.numImageRanges - commonImages
+        > MAX_SUBRESOURCE_RANGES_IN_BARRIER)
+        return false;
+    TODO;  // image subresource has to be refactored
+}
+
+// TODO
+// void DrvVulkanResourceTracker::flushBarrier(BarrierInfo& barrier)
+// {}

@@ -283,6 +283,9 @@ Get a triangle on screen:
                 ☐ Usage in a node/frame which has an appropriate dependency and the resource is registered
                     ☐ Need to check dependency offset and place of usage (cpu/queue)
         ☐ Validate synchronization using the link in sources
+    ☐ Create an api consts header file and put all const values there (barrier limits, tracker limits, etc.)
+    ☐ Add logging
+    ☐ Discard image data using undefined oldLayout in transition (add a cmd for this, or add this to the barrier struct???)
 
 Cleanup & other:
     ☐ Remove useless common driver stuff (drv/common)

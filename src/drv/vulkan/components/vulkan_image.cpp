@@ -117,10 +117,12 @@ void DrvVulkanResourceTracker::validate_memory_access(
     if (!(static_cast<drv::ImageLayoutMask>(subresourceData.layout) & requiredLayoutMask)) {
         invalidate(INVALID, "Layout transitions must be placed manually");
         drv::drv_assert(write, "Cannot auto place layout transition for a read only access");
-        if (write) {
-            transitionLayout = ;
-            transitionLayoutAfter = currentLayout;  // TODO this should be used after the access
-        }
+        // TODO this invalid usage can be turned into BAD_USAGE by transitioning the image to the correct layout
+        // then transitioning it back after the access
+        // if (write) {
+        //     transitionLayout = ;
+        //     transitionLayoutAfter = currentLayout;  // TODO this should be used after the access
+        // }
     }
     if (changeLayout)
         drv::drv_assert(write, "Only writing operations can transform the image layout");
@@ -257,13 +259,23 @@ void DrvVulkanResourceTracker::add_memory_sync(drv::ImagePtr _image, uint32_t mi
     // 'subresourceData.layout != resultLayout' excluded for consistent behaviour
     if (transitionLayout)
         flush = true;
+    drv::PipelineStages barrierSrcStages;
+    drv::PipelineStages barrierDstStages;
+    ImageMemoryBarrier barrier;
+    barrier.image = _image;
+    barrier.subresourceRange.aspectMask = ;
+    barrier.subresourceRange.baseMipLevel = mipLevel;
+    barrier.subresourceRange.baseArrayLayer = arrayIndex;
+    barrier.subresourceRange.levelCount = 1;
+    barrier.subresourceRange.layerCount = 1;
     add_memory_sync(image->trackingStates[trackingSlot].trackData, subresourceData, flush,
-                    dstStages, invalidateMask, transferOwnership, newOwner);
+                    dstStages, invalidateMask, transferOwnership, newOwner, barrierSrcStages,
+                    barrierDstStages, barrier);
     if (transitionLayout && subresourceData.layout != resultLayout) {
-        TODO;  // sync
-        waitStages |= subresourceData.ongoingWrites | subresourceData.ongoingInvalidations
-                      | subresourceData.ongoingReads | subresourceData.ongoingFlushes;
-        dstStages |= stages;
+        barrierSrcStages.add(subresourceData.ongoingWrites | subresourceData.ongoingInvalidations
+                             | subresourceData.ongoingReads | subresourceData.ongoingFlushes);
+        barrierDstStages.add(dstStages);
+        barrier.dstAccessFlags |= invalidateMask;
         subresourceData.ongoingWrites = 0;
         subresourceData.ongoingInvalidations = invalidateMask;
         subresourceData.ongoingReads = 0;
@@ -271,8 +283,15 @@ void DrvVulkanResourceTracker::add_memory_sync(drv::ImagePtr _image, uint32_t mi
         subresourceData.dirtyMask = 0;
         subresourceData.visible = invalidateMask;
         subresourceData.usableStages = stages;
-        layoutTransition = resultLayout;
+        barrier.oldLayout =
+          /*subresourceData.layout*/;  // TODO or undefined if current data is not needed
+        barrier.newLayout = resultLayout;
     }
+    else {
+        barrier.oldLayout = subresourceData.layout;
+        barrier.newLayout = subresourceData.layout;
+    }
+    appendBarrier(barrierSrcStages, barrierDstStages, std::move(barrier));
 }
 
 void DrvVulkanResourceTracker::add_memory_sync(drv::ImagePtr _image, uint32_t numSubresourceRanges,

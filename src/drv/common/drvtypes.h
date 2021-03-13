@@ -196,8 +196,8 @@ struct PipelineStages
         // FRAGMENT_DENSITY_PROCESS_BIT_EXT = 0x00800000,
         // FLAG_BITS_MAX_ENUM = 0x7FFFFFFF
     };
-    FlagType stageFlags;
-    PipelineStages() : stageFlags(TOP_OF_PIPE_BIT) {}
+    FlagType stageFlags = 0;
+    PipelineStages() = default;
     PipelineStages(FlagType flags) : stageFlags(flags) {}
     PipelineStages(PipelineStageFlagBits stage) : stageFlags(stage) {}
     void add(FlagType flags) { stageFlags |= flags; }
@@ -1016,10 +1016,14 @@ struct ImageSubresourceRange
     uint32_t levelCount;
     uint32_t baseArrayLayer;
     uint32_t layerCount;
-    static bool overlap(const ImageSubresourceRange& a, const ImageSubresourceRange& b) {
+    bool overlap(const ImageSubresourceRange& b) {
         // if (baseMip)
         // TODO
     }
+    // bool contains(const ImageSubresourceRange& b) {
+    //     // if (baseMip)
+    //     // TODO
+    // }
 };
 
 // struct ImageMemoryBarrier

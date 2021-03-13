@@ -244,10 +244,52 @@ class DrvVulkanResourceTracker final : public drv::ResourceTracker
                          const drv::ClearColorValue* clearColors, uint32_t ranges,
                          const drv::ImageSubresourceRange* subresourceRanges) override;
 
+ private:
+    uint32_t trackingSlot;
+
+    static constexpr uint32_t MAX_SUBRESOURCE_RANGES_IN_BARRIER = 16;
+    static constexpr uint32_t MAX_UNFLUSHED_BARRIER = 4;
+
+    struct ResourceBarrier
+    {
+        drv::MemoryBarrier::AccessFlagBitType sourceAccessFlags = 0;
+        drv::MemoryBarrier::AccessFlagBitType dstAccessFlags = 0;
+
+        // ownership transfer
+        drv::QueueFamilyPtr srcFamily = drv::NULL_HANDLE;
+        drv::QueueFamilyPtr dstFamily = drv::NULL_HANDLE;
+    };
+
+    struct ImageMemoryBarrier : ResourceBarrier
+    {
+        drv::ImageLayout oldLayout;
+        drv::ImageLayout newLayout;
+
+        drv::ImagePtr image;
+        drv::ImageSubresourceRange subresourceRange;
+    };
+
+    struct BarrierInfo
+    {
+        drv::PipelineStages srcStage;
+        drv::PipelineStages dstStage;
+        // drv::DependencyFlagBits dependencyFlags; // TODO
+        // TODO buffer data
+        // uint32_t numBufferRanges = 0;
+        // drv::BufferSubresourceRange
+        uint32_t numImageRanges = 0;
+        ImageMemoryBarrier imageBarriers[MAX_SUBRESOURCE_RANGES_IN_BARRIER];
+
+        operator bool() const { return srcStage.stageFlags != 0; }
+    };
+
+    BarrierInfo barriers[MAX_UNFLUSHED_BARRIER];
+
     // TODO add debug info about involved commands
     enum InvalidationLevel
     {
         SUBOPTIMAL,
+        BAD_USAGE,  // but not dangerous
         INVALID
     };
     void invalidate(InvalidationLevel level, const char* message) const;
@@ -292,7 +334,9 @@ class DrvVulkanResourceTracker final : public drv::ResourceTracker
                          drv_vulkan::PerSubresourceRangeTrackData& subresourceData, bool flush,
                          drv::PipelineStages dstStages,
                          drv::MemoryBarrier::AccessFlagBitType invalidateMask,
-                         bool transferOwnership, drv::QueueFamilyPtr newOwner);
+                         bool transferOwnership, drv::QueueFamilyPtr newOwner,
+                         drv::PipelineStages& barrierSrcStage, drv::PipelineStages& barrierDstStage,
+                         ResourceBarrier& barrier);
     void add_memory_sync(drv::ImagePtr image, uint32_t mipLevel, uint32_t arrayIndex, bool flush,
                          drv::PipelineStages dstStages,
                          drv::MemoryBarrier::AccessFlagBitType invalidateMask,
@@ -305,6 +349,11 @@ class DrvVulkanResourceTracker final : public drv::ResourceTracker
                          bool transferOwnership, drv::QueueFamilyPtr newOwner,
                          bool transitionLayout, drv::ImageLayout resultLayout);
 
- private:
-    uint32_t trackingSlot;
+    void appendBarrier(drv::PipelineStages srcStage, drv::PipelineStages dstStage,
+                       ImageMemoryBarrier&& imageBarrier);
+
+    void flushBarrier(BarrierInfo& barrier);
+    bool swappable(const BarrierInfo& barrier0, const BarrierInfo& barrier1) const;
+    // if mergable => barrier0 := {}, barrier := barrier0 + barrier
+    bool merge(BarrierInfo& barrier0, BarrierInfo& barrier) const;
 };
