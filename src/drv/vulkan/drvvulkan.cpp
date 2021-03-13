@@ -1,8 +1,14 @@
 #include "drvvulkan.h"
 
+#include <vulkan/vulkan.h>
+
+#include <corecontext.h>
+
 #include <drverror.h>
 
-#include "vulkan_resource_track_data.h"
+#include "components/vulkan_resource_track_data.h"
+
+using namespace drv_vulkan;
 
 std::unique_lock<std::mutex> DrvVulkan::lock_queue(drv::LogicalDevicePtr device,
                                                    drv::QueuePtr queue) {
@@ -61,7 +67,8 @@ DrvVulkan::~DrvVulkan() {
 void DrvVulkanResourceTracker::validate_memory_access(
   PerResourceTrackData& resourceData, PerSubresourceRangeTrackData& subresourceData, bool read,
   bool write, bool sharedRes, drv::PipelineStages stages,
-  drv::MemoryBarrier::AccessFlagBitType accessMask) {
+  drv::MemoryBarrier::AccessFlagBitType accessMask, drv::PipelineStages& barrierSrcStage,
+  drv::PipelineStages& barrierDstStage, ResourceBarrier& barrier) {
     accessMask = drv::MemoryBarrier::resolve(accessMask);
 
     drv::QueueFamilyPtr transferOwnership = drv::NULL_HANDLE;
@@ -111,20 +118,16 @@ void DrvVulkanResourceTracker::validate_memory_access(
         }
     }
     if (invalidateMask != 0 || transferOwnership != drv::NULL_HANDLE || waitStages != 0)
-        add_memory_sync(resourceData, subresourceData, flush, currentStages, invalidateMask,
-                        transferOwnership != drv::NULL_HANDLE, transferOwnership);
+        add_memory_sync(resourceData, subresourceData, flush, stages, invalidateMask,
+                        transferOwnership != drv::NULL_HANDLE, transferOwnership, barrierSrcStage,
+                        barrierDstStage, barrier);
 }
 
 void DrvVulkanResourceTracker::add_memory_access(PerResourceTrackData& resourceData,
                                                  PerSubresourceRangeTrackData& subresourceData,
                                                  bool read, bool write, bool sharedRes,
                                                  drv::PipelineStages stages,
-                                                 drv::MemoryBarrier::AccessFlagBitType accessMask,
-                                                 bool manualValidation = false) {
-    if (!manualValidation)
-        validate_memory_access(resourceData, subresourceData, read, write, sharedRes, stages,
-                               accessMask);
-
+                                                 drv::MemoryBarrier::AccessFlagBitType accessMask) {
     accessMask = drv::MemoryBarrier::resolve(accessMask);
     drv::QueueFamilyPtr currentFamily = driver->get_queue_family(device, queue);
     drv::PipelineStages::FlagType currentStages = stages.resolve();
@@ -171,7 +174,6 @@ void DrvVulkanResourceTracker::add_memory_sync(
     }
     if (flush && subresourceData.dirtyMask != 0) {
         barrierDstStage.add(dstStages);
-        dstStages |= stages;
         barrierSrcStage.add(subresourceData.ongoingWrites | subresourceData.usableStages
                             | subresourceData.ongoingFlushes
                             | subresourceData.ongoingInvalidations);
@@ -205,23 +207,29 @@ void DrvVulkanResourceTracker::add_memory_sync(
     }
 }
 
-void DrvVulkanResourceTracker::appendBarrier(drv::PipelineStages srcStage,
+void DrvVulkanResourceTracker::appendBarrier(drv::CommandBufferPtr cmdBuffer,
+                                             drv::PipelineStages srcStage,
                                              drv::PipelineStages dstStage,
                                              ImageSingleSubresourceMemoryBarrier&& imageBarrier) {
+    if (!(srcStage.resolve() & (~drv::PipelineStages::TOP_OF_PIPE_BIT)))
+        return;
+    if (dstStage.stageFlags == 0)
+        return;
     ImageMemoryBarrier barrier;
     static_cast<ResourceBarrier&>(barrier) = static_cast<ResourceBarrier&>(imageBarrier);
     barrier.image = imageBarrier.image;
     barrier.subresourceSet.set0();
     barrier.subresourceSet.add(imageBarrier.layer, imageBarrier.mipLevel, imageBarrier.aspect);
-    appendBarrier(srcStage, dstStage, std::move(barrier));
+    appendBarrier(cmdBuffer, srcStage, dstStage, std::move(barrier));
 }
 
-void DrvVulkanResourceTracker::appendBarrier(drv::PipelineStages srcStage,
+void DrvVulkanResourceTracker::appendBarrier(drv::CommandBufferPtr cmdBuffer,
+                                             drv::PipelineStages srcStage,
                                              drv::PipelineStages dstStage,
                                              ImageMemoryBarrier&& imageBarrier) {
-    if (!(srcStages.resolve() & (~drv::PipelineStages::TOP_OF_PIPE_BIT)))
+    if (!(srcStage.resolve() & (~drv::PipelineStages::TOP_OF_PIPE_BIT)))
         return;
-    if (dstStages.stageFlags == 0)
+    if (dstStage.stageFlags == 0)
         return;
     BarrierInfo barrier;
     barrier.srcStage = srcStage;
@@ -238,12 +246,12 @@ void DrvVulkanResourceTracker::appendBarrier(drv::PipelineStages srcStage,
             continue;
         if (!merge(barriers[i], barrier)) {
             freeSpot = i;
-            flushBarrier(barriers[i]);
+            flushBarrier(cmdBuffer, barriers[i]);
         }
     }
     if (freeSpot == MAX_UNFLUSHED_BARRIER) {
         // TODO this can be improved with a better selection strategy
-        flushBarrier(barriers[0]);
+        flushBarrier(cmdBuffer, barriers[0]);
         freeSpot = 0;
     }
     barriers[freeSpot] = std::move(barrier);
@@ -255,7 +263,7 @@ bool DrvVulkanResourceTracker::swappable(const BarrierInfo& barrier0,
            && (barrier0.srcStage.resolve() & barrier1.dstStage.resolve()) == 0;
 }
 
-bool DrvVulkanResourceTracker::merge(const BarrierInfo& barrier0, BarrierInfo& barrier) const {
+bool DrvVulkanResourceTracker::merge(BarrierInfo& barrier0, BarrierInfo& barrier) const {
     if ((barrier0.dstStage.resolve() & barrier.srcStage.resolve()) == 0)
         return false;
     uint32_t i = 0;
@@ -273,22 +281,128 @@ bool DrvVulkanResourceTracker::merge(const BarrierInfo& barrier0, BarrierInfo& b
                 return false;
             if (barrier0.imageBarriers[i].dstFamily != barrier.imageBarriers[j].dstFamily)
                 return false;
-
-            if (barrier0.imageBarriers[i].subresourceRange.overlap(
-                  barrier.imageBarriers[j].subresourceRange)) {
-                // subresource dependent data
-                if (barrier0.imageBarriers[i].oldLayout != barrier.imageBarriers[j].oldLayout)
-                    return false;
-                if (barrier0.imageBarriers[i].newLayout != barrier.imageBarriers[j].newLayout)
-                    return false;
-            }
+            if (barrier0.imageBarriers[i].oldLayout != barrier.imageBarriers[j].oldLayout)
+                return false;
+            if (barrier0.imageBarriers[i].newLayout != barrier.imageBarriers[j].newLayout)
+                return false;
+            if (barrier0.imageBarriers[i].sourceAccessFlags
+                != barrier.imageBarriers[j].sourceAccessFlags)
+                return false;
+            if (barrier0.imageBarriers[i].dstAccessFlags != barrier.imageBarriers[j].dstAccessFlags)
+                return false;
         }
     }
-    if (barrier0.numImageRanges + barrier.numImageRanges - commonImages > MAX_RESOURCE_IN_BARRIER)
+    const uint32_t totalImageCount =
+      barrier0.numImageRanges + barrier.numImageRanges - commonImages;
+    if (totalImageCount > MAX_RESOURCE_IN_BARRIER)
         return false;
-    TODO;  // image subresource has to be refactored
+    i = barrier0.numImageRanges;
+    j = barrier.numImageRanges;
+    barrier.srcStage.add(barrier0.srcStage);
+    barrier.dstStage.add(barrier0.dstStage);
+    barrier.numImageRanges = totalImageCount;
+    for (uint32_t k = totalImageCount; k > 0; --k) {
+        if (i > 0 && j > 0
+            && barrier0.imageBarriers[i - 1].image == barrier.imageBarriers[j - 1].image) {
+            drv::drv_assert(k >= j);
+            if (k != j)
+                barrier.imageBarriers[k - 1] = std::move(barrier.imageBarriers[j - 1]);
+            barrier.imageBarriers[k - 1].subresourceSet.merge(
+              barrier0.imageBarriers[i - 1].subresourceSet);
+            barrier.imageBarriers[k - 1].sourceAccessFlags |=
+              barrier0.imageBarriers[i - 1].sourceAccessFlags;
+            barrier.imageBarriers[k - 1].dstAccessFlags |=
+              barrier0.imageBarriers[i - 1].dstAccessFlags;
+            i--;
+            j--;
+        }
+        else if (j == 0
+                 || (i > 0
+                     && barrier0.imageBarriers[i - 1].image > barrier.imageBarriers[j - 1].image)) {
+            drv::drv_assert(k > j);
+            barrier.imageBarriers[k - 1] = std::move(barrier0.imageBarriers[i - 1]);
+            i--;
+        }
+        else {
+            drv::drv_assert(k >= j);
+            if (k != j)
+                barrier.imageBarriers[k - 1] = std::move(barrier.imageBarriers[j - 1]);
+            j--;
+        }
+    }
+    barrier0.srcStage = 0;
+    barrier0.dstStage = 0;
+    barrier0.numImageRanges = 0;
+    return true;
 }
 
-// TODO
-// void DrvVulkanResourceTracker::flushBarrier(BarrierInfo& barrier)
-// {}
+void DrvVulkanResourceTracker::flushBarrier(drv::CommandBufferPtr cmdBuffer, BarrierInfo& barrier) {
+    if (barrier.dstStage.stageFlags == 0)
+        return;
+    if (barrier.srcStage.stageFlags == 0)
+        return;
+
+    TODO;
+
+    // StackMemory::MemoryHandle<VkMemoryBarrier> barrierMem(memoryBarrierCount, TEMPMEM);
+    //     StackMemory::MemoryHandle<VkBufferMemoryBarrier> bufferMem(bufferBarrierCount, TEMPMEM);
+    //     StackMemory::MemoryHandle<VkImageMemoryBarrier> imageMem(imageBarrierCount, TEMPMEM);
+    //     VkMemoryBarrier* barriers = reinterpret_cast<VkMemoryBarrier*>(barrierMem.get());
+    //     VkBufferMemoryBarrier* vkBufferBarriers =
+    //       reinterpret_cast<VkBufferMemoryBarrier*>(bufferMem.get());
+    //     VkImageMemoryBarrier* vkImageBarriers = reinterpret_cast<VkImageMemoryBarrier*>(imageMem.get());
+    //     drv::drv_assert(barriers != nullptr || memoryBarrierCount == 0,
+    //                     "Could not allocate memory for barriers");
+    //     drv::drv_assert(bufferBarriers != nullptr || bufferBarrierCount == 0,
+    //                     "Could not allocate memory for buffer barriers");
+    //     drv::drv_assert(imageBarriers != nullptr || imageBarrierCount == 0,
+    //                     "Could not allocate memory for image barriers");
+
+    //     for (uint32_t i = 0; i < memoryBarrierCount; ++i) {
+    //         barriers[i].sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER;
+    //         barriers[i].pNext = nullptr;
+    //         barriers[i].srcAccessMask = static_cast<VkAccessFlags>(memoryBarriers[i].sourceAccessFlags);
+    //         barriers[i].dstAccessMask = static_cast<VkAccessFlags>(memoryBarriers[i].dstAccessFlags);
+    //     }
+
+    //     for (uint32_t i = 0; i < bufferBarrierCount; ++i) {
+    //         vkBufferBarriers[i].sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
+    //         vkBufferBarriers[i].pNext = nullptr;
+    //         vkBufferBarriers[i].srcAccessMask =
+    //           static_cast<VkAccessFlags>(bufferBarriers[i].sourceAccessFlags);
+    //         vkBufferBarriers[i].dstAccessMask =
+    //           static_cast<VkAccessFlags>(bufferBarriers[i].dstAccessFlags);
+    //         vkBufferBarriers[i].srcQueueFamilyIndex = convertFamily(bufferBarriers[i].srcFamily);
+    //         vkBufferBarriers[i].dstQueueFamilyIndex = convertFamily(bufferBarriers[i].dstFamily);
+    //         vkBufferBarriers[i].buffer = convertBuffer(bufferBarriers[i].buffer);
+    //         vkBufferBarriers[i].size = bufferBarriers[i].size;
+    //         vkBufferBarriers[i].offset = bufferBarriers[i].offset;
+    //     }
+
+    //     for (uint32_t i = 0; i < imageBarrierCount; ++i) {
+    //         vkImageBarriers[i].sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+    //         vkImageBarriers[i].pNext = nullptr;
+    //         vkImageBarriers[i].srcAccessMask =
+    //           static_cast<VkAccessFlags>(imageBarriers[i].sourceAccessFlags);
+    //         vkImageBarriers[i].dstAccessMask =
+    //           static_cast<VkAccessFlags>(imageBarriers[i].dstAccessFlags);
+    //         vkImageBarriers[i].image = convertImage(imageBarriers[i].image)->image;
+    //         vkImageBarriers[i].srcQueueFamilyIndex = convertFamily(imageBarriers[i].srcFamily);
+    //         vkImageBarriers[i].dstQueueFamilyIndex = convertFamily(imageBarriers[i].dstFamily);
+    //         vkImageBarriers[i].newLayout = convertImageLayout(imageBarriers[i].newLayout);
+    //         vkImageBarriers[i].oldLayout = convertImageLayout(imageBarriers[i].oldLayout);
+    //         vkImageBarriers[i].subresourceRange =
+    //           convertSubresourceRange(imageBarriers[i].subresourceRange);
+    //     }
+
+    //     vkCmdPipelineBarrier(convertCommandBuffer(commandBuffer),
+    //                          static_cast<VkPipelineStageFlags>(sourceStage.stageFlags),
+    //                          static_cast<VkPipelineStageFlags>(dstStage.stageFlags),
+    //                          static_cast<VkDependencyFlags>(dependencyFlags), memoryBarrierCount,
+    //                          barriers, bufferBarrierCount, vkBufferBarriers, imageBarrierCount,
+    //                          vkImageBarriers);
+
+    barrier.dstStage = 0;
+    barrier.srcStage = 0;
+    barrier.numImageRanges = 0;
+}

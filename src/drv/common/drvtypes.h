@@ -1107,6 +1107,9 @@ struct ImageSubresourceSet
         }
         return false;
     }
+    bool operator==(const ImageSubresourceSet& b) const {
+        return std::memcmp(this, &b, sizeof(*this) == 0);
+    }
     void merge(const ImageSubresourceSet& b) {
         usedLayers |= b.usedLayers;
         for (uint32_t i = 0; i < MAX_MIP_LEVELS; ++i)
@@ -1283,8 +1286,8 @@ struct ClearColorValue
 using ImageResourceUsageFlag = uint64_t;
 enum ImageResourceUsage : ImageResourceUsageFlag
 {
-    IMAGE_USAGE_TRANSFER_DESTINATION = 1 << 0,
-    IMAGE_USAGE_PRESENT = 1 << 1
+    IMAGE_USAGE_TRANSFER_DESTINATION = 1ull << 0,
+    IMAGE_USAGE_PRESENT = 1ull << 1
 };
 
 PipelineStages get_image_usage_stages(ImageResourceUsage usage);

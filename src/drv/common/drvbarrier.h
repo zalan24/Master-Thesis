@@ -43,9 +43,8 @@ class ImageMemoryBarrier
     //   : ImageMemoryBarrier(_image, numRanges, _ranges, static_cast<ImageResourceUsageFlag>(usage),
     //                        transition, targetFamily) {}
 
-    friend class DrvVulkanResourceTracker;
+    friend class ResourceTracker;
 
- private:
     ImagePtr image = NULL_HANDLE;
     uint32_t numSubresourceRanges = 0;
     ImageSubresourceRange* ranges;
@@ -54,6 +53,7 @@ class ImageMemoryBarrier
     bool transitionLayout = false;
     ImageLayout resultLayout;
 
+ private:
     static bool pick_layout(ImageResourceUsageFlag usages, ImageLayout& result);
     static drv::ImageLayoutMask get_accepted_layouts(ImageResourceUsageFlag usages);
 };

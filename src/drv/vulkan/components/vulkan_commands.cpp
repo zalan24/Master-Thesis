@@ -4,6 +4,7 @@
 
 #include <corecontext.h>
 
+#include <drvbarrier.h>
 #include <drverror.h>
 
 #include "vulkan_conversions.h"
@@ -45,7 +46,7 @@ void DrvVulkanResourceTracker::cmd_clear_image(
       | static_cast<drv::ImageLayoutMask>(drv::ImageLayout::GENERAL);
 
     drv::ImageLayout currentLayout = drv::ImageLayout::UNDEFINED;
-    add_memory_access(image, ranges, subresourceRanges, false, true,
+    add_memory_access(cmdBuffer, image, ranges, subresourceRanges, false, true,
                       drv::PipelineStages::TRANSFER_BIT,
                       drv::MemoryBarrier::AccessFlagBits::TRANSFER_WRITE_BIT, requiredLayoutMask,
                       true, &currentLayout, false, drv::ImageLayout::TRANSFER_DST_OPTIMAL);
@@ -288,7 +289,22 @@ void DrvVulkanResourceTracker::cmd_clear_image(
 
 void DrvVulkanResourceTracker::cmd_image_barrier(drv::CommandBufferPtr cmdBuffer,
                                                  drv::ImageMemoryBarrier&& barrier) {
-    // TODO
-    add_memory_sync(barrier.image, barrier.numSubresourceRanges, barrier.ranges, , , , , ,
-                    barrier.transitionLayout, barrier.resultLayout);
+    drv::PipelineStages dstStages;
+    drv::ImageResourceUsageFlag usage = 1;
+    drv::ImageResourceUsageFlag usages = barrier.usages;
+    drv::MemoryBarrier::AccessFlagBitType invalidateMask = 0;
+    while (usages) {
+        if (usages & 1) {
+            dstStages.add(drv::get_image_usage_stages(static_cast<drv::ImageResourceUsage>(usage)));
+            invalidateMask |=
+              drv::get_image_usage_accesses(static_cast<drv::ImageResourceUsage>(usage));
+        }
+        usage <<= 1;
+        usages >>= 1;
+    }
+    bool flush = true;  // no reason not to flush
+    // extra sync is only placed, if it has dirty cache
+    add_memory_sync(cmdBuffer, barrier.image, barrier.numSubresourceRanges, barrier.ranges, flush,
+                    dstStages, invalidateMask, barrier.requestedOwnership != drv::NULL_HANDLE,
+                    barrier.requestedOwnership, barrier.transitionLayout, barrier.resultLayout);
 }
