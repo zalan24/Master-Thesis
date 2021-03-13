@@ -194,9 +194,10 @@ class DrvVulkan final : public drv::IDriver
 class DrvVulkanResourceTracker final : public drv::ResourceTracker
 {
  public:
-    DrvVulkanResourceTracker(DrvVulkan* _driver, drv::LogicalDevicePtr _device,
-                             drv::QueuePtr _queue)
-      : ResourceTracker(_driver, _device, _queue), trackingSlot(_driver->acquire_tracking_slot()) {}
+    DrvVulkanResourceTracker(DrvVulkan* _driver, drv::PhysicalDevicePtr physicalDevice,
+                             drv::LogicalDevicePtr _device, drv::QueuePtr _queue)
+      : ResourceTracker(_driver, physicalDevice, _device, _queue),
+        trackingSlot(_driver->acquire_tracking_slot()) {}
     ~DrvVulkanResourceTracker() override {
         static_cast<DrvVulkan*>(driver)->release_tracking_slot(trackingSlot);
     }

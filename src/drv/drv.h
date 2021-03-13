@@ -47,7 +47,9 @@ class IResourceTracker;
 bool init(const Driver* drivers, unsigned int count);
 bool close();
 
-std::unique_ptr<IResourceTracker> create_resource_tracker(QueuePtr queue, LogicalDevicePtr device);
+std::unique_ptr<IResourceTracker> create_resource_tracker(QueuePtr queue,
+                                                          PhysicalDevicePtr physicalDevice,
+                                                          LogicalDevicePtr device);
 
 InstancePtr create_instance(const InstanceCreateInfo* info, bool _default = true);
 bool delete_instance(InstancePtr ptr);

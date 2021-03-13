@@ -224,7 +224,7 @@ struct PipelineStages
             ret |= COMPUTE_SHADER_BIT;
         return ret;
     }
-    FlagType resolve(CommandTypeBase queueSupport) const {
+    FlagType resolve(CommandTypeMask queueSupport) const {
         FlagType ret = stageFlags;
         if (ret & ALL_GRAPHICS_BIT)
             ret = (ret ^ ALL_GRAPHICS_BIT) | get_graphics_bits();
@@ -232,7 +232,7 @@ struct PipelineStages
             ret = (ret ^ ALL_COMMANDS_BIT) | get_all_bits(queueSupport);
         return ret;
     }
-    uint32_t getStageCount(CommandTypeBase queueSupport) const {
+    uint32_t getStageCount(CommandTypeMask queueSupport) const {
         FlagType stages = resolve(queueSupport);
         uint32_t ret = 0;
         while (stages) {
@@ -241,7 +241,7 @@ struct PipelineStages
         }
         return ret;
     }
-    PipelineStageFlagBits getStage(CommandTypeBase queueSupport, uint32_t index) const {
+    PipelineStageFlagBits getStage(CommandTypeMask queueSupport, uint32_t index) const {
         FlagType stages = resolve(queueSupport);
         FlagType ret = 1;
         while (ret <= stages) {

@@ -83,7 +83,7 @@ void DrvVulkanResourceTracker::validate_memory_access(
                    "Resource has exclusive usage and it's owned by a different queue family");
         transferOwnership = currentFamily;
     }
-    drv::PipelineStages::FlagType currentStages = stages.resolve();
+    drv::PipelineStages::FlagType currentStages = stages.resolve(queueSupport);
     if (subresourceData.ongoingInvalidations != 0) {
         invalidate(SUBOPTIMAL, "Resource has some ongoing invalidations at the time of an access");
         waitStages |= subresourceData.ongoingInvalidations;
@@ -131,7 +131,7 @@ void DrvVulkanResourceTracker::add_memory_access(PerResourceTrackData& resourceD
                                                  drv::MemoryBarrier::AccessFlagBitType accessMask) {
     accessMask = drv::MemoryBarrier::resolve(accessMask);
     drv::QueueFamilyPtr currentFamily = driver->get_queue_family(device, queue);
-    drv::PipelineStages::FlagType currentStages = stages.resolve();
+    drv::PipelineStages::FlagType currentStages = stages.resolve(queueSupport);
     drv::drv_assert(subresourceData.ongoingInvalidations == 0);
     subresourceData.ongoingInvalidations = 0;
     if (read) {
@@ -165,7 +165,7 @@ void DrvVulkanResourceTracker::add_memory_sync(
   drv::PipelineStages dstStages, drv::MemoryBarrier::AccessFlagBitType invalidateMask,
   bool transferOwnership, drv::QueueFamilyPtr newOwner, drv::PipelineStages& barrierSrcStage,
   drv::PipelineStages& barrierDstStage, ResourceBarrier& barrier) {
-    const drv::PipelineStages::FlagType stages = dstStages.resolve();
+    const drv::PipelineStages::FlagType stages = dstStages.resolve(queueSupport);
     if (transferOwnership && resourceData.ownership != newOwner) {
         barrier.srcFamily = resourceData.ownership;
         barrier.dstFamily = newOwner;
@@ -212,7 +212,7 @@ void DrvVulkanResourceTracker::appendBarrier(drv::CommandBufferPtr cmdBuffer,
                                              drv::PipelineStages srcStage,
                                              drv::PipelineStages dstStage,
                                              ImageSingleSubresourceMemoryBarrier&& imageBarrier) {
-    if (!(srcStage.resolve() & (~drv::PipelineStages::TOP_OF_PIPE_BIT)))
+    if (!(srcStage.resolve(queueSupport) & (~drv::PipelineStages::TOP_OF_PIPE_BIT)))
         return;
     if (dstStage.stageFlags == 0)
         return;
@@ -228,7 +228,7 @@ void DrvVulkanResourceTracker::appendBarrier(drv::CommandBufferPtr cmdBuffer,
                                              drv::PipelineStages srcStage,
                                              drv::PipelineStages dstStage,
                                              ImageMemoryBarrier&& imageBarrier) {
-    if (!(srcStage.resolve() & (~drv::PipelineStages::TOP_OF_PIPE_BIT)))
+    if (!(srcStage.resolve(queueSupport) & (~drv::PipelineStages::TOP_OF_PIPE_BIT)))
         return;
     if (dstStage.stageFlags == 0)
         return;
@@ -260,12 +260,13 @@ void DrvVulkanResourceTracker::appendBarrier(drv::CommandBufferPtr cmdBuffer,
 
 bool DrvVulkanResourceTracker::swappable(const BarrierInfo& barrier0,
                                          const BarrierInfo& barrier1) const {
-    return (barrier0.dstStage.resolve() & barrier1.srcStage.resolve()) == 0
-           && (barrier0.srcStage.resolve() & barrier1.dstStage.resolve()) == 0;
+    return (barrier0.dstStage.resolve(queueSupport) & barrier1.srcStage.resolve(queueSupport)) == 0
+           && (barrier0.srcStage.resolve(queueSupport) & barrier1.dstStage.resolve(queueSupport))
+                == 0;
 }
 
 bool DrvVulkanResourceTracker::merge(BarrierInfo& barrier0, BarrierInfo& barrier) const {
-    if ((barrier0.dstStage.resolve() & barrier.srcStage.resolve()) == 0)
+    if ((barrier0.dstStage.resolve(queueSupport) & barrier.srcStage.resolve(queueSupport)) == 0)
         return false;
     uint32_t i = 0;
     uint32_t j = 0;

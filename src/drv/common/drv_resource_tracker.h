@@ -13,8 +13,13 @@ namespace drv
 class ResourceTracker
 {
  public:
-    ResourceTracker(IDriver* _driver, LogicalDevicePtr _device, QueuePtr _queue)
-      : driver(_driver), device(_device), queue(_queue) {}
+    ResourceTracker(IDriver* _driver, PhysicalDevicePtr physicalDevice, LogicalDevicePtr _device,
+                    QueuePtr _queue)
+      : driver(_driver),
+        device(_device),
+        queue(_queue),
+        queueSupport(
+          driver->get_command_type_mask(physicalDevice, driver->get_queue_family(queue))) {}
     virtual ~ResourceTracker() {}
 
     // TODO
@@ -40,5 +45,6 @@ class ResourceTracker
     IDriver* driver;
     LogicalDevicePtr device;
     QueuePtr queue;
+    CommandTypeMask queueSupport;
 };
 }  // namespace drv

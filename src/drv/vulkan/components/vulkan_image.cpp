@@ -257,7 +257,7 @@ void DrvVulkanResourceTracker::add_memory_sync(drv::CommandBufferPtr cmdBuffer,
                                                bool transitionLayout, bool discardContent,
                                                drv::ImageLayout resultLayout) {
     drv_vulkan::Image* image = convertImage(_image);
-    const drv::PipelineStages::FlagType stages = dstStages.resolve();
+    const drv::PipelineStages::FlagType stages = dstStages.resolve(queueSupport);
     drv_vulkan::Image::SubresourceTrackData& subresourceData =
       image->trackingStates[trackingSlot]
         .subresourceTrackInfo[arrayIndex][mipLevel][drv::get_aspect_id(aspect)];
