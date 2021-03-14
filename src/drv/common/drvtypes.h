@@ -2,6 +2,7 @@
 
 #include <cassert>
 #include <cstdint>
+#include <cstring>
 #include <limits>
 
 #include <string_hash.h>
@@ -987,6 +988,8 @@ enum AspectFlagBits : ImageAspectBitType
     DEPTH_BIT = 0x00000002,
     STENCIL_BIT = 0x00000004,
     METADATA_BIT = 0x00000008,
+    // TODO if more are enabled, check the ranges
+    // larger numbers cannot be used with UsedAspectMask (this type is for aspect id, not aspect value)
     // Provided by VK_VERSION_1_1
     // PLANE_0_BIT = 0x00000010,
     // // Provided by VK_VERSION_1_1
@@ -1057,53 +1060,66 @@ struct ImageSubresourceSet
 {
     static constexpr uint32_t MAX_MIP_LEVELS = 16;
     static constexpr uint32_t MAX_ARRAY_SIZE = 32;
-    using LayerBit = uint32_t;
-    using UsedMap = uint64_t;
-    UsedMap usedLayers = std::numeric_limits<UsedMap>::max();
-    LayerBit layerBits[MAX_MIP_LEVELS][ASPECTS_COUNT] = {std::numeric_limits<LayerBit>::max()};
-    static_assert(sizeof(LayerBit) * 8 <= MAX_ARRAY_SIZE);
-    static_assert(sizeof(UsedMap) * 8 <= MAX_MIP_LEVELS * ASPECTS_COUNT);
+    using MipBit = uint16_t;
+    using UsedLayerMap = uint32_t;
+    using UsedAspectMap = uint8_t;
+    UsedLayerMap usedLayers = 0;
+    UsedLayerMap usedAspects = 0;
+    MipBit mipBits[MAX_ARRAY_SIZE][ASPECTS_COUNT] = {0};
+    static_assert(MAX_MIP_LEVELS <= sizeof(MipBit) * 8);
+    static_assert(MAX_ARRAY_SIZE <= sizeof(UsedLayerMap) * 8);
+    static_assert(ASPECTS_COUNT <= sizeof(UsedAspectMap) * 8);
     void set0() {
         usedLayers = 0;
-        std::memset(&layerBits[0][0], 0, sizeof(LayerBit) * MAX_MIP_LEVELS * ASPECTS_COUNT);
+        usedAspects = 0;
+        std::memset(&mipBits[0][0], 0, sizeof(MipBit) * MAX_ARRAY_SIZE * ASPECTS_COUNT);
     }
     void set(uint32_t baseLayer, uint32_t numLayers, uint32_t baseMip, uint32_t numMips,
              ImageAspectBitType aspect) {
         set0();
-        LayerBit layer = 0;
-        for (uint32_t i = 0; i < numLayers; ++i)
-            layer = (layer << 1) | 1;
-        layer <<= baseLayer;
-        if (!layer)
+        MipBit mip = 0;
+        for (uint32_t i = 0; i < numMips; ++i)
+            mip = (mip << 1) | 1;
+        mip <<= baseMip;
+        if (!mip)
             return;
-        for (uint32_t i = 0; i < numMips; ++i) {
+        for (uint32_t i = 0; i < numLayers; ++i) {
             for (uint32_t j = 0; j < ASPECTS_COUNT; ++j) {
                 if (aspect & get_aspect_by_id(j)) {
-                    layerBits[i + baseMip][j] = layer;
-                    usedLayers |= 1 << ((i + baseMip) * ASPECTS_COUNT + j);
+                    mipBits[i + baseLayer][j] = mip;
+                    usedLayers |= 1 << (i + baseLayer);
+                    usedAspects |= 1 << j;
                 }
             }
         }
     }
-    void set(const ImageSubresourceRange& range) {
-        set(range.baseArrayLayer, , range.baseMipLevel, , range.aspectMask);
+    void set(const ImageSubresourceRange& range, uint32_t imageLayers, uint32_t imageMips) {
+        set(range.baseArrayLayer,
+            range.layerCount == range.REMAINING_ARRAY_LAYERS ? imageLayers - range.baseArrayLayer
+                                                             : range.layerCount,
+            range.baseMipLevel,
+            range.levelCount == range.REMAINING_MIP_LEVELS ? imageMips - range.baseMipLevel
+                                                           : range.levelCount,
+            range.aspectMask);
     }
 
     void add(uint32_t layer, uint32_t mip, AspectFlagBits aspect) {
-        usedLayers |= 1 << (mip * ASPECTS_COUNT + get_aspect_id(aspect));
-        layerBits[mip][get_aspect_id(aspect)] |= 1 << layer;
+        usedLayers |= 1 << layer;
+        usedAspects |= aspect;
+        mipBits[layer][get_aspect_id(aspect)] |= 1 << mip;
     }
 
     bool overlap(const ImageSubresourceSet& b) {
-        UsedMap common = usedLayers & b.usedLayers;
-        if (!common)
+        UsedLayerMap commonLayers = usedLayers & b.usedLayers;
+        UsedAspectMap commonAspects = usedAspects & b.usedAspects;
+        if (!commonLayers || !commonAspects)
             return false;
-        for (uint32_t i = 0; i < MAX_MIP_LEVELS * ASPECTS_COUNT; ++i) {
-            if (!(common & (1 << i)))
+        for (uint32_t i = 0; i < MAX_ARRAY_SIZE && (commonLayers >> i); ++i) {
+            if (!(commonLayers & (1 << i)))
                 continue;
-            if (layerBits[i / ASPECTS_COUNT][i % ASPECTS_COUNT]
-                & b.layerBits[i / ASPECTS_COUNT][i % ASPECTS_COUNT])
-                return true;
+            for (uint32_t j = 0; j < ASPECTS_COUNT; ++j)
+                if (mipBits[i][j] & b.mipBits[i][j])
+                    return true;
         }
         return false;
     }
@@ -1112,21 +1128,61 @@ struct ImageSubresourceSet
     }
     void merge(const ImageSubresourceSet& b) {
         usedLayers |= b.usedLayers;
-        for (uint32_t i = 0; i < MAX_MIP_LEVELS; ++i)
+        usedAspects |= b.usedAspects;
+        for (uint32_t i = 0; i < MAX_ARRAY_SIZE && (usedLayers >> i); ++i)
             for (uint32_t j = 0; j < ASPECTS_COUNT; ++j)
-                layerBits[i][j] |= b.layerBits[i][j];
+                mipBits[i][j] |= b.mipBits[i][j];
+    }
+    uint32_t getLayerCount() const {
+        uint32_t ret = 0;
+        for (UsedLayerMap i = 0; i < MAX_ARRAY_SIZE; ++i)
+            if (usedLayers & (1 << i))
+                ret++;
+        return ret;
+    }
+    MipBit getMaxMipMask() const {
+        MipBit ret = 0;
+        for (UsedLayerMap i = 0; i < MAX_ARRAY_SIZE && (usedLayers >> i); ++i) {
+            if (!(usedLayers & (1 << i)))
+                continue;
+            for (uint32_t j = 0; j < ASPECTS_COUNT; ++j)
+                ret |= mipBits[i][j];
+        }
+        return ret;
+    }
+    UsedAspectMap getUsedAspects() const { return usedAspects; }
+    bool isAspectMaskConstant() const {
+        for (UsedLayerMap i = 0; i < MAX_ARRAY_SIZE && (usedLayers >> i); ++i) {
+            if (!(usedLayers & (1 << i)))
+                continue;
+            for (uint32_t j = 0; j < ASPECTS_COUNT && (usedAspects >> j); ++j) {
+                if (!(usedAspects & (1 << j)))
+                    continue;
+                if (!mipBits[i][j])
+                    return false;
+            }
+        }
+        return true;
+    }
+    bool isLayerUsed(uint32_t layer) const { return usedLayers & (1 << layer); }
+    MipBit getMips(uint32_t layer, AspectFlagBits aspect) const {
+        return mipBits[layer][get_aspect_id(aspect)];
     }
     template <typename F>
     void traverse(F&& f) const {
         if (!usedLayers)
             return;
-        for (uint32_t i = 0; i < MAX_MIP_LEVELS * ASPECTS_COUNT; ++i) {
+        for (uint32_t i = 0; i < MAX_ARRAY_SIZE && (usedLayers >> i); ++i) {
             if (!(usedLayers & (1 << i)))
                 continue;
-            const LayerBit& currentLayerBits = layerBits[i / ASPECTS_COUNT][i % ASPECTS_COUNT];
-            for (uint32_t layer = 0; layer < MAX_ARRAY_SIZE && (currentLayerBits >> layer); ++layer)
-                if ((1 << layer) & currentLayerBits)
-                    f(layer, i / ASPECTS_COUNT, get_aspect_by_id(i % ASPECTS_COUNT));
+            for (uint32_t j = 0; j < ASPECTS_COUNT && (usedAspects >> j); ++j) {
+                if (!(usedAspects & (1 << j)))
+                    continue;
+                const mipBit& currentMipBits = mipBits[i][j];
+                for (uint32_t mip = 0; mip < MAX_MIP_LEVELS && (currentMipBits >> mip); ++mip)
+                    if ((1 << mip) & currentMipBits)
+                        f(i, mip, get_aspect_by_id(j));
+            }
         }
     }
 };

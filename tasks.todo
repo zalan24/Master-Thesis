@@ -59,9 +59,9 @@ Get a triangle on screen:
         ✔ Use garbage system for recycling @done (3/2/2021, 9:34:57 AM)
     ☐ Resource tracking
         ☐ Image and buffer tracking info
-            ☐ Images and buffers need a separate struct under vulkan api
+            ✔ Images and buffers need a separate struct under vulkan api @done (3/13/2021, 8:48:37 PM)
             ☐ This struct needs to store tracking slots
-                ☐ These are for parallel state tracking
+                ✔ These are for parallel state tracking @done (3/13/2021, 8:48:44 PM)
                 ☐ Values stored per slot
                     ☐ Common
                         ✔ Ownership @done (3/9/2021, 2:53:36 PM)
@@ -145,15 +145,12 @@ Get a triangle on screen:
                         ✔ If needed use the existing memory_sync function(s) @done (3/11/2021, 9:12:18 PM)
                         ✔ Execution will now only apply the new state, assuming correct resource state @done (3/11/2021, 9:12:25 PM)
                     ☐ Barriers are collected until the next access operation or the end of recording instead of immediate placement
-                        ☐ Collect barriers per sub-resource range
-                            ☐ Add new things to sub-resource tracking data:
-                                ☐ ???
-                            ☐ Add some barriers states data to command buffers???
-                                ☐ This would be required to flush different resources
+                        ✔ Collect barriers per sub-resource range @done (3/13/2021, 8:48:06 PM)
+                            ✔ Add some barriers states data to tracker @done (3/13/2021, 8:44:39 PM)
                         ☐ When a accessing the memory (or syncing?) flush barriers for the required sub-resource ranges
-                            ☐ In this case, there should be an array of flushed barriers
-                            ☐ When processing a new sub-resource range and a barriers is required for it, try to append it to one of the existing barriers or create a new barrier
-                                ☐ Different barriers should be disjunct in terms dst ?and? src stages
+                            ✔ In this case, there should be an array of flushable barriers @done (3/13/2021, 8:45:03 PM)
+                            ✔ When processing a new sub-resource range and a barriers is required for it, try to append it to one of the existing barriers or create a new barrier @done (3/13/2021, 8:45:18 PM)
+                                ✔ Different barriers should be disjunct in terms dst and src stages @done (3/13/2021, 8:45:18 PM)
                             ☐ Have different options for this (applicable in release builds as well)
                                 ☐ Flush only sub-resource ranges where it's actually necessary (inside requested sub-resource ranges)
                                 ☐ Flush all requested sub-resource ranges, but not anymore
@@ -164,11 +161,10 @@ Get a triangle on screen:
                         ☐ There should be special flush at the end of recording of a command buffer, that flushes everything in an optimized way
                     ✔ Create an enum of possible resource usages (separate for buffer and texture?) @done (3/12/2021, 9:08:10 AM)
                         ✔ Have a mapping from usage -> (pipeline stage mask, memory access mask) @done (3/12/2021, 9:08:09 AM)
-                    ☐ Barriers are originally created for sub-resource ranges (later can be merged)
-                    ☐ Barriers for a single sub-resource are merged
+                    ✔ Barriers are originally created for sub-resource ranges (later can be merged) @done (3/13/2021, 8:45:34 PM)
+                    ✔ Barriers for a single sub-resource are merged @done (3/13/2021, 8:45:37 PM)
                     ☐ Barriers are flushed when accessing the memory (or doing a layout transition / ownership transfer)
-                        ☐ Merge all barriers from the sub-resource ranges specified by the operations (if possible)
-                            ☐ Different layout transitions would need separate barriers
+                        ✔ Different layout transitions would need separate barriers @done (3/13/2021, 8:46:03 PM)
                         ☐ These could be merged with layout transition if the flushed barriers don't have a layout transition
                     ☐ Create a cmd for memory barrier
                         ☐ Input
@@ -176,7 +172,7 @@ Get a triangle on screen:
                             ✔ Resource & sub-resources @done (3/12/2021, 10:02:20 AM)
                             ☐ Ownership (could be deduced from current queue)
                             ✔ Layout transition for images (could be deduced from usage) @done (3/12/2021, 10:49:08 AM)
-                        ☐ Resource needs to have a clear state regarding the selected usages
+                        ✔ Resource needs to have a clear state regarding the selected usages @done (3/13/2021, 8:46:57 PM)
                         ✔ cmd pipeline barrier should not be exposed to the engine @done (3/12/2021, 9:58:50 AM)
                 ☐ When submitting the command buffer with semaphores, states might be changed??? or not
             ☐ Create state objects for images and buffers to share state between tracking slots
