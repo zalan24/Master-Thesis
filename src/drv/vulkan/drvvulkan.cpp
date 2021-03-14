@@ -364,7 +364,7 @@ void DrvVulkanResourceTracker::flushBarrier(drv::CommandBufferPtr cmdBuffer, Bar
     //     VkMemoryBarrier* barriers = reinterpret_cast<VkMemoryBarrier*>(barrierMem.get());
     //     VkBufferMemoryBarrier* vkBufferBarriers =
     //       reinterpret_cast<VkBufferMemoryBarrier*>(bufferMem.get());
-    VkImageMemoryBarrier* vkImageBarriers = reinterpret_cast<VkImageMemoryBarrier*>(imageMem.get());
+    VkImageMemoryBarrier* vkImageBarriers = imageMem.get();
     //     drv::drv_assert(barriers != nullptr || memoryBarrierCount == 0,
     //                     "Could not allocate memory for barriers");
     //     drv::drv_assert(bufferBarriers != nullptr || bufferBarrierCount == 0,

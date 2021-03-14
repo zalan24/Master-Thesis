@@ -1047,9 +1047,13 @@ struct ImageSubresourceRange
     uint32_t layerCount;
 
     template <typename F>
-    void traverse(F&& f) const {
-        for (uint32_t layer = baseArrayLayer; layer < ; ++layer)
-            for (uint32_t mip = baseMipLevel; mip < ; ++mip)
+    void traverse(uint32_t imageLayers, uint32_t imageLevels, F&& f) const {
+        uint32_t layers =
+          layerCount == REMAINING_ARRAY_LAYERS ? imageLayers - baseArrayLayer : layerCount;
+        uint32_t levels =
+          levelCount == REMAINING_MIP_LEVELS ? imageLevels - baseMipLevel : levelCount;
+        for (uint32_t layer = baseArrayLayer; layer < layers; ++layer)
+            for (uint32_t mip = baseMipLevel; mip < levels; ++mip)
                 for (uint32_t aspect = 0; aspect < ASPECTS_COUNT; ++aspect)
                     if (aspectMask & get_aspect_by_id(aspect))
                         f(layer, mip, get_aspect_by_id(aspect));
@@ -1107,6 +1111,11 @@ struct ImageSubresourceSet
         usedLayers |= 1 << layer;
         usedAspects |= aspect;
         mipBits[layer][get_aspect_id(aspect)] |= 1 << mip;
+    }
+    bool has(uint32_t layer, uint32_t mip, AspectFlagBits aspect) {
+        if (!(usedLayers & (1 << layer)))
+            return false;
+        return mipBits[layer][get_aspect_id(aspect)] & (1 << mip);
     }
 
     bool overlap(const ImageSubresourceSet& b) {
