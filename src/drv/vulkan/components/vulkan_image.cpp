@@ -216,6 +216,7 @@ void DrvVulkanResourceTracker::add_memory_access(
             }
         }
     }
+    flushBarriersFor(cmdBuffer, image, numSubresourceRanges, subresourceRange);
 }
 
 void DrvVulkanResourceTracker::add_memory_sync(drv::CommandBufferPtr cmdBuffer,
@@ -298,5 +299,21 @@ void DrvVulkanResourceTracker::add_memory_sync(drv::CommandBufferPtr cmdBuffer,
                     add_memory_sync(cmdBuffer, _image, mip, layer, drv::get_aspect_by_id(aspectId),
                                     flush, dstStages, invalidateMask, transferOwnership, newOwner,
                                     transitionLayout, discardContent, resultLayout);
+    }
+}
+
+void DrvVulkanResourceTracker::flushBarriersFor(
+  drv::CommandBufferPtr cmdBuffer, drv::ImagePtr _image, uint32_t numSubresourceRanges,
+  const drv::ImageSubresourceRange* subresourceRange) {
+    const uint32_t offset = lastBarrier;
+    for (uint32_t i = 0; i < MAX_UNFLUSHED_BARRIER; ++i) {
+        uint32_t ind = (i + offset) % MAX_UNFLUSHED_BARRIER;
+        if (!barriers[ind])
+            continue;
+        for (uint32_t j = 0; j < barriers[ind].numImageRanges; ++j) {
+            // one resource can be on several barriers...
+        }
+        // flushBarrier(cmdBuffer, barriers[i]);
+        // lastBarrier = ind;
     }
 }

@@ -25,21 +25,19 @@ drv::EventPtr DrvVulkan::create_event(drv::LogicalDevicePtr device, const drv::E
 }
 
 bool DrvVulkan::destroy_event(drv::LogicalDevicePtr device, drv::EventPtr event) {
-    vkDestroyEvent(reinterpret_cast<VkDevice>(device), reinterpret_cast<VkEvent>(event), nullptr);
+    vkDestroyEvent(reinterpret_cast<VkDevice>(device), convertEvent(event), nullptr);
     return true;
 }
 
 bool DrvVulkan::is_event_set(drv::LogicalDevicePtr device, drv::EventPtr event) {
-    return vkGetEventStatus(reinterpret_cast<VkDevice>(device), reinterpret_cast<VkEvent>(event))
+    return vkGetEventStatus(reinterpret_cast<VkDevice>(device), convertEvent(event))
            == VK_EVENT_SET;
 }
 
 bool DrvVulkan::reset_event(drv::LogicalDevicePtr device, drv::EventPtr event) {
-    return vkResetEvent(reinterpret_cast<VkDevice>(device), reinterpret_cast<VkEvent>(event))
-           == VK_SUCCESS;
+    return vkResetEvent(reinterpret_cast<VkDevice>(device), convertEvent(event)) == VK_SUCCESS;
 }
 
 bool DrvVulkan::set_event(drv::LogicalDevicePtr device, drv::EventPtr event) {
-    return vkSetEvent(reinterpret_cast<VkDevice>(device), reinterpret_cast<VkEvent>(event))
-           == VK_SUCCESS;
+    return vkSetEvent(reinterpret_cast<VkDevice>(device), convertEvent(event)) == VK_SUCCESS;
 }

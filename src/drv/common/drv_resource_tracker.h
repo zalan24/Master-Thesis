@@ -22,24 +22,20 @@ class ResourceTracker
           driver->get_command_type_mask(physicalDevice, driver->get_queue_family(queue))) {}
     virtual ~ResourceTracker() {}
 
-    // TODO
-    // virtual bool cmd_reset_event(CommandBufferPtr commandBuffer, EventPtr event,
-    //                              PipelineStages sourceStage) = 0;
-    // virtual bool cmd_set_event(CommandBufferPtr commandBuffer, EventPtr event,
-    //                            PipelineStages sourceStage) = 0;
-    // virtual bool cmd_wait_events(CommandBufferPtr commandBuffer, uint32_t eventCount,
-    //                              const EventPtr* events, PipelineStages sourceStage,
-    //                              PipelineStages dstStage, uint32_t memoryBarrierCount,
-    //                              const MemoryBarrier* memoryBarriers, uint32_t bufferBarrierCount,
-    //                              const BufferMemoryBarrier* bufferBarriers,
-    //                              uint32_t imageBarrierCount,
-    //                              const ImageMemoryBarrier* imageBarriers) = 0;
-
     virtual void cmd_image_barrier(CommandBufferPtr cmdBuffer, ImageMemoryBarrier&& barrier) = 0;
 
     virtual void cmd_clear_image(CommandBufferPtr cmdBuffer, ImagePtr image,
                                  const ClearColorValue* clearColors, uint32_t ranges,
                                  const ImageSubresourceRange* subresourceRanges) = 0;
+
+    virtual void cmd_flush_waits_on(CommandBufferPtr cmdBuffer, EventPtr event) = 0;
+
+    virtual void cmd_signal_event(drv::CommandBufferPtr cmdBuffer, drv::EventPtr event,
+                                  uint32_t imageBarrierCount,
+                                  const drv::ImageMemoryBarrier* imageBarriers) = 0;
+
+    virtual void cmd_wait_host_events(drv::CommandBufferPtr cmdBuffer, drv::EventPtr event,
+                                      const drv::ImageMemoryBarrier* imageBarriers) = 0;
 
  protected:
     IDriver* driver;

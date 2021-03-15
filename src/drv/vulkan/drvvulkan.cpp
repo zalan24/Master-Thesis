@@ -219,7 +219,6 @@ void DrvVulkanResourceTracker::appendBarrier(drv::CommandBufferPtr cmdBuffer,
     ImageMemoryBarrier barrier;
     static_cast<ResourceBarrier&>(barrier) = static_cast<ResourceBarrier&>(imageBarrier);
     barrier.image = imageBarrier.image;
-    barrier.subresourceSet.set0();
     barrier.subresourceSet.add(imageBarrier.layer, imageBarrier.mipLevel, imageBarrier.aspect);
     appendBarrier(cmdBuffer, srcStage, dstStage, std::move(barrier));
 }
@@ -238,28 +237,47 @@ void DrvVulkanResourceTracker::appendBarrier(drv::CommandBufferPtr cmdBuffer,
     barrier.numImageRanges = 1;
     barrier.imageBarriers[0] = std::move(imageBarrier);
     uint32_t freeSpot = MAX_UNFLUSHED_BARRIER;
+    uint32_t eventless = MAX_UNFLUSHED_BARRIER;
     for (uint32_t i = 0; i < MAX_UNFLUSHED_BARRIER; ++i) {
-        if (!barriers[i]) {
-            freeSpot = i;
+        uint32_t ind = (i + lastBarrier) % MAX_UNFLUSHED_BARRIER;
+        if (!barriers[ind]) {
+            freeSpot = ind;
             continue;
         }
-        if (swappable(barriers[i], barrier))
+        if (barriers[ind].event == drv::NULL_HANDLE)
+            eventless = ind;
+        if (swappable(barriers[ind], barrier))
             continue;
-        if (!merge(barriers[i], barrier)) {
-            freeSpot = i;
-            flushBarrier(cmdBuffer, barriers[i]);
+        if (!merge(barriers[ind], barrier) && barriers[ind].event == drv::NULL_HANDLE) {
+            freeSpot = ind;
+            flushBarrier(cmdBuffer, barriers[ind]);
         }
     }
     if (freeSpot == MAX_UNFLUSHED_BARRIER) {
-        // TODO this can be improved with a better selection strategy
-        flushBarrier(cmdBuffer, barriers[0]);
-        freeSpot = 0;
+        if (eventless != MAX_UNFLUSHED_BARRIER) {
+            flushBarrier(cmdBuffer, barriers[eventless]);
+            freeSpot = eventless;
+        }
+        else {
+            // TODO this can be improved with a better selection strategy
+            flushBarrier(cmdBuffer, barriers[0]);
+            freeSpot = 0;
+        }
     }
     barriers[freeSpot] = std::move(barrier);
+    lastBarrier = freeSpot;
 }
 
 bool DrvVulkanResourceTracker::swappable(const BarrierInfo& barrier0,
                                          const BarrierInfo& barrier1) const {
+    if (barrier0.event != drv::NULL_HANDLE && barrier1.event != drv::NULL_HANDLE)
+        return barrier0.event != barrier1.event;
+    if (barrier1.event != drv::NULL_HANDLE)
+        return (barrier0.srcStage.resolve(queueSupport) & barrier1.dstStage.resolve(queueSupport))
+               == 0;
+    if (barrier0.event != drv::NULL_HANDLE)
+        return (barrier0.dstStage.resolve(queueSupport) & barrier1.srcStage.resolve(queueSupport))
+               == 0;
     return (barrier0.dstStage.resolve(queueSupport) & barrier1.srcStage.resolve(queueSupport)) == 0
            && (barrier0.srcStage.resolve(queueSupport) & barrier1.dstStage.resolve(queueSupport))
                 == 0;
@@ -267,6 +285,8 @@ bool DrvVulkanResourceTracker::swappable(const BarrierInfo& barrier0,
 
 bool DrvVulkanResourceTracker::merge(BarrierInfo& barrier0, BarrierInfo& barrier) const {
     if ((barrier0.dstStage.resolve(queueSupport) & barrier.srcStage.resolve(queueSupport)) == 0)
+        return false;
+    if (barrier0.event != barrier.event)
         return false;
     uint32_t i = 0;
     uint32_t j = 0;
@@ -344,8 +364,6 @@ void DrvVulkanResourceTracker::flushBarrier(drv::CommandBufferPtr cmdBuffer, Bar
     if (barrier.srcStage.stageFlags == 0)
         return;
 
-    TODO;
-
     // StackMemory::MemoryHandle<VkMemoryBarrier> barrierMem(memoryBarrierCount, TEMPMEM);
     // StackMemory::MemoryHandle<VkBufferMemoryBarrier> bufferMem(bufferBarrierCount, TEMPMEM);
     uint32_t imageRangeCount = 0;
@@ -372,6 +390,12 @@ void DrvVulkanResourceTracker::flushBarrier(drv::CommandBufferPtr cmdBuffer, Bar
     drv::drv_assert(vkImageBarriers != nullptr, "Could not allocate memory for image barriers");
 
     for (uint32_t i = 0; i < barrier.numImageRanges; ++i) {
+        if ((barrier.imageBarriers[i].dstFamily == barrier.imageBarriers[i].srcFamily
+             && barrier.imageBarriers[i].oldLayout == barrier.imageBarriers[i].newLayout
+             && barrier.imageBarriers[i].dstAccessFlags == 0
+             && barrier.imageBarriers[i].sourceAccessFlags == 0)
+            || barrier.imageBarriers[i].subresourceSet.getLayerCount() == 0)
+            continue;
         drv::ImageSubresourceSet::UsedAspectMap aspectMask =
           barrier.imageBarriers[i].subresourceSet.getUsedAspects();
         auto addImageBarrier = [&](drv::ImageAspectBitType aspectMask, uint32_t baseLayer,
@@ -487,30 +511,44 @@ void DrvVulkanResourceTracker::flushBarrier(drv::CommandBufferPtr cmdBuffer, Bar
     //         vkBufferBarriers[i].offset = bufferBarriers[i].offset;
     //     }
 
-    //     for (uint32_t i = 0; i < imageBarrierCount; ++i) {
-    //         vkImageBarriers[i].sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-    //         vkImageBarriers[i].pNext = nullptr;
-    //         vkImageBarriers[i].srcAccessMask =
-    //           static_cast<VkAccessFlags>(imageBarriers[i].sourceAccessFlags);
-    //         vkImageBarriers[i].dstAccessMask =
-    //           static_cast<VkAccessFlags>(imageBarriers[i].dstAccessFlags);
-    //         vkImageBarriers[i].image = convertImage(imageBarriers[i].image)->image;
-    //         vkImageBarriers[i].srcQueueFamilyIndex = convertFamily(imageBarriers[i].srcFamily);
-    //         vkImageBarriers[i].dstQueueFamilyIndex = convertFamily(imageBarriers[i].dstFamily);
-    //         vkImageBarriers[i].newLayout = convertImageLayout(imageBarriers[i].newLayout);
-    //         vkImageBarriers[i].oldLayout = convertImageLayout(imageBarriers[i].oldLayout);
-    //         vkImageBarriers[i].subresourceRange =
-    //           convertSubresourceRange(imageBarriers[i].subresourceRange);
-    //     }
-
-    vkCmdPipelineBarrier(convertCommandBuffer(cmdBuffer),
-                         static_cast<VkPipelineStageFlags>(barrier.srcStage.stageFlags),
-                         static_cast<VkPipelineStageFlags>(barrier.dstStage.stageFlags),
-                         static_cast<VkDependencyFlags>(dependencyFlags),  // TODO
-                         0, nullptr, 0, nullptr,                           // TODO add buffers here
-                         imageRangeCount, vkImageBarriers);
+    if (barrier.event != drv::NULL_HANDLE) {
+        VkEvent vkEvent = convertEvent(barrier.event);
+        vkCmdWaitEvents(convertCommandBuffer(cmdBuffer), 1, &vkEvent,
+                        static_cast<VkPipelineStageFlags>(barrier.srcStage.stageFlags),
+                        static_cast<VkPipelineStageFlags>(barrier.dstStage.stageFlags), 0, nullptr,
+                        0, nullptr,  // TODO buffers
+                        imageRangeCount, vkImageBarriers);
+    }
+    else {
+        vkCmdPipelineBarrier(convertCommandBuffer(cmdBuffer),
+                             static_cast<VkPipelineStageFlags>(barrier.srcStage.stageFlags),
+                             static_cast<VkPipelineStageFlags>(barrier.dstStage.stageFlags), 0,
+                             //  static_cast<VkDependencyFlags>(dependencyFlags),  // TODO
+                             0, nullptr, 0, nullptr,  // TODO add buffers here
+                             imageRangeCount, vkImageBarriers);
+    }
 
     barrier.dstStage = 0;
     barrier.srcStage = 0;
     barrier.numImageRanges = 0;
+}
+
+void DrvVulkanResourceTracker::cmd_signal_event(drv::CommandBufferPtr cmdBuffer,
+                                                drv::EventPtr event, uint32_t imageBarrierCount,
+                                                const drv::ImageMemoryBarrier* imageBarriers) {
+    TODO;
+    // collect src stages
+    // call set event (flush?)
+    // do the regular memary sync for all resources as usual with barriers (excluding src stages + add event)
+}
+
+void DrvVulkanResourceTracker::cmd_wait_host_events(drv::CommandBufferPtr cmdBuffer,
+                                                    drv::EventPtr event,
+                                                    const drv::ImageMemoryBarrier* imageBarriers) {
+    TODO;
+    // placed wait command must have src stages for VK_PIPELINE_STAGE_HOST_BIT  to wait on host operation
+    // validate src flags: they should contain VK_PIPELINE_STAGE_HOST_BIT (bad_usage otherwise)
+    // they should not contain anything else (bad_usage for now)
+    // do the regular memary sync for all resources as usual with barriers (excluding src stages + add event)
+    // this is only used when event is manually set from host (indicate in name of function)
 }

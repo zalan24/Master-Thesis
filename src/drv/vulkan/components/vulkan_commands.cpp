@@ -309,3 +309,10 @@ void DrvVulkanResourceTracker::cmd_image_barrier(drv::CommandBufferPtr cmdBuffer
                     barrier.requestedOwnership, barrier.transitionLayout,
                     barrier.discardCurrentContent, barrier.resultLayout);
 }
+
+void DrvVulkanResourceTracker::cmd_flush_waits_on(drv::CommandBufferPtr cmdBuffer,
+                                                  drv::EventPtr event) {
+    for (uint32_t i = 0; i < MAX_UNFLUSHED_BARRIER; ++i)
+        if (barriers[i] && barriers[i].event == event)
+            flushBarrier(cmdBuffer, barriers[i]);
+}

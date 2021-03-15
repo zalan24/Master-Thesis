@@ -116,6 +116,10 @@ inline VkCommandBuffer* convertCommandBuffers(drv::CommandBufferPtr* buffer) {
     return reinterpret_cast<VkCommandBuffer*>(buffer);
 }
 
+inline VkEvent convertEvent(drv::EventPtr event) {
+    return reinterpret_cast<VkEvent>(event);
+}
+
 constexpr inline VkImageLayout convertImageLayout(drv::ImageLayout layout) {
     if (layout == drv::ImageLayout::SHARED_PRESENT_KHR)
         return VK_IMAGE_LAYOUT_SHARED_PRESENT_KHR;
