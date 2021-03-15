@@ -14,23 +14,26 @@ class FlexibleArray
     template <typename... Args>
     void emplace_back(Args&&... args) {
         if (count < array.size())
-            array[count++] = T(std::forward<Args>(args)...);
+            array[count] = T(std::forward<Args>(args)...);
         else
             vector.emplace_back(std::forward<Args>(args)...);
+        count++;
     }
 
     void push_back(const T& value) {
         if (count < array.size())
-            array[count++] = value;
+            array[count] = value;
         else
             vector.push_back(value);
+        count++;
     }
 
     void push_back(T&& value) {
         if (count < array.size())
-            array[count++] = std::move(value);
+            array[count] = std::move(value);
         else
             vector.push_back(std::move(value));
+        count++;
     }
 
     void resize(size_t size, const T& defaultValue = {}) {
@@ -58,9 +61,20 @@ class FlexibleArray
         return ind < array.size() ? array[ind] : vector[ind - array.size()];
     }
 
-    const T& last() const { return (*this)[count - 1]; }
+    const T& back() const { return (*this)[count - 1]; }
+    T& back() { return (*this)[count - 1]; }
+    const T& front() const { return (*this)[0]; }
+    T& front() { return (*this)[0]; }
 
-    T& last() { return (*this)[count - 1]; }
+    void pop_back() {
+        if (!emtpy()) {
+            if (count > array.size())
+                vector.pop_back();
+            else
+                back() = T{};
+            count--;
+        }
+    }
 
     bool empty() const { return count == 0; }
 

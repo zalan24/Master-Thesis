@@ -7,6 +7,8 @@
 #include <unordered_map>
 #include <vector>
 
+#include <flexiblearray.hpp>
+
 #include <drv_interface.h>
 #include <drv_resource_tracker.h>
 
@@ -205,20 +207,9 @@ class DrvVulkanResourceTracker final : public drv::ResourceTracker
     DrvVulkanResourceTracker(const DrvVulkanResourceTracker&) = delete;
     DrvVulkanResourceTracker& operator=(const DrvVulkanResourceTracker&) = delete;
 
-    // TODO
-    // bool cmd_reset_event(drv::CommandBufferPtr commandBuffer, drv::EventPtr event,
-    //                      drv::PipelineStages sourceStage) override;
-    // bool cmd_set_event(drv::CommandBufferPtr commandBuffer, drv::EventPtr event,
-    //                    drv::PipelineStages sourceStage) override;
-    // bool cmd_wait_events(drv::CommandBufferPtr commandBuffer, uint32_t eventCount,
-    //                      const drv::EventPtr* events, drv::PipelineStages sourceStage,
-    //                      drv::PipelineStages dstStage, uint32_t memoryBarrierCount,
-    //                      const drv::MemoryBarrier* memoryBarriers, uint32_t bufferBarrierCount,
-    //                      const drv::BufferMemoryBarrier* bufferBarriers, uint32_t imageBarrierCount,
-    //                      const drv::ImageMemoryBarrier* imageBarriers) override;
-
-    void cmd_image_barrier(drv::CommandBufferPtr cmdBuffer,
-                           drv::ImageMemoryBarrier&& barrier) override;
+    drv::PipelineStages cmd_image_barrier(drv::CommandBufferPtr cmdBuffer,
+                                          const drv::ImageMemoryBarrier& barrier,
+                                          drv::EventPtr event = drv::NULL_HANDLE) override;
 
     void cmd_clear_image(drv::CommandBufferPtr cmdBuffer, drv::ImagePtr image,
                          const drv::ClearColorValue* clearColors, uint32_t ranges,
@@ -232,15 +223,17 @@ class DrvVulkanResourceTracker final : public drv::ResourceTracker
                           const drv::ImageMemoryBarrier* imageBarriers) override;
 
     void cmd_wait_host_events(drv::CommandBufferPtr cmdBuffer, drv::EventPtr event,
+                              uint32_t imageBarrierCount,
                               const drv::ImageMemoryBarrier* imageBarriers) override;
 
-    void add_memory_sync(drv::CommandBufferPtr cmdBuffer, drv::ImagePtr image,
-                         uint32_t numSubresourceRanges,
-                         const drv::ImageSubresourceRange* subresourceRanges, bool flush,
-                         drv::PipelineStages dstStages,
-                         drv::MemoryBarrier::AccessFlagBitType invalidateMask,
-                         bool transferOwnership, drv::QueueFamilyPtr newOwner,
-                         bool transitionLayout, bool discardContent, drv::ImageLayout resultLayout);
+    drv::PipelineStages add_memory_sync(drv::CommandBufferPtr cmdBuffer, drv::ImagePtr image,
+                                        uint32_t numSubresourceRanges,
+                                        const drv::ImageSubresourceRange* subresourceRanges,
+                                        bool flush, drv::PipelineStages dstStages,
+                                        drv::MemoryBarrier::AccessFlagBitType invalidateMask,
+                                        bool transferOwnership, drv::QueueFamilyPtr newOwner,
+                                        bool transitionLayout, bool discardContent,
+                                        drv::ImageLayout resultLayout, drv::EventPtr event);
 
     // if requireSameLayout is used and currentLayout is specified
     // currentLayout := common layout
@@ -257,7 +250,7 @@ class DrvVulkanResourceTracker final : public drv::ResourceTracker
     uint32_t trackingSlot;
 
     static constexpr uint32_t MAX_RESOURCE_IN_BARRIER = 8;
-    static constexpr uint32_t MAX_UNFLUSHED_BARRIER = 32;
+    static constexpr uint32_t BARRIER_FIXED_COUNT = 8;
 
     struct ResourceBarrier
     {
@@ -307,7 +300,7 @@ class DrvVulkanResourceTracker final : public drv::ResourceTracker
     };
 
     uint32_t lastBarrier = 0;
-    BarrierInfo barriers[MAX_UNFLUSHED_BARRIER];
+    FlexibleArray<BarrierInfo, BARRIER_FIXED_COUNT> barriers;
 
     // TODO add debug info about involved commands
     enum InvalidationLevel
@@ -352,24 +345,29 @@ class DrvVulkanResourceTracker final : public drv::ResourceTracker
                          bool transferOwnership, drv::QueueFamilyPtr newOwner,
                          drv::PipelineStages& barrierSrcStage, drv::PipelineStages& barrierDstStage,
                          ResourceBarrier& barrier);
-    void add_memory_sync(drv::CommandBufferPtr cmdBuffer, drv::ImagePtr image, uint32_t mipLevel,
-                         uint32_t arrayIndex, drv::AspectFlagBits aspect, bool flush,
-                         drv::PipelineStages dstStages,
-                         drv::MemoryBarrier::AccessFlagBitType invalidateMask,
-                         bool transferOwnership, drv::QueueFamilyPtr newOwner,
-                         bool transitionLayout, bool discardContent, drv::ImageLayout resultLayout);
+    drv::PipelineStages add_memory_sync(drv::CommandBufferPtr cmdBuffer, drv::ImagePtr image,
+                                        uint32_t mipLevel, uint32_t arrayIndex,
+                                        drv::AspectFlagBits aspect, bool flush,
+                                        drv::PipelineStages dstStages,
+                                        drv::MemoryBarrier::AccessFlagBitType invalidateMask,
+                                        bool transferOwnership, drv::QueueFamilyPtr newOwner,
+                                        bool transitionLayout, bool discardContent,
+                                        drv::ImageLayout resultLayout, drv::EventPtr event);
 
     void appendBarrier(drv::CommandBufferPtr cmdBuffer, drv::PipelineStages srcStage,
                        drv::PipelineStages dstStage,
-                       ImageSingleSubresourceMemoryBarrier&& imageBarrier);
+                       ImageSingleSubresourceMemoryBarrier&& imageBarrier, drv::EventPtr event);
     void appendBarrier(drv::CommandBufferPtr cmdBuffer, drv::PipelineStages srcStage,
-                       drv::PipelineStages dstStage, ImageMemoryBarrier&& imageBarrier);
+                       drv::PipelineStages dstStage, ImageMemoryBarrier&& imageBarrier,
+                       drv::EventPtr event);
 
     void flushBarriersFor(drv::CommandBufferPtr cmdBuffer, drv::ImagePtr image,
                           uint32_t numSubresourceRanges,
                           const drv::ImageSubresourceRange* subresourceRange);
     void flushBarrier(drv::CommandBufferPtr cmdBuffer, BarrierInfo& barrier);
     bool swappable(const BarrierInfo& barrier0, const BarrierInfo& barrier1) const;
+    bool matches(const BarrierInfo& barrier0, const BarrierInfo& barrier1) const;
+    bool requireFlush(const BarrierInfo& barrier0, const BarrierInfo& barrier1) const;
     // if mergable => barrier0 := {}, barrier := barrier0 + barrier
     bool merge(BarrierInfo& barrier0, BarrierInfo& barrier) const;
 };

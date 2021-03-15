@@ -22,7 +22,9 @@ class ResourceTracker
           driver->get_command_type_mask(physicalDevice, driver->get_queue_family(queue))) {}
     virtual ~ResourceTracker() {}
 
-    virtual void cmd_image_barrier(CommandBufferPtr cmdBuffer, ImageMemoryBarrier&& barrier) = 0;
+    virtual PipelineStages cmd_image_barrier(CommandBufferPtr cmdBuffer,
+                                             const ImageMemoryBarrier& barrier,
+                                             drv::EventPtr event = drv::NULL_HANDLE) = 0;
 
     virtual void cmd_clear_image(CommandBufferPtr cmdBuffer, ImagePtr image,
                                  const ClearColorValue* clearColors, uint32_t ranges,
@@ -35,6 +37,7 @@ class ResourceTracker
                                   const drv::ImageMemoryBarrier* imageBarriers) = 0;
 
     virtual void cmd_wait_host_events(drv::CommandBufferPtr cmdBuffer, drv::EventPtr event,
+                                      uint32_t imageBarrierCount,
                                       const drv::ImageMemoryBarrier* imageBarriers) = 0;
 
  protected:

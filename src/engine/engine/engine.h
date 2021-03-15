@@ -1,5 +1,6 @@
 #pragma once
 
+#include <array>
 #include <atomic>
 #include <condition_variable>
 #include <mutex>
@@ -110,10 +111,18 @@ class Engine
                                       drv::PipelineStages::FlagType waitStage);
         void cmdSignalSemaphore(drv::SemaphorePtr semaphore);
         void cmdSignalTimelineSemaphore(drv::TimelineSemaphorePtr semaphore, uint64_t signalValue);
-        void cmdImageBarrier(drv::ImageMemoryBarrier&& barrier);
+        void cmdImageBarrier(const drv::ImageMemoryBarrier& barrier);
         void cmdClearImage(drv::ImagePtr image, const drv::ClearColorValue* clearColors,
                            uint32_t ranges = 0,
                            const drv::ImageSubresourceRange* subresourceRanges = nullptr);
+        // These functions the same way as cmdImageBarrier, but it uses an event for sync
+        // it could be a better option if the resource is needed a lot later
+        void cmdEventBarrier(const drv::ImageMemoryBarrier& barrier);
+        void cmdEventBarrier(uint32_t imageBarrierCount, const drv::ImageMemoryBarrier* barriers);
+
+        void cmdWaitHostEvent(drv::EventPtr event, const drv::ImageMemoryBarrier& barrier);
+        void cmdWaitHostEvent(drv::EventPtr event, uint32_t imageBarrierCount,
+                              const drv::ImageMemoryBarrier* barriers);
 
         // allows nodes, that depend on the current node's gpu work (on current queue) to run after this submission completion
         void finishQueueWork();
@@ -132,11 +141,16 @@ class Engine
         FrameGraph::NodeHandle* nodeHandle;
         FrameGraph::FrameId frameId;
         drv::CommandBufferCirculator::CommandBufferHandle cmdBuffer;
+        uint32_t eventStart = 0;
+        uint32_t eventCount = 0;
+        std::array<EventPool::EventHandle, 32> events;
 
         // TODO frame mem allocator
         std::vector<ExecutionPackage::CommandBufferPackage::SemaphoreSignalInfo> signalSemaphores;
         std::vector<ExecutionPackage::CommandBufferPackage::TimelineSemaphoreSignalInfo>
           signalTimelineSemaphores;
+
+        drv::EventPtr acquireEvent();
 
         void close();
     };

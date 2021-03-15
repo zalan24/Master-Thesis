@@ -4,9 +4,43 @@
 
 #include <framegraph.h>
 
-void Engine::CommandBufferRecorder::cmdImageBarrier(drv::ImageMemoryBarrier&& barrier) {
-    nodeHandle->getNode().getResourceTracker(queue)->cmd_image_barrier(cmdBuffer.commandBufferPtr,
-                                                                       std::move(barrier));
+drv::EventPtr Engine::CommandBufferRecorder::acquireEvent() {
+    if (eventCount == events.size()) {
+        nodeHandle->getNode().getResourceTracker(queue)->cmd_flush_waits_on(
+          cmdBuffer.commandBufferPtr, events[eventStart]);
+        eventStart = (eventStart + 1) % events.size();
+        eventCount--;
+    }
+    drv::EventPtr ret = events[(eventStart + eventCount++) % events.size()] =
+      engine->eventPool.acquire();
+    return ret;
+}
+
+void Engine::CommandBufferRecorder::cmdEventBarrier(const drv::ImageMemoryBarrier& barrier) {
+    cmdEventBarrier(1, &barrier);
+}
+
+void Engine::CommandBufferRecorder::cmdEventBarrier(uint32_t imageBarrierCount,
+                                                    const drv::ImageMemoryBarrier* barriers) {
+    nodeHandle->getNode().getResourceTracker(queue)->cmd_signal_event(
+      cmdBuffer.commandBufferPtr, acquireEvent(), imageBarrierCount, barriers);
+}
+
+void Engine::CommandBufferRecorder::cmdWaitHostEvent(drv::EventPtr event,
+                                                     const drv::ImageMemoryBarrier& barrier) {
+    cmdWaitHostEvent(event, 1, &barrier);
+}
+
+void Engine::CommandBufferRecorder::cmdWaitHostEvent(drv::EventPtr event,
+                                                     uint32_t imageBarrierCount,
+                                                     const drv::ImageMemoryBarrier* barriers) {
+    nodeHandle->getNode().getResourceTracker(queue)->cmd_wait_host_events(
+      cmdBuffer.commandBufferPtr, event, imageBarrierCount, barriers);
+}
+
+void Engine::CommandBufferRecorder::cmdImageBarrier(const drv::ImageMemoryBarrier& barrier) {
+    nodeHandle->getNode().getResourceTracker(queue)->cmd_image_barrier(
+      cmdBuffer.commandBufferPtr, std::move(barrier), drv::NULL_HANDLE);
 }
 
 void Engine::CommandBufferRecorder::cmdClearImage(
@@ -15,7 +49,7 @@ void Engine::CommandBufferRecorder::cmdClearImage(
     drv::ImageSubresourceRange defVal;
     if (ranges == 0) {
         ranges = 1;
-        defVal.set(numLayers, numMips, drv::ImageSubresourceRange::COLOR_BIT);
+        defVal.set(numLayers, numMips, drv::COLOR_BIT);
         subresourceRanges = &defVal;
     }
     nodeHandle->getNode().getResourceTracker(queue)->cmd_clear_image(

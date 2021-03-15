@@ -23,7 +23,6 @@ struct PerSubresourceRangeTrackData
     drv::MemoryBarrier::AccessFlagBitType dirtyMask = 0;
     // which cache sees the data
     drv::MemoryBarrier::AccessFlagBitType visible = drv::MemoryBarrier::get_all_bits();
-    TODO;  // add event here
 };
 struct PerResourceTrackData
 {

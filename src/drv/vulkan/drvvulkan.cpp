@@ -211,7 +211,8 @@ void DrvVulkanResourceTracker::add_memory_sync(
 void DrvVulkanResourceTracker::appendBarrier(drv::CommandBufferPtr cmdBuffer,
                                              drv::PipelineStages srcStage,
                                              drv::PipelineStages dstStage,
-                                             ImageSingleSubresourceMemoryBarrier&& imageBarrier) {
+                                             ImageSingleSubresourceMemoryBarrier&& imageBarrier,
+                                             drv::EventPtr event) {
     if (!(srcStage.resolve(queueSupport) & (~drv::PipelineStages::TOP_OF_PIPE_BIT)))
         return;
     if (dstStage.stageFlags == 0)
@@ -220,13 +221,14 @@ void DrvVulkanResourceTracker::appendBarrier(drv::CommandBufferPtr cmdBuffer,
     static_cast<ResourceBarrier&>(barrier) = static_cast<ResourceBarrier&>(imageBarrier);
     barrier.image = imageBarrier.image;
     barrier.subresourceSet.add(imageBarrier.layer, imageBarrier.mipLevel, imageBarrier.aspect);
-    appendBarrier(cmdBuffer, srcStage, dstStage, std::move(barrier));
+    appendBarrier(cmdBuffer, srcStage, dstStage, std::move(barrier), event);
 }
 
 void DrvVulkanResourceTracker::appendBarrier(drv::CommandBufferPtr cmdBuffer,
                                              drv::PipelineStages srcStage,
                                              drv::PipelineStages dstStage,
-                                             ImageMemoryBarrier&& imageBarrier) {
+                                             ImageMemoryBarrier&& imageBarrier,
+                                             drv::EventPtr event) {
     if (!(srcStage.resolve(queueSupport) & (~drv::PipelineStages::TOP_OF_PIPE_BIT)))
         return;
     if (dstStage.stageFlags == 0)
@@ -234,44 +236,86 @@ void DrvVulkanResourceTracker::appendBarrier(drv::CommandBufferPtr cmdBuffer,
     BarrierInfo barrier;
     barrier.srcStage = srcStage;
     barrier.dstStage = dstStage;
+    barrier.event = event;
     barrier.numImageRanges = 1;
     barrier.imageBarriers[0] = std::move(imageBarrier);
-    uint32_t freeSpot = MAX_UNFLUSHED_BARRIER;
-    uint32_t eventless = MAX_UNFLUSHED_BARRIER;
-    for (uint32_t i = 0; i < MAX_UNFLUSHED_BARRIER; ++i) {
-        uint32_t ind = (i + lastBarrier) % MAX_UNFLUSHED_BARRIER;
-        if (!barriers[ind]) {
-            freeSpot = ind;
-            continue;
+    if (lastBarrier < barriers.size() && barriers[lastBarrier]
+        && matches(barriers[lastBarrier], barrier) && merge(barriers[lastBarrier], barrier)) {
+        barriers[lastBarrier] = std::move(barrier);
+    }
+    else {
+        uint32_t freeSpot = barriers.size();
+        bool placed = false;
+        for (uint32_t i = 0; i < barriers.size(); ++i) {
+            if (!barriers[i]) {
+                freeSpot = i;
+                continue;
+            }
+            if (matches(barriers[i], barrier) && merge(barriers[i], barrier)) {
+                barriers[i] = std::move(barrier);
+                lastBarrier = i;
+                placed = true;
+                break;
+            }
+            if (swappable(barriers[i], barrier))
+                continue;
+            if (merge(barriers[i], barrier)) {
+                freeSpot = i;
+            }
+            else if (barriers[i].event == drv::NULL_HANDLE || requireFlush(barriers[i], barrier)) {
+                // if no event is in original barrier, better keep the order
+                // otherwise manually placed barriers could lose effectivity
+                freeSpot = i;
+                flushBarrier(cmdBuffer, barriers[i]);
+            }
         }
-        if (barriers[ind].event == drv::NULL_HANDLE)
-            eventless = ind;
-        if (swappable(barriers[ind], barrier))
-            continue;
-        if (!merge(barriers[ind], barrier) && barriers[ind].event == drv::NULL_HANDLE) {
-            freeSpot = ind;
-            flushBarrier(cmdBuffer, barriers[ind]);
+        if (!placed) {
+            if (freeSpot < barriers.size()) {
+                barriers[freeSpot] = std::move(barrier);
+                lastBarrier = freeSpot;
+            }
+            else {
+                lastBarrier = barriers.size();
+                barriers.push_back(std::move(barrier));
+            }
+        }
+        while (!barriers.empty() && !barriers.back())
+            barriers.pop_back();
+    }
+}
+
+bool DrvVulkanResourceTracker::requireFlush(const BarrierInfo& barrier0,
+                                            const BarrierInfo& barrier1) const {
+    if (swappable(barrier0, barrier1))
+        return false;
+    uint32_t i = 0;
+    uint32_t j = 0;
+    while (i < barrier0.numImageRanges && j < barrier.numImageRanges) {
+        if (barrier0.imageBarriers[i].image < barrier.imageBarriers[j].image)
+            i++;
+        else if (barrier0.imageBarriers[j].image < barrier.imageBarriers[i].image)
+            j++;
+        else {  // equals
+            if (barrier0.imageBarriers[i].subresourceSet.overlap(barrier1.imageBarriers[j]))
+                return true;
         }
     }
-    if (freeSpot == MAX_UNFLUSHED_BARRIER) {
-        if (eventless != MAX_UNFLUSHED_BARRIER) {
-            flushBarrier(cmdBuffer, barriers[eventless]);
-            freeSpot = eventless;
-        }
-        else {
-            // TODO this can be improved with a better selection strategy
-            flushBarrier(cmdBuffer, barriers[0]);
-            freeSpot = 0;
-        }
-    }
-    barriers[freeSpot] = std::move(barrier);
-    lastBarrier = freeSpot;
+    return false;
+}
+
+bool DrvVulkanResourceTracker::matches(const BarrierInfo& barrier0,
+                                       const BarrierInfo& barrier1) const {
+    const drv::PipelineStages::FlagType src0 = barrier0.srcStage.resolve(queueSupport);
+    const drv::PipelineStages::FlagType src1 = barrier1.srcStage.resolve(queueSupport);
+    const drv::PipelineStages::FlagType dst0 = barrier0.dstStage.resolve(queueSupport);
+    const drv::PipelineStages::FlagType dst1 = barrier1.dstStage.resolve(queueSupport);
+    return src0 == src1 && dst0 == dst1 && barrier0.event == barrier1.event;
 }
 
 bool DrvVulkanResourceTracker::swappable(const BarrierInfo& barrier0,
                                          const BarrierInfo& barrier1) const {
     if (barrier0.event != drv::NULL_HANDLE && barrier1.event != drv::NULL_HANDLE)
-        return barrier0.event != barrier1.event;
+        return true;
     if (barrier1.event != drv::NULL_HANDLE)
         return (barrier0.srcStage.resolve(queueSupport) & barrier1.dstStage.resolve(queueSupport))
                == 0;
@@ -284,6 +328,8 @@ bool DrvVulkanResourceTracker::swappable(const BarrierInfo& barrier0,
 }
 
 bool DrvVulkanResourceTracker::merge(BarrierInfo& barrier0, BarrierInfo& barrier) const {
+    if (!matches(barrier0, barrier))
+        return false;
     if ((barrier0.dstStage.resolve(queueSupport) & barrier.srcStage.resolve(queueSupport)) == 0)
         return false;
     if (barrier0.event != barrier.event)
@@ -513,16 +559,15 @@ void DrvVulkanResourceTracker::flushBarrier(drv::CommandBufferPtr cmdBuffer, Bar
 
     if (barrier.event != drv::NULL_HANDLE) {
         VkEvent vkEvent = convertEvent(barrier.event);
-        vkCmdWaitEvents(convertCommandBuffer(cmdBuffer), 1, &vkEvent,
-                        static_cast<VkPipelineStageFlags>(barrier.srcStage.stageFlags),
-                        static_cast<VkPipelineStageFlags>(barrier.dstStage.stageFlags), 0, nullptr,
-                        0, nullptr,  // TODO buffers
-                        imageRangeCount, vkImageBarriers);
+        vkCmdWaitEvents(
+          convertCommandBuffer(cmdBuffer), 1, &vkEvent, convertPipelineStages(barrier.srcStage),
+          convertPipelineStages(barrier.dstStage), 0, nullptr, 0, nullptr,  // TODO buffers
+          imageRangeCount, vkImageBarriers);
     }
     else {
         vkCmdPipelineBarrier(convertCommandBuffer(cmdBuffer),
-                             static_cast<VkPipelineStageFlags>(barrier.srcStage.stageFlags),
-                             static_cast<VkPipelineStageFlags>(barrier.dstStage.stageFlags), 0,
+                             convertPipelineStages(barrier.srcStage),
+                             convertPipelineStages(barrier.dstStage), 0,
                              //  static_cast<VkDependencyFlags>(dependencyFlags),  // TODO
                              0, nullptr, 0, nullptr,  // TODO add buffers here
                              imageRangeCount, vkImageBarriers);
@@ -536,19 +581,24 @@ void DrvVulkanResourceTracker::flushBarrier(drv::CommandBufferPtr cmdBuffer, Bar
 void DrvVulkanResourceTracker::cmd_signal_event(drv::CommandBufferPtr cmdBuffer,
                                                 drv::EventPtr event, uint32_t imageBarrierCount,
                                                 const drv::ImageMemoryBarrier* imageBarriers) {
-    TODO;
-    // collect src stages
-    // call set event (flush?)
-    // do the regular memary sync for all resources as usual with barriers (excluding src stages + add event)
+    for (uint32_t i = 0; i < imageBarrierCount; ++i)
+        flushBarriersFor(cmdBuffer, imageBarriers[i].image, imageBarriers[i].numSubresourceRanges,
+                         imageBarriers[i].ranges);
+
+    drv::PipelineStages srcStages;
+    for (uint32_t i = 0; i < imageBarrierCount; ++i)
+        srcStages.add(cmd_image_barrier(cmdBuffer, imageBarriers[i], event));
+    vkCmdSetEvent(convertCommandBuffer(cmdBuffer), event, convertPipelineStages(srcStages));
 }
 
 void DrvVulkanResourceTracker::cmd_wait_host_events(drv::CommandBufferPtr cmdBuffer,
-                                                    drv::EventPtr event,
+                                                    drv::EventPtr event, uint32_t imageBarrierCount,
                                                     const drv::ImageMemoryBarrier* imageBarriers) {
-    TODO;
-    // placed wait command must have src stages for VK_PIPELINE_STAGE_HOST_BIT  to wait on host operation
-    // validate src flags: they should contain VK_PIPELINE_STAGE_HOST_BIT (bad_usage otherwise)
-    // they should not contain anything else (bad_usage for now)
-    // do the regular memary sync for all resources as usual with barriers (excluding src stages + add event)
-    // this is only used when event is manually set from host (indicate in name of function)
+    drv::PipelineStages srcStages;
+    for (uint32_t i = 0; i < imageBarrierCount; ++i)
+        srcStages.add(cmd_image_barrier(cmdBuffer, imageBarriers[i], event));
+    if (srcStages != drv::PipelineStages(drv::PipelineStages::HOST_BIT))
+        invalidate(
+          BAD_USAGE,
+          "Resource is used in cmd_wait_host_events, but its usage flags don't include HOST_BIT. Tracker might not know about host usage");
 }
