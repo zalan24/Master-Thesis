@@ -63,11 +63,11 @@ Get a triangle on screen:
             ☐ This struct needs to store tracking slots
                 ✔ These are for parallel state tracking @done (3/13/2021, 8:48:44 PM)
                 ☐ Values stored per slot
-                    ☐ Common
+                    ✔ Common @done (3/15/2021, 5:42:10 PM)
                         ✔ Ownership @done (3/9/2021, 2:53:36 PM)
                         ✔ Usable stages (src for prev barrier) @done (3/10/2021, 11:34:17 AM)
-                        ☐ Event to wait on before usage????
-                            ☐ Command buffer recorder needs to keep track of used events (for garbage collection)
+                        ✔ Event to wait on before usage???? @done (3/15/2021, 5:42:08 PM)
+                            ✔ Command buffer recorder needs to keep track of used events (for garbage collection) @done (3/15/2021, 5:42:07 PM)
                     ✔ Images store data per mip level per array index (have max values for this) @done (3/11/2021, 9:20:12 PM)
                         ✔ Layout @done (3/10/2021, 9:00:26 AM)
                         ✔ Ongoing writing pipeline stages (src mask for next barrier) @done (3/9/2021, 2:55:48 PM)

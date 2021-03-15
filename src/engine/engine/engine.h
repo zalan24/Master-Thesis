@@ -27,6 +27,7 @@
 #include <resourcemanager.h>
 #include <serializable.h>
 
+#include "garbage.h"
 #include "shaderbin.h"
 
 struct ExecutionPackage;
@@ -131,7 +132,8 @@ class Engine
         CommandBufferRecorder(std::unique_lock<std::mutex>&& queueLock, drv::QueuePtr queue,
                               FrameGraph::QueueId queueId, FrameGraph* frameGraph, Engine* engine,
                               FrameGraph::NodeHandle* nodeHandle, FrameGraph::FrameId frameId,
-                              drv::CommandBufferCirculator::CommandBufferHandle&& cmdBuffer);
+                              drv::CommandBufferCirculator::CommandBufferHandle&& cmdBuffer,
+                              Garbage* garbage);
 
         std::unique_lock<std::mutex> queueLock;
         drv::QueuePtr queue;
@@ -141,6 +143,7 @@ class Engine
         FrameGraph::NodeHandle* nodeHandle;
         FrameGraph::FrameId frameId;
         drv::CommandBufferCirculator::CommandBufferHandle cmdBuffer;
+        Garbage* garbage;
         uint32_t eventStart = 0;
         uint32_t eventCount = 0;
         std::array<EventPool::EventHandle, 32> events;
@@ -157,7 +160,7 @@ class Engine
 
     CommandBufferRecorder acquireCommandRecorder(FrameGraph::NodeHandle& acquiringNodeHandle,
                                                  FrameGraph::FrameId frameId,
-                                                 FrameGraph::QueueId queueId);
+                                                 FrameGraph::QueueId queueId, Garbage* garbage);
 
  private:
     struct ErrorCallback
@@ -175,32 +178,6 @@ class Engine
         std::vector<drv::Semaphore> imageAvailableSemaphores;
         std::vector<drv::Semaphore> renderFinishedSemaphores;
         SyncBlock(drv::LogicalDevicePtr device, uint32_t maxFramesInFlight);
-    };
-
-    class Garbage
-    {
-     public:
-        Garbage(FrameGraph::FrameId frameId);
-
-        Garbage(const Garbage&) = delete;
-        Garbage& operator=(const Garbage&) = delete;
-        Garbage(Garbage&& other);
-        Garbage& operator=(Garbage&& other);
-
-        ~Garbage();
-
-        void resetCommandBuffer(drv::CommandBufferCirculator::CommandBufferHandle&& cmdBuffer);
-        void releaseEvent(EventPool::EventHandle&& event);
-        FrameGraph::FrameId getFrameId() const;
-
-     private:
-        FrameGraph::FrameId frameId;
-        mutable std::mutex mutex;
-
-        std::vector<drv::CommandBufferCirculator::CommandBufferHandle> cmdBuffersToReset;
-        std::vector<EventPool::EventHandle> events;
-
-        void close() noexcept;
     };
 
     Config config;

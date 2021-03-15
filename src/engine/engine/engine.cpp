@@ -337,20 +337,22 @@ Engine::AcquiredImageData Engine::acquiredSwapchainImage(
 
 Engine::CommandBufferRecorder Engine::acquireCommandRecorder(
   FrameGraph::NodeHandle& acquiringNodeHandle, FrameGraph::FrameId frameId,
-  FrameGraph::QueueId queueId) {
+  FrameGraph::QueueId queueId, Garbage* garbage) {
     drv::QueuePtr queue = frameGraph.getQueue(queueId);
     drv::CommandBufferBankGroupInfo acquireInfo(drv::get_queue_family(device, queue), false,
                                                 drv::CommandBufferType::PRIMARY);
     std::unique_lock<std::mutex> lock = drv::lock_queue(device, queue);
     return CommandBufferRecorder(std::move(lock), queue, queueId, &frameGraph, this,
-                                 &acquiringNodeHandle, frameId, cmdBufferBank.acquire(acquireInfo));
+                                 &acquiringNodeHandle, frameId, cmdBufferBank.acquire(acquireInfo),
+                                 garbage);
 }
 
 void Engine::recordCommandsLoop(const volatile std::atomic<FrameGraph::FrameId>* stopFrame) {
     FrameGraph::FrameId recordFrame = 0;
     while (!frameGraph.isStopped() && recordFrame <= *stopFrame) {
         // TODO preframe stuff (resize)
-        std::unique_ptr<Garbage> garbage;
+        std::unique_ptr<Garbage>
+          garbage;  // TODO use a circular vector instead of dynamic allocation
         {
             FrameGraph::NodeHandle recStartHandle =
               frameGraph.acquireNode(recordStartNode, recordFrame);
@@ -364,7 +366,7 @@ void Engine::recordCommandsLoop(const volatile std::atomic<FrameGraph::FrameId>*
                 ExecutionPackage::Message::RECORD_START, recordFrame, 0,
                 static_cast<void*>(garbage.get())}));
         }
-        renderer->record(frameGraph, recordFrame);
+        renderer->record(frameGraph, recordFrame, garbage.get());
         {
             FrameGraph::NodeHandle presentHandle =
               frameGraph.acquireNode(presentFrameNode, recordFrame);
@@ -623,7 +625,8 @@ void Engine::gameLoop() {
 Engine::CommandBufferRecorder::CommandBufferRecorder(
   std::unique_lock<std::mutex>&& _queueLock, drv::QueuePtr _queue, FrameGraph::QueueId _queueId,
   FrameGraph* _frameGraph, Engine* _engine, FrameGraph::NodeHandle* _nodeHandle,
-  FrameGraph::FrameId _frameId, drv::CommandBufferCirculator::CommandBufferHandle&& _cmdBuffer)
+  FrameGraph::FrameId _frameId, drv::CommandBufferCirculator::CommandBufferHandle&& _cmdBuffer,
+  Garbage* _garbage)
   : queueLock(std::move(_queueLock)),
     queue(_queue),
     queueId(_queueId),
@@ -631,7 +634,8 @@ Engine::CommandBufferRecorder::CommandBufferRecorder(
     engine(_engine),
     nodeHandle(_nodeHandle),
     frameId(_frameId),
-    cmdBuffer(std::move(_cmdBuffer)) {
+    cmdBuffer(std::move(_cmdBuffer)),
+    garbage(_garbage) {
     assert(cmdBuffer);
     assert(drv::begin_primary_command_buffer(cmdBuffer.commandBufferPtr, true, false));
 }
@@ -681,45 +685,4 @@ void Engine::CommandBufferRecorder::close() {
     queue->push(ExecutionPackage(ExecutionPackage::CommandBufferPackage{
       queue, std::move(cmdBuffer), std::move(signalSemaphores),
       std::move(signalTimelineSemaphores)}));
-}
-
-Engine::Garbage::Garbage(FrameGraph::FrameId _frameId) : frameId(_frameId) {
-}
-
-Engine::Garbage::Garbage(Garbage&& other)
-  : frameId(other.frameId), cmdBuffersToReset(std::move(other.cmdBuffersToReset)) {
-}
-
-Engine::Garbage& Engine::Garbage::operator=(Garbage&& other) {
-    if (&other == this)
-        return *this;
-    close();
-    frameId = other.frameId;
-    cmdBuffersToReset = std::move(other.cmdBuffersToReset);
-    return *this;
-}
-
-Engine::Garbage::~Garbage() {
-    close();
-}
-
-void Engine::Garbage::resetCommandBuffer(
-  drv::CommandBufferCirculator::CommandBufferHandle&& cmdBuffer) {
-    std::unique_lock<std::mutex> lock(mutex);
-    cmdBuffersToReset.push_back(std::move(cmdBuffer));
-}
-
-void Engine::Garbage::releaseEvent(EventPool::EventHandle&& event) {
-    events.push_back(std::move(event));
-}
-
-FrameGraph::FrameId Engine::Garbage::getFrameId() const {
-    return frameId;
-}
-
-void Engine::Garbage::close() noexcept {
-    for (auto& cmdBuffer : cmdBuffersToReset)
-        cmdBuffer.circulator->finished(std::move(cmdBuffer));
-    cmdBuffersToReset.clear();
-    events.clear();
 }

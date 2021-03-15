@@ -22,7 +22,7 @@ class Game final
     void initSimulationFrameGraph(FrameGraph& frameGraph,
                                   const ISimulation::FrameGraphData& data) override;
 
-    void record(FrameGraph& frameGraph, FrameGraph::FrameId frameId) override;
+    void record(FrameGraph& frameGraph, FrameGraph::FrameId frameId, Garbage* garbage) override;
     void simulate(FrameGraph& frameGraph, FrameGraph::FrameId frameId) override;
 
  private:

@@ -3,6 +3,7 @@
 // #include <iostream>
 
 #include <engine.h>
+#include <garbage.h>
 
 #include <shader_obj_test.h>
 
@@ -40,7 +41,7 @@ void Game::initSimulationFrameGraph(FrameGraph& frameGraph,
     // TODO
 }
 
-void Game::record(FrameGraph& frameGraph, FrameGraph::FrameId frameId) {
+void Game::record(FrameGraph& frameGraph, FrameGraph::FrameId frameId, Garbage* garbage) {
     std::cout << "Record: " << frameId << std::endl;
     Engine::QueueInfo queues = engine->getQueues();
     FrameGraph::NodeHandle testDrawHandle = frameGraph.acquireNode(testDraw, frameId);
@@ -48,7 +49,7 @@ void Game::record(FrameGraph& frameGraph, FrameGraph::FrameId frameId) {
         std::this_thread::sleep_for(std::chrono::milliseconds(4));
         Engine::AcquiredImageData swapChainData = engine->acquiredSwapchainImage(testDrawHandle);
         Engine::CommandBufferRecorder recorder =
-          engine->acquireCommandRecorder(testDrawHandle, frameId, queues.renderQueue.id);
+          engine->acquireCommandRecorder(testDrawHandle, frameId, queues.renderQueue.id, garbage);
         drv::ClearColorValue clearValue(255u, 255u, 0u, 255u);
         // recorder.cmdWaitSemaphore(swapChainData.imageAvailableSemaphore,
         //                           drv::PipelineStages::COLOR_ATTACHMENT_OUTPUT_BIT);

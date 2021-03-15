@@ -4,6 +4,8 @@
 
 #include <framegraph.h>
 
+class Garbage;
+
 class IRenderer
 {
  public:
@@ -27,7 +29,7 @@ class IRenderer
     virtual bool initRenderFrameGraph(FrameGraph& frameGraph, const FrameGraphData& data,
                                       FrameGraph::NodeId& presentDepNode,
                                       FrameGraph::QueueId& depQueueId) = 0;
-    virtual void record(FrameGraph& frameGraph, FrameGraph::FrameId frameId) = 0;
+    virtual void record(FrameGraph& frameGraph, FrameGraph::FrameId frameId, Garbage *garbage) = 0;
 
  private:
 };
