@@ -1,5 +1,7 @@
 #pragma once
 
+#include <functional>
+
 #include "drv_interface.h"
 #include "drvbarrier.h"
 #include "drvtypes.h"
@@ -32,9 +34,22 @@ class ResourceTracker
 
     virtual void cmd_flush_waits_on(CommandBufferPtr cmdBuffer, EventPtr event) = 0;
 
+    enum EventFlushMode
+    {
+        UNUSED,
+        FLUSHED,
+        DISCARDED  // used when closing the driver
+    };
+    // TODO try to avoid dynamic allocation in this
+    using FlushEventCallback = std::function<FlushEventCallback()>;
+
     virtual void cmd_signal_event(drv::CommandBufferPtr cmdBuffer, drv::EventPtr event,
                                   uint32_t imageBarrierCount,
                                   const drv::ImageMemoryBarrier* imageBarriers) = 0;
+    virtual void cmd_signal_event(drv::CommandBufferPtr cmdBuffer, drv::EventPtr event,
+                                  uint32_t imageBarrierCount,
+                                  const drv::ImageMemoryBarrier* imageBarriers,
+                                  FlushEventCallback&& callback) = 0;
 
     virtual void cmd_wait_host_events(drv::CommandBufferPtr cmdBuffer, drv::EventPtr event,
                                       uint32_t imageBarrierCount,

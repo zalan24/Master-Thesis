@@ -18,6 +18,10 @@ FrameGraph::Node::Node(Node&& other)
     localExecutionQueue(std::move(other.localExecutionQueue)) {
 }
 
+FrameGraph::Node::~Node() {
+    flushEvents();
+}
+
 bool FrameGraph::Node::hasExecution() const {
     return localExecutionQueue != nullptr;
 }

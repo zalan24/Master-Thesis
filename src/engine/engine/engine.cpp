@@ -164,7 +164,7 @@ Engine::Engine(const Config& cfg, const std::string& shaderbinFile,
     syncBlock(device, config.maxFramesInFlight),
     shaderBin(shaderbinFile),
     resourceMgr(std::move(resource_infos)),
-    frameGraph(device) {
+    frameGraph(device, &garbageSystem, &eventPool) {
 }
 
 Engine::~Engine() {
@@ -358,11 +358,7 @@ void Engine::recordCommandsLoop(const volatile std::atomic<FrameGraph::FrameId>*
                 assert(frameGraph.isStopped());
                 break;
             }
-            {
-                std::unique_lock<std::mutex> lock(garbageMutex);
-                useGarbage([&](Garbage* trashBin) { trashBin->reset(recordFrame); });
-                currentGarbage.fetch_add(1);
-            }
+            garbageSystem.startGarbage(recordFrame);
             frameGraph.getExecutionQueue(recStartHandle)
               ->push(ExecutionPackage(ExecutionPackage::MessagePackage{
                 ExecutionPackage::Message::RECORD_START, recordFrame, 0, nullptr}));
@@ -487,7 +483,7 @@ bool Engine::execute(FrameGraph::FrameId& executionFrame, ExecutionPackage&& pac
         executionInfo.timelineSignalValues = signalTimelineSemaphoreValues;
         drv::execute(cmdBuffer.queue, 1, &executionInfo);
         cmdBuffer.bufferHandle.circulator->startExecution(cmdBuffer.bufferHandle);
-        useGarbage([&](Garbage* trashBin) {
+        garbageSystem.useGarbage([&](Garbage* trashBin) {
             trashBin->resetCommandBuffer(std::move(cmdBuffer.bufferHandle));
         });
     }
@@ -530,9 +526,7 @@ void Engine::cleanUpLoop(const volatile std::atomic<FrameGraph::FrameId>* stopFr
             assert(frameGraph.isStopped());
             break;
         }
-        Garbage& trashBin = trashBins[oldestGarbage.fetch_add(1) % trashBins.size()];
-        assert(trashBin.getFrameId() == cleanUpFrame);
-        trashBin.reset();
+        garbageSystem.releaseGarbage(cleanUpFrame);
         {
             std::shared_lock<std::shared_mutex> lock(stopFrameMutex);
             cleanUpFrame++;
@@ -542,9 +536,7 @@ void Engine::cleanUpLoop(const volatile std::atomic<FrameGraph::FrameId>* stopFr
         // wait for execution queue to finish
         std::unique_lock<std::mutex> executionLock(executionMutex);
         drv::device_wait_idle(device);
-        do {
-            trashBins[oldestGarbage.load() % trashBins.size()].reset();
-        } while (oldestGarbage.fetch_add(1) != currentGarbage.load());
+        garbageSystem.releaseAll();
     }
 }
 

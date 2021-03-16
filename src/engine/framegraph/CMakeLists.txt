@@ -9,5 +9,6 @@ set_target_properties(  AnimationsFramegraph
 target_include_directories(AnimationsFramegraph PUBLIC . ${CMAKE_CURRENT_BINARY_DIR})
 target_link_libraries(AnimationsFramegraph PUBLIC
     AnimationsDrv
+    AnimationsEventPool
     AnimationsExecutionQueue
 )

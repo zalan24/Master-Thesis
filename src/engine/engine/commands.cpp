@@ -4,26 +4,22 @@
 
 #include <framegraph.h>
 
-drv::EventPtr Engine::CommandBufferRecorder::acquireEvent() {
-    if (eventCount == events.size()) {
-        nodeHandle->getNode().getResourceTracker(queue)->cmd_flush_waits_on(
-          cmdBuffer.commandBufferPtr, events[eventStart]);
-        eventStart = (eventStart + 1) % events.size();
-        eventCount--;
-    }
-    drv::EventPtr ret = events[(eventStart + eventCount++) % events.size()] =
-      engine->eventPool.acquire();
-    return ret;
-}
-
 void Engine::CommandBufferRecorder::cmdEventBarrier(const drv::ImageMemoryBarrier& barrier) {
     cmdEventBarrier(1, &barrier);
 }
 
 void Engine::CommandBufferRecorder::cmdEventBarrier(uint32_t imageBarrierCount,
                                                     const drv::ImageMemoryBarrier* barriers) {
-    nodeHandle->getNode().getResourceTracker(queue)->cmd_signal_event(
-      cmdBuffer.commandBufferPtr, acquireEvent(), imageBarrierCount, barriers);
+    EventPool::EventHandle event = engine->eventPool.acquire();
+    drv::IResourceTracker* tracker = nodeHandle->getNode().getResourceTracker(queue);
+    drv::EventPtr eventPtr = event;
+    tracker->cmd_signal_event(
+      cmdBuffer.commandBufferPtr, eventPtr, imageBarrierCount, barriers,
+      [this, evt = std::move(event)](drv::IResourceTracker::EventFlushMode) mutable {
+          EventPool::EventHandle e = std::move(evt);
+          engine->garbageSystem.useGarbage(
+            [&](Garbage* trashBin) { trashBin->releaseEvent(std::move(e)); });
+      });
 }
 
 void Engine::CommandBufferRecorder::cmdWaitHostEvent(drv::EventPtr event,

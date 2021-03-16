@@ -10,8 +10,6 @@
 
 #include <concurrentqueue.h>
 
-#include <flexiblearray.h>
-
 #include <drv.h>
 #include <drv_queue_manager.h>
 #include <drv_wrappers.h>
@@ -26,11 +24,11 @@
 #include <inputmanager.h>
 // #include <renderer.h>
 #include <corecontext.h>
+#include <garbage.h>
 #include <resourcemanager.h>
 #include <serializable.h>
 
-#include "garbage.h"
-#include "shaderbin.h"
+#include <shaderbin.h>
 
 struct ExecutionPackage;
 class ISimulation;
@@ -203,6 +201,7 @@ class Engine
     ShaderBin shaderBin;
     ResourceManager resourceMgr;
     // EntityManager entityManager;
+    GarbageSystem garbageSystem;
     FrameGraph frameGraph;
 
     ISimulation* simulation = nullptr;
@@ -217,17 +216,6 @@ class Engine
     FrameGraph::NodeId presentFrameNode;
     FrameGraph::NodeId cleanUpNode;
     QueueInfo queueInfos;
-
-    mutable std::mutex garbageMutex;
-    std::atomic<uint32_t> currentGarbage = 0;
-    std::atomic<uint32_t> oldestGarbage = 0;
-    flexiblearray<Garbage, 8> trashBins;
-
-    template <typename F>
-    void useGarbage(F&& f) {
-        std::unique_lock<std::mutex> lock(garbageMutex);
-        f(&trashBins[currentGarbage.load() % trashBins.size()]);
-    }
 
     uint32_t acquireImageSemaphoreId = 0;
 

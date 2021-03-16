@@ -573,9 +573,14 @@ void DrvVulkanResourceTracker::flushBarrier(drv::CommandBufferPtr cmdBuffer, Bar
                              imageRangeCount, vkImageBarriers);
     }
 
+    if (barrier.event && barrier.eventCalback)
+        barrier.eventCalback(FLUSHED);
+
     barrier.dstStage = 0;
     barrier.srcStage = 0;
+    barrier.event = drv::NULL_HANDLE;
     barrier.numImageRanges = 0;
+    barrier.eventCalback = {};
 }
 
 void DrvVulkanResourceTracker::cmd_signal_event(drv::CommandBufferPtr cmdBuffer,
@@ -591,6 +596,20 @@ void DrvVulkanResourceTracker::cmd_signal_event(drv::CommandBufferPtr cmdBuffer,
     vkCmdSetEvent(convertCommandBuffer(cmdBuffer), event, convertPipelineStages(srcStages));
 }
 
+void DrvVulkanResourceTracker::cmd_signal_event(drv::CommandBufferPtr cmdBuffer,
+                                                drv::EventPtr event, uint32_t imageBarrierCount,
+                                                const drv::ImageMemoryBarrier* imageBarriers,
+                                                FlushEventCallback&& callback) {
+    cmd_signal_event(cmdBuffer, event, imageBarrierCount, imageBarriers);
+    bool found = false;
+    for (uint32_t i = 0; i < barriers.size(); ++i) {
+        if (barriers[i] && barriers[i].event == event) {
+        }
+    }
+    if (found)
+        callback(UNUSED);
+}
+
 void DrvVulkanResourceTracker::cmd_wait_host_events(drv::CommandBufferPtr cmdBuffer,
                                                     drv::EventPtr event, uint32_t imageBarrierCount,
                                                     const drv::ImageMemoryBarrier* imageBarriers) {
@@ -601,4 +620,11 @@ void DrvVulkanResourceTracker::cmd_wait_host_events(drv::CommandBufferPtr cmdBuf
         invalidate(
           BAD_USAGE,
           "Resource is used in cmd_wait_host_events, but its usage flags don't include HOST_BIT. Tracker might not know about host usage");
+}
+
+DrvVulkanResourceTracker::~DrvVulkanResourceTracker() override {
+    for (uint32_t i = 0; i < barriers.size(); ++i)
+        if (barriers[i] && barriers[i].event && barriers[i].eventCallback)
+            barriers[i].eventCallback(DISCARDED);
+    static_cast<DrvVulkan*>(driver)->release_tracking_slot(trackingSlot);
 }

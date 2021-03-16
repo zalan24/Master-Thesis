@@ -200,9 +200,7 @@ class DrvVulkanResourceTracker final : public drv::ResourceTracker
                              drv::LogicalDevicePtr _device, drv::QueuePtr _queue)
       : ResourceTracker(_driver, physicalDevice, _device, _queue),
         trackingSlot(_driver->acquire_tracking_slot()) {}
-    ~DrvVulkanResourceTracker() override {
-        static_cast<DrvVulkan*>(driver)->release_tracking_slot(trackingSlot);
-    }
+    ~DrvVulkanResourceTracker() override;
 
     DrvVulkanResourceTracker(const DrvVulkanResourceTracker&) = delete;
     DrvVulkanResourceTracker& operator=(const DrvVulkanResourceTracker&) = delete;
@@ -221,6 +219,9 @@ class DrvVulkanResourceTracker final : public drv::ResourceTracker
     void cmd_signal_event(drv::CommandBufferPtr cmdBuffer, drv::EventPtr event,
                           uint32_t imageBarrierCount,
                           const drv::ImageMemoryBarrier* imageBarriers) override;
+    void cmd_signal_event(drv::CommandBufferPtr cmdBuffer, drv::EventPtr event,
+                          uint32_t imageBarrierCount, const drv::ImageMemoryBarrier* imageBarriers,
+                          FlushEventCallback&& callback) override;
 
     void cmd_wait_host_events(drv::CommandBufferPtr cmdBuffer, drv::EventPtr event,
                               uint32_t imageBarrierCount,
@@ -287,6 +288,10 @@ class DrvVulkanResourceTracker final : public drv::ResourceTracker
         drv::PipelineStages srcStage;
         drv::PipelineStages dstStage;
         drv::EventPtr event = drv::NULL_HANDLE;
+        FlushEventCallback eventCalback;
+
+        BarrierInfo(const BarrierInfo&) = delete;
+        BarrierInfo& operator=(const BarrierInfo&) = delete;
 
         // drv::DependencyFlagBits dependencyFlags; // TODO
         // TODO buffer data

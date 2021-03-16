@@ -44,6 +44,10 @@ void EventPool::EventHandle::close() {
     }
 }
 
+void EventPool::EventHandle::reset() {
+    close();
+}
+
 EventPool::EventHandle EventPool::tryAcquire() noexcept {
     assert(device != drv::NULL_HANDLE);
     std::shared_lock<std::shared_mutex> lock(vectorMutex);

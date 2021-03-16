@@ -31,6 +31,8 @@ class EventPool
         operator bool() const;
         operator drv::EventPtr() const;
 
+        void reset();
+
      private:
         EventPool* eventPool;
         drv::EventPtr event;

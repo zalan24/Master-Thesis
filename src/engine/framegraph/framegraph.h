@@ -12,7 +12,10 @@
 #include <drv_resource_tracker.h>
 #include <drv_wrappers.h>
 
+#include <eventpool.h>
 #include <execution_queue.h>
+
+#include "garbage.h"
 
 class FrameGraph
 {
@@ -61,6 +64,11 @@ class FrameGraph
         Node(Node&& other);
         Node& operator=(Node&& other);
 
+        Node(const Node& other) = delete;
+        Node& operator=(const Node& other) = delete;
+
+        ~Node();
+
         void addDependency(CpuDependency dep);
         void addDependency(EnqueueDependency dep);
         void addDependency(CpuQueueDependency dep);
@@ -77,7 +85,6 @@ class FrameGraph
         std::string name;
         FrameGraph* frameGraph = nullptr;
         std::unordered_map<drv::QueuePtr, std::unique_ptr<drv::IResourceTracker>> resourceTrackers;
-        // TODO these could be organized into multiple vectors based on dependency type
         std::vector<CpuDependency> cpuDeps;
         std::vector<EnqueueDependency> enqDeps;
         std::vector<CpuQueueDependency> cpuQueDeps;
@@ -153,10 +160,13 @@ class FrameGraph
     QueueId registerQueue(drv::QueuePtr queue);
     drv::QueuePtr getQueue(QueueId queueId) const;
 
-    explicit FrameGraph(drv::LogicalDevicePtr _device) : device(_device) {}
+    FrameGraph(drv::LogicalDevicePtr _device, GarbageSystem* _garbageSystem, EventPool* _eventPool)
+      : device(_device), garbageSystem(_garbageSystem), eventPool(_eventPool) {}
 
  private:
     drv::LogicalDevicePtr device;
+    GarbageSystem* garbageSystem;
+    EventPool* eventPool;
     ExecutionQueue executionQueue;
     std::vector<Node> nodes;
     std::atomic<bool> quit = false;
