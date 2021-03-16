@@ -288,7 +288,7 @@ class DrvVulkanResourceTracker final : public drv::ResourceTracker
         drv::PipelineStages srcStage;
         drv::PipelineStages dstStage;
         drv::EventPtr event = drv::NULL_HANDLE;
-        FlushEventCallback eventCalback;
+        FlushEventCallback eventCallback;
 
         BarrierInfo(const BarrierInfo&) = delete;
         BarrierInfo& operator=(const BarrierInfo&) = delete;

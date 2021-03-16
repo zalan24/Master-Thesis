@@ -573,14 +573,25 @@ void DrvVulkanResourceTracker::flushBarrier(drv::CommandBufferPtr cmdBuffer, Bar
                              imageRangeCount, vkImageBarriers);
     }
 
-    if (barrier.event && barrier.eventCalback)
-        barrier.eventCalback(FLUSHED);
+    if (barrier.event && barrier.eventCallback) {
+        bool found = false;
+        for (uint32_t i = 0; i < barriers.size(); ++i) {
+            if (barriers[i] && barriers[i].event == barrier.event) {
+                // other barriers use the same event as well
+                // they will call it later
+                barriers[i].eventCallback = std::move(barrier.eventCallback);
+                break;
+            }
+        }
+        if (!found)
+            barrier.eventCallback(FLUSHED);
+        barrier.eventCallback = {};
+    }
 
     barrier.dstStage = 0;
     barrier.srcStage = 0;
     barrier.event = drv::NULL_HANDLE;
     barrier.numImageRanges = 0;
-    barrier.eventCalback = {};
 }
 
 void DrvVulkanResourceTracker::cmd_signal_event(drv::CommandBufferPtr cmdBuffer,
@@ -604,6 +615,9 @@ void DrvVulkanResourceTracker::cmd_signal_event(drv::CommandBufferPtr cmdBuffer,
     bool found = false;
     for (uint32_t i = 0; i < barriers.size(); ++i) {
         if (barriers[i] && barriers[i].event == event) {
+            found = true;
+            barriers[i].eventCallback = std::move(callback);
+            break;
         }
     }
     if (found)
