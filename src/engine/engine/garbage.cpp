@@ -10,6 +10,7 @@ Garbage::Garbage(Garbage&& other)
 Garbage& Garbage::operator=(Garbage&& other) {
     if (&other == this)
         return *this;
+    std::unique_lock<std::mutex> lock(mutex);
     close();
     frameId = other.frameId;
     cmdBuffersToReset = std::move(other.cmdBuffersToReset);
@@ -26,6 +27,7 @@ void Garbage::resetCommandBuffer(drv::CommandBufferCirculator::CommandBufferHand
 }
 
 void Garbage::releaseEvent(EventPool::EventHandle&& event) {
+    std::unique_lock<std::mutex> lock(mutex);
     events.push_back(std::move(event));
 }
 
@@ -38,4 +40,10 @@ void Garbage::close() noexcept {
         cmdBuffer.circulator->finished(std::move(cmdBuffer));
     cmdBuffersToReset.clear();
     events.clear();
+}
+
+void Garbage::reset(FrameGraph::FrameId _frameId) {
+    std::unique_lock<std::mutex> lock(mutex);
+    close();
+    frameId = _frameId;
 }

@@ -10,6 +10,8 @@
 
 #include <concurrentqueue.h>
 
+#include <flexiblearray.h>
+
 #include <drv.h>
 #include <drv_queue_manager.h>
 #include <drv_wrappers.h>
@@ -132,8 +134,7 @@ class Engine
         CommandBufferRecorder(std::unique_lock<std::mutex>&& queueLock, drv::QueuePtr queue,
                               FrameGraph::QueueId queueId, FrameGraph* frameGraph, Engine* engine,
                               FrameGraph::NodeHandle* nodeHandle, FrameGraph::FrameId frameId,
-                              drv::CommandBufferCirculator::CommandBufferHandle&& cmdBuffer,
-                              Garbage* garbage);
+                              drv::CommandBufferCirculator::CommandBufferHandle&& cmdBuffer);
 
         std::unique_lock<std::mutex> queueLock;
         drv::QueuePtr queue;
@@ -143,24 +144,18 @@ class Engine
         FrameGraph::NodeHandle* nodeHandle;
         FrameGraph::FrameId frameId;
         drv::CommandBufferCirculator::CommandBufferHandle cmdBuffer;
-        Garbage* garbage;
-        uint32_t eventStart = 0;
-        uint32_t eventCount = 0;
-        std::array<EventPool::EventHandle, 32> events;
 
         // TODO frame mem allocator
         std::vector<ExecutionPackage::CommandBufferPackage::SemaphoreSignalInfo> signalSemaphores;
         std::vector<ExecutionPackage::CommandBufferPackage::TimelineSemaphoreSignalInfo>
           signalTimelineSemaphores;
 
-        drv::EventPtr acquireEvent();
-
         void close();
     };
 
     CommandBufferRecorder acquireCommandRecorder(FrameGraph::NodeHandle& acquiringNodeHandle,
                                                  FrameGraph::FrameId frameId,
-                                                 FrameGraph::QueueId queueId, Garbage* garbage);
+                                                 FrameGraph::QueueId queueId);
 
  private:
     struct ErrorCallback
@@ -222,7 +217,17 @@ class Engine
     FrameGraph::NodeId presentFrameNode;
     FrameGraph::NodeId cleanUpNode;
     QueueInfo queueInfos;
-    moodycamel::ConcurrentQueue<std::unique_ptr<Garbage>> garbageQueue;
+
+    mutable std::mutex garbageMutex;
+    std::atomic<uint32_t> currentGarbage = 0;
+    std::atomic<uint32_t> oldestGarbage = 0;
+    flexiblearray<Garbage, 8> trashBins;
+
+    template <typename F>
+    void useGarbage(F&& f) {
+        std::unique_lock<std::mutex> lock(garbageMutex);
+        f(&trashBins[currentGarbage.load() % trashBins.size()]);
+    }
 
     uint32_t acquireImageSemaphoreId = 0;
 
@@ -234,8 +239,7 @@ class Engine
     void recordCommandsLoop(const volatile std::atomic<FrameGraph::FrameId>* stopFrame);
     void executeCommandsLoop();
     void cleanUpLoop(const volatile std::atomic<FrameGraph::FrameId>* stopFrame);
-    bool execute(Garbage*& garbage, FrameGraph::FrameId& executionFrame,
-                 ExecutionPackage&& package);
+    bool execute(FrameGraph::FrameId& executionFrame, ExecutionPackage&& package);
     void present(FrameGraph::FrameId presentFrame);
     bool sampleInput(FrameGraph::FrameId frameId);
 

@@ -203,6 +203,7 @@ void Engine::initGame(IRenderer* _renderer, ISimulation* _simulation) {
           "maxFramesInFlight must be at least the value of maxFramesInExecutionQueue");
     const uint32_t presentDepOffset = static_cast<uint32_t>(config.maxFramesInFlight - 1);
     const uint32_t cleanUpCpuOffset = static_cast<uint32_t>(config.maxFramesInFlight + 1);
+    trashBins.resize(cleanUpCpuOffset);
 
     frameGraph.addDependency(inputSampleNode, FrameGraph::CpuDependency{simStartNode, 0});
     frameGraph.addDependency(simStartNode, FrameGraph::CpuDependency{simEndNode, 1});
@@ -337,22 +338,19 @@ Engine::AcquiredImageData Engine::acquiredSwapchainImage(
 
 Engine::CommandBufferRecorder Engine::acquireCommandRecorder(
   FrameGraph::NodeHandle& acquiringNodeHandle, FrameGraph::FrameId frameId,
-  FrameGraph::QueueId queueId, Garbage* garbage) {
+  FrameGraph::QueueId queueId) {
     drv::QueuePtr queue = frameGraph.getQueue(queueId);
     drv::CommandBufferBankGroupInfo acquireInfo(drv::get_queue_family(device, queue), false,
                                                 drv::CommandBufferType::PRIMARY);
     std::unique_lock<std::mutex> lock = drv::lock_queue(device, queue);
     return CommandBufferRecorder(std::move(lock), queue, queueId, &frameGraph, this,
-                                 &acquiringNodeHandle, frameId, cmdBufferBank.acquire(acquireInfo),
-                                 garbage);
+                                 &acquiringNodeHandle, frameId, cmdBufferBank.acquire(acquireInfo));
 }
 
 void Engine::recordCommandsLoop(const volatile std::atomic<FrameGraph::FrameId>* stopFrame) {
     FrameGraph::FrameId recordFrame = 0;
     while (!frameGraph.isStopped() && recordFrame <= *stopFrame) {
         // TODO preframe stuff (resize)
-        std::unique_ptr<Garbage>
-          garbage;  // TODO use a circular vector instead of dynamic allocation
         {
             FrameGraph::NodeHandle recStartHandle =
               frameGraph.acquireNode(recordStartNode, recordFrame);
@@ -360,13 +358,16 @@ void Engine::recordCommandsLoop(const volatile std::atomic<FrameGraph::FrameId>*
                 assert(frameGraph.isStopped());
                 break;
             }
-            garbage = std::make_unique<Garbage>(recordFrame);  // TODO create in frame mem
+            {
+                std::unique_lock<std::mutex> lock(garbageMutex);
+                useGarbage([&](Garbage* trashBin) { trashBin->reset(recordFrame); });
+                currentGarbage.fetch_add(1);
+            }
             frameGraph.getExecutionQueue(recStartHandle)
               ->push(ExecutionPackage(ExecutionPackage::MessagePackage{
-                ExecutionPackage::Message::RECORD_START, recordFrame, 0,
-                static_cast<void*>(garbage.get())}));
+                ExecutionPackage::Message::RECORD_START, recordFrame, 0, nullptr}));
         }
-        renderer->record(frameGraph, recordFrame, garbage.get());
+        renderer->record(frameGraph, recordFrame);
         {
             FrameGraph::NodeHandle presentHandle =
               frameGraph.acquireNode(presentFrameNode, recordFrame);
@@ -387,20 +388,6 @@ void Engine::recordCommandsLoop(const volatile std::atomic<FrameGraph::FrameId>*
                 assert(frameGraph.isStopped());
                 break;
             }
-            struct ResetGarbageFunctor : ExecutionPackage::CustomFunctor
-            {
-                moodycamel::ConcurrentQueue<std::unique_ptr<Garbage>>* garbageQueue;
-                std::unique_ptr<Garbage> garb;
-                ResetGarbageFunctor(
-                  moodycamel::ConcurrentQueue<std::unique_ptr<Garbage>>* _garbageQueue,
-                  std::unique_ptr<Garbage>&& _garb)
-                  : garbageQueue(_garbageQueue), garb(std::move(_garb)) {}
-                ~ResetGarbageFunctor() override {}
-                void call() override { garbageQueue->enqueue(std::move(garb)); }
-            };
-            frameGraph.getExecutionQueue(recEndHandle)
-              ->push(ExecutionPackage(std::make_unique<ResetGarbageFunctor>(
-                &garbageQueue, std::move(garbage))));  // TODO create in frame mem
             frameGraph.getExecutionQueue(recEndHandle)
               ->push(ExecutionPackage(ExecutionPackage::MessagePackage{
                 ExecutionPackage::Message::RECORD_END, recordFrame, 0, nullptr}));
@@ -415,8 +402,7 @@ void Engine::recordCommandsLoop(const volatile std::atomic<FrameGraph::FrameId>*
       ExecutionPackage::MessagePackage{ExecutionPackage::Message::QUIT, 0, 0, nullptr}));
 }
 
-bool Engine::execute(Garbage*& garbage, FrameGraph::FrameId& executionFrame,
-                     ExecutionPackage&& package) {
+bool Engine::execute(FrameGraph::FrameId& executionFrame, ExecutionPackage&& package) {
     if (std::holds_alternative<ExecutionPackage::MessagePackage>(package.package)) {
         ExecutionPackage::MessagePackage& message =
           std::get<ExecutionPackage::MessagePackage>(package.package);
@@ -429,7 +415,6 @@ bool Engine::execute(Garbage*& garbage, FrameGraph::FrameId& executionFrame,
                     assert(frameGraph.isStopped());
                     return false;
                 }
-                garbage = static_cast<Garbage*>(message.valuePtr);
                 // std::cout << "Execute start: " << message.value1 << std::endl;
             } break;
             case ExecutionPackage::Message::RECORD_END: {
@@ -502,8 +487,9 @@ bool Engine::execute(Garbage*& garbage, FrameGraph::FrameId& executionFrame,
         executionInfo.timelineSignalValues = signalTimelineSemaphoreValues;
         drv::execute(cmdBuffer.queue, 1, &executionInfo);
         cmdBuffer.bufferHandle.circulator->startExecution(cmdBuffer.bufferHandle);
-        assert(garbage != nullptr && garbage->getFrameId() == executionFrame);
-        garbage->resetCommandBuffer(std::move(cmdBuffer.bufferHandle));
+        useGarbage([&](Garbage* trashBin) {
+            trashBin->resetCommandBuffer(std::move(cmdBuffer.bufferHandle));
+        });
     }
     else if (std::holds_alternative<ExecutionPackage::RecursiveQueue>(package.package)) {
         ExecutionPackage::RecursiveQueue& queue =
@@ -516,7 +502,7 @@ bool Engine::execute(Garbage*& garbage, FrameGraph::FrameId& executionFrame,
                 if (message.msg == ExecutionPackage::Message::RECURSIVE_END_MARKER)
                     break;
             }
-            if (!execute(garbage, executionFrame, std::move(p)))
+            if (!execute(executionFrame, std::move(p)))
                 return false;
         }
     }
@@ -525,14 +511,13 @@ bool Engine::execute(Garbage*& garbage, FrameGraph::FrameId& executionFrame,
 
 void Engine::executeCommandsLoop() {
     std::unique_lock<std::mutex> executionLock(executionMutex);
-    Garbage* garbage = nullptr;
     FrameGraph::FrameId executionFrame = 0;
     while (true) {
         ExecutionPackage package;
         ExecutionQueue* executionQueue = frameGraph.getGlobalExecutionQueue();
         executionQueue->waitForPackage();
         while (executionQueue->pop(package))
-            if (!execute(garbage, executionFrame, std::move(package)))
+            if (!execute(executionFrame, std::move(package)))
                 return;
     }
 }
@@ -545,10 +530,9 @@ void Engine::cleanUpLoop(const volatile std::atomic<FrameGraph::FrameId>* stopFr
             assert(frameGraph.isStopped());
             break;
         }
-        std::unique_ptr<Garbage> garbage;
-        assert(garbageQueue.try_dequeue(garbage));
-        assert(garbage && garbage->getFrameId() == cleanUpFrame);
-        garbage.reset();  // this does the cleanup
+        Garbage& trashBin = trashBins[oldestGarbage.fetch_add(1) % trashBins.size()];
+        assert(trashBin.getFrameId() == cleanUpFrame);
+        trashBin.reset();
         {
             std::shared_lock<std::shared_mutex> lock(stopFrameMutex);
             cleanUpFrame++;
@@ -558,9 +542,9 @@ void Engine::cleanUpLoop(const volatile std::atomic<FrameGraph::FrameId>* stopFr
         // wait for execution queue to finish
         std::unique_lock<std::mutex> executionLock(executionMutex);
         drv::device_wait_idle(device);
-        std::unique_ptr<Garbage> garbage;
-        while (garbageQueue.try_dequeue(garbage))
-            garbage.reset();
+        do {
+            trashBins[oldestGarbage.load() % trashBins.size()].reset();
+        } while (oldestGarbage.fetch_add(1) != currentGarbage.load());
     }
 }
 
@@ -625,8 +609,7 @@ void Engine::gameLoop() {
 Engine::CommandBufferRecorder::CommandBufferRecorder(
   std::unique_lock<std::mutex>&& _queueLock, drv::QueuePtr _queue, FrameGraph::QueueId _queueId,
   FrameGraph* _frameGraph, Engine* _engine, FrameGraph::NodeHandle* _nodeHandle,
-  FrameGraph::FrameId _frameId, drv::CommandBufferCirculator::CommandBufferHandle&& _cmdBuffer,
-  Garbage* _garbage)
+  FrameGraph::FrameId _frameId, drv::CommandBufferCirculator::CommandBufferHandle&& _cmdBuffer)
   : queueLock(std::move(_queueLock)),
     queue(_queue),
     queueId(_queueId),
@@ -634,8 +617,7 @@ Engine::CommandBufferRecorder::CommandBufferRecorder(
     engine(_engine),
     nodeHandle(_nodeHandle),
     frameId(_frameId),
-    cmdBuffer(std::move(_cmdBuffer)),
-    garbage(_garbage) {
+    cmdBuffer(std::move(_cmdBuffer)) {
     assert(cmdBuffer);
     assert(drv::begin_primary_command_buffer(cmdBuffer.commandBufferPtr, true, false));
 }

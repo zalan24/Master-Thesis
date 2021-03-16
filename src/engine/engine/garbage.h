@@ -10,6 +10,7 @@
 class Garbage
 {
  public:
+    Garbage() : Garbage(0) {}
     Garbage(FrameGraph::FrameId frameId);
 
     Garbage(const Garbage&) = delete;
@@ -18,6 +19,9 @@ class Garbage
     Garbage& operator=(Garbage&& other);
 
     ~Garbage();
+
+    void reset() { reset(0); }
+    void reset(FrameGraph::FrameId frameId);
 
     void resetCommandBuffer(drv::CommandBufferCirculator::CommandBufferHandle&& cmdBuffer);
     void releaseEvent(EventPool::EventHandle&& event);
