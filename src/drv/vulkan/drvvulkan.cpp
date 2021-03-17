@@ -166,6 +166,12 @@ void DrvVulkanResourceTracker::add_memory_sync(
   bool transferOwnership, drv::QueueFamilyPtr newOwner, drv::PipelineStages& barrierSrcStage,
   drv::PipelineStages& barrierDstStage, ResourceBarrier& barrier) {
     const drv::PipelineStages::FlagType stages = dstStages.resolve(queueSupport);
+    if (config.forceInvalidateAll)
+        invalidateMask = drv::MemoryBarrier::get_all_read_bits();
+    if (config.syncAllOperations) {
+        barrierDstStage.add(drv::PipelineStages::ALL_COMMANDS_BIT);
+        barrierSrcStage.add(drv::PipelineStages::ALL_COMMANDS_BIT);
+    }
     if (transferOwnership && resourceData.ownership != newOwner) {
         barrier.srcFamily = resourceData.ownership;
         barrier.dstFamily = newOwner;
@@ -173,7 +179,7 @@ void DrvVulkanResourceTracker::add_memory_sync(
         barrierDstStage.add(dstStages);
         subresourceData.usableStages = stages;
     }
-    if (flush && subresourceData.dirtyMask != 0) {
+    if ((config.forceFlush || flush) && subresourceData.dirtyMask != 0) {
         barrierDstStage.add(dstStages);
         barrierSrcStage.add(subresourceData.ongoingWrites | subresourceData.usableStages
                             | subresourceData.ongoingFlushes
@@ -213,10 +219,13 @@ void DrvVulkanResourceTracker::appendBarrier(drv::CommandBufferPtr cmdBuffer,
                                              drv::PipelineStages dstStage,
                                              ImageSingleSubresourceMemoryBarrier&& imageBarrier,
                                              drv::EventPtr event) {
-    if (!(srcStage.resolve(queueSupport) & (~drv::PipelineStages::TOP_OF_PIPE_BIT)))
-        return;
-    if (dstStage.stageFlags == 0)
-        return;
+    if (!(srcStage.resolve(queueSupport) & (~drv::PipelineStages::TOP_OF_PIPE_BIT))
+        || dstStage.stageFlags == 0) {
+        drv::drv_assert(imageBarrier.dstAccessFlags == 0
+                        && imageBarrier.dstFamily == imageBarrier.srcFamily
+                        && imageBarrier.newLayout == imageBarrier.oldLayout
+                        && imageBarrier.sourceAccessFlags == 0);
+    }
     ImageMemoryBarrier barrier;
     static_cast<ResourceBarrier&>(barrier) = static_cast<ResourceBarrier&>(imageBarrier);
     barrier.image = imageBarrier.image;
@@ -229,16 +238,20 @@ void DrvVulkanResourceTracker::appendBarrier(drv::CommandBufferPtr cmdBuffer,
                                              drv::PipelineStages dstStage,
                                              ImageMemoryBarrier&& imageBarrier,
                                              drv::EventPtr event) {
-    if (!(srcStage.resolve(queueSupport) & (~drv::PipelineStages::TOP_OF_PIPE_BIT)))
-        return;
-    if (dstStage.stageFlags == 0)
-        return;
+    if (!(srcStage.resolve(queueSupport) & (~drv::PipelineStages::TOP_OF_PIPE_BIT))
+        || dstStage.stageFlags == 0) {
+        drv::drv_assert(imageBarrier.dstAccessFlags == 0
+                        && imageBarrier.dstFamily == imageBarrier.srcFamily
+                        && imageBarrier.newLayout == imageBarrier.oldLayout
+                        && imageBarrier.sourceAccessFlags == 0);
+    }
     BarrierInfo barrier;
-    barrier.srcStage = srcStage;
-    barrier.dstStage = dstStage;
+    barrier.srcStage = config.forceAllSrcStages ? drv::PipelineStages::ALL_COMMANDS_BIT : srcStage;
+    barrier.dstStage = config.forceAllDstStages ? drv::PipelineStages::ALL_COMMANDS_BIT : dstStage;
     barrier.event = event;
     barrier.numImageRanges = 1;
     barrier.imageBarriers[0] = std::move(imageBarrier);
+    drv::drv_assert(barrier);
     if (lastBarrier < barriers.size() && barriers[lastBarrier]
         && matches(barriers[lastBarrier], barrier) && merge(barriers[lastBarrier], barrier)) {
         barriers[lastBarrier] = std::move(barrier);
@@ -281,6 +294,12 @@ void DrvVulkanResourceTracker::appendBarrier(drv::CommandBufferPtr cmdBuffer,
         }
         while (!barriers.empty() && !barriers.back())
             barriers.pop_back();
+    }
+    if ((config.immediateBarriers && !event) || (config.immediateEventBarriers && event)) {
+        drv::drv_assert(barriers[lastBarrier].srcStages == srcStages
+                        && barriers[lastBarrier].dstStages == dstStages
+                        && barriers[lastBarrier].event == event);
+        flushBarrier(barriers[lastBarrier]);
     }
 }
 
@@ -641,4 +660,26 @@ DrvVulkanResourceTracker::~DrvVulkanResourceTracker() override {
         if (barriers[i] && barriers[i].event && barriers[i].eventCallback)
             barriers[i].eventCallback(DISCARDED);
     static_cast<DrvVulkan*>(driver)->release_tracking_slot(trackingSlot);
+}
+
+void DrvVulkanResourceTracker::invalidate(InvalidationLevel level, const char* message) const {
+    switch (level) {
+        case SUBOPTIMAL:
+            if (config.verbosity == Config::DEBUG_ERRORS) {
+                // TODO log warn about it
+            }
+            else if (config.verbosity == Config::ALL_ERRORS)
+                drv::drv_assert(false, message);
+            break;
+        case BAD_USAGE:
+            if (config.verbosity == Config::SILENT_FIXES) {
+                // TODO log warn about it
+            }
+            else
+                drv::drv_assert(false, message);
+            break;
+        case INVALID:
+            drv::drv_assert(false, message);
+            break;
+    }
 }

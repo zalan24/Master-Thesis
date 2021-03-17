@@ -211,19 +211,19 @@ Get a triangle on screen:
                     ☐ Declare basic states (layout only???)
                     ☐ Auto create semaphore based state objects and use them
                 ☐ In same queue and different queue case, one (partial) state is declared by the user, the in/out states are generated to be valid
-        ☐ Tracker settings
-            ☐ Verbosity / assertations
-                ☐ Silent fixes (warn about invalid states, nothing for suboptimal states)
-                ☐ Debug (error on invalid states, error on suboptimal states)
-                ☐ Barrier focus (error on everything)
-            ☐ Sync options
-                ☐ Default: sync when needed only, as much as needed
-                ☐ Barriers are placed immediately instead of collecting and merging them
-                ☐ Sync all dst stages
-                    ☐ In addition Flush all
-                    ☐ In addition invalidate all
-                ☐ Sync all src stages
-                ☐ Place barrier after each command, regardless of state
+        ✔ Tracker settings @done (3/17/2021, 11:01:33 AM)
+            ✔ Verbosity / assertations @done (3/17/2021, 10:49:46 AM)
+                ✔ Silent fixes @done (3/17/2021, 10:49:28 AM)
+                ✔ Debug @done (3/17/2021, 10:49:40 AM)
+                ✔ Barrier focus (error on everything) @done (3/17/2021, 10:49:44 AM)
+            ✔ Sync options @done (3/17/2021, 11:01:32 AM)
+                ✔ Default: sync when needed only, as much as needed @done (3/17/2021, 10:51:21 AM)
+                ✔ Barriers are placed immediately instead of collecting and merging them @done (3/17/2021, 10:55:22 AM)
+                ✔ Sync all dst stages @done (3/17/2021, 10:56:25 AM)
+                    ✔ In addition Flush all @done (3/17/2021, 10:57:13 AM)
+                    ✔ In addition invalidate all @done (3/17/2021, 10:58:13 AM)
+                ✔ Sync all src stages @done (3/17/2021, 10:56:26 AM)
+                ✔ Place barrier before each command, regardless of state @done (3/17/2021, 11:01:30 AM)
 
         ☐ Track resources globally
             ☐ Created resource ids in the framegraph

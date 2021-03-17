@@ -24,6 +24,28 @@ class ResourceTracker
           driver->get_command_type_mask(physicalDevice, driver->get_queue_family(queue))) {}
     virtual ~ResourceTracker() {}
 
+    struct Config
+    {
+        enum Verbosity
+        {
+            SILENT_FIXES,
+            DEBUG_ERRORS,
+            ALL_ERRORS
+        };
+#ifdef DEBUG
+        Verbosity verbosity = DEBUG_ERRORS;
+#else
+        Verbosity verbosity = SILENT_FIXES;
+#endif
+        bool immediateBarriers = false;
+        bool immediateEventBarriers = false;
+        bool forceAllDstStages = false;
+        bool forceAllSrcStages = false;
+        bool forceFlush = false;
+        bool forceInvalidateAll = false;
+        bool syncAllOperations;
+    };
+
     virtual PipelineStages cmd_image_barrier(CommandBufferPtr cmdBuffer,
                                              const ImageMemoryBarrier& barrier,
                                              drv::EventPtr event = drv::NULL_HANDLE) = 0;
@@ -64,5 +86,6 @@ class ResourceTracker
     LogicalDevicePtr device;
     QueuePtr queue;
     CommandTypeMask queueSupport;
+    Config config;  // TODO set this from outside
 };
 }  // namespace drv
