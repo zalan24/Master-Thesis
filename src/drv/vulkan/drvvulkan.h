@@ -173,10 +173,6 @@ class DrvVulkan final : public drv::IDriver
                                          drv::QueuePtr queue) override;
     bool device_wait_idle(drv::LogicalDevicePtr device) override;
 
-    bool begin_primary_command_buffer(drv::CommandBufferPtr cmdBuffer, bool singleTime,
-                                      bool simultaneousUse) override;
-    bool end_primary_command_buffer(drv::CommandBufferPtr cmdBuffer) override;
-
     uint32_t acquire_tracking_slot();
     void release_tracking_slot(uint32_t id);
     uint32_t get_num_trackers() override;
@@ -204,6 +200,10 @@ class DrvVulkanResourceTracker final : public drv::ResourceTracker
 
     DrvVulkanResourceTracker(const DrvVulkanResourceTracker&) = delete;
     DrvVulkanResourceTracker& operator=(const DrvVulkanResourceTracker&) = delete;
+
+    bool begin_primary_command_buffer(drv::CommandBufferPtr cmdBuffer, bool singleTime,
+                                      bool simultaneousUse) override;
+    bool end_primary_command_buffer(drv::CommandBufferPtr cmdBuffer) override;
 
     drv::PipelineStages cmd_image_barrier(drv::CommandBufferPtr cmdBuffer,
                                           const drv::ImageMemoryBarrier& barrier,

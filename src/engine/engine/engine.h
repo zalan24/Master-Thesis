@@ -128,6 +128,8 @@ class Engine
         // allows nodes, that depend on the current node's gpu work (on current queue) to run after this submission completion
         void finishQueueWork();
 
+        drv::ResourceTracker* getResourceTracker() const;
+
      private:
         CommandBufferRecorder(std::unique_lock<std::mutex>&& queueLock, drv::QueuePtr queue,
                               FrameGraph::QueueId queueId, FrameGraph* frameGraph, Engine* engine,

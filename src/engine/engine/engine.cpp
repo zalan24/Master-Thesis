@@ -598,6 +598,10 @@ void Engine::gameLoop() {
     }
 }
 
+drv::ResourceTracker* Engine::CommandBufferRecorder::getResourceTracker() const {
+    return nodeHandle->getNode().getResourceTracker(queue);
+}
+
 Engine::CommandBufferRecorder::CommandBufferRecorder(
   std::unique_lock<std::mutex>&& _queueLock, drv::QueuePtr _queue, FrameGraph::QueueId _queueId,
   FrameGraph* _frameGraph, Engine* _engine, FrameGraph::NodeHandle* _nodeHandle,
@@ -611,7 +615,8 @@ Engine::CommandBufferRecorder::CommandBufferRecorder(
     frameId(_frameId),
     cmdBuffer(std::move(_cmdBuffer)) {
     assert(cmdBuffer);
-    assert(drv::begin_primary_command_buffer(cmdBuffer.commandBufferPtr, true, false));
+    assert(
+      getResourceTracker()->begin_primary_command_buffer(cmdBuffer.commandBufferPtr, true, false));
 }
 
 Engine::CommandBufferRecorder::CommandBufferRecorder(CommandBufferRecorder&& other)
@@ -654,7 +659,7 @@ Engine::CommandBufferRecorder::~CommandBufferRecorder() {
 void Engine::CommandBufferRecorder::close() {
     if (engine == nullptr)
         return;
-    assert(drv::end_primary_command_buffer(cmdBuffer.commandBufferPtr));
+    assert(getResourceTracker()->end_primary_command_buffer(cmdBuffer.commandBufferPtr));
     ExecutionQueue* queue = frameGraph->getExecutionQueue(*nodeHandle);
     queue->push(ExecutionPackage(ExecutionPackage::CommandBufferPackage{
       queue, std::move(cmdBuffer), std::move(signalSemaphores),

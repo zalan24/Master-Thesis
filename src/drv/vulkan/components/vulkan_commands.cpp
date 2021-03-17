@@ -10,8 +10,8 @@
 #include "vulkan_conversions.h"
 #include "vulkan_enum_compare.h"
 
-bool DrvVulkan::begin_primary_command_buffer(drv::CommandBufferPtr cmdBuffer, bool singleTime,
-                                             bool simultaneousUse) {
+bool DrvVulkanResourceTracker::begin_primary_command_buffer(drv::CommandBufferPtr cmdBuffer,
+                                                            bool singleTime, bool simultaneousUse) {
     VkCommandBufferBeginInfo info;
     info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
     info.pNext = nullptr;
@@ -25,7 +25,11 @@ bool DrvVulkan::begin_primary_command_buffer(drv::CommandBufferPtr cmdBuffer, bo
     return result == VK_SUCCESS;
 }
 
-bool DrvVulkan::end_primary_command_buffer(drv::CommandBufferPtr cmdBuffer) {
+bool DrvVulkanResourceTracker::end_primary_command_buffer(drv::CommandBufferPtr cmdBuffer) {
+    // TODO handle events with state objects
+    for (uint32_t i = 0; i < barriers.size(); ++i)
+        if (barriers[i] && barriers[i].event == drv::NULL_HANDLE)
+            flushBarrier(cmdBuffer, barriers[i]);
     VkResult result = vkEndCommandBuffer(convertCommandBuffer(cmdBuffer));
     return result == VK_SUCCESS;
 }

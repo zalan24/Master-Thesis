@@ -55,6 +55,10 @@ class ResourceTracker
                                       uint32_t imageBarrierCount,
                                       const drv::ImageMemoryBarrier* imageBarriers) = 0;
 
+    virtual bool begin_primary_command_buffer(CommandBufferPtr cmdBuffer, bool singleTime,
+                                              bool simultaneousUse) = 0;
+    virtual bool end_primary_command_buffer(CommandBufferPtr cmdBuffer) = 0;
+
  protected:
     IDriver* driver;
     LogicalDevicePtr device;

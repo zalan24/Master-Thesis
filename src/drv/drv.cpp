@@ -395,13 +395,3 @@ bool drv::device_wait_idle(LogicalDevicePtr device) {
 uint32_t drv::get_num_trackers() {
     return current_driver_interface->get_num_trackers();
 }
-
-bool drv::begin_primary_command_buffer(CommandBufferPtr cmdBuffer, bool singleTime,
-                                       bool simultaneousUse) {
-    return current_driver_interface->begin_primary_command_buffer(cmdBuffer, singleTime,
-                                                                  simultaneousUse);
-}
-
-bool drv::end_primary_command_buffer(CommandBufferPtr cmdBuffer) {
-    return current_driver_interface->end_primary_command_buffer(cmdBuffer);
-}

@@ -145,21 +145,14 @@ Get a triangle on screen:
                         ✔ Validation should be called before execution and it should create a pipeline barrier if necessary @done (3/12/2021, 9:12:27 AM)
                         ✔ If needed use the existing memory_sync function(s) @done (3/11/2021, 9:12:18 PM)
                         ✔ Execution will now only apply the new state, assuming correct resource state @done (3/11/2021, 9:12:25 PM)
-                    ☐ Barriers are collected until the next access operation or the end of recording instead of immediate placement
+                    ✔ Barriers are collected until the next access operation or the end of recording instead of immediate placement @done (3/17/2021, 10:36:23 AM)
                         ✔ Collect barriers per sub-resource range @done (3/13/2021, 8:48:06 PM)
                             ✔ Add some barriers states data to tracker @done (3/13/2021, 8:44:39 PM)
-                        ☐ When a accessing the memory (or syncing?) flush barriers for the required sub-resource ranges
+                        ✔ When a accessing the memory (or syncing?) flush barriers for the required sub-resource ranges @done (3/17/2021, 10:25:08 AM)
                             ✔ In this case, there should be an array of flushable barriers @done (3/13/2021, 8:45:03 PM)
                             ✔ When processing a new sub-resource range and a barriers is required for it, try to append it to one of the existing barriers or create a new barrier @done (3/13/2021, 8:45:18 PM)
                                 ✔ Different barriers should be disjunct in terms dst and src stages @done (3/13/2021, 8:45:18 PM)
-                            ☐ Have different options for this (applicable in release builds as well)
-                                ☐ Flush only sub-resource ranges where it's actually necessary (inside requested sub-resource ranges)
-                                ☐ Flush all requested sub-resource ranges, but not anymore
-                                ☐ Check all sub-resource ranges of the resource and if one can be appended to an existing barrier (?dst and src masks ok?), append it
-                                    ☐ Include other resources as well with pending barriers?
-                                ☐ Flush all sub-resource ranges of the resource always
-                                    ☐ Include other resources as well with pending barriers?
-                        ☐ There should be special flush at the end of recording of a command buffer, that flushes everything in an optimized way
+                        ✔ There should be special flush at the end of recording of a command buffer, that flushes everything in an optimized way @done (3/17/2021, 10:36:19 AM)
                     ✔ Create an enum of possible resource usages (separate for buffer and texture?) @done (3/12/2021, 9:08:10 AM)
                         ✔ Have a mapping from usage -> (pipeline stage mask, memory access mask) @done (3/12/2021, 9:08:09 AM)
                     ✔ Barriers are originally created for sub-resource ranges (later can be merged) @done (3/13/2021, 8:45:34 PM)

@@ -188,8 +188,4 @@ uint32_t get_num_trackers();
 ShaderModulePtr create_shader_module(LogicalDevicePtr device, const ShaderCreateInfo* info);
 bool destroy_shader_module(LogicalDevicePtr device, ShaderModulePtr module);
 
-bool begin_primary_command_buffer(CommandBufferPtr cmdBuffer, bool singleTime,
-                                  bool simultaneousUse);
-bool end_primary_command_buffer(CommandBufferPtr cmdBuffer);
-
 };  // namespace drv

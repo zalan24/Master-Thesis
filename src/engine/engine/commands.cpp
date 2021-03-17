@@ -11,11 +11,11 @@ void Engine::CommandBufferRecorder::cmdEventBarrier(const drv::ImageMemoryBarrie
 void Engine::CommandBufferRecorder::cmdEventBarrier(uint32_t imageBarrierCount,
                                                     const drv::ImageMemoryBarrier* barriers) {
     EventPool::EventHandle event = engine->eventPool.acquire();
-    drv::IResourceTracker* tracker = nodeHandle->getNode().getResourceTracker(queue);
+    drv::ResourceTracker* tracker = getResourceTracker();
     drv::EventPtr eventPtr = event;
     tracker->cmd_signal_event(
       cmdBuffer.commandBufferPtr, eventPtr, imageBarrierCount, barriers,
-      [this, evt = std::move(event)](drv::IResourceTracker::EventFlushMode) mutable {
+      [this, evt = std::move(event)](drv::ResourceTracker::EventFlushMode) mutable {
           EventPool::EventHandle e = std::move(evt);
           engine->garbageSystem.useGarbage(
             [&](Garbage* trashBin) { trashBin->releaseEvent(std::move(e)); });
@@ -30,13 +30,13 @@ void Engine::CommandBufferRecorder::cmdWaitHostEvent(drv::EventPtr event,
 void Engine::CommandBufferRecorder::cmdWaitHostEvent(drv::EventPtr event,
                                                      uint32_t imageBarrierCount,
                                                      const drv::ImageMemoryBarrier* barriers) {
-    nodeHandle->getNode().getResourceTracker(queue)->cmd_wait_host_events(
-      cmdBuffer.commandBufferPtr, event, imageBarrierCount, barriers);
+    getResourceTracker()->cmd_wait_host_events(cmdBuffer.commandBufferPtr, event, imageBarrierCount,
+                                               barriers);
 }
 
 void Engine::CommandBufferRecorder::cmdImageBarrier(const drv::ImageMemoryBarrier& barrier) {
-    nodeHandle->getNode().getResourceTracker(queue)->cmd_image_barrier(
-      cmdBuffer.commandBufferPtr, std::move(barrier), drv::NULL_HANDLE);
+    getResourceTracker()->cmd_image_barrier(cmdBuffer.commandBufferPtr, std::move(barrier),
+                                            drv::NULL_HANDLE);
 }
 
 void Engine::CommandBufferRecorder::cmdClearImage(
@@ -48,8 +48,8 @@ void Engine::CommandBufferRecorder::cmdClearImage(
         defVal.set(numLayers, numMips, drv::COLOR_BIT);
         subresourceRanges = &defVal;
     }
-    nodeHandle->getNode().getResourceTracker(queue)->cmd_clear_image(
-      cmdBuffer.commandBufferPtr, image, clearColors, ranges, subresourceRanges);
+    getResourceTracker()->cmd_clear_image(cmdBuffer.commandBufferPtr, image, clearColors, ranges,
+                                          subresourceRanges);
 }
 
 // void cmdWaitSemaphore(drv::SemaphorePtr semaphore, drv::PipelineStages::FlagType waitStage);
