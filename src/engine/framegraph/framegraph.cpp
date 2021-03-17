@@ -59,16 +59,17 @@ void FrameGraph::Node::addDependency(QueueQueueDependency dep) {
     queQueDeps.push_back(std::move(dep));
 }
 
-drv::IResourceTracker* FrameGraph::Node::getResourceTracker(drv::QueuePtr queue) {
-    std::unique_ptr<drv::IResourceTracker>& ret = resourceTrackers[queue];
+drv::IResourceTracker* FrameGraph::Node::getResourceTracker(QueueId queueId) {
+    drv::ResourceTracker*& ret = resourceTrackers[queue];
     if (!ret)
-        ret = drv::create_resource_tracker(queue, frameGraph->device, );
-    return ret.get();
+        ret = frameGraph->getOrCreateResourceTracker(ownId, queueId);
+    return ret;
 }
 
 FrameGraph::NodeId FrameGraph::addNode(Node&& node) {
     node.frameGraph = this;
     FrameGraph::NodeId id = nodes.size();
+    node.ownId = id;
     node.addDependency(CpuDependency{id, 1});
     if (node.hasExecution())
         node.addDependency(EnqueueDependency{id, 1});
@@ -465,4 +466,34 @@ ExecutionQueue* FrameGraph::getExecutionQueue(NodeHandle& handle) {
 
 ExecutionQueue* FrameGraph::getGlobalExecutionQueue() {
     return &executionQueue;
+}
+
+drv::ResourceTracker* FrameGraph::getOrCreateResourceTracker(NodeId nodeId, QueueId queueId) {
+    std::vector<TrackerData>& trackers = resourceTrackers[queue];
+    for (TrackerData& tracker : trackers)
+        if (tracker.users.count(nodeId))
+            return tracker.tracker.get();
+    for (TrackerData& tracker : trackers) {
+        bool ok = true;
+        for (const NodeId id : tracker.users) {
+            if (!canReuseTracker(id, nodeId)) {
+                ok = false;
+                break;
+            }
+        }
+        if (ok) {
+            tracker.users.insert(nodeId);
+            return tracker.tracker.get();
+        }
+    }
+    TrackerData t;
+    t.tracker = drv::create_resource_tracker(queue, physicalDevice, device);
+    t.users.insert(nodeId);
+    drv::ResourceTracker* ret = t.tracker.get();
+    trackers.push_back(std::move(t));
+    return ret;
+}
+
+bool FrameGraph::canReuseTracker(NodeId currentUser, NodeId newNode) {
+    TODO;
 }

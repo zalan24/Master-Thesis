@@ -164,7 +164,7 @@ Engine::Engine(const Config& cfg, const std::string& shaderbinFile,
     syncBlock(device, config.maxFramesInFlight),
     shaderBin(shaderbinFile),
     resourceMgr(std::move(resource_infos)),
-    frameGraph(device, &garbageSystem, &eventPool) {
+    frameGraph(physicalDevice, device, &garbageSystem, &eventPool) {
 }
 
 Engine::~Engine() {
@@ -599,7 +599,7 @@ void Engine::gameLoop() {
 }
 
 drv::ResourceTracker* Engine::CommandBufferRecorder::getResourceTracker() const {
-    return nodeHandle->getNode().getResourceTracker(queue);
+    return resourceTracker;
 }
 
 Engine::CommandBufferRecorder::CommandBufferRecorder(
@@ -613,7 +613,8 @@ Engine::CommandBufferRecorder::CommandBufferRecorder(
     engine(_engine),
     nodeHandle(_nodeHandle),
     frameId(_frameId),
-    cmdBuffer(std::move(_cmdBuffer)) {
+    cmdBuffer(std::move(_cmdBuffer)),
+    resourceTracker(nodeHandle->getNode().getResourceTracker(queueId)) {
     assert(cmdBuffer);
     assert(
       getResourceTracker()->begin_primary_command_buffer(cmdBuffer.commandBufferPtr, true, false));
@@ -629,7 +630,8 @@ Engine::CommandBufferRecorder::CommandBufferRecorder(CommandBufferRecorder&& oth
     frameId(other.frameId),
     cmdBuffer(std::move(other.cmdBuffer)),
     signalSemaphores(std::move(other.signalSemaphores)),
-    signalTimelineSemaphores(std::move(other.signalTimelineSemaphores)) {
+    signalTimelineSemaphores(std::move(other.signalTimelineSemaphores)),
+    resourceTracker(other.resourceTracker) {
     other.engine = nullptr;
 }
 
@@ -648,6 +650,7 @@ Engine::CommandBufferRecorder& Engine::CommandBufferRecorder::operator=(
     cmdBuffer = std::move(other.cmdBuffer);
     signalSemaphores = std::move(other.signalSemaphores);
     signalTimelineSemaphores = std::move(other.signalTimelineSemaphores);
+    resourceTracker = other.resourceTracker;
     other.engine = nullptr;
     return *this;
 }

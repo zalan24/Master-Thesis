@@ -144,6 +144,7 @@ class Engine
         FrameGraph::NodeHandle* nodeHandle;
         FrameGraph::FrameId frameId;
         drv::CommandBufferCirculator::CommandBufferHandle cmdBuffer;
+        drv::ResourceTracker* resourceTracker;
 
         // TODO frame mem allocator
         std::vector<ExecutionPackage::CommandBufferPackage::SemaphoreSignalInfo> signalSemaphores;

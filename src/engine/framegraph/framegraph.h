@@ -7,6 +7,7 @@
 #include <memory>
 #include <mutex>
 #include <string>
+#include <unordered_set>
 #include <vector>
 
 #include <drv_resource_tracker.h>
@@ -79,12 +80,13 @@ class FrameGraph
 
         bool hasExecution() const;
 
-        drv::IResourceTracker* getResourceTracker(drv::QueuePtr queue);
+        drv::ResourceTracker* getResourceTracker(QueueId queueId);
 
      private:
         std::string name;
+        NodeId ownId = INVALID_NODE;
         FrameGraph* frameGraph = nullptr;
-        std::unordered_map<drv::QueuePtr, std::unique_ptr<drv::IResourceTracker>> resourceTrackers;
+        std::unordered_map<QueueId, drv::ResourceTracker*> resourceTrackers;
         std::vector<CpuDependency> cpuDeps;
         std::vector<EnqueueDependency> enqDeps;
         std::vector<CpuQueueDependency> cpuQueDeps;
@@ -160,15 +162,29 @@ class FrameGraph
     QueueId registerQueue(drv::QueuePtr queue);
     drv::QueuePtr getQueue(QueueId queueId) const;
 
-    FrameGraph(drv::LogicalDevicePtr _device, GarbageSystem* _garbageSystem, EventPool* _eventPool)
-      : device(_device), garbageSystem(_garbageSystem), eventPool(_eventPool) {}
+    FrameGraph(drv::PhysicalDevice _physicalDevice, drv::LogicalDevicePtr _device,
+               GarbageSystem* _garbageSystem, EventPool* _eventPool)
+      : physicalDevice(_physicalDevice),
+        device(_device),
+        garbageSystem(_garbageSystem),
+        eventPool(_eventPool) {}
+
+    drv::ResourceTracker* getOrCreateResourceTracker(NodeId nodeId, QueueId queueId);
 
  private:
+    struct TrackerData
+    {
+        std::unique_ptr<drv::ResourceTracker> tracker;
+        std::unordered_set<NodeId> users;
+    };
+
+    drv::PhysicalDevice physicalDevice;
     drv::LogicalDevicePtr device;
     GarbageSystem* garbageSystem;
     EventPool* eventPool;
     ExecutionQueue executionQueue;
     std::vector<Node> nodes;
+    std::unordered_map<QueueId, std::vector<TrackerData>> resourceTrackers;
     std::atomic<bool> quit = false;
 
     mutable std::mutex enqueueMutex;
@@ -183,4 +199,5 @@ class FrameGraph
                            const std::function<DependencyInfo(const Node&, uint32_t)>& depF) const;
     FrameId calcMaxEnqueueFrame(NodeId nodeId, FrameId frameId) const;
     void checkAndEnqueue(NodeId nodeId, FrameId frameId, bool traverse);
+    bool canReuseTracker(NodeId currentUser, NodeId newNode);
 };
