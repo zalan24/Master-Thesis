@@ -50,7 +50,7 @@ class ImageMemoryBarrier
 
     ImagePtr image = NULL_HANDLE;
     uint32_t numSubresourceRanges = 0;
-    ImageSubresourceRange* ranges;
+    const ImageSubresourceRange* ranges;
     ImageResourceUsageFlag usages = 0;
     QueueFamilyPtr requestedOwnership = NULL_HANDLE;
     bool transitionLayout = false;

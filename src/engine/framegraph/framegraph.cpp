@@ -19,7 +19,6 @@ FrameGraph::Node::Node(Node&& other)
 }
 
 FrameGraph::Node::~Node() {
-    flushEvents();
 }
 
 bool FrameGraph::Node::hasExecution() const {
@@ -59,8 +58,8 @@ void FrameGraph::Node::addDependency(QueueQueueDependency dep) {
     queQueDeps.push_back(std::move(dep));
 }
 
-drv::IResourceTracker* FrameGraph::Node::getResourceTracker(QueueId queueId) {
-    drv::ResourceTracker*& ret = resourceTrackers[queue];
+drv::ResourceTracker* FrameGraph::Node::getResourceTracker(QueueId queueId) {
+    drv::ResourceTracker*& ret = resourceTrackers[queueId];
     if (!ret)
         ret = frameGraph->getOrCreateResourceTracker(ownId, queueId);
     return ret;
@@ -247,7 +246,7 @@ void FrameGraph::calcDependencyTable() {
     }
 }
 
-void FrameGraph::validate() const {
+void FrameGraph::build() {
     // uint32_t numTrackingNodes = 0;
     // for (const Node& node : nodes)
     //     if (node.hasExecution())
@@ -318,7 +317,7 @@ FrameGraph::NodeHandle::NodeHandle() : frameGraph(nullptr) {
 }
 
 FrameGraph::NodeHandle::NodeHandle(FrameGraph* _frameGraph, FrameGraph::NodeId _node,
-                                   FrameGraph::FrameId _frameId)
+                                   FrameId _frameId)
   : frameGraph(_frameGraph), node(_node), frameId(_frameId) {
 }
 
@@ -327,10 +326,7 @@ FrameGraph::Node& FrameGraph::NodeHandle::getNode() const {
 }
 
 FrameGraph::NodeHandle::NodeHandle(NodeHandle&& other)
-  : frameGraph(other.frameGraph),
-    node(other.node),
-    frameId(other.frameId),
-    gpuWorkDone(other.gpuWorkDone) {
+  : frameGraph(other.frameGraph), node(other.node), frameId(other.frameId) {
     other.frameGraph = nullptr;
 }
 
@@ -341,16 +337,12 @@ FrameGraph::NodeHandle& FrameGraph::NodeHandle::operator=(NodeHandle&& other) {
     frameGraph = other.frameGraph;
     node = other.node;
     frameId = other.frameId;
-    gpuWorkDone = other.gpuWorkDone;
     other.frameGraph = nullptr;
     return *this;
 }
 
 void FrameGraph::NodeHandle::close() {
     if (frameGraph) {
-        if (!gpuWorkDone) {
-            TODO;
-        }
         frameGraph->release(*this);
     }
 }
@@ -443,8 +435,7 @@ void FrameGraph::release(const NodeHandle& handle) {
     }
     if (node->hasExecution()) {  // enqueue sync
         if (!handle.nodeExecutionData.hasLocalCommands) {
-            assert(node->enqueuedFrame < handle.frameId
-                   || node->enqueuedFrame == FrameGraph::INVALID_FRAME);
+            assert(node->enqueuedFrame < handle.frameId || node->enqueuedFrame == INVALID_FRAME);
             node->enqueuedFrame = handle.frameId;
             checkAndEnqueue(handle.node, handle.frameId, true);
         }
@@ -471,7 +462,7 @@ void FrameGraph::checkAndEnqueue(NodeId nodeId, FrameId frameId, bool traverse) 
             checkAndEnqueue(child, frameId, false);
 }
 
-FrameGraph::FrameId FrameGraph::calcMaxEnqueueFrame(NodeId nodeId, FrameId frameId) const {
+FrameId FrameGraph::calcMaxEnqueueFrame(NodeId nodeId, FrameId frameId) const {
     FrameId ret = INVALID_FRAME;
     const Node* node = getNode(nodeId);
     for (const EnqueueDependency& dep : node->enqDeps) {
@@ -518,7 +509,7 @@ ExecutionQueue* FrameGraph::getGlobalExecutionQueue() {
 }
 
 drv::ResourceTracker* FrameGraph::getOrCreateResourceTracker(NodeId nodeId, QueueId queueId) {
-    std::vector<TrackerData>& trackers = resourceTrackers[queue];
+    std::vector<TrackerData>& trackers = resourceTrackers[queueId];
     for (TrackerData& tracker : trackers)
         if (tracker.users.count(nodeId))
             return tracker.tracker.get();
@@ -536,7 +527,7 @@ drv::ResourceTracker* FrameGraph::getOrCreateResourceTracker(NodeId nodeId, Queu
         }
     }
     TrackerData t;
-    t.tracker = drv::create_resource_tracker(queue, physicalDevice, device);
+    t.tracker = drv::create_resource_tracker(getQueue(queueId), physicalDevice, device);
     t.users.insert(nodeId);
     drv::ResourceTracker* ret = t.tracker.get();
     trackers.push_back(std::move(t));

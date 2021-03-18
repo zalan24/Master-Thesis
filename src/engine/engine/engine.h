@@ -133,7 +133,7 @@ class Engine
      private:
         CommandBufferRecorder(std::unique_lock<std::mutex>&& queueLock, drv::QueuePtr queue,
                               FrameGraph::QueueId queueId, FrameGraph* frameGraph, Engine* engine,
-                              FrameGraph::NodeHandle* nodeHandle, FrameGraph::FrameId frameId,
+                              FrameGraph::NodeHandle* nodeHandle, FrameId frameId,
                               drv::CommandBufferCirculator::CommandBufferHandle&& cmdBuffer);
 
         std::unique_lock<std::mutex> queueLock;
@@ -142,7 +142,7 @@ class Engine
         FrameGraph* frameGraph;
         Engine* engine;
         FrameGraph::NodeHandle* nodeHandle;
-        FrameGraph::FrameId frameId;
+        FrameId frameId;
         drv::CommandBufferCirculator::CommandBufferHandle cmdBuffer;
         drv::ResourceTracker* resourceTracker;
 
@@ -155,7 +155,7 @@ class Engine
     };
 
     CommandBufferRecorder acquireCommandRecorder(FrameGraph::NodeHandle& acquiringNodeHandle,
-                                                 FrameGraph::FrameId frameId,
+                                                 FrameId frameId,
                                                  FrameGraph::QueueId queueId);
 
  private:
@@ -225,14 +225,14 @@ class Engine
     mutable std::shared_mutex stopFrameMutex;
     mutable std::mutex executionMutex;
 
-    void simulationLoop(volatile std::atomic<FrameGraph::FrameId>* simulationFrame,
-                        const volatile std::atomic<FrameGraph::FrameId>* stopFrame);
-    void recordCommandsLoop(const volatile std::atomic<FrameGraph::FrameId>* stopFrame);
+    void simulationLoop(volatile std::atomic<FrameId>* simulationFrame,
+                        const volatile std::atomic<FrameId>* stopFrame);
+    void recordCommandsLoop(const volatile std::atomic<FrameId>* stopFrame);
     void executeCommandsLoop();
-    void cleanUpLoop(const volatile std::atomic<FrameGraph::FrameId>* stopFrame);
-    bool execute(FrameGraph::FrameId& executionFrame, ExecutionPackage&& package);
-    void present(FrameGraph::FrameId presentFrame);
-    bool sampleInput(FrameGraph::FrameId frameId);
+    void cleanUpLoop(const volatile std::atomic<FrameId>* stopFrame);
+    bool execute(FrameId& executionFrame, ExecutionPackage&& package);
+    void present(FrameId presentFrame);
+    bool sampleInput(FrameId frameId);
 
     static drv::PhysicalDevice::SelectionInfo get_device_selection_info(
       drv::InstancePtr instance, const drv::DeviceExtensions& deviceExtensions);

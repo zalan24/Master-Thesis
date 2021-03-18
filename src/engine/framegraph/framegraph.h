@@ -16,17 +16,16 @@
 #include <eventpool.h>
 #include <execution_queue.h>
 
-#include "garbage.h"
+#include "framegraphDecl.h"
+#include "garbagesystem.h"
 
 class FrameGraph
 {
  public:
-    using FrameId = uint64_t;
     using NodeId = uint32_t;
     using QueueId = uint32_t;
     using Offset = uint32_t;
     static constexpr NodeId INVALID_NODE = std::numeric_limits<NodeId>::max();
-    static constexpr FrameId INVALID_FRAME = std::numeric_limits<FrameId>::max();
     static constexpr uint32_t NO_SYNC = std::numeric_limits<Offset>::max();
     struct CpuDependency
     {
@@ -123,10 +122,10 @@ class FrameGraph
 
      private:
         NodeHandle();
-        NodeHandle(FrameGraph* frameGraph, FrameGraph::NodeId node, FrameGraph::FrameId frameId);
+        NodeHandle(FrameGraph* frameGraph, FrameGraph::NodeId node, FrameId frameId);
         FrameGraph* frameGraph;
         FrameGraph::NodeId node;
-        FrameGraph::FrameId frameId;
+        FrameId frameId;
 
         // bool gpuWorkDone = false;
 
@@ -156,7 +155,7 @@ class FrameGraph
     ExecutionQueue* getExecutionQueue(NodeHandle& handle);
     ExecutionQueue* getGlobalExecutionQueue();
 
-    void validate() const;
+    void build();
     void stopExecution();  // used when quitting the app
     bool isStopped() const;
 

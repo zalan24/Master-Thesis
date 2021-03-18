@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <cstring>
 #include <limits>
+#include <stdexcept>
 
 #include <string_hash.h>
 
@@ -202,6 +203,11 @@ struct PipelineStages
     PipelineStages() = default;
     PipelineStages(FlagType flags) : stageFlags(flags) {}
     PipelineStages(PipelineStageFlagBits stage) : stageFlags(stage) {}
+    // bool operator==(const PipelineStages& other) const {
+    //     return resolve(CMD_TYPE_TRANSFER | CMD_TYPE_GRAPHICS | CMD_TYPE_COMPUTE)
+    //            == other.resolve(CMD_TYPE_TRANSFER | CMD_TYPE_GRAPHICS | CMD_TYPE_COMPUTE);
+    // }
+    // bool operator!=(const PipelineStages& other) const { return !(*this == other); }
     void add(FlagType flags) { stageFlags |= flags; }
     void add(PipelineStageFlagBits stage) { stageFlags |= stage; }
     void add(const PipelineStages& stages) { stageFlags |= stages.stageFlags; }
@@ -251,7 +257,7 @@ struct PipelineStages
                     return static_cast<PipelineStageFlagBits>(ret);
             ret <<= 1;
         }
-        assert(false);
+        throw std::runtime_error("Invalid index for stage");
     }
     static constexpr uint32_t get_total_stage_count() {
         static_assert(STAGES_END == ALL_COMMANDS_BIT + 1, "Update this function");
@@ -912,7 +918,7 @@ struct MemoryBarrier
                     return static_cast<AccessFlagBits>(ret);
             ret <<= 1;
         }
-        assert(false);
+        throw std::runtime_error("Invalid index for access mask");
     }
 };
 
@@ -1069,7 +1075,7 @@ struct ImageSubresourceSet
     using UsedAspectMap = uint8_t;
     UsedLayerMap usedLayers = 0;
     UsedLayerMap usedAspects = 0;
-    MipBit mipBits[MAX_ARRAY_SIZE][ASPECTS_COUNT] = {0};
+    MipBit mipBits[MAX_ARRAY_SIZE][ASPECTS_COUNT] = {{0}};
     static_assert(MAX_MIP_LEVELS <= sizeof(MipBit) * 8);
     static_assert(MAX_ARRAY_SIZE <= sizeof(UsedLayerMap) * 8);
     static_assert(ASPECTS_COUNT <= sizeof(UsedAspectMap) * 8);
@@ -1083,7 +1089,7 @@ struct ImageSubresourceSet
         set0();
         MipBit mip = 0;
         for (uint32_t i = 0; i < numMips; ++i)
-            mip = (mip << 1) | 1;
+            mip = (mip << MipBit(1)) | MipBit(1);
         mip <<= baseMip;
         if (!mip)
             return;
@@ -1118,7 +1124,7 @@ struct ImageSubresourceSet
         return mipBits[layer][get_aspect_id(aspect)] & (1 << mip);
     }
 
-    bool overlap(const ImageSubresourceSet& b) {
+    bool overlap(const ImageSubresourceSet& b) const {
         UsedLayerMap commonLayers = usedLayers & b.usedLayers;
         UsedAspectMap commonAspects = usedAspects & b.usedAspects;
         if (!commonLayers || !commonAspects)
@@ -1133,7 +1139,7 @@ struct ImageSubresourceSet
         return false;
     }
     bool operator==(const ImageSubresourceSet& b) const {
-        return std::memcmp(this, &b, sizeof(*this) == 0);
+        return std::memcmp(this, &b, sizeof(*this)) == 0;
     }
     void merge(const ImageSubresourceSet& b) {
         usedLayers |= b.usedLayers;
@@ -1358,5 +1364,11 @@ enum ImageResourceUsage : ImageResourceUsageFlag
 PipelineStages get_image_usage_stages(ImageResourceUsage usage);
 MemoryBarrier::AccessFlagBitType get_image_usage_accesses(ImageResourceUsage usage);
 uint32_t get_accepted_image_layouts(ImageResourceUsage usage);
+
+
+struct TextureInfo {
+    uint32_t numMips;
+    uint32_t arraySize;
+};
 
 };  // namespace drv

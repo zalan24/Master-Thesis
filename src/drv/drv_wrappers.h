@@ -445,8 +445,8 @@ class Event
     void set();
     bool isSet();
 
-    void cmdSet(CommandBufferPtr commandBuffer, PipelineStages sourceStage);
-    void cmdReset(CommandBufferPtr commandBuffer, PipelineStages sourceStage);
+    //  void cmdSet(CommandBufferPtr commandBuffer, PipelineStages sourceStage);
+    //  void cmdReset(CommandBufferPtr commandBuffer, PipelineStages sourceStage);
     //  void cmdWait();
 
  private:

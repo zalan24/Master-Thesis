@@ -47,8 +47,9 @@ bool drv::init(const Driver* drivers, unsigned int count) {
     return current_driver_interface != nullptr;
 }
 
-std::unique_ptr<drv::IResourceTracker> drv::create_resource_tracker(
-  QueuePtr queue, PhysicalDevicePtr physicalDevice, LogicalDevicePtr device) {
+std::unique_ptr<drv::ResourceTracker> drv::create_resource_tracker(QueuePtr queue,
+                                                                   PhysicalDevicePtr physicalDevice,
+                                                                   LogicalDevicePtr device) {
     assert(current_driver_interface == nullptr);
     switch (current_driver) {
         case Driver::VULKAN:
@@ -394,4 +395,8 @@ bool drv::device_wait_idle(LogicalDevicePtr device) {
 
 uint32_t drv::get_num_trackers() {
     return current_driver_interface->get_num_trackers();
+}
+
+drv::TextureInfo drv::get_texture_info(drv::ImagePtr image) {
+    return current_driver_interface->get_texture_info(image);
 }

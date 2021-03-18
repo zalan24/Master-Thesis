@@ -1,6 +1,6 @@
 #include "garbage.h"
 
-Garbage::Garbage(FrameGraph::FrameId _frameId) : frameId(_frameId) {
+Garbage::Garbage(FrameId _frameId) : frameId(_frameId) {
 }
 
 Garbage::Garbage(Garbage&& other)
@@ -31,7 +31,7 @@ void Garbage::releaseEvent(EventPool::EventHandle&& event) {
     events.push_back(std::move(event));
 }
 
-FrameGraph::FrameId Garbage::getFrameId() const {
+FrameId Garbage::getFrameId() const {
     return frameId;
 }
 
@@ -42,7 +42,7 @@ void Garbage::close() noexcept {
     events.clear();
 }
 
-void Garbage::reset(FrameGraph::FrameId _frameId) {
+void Garbage::reset(FrameId _frameId) {
     std::unique_lock<std::mutex> lock(mutex);
     close();
     frameId = _frameId;

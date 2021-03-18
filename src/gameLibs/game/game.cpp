@@ -41,7 +41,7 @@ void Game::initSimulationFrameGraph(FrameGraph& frameGraph,
     // TODO
 }
 
-void Game::record(FrameGraph& frameGraph, FrameGraph::FrameId frameId) {
+void Game::record(FrameGraph& frameGraph, FrameId frameId) {
     std::cout << "Record: " << frameId << std::endl;
     Engine::QueueInfo queues = engine->getQueues();
     FrameGraph::NodeHandle testDrawHandle = frameGraph.acquireNode(testDraw, frameId);
@@ -72,7 +72,7 @@ void Game::record(FrameGraph& frameGraph, FrameGraph::FrameId frameId) {
         assert(frameGraph.isStopped());
 }
 
-void Game::simulate(FrameGraph& frameGraph, FrameGraph::FrameId frameId) {
+void Game::simulate(FrameGraph& frameGraph, FrameId frameId) {
     std::this_thread::sleep_for(std::chrono::milliseconds(4));
     std::cout << "Simulate: " << frameId << std::endl;
 }

@@ -1058,14 +1058,14 @@ bool Event::isSet() {
     return drv::is_event_set(device, ptr);
 }
 
-void Event::cmdSet(CommandBufferPtr commandBuffer, PipelineStages sourceStage) {
-    drv::drv_assert(drv::cmd_set_event(commandBuffer, ptr, sourceStage), "Could not cmd set event");
-}
+// void Event::cmdSet(CommandBufferPtr commandBuffer, PipelineStages sourceStage) {
+//     drv::drv_assert(drv::cmd_set_event(commandBuffer, ptr, sourceStage), "Could not cmd set event");
+// }
 
-void Event::cmdReset(CommandBufferPtr commandBuffer, PipelineStages sourceStage) {
-    drv::drv_assert(drv::cmd_reset_event(commandBuffer, ptr, sourceStage),
-                    "Could not cmd reset event");
-}
+// void Event::cmdReset(CommandBufferPtr commandBuffer, PipelineStages sourceStage) {
+//     drv::drv_assert(drv::cmd_reset_event(commandBuffer, ptr, sourceStage),
+//                     "Could not cmd reset event");
+// }
 
 DescriptorSetLayout::DescriptorSetLayout(LogicalDevicePtr _device,
                                          const DescriptorSetLayoutCreateInfo& info)

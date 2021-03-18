@@ -53,7 +53,8 @@ class EventPool
     {
         drv::Event event;
         std::atomic<bool> used;
-        Item(drv::LogicalDevicePtr device) : event(device), used(false) {}
+        Item(drv::LogicalDevicePtr _device) : event(_device), used(false) {}
+        Item(Item&& other) : event(std::move(other.event)), used(other.used.load()) {}
     };
     drv::LogicalDevicePtr device;
     std::atomic<size_t> currentIndex = 0;

@@ -21,7 +21,7 @@ class ResourceTracker
         device(_device),
         queue(_queue),
         queueSupport(
-          driver->get_command_type_mask(physicalDevice, driver->get_queue_family(queue))) {}
+          driver->get_command_type_mask(physicalDevice, driver->get_queue_family(device, queue))) {}
     virtual ~ResourceTracker() {}
 
     struct Config
@@ -63,7 +63,7 @@ class ResourceTracker
         DISCARDED  // used when closing the driver
     };
     // TODO try to avoid dynamic allocation in this
-    using FlushEventCallback = std::function<FlushEventCallback()>;
+    using FlushEventCallback = std::function<void(EventFlushMode)>;
 
     virtual void cmd_signal_event(drv::CommandBufferPtr cmdBuffer, drv::EventPtr event,
                                   uint32_t imageBarrierCount,

@@ -173,6 +173,8 @@ class DrvVulkan final : public drv::IDriver
                                          drv::QueuePtr queue) override;
     bool device_wait_idle(drv::LogicalDevicePtr device) override;
 
+    drv::TextureInfo get_texture_info(drv::ImagePtr image) override;
+
     uint32_t acquire_tracking_slot();
     void release_tracking_slot(uint32_t id);
     uint32_t get_num_trackers() override;
@@ -285,13 +287,17 @@ class DrvVulkanResourceTracker final : public drv::ResourceTracker
 
     struct BarrierInfo
     {
-        drv::PipelineStages srcStage;
-        drv::PipelineStages dstStage;
+        BarrierInfo() = default;
+
+        drv::PipelineStages srcStages;
+        drv::PipelineStages dstStages;
         drv::EventPtr event = drv::NULL_HANDLE;
         FlushEventCallback eventCallback;
 
         BarrierInfo(const BarrierInfo&) = delete;
         BarrierInfo& operator=(const BarrierInfo&) = delete;
+        BarrierInfo(BarrierInfo&&) = default;
+        BarrierInfo& operator=(BarrierInfo&&) = default;
 
         // drv::DependencyFlagBits dependencyFlags; // TODO
         // TODO buffer data
@@ -301,7 +307,7 @@ class DrvVulkanResourceTracker final : public drv::ResourceTracker
         // sorted by .image ptr
         ImageMemoryBarrier imageBarriers[MAX_RESOURCE_IN_BARRIER];
 
-        operator bool() const { return srcStage.stageFlags != 0; }
+        operator bool() const { return srcStages.stageFlags != 0; }
     };
 
     uint32_t lastBarrier = 0;

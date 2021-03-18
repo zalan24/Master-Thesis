@@ -130,6 +130,8 @@ class IDriver
     virtual QueueFamilyPtr get_queue_family(LogicalDevicePtr device, QueuePtr queue) = 0;
     virtual bool device_wait_idle(LogicalDevicePtr device) = 0;
 
+    virtual TextureInfo get_texture_info(drv::ImagePtr image) = 0;
+
     virtual uint32_t get_num_trackers() = 0;
 };
 }  // namespace drv

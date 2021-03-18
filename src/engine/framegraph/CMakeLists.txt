@@ -11,4 +11,5 @@ target_link_libraries(AnimationsFramegraph PUBLIC
     AnimationsDrv
     AnimationsEventPool
     AnimationsExecutionQueue
+    AnimationsDataStructures
 )

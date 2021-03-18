@@ -203,7 +203,7 @@ void Engine::initGame(IRenderer* _renderer, ISimulation* _simulation) {
           "maxFramesInFlight must be at least the value of maxFramesInExecutionQueue");
     const uint32_t presentDepOffset = static_cast<uint32_t>(config.maxFramesInFlight - 1);
     const uint32_t cleanUpCpuOffset = static_cast<uint32_t>(config.maxFramesInFlight + 1);
-    trashBins.resize(cleanUpCpuOffset);
+    garbageSystem.resize(cleanUpCpuOffset);
 
     frameGraph.addDependency(inputSampleNode, FrameGraph::CpuDependency{simStartNode, 0});
     frameGraph.addDependency(simStartNode, FrameGraph::CpuDependency{simEndNode, 1});
@@ -250,10 +250,10 @@ void Engine::initGame(IRenderer* _renderer, ISimulation* _simulation) {
         frameGraph.addDependency(presentFrameNode, FrameGraph::EnqueueDependency{renderNode, 0});
     }
 
-    frameGraph.validate();
+    frameGraph.build();
 }
 
-bool Engine::sampleInput(FrameGraph::FrameId frameId) {
+bool Engine::sampleInput(FrameId frameId) {
     FrameGraph::NodeHandle inputHandle = frameGraph.acquireNode(inputSampleNode, frameId);
     if (!inputHandle)
         return false;
@@ -263,8 +263,8 @@ bool Engine::sampleInput(FrameGraph::FrameId frameId) {
     return true;
 }
 
-void Engine::simulationLoop(volatile std::atomic<FrameGraph::FrameId>* simulationFrame,
-                            const volatile std::atomic<FrameGraph::FrameId>* stopFrame) {
+void Engine::simulationLoop(volatile std::atomic<FrameId>* simulationFrame,
+                            const volatile std::atomic<FrameId>* stopFrame) {
     simulationFrame->store(0);
     while (!frameGraph.isStopped() && *simulationFrame <= *stopFrame) {
         {
@@ -295,7 +295,7 @@ void Engine::simulationLoop(volatile std::atomic<FrameGraph::FrameId>* simulatio
     }
 }
 
-void Engine::present(FrameGraph::FrameId presentFrame) {
+void Engine::present(FrameId presentFrame) {
     drv::PresentInfo info;
     info.semaphoreCount = 1;
     drv::SemaphorePtr semaphore = syncBlock.renderFinishedSemaphores[acquireImageSemaphoreId];
@@ -337,8 +337,7 @@ Engine::AcquiredImageData Engine::acquiredSwapchainImage(
 }
 
 Engine::CommandBufferRecorder Engine::acquireCommandRecorder(
-  FrameGraph::NodeHandle& acquiringNodeHandle, FrameGraph::FrameId frameId,
-  FrameGraph::QueueId queueId) {
+  FrameGraph::NodeHandle& acquiringNodeHandle, FrameId frameId, FrameGraph::QueueId queueId) {
     drv::QueuePtr queue = frameGraph.getQueue(queueId);
     drv::CommandBufferBankGroupInfo acquireInfo(drv::get_queue_family(device, queue), false,
                                                 drv::CommandBufferType::PRIMARY);
@@ -347,8 +346,8 @@ Engine::CommandBufferRecorder Engine::acquireCommandRecorder(
                                  &acquiringNodeHandle, frameId, cmdBufferBank.acquire(acquireInfo));
 }
 
-void Engine::recordCommandsLoop(const volatile std::atomic<FrameGraph::FrameId>* stopFrame) {
-    FrameGraph::FrameId recordFrame = 0;
+void Engine::recordCommandsLoop(const volatile std::atomic<FrameId>* stopFrame) {
+    FrameId recordFrame = 0;
     while (!frameGraph.isStopped() && recordFrame <= *stopFrame) {
         // TODO preframe stuff (resize)
         {
@@ -398,13 +397,13 @@ void Engine::recordCommandsLoop(const volatile std::atomic<FrameGraph::FrameId>*
       ExecutionPackage::MessagePackage{ExecutionPackage::Message::QUIT, 0, 0, nullptr}));
 }
 
-bool Engine::execute(FrameGraph::FrameId& executionFrame, ExecutionPackage&& package) {
+bool Engine::execute(FrameId& executionFrame, ExecutionPackage&& package) {
     if (std::holds_alternative<ExecutionPackage::MessagePackage>(package.package)) {
         ExecutionPackage::MessagePackage& message =
           std::get<ExecutionPackage::MessagePackage>(package.package);
         switch (message.msg) {
             case ExecutionPackage::Message::RECORD_START: {
-                executionFrame = static_cast<FrameGraph::FrameId>(message.value1);
+                executionFrame = static_cast<FrameId>(message.value1);
                 FrameGraph::NodeHandle executionStartHandle =
                   frameGraph.acquireNode(executeStartNode, executionFrame);
                 if (!executionStartHandle) {
@@ -414,7 +413,7 @@ bool Engine::execute(FrameGraph::FrameId& executionFrame, ExecutionPackage&& pac
                 // std::cout << "Execute start: " << message.value1 << std::endl;
             } break;
             case ExecutionPackage::Message::RECORD_END: {
-                assert(executionFrame == static_cast<FrameGraph::FrameId>(message.value1));
+                assert(executionFrame == static_cast<FrameId>(message.value1));
                 FrameGraph::NodeHandle executionEndHandle =
                   frameGraph.acquireNode(executeEndNode, executionFrame);
                 // queued work gets finished
@@ -507,7 +506,7 @@ bool Engine::execute(FrameGraph::FrameId& executionFrame, ExecutionPackage&& pac
 
 void Engine::executeCommandsLoop() {
     std::unique_lock<std::mutex> executionLock(executionMutex);
-    FrameGraph::FrameId executionFrame = 0;
+    FrameId executionFrame = 0;
     while (true) {
         ExecutionPackage package;
         ExecutionQueue* executionQueue = frameGraph.getGlobalExecutionQueue();
@@ -518,8 +517,8 @@ void Engine::executeCommandsLoop() {
     }
 }
 
-void Engine::cleanUpLoop(const volatile std::atomic<FrameGraph::FrameId>* stopFrame) {
-    FrameGraph::FrameId cleanUpFrame = 0;
+void Engine::cleanUpLoop(const volatile std::atomic<FrameId>* stopFrame) {
+    FrameId cleanUpFrame = 0;
     while (!frameGraph.isStopped() && cleanUpFrame <= *stopFrame) {
         FrameGraph::NodeHandle cleanUpHandle = frameGraph.acquireNode(cleanUpNode, cleanUpFrame);
         if (!cleanUpHandle) {
@@ -548,8 +547,8 @@ void Engine::gameLoop() {
     // RenderState state;
     // state.executionQueue = &executionQueue;
 
-    volatile std::atomic<FrameGraph::FrameId> simulationFrame;
-    std::atomic<FrameGraph::FrameId> stopFrame = FrameGraph::INVALID_FRAME;
+    volatile std::atomic<FrameId> simulationFrame;
+    std::atomic<FrameId> stopFrame = INVALID_FRAME;
 
     std::thread simulationThread(&Engine::simulationLoop, this, &simulationFrame, &stopFrame);
     std::thread recordThread(&Engine::recordCommandsLoop, this, &stopFrame);
@@ -604,8 +603,8 @@ drv::ResourceTracker* Engine::CommandBufferRecorder::getResourceTracker() const 
 
 Engine::CommandBufferRecorder::CommandBufferRecorder(
   std::unique_lock<std::mutex>&& _queueLock, drv::QueuePtr _queue, FrameGraph::QueueId _queueId,
-  FrameGraph* _frameGraph, Engine* _engine, FrameGraph::NodeHandle* _nodeHandle,
-  FrameGraph::FrameId _frameId, drv::CommandBufferCirculator::CommandBufferHandle&& _cmdBuffer)
+  FrameGraph* _frameGraph, Engine* _engine, FrameGraph::NodeHandle* _nodeHandle, FrameId _frameId,
+  drv::CommandBufferCirculator::CommandBufferHandle&& _cmdBuffer)
   : queueLock(std::move(_queueLock)),
     queue(_queue),
     queueId(_queueId),

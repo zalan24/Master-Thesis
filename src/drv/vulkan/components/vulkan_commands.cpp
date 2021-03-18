@@ -89,7 +89,7 @@ drv::PipelineStages DrvVulkanResourceTracker::cmd_image_barrier(
 
 void DrvVulkanResourceTracker::cmd_flush_waits_on(drv::CommandBufferPtr cmdBuffer,
                                                   drv::EventPtr event) {
-    for (uint32_t i = 0; i < MAX_UNFLUSHED_BARRIER; ++i)
+    for (uint32_t i = 0; i < barriers.size(); ++i)
         if (barriers[i] && barriers[i].event == event)
             flushBarrier(cmdBuffer, barriers[i]);
 }

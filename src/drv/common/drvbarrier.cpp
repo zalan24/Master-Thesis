@@ -6,8 +6,8 @@
 
 using namespace drv;
 
-static ImageLayoutMask ImageMemoryBarrier::get_accepted_layouts(ImageResourceUsageFlag usages) {
-    ImageResourceUsage usage = 1;
+ImageLayoutMask ImageMemoryBarrier::get_accepted_layouts(ImageResourceUsageFlag usages) {
+    ImageResourceUsageFlag usage = 1;
     ImageLayoutMask acceptedLayouts = get_all_layouts_mask();
     while (usages && acceptedLayouts) {
         if (usages & 1)
@@ -34,8 +34,8 @@ bool ImageMemoryBarrier::pick_layout(ImageResourceUsageFlag usages, ImageLayout&
                                                ImageLayout::PREINITIALIZED,
                                                ImageLayout::UNDEFINED};
     for (const auto& layout : preferenceOrder) {
-        if (acceptedLayouts & static_cast<ImageLayoutMask>(layout)
-        result = layout;
+        if (acceptedLayouts & static_cast<ImageLayoutMask>(layout))
+            result = layout;
         return true;
     }
     drv_assert(false, "Image layout type not handled here yet");
@@ -52,7 +52,7 @@ ImageMemoryBarrier::ImageMemoryBarrier(ImagePtr _image, ImageResourceUsageFlag _
             break;
         case AUTO_TRANSITION:
             transitionLayout = pick_layout(usages, resultLayout);
-            discandCurrentContent = _discardCurrentContent;
+            discardCurrentContent = _discardCurrentContent;
             drv_assert(transitionLayout,
                        "There is no commonly accepted image layout for the selected usages");
     }
@@ -65,7 +65,7 @@ ImageMemoryBarrier::ImageMemoryBarrier(ImagePtr _image, ImageResourceUsageFlag _
   : image(_image),
     usages(_usages),
     transitionLayout(true),
-    discandCurrentContent(_discardCurrentContent),
+    discardCurrentContent(_discardCurrentContent),
     resultLayout(transition) {
     drv_assert(get_accepted_layouts(usages) & static_cast<ImageLayoutMask>(transition),
                "Transition target layout is not supported by all specified usages");
@@ -84,7 +84,7 @@ ImageMemoryBarrier::ImageMemoryBarrier(ImagePtr _image, uint32_t numRanges,
             break;
         case AUTO_TRANSITION:
             transitionLayout = pick_layout(usages, resultLayout);
-            discandCurrentContent = _discardCurrentContent;
+            discardCurrentContent = _discardCurrentContent;
             drv_assert(transitionLayout,
                        "There is no commonly accepted image layout for the selected usages");
     }
@@ -100,7 +100,7 @@ ImageMemoryBarrier::ImageMemoryBarrier(ImagePtr _image, uint32_t numRanges,
     ranges(_ranges),
     usages(_usages),
     transitionLayout(true),
-    discandCurrentContent(_discardCurrentContent),
+    discardCurrentContent(_discardCurrentContent),
     resultLayout(transition) {
     drv_assert(get_accepted_layouts(usages) & static_cast<ImageLayoutMask>(transition),
                "Transition target layout is not supported by all specified usages");

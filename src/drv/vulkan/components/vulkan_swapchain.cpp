@@ -119,9 +119,9 @@ bool DrvVulkan::get_swapchain_images(drv::LogicalDevicePtr device, drv::Swapchai
         images[i] = new drv_vulkan::Image();
         convertImage(images[i])->image = vkImages[i];
         convertImage(images[i])->swapchainImage = true;
-        convertImage(images[i])->numMipLevels = ;
-        convertImage(images[i])->arraySize = ;
-        convertImage(images[i])->sharedResource = ;
+        convertImage(images[i])->numMipLevels = 1;
+        convertImage(images[i])->arraySize = 1;
+        convertImage(images[i])->sharedResource = true;
     }
     return true;
 }

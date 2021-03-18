@@ -28,7 +28,7 @@ struct ExecutionPackage
             drv::PipelineStages::FlagType waitStage;
             uint64_t waitValue;
         };
-        using SemaphoreSignalInfo = drv::SemaphorePtr semaphore;
+        using SemaphoreSignalInfo = drv::SemaphorePtr;
         struct TimelineSemaphoreSignalInfo
         {
             drv::TimelineSemaphorePtr semaphore;

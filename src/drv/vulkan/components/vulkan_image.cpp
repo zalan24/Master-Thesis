@@ -216,7 +216,7 @@ void DrvVulkanResourceTracker::add_memory_access(
             }
         }
     }
-    flushBarriersFor(cmdBuffer, image, numSubresourceRanges, subresourceRange);
+    flushBarriersFor(cmdBuffer, image, numSubresourceRanges, subresourceRanges);
 }
 
 drv::PipelineStages DrvVulkanResourceTracker::add_memory_sync(
@@ -300,6 +300,7 @@ drv::PipelineStages DrvVulkanResourceTracker::add_memory_sync(
                       dstStages, invalidateMask, transferOwnership, newOwner, transitionLayout,
                       discardContent, resultLayout, event));
     }
+    return srcStages;
 }
 
 void DrvVulkanResourceTracker::flushBarriersFor(
@@ -319,4 +320,12 @@ void DrvVulkanResourceTracker::flushBarriersFor(
             }
         }
     }
+}
+
+drv::TextureInfo DrvVulkan::get_texture_info(drv::ImagePtr _image) {
+    drv_vulkan::Image* image = convertImage(_image);
+    drv::TextureInfo ret;
+    ret.numMips = image->numMipLevels;
+    ret.arraySize = image->arraySize;
+    return ret;
 }

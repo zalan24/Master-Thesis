@@ -15,7 +15,7 @@ void Engine::CommandBufferRecorder::cmdEventBarrier(uint32_t imageBarrierCount,
     drv::EventPtr eventPtr = event;
     tracker->cmd_signal_event(
       cmdBuffer.commandBufferPtr, eventPtr, imageBarrierCount, barriers,
-      [this, evt = std::move(event)](drv::ResourceTracker::EventFlushMode) mutable {
+      [this, evt{std::move(event)}](drv::ResourceTracker::EventFlushMode) mutable {
           EventPool::EventHandle e = std::move(evt);
           engine->garbageSystem.useGarbage(
             [&](Garbage* trashBin) { trashBin->releaseEvent(std::move(e)); });
@@ -45,7 +45,11 @@ void Engine::CommandBufferRecorder::cmdClearImage(
     drv::ImageSubresourceRange defVal;
     if (ranges == 0) {
         ranges = 1;
-        defVal.set(numLayers, numMips, drv::COLOR_BIT);
+        defVal.baseArrayLayer = 0;
+        defVal.baseMipLevel = 0;
+        defVal.layerCount = defVal.REMAINING_ARRAY_LAYERS;
+        defVal.levelCount = defVal.REMAINING_MIP_LEVELS;
+        defVal.aspectMask = drv::COLOR_BIT;
         subresourceRanges = &defVal;
     }
     getResourceTracker()->cmd_clear_image(cmdBuffer.commandBufferPtr, image, clearColors, ranges,

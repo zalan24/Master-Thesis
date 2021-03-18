@@ -23,7 +23,7 @@ enum class Driver : DriverIndex
     VULKAN = 0,
     NUM_PLATFORMS
 };
-class IResourceTracker;
+class ResourceTracker;
 
 // TODO Shaders
 
@@ -47,9 +47,9 @@ class IResourceTracker;
 bool init(const Driver* drivers, unsigned int count);
 bool close();
 
-std::unique_ptr<IResourceTracker> create_resource_tracker(QueuePtr queue,
-                                                          PhysicalDevicePtr physicalDevice,
-                                                          LogicalDevicePtr device);
+std::unique_ptr<ResourceTracker> create_resource_tracker(QueuePtr queue,
+                                                         PhysicalDevicePtr physicalDevice,
+                                                         LogicalDevicePtr device);
 
 InstancePtr create_instance(const InstanceCreateInfo* info, bool _default = true);
 bool delete_instance(InstancePtr ptr);
@@ -177,6 +177,7 @@ bool destroy_image_view(LogicalDevicePtr device, ImageViewPtr view);
 std::unique_lock<std::mutex> lock_queue(LogicalDevicePtr device, QueuePtr queue);
 QueueFamilyPtr get_queue_family(LogicalDevicePtr device, QueuePtr queue);
 bool device_wait_idle(LogicalDevicePtr device);
+TextureInfo get_texture_info(drv::ImagePtr image);
 
 uint32_t get_num_trackers();
 
