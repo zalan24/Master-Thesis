@@ -445,24 +445,38 @@ bool Engine::execute(FrameId& executionFrame, ExecutionPackage&& package) {
     else if (std::holds_alternative<ExecutionPackage::CommandBufferPackage>(package.package)) {
         ExecutionPackage::CommandBufferPackage& cmdBuffer =
           std::get<ExecutionPackage::CommandBufferPackage>(package.package);
-        StackMemory::MemoryHandle<drv::TimelineSemaphorePtr> signalTimelineSemaphoresMem(
+        StackMemory::MemoryHandle<drv::TimelineSemaphorePtr> signalTimelineSemaphores(
           cmdBuffer.signalTimelineSemaphores.size(), TEMPMEM);
-        drv::TimelineSemaphorePtr* signalTimelineSemaphores = signalTimelineSemaphoresMem.get();
-        drv::drv_assert(signalTimelineSemaphores != nullptr
-                        || cmdBuffer.signalTimelineSemaphores.size() == 0);
-        StackMemory::MemoryHandle<uint64_t> signalTimelineSemaphoreValuesMem(
+        StackMemory::MemoryHandle<uint64_t> signalTimelineSemaphoreValues(
           cmdBuffer.signalTimelineSemaphores.size(), TEMPMEM);
-        uint64_t* signalTimelineSemaphoreValues = signalTimelineSemaphoreValuesMem.get();
-        drv::drv_assert(signalTimelineSemaphoreValues != nullptr
-                        || cmdBuffer.signalTimelineSemaphores.size() == 0);
+        StackMemory::MemoryHandle<drv::SemaphorePtr> waitSemaphores(cmdBuffer.waitSemaphores.size(),
+                                                                    TEMPMEM);
+        StackMemory::MemoryHandle<drv::PipelineStages::FlagType> waitSemaphoresStages(
+          cmdBuffer.waitSemaphores.size(), TEMPMEM);
+        StackMemory::MemoryHandle<drv::TimelineSemaphorePtr> waitTimelineSemaphores(
+          cmdBuffer.waitTimelineSemaphores.size(), TEMPMEM);
+        StackMemory::MemoryHandle<drv::PipelineStages::FlagType> waitTimelineSemaphoresStages(
+          cmdBuffer.waitTimelineSemaphores.size(), TEMPMEM);
+        StackMemory::MemoryHandle<uint64_t> waitTimelineSemaphoresValues(
+          cmdBuffer.waitTimelineSemaphores.size(), TEMPMEM);
         for (uint32_t i = 0; i < cmdBuffer.signalTimelineSemaphores.size(); ++i) {
             signalTimelineSemaphores[i] = cmdBuffer.signalTimelineSemaphores[i].semaphore;
             signalTimelineSemaphoreValues[i] = cmdBuffer.signalTimelineSemaphores[i].signalValue;
         }
+        for (uint32_t i = 0; i < cmdBuffer.waitSemaphores.size(); ++i) {
+            waitSemaphores[i] = cmdBuffer.waitSemaphores[i].semaphore;
+            waitSemaphoresStages[i] =
+              drv::get_image_usages_stages(cmdBuffer.waitSemaphores[i].imageUsages).stageFlags;
+        }
+        for (uint32_t i = 0; i < cmdBuffer.waitTimelineSemaphores.size(); ++i) {
+            waitTimelineSemaphores[i] = cmdBuffer.waitTimelineSemaphores[i].semaphore;
+            waitTimelineSemaphoresValues[i] = cmdBuffer.waitTimelineSemaphores[i].waitValue;
+            waitTimelineSemaphoresStages[i] = drv::get_image_usages_stagescmdBuffer.waitTimelineSemaphores[i].imageUsages).stageFlags;
+        }
         drv::ExecutionInfo executionInfo;
-        executionInfo.numWaitSemaphores = ;
-        executionInfo.waitSemaphores = ;
-        executionInfo.waitStages = ;
+        executionInfo.numWaitSemaphores = cmdBuffer.waitSemaphores.size();
+        executionInfo.waitSemaphores = waitSemaphores;
+        executionInfo.waitStages = waitSemaphoresStages;
         if (cmdBuffer.bufferHandle.commandBufferPtr != drv::NULL_HANDLE) {
             executionInfo.numCommandBuffers = 1;
             executionInfo.commandBuffers = &cmdBuffer.bufferHandle.commandBufferPtr;
@@ -473,10 +487,10 @@ bool Engine::execute(FrameId& executionFrame, ExecutionPackage&& package) {
         }
         executionInfo.numSignalSemaphores = cmdBuffer.signalSemaphores.size();
         executionInfo.signalSemaphores = cmdBuffer.signalSemaphores.data();
-        executionInfo.numWaitTimelineSemaphores = ;
-        executionInfo.waitTimelineSemaphores = ;
-        executionInfo.timelineWaitValues = ;
-        executionInfo.timelineWaitStages = ;
+        executionInfo.numWaitTimelineSemaphores = cmdBuffer.waitTimelineSemaphores.size();
+        executionInfo.waitTimelineSemaphores = waitTimelineSemaphores;
+        executionInfo.timelineWaitValues = waitTimelineSemaphoresValues;
+        executionInfo.timelineWaitStages = waitTimelineSemaphoresStages;
         executionInfo.numSignalTimelineSemaphores = cmdBuffer.signalTimelineSemaphores.size();
         executionInfo.signalTimelineSemaphores = signalTimelineSemaphores;
         executionInfo.timelineSignalValues = signalTimelineSemaphoreValues;
@@ -664,6 +678,6 @@ void Engine::CommandBufferRecorder::close() {
     assert(getResourceTracker()->end_primary_command_buffer(cmdBuffer.commandBufferPtr));
     ExecutionQueue* queue = frameGraph->getExecutionQueue(*nodeHandle);
     queue->push(ExecutionPackage(ExecutionPackage::CommandBufferPackage{
-      queue, std::move(cmdBuffer), std::move(signalSemaphores),
-      std::move(signalTimelineSemaphores)}));
+      queue, std::move(cmdBuffer), std::move(signalSemaphores), std::move(signalTimelineSemaphores),
+      std::move(waitSemaphores), std::move(waitTimelineSemaphores)}));
 }

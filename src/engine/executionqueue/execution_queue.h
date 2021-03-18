@@ -20,12 +20,13 @@ struct ExecutionPackage
         struct SemaphoreWaitInfo
         {
             drv::SemaphorePtr semaphore;
-            drv::PipelineStages::FlagType waitStage;
+            drv::ImageResourceUsageFlag imageUsages;
         };
         struct TimelineSemaphoreWaitInfo
         {
             drv::TimelineSemaphorePtr semaphore;
-            drv::PipelineStages::FlagType waitStage;
+            drv::ImageResourceUsageFlag imageUsages;
+            // TODO add buffer usages
             uint64_t waitValue;
         };
         using SemaphoreSignalInfo = drv::SemaphorePtr;
@@ -39,6 +40,8 @@ struct ExecutionPackage
         // TODO use frame mem for this
         std::vector<SemaphoreSignalInfo> signalSemaphores;
         std::vector<TimelineSemaphoreSignalInfo> signalTimelineSemaphores;
+        std::vector<SemaphoreWaitInfo> waitSemaphores;
+        std::vector<TimelineSemaphoreWaitInfo> waitTimelineSemaphores;
         // TODO
     };
 

@@ -51,10 +51,8 @@ void Game::record(FrameGraph& frameGraph, FrameId frameId) {
         Engine::CommandBufferRecorder recorder =
           engine->acquireCommandRecorder(testDrawHandle, frameId, queues.renderQueue.id);
         drv::ClearColorValue clearValue(255u, 255u, 0u, 255u);
-        // recorder.cmdWaitSemaphore(swapChainData.imageAvailableSemaphore,
-        //                           drv::PipelineStages::COLOR_ATTACHMENT_OUTPUT_BIT);
         recorder.cmdWaitSemaphore(swapChainData.imageAvailableSemaphore,
-                                  drv::PipelineStages::ALL_COMMANDS_BIT);
+                                  drv::IMAGE_USAGE_TRANSFER_DESTINATION);
         recorder.cmdImageBarrier(
           {swapChainData.image, drv::IMAGE_USAGE_TRANSFER_DESTINATION,
            drv::ImageMemoryBarrier::AUTO_TRANSITION, true,

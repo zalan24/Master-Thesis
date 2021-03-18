@@ -107,9 +107,9 @@ class Engine
 
         ~CommandBufferRecorder();
 
-        void cmdWaitSemaphore(drv::SemaphorePtr semaphore, drv::PipelineStages::FlagType waitStage);
+        void cmdWaitSemaphore(drv::SemaphorePtr semaphore, drv::ImageResourceUsageFlag imageUsages);
         void cmdWaitTimelineSemaphore(drv::TimelineSemaphorePtr semaphore, uint64_t waitValue,
-                                      drv::PipelineStages::FlagType waitStage);
+                                      drv::ImageResourceUsageFlag imageUsages);
         void cmdSignalSemaphore(drv::SemaphorePtr semaphore);
         void cmdSignalTimelineSemaphore(drv::TimelineSemaphorePtr semaphore, uint64_t signalValue);
         void cmdImageBarrier(const drv::ImageMemoryBarrier& barrier);
@@ -150,13 +150,15 @@ class Engine
         std::vector<ExecutionPackage::CommandBufferPackage::SemaphoreSignalInfo> signalSemaphores;
         std::vector<ExecutionPackage::CommandBufferPackage::TimelineSemaphoreSignalInfo>
           signalTimelineSemaphores;
+        std::vector<ExecutionPackage::CommandBufferPackage::SemaphoreWaitInfo> waitSemaphores;
+        std::vector<ExecutionPackage::CommandBufferPackage::TimelineSemaphoreWaitInfo>
+          waitTimelineSemaphores;
 
         void close();
     };
 
     CommandBufferRecorder acquireCommandRecorder(FrameGraph::NodeHandle& acquiringNodeHandle,
-                                                 FrameId frameId,
-                                                 FrameGraph::QueueId queueId);
+                                                 FrameId frameId, FrameGraph::QueueId queueId);
 
  private:
     struct ErrorCallback

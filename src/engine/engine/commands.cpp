@@ -56,8 +56,16 @@ void Engine::CommandBufferRecorder::cmdClearImage(
                                           subresourceRanges);
 }
 
-// void cmdWaitSemaphore(drv::SemaphorePtr semaphore, drv::PipelineStages::FlagType waitStage);
-//         void cmdWaitTimelineSemaphore(drv::TimelineSemaphorePtr semaphore, uint64_t waitValue, drv::PipelineStages::FlagType waitStage);
+void Engine::CommandBufferRecorder::cmdWaitSemaphore(drv::SemaphorePtr semaphore,
+                                                     drv::ImageResourceUsageFlag imageUsages) {
+    waitSemaphores.push_back({semaphore, imageUsages});
+}
+
+void Engine::CommandBufferRecorder::cmdWaitTimelineSemaphore(
+  drv::TimelineSemaphorePtr semaphore, uint64_t waitValue,
+  drv::ImageResourceUsageFlag imageUsages) {
+    waitTimelineSemaphores.push_back({semaphore, imageUsages, waitValue});
+}
 
 void Engine::CommandBufferRecorder::cmdSignalSemaphore(drv::SemaphorePtr semaphore) {
     signalSemaphores.push_back(semaphore);

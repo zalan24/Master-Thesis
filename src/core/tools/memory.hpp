@@ -26,8 +26,11 @@ class StackMemory
     class MemoryHandle
     {
      public:
-        explicit MemoryHandle(size_t count, StackMemory* _memory)
-          : memory(_memory), ptr(memory->template allocate<T>(count)) {}
+        explicit MemoryHandle(size_t count, StackMemory* _memory, bool require = true)
+          : memory(_memory), ptr(memory->template allocate<T>(count)) {
+            if (require && count > 0 && !ptr)
+                throw std::runtime_error("Could not allocate stack memory");
+        }
 
         ~MemoryHandle() {
             memory->deallocate(ptr);
@@ -44,6 +47,15 @@ class StackMemory
 
         operator T*() { return ptr; }
         operator const T*() const { return ptr; }
+
+        T& operator[](size_t ind) { return ptr[ind]; }
+        const T& operator[](size_t ind) const { return ptr[ind]; }
+
+        T& operator->() { return *ptr; }
+        const T& operator->() const { return *ptr; }
+
+        T& operator*() { return *ptr; }
+        const T& operator*() const { return *ptr; }
 
      private:
         StackMemory* memory;
