@@ -199,14 +199,62 @@ void FrameGraph::validateFlowGraph(
     }
 }
 
+void FrameGraph::calcDependencyTable() {
+    dependencyTable.clear();
+    dependencyTable.resize(nodes.size() * nodes.size());
+
+    struct NodeData
+    {
+        NodeId node;
+        DependenceData dependence;
+    };
+
+    std::vector<std::map<NodeId, DependenceData>> directChildren(nodes.size());
+    for (NodeId i = 0; i < nodes.size(); ++i) {
+        for (const CpuDependency& dep : nodes[i].cpuDeps) {
+            if (dep.srcNode == i)
+                continue;
+            directChildren[i][dep.srcNode].cpuOffset = dep.offset;
+        }
+        for (const EnqueueDependency& dep : nodes[i].enqDeps) {
+            if (dep.srcNode == i)
+                continue;
+            directChildren[i][dep.srcNode].enqOffset = dep.offset;
+        }
+    }
+
+    for (NodeId i = 0; i < nodes.size(); ++i) {
+        std::deque<NodeData> q;
+        q.push_back({i, {0, nodes[i].hasExecution() ? 0 : NO_SYNC}});
+        while (!q.empty()) {
+            NodeData node = q.front();
+            q.pop_front();
+            DependenceData& dep = getDependenceData(i, node.node);
+            if (dep.cpuOffset <= node.dependence.cpuOffset
+                && dep.enqOffset <= node.dependence.enqOffset)
+                continue;
+            dep.cpuOffset = std::min(dep.cpuOffset, node.dependence.cpuOffset);
+            dep.enqOffset = std::min(dep.enqOffset, node.dependence.enqOffset);
+            for (const auto& [id, data] : directChildren[node.node]) {
+                DependenceData d;
+                if (dep.cpuOffset != NO_SYNC && data.cpuOffset != NO_SYNC)
+                    d.cpuOffset = dep.cpuOffset + data.cpuOffset;
+                if (dep.enqOffset != NO_SYNC && data.enqOffset != NO_SYNC)
+                    d.enqOffset = dep.enqOffset + data.enqOffset;
+                q.push_back({id, std::move(d)});
+            }
+        }
+    }
+}
+
 void FrameGraph::validate() const {
     // uint32_t numTrackingNodes = 0;
     // for (const Node& node : nodes)
     //     if (node.hasExecution())
     //         numTrackingNodes++;
-    if (> drv::get_num_trackers()) {
-        // TODO log issue a warning
-    }
+    // if (> drv::get_num_trackers()) {
+    // TODO log issue a warning
+    // }
     std::vector<bool> cpuChildrenIndirect(nodes.size(), false);
     for (NodeId i = 0; i < nodes.size(); ++i) {
         bool hasCpuIndirectDep = false;
@@ -263,6 +311,7 @@ void FrameGraph::validate() const {
           index -= node.queCpuDeps.size();
           return DependencyInfo{node.queQueDeps[index].srcNode, node.queQueDeps[index].offset};
       });
+    calcDependencyTable();
 }
 
 FrameGraph::NodeHandle::NodeHandle() : frameGraph(nullptr) {
@@ -495,5 +544,9 @@ drv::ResourceTracker* FrameGraph::getOrCreateResourceTracker(NodeId nodeId, Queu
 }
 
 bool FrameGraph::canReuseTracker(NodeId currentUser, NodeId newNode) {
-    TODO;
+    const DependenceData& d1 = getDependenceData(currentUser, newNode);
+    const DependenceData& d2 = getDependenceData(newNode, currentUser);
+
+    return (d1.cpuOffset == 0 && d2.cpuOffset == 1 && d1.enqOffset == 0 && d2.enqOffset == 1)
+           || (d2.cpuOffset == 0 && d1.cpuOffset == 1 && d2.enqOffset == 0 && d1.enqOffset == 1);
 }

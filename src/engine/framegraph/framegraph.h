@@ -24,37 +24,38 @@ class FrameGraph
     using FrameId = uint64_t;
     using NodeId = uint32_t;
     using QueueId = uint32_t;
+    using Offset = uint32_t;
     static constexpr NodeId INVALID_NODE = std::numeric_limits<NodeId>::max();
     static constexpr FrameId INVALID_FRAME = std::numeric_limits<FrameId>::max();
-    //  static constexpr uint32_t NO_SYNC = std::numeric_limits<uint32_t>::max();
+    static constexpr uint32_t NO_SYNC = std::numeric_limits<Offset>::max();
     struct CpuDependency
     {
         NodeId srcNode;
-        uint32_t offset = 0;
+        Offset offset = 0;
     };
     struct EnqueueDependency
     {
         NodeId srcNode;
-        uint32_t offset = 0;
+        Offset offset = 0;
     };
     struct CpuQueueDependency
     {
         NodeId srcNode;
         QueueId dstQueue;
-        uint32_t offset = 0;
+        Offset offset = 0;
     };
     struct QueueCpuDependency
     {
         NodeId srcNode;
         QueueId srcQueue;
-        uint32_t offset = 0;
+        Offset offset = 0;
     };
     struct QueueQueueDependency
     {
         NodeId srcNode;
         QueueId srcQueue;
         QueueId dstQueue;
-        uint32_t offset = 0;
+        Offset offset = 0;
     };
     class Node
     {
@@ -177,6 +178,14 @@ class FrameGraph
         std::unique_ptr<drv::ResourceTracker> tracker;
         std::unordered_set<NodeId> users;
     };
+    struct DependenceData
+    {
+        Offset cpuOffset = NO_SYNC;
+        Offset enqOffset = NO_SYNC;
+        bool operator==(const DependenceData& other) {
+            return cpuOffset == other.cpuOffset && enqOffset == other.enqOffset;
+        }
+    };
 
     drv::PhysicalDevice physicalDevice;
     drv::LogicalDevicePtr device;
@@ -185,6 +194,9 @@ class FrameGraph
     ExecutionQueue executionQueue;
     std::vector<Node> nodes;
     std::unordered_map<QueueId, std::vector<TrackerData>> resourceTrackers;
+    // this doesn't include transitive dependencies through a gpu queue
+    // eg node1 <cpu ot render queue=> node2 <render queue to cpu=> node3
+    std::vector<DependenceData> dependencyTable;
     std::atomic<bool> quit = false;
 
     mutable std::mutex enqueueMutex;
@@ -193,11 +205,18 @@ class FrameGraph
     struct DependencyInfo
     {
         NodeId srcNode;
-        uint32_t offset;
+        Offset offset;
     };
     void validateFlowGraph(const std::function<uint32_t(const Node&)>& depCountF,
                            const std::function<DependencyInfo(const Node&, uint32_t)>& depF) const;
     FrameId calcMaxEnqueueFrame(NodeId nodeId, FrameId frameId) const;
     void checkAndEnqueue(NodeId nodeId, FrameId frameId, bool traverse);
     bool canReuseTracker(NodeId currentUser, NodeId newNode);
+    void calcDependencyTable();
+    DependenceData& getDependenceData(NodeId srcNode, NodeId dstNode) {
+        return dependencyTable[srcNode * nodes.size() + dstNode];
+    }
+    const DependenceData& getDependenceData(NodeId srcNode, NodeId dstNode) const {
+        return dependencyTable[srcNode * nodes.size() + dstNode];
+    }
 };

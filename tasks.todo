@@ -137,8 +137,8 @@ Get a triangle on screen:
                 ✔ There is a fixed number of slots (use a define for this, could be a build option) @done (3/10/2021, 1:15:41 PM)
                 ✔ Slot ids are acquired from the driver (not the resource) @done (3/10/2021, 9:26:28 AM)
                     ✔ A tracking slot = resource tracker object @done (3/10/2021, 1:37:12 PM)
-                    ☐ The framegraph can reuse trackers, where there is no parallel usage (must be same queue as well)
-                    ☐ Reuse as much as possible
+                    ✔ The framegraph can reuse trackers, where there is no parallel usage (must be same queue as well) @done (3/18/2021, 9:25:14 AM)
+                    ✔ Reuse as much as possible @done (3/18/2021, 9:25:14 AM)
                 ☐ Placing barriers
                     ✔ Auto placed barriers: @done (3/12/2021, 9:12:28 AM)
                         ✔ Separate access function into validation and execution @done (3/11/2021, 8:44:33 PM)
@@ -202,7 +202,7 @@ Get a triangle on screen:
                         ☐ Edges can be checked to validate state object compatibility
                         ☐ Validate the local resources (without in/out states) are actually not used with different tracking slots / on different queues
             ☐ Sync by framegraph (registered resources)
-                ☐ Try to reuse tracking ids as much as possible
+                ✔ Try to reuse tracking ids as much as possible @done (3/18/2021, 9:25:33 AM)
                 ☐ For same tracking id usage, with cpu dependency, use empty resource initializers for shared resources (enq dep implied, tracking info ok)
                 ☐ For other nodes with same queue
                     ☐ Enq dep is implied, so normal barriers can be used. Declare a state object somewhere and auto use it
