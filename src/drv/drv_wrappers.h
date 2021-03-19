@@ -6,6 +6,7 @@
 #include <vector>
 
 #include <exclusive.h>
+#include <util.hpp>
 
 #include "drv.h"
 
@@ -30,7 +31,7 @@ class DriverWrapper
 {
  public:
     DriverWrapper(const std::vector<Driver>& drivers)
-      : DriverWrapper(drivers.data(), drivers.size()) {}
+      : DriverWrapper(drivers.data(), safe_cast<unsigned int>(drivers.size())) {}
     DriverWrapper(const Driver* drivers, unsigned int count);
     ~DriverWrapper();
 

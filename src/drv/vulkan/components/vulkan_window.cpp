@@ -5,6 +5,8 @@
 #include <stdexcept>
 #include <string>
 
+#include <util.hpp>
+
 #ifdef _WIN32
 // include this before vulkan, because apparently
 // you can't have order-independent headers on vindoz
@@ -167,12 +169,12 @@ VulkanWindow::GLFWInit::~GLFWInit() {
     glfwTerminate();
 }
 
-VulkanWindow::WindowObject::WindowObject(int width, int height, const std::string& title) {
+VulkanWindow::WindowObject::WindowObject(int _width, int _height, const std::string& title) {
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 2);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
     glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
     glfwSetErrorCallback(error_callback);
-    window = glfwCreateWindow(width, height, title.c_str(), nullptr, nullptr);
+    window = glfwCreateWindow(_width, _height, title.c_str(), nullptr, nullptr);
     drv::drv_assert(window, "Window context creation failed");
     // vkCreateWin32
     // if (vkCreateWin32SurfaceKHR(instance, &createInfo, nullptr, &surface) != VK_SUCCESS) {
@@ -235,11 +237,11 @@ VulkanWindow::Surface& VulkanWindow::Surface::operator=(Surface&& other) {
     return *this;
 }
 
-VulkanWindow::Surface::Surface(GLFWwindow* window, drv::InstancePtr _instance)
+VulkanWindow::Surface::Surface(GLFWwindow* _window, drv::InstancePtr _instance)
   : instance(_instance) {
     VkWin32SurfaceCreateInfoKHR createInfo{};
     createInfo.sType = VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR;
-    createInfo.hwnd = glfwGetWin32Window(window);
+    createInfo.hwnd = glfwGetWin32Window(_window);
     createInfo.hinstance = GetModuleHandle(nullptr);
     drv::drv_assert(vkCreateWin32SurfaceKHR(reinterpret_cast<Instance*>(instance)->instance,
                                             &createInfo, nullptr, &surface)
@@ -253,11 +255,12 @@ VulkanWindow::Surface::~Surface() {
 
 VulkanWindow::VulkanWindow(IDriver* _driver, Input* _input, InputManager* _inputManager,
                            unsigned int _width, unsigned int _height, const std::string& title)
-  : driver(_driver),
+  :  //driver(_driver),
     initer(),
     input(_input),
     inputManager(_inputManager),
-    window(_width, _height, title) {
+    window(static_cast<int>(_width), static_cast<int>(_height), title) {
+    UNUSED(_driver);
     // glfwSwapInterval(1);
     inputManager->setCursorModeCallbock([this](InputListener::CursorMode mode) {
         switch (mode) {
@@ -278,11 +281,15 @@ VulkanWindow::VulkanWindow(IDriver* _driver, Input* _input, InputManager* _input
 VulkanWindow::~VulkanWindow() {
 }
 
-void VulkanWindow::getContentSize(unsigned int& width, unsigned int& height) const {
+void VulkanWindow::getContentSize(unsigned int& _width, unsigned int& _height) const {
+    UNUSED(_width);
+    UNUSED(_height);
     assert(false);
 }
 
-void VulkanWindow::getWindowSize(unsigned int& width, unsigned int& height) const {
+void VulkanWindow::getWindowSize(unsigned int& _width, unsigned int& _height) const {
+    UNUSED(_width);
+    UNUSED(_height);
     assert(false);
 }
 

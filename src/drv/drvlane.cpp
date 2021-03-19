@@ -26,7 +26,7 @@ CommandLaneManager::CommandLaneManager(PhysicalDevicePtr physicalDevice, IWindow
     drv::get_physical_device_queue_families(physicalDevice, &familyCount, queueFamilies.data());
 
     std::unordered_map<QueueFamilyPtr, std::unordered_map<size_t, float>> priorities;
-    std::unordered_map<QueueFamilyPtr, size_t> remaining(familyCount);
+    std::unordered_map<QueueFamilyPtr, unsigned int> remaining(familyCount);
     for (size_t i = 0; i < familyCount; ++i)
         remaining[queueFamilies[i].handle] = queueFamilies[i].queueCount;
 

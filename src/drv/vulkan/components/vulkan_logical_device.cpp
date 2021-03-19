@@ -36,7 +36,7 @@ drv::LogicalDevicePtr DrvVulkan::create_logical_device(const drv::LogicalDeviceC
     if (info->extensions.values.extensions.swapchain)
         extensions.push_back(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
 
-    createInfo.enabledExtensionCount = extensions.size();
+    createInfo.enabledExtensionCount = static_cast<uint32_t>(extensions.size());
     createInfo.ppEnabledExtensionNames = extensions.data();
 
     createInfo.enabledLayerCount = 0;

@@ -26,7 +26,7 @@ static EShLanguage find_language(const ShaderBin::Stage stage) {
             return EShLangFragment;
         case ShaderBin::Stage::CS:
             return EShLangCompute;
-        default:
+        case ShaderBin::Stage::NUM_STAGES:
             throw std::runtime_error("Unhandled shader stage");
     }
 }
@@ -145,7 +145,7 @@ std::vector<uint32_t> Compiler::GLSLtoSPV(const ShaderBin::Stage stage, const ch
     TBuiltInResource resources = init_resources();
 
     // Enable SPIR-V and Vulkan rules when parsing GLSL
-    EShMessages messages = (EShMessages)(EShMsgSpvRules | EShMsgVulkanRules);
+    EShMessages messages = static_cast<EShMessages>(EShMsgSpvRules | EShMsgVulkanRules);
 
     shaderStrings[0] = pShader;
     shader.setStrings(shaderStrings, 1);

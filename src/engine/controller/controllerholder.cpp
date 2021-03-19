@@ -3,13 +3,13 @@
 #include "randomgridcontroller.h"
 #include "splinecontroller.h"
 
-ISerializable* ControllerHolder::init(const std::string& type) {
-    if (type == "randomgrid")
+ISerializable* ControllerHolder::init(const std::string& _type) {
+    if (_type == "randomgrid")
         controller = std::make_unique<RandomGridController>();
-    if (type == "spline")
+    if (_type == "spline")
         controller = std::make_unique<SplineController>();
     else
-        throw std::runtime_error("Unknown controller type: " + type);
+        throw std::runtime_error("Unknown controller type: " + _type);
     return controller.get();
 }
 

@@ -11,6 +11,7 @@
 
 #include <blockfile.h>
 #include <uncomment.h>
+#include <util.hpp>
 
 #include "spirvcompiler.h"
 
@@ -30,7 +31,7 @@ static ShaderHash hash_code(const std::string& data) {
 
 static ShaderHash hash_binary(size_t len, const uint32_t* data) {
     IHash hash = HashLib4CPP::Hash128::CreateMurmurHash3_x64_128();
-    IHashResult res = hash->ComputeUntyped(data, len * sizeof(data[0]));
+    IHashResult res = hash->ComputeUntyped(data, static_cast<int64_t>(len * sizeof(data[0])));
     return res->ToString();
 }
 
@@ -402,6 +403,7 @@ static void generate_shader_code(std::ostream& out /* resources */) {
 
 static std::vector<uint32_t> compile_shader_binary(const Compiler* compiler, ShaderBin::Stage stage,
                                                    size_t len, const char* code) {
+    UNUSED(len);
     return compiler->GLSLtoSPV(stage, code);
 }
 
@@ -501,7 +503,7 @@ static bool generate_binary(
     shaderData.variantParamNum = 0;
     for (const Variants& v : variants) {
         for (const auto& [name, values] : v.values) {
-            for (const std::string value : values) {
+            for (const std::string& value : values) {
                 // try to find value name in registered param names
                 auto itr = variantParamMultiplier.find(value);
                 if (itr != variantParamMultiplier.end()) {
@@ -516,7 +518,8 @@ static bool generate_binary(
                   << ShaderBin::MAX_VARIANT_PARAM_COUNT << ")" << std::endl;
                 return false;
             }
-            shaderData.variantValues[shaderData.variantParamNum] = values.size();
+            shaderData.variantValues[shaderData.variantParamNum] =
+              safe_cast<decltype(shaderData.variantValues[0])>(values.size());
             shaderData.variantParamNum++;
             if (variantParams.count(name) > 0) {
                 std::cerr << "A shader variant param name is used multiple times: " << name
@@ -527,7 +530,7 @@ static bool generate_binary(
             variantParams.insert(name);
         }
     }
-    shaderData.totalVariantCount = count;
+    shaderData.totalVariantCount = safe_cast<uint32_t>(count);
     shaderData.stages.clear();
     shaderData.stages.resize(shaderData.totalVariantCount);
     std::unordered_map<ShaderHash, std::pair<size_t, size_t>> codeOffsets;
@@ -571,10 +574,10 @@ static void include_all(std::ostream& out, const fs::path& root,
             throw std::runtime_error("Could not find include file for: " + inc);
         out << "#include \"" << fs::relative(itr->second.headerFileName, root).string() << "\"\n";
         allIncludes.push_back(inc);
-        for (const auto& itr : itr->second.variantMultiplier) {
-            if (variantParamToDescriptor.find(itr.first) != variantParamToDescriptor.end())
+        for (const auto& itr2 : itr->second.variantMultiplier) {
+            if (variantParamToDescriptor.find(itr2.first) != variantParamToDescriptor.end())
                 throw std::runtime_error("Variant param names must be unique");
-            variantParamToDescriptor[itr.first] = inc;
+            variantParamToDescriptor[itr2.first] = inc;
         }
         include_all(out, root, includeData, itr->second.included, allIncludes, variantIdMultiplier,
                     variantParamToDescriptor, variantIdMul);
@@ -642,7 +645,8 @@ bool compile_shader(const Compiler* compiler, ShaderBin& shaderBin, Cache& cache
             assert(inc != includeData.end());
             auto variantMul = inc->second.variantMultiplier.find(name);
             assert(variantMul != inc->second.variantMultiplier.end());
-            variantParamMultiplier[name] = descMulItr->second * variantMul->second;
+            variantParamMultiplier[name] =
+              safe_cast<uint32_t>(descMulItr->second * variantMul->second);
         }
         variants.push_back(std::move(v));
     }

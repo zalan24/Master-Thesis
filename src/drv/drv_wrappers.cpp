@@ -1142,9 +1142,9 @@ void DescriptorPool::close() {
 
 SwapchainCreateInfo Swapchain::getSwapchainInfo(uint32_t width, uint32_t height) {
     SwapchainCreateInfo ret;
-    ret.allowedFormatCount = createInfo.formatPreferences.size();
+    ret.allowedFormatCount = safe_cast<uint32_t>(createInfo.formatPreferences.size());
     ret.formatPreferences = createInfo.formatPreferences.data();
-    ret.allowedPresentModeCount = createInfo.preferredPresentModes.size();
+    ret.allowedPresentModeCount = safe_cast<uint32_t>(createInfo.preferredPresentModes.size());
     ret.preferredPresentModes = createInfo.preferredPresentModes.data();
     ret.width = width;
     ret.height = height;

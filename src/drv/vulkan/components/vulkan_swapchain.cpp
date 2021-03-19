@@ -90,16 +90,13 @@ drv::PresentResult DrvVulkan::present(drv::QueuePtr queue, drv::SwapchainPtr swa
     presentInfo.pImageIndices = &imageIndex;
     presentInfo.pResults = nullptr;
     VkResult result = vkQueuePresentKHR(reinterpret_cast<VkQueue>(queue), &presentInfo);
-    switch (result) {
-        case VK_SUCCESS:
-            return drv::PresentResult::SUCCESS;
-        case VK_SUBOPTIMAL_KHR:
-            return drv::PresentResult::RECREATE_ADVISED;
-        case VK_ERROR_OUT_OF_DATE_KHR:
-            return drv::PresentResult::RECREATE_REQUIRED;
-        default:
-            return drv::PresentResult::ERROR;
-    }
+    if (result == VK_SUCCESS)
+        return drv::PresentResult::SUCCESS;
+    if (result == VK_SUBOPTIMAL_KHR)
+        return drv::PresentResult::RECREATE_ADVISED;
+    if (result == VK_ERROR_OUT_OF_DATE_KHR)
+        return drv::PresentResult::RECREATE_REQUIRED;
+    return drv::PresentResult::ERROR;
 }
 
 bool DrvVulkan::get_swapchain_images(drv::LogicalDevicePtr device, drv::SwapchainPtr swapchain,

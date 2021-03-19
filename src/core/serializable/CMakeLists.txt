@@ -10,4 +10,5 @@ target_include_directories(AnimationsSerializable PUBLIC . ${CMAKE_CURRENT_BINAR
 target_link_libraries(AnimationsSerializable PUBLIC
     json_external
     glm_external
+    AnimationsTools
 )

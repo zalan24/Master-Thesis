@@ -88,7 +88,7 @@ class VulkanWindow final : public IWindow
         VkSurfaceKHR surface;
         drv::InstancePtr instance;
     };
-    drv::IDriver* driver;
+   //  drv::IDriver* driver;
     int currentCursorMode;
     std::atomic<int> targetCursorMode;
     GLFWInit initer;

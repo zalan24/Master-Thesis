@@ -66,8 +66,8 @@ void ShaderObject::loadShader(const ShaderBin::ShaderData& data) {
             info.code = &data.codes[vsOffset];
             size_t offset = shaders.size();
             shaders.push_back(drv::create_shader_module(device, &info));
-            variants[i].vsOffset = offset;
-            offsetToModule[vsOffset] = offset;
+            variants[i].vsOffset = safe_cast<VariantId>(offset);
+            offsetToModule[vsOffset] = safe_cast<VariantId>(offset);
         }
         if (auto itr = offsetToModule.find(psOffset); itr != offsetToModule.end())
             variants[i].psOffset = itr->second;
@@ -77,8 +77,8 @@ void ShaderObject::loadShader(const ShaderBin::ShaderData& data) {
             info.code = &data.codes[psOffset];
             size_t offset = shaders.size();
             shaders.push_back(drv::create_shader_module(device, &info));
-            variants[i].psOffset = offset;
-            offsetToModule[psOffset] = offset;
+            variants[i].psOffset = safe_cast<VariantId>(offset);
+            offsetToModule[psOffset] = safe_cast<VariantId>(offset);
         }
         if (auto itr = offsetToModule.find(csOffset); itr != offsetToModule.end())
             variants[i].csOffset = itr->second;
@@ -88,8 +88,8 @@ void ShaderObject::loadShader(const ShaderBin::ShaderData& data) {
             info.code = &data.codes[csOffset];
             size_t offset = shaders.size();
             shaders.push_back(drv::create_shader_module(device, &info));
-            variants[i].csOffset = offset;
-            offsetToModule[csOffset] = offset;
+            variants[i].csOffset = safe_cast<VariantId>(offset);
+            offsetToModule[csOffset] = safe_cast<VariantId>(offset);
         }
     }
 }

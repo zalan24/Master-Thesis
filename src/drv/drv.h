@@ -51,7 +51,7 @@ std::unique_ptr<ResourceTracker> create_resource_tracker(QueuePtr queue,
                                                          PhysicalDevicePtr physicalDevice,
                                                          LogicalDevicePtr device);
 
-InstancePtr create_instance(const InstanceCreateInfo* info, bool _default = true);
+InstancePtr create_instance(const InstanceCreateInfo* info);
 bool delete_instance(InstancePtr ptr);
 
 bool get_physical_devices(unsigned int* count, PhysicalDeviceInfo* infos,

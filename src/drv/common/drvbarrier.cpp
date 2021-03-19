@@ -22,9 +22,10 @@ bool ImageMemoryBarrier::pick_layout(ImageResourceUsageFlag usages, ImageLayout&
                                                ImageLayout::PREINITIALIZED,
                                                ImageLayout::UNDEFINED};
     for (const auto& layout : preferenceOrder) {
-        if (acceptedLayouts & static_cast<ImageLayoutMask>(layout))
+        if (acceptedLayouts & static_cast<ImageLayoutMask>(layout)) {
             result = layout;
-        return true;
+            return true;
+        }
     }
     drv_assert(false, "Image layout type not handled here yet");
     return false;

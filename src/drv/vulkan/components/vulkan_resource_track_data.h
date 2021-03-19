@@ -11,9 +11,8 @@ namespace drv_vulkan
 struct PerSubresourceRangeTrackData
 {
     // Resource may only be accessed on these stages
-    drv::PipelineStages::FlagType usableStages = drv::PipelineStages::get_all_bits(
-      drv::PipelineStages::HOST_BIT | drv::PipelineStages::TOP_OF_PIPE_BIT
-      | drv::PipelineStages::BOTTOM_OF_PIPE_BIT);
+    drv::PipelineStages::FlagType usableStages =
+      drv::PipelineStages::get_all_bits(drv::CMD_TYPE_ALL);
 
     drv::PipelineStages::FlagType ongoingWrites;
     drv::PipelineStages::FlagType ongoingReads;

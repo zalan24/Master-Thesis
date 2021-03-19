@@ -26,8 +26,8 @@ class StackMemory
     class MemoryHandle
     {
      public:
-        explicit MemoryHandle(size_t count, StackMemory* _memory, bool require = true)
-          : memory(_memory), ptr(memory->template allocate<T>(count)) {
+        explicit MemoryHandle(std::size_t count, StackMemory* _memory, bool require = true)
+          : memory(_memory), ptr(memory->template allocate<T>(safe_cast<size_t>(count))) {
             if (require && count > 0 && !ptr)
                 throw std::runtime_error("Could not allocate stack memory");
         }
@@ -74,7 +74,7 @@ class StackMemory
         }
         else {
             for (unsigned int i = 0; i < count; ++i)
-                ret[i] = T{0};
+                ret[i] = T();
         }
         return ret;
     }
@@ -129,7 +129,8 @@ class StackMemory
         if (size == 0)
             return nullptr;
         MemoryBlock* block = getBlock();
-        size_t align = reinterpret_cast<size_t>(block->memory.data() + block->size) % alignment;
+        uintptr_t align =
+          reinterpret_cast<uintptr_t>(block->memory.data() + block->size) % alignment;
         if (align != 0)
             align = safe_cast<StackMemory::size_t>(alignment) - align;
         ASSERT(block->size + size + align <= block->memory.size());

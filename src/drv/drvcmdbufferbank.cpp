@@ -24,7 +24,7 @@ CommandBufferCirculator::CommandBufferCirculator(LogicalDevicePtr _device, Queue
 }
 
 CommandBufferCirculator::~CommandBufferCirculator() {
-    std::unique_lock lock(mutex);
+    std::unique_lock<std::shared_mutex> lock(mutex);
     drv::drv_assert(
       acquiredStates == 0,
       "Some command buffers are not released before destroying command buffer circulator");
@@ -44,7 +44,7 @@ CommandBufferCirculator::CommandBufferHandle CommandBufferCirculator::acquire() 
     ret.family = family;
     ret.circulator = this;
     {
-        std::unique_lock lock(mutex);
+        std::unique_lock<std::shared_mutex> lock(mutex);
         ret.bufferIndex = commandBuffers.size();
         commandBuffers.emplace_back(std::move(commandBuffer), commandBuffer, READY);
     }
@@ -53,7 +53,7 @@ CommandBufferCirculator::CommandBufferHandle CommandBufferCirculator::acquire() 
 }
 
 bool CommandBufferCirculator::tryAcquire(CommandBufferHandle& handle) {
-    std::shared_lock lock(mutex);
+    std::shared_lock<std::shared_mutex> lock(mutex);
     for (size_t index = 0; index < commandBuffers.size(); ++index) {
         CommandBufferState expected = CommandBufferState::READY;
         if (commandBuffers[index].state.compare_exchange_weak(expected,
@@ -70,7 +70,7 @@ bool CommandBufferCirculator::tryAcquire(CommandBufferHandle& handle) {
 }
 
 void CommandBufferCirculator::finished(CommandBufferHandle&& handle) {
-    std::shared_lock lock(mutex);
+    std::shared_lock<std::shared_mutex> lock(mutex);
     if (handle.bufferIndex < commandBuffers.size()
         && commandBuffers[handle.bufferIndex].commandBufferPtr == handle.commandBufferPtr)
         commandBuffers[handle.bufferIndex].state = CommandBufferState::READY;
@@ -89,7 +89,7 @@ void CommandBufferCirculator::finished(CommandBufferHandle&& handle) {
 }
 
 void CommandBufferCirculator::startExecution(CommandBufferHandle& handle) {
-    std::shared_lock lock(mutex);
+    std::shared_lock<std::shared_mutex> lock(mutex);
     if (handle.bufferIndex < commandBuffers.size()
         && commandBuffers[handle.bufferIndex].commandBufferPtr == handle.commandBufferPtr)
         commandBuffers[handle.bufferIndex].state = CommandBufferState::PENDING;
@@ -124,20 +124,20 @@ CommandBufferCirculator::CommandBufferHandle CommandBufferBank::acquire(
             circulator = itr->second.get();
     }
     if (!circulator) {
-        std::unique_lock lock(mutex);
+        std::unique_lock<std::shared_mutex> lock(mutex);
         circulator = (pools[groupInfo] = std::make_unique<CommandBufferCirculator>(
                         device, groupInfo.family, groupInfo.type, groupInfo.render_pass_continueos))
                        .get();
     }
     // TODO Try to keep the same lock for this function
     // It could crash it the object is destroyed while doing this
-    std::shared_lock lock(mutex);
+    std::shared_lock<std::shared_mutex> lock(mutex);
     return circulator->acquire();
 }
 
 bool CommandBufferBank::tryAcquire(CommandBufferCirculator::CommandBufferHandle& handle,
                                    const CommandBufferBankGroupInfo& groupInfo) {
-    std::shared_lock lock(mutex);
+    std::shared_lock<std::shared_mutex> lock(mutex);
     auto pool = pools.find(groupInfo);
     if (pool == pools.end())
         return false;

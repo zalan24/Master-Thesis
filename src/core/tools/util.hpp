@@ -23,7 +23,6 @@
 #define M_SQRT2 1.41421356237309504880
 #define M_SQRT_2 0.707106781186547524401
 
-
 using CombinationFlag = unsigned int;
 enum CombinationBits : CombinationFlag
 {
@@ -204,6 +203,8 @@ inline void printStack() {
 #    define ASSERT(x) (static_cast<void>(sizeof(x)))
 #endif
 
+#define UNUSED(x) (static_cast<void>(sizeof(x)))
+
 // template <typename T, typename T2>
 // T safe_cast(const T2& value) {
 // #ifdef DEBUG
@@ -275,20 +276,19 @@ T assert_return(T&& value, P&& predicate) {
 
 template <typename Target, typename T>
 Target safe_cast(T&& value) {
-    return static_cast<Target>(assert_return(std::forward<T>(value), [](T v) {
-        if constexpr (std::is_signed<T>::value == std::is_signed<Target>::value) {
+    return static_cast<Target>(assert_return(std::forward<T>(value), [](const std::decay_t<T>& v) {
+        if constexpr (std::is_signed<std::decay_t<T>>() == std::is_signed<Target>()) {
             return std::numeric_limits<Target>::min() <= v
                    && v <= std::numeric_limits<Target>::max();
         }
         else {
-            if constexpr (std::is_signed<T>::value)
-                return v >= static_cast<T>(0)
+            if constexpr (std::is_signed<std::decay_t<T>>())
+                return v >= static_cast<std::decay_t<T>>(0)
                        && static_cast<typename std::make_unsigned<std::decay_t<T>>::type>(v)
                             <= std::numeric_limits<Target>::max();
             else
                 return v <= static_cast<typename std::make_unsigned<std::decay_t<Target>>::type>(
-                              std::numeric_limits<Target>::max());
+                         std::numeric_limits<Target>::max());
         }
     }));
 }
-

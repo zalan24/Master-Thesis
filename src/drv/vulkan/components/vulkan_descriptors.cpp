@@ -6,6 +6,7 @@
 #include <vulkan/vulkan.h>
 
 #include <corecontext.h>
+#include <util.hpp>
 
 #include <drverror.h>
 
@@ -117,6 +118,11 @@ bool DrvVulkan::update_descriptor_sets(drv::LogicalDevicePtr device, uint32_t de
                                        const drv::WriteDescriptorSet* writes,
                                        uint32_t descriptorCopyCount,
                                        const drv::CopyDescriptorSet* copies) {
+    UNUSED(device);
+    UNUSED(descriptorWriteCount);
+    UNUSED(writes);
+    UNUSED(descriptorCopyCount);
+    UNUSED(copies);
     drv::drv_assert(false, "Unimplemented");
     return false;
     // StackMemory::MemoryHandle<> mem(count, TEMPMEM); // TODO

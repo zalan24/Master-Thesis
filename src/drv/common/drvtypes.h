@@ -1074,7 +1074,7 @@ struct ImageSubresourceSet
     using UsedLayerMap = uint32_t;
     using UsedAspectMap = uint8_t;
     UsedLayerMap usedLayers = 0;
-    UsedLayerMap usedAspects = 0;
+    UsedAspectMap usedAspects = 0;
     MipBit mipBits[MAX_ARRAY_SIZE][ASPECTS_COUNT] = {{0}};
     static_assert(MAX_MIP_LEVELS <= sizeof(MipBit) * 8);
     static_assert(MAX_ARRAY_SIZE <= sizeof(UsedLayerMap) * 8);
@@ -1089,7 +1089,7 @@ struct ImageSubresourceSet
         set0();
         MipBit mip = 0;
         for (uint32_t i = 0; i < numMips; ++i)
-            mip = (mip << MipBit(1)) | MipBit(1);
+            mip = MipBit(mip << 1) | 1;
         mip <<= baseMip;
         if (!mip)
             return;

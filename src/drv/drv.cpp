@@ -37,11 +37,10 @@ bool drv::init(const Driver* drivers, unsigned int count) {
             case Driver::VULKAN:
 #ifdef DRIVER_VULKAN
                 current_driver_interface = new DrvVulkan();
-#else
-                break;
 #endif
-            case Driver::NUM_PLATFORMS:
                 break;
+            case Driver::NUM_PLATFORMS:
+                return false;
         }
     }
     return current_driver_interface != nullptr;
@@ -71,7 +70,7 @@ bool drv::close() {
     return true;
 }
 
-drv::InstancePtr drv::create_instance(const InstanceCreateInfo* info, bool _default) {
+drv::InstancePtr drv::create_instance(const InstanceCreateInfo* info) {
     return current_driver_interface->create_instance(info);
 }
 

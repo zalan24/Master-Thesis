@@ -1,8 +1,9 @@
 #include "randomgridcontroller.h"
 
 glm::vec3 RandomGridController::getSelectionPos(glm::ivec2 coord) const {
-    glm::vec3 pos = glm::vec3(float(coord.x) / resolutionX, 0, float(coord.y) / resolutionY) * 2.f
-                    - glm::vec3(1.f - 1.f / resolutionX, 0, 1.f - 1.f / resolutionY);
+    glm::vec3 pos =
+      glm::vec3(float(coord.x) / float(resolutionX), 0, float(coord.y) / float(resolutionY)) * 2.f
+      - glm::vec3(1.f - 1.f / float(resolutionX), 0, 1.f - 1.f / float(resolutionY));
     return worldTransform * glm::vec4(pos, 1);
 }
 

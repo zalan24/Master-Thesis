@@ -181,9 +181,9 @@ class Engine
     Config config;
 
     ErrorCallback callback;
+    CoreContext coreContext;
     Input input;
     InputManager inputManager;
-    CoreContext coreContext;
     drv::DriverWrapper driver;
     drv::Window window;
     drv::Instance drvInstance;

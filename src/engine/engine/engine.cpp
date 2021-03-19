@@ -117,20 +117,20 @@ drv::Swapchain::CreateInfo Engine::get_swapchain_create_info(const Config& confi
     return ret;
 }
 
-Engine::SyncBlock::SyncBlock(drv::LogicalDevicePtr device, uint32_t maxFramesInFlight) {
+Engine::SyncBlock::SyncBlock(drv::LogicalDevicePtr _device, uint32_t maxFramesInFlight) {
     imageAvailableSemaphores.reserve(maxFramesInFlight);
     renderFinishedSemaphores.reserve(maxFramesInFlight);
     for (uint32_t i = 0; i < maxFramesInFlight; ++i) {
-        imageAvailableSemaphores.emplace_back(device);
-        renderFinishedSemaphores.emplace_back(device);
+        imageAvailableSemaphores.emplace_back(_device);
+        renderFinishedSemaphores.emplace_back(_device);
     }
 }
 
 Engine::Engine(const Config& cfg, const std::string& shaderbinFile,
                ResourceManager::ResourceInfos resource_infos)
   : config(cfg),
-    coreContext({size_t(config.stackMemorySizeKb << 10)}),
-    input(static_cast<size_t>(config.inputBufferSize)),
+    coreContext({safe_cast<size_t>(config.stackMemorySizeKb << 10)}),
+    input(safe_cast<size_t>(config.inputBufferSize)),
     driver({get_driver(cfg.driver)}),
     window(&input, &inputManager,
            drv::WindowOptions{static_cast<unsigned int>(cfg.screenWidth),
@@ -161,7 +161,7 @@ Engine::Engine(const Config& cfg, const std::string& shaderbinFile,
     cmdBufferBank(device),
     swapchain(physicalDevice, device, window, get_swapchain_create_info(config)),
     eventPool(device),
-    syncBlock(device, config.maxFramesInFlight),
+    syncBlock(device, safe_cast<uint32_t>(config.maxFramesInFlight)),
     shaderBin(shaderbinFile),
     resourceMgr(std::move(resource_infos)),
     frameGraph(physicalDevice, device, &garbageSystem, &eventPool) {
@@ -296,6 +296,7 @@ void Engine::simulationLoop(volatile std::atomic<FrameId>* simulationFrame,
 }
 
 void Engine::present(FrameId presentFrame) {
+    UNUSED(presentFrame);
     drv::PresentInfo info;
     info.semaphoreCount = 1;
     drv::SemaphorePtr semaphore = syncBlock.renderFinishedSemaphores[acquireImageSemaphoreId];
@@ -316,7 +317,7 @@ const Engine::QueueInfo& Engine::getQueues() const {
 
 Engine::AcquiredImageData Engine::acquiredSwapchainImage(
   FrameGraph::NodeHandle& acquiringNodeHandle) {
-    // TODO latency slop -> acquiringNodeHandle
+    UNUSED(acquiringNodeHandle);  // TODO latency slop -> acquiringNodeHandle
     bool acquiredSuccess =
       swapchain.acquire(syncBlock.imageAvailableSemaphores[acquireImageSemaphoreId]);
     // ---
@@ -476,7 +477,8 @@ bool Engine::execute(FrameId& executionFrame, ExecutionPackage&& package) {
                 .stageFlags;
         }
         drv::ExecutionInfo executionInfo;
-        executionInfo.numWaitSemaphores = cmdBuffer.waitSemaphores.size();
+        executionInfo.numWaitSemaphores =
+          static_cast<unsigned int>(cmdBuffer.waitSemaphores.size());
         executionInfo.waitSemaphores = waitSemaphores;
         executionInfo.waitStages = waitSemaphoresStages;
         if (cmdBuffer.bufferHandle.commandBufferPtr != drv::NULL_HANDLE) {
@@ -487,13 +489,16 @@ bool Engine::execute(FrameId& executionFrame, ExecutionPackage&& package) {
             executionInfo.numCommandBuffers = 0;
             executionInfo.commandBuffers = nullptr;
         }
-        executionInfo.numSignalSemaphores = cmdBuffer.signalSemaphores.size();
+        executionInfo.numSignalSemaphores =
+          static_cast<unsigned int>(cmdBuffer.signalSemaphores.size());
         executionInfo.signalSemaphores = cmdBuffer.signalSemaphores.data();
-        executionInfo.numWaitTimelineSemaphores = cmdBuffer.waitTimelineSemaphores.size();
+        executionInfo.numWaitTimelineSemaphores =
+          static_cast<unsigned int>(cmdBuffer.waitTimelineSemaphores.size());
         executionInfo.waitTimelineSemaphores = waitTimelineSemaphores;
         executionInfo.timelineWaitValues = waitTimelineSemaphoresValues;
         executionInfo.timelineWaitStages = waitTimelineSemaphoresStages;
-        executionInfo.numSignalTimelineSemaphores = cmdBuffer.signalTimelineSemaphores.size();
+        executionInfo.numSignalTimelineSemaphores =
+          static_cast<unsigned int>(cmdBuffer.signalTimelineSemaphores.size());
         executionInfo.signalTimelineSemaphores = signalTimelineSemaphores;
         executionInfo.timelineSignalValues = signalTimelineSemaphoreValues;
         drv::execute(cmdBuffer.queue, 1, &executionInfo);
@@ -644,9 +649,11 @@ Engine::CommandBufferRecorder::CommandBufferRecorder(CommandBufferRecorder&& oth
     nodeHandle(other.nodeHandle),
     frameId(other.frameId),
     cmdBuffer(std::move(other.cmdBuffer)),
+    resourceTracker(other.resourceTracker),
     signalSemaphores(std::move(other.signalSemaphores)),
     signalTimelineSemaphores(std::move(other.signalTimelineSemaphores)),
-    resourceTracker(other.resourceTracker) {
+    waitSemaphores(std::move(other.waitSemaphores)),
+    waitTimelineSemaphores(std::move(other.waitTimelineSemaphores)) {
     other.engine = nullptr;
 }
 
@@ -663,9 +670,11 @@ Engine::CommandBufferRecorder& Engine::CommandBufferRecorder::operator=(
     nodeHandle = other.nodeHandle;
     frameId = other.frameId;
     cmdBuffer = std::move(other.cmdBuffer);
+    resourceTracker = other.resourceTracker;
     signalSemaphores = std::move(other.signalSemaphores);
     signalTimelineSemaphores = std::move(other.signalTimelineSemaphores);
-    resourceTracker = other.resourceTracker;
+    waitSemaphores = std::move(other.waitSemaphores);
+    waitTimelineSemaphores = std::move(other.waitTimelineSemaphores);
     other.engine = nullptr;
     return *this;
 }
@@ -678,8 +687,8 @@ void Engine::CommandBufferRecorder::close() {
     if (engine == nullptr)
         return;
     assert(getResourceTracker()->end_primary_command_buffer(cmdBuffer.commandBufferPtr));
-    ExecutionQueue* queue = frameGraph->getExecutionQueue(*nodeHandle);
-    queue->push(ExecutionPackage(ExecutionPackage::CommandBufferPackage{
+    ExecutionQueue* q = frameGraph->getExecutionQueue(*nodeHandle);
+    q->push(ExecutionPackage(ExecutionPackage::CommandBufferPackage{
       queue, std::move(cmdBuffer), std::move(signalSemaphores), std::move(signalTimelineSemaphores),
       std::move(waitSemaphores), std::move(waitTimelineSemaphores)}));
 }

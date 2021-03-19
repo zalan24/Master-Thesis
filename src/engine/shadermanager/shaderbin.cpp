@@ -45,10 +45,10 @@ void ShaderBin::read(std::istream& in) {
         read_data(in, data.variantParamNum);
         read_data(in, data.variantValues);
         data.stages.resize(data.totalVariantCount);
-        for (uint32_t i = 0; i < data.totalVariantCount; ++i) {
-            read_data(in, data.stages[i].stageOffsets);
-            read_data(in, data.stages[i].stageCodeSizes);
-            read_configs(in, data.stages[i].configs);
+        for (uint32_t j = 0; j < data.totalVariantCount; ++j) {
+            read_data(in, data.stages[j].stageOffsets);
+            read_data(in, data.stages[j].stageCodeSizes);
+            read_configs(in, data.stages[j].configs);
         }
         read_vector(in, data.codes);
         shaders[name] = std::move(data);

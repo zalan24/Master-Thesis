@@ -14,7 +14,8 @@ template <typename T>
 void write_vector(std::ostream& out, const std::vector<T>& data) {
     uint64_t size = data.size();
     write_data(out, size);
-    out.write(reinterpret_cast<const char*>(data.data()), sizeof(data[0]) * size);
+    out.write(reinterpret_cast<const char*>(data.data()),
+              static_cast<std::streamsize>(sizeof(data[0]) * size));
 }
 
 template <typename T>
@@ -29,5 +30,6 @@ void read_vector(std::istream& in, std::vector<T>& data) {
     uint64_t size = 0;
     read_data(in, size);
     data.resize(size);
-    in.read(reinterpret_cast<char*>(data.data()), sizeof(data[0]) * size);
+    in.read(reinterpret_cast<char*>(data.data()),
+            static_cast<std::streamsize>(sizeof(data[0]) * size));
 }

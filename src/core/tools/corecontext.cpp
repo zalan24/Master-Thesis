@@ -3,5 +3,6 @@
 template <>
 CoreContext* Singleton<CoreContext>::instance = nullptr;
 
-CoreContext::CoreContext(const Config& config) : tempmem(config.tempmemSize) {
+CoreContext::CoreContext(const Config& config)
+  : tempmem(safe_cast<StackMemory::size_t>(config.tempmemSize)) {
 }

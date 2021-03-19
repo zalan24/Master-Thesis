@@ -126,8 +126,7 @@ void DrvVulkanResourceTracker::validate_memory_access(
 
 void DrvVulkanResourceTracker::add_memory_access(PerResourceTrackData& resourceData,
                                                  PerSubresourceRangeTrackData& subresourceData,
-                                                 bool read, bool write, bool sharedRes,
-                                                 drv::PipelineStages stages,
+                                                 bool read, bool write, drv::PipelineStages stages,
                                                  drv::MemoryBarrier::AccessFlagBitType accessMask) {
     accessMask = drv::MemoryBarrier::resolve(accessMask);
     drv::QueueFamilyPtr currentFamily = driver->get_queue_family(device, queue);
@@ -257,9 +256,9 @@ void DrvVulkanResourceTracker::appendBarrier(drv::CommandBufferPtr cmdBuffer,
         barriers[lastBarrier] = std::move(barrier);
     }
     else {
-        uint32_t freeSpot = barriers.size();
+        uint32_t freeSpot = static_cast<uint32_t>(barriers.size());
         bool placed = false;
-        for (uint32_t i = 0; i < barriers.size(); ++i) {
+        for (uint32_t i = 0; i < static_cast<uint32_t>(barriers.size()); ++i) {
             if (!barriers[i]) {
                 freeSpot = i;
                 continue;
@@ -288,7 +287,7 @@ void DrvVulkanResourceTracker::appendBarrier(drv::CommandBufferPtr cmdBuffer,
                 lastBarrier = freeSpot;
             }
             else {
-                lastBarrier = barriers.size();
+                lastBarrier = static_cast<uint32_t>(barriers.size());
                 barriers.push_back(std::move(barrier));
             }
         }
@@ -441,21 +440,19 @@ void DrvVulkanResourceTracker::flushBarrier(drv::CommandBufferPtr cmdBuffer, Bar
         drv::ImageSubresourceSet::MipBit mipMask =
           barrier.imageBarriers[i].subresourceSet.getMaxMipMask();
         uint32_t mipCount = 0;
-        for (uint32_t i = 0; i < sizeof(mipMask) * 8 && (mipMask >> i); ++i)
-            if (mipMask & (1 << i))
+        for (uint32_t j = 0; j < sizeof(mipMask) * 8 && (mipMask >> j); ++j)
+            if (mipMask & (1 << j))
                 mipCount++;
         maxImageSubresCount += mipCount * layerCount;
     }
-    StackMemory::MemoryHandle<VkImageMemoryBarrier> imageMem(maxImageSubresCount, TEMPMEM);
+    StackMemory::MemoryHandle<VkImageMemoryBarrier> vkImageBarriers(maxImageSubresCount, TEMPMEM);
     //     VkMemoryBarrier* barriers = reinterpret_cast<VkMemoryBarrier*>(barrierMem.get());
     //     VkBufferMemoryBarrier* vkBufferBarriers =
     //       reinterpret_cast<VkBufferMemoryBarrier*>(bufferMem.get());
-    VkImageMemoryBarrier* vkImageBarriers = imageMem.get();
     //     drv::drv_assert(barriers != nullptr || memoryBarrierCount == 0,
     //                     "Could not allocate memory for barriers");
     //     drv::drv_assert(bufferBarriers != nullptr || bufferBarrierCount == 0,
     //                     "Could not allocate memory for buffer barriers");
-    drv::drv_assert(vkImageBarriers != nullptr, "Could not allocate memory for image barriers");
 
     for (uint32_t i = 0; i < barrier.numImageRanges; ++i) {
         if ((barrier.imageBarriers[i].dstFamily == barrier.imageBarriers[i].srcFamily
@@ -466,7 +463,7 @@ void DrvVulkanResourceTracker::flushBarrier(drv::CommandBufferPtr cmdBuffer, Bar
             continue;
         drv::ImageSubresourceSet::UsedAspectMap aspectMask =
           barrier.imageBarriers[i].subresourceSet.getUsedAspects();
-        auto addImageBarrier = [&](drv::ImageAspectBitType aspectMask, uint32_t baseLayer,
+        auto addImageBarrier = [&](drv::ImageAspectBitType aspects, uint32_t baseLayer,
                                    uint32_t layers, drv::ImageSubresourceSet::MipBit mips) {
             if (mips == 0)
                 return;
@@ -503,7 +500,7 @@ void DrvVulkanResourceTracker::flushBarrier(drv::CommandBufferPtr cmdBuffer, Bar
                       static_cast<VkAccessFlags>(barrier.imageBarriers[i].sourceAccessFlags);
                     vkImageBarriers[imageRangeCount].dstAccessMask =
                       static_cast<VkAccessFlags>(barrier.imageBarriers[i].dstAccessFlags);
-                    vkImageBarriers[imageRangeCount].subresourceRange.aspectMask = aspectMask;
+                    vkImageBarriers[imageRangeCount].subresourceRange.aspectMask = aspects;
                     vkImageBarriers[imageRangeCount].subresourceRange.baseArrayLayer = baseLayer;
                     vkImageBarriers[imageRangeCount].subresourceRange.layerCount = layers;
                     vkImageBarriers[imageRangeCount].subresourceRange.baseMipLevel = baseMip;
@@ -513,13 +510,13 @@ void DrvVulkanResourceTracker::flushBarrier(drv::CommandBufferPtr cmdBuffer, Bar
                 }
             }
         };
-        auto processAspect = [&](drv::ImageAspectBitType aspectMask) {
-            drv::drv_assert(aspectMask != 0);
+        auto processAspect = [&](drv::ImageAspectBitType aspects) {
+            drv::drv_assert(aspects != 0);
             uint32_t baseLayer = 0;
             uint32_t layerCount = 0;
             drv::ImageSubresourceSet::MipBit mips = 0;
             uint32_t aspectId = 0;
-            while (!(aspectMask & drv::get_aspect_by_id(aspectId)))
+            while (!(aspects & drv::get_aspect_by_id(aspectId)))
                 aspectId++;
             // mips must be the same for all aspects at this point
             // it's enough to just check one of them
@@ -528,7 +525,7 @@ void DrvVulkanResourceTracker::flushBarrier(drv::CommandBufferPtr cmdBuffer, Bar
                  layer < convertImage(barrier.imageBarriers[i].image)->arraySize; ++layer) {
                 if (!barrier.imageBarriers[i].subresourceSet.isLayerUsed(layer)) {
                     if (mips != 0)
-                        addImageBarrier(aspectMask, baseLayer, layerCount, mips);
+                        addImageBarrier(aspects, baseLayer, layerCount, mips);
                     mips = 0;
                     continue;
                 }

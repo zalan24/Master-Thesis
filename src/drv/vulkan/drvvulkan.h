@@ -333,13 +333,13 @@ class DrvVulkanResourceTracker final : public drv::ResourceTracker
                                 drv::PipelineStages stages,
                                 drv::MemoryBarrier::AccessFlagBitType accessMask,
                                 uint32_t requiredLayoutMask, bool changeLayout,
-                                drv::ImageLayout resultLayout, drv::PipelineStages& barrierSrcStage,
+                                drv::PipelineStages& barrierSrcStage,
                                 drv::PipelineStages& barrierDstStage,
                                 ImageSingleSubresourceMemoryBarrier& barrier);
 
     void add_memory_access(drv_vulkan::PerResourceTrackData& resourceData,
                            drv_vulkan::PerSubresourceRangeTrackData& subresourceData, bool read,
-                           bool write, bool sharedRes, drv::PipelineStages stages,
+                           bool write, drv::PipelineStages stages,
                            drv::MemoryBarrier::AccessFlagBitType accessMask);
     void add_memory_access_validate(drv::CommandBufferPtr cmdBuffer, drv::ImagePtr image,
                                     uint32_t mipLevel, uint32_t arrayIndex,
