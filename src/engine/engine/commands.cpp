@@ -8,46 +8,13 @@ void Engine::CommandBufferRecorder::cmdEventBarrier(const drv::ImageMemoryBarrie
     cmdEventBarrier(1, &barrier);
 }
 
-struct EventReleaseCallback
-{
-    EventPool::EventHandle event;
-    GarbageSystem* garbageSystem = nullptr;
-    EventReleaseCallback(EventPool::EventHandle&& _event, GarbageSystem* _garbageSystem)
-      : event(std::move(_event)), garbageSystem(_garbageSystem) {}
-    EventReleaseCallback(const EventReleaseCallback&) = delete;
-    EventReleaseCallback& operator=(const EventReleaseCallback&) = delete;
-    void close() {
-        if (garbageSystem) {
-            garbageSystem->useGarbage(
-              [&](Garbage* trashBin) { trashBin->releaseEvent(std::move(event)); });
-            garbageSystem = nullptr;
-        }
-    }
-    EventReleaseCallback(EventReleaseCallback&& other)
-      : event(std::move(other.event)), garbageSystem(other.garbageSystem) {
-        other.garbageSystem = nullptr;
-    }
-    EventReleaseCallback& operator=(EventReleaseCallback&& other) {
-        if (this == &other)
-            return *this;
-        close();
-        event = std::move(other.event);
-        garbageSystem = other.garbageSystem;
-        other.garbageSystem = nullptr;
-        return *this;
-    }
-    ~EventReleaseCallback() { close(); }
-    void operator()() { close(); }
-};
-
 void Engine::CommandBufferRecorder::cmdEventBarrier(uint32_t imageBarrierCount,
                                                     const drv::ImageMemoryBarrier* barriers) {
     EventPool::EventHandle event = engine->eventPool.acquire();
     drv::ResourceTracker* tracker = getResourceTracker();
     drv::EventPtr eventPtr = event;
-    EventReleaseCallback cb(std::move(event), &engine->garbageSystem);
     tracker->cmd_signal_event(cmdBuffer.commandBufferPtr, eventPtr, imageBarrierCount, barriers,
-                              drv::ResourceTracker::FlushEventCallback(std::move(cb)));
+                              nodeHandle->getNode().getEventReleaseCallback(std::move(event)));
 }
 
 void Engine::CommandBufferRecorder::cmdWaitHostEvent(drv::EventPtr event,

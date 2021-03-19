@@ -2,6 +2,8 @@
 
 // #include <iostream>
 
+#include <util.hpp>
+
 #include <engine.h>
 #include <garbage.h>
 
@@ -38,6 +40,8 @@ bool Game::initRenderFrameGraph(FrameGraph& frameGraph, const IRenderer::FrameGr
 
 void Game::initSimulationFrameGraph(FrameGraph& frameGraph,
                                     const ISimulation::FrameGraphData& data) {
+    UNUSED(frameGraph);
+    UNUSED(data);
     // TODO
 }
 
@@ -71,6 +75,7 @@ void Game::record(FrameGraph& frameGraph, FrameId frameId) {
 }
 
 void Game::simulate(FrameGraph& frameGraph, FrameId frameId) {
+    UNUSED(frameGraph);
     std::this_thread::sleep_for(std::chrono::milliseconds(4));
     std::cout << "Simulate: " << frameId << std::endl;
 }

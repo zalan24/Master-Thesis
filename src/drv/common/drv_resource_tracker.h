@@ -62,8 +62,14 @@ class ResourceTracker
         FLUSHED,
         DISCARDED  // used when closing the driver
     };
-    // TODO try to avoid dynamic allocation in this
-    using FlushEventCallback = std::function<void(EventFlushMode)>;
+    class FlushEventCallback
+    {
+     public:
+        virtual void release(EventFlushMode) = 0;
+
+     protected:
+        ~FlushEventCallback();
+    };
 
     virtual void cmd_signal_event(drv::CommandBufferPtr cmdBuffer, drv::EventPtr event,
                                   uint32_t imageBarrierCount,
@@ -71,7 +77,7 @@ class ResourceTracker
     virtual void cmd_signal_event(drv::CommandBufferPtr cmdBuffer, drv::EventPtr event,
                                   uint32_t imageBarrierCount,
                                   const drv::ImageMemoryBarrier* imageBarriers,
-                                  FlushEventCallback&& callback) = 0;
+                                  FlushEventCallback* callback) = 0;
 
     virtual void cmd_wait_host_events(drv::CommandBufferPtr cmdBuffer, drv::EventPtr event,
                                       uint32_t imageBarrierCount,

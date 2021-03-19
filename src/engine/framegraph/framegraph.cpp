@@ -543,3 +543,20 @@ bool FrameGraph::canReuseTracker(NodeId currentUser, NodeId newNode) {
     return (d1.cpuOffset == 0 && d2.cpuOffset == 1 && d1.enqOffset == 0 && d2.enqOffset == 1)
            || (d2.cpuOffset == 0 && d1.cpuOffset == 1 && d2.enqOffset == 0 && d1.enqOffset == 1);
 }
+
+EventReleaseCallback* FrameGraph::Node::getEventReleaseCallback(EventPool::EventHandle&& event) {
+    static constexpr size_t EVENT_CALLBACK_BLOCK_SIZE = 128;
+    for (auto& block : eventCallbacks) {
+        for (EventReleaseCallback& cb : block) {
+            if (!cb) {
+                cb = EventReleaseCallback(std::move(event), frameGraph->garbageSystem);
+                return &cb;
+            }
+        }
+    }
+    std::vector<EventReleaseCallback> block(EVENT_CALLBACK_BLOCK_SIZE);
+    block[0] = EventReleaseCallback(std::move(event), frameGraph->garbageSystem);
+    EventReleaseCallback* ret = &block[0];
+    eventCallbacks.push_back(std::move(block));
+    return ret;
+}

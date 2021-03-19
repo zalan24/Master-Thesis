@@ -19,6 +19,45 @@
 #include "framegraphDecl.h"
 #include "garbagesystem.h"
 
+class EventReleaseCallback final : public drv::ResourceTracker::FlushEventCallback
+{
+ public:
+    EventReleaseCallback() : garbageSystem(nullptr) {}
+    EventReleaseCallback(EventPool::EventHandle&& _event, GarbageSystem* _garbageSystem)
+      : event(std::move(_event)), garbageSystem(_garbageSystem) {}
+    EventReleaseCallback(const EventReleaseCallback&) = delete;
+    EventReleaseCallback& operator=(const EventReleaseCallback&) = delete;
+    void close() {
+        if (garbageSystem) {
+            garbageSystem->useGarbage(
+              [&](Garbage* trashBin) { trashBin->releaseEvent(std::move(event)); });
+            garbageSystem = nullptr;
+        }
+    }
+    EventReleaseCallback(EventReleaseCallback&& other)
+      : event(std::move(other.event)), garbageSystem(other.garbageSystem) {
+        other.garbageSystem = nullptr;
+    }
+    EventReleaseCallback& operator=(EventReleaseCallback&& other) {
+        if (this == &other)
+            return *this;
+        close();
+        event = std::move(other.event);
+        garbageSystem = other.garbageSystem;
+        other.garbageSystem = nullptr;
+        return *this;
+    }
+    ~EventReleaseCallback() { close(); }
+    void operator()() { close(); }
+    operator bool() const { return garbageSystem != nullptr; }
+
+    void release(drv::ResourceTracker::EventFlushMode) override { close(); }
+
+ private:
+    EventPool::EventHandle event;
+    GarbageSystem* garbageSystem = nullptr;
+};
+
 class FrameGraph
 {
  public:
@@ -82,6 +121,8 @@ class FrameGraph
 
         drv::ResourceTracker* getResourceTracker(QueueId queueId);
 
+        EventReleaseCallback* getEventReleaseCallback(EventPool::EventHandle&& event);
+
      private:
         std::string name;
         NodeId ownId = INVALID_NODE;
@@ -94,6 +135,7 @@ class FrameGraph
         std::vector<QueueQueueDependency> queQueDeps;
         std::unique_ptr<ExecutionQueue> localExecutionQueue;
         std::vector<NodeId> enqIndirectChildren;
+        std::vector<std::vector<EventReleaseCallback>> eventCallbacks;
 
         std::atomic<FrameId> completedFrame = INVALID_FRAME;
         mutable std::mutex cpuMutex;

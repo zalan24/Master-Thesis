@@ -21,6 +21,7 @@ class EventPool
     class EventHandle
     {
      public:
+        EventHandle();
         EventHandle(const EventHandle&) = delete;
         EventHandle& operator=(const EventHandle&) = delete;
         EventHandle(EventHandle&& other);
@@ -41,7 +42,6 @@ class EventPool
         friend class EventPool;
 
         EventHandle(EventPool* pool, drv::EventPtr event, size_t eventIndex);
-        EventHandle();
         void close();
     };
 

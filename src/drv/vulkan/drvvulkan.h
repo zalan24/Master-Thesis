@@ -223,7 +223,7 @@ class DrvVulkanResourceTracker final : public drv::ResourceTracker
                           const drv::ImageMemoryBarrier* imageBarriers) override;
     void cmd_signal_event(drv::CommandBufferPtr cmdBuffer, drv::EventPtr event,
                           uint32_t imageBarrierCount, const drv::ImageMemoryBarrier* imageBarriers,
-                          FlushEventCallback&& callback) override;
+                          FlushEventCallback* callback) override;
 
     void cmd_wait_host_events(drv::CommandBufferPtr cmdBuffer, drv::EventPtr event,
                               uint32_t imageBarrierCount,
@@ -292,7 +292,7 @@ class DrvVulkanResourceTracker final : public drv::ResourceTracker
         drv::PipelineStages srcStages;
         drv::PipelineStages dstStages;
         drv::EventPtr event = drv::NULL_HANDLE;
-        FlushEventCallback eventCallback;
+        FlushEventCallback* eventCallback;
 
         BarrierInfo(const BarrierInfo&) = delete;
         BarrierInfo& operator=(const BarrierInfo&) = delete;

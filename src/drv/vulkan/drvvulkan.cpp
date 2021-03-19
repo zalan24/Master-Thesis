@@ -603,7 +603,7 @@ void DrvVulkanResourceTracker::flushBarrier(drv::CommandBufferPtr cmdBuffer, Bar
             }
         }
         if (!found)
-            barrier.eventCallback(FLUSHED);
+            barrier.eventCallback->release(FLUSHED);
         barrier.eventCallback = {};
     }
 
@@ -630,7 +630,7 @@ void DrvVulkanResourceTracker::cmd_signal_event(drv::CommandBufferPtr cmdBuffer,
 void DrvVulkanResourceTracker::cmd_signal_event(drv::CommandBufferPtr cmdBuffer,
                                                 drv::EventPtr event, uint32_t imageBarrierCount,
                                                 const drv::ImageMemoryBarrier* imageBarriers,
-                                                FlushEventCallback&& callback) {
+                                                FlushEventCallback* callback) {
     cmd_signal_event(cmdBuffer, event, imageBarrierCount, imageBarriers);
     bool found = false;
     for (uint32_t i = 0; i < barriers.size(); ++i) {
@@ -641,7 +641,7 @@ void DrvVulkanResourceTracker::cmd_signal_event(drv::CommandBufferPtr cmdBuffer,
         }
     }
     if (found)
-        callback(UNUSED);
+        callback->release(UNUSED);
 }
 
 void DrvVulkanResourceTracker::cmd_wait_host_events(drv::CommandBufferPtr cmdBuffer,
@@ -660,7 +660,7 @@ void DrvVulkanResourceTracker::cmd_wait_host_events(drv::CommandBufferPtr cmdBuf
 DrvVulkanResourceTracker::~DrvVulkanResourceTracker() {
     for (uint32_t i = 0; i < barriers.size(); ++i)
         if (barriers[i] && barriers[i].event && barriers[i].eventCallback)
-            barriers[i].eventCallback(DISCARDED);
+            barriers[i].eventCallback->release(DISCARDED);
     static_cast<DrvVulkan*>(driver)->release_tracking_slot(trackingSlot);
 }
 
