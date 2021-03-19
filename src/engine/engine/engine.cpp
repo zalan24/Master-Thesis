@@ -301,7 +301,7 @@ void Engine::present(FrameId presentFrame) {
     drv::SemaphorePtr semaphore = syncBlock.renderFinishedSemaphores[acquireImageSemaphoreId];
     info.waitSemaphores = &semaphore;
     drv::PresentResult result = swapchain.present(presentQueue.queue, info);
-    TODO;  // what's gonna wait on this?
+    // TODO;  // what's gonna wait on this?
     drv::drv_assert(result != drv::PresentResult::ERROR, "Present error");
     if (result == drv::PresentResult::RECREATE_ADVISED
         || result == drv::PresentResult::RECREATE_REQUIRED) {
@@ -466,12 +466,14 @@ bool Engine::execute(FrameId& executionFrame, ExecutionPackage&& package) {
         for (uint32_t i = 0; i < cmdBuffer.waitSemaphores.size(); ++i) {
             waitSemaphores[i] = cmdBuffer.waitSemaphores[i].semaphore;
             waitSemaphoresStages[i] =
-              drv::get_image_usages_stages(cmdBuffer.waitSemaphores[i].imageUsages).stageFlags;
+              drv::get_image_usage_stages(cmdBuffer.waitSemaphores[i].imageUsages).stageFlags;
         }
         for (uint32_t i = 0; i < cmdBuffer.waitTimelineSemaphores.size(); ++i) {
             waitTimelineSemaphores[i] = cmdBuffer.waitTimelineSemaphores[i].semaphore;
             waitTimelineSemaphoresValues[i] = cmdBuffer.waitTimelineSemaphores[i].waitValue;
-            waitTimelineSemaphoresStages[i] = drv::get_image_usages_stagescmdBuffer.waitTimelineSemaphores[i].imageUsages).stageFlags;
+            waitTimelineSemaphoresStages[i] =
+              drv::get_image_usage_stages(cmdBuffer.waitTimelineSemaphores[i].imageUsages)
+                .stageFlags;
         }
         drv::ExecutionInfo executionInfo;
         executionInfo.numWaitSemaphores = cmdBuffer.waitSemaphores.size();

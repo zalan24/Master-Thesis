@@ -1361,12 +1361,12 @@ enum ImageResourceUsage : ImageResourceUsageFlag
     IMAGE_USAGE_PRESENT = 1ull << 1
 };
 
-PipelineStages get_image_usage_stages(ImageResourceUsage usage);
-MemoryBarrier::AccessFlagBitType get_image_usage_accesses(ImageResourceUsage usage);
-uint32_t get_accepted_image_layouts(ImageResourceUsage usage);
+PipelineStages get_image_usage_stages(ImageResourceUsageFlag usages);
+MemoryBarrier::AccessFlagBitType get_image_usage_accesses(ImageResourceUsageFlag usages);
+uint32_t get_accepted_image_layouts(ImageResourceUsageFlag usages);
 
-
-struct TextureInfo {
+struct TextureInfo
+{
     uint32_t numMips;
     uint32_t arraySize;
 };

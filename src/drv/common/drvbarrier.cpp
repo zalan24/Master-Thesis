@@ -6,20 +6,8 @@
 
 using namespace drv;
 
-ImageLayoutMask ImageMemoryBarrier::get_accepted_layouts(ImageResourceUsageFlag usages) {
-    ImageResourceUsageFlag usage = 1;
-    ImageLayoutMask acceptedLayouts = get_all_layouts_mask();
-    while (usages && acceptedLayouts) {
-        if (usages & 1)
-            acceptedLayouts ^= get_accepted_image_layouts(static_cast<ImageResourceUsage>(usage));
-        usages >>= 1;
-        usage <<= 1;
-    }
-    return acceptedLayouts;
-}
-
 bool ImageMemoryBarrier::pick_layout(ImageResourceUsageFlag usages, ImageLayout& result) {
-    const ImageLayoutMask acceptedLayouts = get_accepted_layouts(usages);
+    const ImageLayoutMask acceptedLayouts = get_accepted_image_layouts(usages);
     if (!acceptedLayouts)
         return false;
     const static std::array preferenceOrder = {ImageLayout::COLOR_ATTACHMENT_OPTIMAL,
@@ -67,7 +55,7 @@ ImageMemoryBarrier::ImageMemoryBarrier(ImagePtr _image, ImageResourceUsageFlag _
     transitionLayout(true),
     discardCurrentContent(_discardCurrentContent),
     resultLayout(transition) {
-    drv_assert(get_accepted_layouts(usages) & static_cast<ImageLayoutMask>(transition),
+    drv_assert(get_accepted_image_layouts(usages) & static_cast<ImageLayoutMask>(transition),
                "Transition target layout is not supported by all specified usages");
     requestedOwnership = targetFamily;
 }
@@ -102,7 +90,7 @@ ImageMemoryBarrier::ImageMemoryBarrier(ImagePtr _image, uint32_t numRanges,
     transitionLayout(true),
     discardCurrentContent(_discardCurrentContent),
     resultLayout(transition) {
-    drv_assert(get_accepted_layouts(usages) & static_cast<ImageLayoutMask>(transition),
+    drv_assert(get_accepted_image_layouts(usages) & static_cast<ImageLayoutMask>(transition),
                "Transition target layout is not supported by all specified usages");
     requestedOwnership = targetFamily;
 }

@@ -66,19 +66,9 @@ void DrvVulkanResourceTracker::cmd_clear_image(
 
 drv::PipelineStages DrvVulkanResourceTracker::cmd_image_barrier(
   drv::CommandBufferPtr cmdBuffer, const drv::ImageMemoryBarrier& barrier, drv::EventPtr event) {
-    drv::PipelineStages dstStages;
-    drv::ImageResourceUsageFlag usage = 1;
-    drv::ImageResourceUsageFlag usages = barrier.usages;
-    drv::MemoryBarrier::AccessFlagBitType invalidateMask = 0;
-    while (usages) {
-        if (usages & 1) {
-            dstStages.add(drv::get_image_usage_stages(static_cast<drv::ImageResourceUsage>(usage)));
-            invalidateMask |=
-              drv::get_image_usage_accesses(static_cast<drv::ImageResourceUsage>(usage));
-        }
-        usage <<= 1;
-        usages >>= 1;
-    }
+    drv::PipelineStages dstStages = drv::get_image_usage_stages(barrier.usages);
+    drv::MemoryBarrier::AccessFlagBitType invalidateMask =
+      drv::get_image_usage_accesses(barrier.usages);
     bool flush = true;  // no reason not to flush
     // extra sync is only placed, if it has dirty cache
     return add_memory_sync(
