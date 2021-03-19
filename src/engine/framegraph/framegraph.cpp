@@ -3,6 +3,8 @@
 #include <algorithm>
 #include <queue>
 
+#include <util.hpp>
+
 FrameGraph::Node::Node(const std::string& _name, bool _hasExecution) : name(_name) {
     if (_hasExecution)
         localExecutionQueue = std::make_unique<ExecutionQueue>();
@@ -67,7 +69,7 @@ drv::ResourceTracker* FrameGraph::Node::getResourceTracker(QueueId queueId) {
 
 FrameGraph::NodeId FrameGraph::addNode(Node&& node) {
     node.frameGraph = this;
-    FrameGraph::NodeId id = nodes.size();
+    NodeId id = safe_cast<NodeId>(nodes.size());
     node.ownId = id;
     node.addDependency(CpuDependency{id, 1});
     if (node.hasExecution())
@@ -368,7 +370,7 @@ FrameGraph::NodeHandle FrameGraph::acquireNode(NodeId nodeId, FrameId frame) {
             std::unique_lock<std::mutex> lock(sourceNode->cpuMutex);
             sourceNode->cpuCv.wait(lock, [&, this] {
                 FrameId id = sourceNode->completedFrame.load();
-                return isStopped() || requiredFrame <= id && id != INVALID_FRAME;
+                return isStopped() || (requiredFrame <= id && id != INVALID_FRAME);
             });
             if (isStopped())
                 return NodeHandle();
@@ -391,8 +393,8 @@ FrameGraph::NodeHandle FrameGraph::tryAcquireNode(NodeId nodeId, FrameId frame,
         if (dep.offset <= frame) {
             FrameId requiredFrame = frame - dep.offset;
             Node* sourceNode = getNode(dep.srcNode);
-            std::unique_lock lock(sourceNode->cpuMutex);
-            const std::chrono::duration duration =
+            std::unique_lock<std::mutex> lock(sourceNode->cpuMutex);
+            const std::chrono::nanoseconds duration =
               std::chrono::high_resolution_clock::now() - start;
             if (duration >= maxDuration
                 || !sourceNode->cpuCv.wait_for(lock, maxDuration - duration, [&, this] {

@@ -519,7 +519,7 @@ static bool generate_binary(
                 return false;
             }
             shaderData.variantValues[shaderData.variantParamNum] =
-              safe_cast<decltype(shaderData.variantValues[0])>(values.size());
+              safe_cast<std::decay_t<decltype(shaderData.variantValues[0])>>(values.size());
             shaderData.variantParamNum++;
             if (variantParams.count(name) > 0) {
                 std::cerr << "A shader variant param name is used multiple times: " << name
