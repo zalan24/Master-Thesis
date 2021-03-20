@@ -9,6 +9,7 @@ download_external(
 external(
     glslang
     INSTALL ON
+    CUSTOM_PRE_CMAKE "precmake.cmake"
     TARGETS
         OSDependent
         OGLCompiler

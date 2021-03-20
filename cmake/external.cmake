@@ -11,7 +11,7 @@ function(external namespace)
     include(AddExternal)
 
     set(options)
-    set(oneValueArgs INSTALL)
+    set(oneValueArgs INSTALL CUSTOM_PRE_CMAKE)
     set(multiValueArgs TARGETS PROJECT_OPTIONS EXTERNAL_CXX_FLAGS EXTERNAL_C_FLAGS)
     cmake_parse_arguments(EXTERNAL "${options}" "${oneValueArgs}"
                                     "${multiValueArgs}" ${ARGN} )
@@ -27,6 +27,7 @@ function(external namespace)
         # source directory
         ${PROJECT_BINARY_DIR}/3rdParty/${namespace}/src
         INSTALL ${EXTERNAL_INSTALL}
+        CUSTOM_PRE_CMAKE "${EXTERNAL_CUSTOM_PRE_CMAKE}"
         TARGETS ${EXTERNAL_TARGETS}
         PROJECT_OPTIONS
             ${EXTERNAL_PROJECT_OPTIONS}

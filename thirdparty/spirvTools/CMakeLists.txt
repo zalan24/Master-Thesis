@@ -9,7 +9,7 @@ download_external(
 external(
   spirv_tools
     INSTALL ON
-    # TARGETS
+    CUSTOM_PRE_CMAKE "precmake.cmake"
     PROJECT_OPTIONS
         -DSPIRV_SKIP_TESTS=ON
         "-DSPIRV-Headers_SOURCE_DIR:FILEPATH=${PROJECT_BINARY_DIR}/3rdParty/spirv_headers/src"

@@ -1,4 +1,4 @@
-{
+[
     {
         "name": "Clang-cl 11.0.0 for MSVC with Visual Studio Community 2019 Release (amd64)",
         "visualStudio": "df346f97",
@@ -8,4 +8,4 @@
             "CXX": "C:\\Program Files\\LLVM\\bin\\clang-cl.exe"
         }
     }
-}
+]
