@@ -1,0 +1,11 @@
+{
+    {
+        "name": "Clang-cl 11.0.0 for MSVC with Visual Studio Community 2019 Release (amd64)",
+        "visualStudio": "df346f97",
+        "visualStudioArchitecture": "x64",
+        "compilers": {
+            "C": "C:\\Program Files\\LLVM\\bin\\clang-cl.exe",
+            "CXX": "C:\\Program Files\\LLVM\\bin\\clang-cl.exe"
+        }
+    }
+}
