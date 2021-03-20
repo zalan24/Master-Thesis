@@ -1,5 +1,7 @@
 #include "uncomment.h"
 
+#include <iostream>
+
 bool uncomment(std::istream& in, std::ostream& out) {
     bool inComment = false;
     bool inString = false;

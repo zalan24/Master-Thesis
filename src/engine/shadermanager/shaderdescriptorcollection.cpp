@@ -1,5 +1,7 @@
 #include "shaderdescriptorcollection.h"
 
+#include <stdexcept>
+
 ShaderDescriptorCollection::~ShaderDescriptorCollection() {
 }
 
