@@ -560,3 +560,13 @@ EventReleaseCallback* FrameGraph::Node::getEventReleaseCallback(EventPool::Event
     eventCallbacks.push_back(std::move(block));
     return ret;
 }
+
+FrameGraph::QueueId FrameGraph::registerQueue(drv::QueuePtr queue) {
+    FrameGraph::QueueId ret = safe_cast<FrameGraph::QueueId>(queues.size());
+    queues.push_back(queue);
+    return ret;
+}
+
+drv::QueuePtr FrameGraph::getQueue(QueueId queueId) const {
+    return queues[queueId];
+}

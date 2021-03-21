@@ -68,7 +68,7 @@ class ResourceTracker
         virtual void release(EventFlushMode) = 0;
 
      protected:
-        ~FlushEventCallback();
+        ~FlushEventCallback() = default;
     };
 
     virtual void cmd_signal_event(drv::CommandBufferPtr cmdBuffer, drv::EventPtr event,

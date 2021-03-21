@@ -239,6 +239,7 @@ class FrameGraph
     // eg node1 <cpu ot render queue=> node2 <render queue to cpu=> node3
     std::vector<DependenceData> dependencyTable;
     std::atomic<bool> quit = false;
+    FlexibleArray<drv::QueuePtr, 8> queues;
 
     mutable std::mutex enqueueMutex;
 

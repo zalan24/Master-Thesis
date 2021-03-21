@@ -68,7 +68,7 @@ void Game::record(FrameGraph& frameGraph, FrameId frameId) {
         // TODO according to vulkan spec https://khronos.org/registry/vulkan/specs/1.2-extensions/man/html/vkQueuePresentKHR.html
         // memory is made visible to all read operations (add this to tracker?) -- only available memory
         recorder.cmdSignalSemaphore(swapChainData.renderFinishedSemaphore);
-        recorder.finishQueueWork();
+        // recorder.finishQueueWork();
     }
     else
         assert(frameGraph.isStopped());

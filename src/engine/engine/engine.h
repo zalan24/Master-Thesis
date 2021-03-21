@@ -126,7 +126,7 @@ class Engine
                               const drv::ImageMemoryBarrier* barriers);
 
         // allows nodes, that depend on the current node's gpu work (on current queue) to run after this submission completion
-        void finishQueueWork();
+        // void finishQueueWork();
 
         drv::ResourceTracker* getResourceTracker() const;
 

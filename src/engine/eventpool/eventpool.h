@@ -9,7 +9,7 @@
 class EventPool
 {
  public:
-    explicit EventPool(drv::LogicalDevicePtr device);
+    explicit EventPool(drv::LogicalDevicePtr _device) : device(_device) {}
 
     EventPool(const EventPool&) = delete;
     EventPool& operator=(const EventPool&) = delete;

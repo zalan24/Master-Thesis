@@ -2,6 +2,10 @@
 
 #include <cassert>
 
+EventPool::~EventPool() {
+    close();
+}
+
 EventPool::EventHandle::EventHandle(EventPool* pool, drv::EventPtr _event, size_t _eventIndex)
   : eventPool(pool), event(_event), eventIndex(_eventIndex) {
 }
