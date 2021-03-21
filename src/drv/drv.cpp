@@ -49,7 +49,7 @@ bool drv::init(const Driver* drivers, unsigned int count) {
 std::unique_ptr<drv::ResourceTracker> drv::create_resource_tracker(QueuePtr queue,
                                                                    PhysicalDevicePtr physicalDevice,
                                                                    LogicalDevicePtr device) {
-    assert(current_driver_interface == nullptr);
+    assert(current_driver_interface != nullptr);
     switch (current_driver) {
         case Driver::VULKAN:
 #ifdef DRIVER_VULKAN

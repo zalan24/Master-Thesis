@@ -46,11 +46,17 @@ class ImageMemoryBarrier
     //   : ImageMemoryBarrier(_image, numRanges, _ranges, static_cast<ImageResourceUsageFlag>(usage),
     //                        transition, targetFamily) {}
 
+    const ImageSubresourceRange* getRanges() const;
+
     friend class ResourceTracker;
 
     ImagePtr image = NULL_HANDLE;
     uint32_t numSubresourceRanges = 0;
-    const ImageSubresourceRange* ranges;
+    union Ranges
+    {
+        const ImageSubresourceRange* ranges;
+        ImageSubresourceRange range;
+    } ranges;
     ImageResourceUsageFlag usages = 0;
     QueueFamilyPtr requestedOwnership = NULL_HANDLE;
     bool transitionLayout = false;

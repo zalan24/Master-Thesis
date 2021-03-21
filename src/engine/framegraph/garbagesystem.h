@@ -15,7 +15,7 @@ class GarbageSystem
  public:
     template <typename F>
     void useGarbage(F&& f) {
-        std::unique_lock<std::mutex> lock(garbageMutex);
+        std::unique_lock<std::recursive_mutex> lock(garbageMutex);
         f(&trashBins[currentGarbage.load() % trashBins.size()]);
     }
 
@@ -26,7 +26,7 @@ class GarbageSystem
     void resize(size_t count);
 
  private:
-    mutable std::mutex garbageMutex;
+    mutable std::recursive_mutex garbageMutex;
     std::atomic<uint32_t> currentGarbage = 0;
     std::atomic<uint32_t> oldestGarbage = 0;
     FlexibleArray<Garbage, 16> trashBins;

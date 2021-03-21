@@ -5,7 +5,7 @@ void GarbageSystem::resize(size_t count) {
 }
 
 void GarbageSystem::startGarbage(FrameId frameId) {
-    std::unique_lock<std::mutex> lock(garbageMutex);
+    std::unique_lock<std::recursive_mutex> lock(garbageMutex);
     useGarbage([&](Garbage* trashBin) { trashBin->reset(frameId); });
     currentGarbage.fetch_add(1);
 }
@@ -17,7 +17,7 @@ void GarbageSystem::releaseGarbage(FrameId frameId) {
 }
 
 void GarbageSystem::releaseAll() {
-    std::unique_lock<std::mutex> lock(garbageMutex);
+    std::unique_lock<std::recursive_mutex> lock(garbageMutex);
     do {
         trashBins[oldestGarbage.load() % trashBins.size()].reset();
     } while (oldestGarbage.fetch_add(1) != currentGarbage.load());

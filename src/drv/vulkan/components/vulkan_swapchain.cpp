@@ -112,13 +112,15 @@ bool DrvVulkan::get_swapchain_images(drv::LogicalDevicePtr device, drv::Swapchai
                                      reinterpret_cast<VkSwapchainKHR>(swapchain), count, vkImages);
     if (result != VK_SUCCESS && (result != VK_INCOMPLETE || images != nullptr))
         return false;
-    for (uint32_t i = 0; i < *count; ++i) {
-        images[i] = new drv_vulkan::Image();
-        convertImage(images[i])->image = vkImages[i];
-        convertImage(images[i])->swapchainImage = true;
-        convertImage(images[i])->numMipLevels = 1;
-        convertImage(images[i])->arraySize = 1;
-        convertImage(images[i])->sharedResource = true;
+    if (images) {
+        for (uint32_t i = 0; i < *count; ++i) {
+            images[i] = new drv_vulkan::Image();
+            convertImage(images[i])->image = vkImages[i];
+            convertImage(images[i])->swapchainImage = true;
+            convertImage(images[i])->numMipLevels = 1;
+            convertImage(images[i])->arraySize = 1;
+            convertImage(images[i])->sharedResource = true;
+        }
     }
     return true;
 }

@@ -72,7 +72,7 @@ drv::PipelineStages DrvVulkanResourceTracker::cmd_image_barrier(
     bool flush = true;  // no reason not to flush
     // extra sync is only placed, if it has dirty cache
     return add_memory_sync(
-      cmdBuffer, barrier.image, barrier.numSubresourceRanges, barrier.ranges, flush, dstStages,
+      cmdBuffer, barrier.image, barrier.numSubresourceRanges, barrier.getRanges(), flush, dstStages,
       invalidateMask, barrier.requestedOwnership != drv::NULL_HANDLE, barrier.requestedOwnership,
       barrier.transitionLayout, barrier.discardCurrentContent, barrier.resultLayout, event);
 }

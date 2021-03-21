@@ -46,6 +46,12 @@ ImageMemoryBarrier::ImageMemoryBarrier(ImagePtr _image, ImageResourceUsageFlag _
                        "There is no commonly accepted image layout for the selected usages");
     }
     requestedOwnership = targetFamily;
+    numSubresourceRanges = 1;
+    ranges.range.aspectMask = ALL_ASPECTS;
+    ranges.range.baseArrayLayer = 0;
+    ranges.range.baseMipLevel = 0;
+    ranges.range.layerCount = ranges.range.REMAINING_ARRAY_LAYERS;
+    ranges.range.levelCount = ranges.range.REMAINING_MIP_LEVELS;
 }
 
 ImageMemoryBarrier::ImageMemoryBarrier(ImagePtr _image, ImageResourceUsageFlag _usages,
@@ -59,6 +65,13 @@ ImageMemoryBarrier::ImageMemoryBarrier(ImagePtr _image, ImageResourceUsageFlag _
     drv_assert(get_accepted_image_layouts(usages) & static_cast<ImageLayoutMask>(transition),
                "Transition target layout is not supported by all specified usages");
     requestedOwnership = targetFamily;
+    requestedOwnership = targetFamily;
+    numSubresourceRanges = 1;
+    ranges.range.aspectMask = ALL_ASPECTS;
+    ranges.range.baseArrayLayer = 0;
+    ranges.range.baseMipLevel = 0;
+    ranges.range.layerCount = ranges.range.REMAINING_ARRAY_LAYERS;
+    ranges.range.levelCount = ranges.range.REMAINING_MIP_LEVELS;
 }
 
 ImageMemoryBarrier::ImageMemoryBarrier(ImagePtr _image, uint32_t numRanges,
@@ -66,7 +79,7 @@ ImageMemoryBarrier::ImageMemoryBarrier(ImagePtr _image, uint32_t numRanges,
                                        ImageResourceUsageFlag _usages,
                                        TransitionLayoutOption transition,
                                        bool _discardCurrentContent, QueueFamilyPtr targetFamily)
-  : image(_image), numSubresourceRanges(numRanges), ranges(_ranges), usages(_usages) {
+  : image(_image), numSubresourceRanges(numRanges), usages(_usages) {
     switch (transition) {
         case NO_TRANSITION:
             transitionLayout = false;
@@ -78,6 +91,10 @@ ImageMemoryBarrier::ImageMemoryBarrier(ImagePtr _image, uint32_t numRanges,
                        "There is no commonly accepted image layout for the selected usages");
     }
     requestedOwnership = targetFamily;
+    if (numSubresourceRanges == 1)
+        ranges.range = _ranges[0];
+    else
+        ranges.ranges = _ranges;
 }
 
 ImageMemoryBarrier::ImageMemoryBarrier(ImagePtr _image, uint32_t numRanges,
@@ -86,7 +103,6 @@ ImageMemoryBarrier::ImageMemoryBarrier(ImagePtr _image, uint32_t numRanges,
                                        bool _discardCurrentContent, QueueFamilyPtr targetFamily)
   : image(_image),
     numSubresourceRanges(numRanges),
-    ranges(_ranges),
     usages(_usages),
     transitionLayout(true),
     discardCurrentContent(_discardCurrentContent),
@@ -94,4 +110,12 @@ ImageMemoryBarrier::ImageMemoryBarrier(ImagePtr _image, uint32_t numRanges,
     drv_assert(get_accepted_image_layouts(usages) & static_cast<ImageLayoutMask>(transition),
                "Transition target layout is not supported by all specified usages");
     requestedOwnership = targetFamily;
+    if (numSubresourceRanges == 1)
+        ranges.range = _ranges[0];
+    else
+        ranges.ranges = _ranges;
+}
+
+const ImageSubresourceRange* ImageMemoryBarrier::getRanges() const {
+    return numSubresourceRanges == 1 ? &ranges.range : ranges.ranges;
 }

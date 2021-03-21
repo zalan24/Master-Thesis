@@ -12,12 +12,20 @@ FrameGraph::Node::Node(const std::string& _name, bool _hasExecution) : name(_nam
 
 FrameGraph::Node::Node(Node&& other)
   : name(std::move(other.name)),
+    ownId(other.ownId),
+    frameGraph(other.frameGraph),
+    resourceTrackers(std::move(other.resourceTrackers)),
     cpuDeps(std::move(other.cpuDeps)),
     enqDeps(std::move(other.enqDeps)),
     cpuQueDeps(std::move(other.cpuQueDeps)),
     queCpuDeps(std::move(other.queCpuDeps)),
     queQueDeps(std::move(other.queQueDeps)),
-    localExecutionQueue(std::move(other.localExecutionQueue)) {
+    localExecutionQueue(std::move(other.localExecutionQueue)),
+    enqIndirectChildren(std::move(other.enqIndirectChildren)),
+    eventCallbacks(std::move(other.eventCallbacks)),
+    completedFrame(other.completedFrame.load()),
+    enqueuedFrame(other.enqueuedFrame.load()),
+    enqueueFrameClearance(other.enqueueFrameClearance) {
 }
 
 FrameGraph::Node::~Node() {
@@ -31,12 +39,20 @@ FrameGraph::Node& FrameGraph::Node::operator=(Node&& other) {
     if (this == &other)
         return *this;
     name = std::move(other.name);
+    ownId = other.ownId;
+    frameGraph = other.frameGraph;
+    resourceTrackers = std::move(other.resourceTrackers);
     cpuDeps = std::move(other.cpuDeps);
     enqDeps = std::move(other.enqDeps);
     cpuQueDeps = std::move(other.cpuQueDeps);
     queCpuDeps = std::move(other.queCpuDeps);
     queQueDeps = std::move(other.queQueDeps);
     localExecutionQueue = std::move(other.localExecutionQueue);
+    enqIndirectChildren = std::move(other.enqIndirectChildren);
+    eventCallbacks = std::move(other.eventCallbacks);
+    completedFrame = other.completedFrame.load();
+    enqueuedFrame = other.enqueuedFrame.load();
+    enqueueFrameClearance = other.enqueueFrameClearance;
     return *this;
 }
 

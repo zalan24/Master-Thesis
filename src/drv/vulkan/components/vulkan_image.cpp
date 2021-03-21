@@ -262,6 +262,10 @@ drv::PipelineStages DrvVulkanResourceTracker::add_memory_sync(
         barrier.oldLayout = subresourceData.layout;
         barrier.newLayout = subresourceData.layout;
     }
+#ifdef DEBUG
+    drv::drv_assert(convertImageLayout(convertImageLayout(barrier.oldLayout)) == barrier.oldLayout);
+    drv::drv_assert(convertImageLayout(convertImageLayout(barrier.newLayout)) == barrier.newLayout);
+#endif
     appendBarrier(cmdBuffer, barrierSrcStages, barrierDstStages, std::move(barrier), event);
     return barrierSrcStages;
 }

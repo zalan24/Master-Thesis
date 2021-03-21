@@ -4,6 +4,7 @@
 
 #include <vulkan/vulkan.h>
 
+#include <drverror.h>
 #include <drvtypes.h>
 
 #include "vulkan_buffer.h"

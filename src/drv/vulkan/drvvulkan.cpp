@@ -618,7 +618,7 @@ void DrvVulkanResourceTracker::cmd_signal_event(drv::CommandBufferPtr cmdBuffer,
                                                 const drv::ImageMemoryBarrier* imageBarriers) {
     for (uint32_t i = 0; i < imageBarrierCount; ++i)
         flushBarriersFor(cmdBuffer, imageBarriers[i].image, imageBarriers[i].numSubresourceRanges,
-                         imageBarriers[i].ranges);
+                         imageBarriers[i].getRanges());
 
     drv::PipelineStages srcStages;
     for (uint32_t i = 0; i < imageBarrierCount; ++i)
