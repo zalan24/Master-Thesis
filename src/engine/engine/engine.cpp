@@ -1,10 +1,10 @@
 #include "engine.h"
 
 #include <chrono>
-#include <filesystem>
 #include <fstream>
 #include <iostream>
 #include <map>
+#include <sstream>
 
 #include <corecontext.h>
 
@@ -19,8 +19,6 @@
 // #include <rendercontext.h>
 
 #include "execution_queue.h"
-
-namespace fs = std::filesystem;
 
 static void callback(const drv::CallbackData* data) {
     switch (data->type) {
@@ -131,6 +129,15 @@ Engine::SyncBlock::SyncBlock(drv::LogicalDevicePtr _device, uint32_t maxFramesIn
     }
 }
 
+static void log_queue(const char* name, const drv::QueueManager::Queue& queue) {
+    LOG_ENGINE("Queue info <%s>: <%p> (G%c C%c T%c) priority:%f index:%d/family:%p", name,
+               queue.queue,
+               queue.info.commandTypes & drv::CommandTypeBits::CMD_TYPE_GRAPHICS ? '+' : '-',
+               queue.info.commandTypes & drv::CommandTypeBits::CMD_TYPE_COMPUTE ? '+' : '-',
+               queue.info.commandTypes & drv::CommandTypeBits::CMD_TYPE_TRANSFER ? '+' : '-',
+               queue.info.priority, queue.info.queueIndex, queue.info.familyPtr);
+}
+
 Engine::Engine(int argc, char* argv[], const Config& cfg, const std::string& shaderbinFile,
                ResourceManager::ResourceInfos resource_infos)
   : config(cfg),
@@ -171,10 +178,20 @@ Engine::Engine(int argc, char* argv[], const Config& cfg, const std::string& sha
     shaderBin(shaderbinFile),
     resourceMgr(std::move(resource_infos)),
     frameGraph(physicalDevice, device, &garbageSystem, &eventPool) {
+    json configJson = ISerializable::serialize(config);
+    std::stringstream ss;
+    ss << configJson;
+    LOG_ENGINE("Engine initialized with config: %s", ss.str().c_str());
+    log_queue("render", renderQueue);
+    log_queue("present", presentQueue);
+    log_queue("compute", computeQueue);
+    log_queue("DtoH", DtoHQueue);
+    log_queue("HtoD", HtoDQueue);
+    log_queue("input", inputQueue);
 }
 
 Engine::~Engine() {
-    // entityManager.deleteAll();
+    LOG_ENGINE("Engine closed");
 }
 
 void Engine::initGame(IRenderer* _renderer, ISimulation* _simulation) {
@@ -271,6 +288,7 @@ bool Engine::sampleInput(FrameId frameId) {
 
 void Engine::simulationLoop(volatile std::atomic<FrameId>* simulationFrame,
                             const volatile std::atomic<FrameId>* stopFrame) {
+    loguru::set_thread_name("simulate");
     simulationFrame->store(0);
     while (!frameGraph.isStopped() && *simulationFrame <= *stopFrame) {
         {
@@ -354,6 +372,7 @@ Engine::CommandBufferRecorder Engine::acquireCommandRecorder(
 }
 
 void Engine::recordCommandsLoop(const volatile std::atomic<FrameId>* stopFrame) {
+    loguru::set_thread_name("record");
     FrameId recordFrame = 0;
     while (!frameGraph.isStopped() && recordFrame <= *stopFrame) {
         // TODO preframe stuff (resize)
@@ -532,6 +551,7 @@ bool Engine::execute(FrameId& executionFrame, ExecutionPackage&& package) {
 }
 
 void Engine::executeCommandsLoop() {
+    loguru::set_thread_name("execution");
     std::unique_lock<std::mutex> executionLock(executionMutex);
     FrameId executionFrame = 0;
     while (true) {
@@ -545,6 +565,7 @@ void Engine::executeCommandsLoop() {
 }
 
 void Engine::cleanUpLoop(const volatile std::atomic<FrameId>* stopFrame) {
+    loguru::set_thread_name("clean up");
     FrameId cleanUpFrame = 0;
     while (!frameGraph.isStopped() && cleanUpFrame <= *stopFrame) {
         FrameGraph::NodeHandle cleanUpHandle = frameGraph.acquireNode(cleanUpNode, cleanUpFrame);
@@ -697,50 +718,4 @@ void Engine::CommandBufferRecorder::close() {
     q->push(ExecutionPackage(ExecutionPackage::CommandBufferPackage{
       queue, std::move(cmdBuffer), std::move(signalSemaphores), std::move(signalTimelineSemaphores),
       std::move(waitSemaphores), std::move(waitTimelineSemaphores)}));
-}
-
-Engine::Logger::Logger(int argc, char* argv[], const std::string& logDir) {
-    fs::path logs{logDir};
-    if (!fs::exists(logs))
-        fs::create_directories(logs);
-    loguru::init(argc, argv);
-
-    loguru::add_file((logs / fs::path{"all.log"}).string().c_str(), loguru::Truncate,
-                     loguru::Verbosity_MAX);
-    loguru::add_file((logs / fs::path{"warning.log"}).string().c_str(), loguru::Truncate,
-                     loguru::Verbosity_WARNING);
-    loguru::add_file((logs / fs::path{"error.log"}).string().c_str(), loguru::Truncate,
-                     loguru::Verbosity_ERROR);
-    loguru::add_file((logs / fs::path{"fatal.log"}).string().c_str(), loguru::Truncate,
-                     loguru::Verbosity_FATAL);
-    loguru::g_stderr_verbosity = loguru::Verbosity_ERROR;
-    loguru::g_colorlogtostderr = true;
-
-    loguru::set_fatal_handler([](const loguru::Message& message) {
-        throw std::runtime_error(std::string(message.prefix) + message.message);
-    });
-}
-
-Engine::Logger::Logger(Logger&& other) : valid(other.valid) {
-    other.valid = false;
-}
-
-Engine::Logger& Engine::Logger::operator=(Logger&& other) {
-    if (this == &other)
-        return *this;
-    close();
-    valid = other.valid;
-    other.valid = false;
-    return *this;
-}
-
-Engine::Logger::~Logger() {
-    close();
-}
-
-void Engine::Logger::close() {
-    if (valid) {
-        loguru::shutdown();
-        valid = false;
-    }
 }

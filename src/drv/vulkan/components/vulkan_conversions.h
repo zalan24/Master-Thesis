@@ -147,6 +147,10 @@ constexpr inline drv::ImageLayout convertImageLayout(VkImageLayout layout) {
     return static_cast<drv::ImageLayout>(1 << static_cast<drv::ImageLayoutMask>(layout));
 }
 
+inline VkPhysicalDevice convertPhysicalDevice(drv::PhysicalDevicePtr physicalDevice) {
+    return reinterpret_cast<VkPhysicalDevice>(physicalDevice);
+}
+
 static_assert(convertImageLayout(drv::ImageLayout::UNDEFINED) == VK_IMAGE_LAYOUT_UNDEFINED);
 static_assert(drv::ImageLayout::UNDEFINED == convertImageLayout(VK_IMAGE_LAYOUT_UNDEFINED));
 static_assert(convertImageLayout(drv::ImageLayout::GENERAL) == VK_IMAGE_LAYOUT_GENERAL);

@@ -9,7 +9,8 @@
 #include <vector>
 
 #include <concurrentqueue.h>
-#include <loguru.hpp>
+
+#include <logger.h>
 
 #include <drv.h>
 #include <drv_queue_manager.h>
@@ -180,17 +181,6 @@ class Engine
         SyncBlock(drv::LogicalDevicePtr device, uint32_t maxFramesInFlight);
     };
 
-    struct Logger
-    {
-        Logger(int argc, char* argv[], const std::string& logDir);
-        Logger(const Logger&) = delete;
-        Logger& operator=(const Logger&) = delete;
-        Logger(Logger&&);
-        Logger& operator=(Logger&&);
-        ~Logger();
-        bool valid = true;
-        void close();
-    };
 
     Config config;
 

@@ -6,6 +6,8 @@
 
 #include <vulkan/vulkan.h>
 
+#include <logger.h>
+
 #include <drverror.h>
 
 #include "vulkan_conversions.h"
@@ -30,6 +32,8 @@ bool DrvVulkan::get_physical_devices(drv::InstancePtr _instance, unsigned int* c
         // VkPhysicalDeviceFeatures deviceFeatures;
         vkGetPhysicalDeviceProperties(devices[i], &deviceProperties);
         // vkGetPhysicalDeviceFeatures(devices[i], &deviceFeatures);
+
+        LOG_DRIVER_API("Device found <%p>: %s", devices[i], deviceProperties.deviceName);
 
         switch (deviceProperties.deviceType) {
             case VK_PHYSICAL_DEVICE_TYPE_OTHER:
@@ -71,15 +75,20 @@ static drv::CommandTypeMask get_mask(const VkQueueFlags& flags) {
 bool DrvVulkan::get_physical_device_queue_families(drv::PhysicalDevicePtr physicalDevice,
                                                    unsigned int* count,
                                                    drv::QueueFamily* queueFamilies) {
-    vkGetPhysicalDeviceQueueFamilyProperties(reinterpret_cast<VkPhysicalDevice>(physicalDevice),
-                                             count, nullptr);
+    vkGetPhysicalDeviceQueueFamilyProperties(convertPhysicalDevice(physicalDevice), count, nullptr);
     if (queueFamilies == nullptr)
         return true;
 
     std::vector<VkQueueFamilyProperties> vkQueueFamilies(*count);
-    vkGetPhysicalDeviceQueueFamilyProperties(reinterpret_cast<VkPhysicalDevice>(physicalDevice),
-                                             count, vkQueueFamilies.data());
+    vkGetPhysicalDeviceQueueFamilyProperties(convertPhysicalDevice(physicalDevice), count,
+                                             vkQueueFamilies.data());
+    LOG_DRIVER_API("Listing queue families on device <%p>", convertPhysicalDevice(physicalDevice));
     for (unsigned int i = 0; i < *count; ++i) {
+        LOG_DRIVER_API("#%d/%d: support:(Graphics%c Compute%c Transfer%c), queues:%d", i + 1,
+                       *count, vkQueueFamilies[i].queueFlags & VK_QUEUE_GRAPHICS_BIT ? '+' : '-',
+                       vkQueueFamilies[i].queueFlags & VK_QUEUE_COMPUTE_BIT ? '+' : '-',
+                       vkQueueFamilies[i].queueFlags & VK_QUEUE_TRANSFER_BIT ? '+' : '-',
+                       vkQueueFamilies[i].queueCount);
         queueFamilies[i].queueCount = vkQueueFamilies[i].queueCount;
         queueFamilies[i].commandTypeMask = get_mask(vkQueueFamilies[i].queueFlags);
         queueFamilies[i].handle = convertFamily(i);
@@ -90,12 +99,12 @@ bool DrvVulkan::get_physical_device_queue_families(drv::PhysicalDevicePtr physic
 drv::CommandTypeMask DrvVulkan::get_command_type_mask(drv::PhysicalDevicePtr physicalDevice,
                                                       drv::QueueFamilyPtr queueFamily) {
     unsigned int count = 0;
-    vkGetPhysicalDeviceQueueFamilyProperties(reinterpret_cast<VkPhysicalDevice>(physicalDevice),
-                                             &count, nullptr);
+    vkGetPhysicalDeviceQueueFamilyProperties(convertPhysicalDevice(physicalDevice), &count,
+                                             nullptr);
 
     std::vector<VkQueueFamilyProperties> vkQueueFamilies(count);
-    vkGetPhysicalDeviceQueueFamilyProperties(reinterpret_cast<VkPhysicalDevice>(physicalDevice),
-                                             &count, vkQueueFamilies.data());
+    vkGetPhysicalDeviceQueueFamilyProperties(convertPhysicalDevice(physicalDevice), &count,
+                                             vkQueueFamilies.data());
     unsigned int i = convertFamily(queueFamily);
     return get_mask(vkQueueFamilies[i].queueFlags);
 }

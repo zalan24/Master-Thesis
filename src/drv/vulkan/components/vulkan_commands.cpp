@@ -3,6 +3,7 @@
 #include <vulkan/vulkan.h>
 
 #include <corecontext.h>
+#include <logger.h>
 
 #include <drvbarrier.h>
 #include <drverror.h>
@@ -22,6 +23,10 @@ bool DrvVulkanResourceTracker::begin_primary_command_buffer(drv::CommandBufferPt
         info.flags |= VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
     info.pInheritanceInfo = nullptr;
     VkResult result = vkBeginCommandBuffer(convertCommandBuffer(cmdBuffer), &info);
+#ifdef DEBUG
+    if (commandLogEnabled)
+        LOG_COMMAND("Cmd begin command buffer: <%p>", convertCommandBuffer(cmdBuffer));
+#endif
     return result == VK_SUCCESS;
 }
 
@@ -31,6 +36,10 @@ bool DrvVulkanResourceTracker::end_primary_command_buffer(drv::CommandBufferPtr 
         if (barriers[i] && barriers[i].event == drv::NULL_HANDLE)
             flushBarrier(cmdBuffer, barriers[i]);
     VkResult result = vkEndCommandBuffer(convertCommandBuffer(cmdBuffer));
+#ifdef DEBUG
+    if (commandLogEnabled)
+        LOG_COMMAND("Cmd end command buffer: <%p>", convertCommandBuffer(cmdBuffer));
+#endif
     return result == VK_SUCCESS;
 }
 
@@ -59,6 +68,12 @@ void DrvVulkanResourceTracker::cmd_clear_image(
         vkRanges[i] = convertSubresourceRange(subresourceRanges[i]);
         vkValues[i] = convertClearColor(clearColors[i]);
     }
+
+#ifdef DEBUG
+    if (commandLogEnabled)
+        LOG_COMMAND("Cmd clear image <%p>: <%p>", convertCommandBuffer(cmdBuffer),
+                    convertImage(image));
+#endif
 
     vkCmdClearColorImage(convertCommandBuffer(cmdBuffer), convertImage(image)->image,
                          convertImageLayout(currentLayout), vkValues, ranges, vkRanges);

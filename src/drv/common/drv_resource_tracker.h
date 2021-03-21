@@ -87,11 +87,15 @@ class ResourceTracker
                                               bool simultaneousUse) = 0;
     virtual bool end_primary_command_buffer(CommandBufferPtr cmdBuffer) = 0;
 
+    void enableCommandLog() { commandLogEnabled = true; }
+    void disableCommandLog() { commandLogEnabled = false; }
+
  protected:
     IDriver* driver;
     LogicalDevicePtr device;
     QueuePtr queue;
     CommandTypeMask queueSupport;
     Config config;  // TODO set this from outside
+    bool commandLogEnabled = false;
 };
 }  // namespace drv

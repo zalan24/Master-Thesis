@@ -11,4 +11,5 @@ set_target_properties(  AnimationsDrvCommon
                         LINK_OPTIONS "${TARGET_LINK_FLAGS}")
 target_link_libraries(AnimationsDrvCommon PUBLIC
     AnimationsDrvProfiler
+    AnimationsTools
 )

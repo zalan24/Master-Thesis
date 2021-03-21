@@ -1,8 +1,12 @@
 #include "drvvulkan.h"
 
+#include <sstream>
+
 #include <vulkan/vulkan.h>
+#include <loguru.hpp>
 
 #include <corecontext.h>
+#include <logger.h>
 
 #include <drverror.h>
 
@@ -39,8 +43,10 @@ drv::QueueFamilyPtr DrvVulkan::get_queue_family(drv::LogicalDevicePtr device, dr
 uint32_t DrvVulkan::acquire_tracking_slot() {
     for (uint32_t id = 0; id < get_num_trackers(); ++id) {
         bool expected = true;
-        if (freeTrackingSlot[id].compare_exchange_strong(expected, false))
+        if (freeTrackingSlot[id].compare_exchange_strong(expected, false)) {
+            LOG_DRIVER_API("Tracking slot acquired: %d/%d", id + 1, get_num_trackers());
             return id;
+        }
     }
     drv::drv_assert(
       false, "Could not acquire tracking slot. Increase the number of slots to resolve the issue");
@@ -48,6 +54,7 @@ uint32_t DrvVulkan::acquire_tracking_slot() {
 }
 
 void DrvVulkan::release_tracking_slot(uint32_t id) {
+    LOG_DRIVER_API("Tracking slot released: %d/%d", id + 1, get_num_trackers());
     bool expected = false;
     drv::drv_assert(freeTrackingSlot[id].compare_exchange_strong(expected, true),
                     "A tracking slot is released twice");
@@ -58,6 +65,7 @@ uint32_t DrvVulkan::get_num_trackers() {
 }
 
 DrvVulkan::~DrvVulkan() {
+    LOG_DRIVER_API("Closing vulkan driver");
     for (uint32_t id = 0; id < get_num_trackers(); ++id) {
         bool expected = true;
         drv::drv_assert(freeTrackingSlot[id].compare_exchange_strong(expected, false),
@@ -576,6 +584,28 @@ void DrvVulkanResourceTracker::flushBarrier(drv::CommandBufferPtr cmdBuffer, Bar
     //         vkBufferBarriers[i].offset = bufferBarriers[i].offset;
     //     }
 
+#ifdef DEBUG
+    if (commandLogEnabled) {
+        std::stringstream subresourcesSS;
+        for (uint32_t i = 0; i < imageRangeCount; ++i)
+            subresourcesSS << " (" << vkImageBarriers[i].image << ", "
+                           << vkImageBarriers[i].subresourceRange.baseArrayLayer << ";"
+                           << vkImageBarriers[i].subresourceRange.layerCount << ", "
+                           << vkImageBarriers[i].subresourceRange.baseMipLevel << ";"
+                           << vkImageBarriers[i].subresourceRange.levelCount << " "
+                           << vkImageBarriers[i].subresourceRange.aspectMask << " "
+                           << vkImageBarriers[i].oldLayout << "->" << vkImageBarriers[i].newLayout
+                           << vkImageBarriers[i].srcQueueFamilyIndex << "->"
+                           << vkImageBarriers[i].dstQueueFamilyIndex
+                           << vkImageBarriers[i].srcAccessMask << "->"
+                           << vkImageBarriers[i].dstAccessMask << ") ";
+        LOG_COMMAND("Cmd barrier recorded <%p>: %d->%d, event:%p, subresources: %s",
+                    convertCommandBuffer(cmdBuffer), convertPipelineStages(barrier.srcStages),
+                    convertPipelineStages(barrier.dstStages), barrier.event,
+                    subresourcesSS.str().c_str());
+    }
+#endif
+
     if (barrier.event != drv::NULL_HANDLE) {
         VkEvent vkEvent = convertEvent(barrier.event);
         vkCmdWaitEvents(
@@ -625,6 +655,12 @@ void DrvVulkanResourceTracker::cmd_signal_event(drv::CommandBufferPtr cmdBuffer,
         srcStages.add(cmd_image_barrier(cmdBuffer, imageBarriers[i], event));
     vkCmdSetEvent(convertCommandBuffer(cmdBuffer), convertEvent(event),
                   convertPipelineStages(srcStages));
+#ifdef DEBUG
+    if (commandLogEnabled) {
+        LOG_COMMAND("Cmd event signalled <%p>: %d", convertCommandBuffer(cmdBuffer),
+                    convertPipelineStages(srcStages));
+    }
+#endif
 }
 
 void DrvVulkanResourceTracker::cmd_signal_event(drv::CommandBufferPtr cmdBuffer,
@@ -668,14 +704,14 @@ void DrvVulkanResourceTracker::invalidate(InvalidationLevel level, const char* m
     switch (level) {
         case SUBOPTIMAL:
             if (config.verbosity == Config::DEBUG_ERRORS) {
-                // TODO log warn about it
+                LOG_F(WARNING, "Suboptimal barrier usage: %s", message);
             }
             else if (config.verbosity == Config::ALL_ERRORS)
                 drv::drv_assert(false, message);
             break;
         case BAD_USAGE:
             if (config.verbosity == Config::SILENT_FIXES) {
-                // TODO log warn about it
+                LOG_F(WARNING, "Bad barrier usage: %s", message);
             }
             else
                 drv::drv_assert(false, message);
