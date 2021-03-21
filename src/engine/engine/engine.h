@@ -9,6 +9,7 @@
 #include <vector>
 
 #include <concurrentqueue.h>
+#include <loguru.hpp>
 
 #include <drv.h>
 #include <drv_queue_manager.h>
@@ -48,13 +49,14 @@ class Engine
         std::string driver;
         int inputBufferSize;
         int stackMemorySizeKb;
+        std::string logs;
         void writeJson(json& out) const override final;
         void readJson(const json& in) override final;
     };
 
-    Engine(const Config& config, const std::string& shaderbinFile,
+    Engine(int argc, char* argv[], const Config& config, const std::string& shaderbinFile,
            ResourceManager::ResourceInfos resource_infos);
-    Engine(const std::string& configFile, const std::string& shaderbinFile,
+    Engine(int argc, char* argv[], const std::string& configFile, const std::string& shaderbinFile,
            ResourceManager::ResourceInfos resource_infos);
     ~Engine();
 
@@ -178,8 +180,21 @@ class Engine
         SyncBlock(drv::LogicalDevicePtr device, uint32_t maxFramesInFlight);
     };
 
+    struct Logger
+    {
+        Logger(int argc, char* argv[], const std::string& logDir);
+        Logger(const Logger&) = delete;
+        Logger& operator=(const Logger&) = delete;
+        Logger(Logger&&);
+        Logger& operator=(Logger&&);
+        ~Logger();
+        bool valid = true;
+        void close();
+    };
+
     Config config;
 
+    Logger logger;
     ErrorCallback callback;
     CoreContext coreContext;
     Input input;

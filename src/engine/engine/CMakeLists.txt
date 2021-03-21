@@ -24,4 +24,5 @@ target_link_libraries(AnimationsEngine PUBLIC
     AnimationsExecutionQueue
     AnimationsEventPool
     concurrent_queue_external
+    loguru_external
 )

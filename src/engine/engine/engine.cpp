@@ -1,6 +1,7 @@
 #include "engine.h"
 
 #include <chrono>
+#include <filesystem>
 #include <fstream>
 #include <iostream>
 #include <map>
@@ -18,6 +19,8 @@
 // #include <rendercontext.h>
 
 #include "execution_queue.h"
+
+namespace fs = std::filesystem;
 
 static void callback(const drv::CallbackData* data) {
     switch (data->type) {
@@ -48,6 +51,7 @@ void Engine::Config::writeJson(json& out) const {
     WRITE_OBJECT(maxFramesInExecutionQueue, out);
     WRITE_OBJECT(maxFramesInFlight, out);
     WRITE_OBJECT(driver, out);
+    WRITE_OBJECT(logs, out);
 }
 
 void Engine::Config::readJson(const json& in) {
@@ -60,6 +64,7 @@ void Engine::Config::readJson(const json& in) {
     READ_OBJECT(maxFramesInExecutionQueue, in);
     READ_OBJECT(maxFramesInFlight, in);
     READ_OBJECT(driver, in);
+    READ_OBJECT(logs, in);
 }
 
 static Engine::Config get_config(const std::string& file) {
@@ -100,9 +105,9 @@ Engine::WindowIniter::~WindowIniter() {
     window->close();
 }
 
-Engine::Engine(const std::string& configFile, const std::string& shaderbinFile,
-               ResourceManager::ResourceInfos resource_infos)
-  : Engine(get_config(configFile), shaderbinFile, std::move(resource_infos)) {
+Engine::Engine(int argc, char* argv[], const std::string& configFile,
+               const std::string& shaderbinFile, ResourceManager::ResourceInfos resource_infos)
+  : Engine(argc, argv, get_config(configFile), shaderbinFile, std::move(resource_infos)) {
 }
 
 drv::Swapchain::CreateInfo Engine::get_swapchain_create_info(const Config& config) {
@@ -126,9 +131,10 @@ Engine::SyncBlock::SyncBlock(drv::LogicalDevicePtr _device, uint32_t maxFramesIn
     }
 }
 
-Engine::Engine(const Config& cfg, const std::string& shaderbinFile,
+Engine::Engine(int argc, char* argv[], const Config& cfg, const std::string& shaderbinFile,
                ResourceManager::ResourceInfos resource_infos)
   : config(cfg),
+    logger(argc, argv, config.logs),
     coreContext({safe_cast<size_t>(config.stackMemorySizeKb << 10)}),
     input(safe_cast<size_t>(config.inputBufferSize)),
     driver({get_driver(cfg.driver)}),
@@ -691,4 +697,50 @@ void Engine::CommandBufferRecorder::close() {
     q->push(ExecutionPackage(ExecutionPackage::CommandBufferPackage{
       queue, std::move(cmdBuffer), std::move(signalSemaphores), std::move(signalTimelineSemaphores),
       std::move(waitSemaphores), std::move(waitTimelineSemaphores)}));
+}
+
+Engine::Logger::Logger(int argc, char* argv[], const std::string& logDir) {
+    fs::path logs{logDir};
+    if (!fs::exists(logs))
+        fs::create_directories(logs);
+    loguru::init(argc, argv);
+
+    loguru::add_file((logs / fs::path{"all.log"}).string().c_str(), loguru::Truncate,
+                     loguru::Verbosity_MAX);
+    loguru::add_file((logs / fs::path{"warning.log"}).string().c_str(), loguru::Truncate,
+                     loguru::Verbosity_WARNING);
+    loguru::add_file((logs / fs::path{"error.log"}).string().c_str(), loguru::Truncate,
+                     loguru::Verbosity_ERROR);
+    loguru::add_file((logs / fs::path{"fatal.log"}).string().c_str(), loguru::Truncate,
+                     loguru::Verbosity_FATAL);
+    loguru::g_stderr_verbosity = loguru::Verbosity_ERROR;
+    loguru::g_colorlogtostderr = true;
+
+    loguru::set_fatal_handler([](const loguru::Message& message) {
+        throw std::runtime_error(std::string(message.prefix) + message.message);
+    });
+}
+
+Engine::Logger::Logger(Logger&& other) : valid(other.valid) {
+    other.valid = false;
+}
+
+Engine::Logger& Engine::Logger::operator=(Logger&& other) {
+    if (this == &other)
+        return *this;
+    close();
+    valid = other.valid;
+    other.valid = false;
+    return *this;
+}
+
+Engine::Logger::~Logger() {
+    close();
+}
+
+void Engine::Logger::close() {
+    if (valid) {
+        loguru::shutdown();
+        valid = false;
+    }
 }

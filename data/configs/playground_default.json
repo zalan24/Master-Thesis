@@ -7,5 +7,6 @@
     "maxFramesInExecutionQueue": 1,
     "maxFramesInFlight": 2,
     "title": "Playground",
-    "driver": "Vulkan"
+    "driver": "Vulkan",
+    "logs": "logs"
 }
