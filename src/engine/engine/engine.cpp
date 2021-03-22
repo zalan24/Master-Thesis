@@ -152,17 +152,14 @@ Engine::Engine(int argc, char* argv[], const Config& cfg, const std::string& sha
     windowIniter(window, drvInstance),
     deviceExtensions(true),
     physicalDevice(get_device_selection_info(drvInstance, deviceExtensions), window),
-    commandLaneMgr(
-      physicalDevice, window,
-      {{"main",
-        {{"render", 0.5, drv::CMD_TYPE_GRAPHICS, drv::CMD_TYPE_COMPUTE | drv::CMD_TYPE_TRANSFER,
-          false, true},
-         {"present", 0.5, 0,
-          drv::CMD_TYPE_COMPUTE | drv::CMD_TYPE_TRANSFER | drv::CMD_TYPE_GRAPHICS, true, false},
-         {"compute", 0.5, drv::CMD_TYPE_COMPUTE, drv::CMD_TYPE_TRANSFER, false, true},
-         {"DtoH", 0.5, drv::CMD_TYPE_TRANSFER, 0, false, true},
-         {"HtoD", 0.5, drv::CMD_TYPE_TRANSFER, 0, false, true}}},
-       {"input", {{"HtoD", 1, drv::CMD_TYPE_TRANSFER, 0, false, true}}}}),
+    commandLaneMgr(physicalDevice, window,
+                   {{"main",
+                     {{"render", 0.5, drv::CMD_TYPE_GRAPHICS, drv::CMD_TYPE_ALL, false, false},
+                      {"present", 0.5, 0, drv::CMD_TYPE_ALL, true, false},
+                      {"compute", 0.5, drv::CMD_TYPE_COMPUTE, drv::CMD_TYPE_TRANSFER, false, true},
+                      {"DtoH", 0.5, drv::CMD_TYPE_TRANSFER, 0, false, true},
+                      {"HtoD", 0.5, drv::CMD_TYPE_TRANSFER, 0, false, true}}},
+                    {"input", {{"HtoD", 1, drv::CMD_TYPE_TRANSFER, 0, false, true}}}}),
     device({physicalDevice, commandLaneMgr.getQueuePriorityInfo(), deviceExtensions}),
     queueManager(device, &commandLaneMgr),
     renderQueue(queueManager.getQueue({"main", "render"})),
@@ -182,12 +179,19 @@ Engine::Engine(int argc, char* argv[], const Config& cfg, const std::string& sha
     std::stringstream ss;
     ss << configJson;
     LOG_ENGINE("Engine initialized with config: %s", ss.str().c_str());
+    // LOG_ENGINE("Build time %s %s", __DATE__, __TIME__);
     log_queue("render", renderQueue);
     log_queue("present", presentQueue);
     log_queue("compute", computeQueue);
     log_queue("DtoH", DtoHQueue);
     log_queue("HtoD", HtoDQueue);
     log_queue("input", inputQueue);
+    if (presentQueue.queue != renderQueue.queue
+        && drv::can_present(physicalDevice, window,
+                            drv::get_queue_family(device, renderQueue.queue)))
+        LOG_F(
+          WARNING,
+          "Present is supported on render queue, but a different queue is selected for presentation");
 }
 
 Engine::~Engine() {

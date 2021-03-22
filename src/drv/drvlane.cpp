@@ -25,7 +25,6 @@ CommandLaneManager::CommandLaneManager(PhysicalDevicePtr physicalDevice, IWindow
     std::vector<drv::QueueFamily> queueFamilies(familyCount);
     drv::get_physical_device_queue_families(physicalDevice, &familyCount, queueFamilies.data());
 
-    std::unordered_map<QueueFamilyPtr, std::unordered_map<size_t, float>> priorities;
     std::unordered_map<QueueFamilyPtr, unsigned int> remaining(familyCount);
     for (size_t i = 0; i < familyCount; ++i)
         remaining[queueFamilies[i].handle] = queueFamilies[i].queueCount;
@@ -50,7 +49,7 @@ CommandLaneManager::CommandLaneManager(PhysicalDevicePtr physicalDevice, IWindow
                 if (remaining[queueFamilies[i].handle] == 0)
                     continue;
                 unsigned int value =
-                  bit_count(queueFamilies[i].commandTypeMask ^ queueInfo.commandTypes);
+                  bit_count(queueFamilies[i].commandTypeMask ^ queueInfo.preferenceMask);
                 if (q.familyPtr == nullptr || value < bestMatch) {
                     q.familyPtr = queueFamilies[i].handle;
                     bestMatch = value;
@@ -61,8 +60,6 @@ CommandLaneManager::CommandLaneManager(PhysicalDevicePtr physicalDevice, IWindow
             if (q.familyPtr == nullptr)
                 throw std::runtime_error("Could not find a queue for lane " + laneInfo.name
                                          + " / queue " + queueInfo.name);
-            priorities[q.familyPtr][q.queueIndex] =
-              std::max(priorities[q.familyPtr][q.queueIndex], q.priority);
             lane.queues[queueInfo.name] = std::move(q);
         }
 
@@ -85,7 +82,7 @@ CommandLaneManager::CommandLaneManager(PhysicalDevicePtr physicalDevice, IWindow
         auto laneItr = lanes.find(laneInfo.name);
         drv::drv_assert(laneItr != lanes.end());
         for (const CommandLaneInfo::CommandQueueInfo& queueInfo : laneInfo.queues) {
-            if (!queueInfo.requirePresent)
+            if (!queueInfo.preferDedicated)
                 continue;
             auto queueItr = laneItr->second.queues.find(queueInfo.name);
             drv::drv_assert(queueItr != laneItr->second.queues.end());
@@ -104,6 +101,13 @@ CommandLaneManager::CommandLaneManager(PhysicalDevicePtr physicalDevice, IWindow
             remaining[queueItr->second.familyPtr]--;
         }
     }
+
+    std::unordered_map<QueueFamilyPtr, std::unordered_map<size_t, float>> priorities;
+
+    for (auto& lane : lanes)
+        for (auto& queue : lane.second.queues)
+            priorities[queue.second.familyPtr][queue.second.queueIndex] = std::max(
+              priorities[queue.second.familyPtr][queue.second.queueIndex], queue.second.priority);
 
     for (auto& lane : lanes)
         for (auto& queue : lane.second.queues)
