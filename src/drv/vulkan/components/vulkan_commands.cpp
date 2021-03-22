@@ -53,10 +53,10 @@ void DrvVulkanResourceTracker::cmd_clear_image(
     VkClearColorValue* vkValues = colorValueMem.get();
     drv::drv_assert(vkValues != nullptr || ranges == 0);
 
-    // | drv::ImageLayout::SHARED_PRESENT_KHR
     drv::ImageLayoutMask requiredLayoutMask =
       static_cast<drv::ImageLayoutMask>(drv::ImageLayout::TRANSFER_DST_OPTIMAL)
-      | static_cast<drv::ImageLayoutMask>(drv::ImageLayout::GENERAL);
+      | static_cast<drv::ImageLayoutMask>(drv::ImageLayout::GENERAL)
+      | static_cast<drv::ImageLayoutMask>(drv::ImageLayout::SHARED_PRESENT_KHR);
 
     drv::ImageLayout currentLayout = drv::ImageLayout::UNDEFINED;
     add_memory_access(cmdBuffer, image, ranges, subresourceRanges, false, true,
@@ -86,10 +86,12 @@ drv::PipelineStages DrvVulkanResourceTracker::cmd_image_barrier(
       drv::get_image_usage_accesses(barrier.usages);
     bool flush = true;  // no reason not to flush
     // extra sync is only placed, if it has dirty cache
-    return add_memory_sync(
-      cmdBuffer, barrier.image, barrier.numSubresourceRanges, barrier.getRanges(), flush, dstStages,
-      invalidateMask, barrier.requestedOwnership != drv::NULL_HANDLE, barrier.requestedOwnership,
-      barrier.transitionLayout, barrier.discardCurrentContent, barrier.resultLayout, event);
+    return add_memory_sync(cmdBuffer, barrier.image, barrier.numSubresourceRanges,
+                           barrier.getRanges(), flush, dstStages, invalidateMask,
+                           !convertImage(barrier.image)->sharedResource
+                             && barrier.requestedOwnership != drv::NULL_HANDLE,
+                           barrier.requestedOwnership, barrier.transitionLayout,
+                           barrier.discardCurrentContent, barrier.resultLayout, event);
 }
 
 void DrvVulkanResourceTracker::cmd_flush_waits_on(drv::CommandBufferPtr cmdBuffer,

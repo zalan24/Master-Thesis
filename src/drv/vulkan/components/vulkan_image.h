@@ -12,6 +12,7 @@ struct Image
     VkImage image = VK_NULL_HANDLE;
     uint32_t numMipLevels = 1;
     uint32_t arraySize = 1;
+    drv::ImageAspectBitType aspects = 0;
     bool sharedResource = true;
     bool swapchainImage = false;
     drv::DeviceMemoryPtr memoryPtr = drv::NULL_HANDLE;

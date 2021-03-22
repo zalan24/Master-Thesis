@@ -18,7 +18,7 @@ void drv::report_error(CallbackData* data) {
 void drv::drv_assert(bool ok, const char* text) {
     if (ok)
         return;
-    LOG_F(FATAL, "Assert error: %s", text ? text : "<0x0>");
+    LOG_F(ERROR, "Assert error: %s", text ? text : "<0x0>");
     CallbackData data;
     data.text = text;
     data.type = drv::CallbackData::Type::ERROR;

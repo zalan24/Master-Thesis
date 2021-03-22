@@ -96,6 +96,6 @@ class ResourceTracker
     QueuePtr queue;
     CommandTypeMask queueSupport;
     Config config;  // TODO set this from outside
-    bool commandLogEnabled = false;
+    bool commandLogEnabled = true;
 };
 }  // namespace drv

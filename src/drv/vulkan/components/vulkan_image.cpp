@@ -3,6 +3,7 @@
 #include <vulkan/vulkan.h>
 
 #include <corecontext.h>
+#include <logger.h>
 
 #include <drverror.h>
 
@@ -48,6 +49,7 @@ drv::ImagePtr DrvVulkan::create_image(drv::LogicalDevicePtr device,
         ret->image = vkImage;
         ret->numMipLevels = info->mipLevels;
         ret->arraySize = info->arrayLayers;
+        ret->aspects = drv::get_format_aspects(info->format);
         ret->sharedResource = info->sharingType == drv::SharingType::CONCURRENT;
         return reinterpret_cast<drv::ImagePtr>(ret);
     }
@@ -174,6 +176,7 @@ void DrvVulkanResourceTracker::add_memory_access(
   bool changeLayout, drv::ImageLayout resultLayout) {
     drv::drv_assert(numSubresourceRanges > 0, "No subresource ranges given for add_memory_access");
     drv_vulkan::Image* image = convertImage(_image);
+    flushBarriersFor(cmdBuffer, image, numSubresourceRanges, subresourceRanges);
     if (numSubresourceRanges) {
         drv::ImageSubresourceSet subresourcesHandled;
         for (uint32_t i = 0; i < numSubresourceRanges; ++i) {
@@ -231,7 +234,7 @@ drv::PipelineStages DrvVulkanResourceTracker::add_memory_sync(
       image->trackingStates[trackingSlot]
         .subresourceTrackInfo[arrayIndex][mipLevel][drv::get_aspect_id(aspect)];
     // 'subresourceData.layout != resultLayout' excluded for consistent behaviour
-    if (transitionLayout)
+    if (transitionLayout && !discardContent)
         flush = true;
     drv::PipelineStages barrierSrcStages;
     drv::PipelineStages barrierDstStages;
@@ -276,33 +279,36 @@ drv::PipelineStages DrvVulkanResourceTracker::add_memory_sync(
   drv::MemoryBarrier::AccessFlagBitType invalidateMask, bool transferOwnership,
   drv::QueueFamilyPtr newOwner, bool transitionLayout, bool discardContent,
   drv::ImageLayout resultLayout, drv::EventPtr event) {
-    drv::drv_assert(numSubresourceRanges > 0, "No subresource ranges given for add_memory_sync");
     drv::PipelineStages srcStages;
     drv_vulkan::Image* image = convertImage(_image);
     if (numSubresourceRanges) {
         drv::ImageSubresourceSet subresourcesHandled;
         for (uint32_t i = 0; i < numSubresourceRanges; ++i) {
-            subresourceRanges[i].traverse(
-              image->arraySize, image->numMipLevels,
-              [&, this](uint32_t layer, uint32_t mip, drv::AspectFlagBits aspect) {
-                  if (subresourcesHandled.has(layer, mip, aspect))
-                      return;
-                  subresourcesHandled.add(layer, mip, aspect);
-                  srcStages.add(add_memory_sync(cmdBuffer, _image, mip, layer, aspect, flush,
-                                                dstStages, invalidateMask, transferOwnership,
-                                                newOwner, transitionLayout, discardContent,
-                                                resultLayout, event));
-              });
+            drv::ImageSubresourceRange range = subresourceRanges[i];
+            range.aspectMask &= image->aspects;
+            if (range.aspectMask == 0)
+                LOG_F(WARNING, "Image memory sync with 0 aspect mask");
+            range.traverse(image->arraySize, image->numMipLevels,
+                           [&, this](uint32_t layer, uint32_t mip, drv::AspectFlagBits aspect) {
+                               if (subresourcesHandled.has(layer, mip, aspect))
+                                   return;
+                               subresourcesHandled.add(layer, mip, aspect);
+                               srcStages.add(add_memory_sync(
+                                 cmdBuffer, _image, mip, layer, aspect, flush, dstStages,
+                                 invalidateMask, transferOwnership, newOwner, transitionLayout,
+                                 discardContent, resultLayout, event));
+                           });
         }
     }
     else {
         for (uint32_t layer = 0; layer < image->arraySize; ++layer)
             for (uint32_t mip = 0; mip < image->numMipLevels; ++mip)
                 for (uint32_t aspectId = 0; aspectId < drv::ASPECTS_COUNT; ++aspectId)
-                    srcStages.add(add_memory_sync(
-                      cmdBuffer, _image, mip, layer, drv::get_aspect_by_id(aspectId), flush,
-                      dstStages, invalidateMask, transferOwnership, newOwner, transitionLayout,
-                      discardContent, resultLayout, event));
+                    if (image->aspects & drv::get_aspect_by_id(aspectId))
+                        srcStages.add(add_memory_sync(
+                          cmdBuffer, _image, mip, layer, drv::get_aspect_by_id(aspectId), flush,
+                          dstStages, invalidateMask, transferOwnership, newOwner, transitionLayout,
+                          discardContent, resultLayout, event));
     }
     return srcStages;
 }
@@ -331,5 +337,6 @@ drv::TextureInfo DrvVulkan::get_texture_info(drv::ImagePtr _image) {
     drv::TextureInfo ret;
     ret.numMips = image->numMipLevels;
     ret.arraySize = image->arraySize;
+    // ret.aspects = image->aspects;
     return ret;
 }

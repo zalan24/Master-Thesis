@@ -267,21 +267,21 @@ class DrvVulkanResourceTracker final : public drv::ResourceTracker
 
     struct ImageSingleSubresourceMemoryBarrier : ResourceBarrier
     {
-        drv::ImageLayout oldLayout;
-        drv::ImageLayout newLayout;
+        drv::ImageLayout oldLayout = drv::ImageLayout::UNDEFINED;
+        drv::ImageLayout newLayout = drv::ImageLayout::UNDEFINED;
 
-        drv::ImagePtr image;
-        uint32_t layer;
-        uint32_t mipLevel;
+        drv::ImagePtr image = drv::NULL_HANDLE;
+        uint32_t layer = 0;
+        uint32_t mipLevel = 0;
         drv::AspectFlagBits aspect;
     };
 
     struct ImageMemoryBarrier : ResourceBarrier
     {
-        drv::ImageLayout oldLayout;
-        drv::ImageLayout newLayout;
+        drv::ImageLayout oldLayout = drv::ImageLayout::UNDEFINED;
+        drv::ImageLayout newLayout = drv::ImageLayout::UNDEFINED;
 
-        drv::ImagePtr image;
+        drv::ImagePtr image = drv::NULL_HANDLE;
         drv::ImageSubresourceSet subresourceSet;
     };
 

@@ -782,7 +782,6 @@ enum class ImageFormat
     // A4R4G4B4_UNORM_PACK16_EXT = 1000340000,
     // A4B4G4R4_UNORM_PACK16_EXT = 1000340001
 };
-
 struct SwapchainCreateInfo
 {
     uint32_t allowedFormatCount;
@@ -1369,6 +1368,9 @@ struct TextureInfo
 {
     uint32_t numMips;
     uint32_t arraySize;
+    // ImageAspectBitType aspects;
 };
+
+ImageAspectBitType get_format_aspects(ImageFormat format);
 
 };  // namespace drv

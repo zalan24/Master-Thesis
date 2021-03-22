@@ -237,6 +237,8 @@ void DrvVulkanResourceTracker::appendBarrier(drv::CommandBufferPtr cmdBuffer,
     static_cast<ResourceBarrier&>(barrier) = static_cast<ResourceBarrier&>(imageBarrier);
     barrier.image = imageBarrier.image;
     barrier.subresourceSet.add(imageBarrier.layer, imageBarrier.mipLevel, imageBarrier.aspect);
+    barrier.oldLayout = imageBarrier.oldLayout;
+    barrier.newLayout = imageBarrier.newLayout;
     appendBarrier(cmdBuffer, srcStage, dstStage, std::move(barrier), event);
 }
 
@@ -387,6 +389,8 @@ bool DrvVulkanResourceTracker::merge(BarrierInfo& barrier0, BarrierInfo& barrier
                 return false;
             if (barrier0.imageBarriers[i].dstAccessFlags != barrier.imageBarriers[j].dstAccessFlags)
                 return false;
+            i++;
+            j++;
         }
     }
     const uint32_t totalImageCount =
@@ -592,11 +596,11 @@ void DrvVulkanResourceTracker::flushBarrier(drv::CommandBufferPtr cmdBuffer, Bar
                            << vkImageBarriers[i].subresourceRange.baseArrayLayer << ";"
                            << vkImageBarriers[i].subresourceRange.layerCount << ", "
                            << vkImageBarriers[i].subresourceRange.baseMipLevel << ";"
-                           << vkImageBarriers[i].subresourceRange.levelCount << " "
-                           << vkImageBarriers[i].subresourceRange.aspectMask << " "
+                           << vkImageBarriers[i].subresourceRange.levelCount << ", "
+                           << vkImageBarriers[i].subresourceRange.aspectMask << ", "
                            << vkImageBarriers[i].oldLayout << "->" << vkImageBarriers[i].newLayout
-                           << vkImageBarriers[i].srcQueueFamilyIndex << "->"
-                           << vkImageBarriers[i].dstQueueFamilyIndex
+                           << ", " << vkImageBarriers[i].srcQueueFamilyIndex << "->"
+                           << vkImageBarriers[i].dstQueueFamilyIndex << ", "
                            << vkImageBarriers[i].srcAccessMask << "->"
                            << vkImageBarriers[i].dstAccessMask << ") ";
         LOG_COMMAND("Cmd barrier recorded <%p>: %d->%d, event:%p, subresources: %s",
