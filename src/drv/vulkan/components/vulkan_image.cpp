@@ -232,6 +232,8 @@ drv::PipelineStages DrvVulkanResourceTracker::add_memory_sync(
     // 'subresourceData.layout != resultLayout' excluded for consistent behaviour
     if (transitionLayout && !discardContent)
         flush = true;
+    else if (discardContent)
+        flush = false;
     drv::PipelineStages barrierSrcStages;
     drv::PipelineStages barrierDstStages;
     ImageSingleSubresourceMemoryBarrier barrier;
@@ -239,47 +241,27 @@ drv::PipelineStages DrvVulkanResourceTracker::add_memory_sync(
     barrier.layer = arrayIndex;
     barrier.mipLevel = mipLevel;
     barrier.aspect = aspect;
+    add_memory_sync(image->trackingStates[trackingSlot].trackData, subresourceData, flush,
+                    dstStages, accessMask, transferOwnership, newOwner, barrierSrcStages,
+                    barrierDstStages, barrier);
     if (transitionLayout && subresourceData.layout != resultLayout) {
         barrierSrcStages.add(subresourceData.ongoingWrites | subresourceData.ongoingReads
-                             | subresourceData.ongoingFlushes);
-        if (!discardContent)
-            barrierSrcStages.add(subresourceData.ongoingInvalidations);
+                             | drv::PipelineStages::TOP_OF_PIPE_BIT);
         barrierDstStages.add(dstStages);
-        if (!discardContent)
-            barrier.dstAccessFlags |= accessMask;
-
-        TODO;  // deal with flush
-        if ((config.forceFlush || flush) && subresourceData.dirtyMask != 0 && !discardContent) {
-            barrierDstStages.add(dstStages);
-            barrier.sourceAccessFlags = subresourceData.dirtyMask;
-            if (subresourceData.ongoingFlushes != 0 || subresourceData.ongoingInvalidations != 0)
-                invalidate(BAD_USAGE, "Memory flushed twice");
-            subresourceData.ongoingWrites = 0;
-            subresourceData.ongoingFlushes = stages;
-            subresourceData.dirtyMask = 0;
-            subresourceData.ongoingInvalidations = 0;
-            subresourceData.visible = 0;
-            subresourceData.usableStages = stages;
-        }
-
+        barrier.dstAccessFlags |= accessMask;
         subresourceData.ongoingWrites = 0;
-        subresourceData.ongoingInvalidations = 0;
         subresourceData.ongoingReads = 0;
-        subresourceData.ongoingFlushes = 0;
         subresourceData.dirtyMask = 0;
-        subresourceData.visible = discardContent ? drv::MemoryBarrier::get_all_bits() : accessMask;
+        subresourceData.visible = accessMask;
         subresourceData.usableStages = stages;
-        subresourceData.layout = resultLayout;
         barrier.oldLayout = discardContent ? drv::ImageLayout::UNDEFINED : subresourceData.layout;
         barrier.newLayout = resultLayout;
+        subresourceData.layout = resultLayout;
     }
     else {
         barrier.oldLayout = subresourceData.layout;
         barrier.newLayout = subresourceData.layout;
     }
-    add_memory_sync(image->trackingStates[trackingSlot].trackData, subresourceData, flush,
-                    dstStages, accessMask, transferOwnership, newOwner, barrierSrcStages,
-                    barrierDstStages, barrier);
 #ifdef DEBUG
     drv::drv_assert(convertImageLayout(convertImageLayout(barrier.oldLayout)) == barrier.oldLayout);
     drv::drv_assert(convertImageLayout(convertImageLayout(barrier.newLayout)) == barrier.newLayout);

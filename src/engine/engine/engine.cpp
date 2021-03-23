@@ -36,7 +36,7 @@ static void callback(const drv::CallbackData* data) {
         case drv::CallbackData::Type::ERROR:
             LOG_F(ERROR, "Driver error: %s", data->text);
             // std::cerr << data->text << std::endl;
-            throw std::runtime_error(std::string{data->text});
+            throw std::runtime_error(data->text ? std::string{data->text} : "<0x0>");
         case drv::CallbackData::Type::FATAL:
             LOG_F(ERROR, "Driver warning: %s", data->text);
             // std::cerr << data->text << std::endl;

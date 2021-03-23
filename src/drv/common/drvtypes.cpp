@@ -274,3 +274,8 @@ ImageAspectBitType drv::get_format_aspects(ImageFormat format) {
             return COLOR_BIT;
     }
 }
+
+PipelineStages::PipelineStageFlagBits PipelineStages::getEarliestStage(
+  CommandTypeMask queueSupport) const {
+    return getStage(queueSupport, 0);
+}

@@ -83,7 +83,7 @@ void DrvVulkanResourceTracker::validate_memory_access(
     drv::QueueFamilyPtr transferOwnership = drv::NULL_HANDLE;
     drv::MemoryBarrier::AccessFlagBitType invalidateMask = 0;
     bool flush = false;
-    drv::PipelineStages::FlagType waitStages = 0;
+    bool needWait = 0;
 
     drv::QueueFamilyPtr currentFamily = driver->get_queue_family(device, queue);
     if (!sharedRes && resourceData.ownership != currentFamily) {
@@ -92,42 +92,33 @@ void DrvVulkanResourceTracker::validate_memory_access(
         transferOwnership = currentFamily;
     }
     drv::PipelineStages::FlagType currentStages = stages.resolve(queueSupport);
-    if (subresourceData.ongoingInvalidations != 0) {
-        invalidate(SUBOPTIMAL, "Resource has some ongoing invalidations at the time of an access");
-        waitStages |= subresourceData.ongoingInvalidations;
+    if (subresourceData.ongoingWrites != 0) {
+        invalidate(SUBOPTIMAL, "Earlier writes need to be synced with a new access");
+        needWait = true;
     }
     if (write) {
-        if (subresourceData.ongoingFlushes != 0) {
-            invalidate(SUBOPTIMAL, "Earlier flushes need to be synced with a new write");
-            waitStages |= subresourceData.ongoingFlushes;
-        }
-        if (subresourceData.ongoingWrites != 0) {
-            invalidate(SUBOPTIMAL, "Earlier writes need to be synced with a new write");
-            waitStages |= subresourceData.ongoingWrites;
-        }
-        if (subresourceData.ongoingWrites != 0) {
+        if (subresourceData.ongoingReads != 0) {
             invalidate(SUBOPTIMAL, "Earlier reads need to be synced with a new write");
-            waitStages |= subresourceData.ongoingReads;
+            needWait = true;
         }
     }
     if (read) {
         if ((subresourceData.visible & accessMask) != accessMask) {
             invalidate(SUBOPTIMAL, "Trying to read dirty memory");
-            waitStages |= subresourceData.ongoingWrites;
             flush = true;
             invalidateMask |= subresourceData.dirtyMask != 0
                                 ? accessMask
                                 : accessMask ^ (subresourceData.visible & accessMask);
         }
-        const drv::PipelineStages::FlagType requiredAndUsable =
-          subresourceData.usableStages & currentStages;
-        if (requiredAndUsable != currentStages) {
-            invalidate(SUBOPTIMAL, "Resource usage is different, than promised");
-            waitStages |= subresourceData.usableStages;
-        }
     }
-    if (invalidateMask != 0 || transferOwnership != drv::NULL_HANDLE || waitStages != 0)
-        add_memory_sync(resourceData, subresourceData, flush, stages, invalidateMask,
+    const drv::PipelineStages::FlagType requiredAndUsable =
+      subresourceData.usableStages & currentStages;
+    if (requiredAndUsable != currentStages) {
+        invalidate(SUBOPTIMAL, "Resource usage is different, than promised");
+        needWait = true;
+    }
+    if (invalidateMask != 0 || transferOwnership != drv::NULL_HANDLE || needWait)
+        add_memory_sync(resourceData, subresourceData, flush, stages, accessMask,
                         transferOwnership != drv::NULL_HANDLE, transferOwnership, barrierSrcStage,
                         barrierDstStage, barrier);
 }
@@ -137,45 +128,32 @@ void DrvVulkanResourceTracker::add_memory_access(PerResourceTrackData& resourceD
                                                  bool read, bool write, drv::PipelineStages stages,
                                                  drv::MemoryBarrier::AccessFlagBitType accessMask) {
     accessMask = drv::MemoryBarrier::resolve(accessMask);
-    drv::QueueFamilyPtr currentFamily = driver->get_queue_family(device, queue);
+    // drv::QueueFamilyPtr currentFamily = driver->get_queue_family(device, queue);
     drv::PipelineStages::FlagType currentStages = stages.resolve(queueSupport);
-    drv::drv_assert(subresourceData.ongoingInvalidations == 0);
-    subresourceData.ongoingInvalidations = 0;
-    if (read) {
+    const drv::PipelineStages::FlagType requiredAndUsable =
+      subresourceData.usableStages & currentStages;
+    drv::drv_assert(requiredAndUsable == currentStages);
+    if (read)
         drv::drv_assert((subresourceData.visible & accessMask) == accessMask);
-        const drv::PipelineStages::FlagType requiredAndUsable =
-          subresourceData.usableStages & currentStages;
-        drv::drv_assert(requiredAndUsable == currentStages);
-    }
     if (write) {
-        drv::drv_assert((subresourceData.ongoingFlushes | subresourceData.ongoingWrites
-                         | subresourceData.ongoingReads)
-                        == 0);
+        drv::drv_assert((subresourceData.ongoingWrites | subresourceData.ongoingReads) == 0);
         subresourceData.dirtyMask = drv::MemoryBarrier::get_write_bits(accessMask);
         subresourceData.visible = 0;
     }
-    subresourceData.ongoingWrites = write ? currentStages : 0;
-    subresourceData.ongoingFlushes = 0;
-    subresourceData.usableStages = write ? 0 : subresourceData.usableStages | currentStages;
-    if (read && write)
-        subresourceData.ongoingReads = currentStages;
-    else if (write)
-        subresourceData.ongoingReads = 0;
-    else if (read)
-        subresourceData.ongoingReads |= currentStages;
-    resourceData.ownership = currentFamily;
+    subresourceData.ongoingWrites |= write ? currentStages : 0;
+    subresourceData.ongoingReads |= read ? currentStages : 0;
+    // resourceData.ownership = currentFamily;
 }
 
 void DrvVulkanResourceTracker::add_memory_sync(
   drv_vulkan::PerResourceTrackData& resourceData,
   drv_vulkan::PerSubresourceRangeTrackData& subresourceData, bool flush,
-  drv::PipelineStages dstStages, drv::MemoryBarrier::AccessFlagBitType invalidateMask,
+  drv::PipelineStages dstStages, drv::MemoryBarrier::AccessFlagBitType accessMask,
   bool transferOwnership, drv::QueueFamilyPtr newOwner, drv::PipelineStages& barrierSrcStage,
   drv::PipelineStages& barrierDstStage, ResourceBarrier& barrier) {
-    TODO;  // do we actually need this? 'subresourceData.ongoingInvalidations'
     const drv::PipelineStages::FlagType stages = dstStages.resolve(queueSupport);
     if (config.forceInvalidateAll)
-        invalidateMask = drv::MemoryBarrier::get_all_read_bits();
+        accessMask = drv::MemoryBarrier::get_all_read_bits();
     if (config.syncAllOperations) {
         barrierDstStage.add(drv::PipelineStages::ALL_COMMANDS_BIT);
         barrierSrcStage.add(drv::PipelineStages::ALL_COMMANDS_BIT);
@@ -186,38 +164,41 @@ void DrvVulkanResourceTracker::add_memory_sync(
         barrier.dstFamily = newOwner;
         resourceData.ownership = newOwner;
         barrierDstStage.add(dstStages);
+        barrierSrcStage.add(drv::PipelineStages::TOP_OF_PIPE_BIT);
         subresourceData.usableStages = stages;
     }
     if ((config.forceFlush || flush) && subresourceData.dirtyMask != 0) {
         barrierDstStage.add(dstStages);
-        barrierSrcStage.add(subresourceData.ongoingWrites | subresourceData.usableStages
-                            | subresourceData.ongoingFlushes
-                            | subresourceData.ongoingInvalidations);
+        barrierSrcStage.add(subresourceData.ongoingWrites | subresourceData.ongoingReads
+                            | drv::PipelineStages::TOP_OF_PIPE_BIT);
         barrier.sourceAccessFlags = subresourceData.dirtyMask;
-        if (subresourceData.ongoingFlushes != 0 || subresourceData.ongoingInvalidations != 0)
-            invalidate(BAD_USAGE, "Memory flushed twice");
         subresourceData.ongoingWrites = 0;
-        subresourceData.ongoingFlushes = stages;
+        subresourceData.ongoingReads = 0;
         subresourceData.dirtyMask = 0;
-        subresourceData.ongoingInvalidations = 0;
         subresourceData.visible = 0;
         subresourceData.usableStages = stages;
     }
     const drv::PipelineStages::FlagType missingVisibility =
-      invalidateMask ^ (invalidateMask & subresourceData.visible);
+      accessMask ^ (accessMask & subresourceData.visible);
     if (missingVisibility != 0) {
-        barrierSrcStage.add(subresourceData.ongoingFlushes | subresourceData.usableStages);
+        if (subresourceData.ongoingWrites | subresourceData.ongoingReads)
+            barrierSrcStage.add(subresourceData.ongoingWrites | subresourceData.ongoingReads);
+        else
+            barrierSrcStage.add(
+              drv::PipelineStages(subresourceData.usableStages).getEarliestStage(queueSupport));
         barrierDstStage.add(dstStages);
         barrier.dstAccessFlags |= missingVisibility;
-        subresourceData.ongoingInvalidations |= stages;
-        subresourceData.usableStages |= stages;
+        subresourceData.usableStages = stages;
         subresourceData.visible |= missingVisibility;
     }
     const drv::PipelineStages::FlagType missingUsability =
       stages ^ (stages & subresourceData.usableStages);
-    if (missingUsability != 0 && subresourceData.usableStages != 0) {
-        invalidate(BAD_USAGE, "Memory barrier with this kind of usage is missing");
-        barrierSrcStage.add(subresourceData.usableStages);
+    if (missingUsability != 0) {
+        if (subresourceData.ongoingWrites | subresourceData.ongoingReads)
+            barrierSrcStage.add(subresourceData.ongoingWrites | subresourceData.ongoingReads);
+        else
+            barrierSrcStage.add(
+              drv::PipelineStages(subresourceData.usableStages).getEarliestStage(queueSupport));
         barrierDstStage.add(missingUsability);
         subresourceData.usableStages |= missingUsability;
     }

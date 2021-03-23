@@ -263,6 +263,7 @@ struct PipelineStages
         static_assert(STAGES_END == ALL_COMMANDS_BIT + 1, "Update this function");
         return 7;
     }
+    PipelineStageFlagBits getEarliestStage(CommandTypeMask queueSupport) const;
 };
 
 struct ExecutionInfo

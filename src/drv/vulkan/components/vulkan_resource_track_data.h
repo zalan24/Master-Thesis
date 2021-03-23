@@ -16,8 +16,7 @@ struct PerSubresourceRangeTrackData
 
     drv::PipelineStages::FlagType ongoingWrites;
     drv::PipelineStages::FlagType ongoingReads;
-    drv::PipelineStages::FlagType ongoingFlushes;        // availability
-    drv::PipelineStages::FlagType ongoingInvalidations;  // visibility
+    // drv::PipelineStages::FlagType ongoingFlushes;  // availability
     // modified data in caches
     drv::MemoryBarrier::AccessFlagBitType dirtyMask = 0;
     // which cache sees the data

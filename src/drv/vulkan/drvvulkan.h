@@ -307,7 +307,7 @@ class DrvVulkanResourceTracker final : public drv::ResourceTracker
         // sorted by .image ptr
         ImageMemoryBarrier imageBarriers[MAX_RESOURCE_IN_BARRIER];
 
-        operator bool() const { return srcStages.stageFlags != 0; }
+        operator bool() const { return srcStages.stageFlags != 0 || dstStages.stageFlags != 0; }
     };
 
     uint32_t lastBarrier = 0;
