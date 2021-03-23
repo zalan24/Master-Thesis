@@ -16,8 +16,10 @@ class GarbageSystem
     template <typename F>
     void useGarbage(F&& f) {
         std::unique_lock<std::recursive_mutex> lock(garbageMutex);
-        f(&trashBins[currentGarbage.load() % trashBins.size()]);
+        f(&trashBins[(currentGarbage.load() - 1 + trashBins.size()) % trashBins.size()]);
     }
+
+    GarbageSystem();
 
     void startGarbage(FrameId frameId);
     void releaseGarbage(FrameId frameId);

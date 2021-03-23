@@ -1,13 +1,16 @@
 #include "garbagesystem.h"
 
+GarbageSystem::GarbageSystem() {
+}
+
 void GarbageSystem::resize(size_t count) {
     trashBins.resize(count);
 }
 
 void GarbageSystem::startGarbage(FrameId frameId) {
     std::unique_lock<std::recursive_mutex> lock(garbageMutex);
-    useGarbage([&](Garbage* trashBin) { trashBin->reset(frameId); });
     currentGarbage.fetch_add(1);
+    useGarbage([&](Garbage* trashBin) { trashBin->reset(frameId); });
 }
 
 void GarbageSystem::releaseGarbage(FrameId frameId) {
