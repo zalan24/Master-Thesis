@@ -11,6 +11,7 @@
 
 #include "vulkan_conversions.h"
 #include "vulkan_enum_compare.h"
+#include "vulkan_swapchain.h"
 #include "vulkan_swapchain_surface.h"
 
 using namespace drv_vulkan;
@@ -44,6 +45,10 @@ drv::SwapchainPtr DrvVulkan::create_swapchain(drv::PhysicalDevicePtr physicalDev
       });
     drv::drv_assert(presentModeItr != info->preferredPresentModes + info->allowedPresentModeCount,
                     "None of the allowed swapchain present modes are supported");
+
+    StackMemory::MemoryHandle<uint32_t> families(info->familyCount, TEMPMEM);
+    for (uint32_t i = 0; i < info->familyCount; ++i)
+        families[i] = convertFamily(info->families[i]);
     VkSwapchainCreateInfoKHR createInfo{};
     createInfo.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
     createInfo.flags = 0;
@@ -56,10 +61,10 @@ drv::SwapchainPtr DrvVulkan::create_swapchain(drv::PhysicalDevicePtr physicalDev
     createInfo.imageColorSpace = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
     createInfo.imageExtent = {info->width, info->height};
     createInfo.imageArrayLayers = 1;
-    createInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
-    createInfo.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
-    createInfo.queueFamilyIndexCount = 0;
-    createInfo.pQueueFamilyIndices = nullptr;
+    createInfo.imageUsage = static_cast<VkImageUsageFlags>(info->usage);
+    createInfo.imageSharingMode = static_cast<VkSharingMode>(info->sharingType);
+    createInfo.queueFamilyIndexCount = info->familyCount;
+    createInfo.pQueueFamilyIndices = families;
     createInfo.preTransform = support.capabilities.currentTransform;
     createInfo.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
     createInfo.presentMode = static_cast<VkPresentModeKHR>(*presentModeItr);
@@ -69,12 +74,19 @@ drv::SwapchainPtr DrvVulkan::create_swapchain(drv::PhysicalDevicePtr physicalDev
     VkResult result =
       vkCreateSwapchainKHR(reinterpret_cast<VkDevice>(device), &createInfo, nullptr, &swapChain);
     drv::drv_assert(result == VK_SUCCESS, "Swapchain could not be created");
-    return reinterpret_cast<drv::SwapchainPtr>(swapChain);
+    drv::drv_assert(info->sharingType == drv::SharingType::CONCURRENT || info->familyCount > 0,
+                    "User queue families need to be specified when creating an exclusive resource");
+    drv_vulkan::Swapchain* ret = new drv_vulkan::Swapchain();
+    ret->swapchain = swapChain;
+    ret->sharedImages = info->sharingType == drv::SharingType::CONCURRENT;
+    ret->format = *formatItr;
+    return reinterpret_cast<drv::SwapchainPtr>(ret);
 }
 
 bool DrvVulkan::destroy_swapchain(drv::LogicalDevicePtr device, drv::SwapchainPtr swapchain) {
     vkDestroySwapchainKHR(reinterpret_cast<VkDevice>(device),
-                          reinterpret_cast<VkSwapchainKHR>(swapchain), nullptr);
+                          convertSwapchain(swapchain)->swapchain, nullptr);
+    delete convertSwapchain(swapchain);
     return true;
 }
 
@@ -86,7 +98,7 @@ drv::PresentResult DrvVulkan::present(drv::QueuePtr queue, drv::SwapchainPtr swa
     presentInfo.waitSemaphoreCount = info.semaphoreCount;
     presentInfo.pWaitSemaphores = convertSemaphores(info.waitSemaphores);
     presentInfo.swapchainCount = 1;
-    presentInfo.pSwapchains = reinterpret_cast<const VkSwapchainKHR*>(&swapchain);
+    presentInfo.pSwapchains = &convertSwapchain(swapchain)->swapchain;
     presentInfo.pImageIndices = &imageIndex;
     presentInfo.pResults = nullptr;
     VkResult result = vkQueuePresentKHR(reinterpret_cast<VkQueue>(queue), &presentInfo);
@@ -102,14 +114,14 @@ drv::PresentResult DrvVulkan::present(drv::QueuePtr queue, drv::SwapchainPtr swa
 bool DrvVulkan::get_swapchain_images(drv::LogicalDevicePtr device, drv::SwapchainPtr swapchain,
                                      uint32_t* count, drv::ImagePtr* images) {
     VkResult result = vkGetSwapchainImagesKHR(
-      convertDevice(device), reinterpret_cast<VkSwapchainKHR>(swapchain), count, nullptr);
+      convertDevice(device), convertSwapchain(swapchain)->swapchain, count, nullptr);
     if (result != VK_SUCCESS && result != VK_INCOMPLETE)
         return false;
     StackMemory::MemoryHandle<VkImage> imageMem(*count, TEMPMEM);
     VkImage* vkImages = imageMem.get();
     drv::drv_assert(vkImages != nullptr || *count == 0);
-    result = vkGetSwapchainImagesKHR(convertDevice(device),
-                                     reinterpret_cast<VkSwapchainKHR>(swapchain), count, vkImages);
+    result = vkGetSwapchainImagesKHR(convertDevice(device), convertSwapchain(swapchain)->swapchain,
+                                     count, vkImages);
     if (result != VK_SUCCESS && (result != VK_INCOMPLETE || images != nullptr))
         return false;
     if (images) {
@@ -119,8 +131,9 @@ bool DrvVulkan::get_swapchain_images(drv::LogicalDevicePtr device, drv::Swapchai
             convertImage(images[i])->swapchainImage = true;
             convertImage(images[i])->numMipLevels = 1;
             convertImage(images[i])->arraySize = 1;
-            convertImage(images[i])->aspects = drv::COLOR_BIT;
-            convertImage(images[i])->sharedResource = true;
+            convertImage(images[i])->aspects =
+              drv::get_format_aspects(convertSwapchain(swapchain)->format);
+            convertImage(images[i])->sharedResource = convertSwapchain(swapchain)->sharedImages;
         }
     }
     return true;
@@ -130,7 +143,7 @@ bool DrvVulkan::acquire_image(drv::LogicalDevicePtr device, drv::SwapchainPtr sw
                               drv::SemaphorePtr semaphore, drv::FencePtr fence, uint32_t* index,
                               uint64_t timeoutNs) {
     VkResult result =
-      vkAcquireNextImageKHR(convertDevice(device), reinterpret_cast<VkSwapchainKHR>(swapchain),
+      vkAcquireNextImageKHR(convertDevice(device), convertSwapchain(swapchain)->swapchain,
                             timeoutNs, convertSemaphore(semaphore), convertFence(fence), index);
     drv::drv_assert(result == VK_SUCCESS || result == VK_SUBOPTIMAL_KHR || result == VK_TIMEOUT
                     || result == VK_NOT_READY);

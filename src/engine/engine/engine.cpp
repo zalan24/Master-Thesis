@@ -108,7 +108,8 @@ Engine::Engine(int argc, char* argv[], const std::string& configFile,
   : Engine(argc, argv, get_config(configFile), shaderbinFile, std::move(resource_infos)) {
 }
 
-drv::Swapchain::CreateInfo Engine::get_swapchain_create_info(const Config& config) {
+drv::Swapchain::CreateInfo Engine::get_swapchain_create_info(const Config& config,
+                                                             drv::QueuePtr present_queue) {
     drv::Swapchain::CreateInfo ret;
     ret.clipped = true;
     ret.preferredImageCount = static_cast<uint32_t>(config.imagesInSwapchain);
@@ -117,6 +118,9 @@ drv::Swapchain::CreateInfo Engine::get_swapchain_create_info(const Config& confi
                                  drv::SwapchainCreateInfo::PresentMode::IMMEDIATE,
                                  drv::SwapchainCreateInfo::PresentMode::FIFO_RELAXED,
                                  drv::SwapchainCreateInfo::PresentMode::FIFO};
+    ret.sharingType = drv::SharingType::CONCURRENT;  // TODO use exclusive
+    ret.usages = drv::ImageCreateInfo::TRANSFER_DST_BIT;
+    ret.userQueues = {present_queue};
     return ret;
 }
 
@@ -169,7 +173,8 @@ Engine::Engine(int argc, char* argv[], const Config& cfg, const std::string& sha
     HtoDQueue(queueManager.getQueue({"main", "HtoD"})),
     inputQueue(queueManager.getQueue({"input", "HtoD"})),
     cmdBufferBank(device),
-    swapchain(physicalDevice, device, window, get_swapchain_create_info(config)),
+    swapchain(physicalDevice, device, window,
+              get_swapchain_create_info(config, presentQueue.queue)),
     eventPool(device),
     syncBlock(device, safe_cast<uint32_t>(config.maxFramesInFlight)),
     shaderBin(shaderbinFile),

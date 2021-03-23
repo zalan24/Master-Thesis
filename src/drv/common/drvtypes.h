@@ -782,27 +782,6 @@ enum class ImageFormat
     // A4R4G4B4_UNORM_PACK16_EXT = 1000340000,
     // A4B4G4R4_UNORM_PACK16_EXT = 1000340001
 };
-struct SwapchainCreateInfo
-{
-    uint32_t allowedFormatCount;
-    const ImageFormat* formatPreferences;
-    enum PresentMode
-    {
-        IMMEDIATE = 0,
-        MAILBOX = 1,
-        FIFO = 2,
-        FIFO_RELAXED = 3
-        // SHARED_DEMAND_REFRESH = 1000111000,
-        // SHARED_CONTINUOUS_REFRESH = 1000111001
-    };
-    uint32_t allowedPresentModeCount;
-    const PresentMode* preferredPresentModes;
-    uint32_t width;
-    uint32_t height;
-    uint32_t preferredImageCount;
-    drv::SwapchainPtr oldSwapchain;
-    bool clipped;  // invisible pixels
-};
 
 struct PresentInfo
 {
@@ -1372,5 +1351,31 @@ struct TextureInfo
 };
 
 ImageAspectBitType get_format_aspects(ImageFormat format);
+
+struct SwapchainCreateInfo
+{
+    uint32_t allowedFormatCount;
+    const ImageFormat* formatPreferences;
+    enum PresentMode
+    {
+        IMMEDIATE = 0,
+        MAILBOX = 1,
+        FIFO = 2,
+        FIFO_RELAXED = 3
+        // SHARED_DEMAND_REFRESH = 1000111000,
+        // SHARED_CONTINUOUS_REFRESH = 1000111001
+    };
+    uint32_t allowedPresentModeCount;
+    const PresentMode* preferredPresentModes;
+    uint32_t width;
+    uint32_t height;
+    uint32_t preferredImageCount;
+    drv::SwapchainPtr oldSwapchain;
+    bool clipped;  // invisible pixels
+    ImageCreateInfo::UsageType usage;
+    SharingType sharingType;
+    unsigned int familyCount = 0;
+    QueueFamilyPtr* families = nullptr;
+};
 
 };  // namespace drv

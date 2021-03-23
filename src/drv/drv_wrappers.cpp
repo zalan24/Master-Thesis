@@ -1,6 +1,7 @@
 #include "drv_wrappers.h"
 
 #include <algorithm>
+#include <iterator>
 #include <vector>
 
 #include <corecontext.h>
@@ -1151,6 +1152,10 @@ SwapchainCreateInfo Swapchain::getSwapchainInfo(uint32_t width, uint32_t height)
     ret.preferredImageCount = createInfo.preferredImageCount;
     ret.oldSwapchain = ptr;
     ret.clipped = createInfo.clipped;
+    ret.usage = usages;
+    ret.sharingType = sharingType;
+    ret.familyCount = static_cast<unsigned int>(userFamilies.size());
+    ret.families = userFamilies.data();
     return ret;
 }
 
@@ -1159,6 +1164,13 @@ Swapchain::Swapchain(drv::PhysicalDevicePtr physicalDevice, LogicalDevicePtr _de
   : createInfo(info), device(_device), ptr(NULL_HANDLE) {
     currentWidth = window->getWidth();
     currentHeight = window->getHeight();
+    userFamilies.resize(info.userQueues.size());
+    std::transform(info.userQueues.begin(), info.userQueues.end(), userFamilies.begin(),
+                   [this](QueuePtr queue) { return drv::get_queue_family(device, queue); });
+    std::sort(userFamilies.begin(), userFamilies.end());
+    userFamilies.erase(std::unique(userFamilies.begin(), userFamilies.end()), userFamilies.end());
+    usages = info.usages;
+    sharingType = info.sharingType;
     if (currentWidth > 0 && currentHeight > 0) {
         SwapchainCreateInfo swapchainInfo = getSwapchainInfo(currentWidth, currentHeight);
         ptr = create_swapchain(physicalDevice, device, window, &swapchainInfo);

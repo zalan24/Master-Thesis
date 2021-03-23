@@ -10,6 +10,7 @@
 #include "vulkan_buffer.h"
 #include "vulkan_enum_compare.h"
 #include "vulkan_image.h"
+#include "vulkan_swapchain.h"
 
 inline uint32_t convertFamily(drv::QueueFamilyPtr family) {
     return static_cast<uint32_t>(
@@ -23,6 +24,10 @@ inline drv::QueueFamilyPtr convertFamily(uint32_t id) {
 
 inline VkBuffer convertBuffer(drv::BufferPtr buffer) {
     return reinterpret_cast<drv_vulkan::Buffer*>(buffer)->buffer;
+}
+
+inline drv_vulkan::Swapchain* convertSwapchain(drv::SwapchainPtr swapchain) {
+    return reinterpret_cast<drv_vulkan::Swapchain*>(swapchain);
 }
 
 inline drv_vulkan::Image* convertImage(drv::ImagePtr image) {

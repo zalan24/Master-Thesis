@@ -557,6 +557,9 @@ class Swapchain
         std::vector<SwapchainCreateInfo::PresentMode> preferredPresentModes;
         uint32_t preferredImageCount;
         bool clipped;  // invisible pixels
+        ImageCreateInfo::UsageType usages;
+        SharingType sharingType;
+        std::vector<QueuePtr> userQueues;  // required for exclusive resources
     };
 
     Swapchain(PhysicalDevicePtr physicalDevice, LogicalDevicePtr device, IWindow* window,
@@ -585,7 +588,10 @@ class Swapchain
     uint32_t acquiredIndex = INVALID_INDEX;
     uint32_t currentWidth = 0;
     uint32_t currentHeight = 0;
+    ImageCreateInfo::UsageType usages;
+        SharingType sharingType;
     std::vector<ImagePtr> images;
+    std::vector<QueueFamilyPtr> userFamilies;
 
     void close();
     SwapchainCreateInfo getSwapchainInfo(uint32_t width, uint32_t height);

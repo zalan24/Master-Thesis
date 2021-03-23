@@ -181,7 +181,6 @@ class Engine
         SyncBlock(drv::LogicalDevicePtr device, uint32_t maxFramesInFlight);
     };
 
-
     Config config;
 
     Logger logger;
@@ -243,5 +242,6 @@ class Engine
 
     static drv::PhysicalDevice::SelectionInfo get_device_selection_info(
       drv::InstancePtr instance, const drv::DeviceExtensions& deviceExtensions);
-    static drv::Swapchain::CreateInfo get_swapchain_create_info(const Config& config);
+    static drv::Swapchain::CreateInfo get_swapchain_create_info(const Config& config,
+                                                                drv::QueuePtr present_queue);
 };

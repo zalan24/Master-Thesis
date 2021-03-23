@@ -16,11 +16,7 @@ using namespace drv_vulkan;
 
 drv::ImagePtr DrvVulkan::create_image(drv::LogicalDevicePtr device,
                                       const drv::ImageCreateInfo* info) {
-    StackMemory::MemoryHandle<uint32_t> familyMemory(info->familyCount, TEMPMEM);
-    uint32_t* families = familyMemory.get();
-    drv::drv_assert(families != nullptr || info->familyCount == 0,
-                    "Could not allocate memory for create image families");
-
+    StackMemory::MemoryHandle<uint32_t> families(info->familyCount, TEMPMEM);
     for (uint32_t i = 0; i < info->familyCount; ++i)
         families[i] = convertFamily(info->families[i]);
 
