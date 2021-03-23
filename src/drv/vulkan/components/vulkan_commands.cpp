@@ -46,12 +46,8 @@ bool DrvVulkanResourceTracker::end_primary_command_buffer(drv::CommandBufferPtr 
 void DrvVulkanResourceTracker::cmd_clear_image(
   drv::CommandBufferPtr cmdBuffer, drv::ImagePtr image, const drv::ClearColorValue* clearColors,
   uint32_t ranges, const drv::ImageSubresourceRange* subresourceRanges) {
-    StackMemory::MemoryHandle<VkImageSubresourceRange> subresourceRangesMem(ranges, TEMPMEM);
-    VkImageSubresourceRange* vkRanges = subresourceRangesMem.get();
-    drv::drv_assert(vkRanges != nullptr || ranges == 0);
-    StackMemory::MemoryHandle<VkClearColorValue> colorValueMem(ranges, TEMPMEM);
-    VkClearColorValue* vkValues = colorValueMem.get();
-    drv::drv_assert(vkValues != nullptr || ranges == 0);
+    StackMemory::MemoryHandle<VkImageSubresourceRange> vkRanges(ranges, TEMPMEM);
+    StackMemory::MemoryHandle<VkClearColorValue> vkValues(ranges, TEMPMEM);
 
     drv::ImageLayoutMask requiredLayoutMask =
       static_cast<drv::ImageLayoutMask>(drv::ImageLayout::TRANSFER_DST_OPTIMAL)
@@ -82,12 +78,12 @@ void DrvVulkanResourceTracker::cmd_clear_image(
 drv::PipelineStages DrvVulkanResourceTracker::cmd_image_barrier(
   drv::CommandBufferPtr cmdBuffer, const drv::ImageMemoryBarrier& barrier, drv::EventPtr event) {
     drv::PipelineStages dstStages = drv::get_image_usage_stages(barrier.usages);
-    drv::MemoryBarrier::AccessFlagBitType invalidateMask =
+    drv::MemoryBarrier::AccessFlagBitType accessMask =
       drv::get_image_usage_accesses(barrier.usages);
-    bool flush = true;  // no reason not to flush
+    bool flush = !barrier.discardCurrentContent;
     // extra sync is only placed, if it has dirty cache
     return add_memory_sync(cmdBuffer, barrier.image, barrier.numSubresourceRanges,
-                           barrier.getRanges(), flush, dstStages, invalidateMask,
+                           barrier.getRanges(), flush, dstStages, accessMask,
                            !convertImage(barrier.image)->sharedResource
                              && barrier.requestedOwnership != drv::NULL_HANDLE,
                            barrier.requestedOwnership, barrier.transitionLayout,

@@ -1153,7 +1153,7 @@ SwapchainCreateInfo Swapchain::getSwapchainInfo(uint32_t width, uint32_t height)
     ret.oldSwapchain = ptr;
     ret.clipped = createInfo.clipped;
     ret.usage = usages;
-    ret.sharingType = sharingType;
+    ret.sharingType = userFamilies.size() > 1 ? sharingType : drv::SharingType::EXCLUSIVE;
     ret.familyCount = static_cast<unsigned int>(userFamilies.size());
     ret.families = userFamilies.data();
     return ret;

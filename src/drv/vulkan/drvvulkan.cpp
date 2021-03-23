@@ -172,6 +172,7 @@ void DrvVulkanResourceTracker::add_memory_sync(
   drv::PipelineStages dstStages, drv::MemoryBarrier::AccessFlagBitType invalidateMask,
   bool transferOwnership, drv::QueueFamilyPtr newOwner, drv::PipelineStages& barrierSrcStage,
   drv::PipelineStages& barrierDstStage, ResourceBarrier& barrier) {
+    TODO;  // do we actually need this? 'subresourceData.ongoingInvalidations'
     const drv::PipelineStages::FlagType stages = dstStages.resolve(queueSupport);
     if (config.forceInvalidateAll)
         invalidateMask = drv::MemoryBarrier::get_all_read_bits();
@@ -179,7 +180,8 @@ void DrvVulkanResourceTracker::add_memory_sync(
         barrierDstStage.add(drv::PipelineStages::ALL_COMMANDS_BIT);
         barrierSrcStage.add(drv::PipelineStages::ALL_COMMANDS_BIT);
     }
-    if (transferOwnership && resourceData.ownership != newOwner) {
+    if (transferOwnership && resourceData.ownership != newOwner
+        && resourceData.ownership != drv::NULL_HANDLE) {
         barrier.srcFamily = resourceData.ownership;
         barrier.dstFamily = newOwner;
         resourceData.ownership = newOwner;
@@ -227,11 +229,12 @@ void DrvVulkanResourceTracker::appendBarrier(drv::CommandBufferPtr cmdBuffer,
                                              ImageSingleSubresourceMemoryBarrier&& imageBarrier,
                                              drv::EventPtr event) {
     if (!(srcStage.resolve(queueSupport) & (~drv::PipelineStages::TOP_OF_PIPE_BIT))
-        || dstStage.stageFlags == 0) {
+        && dstStage.stageFlags == 0) {
         drv::drv_assert(imageBarrier.dstAccessFlags == 0
                         && imageBarrier.dstFamily == imageBarrier.srcFamily
                         && imageBarrier.newLayout == imageBarrier.oldLayout
                         && imageBarrier.sourceAccessFlags == 0);
+        return;
     }
     ImageMemoryBarrier barrier;
     static_cast<ResourceBarrier&>(barrier) = static_cast<ResourceBarrier&>(imageBarrier);
@@ -248,11 +251,12 @@ void DrvVulkanResourceTracker::appendBarrier(drv::CommandBufferPtr cmdBuffer,
                                              ImageMemoryBarrier&& imageBarrier,
                                              drv::EventPtr event) {
     if (!(srcStage.resolve(queueSupport) & (~drv::PipelineStages::TOP_OF_PIPE_BIT))
-        || dstStage.stageFlags == 0) {
+        && dstStage.stageFlags == 0) {
         drv::drv_assert(imageBarrier.dstAccessFlags == 0
                         && imageBarrier.dstFamily == imageBarrier.srcFamily
                         && imageBarrier.newLayout == imageBarrier.oldLayout
                         && imageBarrier.sourceAccessFlags == 0);
+        return;
     }
     BarrierInfo barrier;
     barrier.srcStages = config.forceAllSrcStages ? drv::PipelineStages::ALL_COMMANDS_BIT : srcStage;

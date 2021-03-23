@@ -559,7 +559,7 @@ class Swapchain
         bool clipped;  // invisible pixels
         ImageCreateInfo::UsageType usages;
         SharingType sharingType;
-        std::vector<QueuePtr> userQueues;  // required for exclusive resources
+        std::vector<QueuePtr> userQueues;
     };
 
     Swapchain(PhysicalDevicePtr physicalDevice, LogicalDevicePtr device, IWindow* window,

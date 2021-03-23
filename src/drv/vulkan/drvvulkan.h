@@ -233,7 +233,7 @@ class DrvVulkanResourceTracker final : public drv::ResourceTracker
                                         uint32_t numSubresourceRanges,
                                         const drv::ImageSubresourceRange* subresourceRanges,
                                         bool flush, drv::PipelineStages dstStages,
-                                        drv::MemoryBarrier::AccessFlagBitType invalidateMask,
+                                        drv::MemoryBarrier::AccessFlagBitType accessMask,
                                         bool transferOwnership, drv::QueueFamilyPtr newOwner,
                                         bool transitionLayout, bool discardContent,
                                         drv::ImageLayout resultLayout, drv::EventPtr event);
@@ -352,15 +352,14 @@ class DrvVulkanResourceTracker final : public drv::ResourceTracker
     void add_memory_sync(drv_vulkan::PerResourceTrackData& resourceData,
                          drv_vulkan::PerSubresourceRangeTrackData& subresourceData, bool flush,
                          drv::PipelineStages dstStages,
-                         drv::MemoryBarrier::AccessFlagBitType invalidateMask,
-                         bool transferOwnership, drv::QueueFamilyPtr newOwner,
-                         drv::PipelineStages& barrierSrcStage, drv::PipelineStages& barrierDstStage,
-                         ResourceBarrier& barrier);
+                         drv::MemoryBarrier::AccessFlagBitType accessMask, bool transferOwnership,
+                         drv::QueueFamilyPtr newOwner, drv::PipelineStages& barrierSrcStage,
+                         drv::PipelineStages& barrierDstStage, ResourceBarrier& barrier);
     drv::PipelineStages add_memory_sync(drv::CommandBufferPtr cmdBuffer, drv::ImagePtr image,
                                         uint32_t mipLevel, uint32_t arrayIndex,
                                         drv::AspectFlagBits aspect, bool flush,
                                         drv::PipelineStages dstStages,
-                                        drv::MemoryBarrier::AccessFlagBitType invalidateMask,
+                                        drv::MemoryBarrier::AccessFlagBitType accessMask,
                                         bool transferOwnership, drv::QueueFamilyPtr newOwner,
                                         bool transitionLayout, bool discardContent,
                                         drv::ImageLayout resultLayout, drv::EventPtr event);

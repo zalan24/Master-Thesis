@@ -243,5 +243,6 @@ class Engine
     static drv::PhysicalDevice::SelectionInfo get_device_selection_info(
       drv::InstancePtr instance, const drv::DeviceExtensions& deviceExtensions);
     static drv::Swapchain::CreateInfo get_swapchain_create_info(const Config& config,
-                                                                drv::QueuePtr present_queue);
+                                                                drv::QueuePtr present_queue,
+                                                                drv::QueuePtr render_queue);
 };

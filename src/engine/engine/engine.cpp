@@ -23,18 +23,23 @@
 static void callback(const drv::CallbackData* data) {
     switch (data->type) {
         case drv::CallbackData::Type::VERBOSE:
+            // LOG_DRIVER_API("Driver info: %s", data->text);
             break;
         case drv::CallbackData::Type::NOTE:
-            std::cout << data->text << std::endl;
+            LOG_DRIVER_API("Driver note: %s", data->text);
+            // std::cout << data->text << std::endl;
             break;
         case drv::CallbackData::Type::WARNING:
-            std::cerr << data->text << std::endl;
+            LOG_F(WARNING, "Driver warning: %s", data->text);
+            // std::cerr << data->text << std::endl;
             break;
         case drv::CallbackData::Type::ERROR:
-            std::cerr << data->text << std::endl;
+            LOG_F(ERROR, "Driver error: %s", data->text);
+            // std::cerr << data->text << std::endl;
             throw std::runtime_error(std::string{data->text});
         case drv::CallbackData::Type::FATAL:
-            std::cerr << data->text << std::endl;
+            LOG_F(ERROR, "Driver warning: %s", data->text);
+            // std::cerr << data->text << std::endl;
             std::abort();
     }
 }
@@ -109,7 +114,8 @@ Engine::Engine(int argc, char* argv[], const std::string& configFile,
 }
 
 drv::Swapchain::CreateInfo Engine::get_swapchain_create_info(const Config& config,
-                                                             drv::QueuePtr present_queue) {
+                                                             drv::QueuePtr present_queue,
+                                                             drv::QueuePtr render_queue) {
     drv::Swapchain::CreateInfo ret;
     ret.clipped = true;
     ret.preferredImageCount = static_cast<uint32_t>(config.imagesInSwapchain);
@@ -120,7 +126,7 @@ drv::Swapchain::CreateInfo Engine::get_swapchain_create_info(const Config& confi
                                  drv::SwapchainCreateInfo::PresentMode::FIFO};
     ret.sharingType = drv::SharingType::CONCURRENT;  // TODO use exclusive
     ret.usages = drv::ImageCreateInfo::TRANSFER_DST_BIT;
-    ret.userQueues = {present_queue};
+    ret.userQueues = {present_queue, render_queue};
     return ret;
 }
 
@@ -174,7 +180,7 @@ Engine::Engine(int argc, char* argv[], const Config& cfg, const std::string& sha
     inputQueue(queueManager.getQueue({"input", "HtoD"})),
     cmdBufferBank(device),
     swapchain(physicalDevice, device, window,
-              get_swapchain_create_info(config, presentQueue.queue)),
+              get_swapchain_create_info(config, presentQueue.queue, renderQueue.queue)),
     eventPool(device),
     syncBlock(device, safe_cast<uint32_t>(config.maxFramesInFlight)),
     shaderBin(shaderbinFile),

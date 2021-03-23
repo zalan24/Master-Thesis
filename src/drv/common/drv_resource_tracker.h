@@ -43,7 +43,7 @@ class ResourceTracker
         bool forceAllSrcStages = false;
         bool forceFlush = false;
         bool forceInvalidateAll = false;
-        bool syncAllOperations;
+        bool syncAllOperations = false;
     };
 
     virtual PipelineStages cmd_image_barrier(CommandBufferPtr cmdBuffer,
