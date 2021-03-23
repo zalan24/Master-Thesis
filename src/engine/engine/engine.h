@@ -76,6 +76,7 @@ class Engine
     struct AcquiredImageData
     {
         drv::ImagePtr image;
+        uint32_t imageIndex;
         drv::SemaphorePtr imageAvailableSemaphore;
         drv::SemaphorePtr renderFinishedSemaphore;
     };
@@ -237,7 +238,7 @@ class Engine
     void executeCommandsLoop();
     void cleanUpLoop(const volatile std::atomic<FrameId>* stopFrame);
     bool execute(FrameId& executionFrame, ExecutionPackage&& package);
-    void present(FrameId presentFrame);
+    void present(FrameId presentFrame, uint32_t imageIndex);
     bool sampleInput(FrameId frameId);
 
     static drv::PhysicalDevice::SelectionInfo get_device_selection_info(

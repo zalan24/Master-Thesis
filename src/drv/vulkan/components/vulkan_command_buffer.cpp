@@ -43,26 +43,13 @@ bool DrvVulkan::execute(drv::QueuePtr queue, unsigned int count, const drv::Exec
         waitSemaphoreCount += infos[i].numWaitSemaphores + infos[i].numWaitTimelineSemaphores;
         signalSemaphoreCount += infos[i].numSignalSemaphores + infos[i].numSignalTimelineSemaphores;
     }
-    StackMemory::MemoryHandle<VkSubmitInfo> submitInfosMemory(count, TEMPMEM);
-    StackMemory::MemoryHandle<VkTimelineSemaphoreSubmitInfo> submitTimelineInfosMemory(count,
-                                                                                       TEMPMEM);
-    StackMemory::MemoryHandle<VkSemaphore> semaphoresMem(
-      (waitSemaphoreCount + signalSemaphoreCount), TEMPMEM);
-    StackMemory::MemoryHandle<uint64_t> semaphoreValuesMem(
-      (waitSemaphoreCount + signalSemaphoreCount), TEMPMEM);
-    StackMemory::MemoryHandle<VkPipelineStageFlags> waitStageMem(waitSemaphoreCount, TEMPMEM);
-    VkSubmitInfo* submitInfos = reinterpret_cast<VkSubmitInfo*>(submitInfosMemory.get());
-    drv::drv_assert(submitInfos != nullptr, "Could not allocate memory for submit infos");
-    VkTimelineSemaphoreSubmitInfo* submitTimelineInfos =
-      reinterpret_cast<VkTimelineSemaphoreSubmitInfo*>(submitTimelineInfosMemory.get());
-    drv::drv_assert(submitTimelineInfos != nullptr,
-                    "Could not allocate memory for submit timeline infos");
-    VkSemaphore* semaphores = reinterpret_cast<VkSemaphore*>(semaphoresMem.get());
-    drv::drv_assert(semaphores != nullptr, "Could not allocate semaphores memory");
-    uint64_t* values = reinterpret_cast<uint64_t*>(semaphoreValuesMem.get());
-    drv::drv_assert(values != nullptr, "Could not allocate semaphore values memory");
-    VkPipelineStageFlags* waitStages = reinterpret_cast<VkPipelineStageFlags*>(waitStageMem.get());
-    drv::drv_assert(waitStages != nullptr, "Could not allocate wait stages memory");
+    StackMemory::MemoryHandle<VkSubmitInfo> submitInfos(count, TEMPMEM);
+    StackMemory::MemoryHandle<VkTimelineSemaphoreSubmitInfo> submitTimelineInfos(count, TEMPMEM);
+    StackMemory::MemoryHandle<VkSemaphore> semaphores((waitSemaphoreCount + signalSemaphoreCount),
+                                                      TEMPMEM);
+    StackMemory::MemoryHandle<uint64_t> values((waitSemaphoreCount + signalSemaphoreCount),
+                                               TEMPMEM);
+    StackMemory::MemoryHandle<VkPipelineStageFlags> waitStages(waitSemaphoreCount, TEMPMEM);
 
     uint32_t semaphoreId = 0;
 

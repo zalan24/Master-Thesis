@@ -334,11 +334,11 @@ void Engine::simulationLoop(volatile std::atomic<FrameId>* simulationFrame,
     }
 }
 
-void Engine::present(FrameId presentFrame) {
+void Engine::present(FrameId presentFrame, uint32_t imageIndex) {
     UNUSED(presentFrame);
     drv::PresentInfo info;
     info.semaphoreCount = 1;
-    drv::SemaphorePtr semaphore = syncBlock.renderFinishedSemaphores[acquireImageSemaphoreId];
+    drv::SemaphorePtr semaphore = syncBlock.renderFinishedSemaphores[imageIndex];
     info.waitSemaphores = &semaphore;
     drv::PresentResult result = swapchain.present(presentQueue.queue, info);
     // TODO;  // what's gonna wait on this?
@@ -365,11 +365,13 @@ Engine::AcquiredImageData Engine::acquiredSwapchainImage(
         ret.image = swapchain.getAcquiredImage();
         ret.imageAvailableSemaphore = syncBlock.imageAvailableSemaphores[acquireImageSemaphoreId];
         ret.renderFinishedSemaphore = syncBlock.renderFinishedSemaphores[acquireImageSemaphoreId];
+        ret.imageIndex = acquireImageSemaphoreId;
     }
     else {
         ret.image = drv::NULL_HANDLE;
         ret.imageAvailableSemaphore = drv::NULL_HANDLE;
         ret.renderFinishedSemaphore = drv::NULL_HANDLE;
+        ret.imageIndex = 0;
     }
     acquireImageSemaphoreId =
       (acquireImageSemaphoreId + 1) % syncBlock.imageAvailableSemaphores.size();
@@ -403,6 +405,7 @@ void Engine::recordCommandsLoop(const volatile std::atomic<FrameId>* stopFrame) 
               ->push(ExecutionPackage(ExecutionPackage::MessagePackage{
                 ExecutionPackage::Message::RECORD_START, recordFrame, 0, nullptr}));
         }
+        const uint32_t presentFrame = acquireImageSemaphoreId;
         renderer->record(frameGraph, recordFrame);
         {
             FrameGraph::NodeHandle presentHandle =
@@ -414,7 +417,7 @@ void Engine::recordCommandsLoop(const volatile std::atomic<FrameId>* stopFrame) 
             if (swapchain.getAcquiredImage() != drv::NULL_HANDLE) {
                 frameGraph.getExecutionQueue(presentHandle)
                   ->push(ExecutionPackage(ExecutionPackage::MessagePackage{
-                    ExecutionPackage::Message::PRESENT, recordFrame, 0, nullptr}));
+                    ExecutionPackage::Message::PRESENT, recordFrame, presentFrame, nullptr}));
             }
         }
         {
@@ -465,7 +468,7 @@ bool Engine::execute(FrameId& executionFrame, ExecutionPackage&& package) {
                 // std::cout << "Execute end: " << message.value1 << std::endl;
             } break;
             case ExecutionPackage::Message::PRESENT:
-                present(message.value1);
+                present(message.value1, static_cast<uint32_t>(message.value2));
                 break;
             case ExecutionPackage::Message::RECURSIVE_END_MARKER:
                 break;
