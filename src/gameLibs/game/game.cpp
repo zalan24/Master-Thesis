@@ -48,8 +48,8 @@ void Game::initSimulationFrameGraph(FrameGraph& frameGraph,
 void Game::record(FrameGraph& frameGraph, FrameId frameId) {
     std::cout << "Record: " << frameId << std::endl;
     Engine::QueueInfo queues = engine->getQueues();
-    FrameGraph::NodeHandle testDrawHandle = frameGraph.acquireNode(testDraw, frameId);
-    if (testDrawHandle) {
+    if (FrameGraph::NodeHandle testDrawHandle = frameGraph.acquireNode(testDraw, frameId);
+        testDrawHandle) {
         std::this_thread::sleep_for(std::chrono::milliseconds(4));
         Engine::AcquiredImageData swapChainData = engine->acquiredSwapchainImage(testDrawHandle);
         Engine::CommandBufferRecorder recorder =
@@ -68,7 +68,7 @@ void Game::record(FrameGraph& frameGraph, FrameId frameId) {
         // TODO according to vulkan spec https://khronos.org/registry/vulkan/specs/1.2-extensions/man/html/vkQueuePresentKHR.html
         // memory is made visible to all read operations (add this to tracker?) -- only available memory
         recorder.cmdSignalSemaphore(swapChainData.renderFinishedSemaphore);
-        // recorder.finishQueueWork();
+        recorder.finishQueueWork();
     }
     else
         assert(frameGraph.isStopped());

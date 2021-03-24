@@ -41,8 +41,8 @@ using ImageViewPtr = Ptr;
 using ShaderIdType = StrHash;
 #define SHADER(name) (#name##_hash)
 
-static const Ptr NULL_HANDLE = nullptr;
-static const QueueFamilyPtr IGNORE_FAMILY = nullptr;
+static constexpr Ptr NULL_HANDLE = nullptr;
+static constexpr QueueFamilyPtr IGNORE_FAMILY = nullptr;
 
 struct InstanceCreateInfo
 {

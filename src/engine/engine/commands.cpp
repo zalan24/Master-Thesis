@@ -69,3 +69,8 @@ void Engine::CommandBufferRecorder::cmdSignalTimelineSemaphore(drv::TimelineSema
                                                                uint64_t signalValue) {
     signalTimelineSemaphores.push_back({semaphore, signalValue});
 }
+
+void Engine::CommandBufferRecorder::finishQueueWork() {
+    FrameGraph::NodeHandle::SignalInfo signalInfo = nodeHandle->signalSemaphore(queue);
+    cmdSignalTimelineSemaphore(signalInfo.semaphore, signalInfo.signalValue);
+}

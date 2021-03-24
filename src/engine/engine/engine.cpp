@@ -7,6 +7,7 @@
 #include <sstream>
 
 #include <corecontext.h>
+#include <util.hpp>
 
 #include <drv.h>
 #include <drverror.h>
@@ -31,14 +32,17 @@ static void callback(const drv::CallbackData* data) {
             break;
         case drv::CallbackData::Type::WARNING:
             LOG_F(WARNING, "Driver warning: %s", data->text);
+            BREAK_POINT;
             // std::cerr << data->text << std::endl;
             break;
         case drv::CallbackData::Type::ERROR:
             LOG_F(ERROR, "Driver error: %s", data->text);
+            BREAK_POINT;
             // std::cerr << data->text << std::endl;
             throw std::runtime_error(data->text ? std::string{data->text} : "<0x0>");
         case drv::CallbackData::Type::FATAL:
             LOG_F(ERROR, "Driver warning: %s", data->text);
+            BREAK_POINT;
             // std::cerr << data->text << std::endl;
             std::abort();
     }
@@ -545,10 +549,12 @@ bool Engine::execute(FrameId& executionFrame, ExecutionPackage&& package) {
         executionInfo.signalTimelineSemaphores = signalTimelineSemaphores;
         executionInfo.timelineSignalValues = signalTimelineSemaphoreValues;
         drv::execute(cmdBuffer.queue, 1, &executionInfo);
-        cmdBuffer.bufferHandle.circulator->startExecution(cmdBuffer.bufferHandle);
-        garbageSystem.useGarbage([&](Garbage* trashBin) {
-            trashBin->resetCommandBuffer(std::move(cmdBuffer.bufferHandle));
-        });
+        if (cmdBuffer.bufferHandle) {
+            cmdBuffer.bufferHandle.circulator->startExecution(cmdBuffer.bufferHandle);
+            garbageSystem.useGarbage([&](Garbage* trashBin) {
+                trashBin->resetCommandBuffer(std::move(cmdBuffer.bufferHandle));
+            });
+        }
     }
     else if (std::holds_alternative<ExecutionPackage::RecursiveQueue>(package.package)) {
         ExecutionPackage::RecursiveQueue& queue =

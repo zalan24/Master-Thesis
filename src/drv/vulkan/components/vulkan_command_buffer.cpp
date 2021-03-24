@@ -64,14 +64,19 @@ bool DrvVulkan::execute(drv::QueuePtr queue, unsigned int count, const drv::Exec
         submitInfos[i].pCommandBuffers =
           reinterpret_cast<VkCommandBuffer*>(infos[i].commandBuffers);
 
-        submitInfos[i].waitSemaphoreCount =
-          infos[i].numWaitTimelineSemaphores + infos[i].numWaitSemaphores;
+        submitInfos[i].waitSemaphoreCount = 0;
+        // infos[i].numWaitTimelineSemaphores + infos[i].numWaitSemaphores;
         submitTimelineInfos[i].waitSemaphoreValueCount =
           infos[i].numWaitTimelineSemaphores + infos[i].numWaitSemaphores;
         if (infos[i].numWaitTimelineSemaphores == 0) {
             submitInfos[i].pWaitSemaphores = convertSemaphores(infos[i].waitSemaphores);
             submitInfos[i].pWaitDstStageMask =
               reinterpret_cast<VkPipelineStageFlags*>(infos[i].waitStages);
+            submitTimelineInfos[i].pWaitSemaphoreValues = &values[semaphoreId];
+            for (uint32_t j = 0; j < infos[i].numWaitSemaphores; ++j) {
+                values[semaphoreId] = 0;
+                semaphoreId++;
+            }
         }
         else if (infos[i].numWaitSemaphores == 0) {
             submitInfos[i].pWaitSemaphores = convertSemaphores(infos[i].waitTimelineSemaphores);
@@ -104,6 +109,11 @@ bool DrvVulkan::execute(drv::QueuePtr queue, unsigned int count, const drv::Exec
           infos[i].numSignalSemaphores + infos[i].numSignalTimelineSemaphores;
         if (infos[i].numSignalTimelineSemaphores == 0) {
             submitInfos[i].pSignalSemaphores = convertSemaphores(infos[i].signalSemaphores);
+            submitTimelineInfos[i].pSignalSemaphoreValues = &values[semaphoreId];
+            for (uint32_t j = 0; j < infos[i].numSignalSemaphores; ++j) {
+                values[semaphoreId] = 0;
+                semaphoreId++;
+            }
         }
         else if (infos[i].numSignalSemaphores == 0) {
             submitInfos[i].pSignalSemaphores = convertSemaphores(infos[i].signalTimelineSemaphores);

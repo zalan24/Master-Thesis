@@ -1,5 +1,6 @@
 #pragma once
 
+#include <signal.h>
 #include <cassert>
 #include <fstream>
 #include <limits>
@@ -292,3 +293,13 @@ Target safe_cast(T&& value) {
         }
     }));
 }
+
+#ifdef DEBUG
+#    ifdef _WIN32
+#        define BREAK_POINT __debugbreak()
+#    else
+#        define BREAK_POINT raise(SIGTRAP)
+#    endif
+#else
+#    define BREAK_POINT static_cast<void>(0)
+#endif
