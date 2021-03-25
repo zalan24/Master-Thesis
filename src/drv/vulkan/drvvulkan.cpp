@@ -163,14 +163,15 @@ void DrvVulkanResourceTracker::add_memory_sync(
         barrierDstStage.add(drv::PipelineStages::ALL_COMMANDS_BIT);
         barrierSrcStage.add(drv::PipelineStages::ALL_COMMANDS_BIT);
     }
-    if (transferOwnership && resourceData.ownership != newOwner
-        && resourceData.ownership != drv::NULL_HANDLE) {
-        barrier.srcFamily = resourceData.ownership;
-        barrier.dstFamily = newOwner;
+    if (transferOwnership && resourceData.ownership != newOwner) {
+        if (resourceData.ownership != drv::NULL_HANDLE) {
+            barrier.srcFamily = resourceData.ownership;
+            barrier.dstFamily = newOwner;
+            barrierDstStage.add(dstStages);
+            barrierSrcStage.add(drv::PipelineStages::TOP_OF_PIPE_BIT);
+            subresourceData.usableStages = stages;
+        }
         resourceData.ownership = newOwner;
-        barrierDstStage.add(dstStages);
-        barrierSrcStage.add(drv::PipelineStages::TOP_OF_PIPE_BIT);
-        subresourceData.usableStages = stages;
     }
     if ((config.forceFlush || flush) && subresourceData.dirtyMask != 0) {
         barrierDstStage.add(dstStages);
