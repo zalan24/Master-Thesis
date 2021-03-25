@@ -88,13 +88,13 @@ class FrameGraph
         QueueId srcQueue;
         Offset offset = 0;
     };
-    struct QueueQueueDependency
-    {
-        NodeId srcNode;
-        QueueId srcQueue;
-        QueueId dstQueue;
-        Offset offset = 0;
-    };
+    // struct QueueQueueDependency
+    // {
+    //     NodeId srcNode;
+    //     QueueId srcQueue;
+    //     QueueId dstQueue;
+    //     Offset offset = 0;
+    // };
     class Node
     {
      public:
@@ -113,7 +113,7 @@ class FrameGraph
         void addDependency(EnqueueDependency dep);
         // void addDependency(CpuQueueDependency dep);
         void addDependency(QueueCpuDependency dep);
-        void addDependency(QueueQueueDependency dep);
+        // void addDependency(QueueQueueDependency dep);
 
         friend class FrameGraph;
         friend class NodeHandle;
@@ -133,18 +133,18 @@ class FrameGraph
         std::vector<EnqueueDependency> enqDeps;
         // std::vector<CpuQueueDependency> cpuQueDeps;
         std::vector<QueueCpuDependency> queCpuDeps;
-        std::vector<QueueQueueDependency> queQueDeps;
+        // std::vector<QueueQueueDependency> queQueDeps;
         std::unique_ptr<ExecutionQueue> localExecutionQueue;
         std::vector<NodeId> enqIndirectChildren;
         std::vector<std::vector<EventReleaseCallback>> eventCallbacks;
 
         struct SyncData
         {
-            static constexpr drv::QueuePtr CPU = drv::NULL_HANDLE;
-            drv::QueuePtr queue = CPU;
+            // static constexpr drv::QueuePtr CPU = drv::NULL_HANDLE;
+            drv::QueuePtr queue = drv::NULL_HANDLE;
             drv::TimelineSemaphore semaphore;
-            bool cpu() const { return queue == CPU; }
-            explicit SyncData(drv::LogicalDevicePtr device);
+            // bool cpu() const { return queue == CPU; }
+            // explicit SyncData(drv::LogicalDevicePtr device);
             explicit SyncData(drv::LogicalDevicePtr device, drv::QueuePtr queue);
         };
 
@@ -160,7 +160,10 @@ class FrameGraph
         //   std::condition_variable enqCv;
 
         void checkAndCreateSemaphore(drv::QueuePtr queue);
+        const drv::TimelineSemaphore* getSemaphore(drv::QueuePtr queue);
     };
+
+    static uint64_t get_semaphore_value(FrameId frameId) { return frameId + 1; }
 
     class NodeHandle
     {
@@ -177,7 +180,7 @@ class FrameGraph
 
         Node& getNode() const;
 
-        uint64_t getSignalValue() const { return frameId + 1; }
+        uint64_t getSignalValue() const { return get_semaphore_value(frameId); }
 
         struct SignalInfo
         {
@@ -185,6 +188,9 @@ class FrameGraph
             uint64_t signalValue;
         };
 
+        void useQueue(QueueId queue);
+        bool wasQueueUsed(QueueId queue) const;
+        bool wasQueueUsed(drv::QueuePtr queue) const;
         SignalInfo signalSemaphore(drv::QueuePtr queue);
         // SignalInfo signalSemaphoreCpu();
 
@@ -197,6 +203,8 @@ class FrameGraph
 
         using SemaphoreFlag = uint64_t;
         SemaphoreFlag semaphoresSignalled = 0;
+        using QueueFlag = uint64_t;
+        QueueFlag queuesUsed = 0;
 
         struct NodeExecutionData
         {
@@ -213,7 +221,7 @@ class FrameGraph
     void addDependency(NodeId target, EnqueueDependency dep);
     // void addDependency(NodeId target, CpuQueueDependency dep);
     void addDependency(NodeId target, QueueCpuDependency dep);
-    void addDependency(NodeId target, QueueQueueDependency dep);
+    // void addDependency(NodeId target, QueueQueueDependency dep);
 
     NodeHandle acquireNode(NodeId node, FrameId frame);
     NodeHandle tryAcquireNode(NodeId node, FrameId frame, uint64_t timeoutNsec);

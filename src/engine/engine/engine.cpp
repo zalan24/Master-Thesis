@@ -265,8 +265,8 @@ void Engine::initGame(IRenderer* _renderer, ISimulation* _simulation) {
     frameGraph.addDependency(
       presentFrameNode, FrameGraph::QueueCpuDependency{presentFrameNode, queueInfos.presentQueue.id,
                                                        presentDepOffset});
-    frameGraph.addDependency(
-      cleanUpNode, FrameGraph::QueueCpuDependency{presentFrameNode, queueInfos.presentQueue.id, 0});
+    // frameGraph.addDependency(
+    //   cleanUpNode, FrameGraph::QueueCpuDependency{presentFrameNode, queueInfos.presentQueue.id, 0});
     frameGraph.addDependency(cleanUpNode, FrameGraph::CpuDependency{executeEndNode, 0});
     frameGraph.addDependency(recordStartNode,
                              FrameGraph::CpuDependency{cleanUpNode, cleanUpCpuOffset});
@@ -286,10 +286,12 @@ void Engine::initGame(IRenderer* _renderer, ISimulation* _simulation) {
     FrameGraph::QueueId renderQueueId;
     if (renderer->initRenderFrameGraph(frameGraph, renderData, renderNode, renderQueueId)) {
         assert(renderNode != FrameGraph::INVALID_NODE);
-        frameGraph.addDependency(presentFrameNode,
-                                 FrameGraph::QueueQueueDependency{renderNode, renderQueueId,
-                                                                  queueInfos.presentQueue.id, 0});
+        // frameGraph.addDependency(presentFrameNode,
+        //                          FrameGraph::QueueQueueDependency{renderNode, renderQueueId,
+        //                                                           queueInfos.presentQueue.id, 0});
         frameGraph.addDependency(presentFrameNode, FrameGraph::EnqueueDependency{renderNode, 0});
+        frameGraph.addDependency(cleanUpNode,
+                                 FrameGraph::QueueCpuDependency{renderNode, renderQueueId, 0});
     }
 
     frameGraph.build();
@@ -689,6 +691,7 @@ Engine::CommandBufferRecorder::CommandBufferRecorder(
     assert(cmdBuffer);
     assert(
       getResourceTracker()->begin_primary_command_buffer(cmdBuffer.commandBufferPtr, true, false));
+    nodeHandle->useQueue(queueId);
 }
 
 Engine::CommandBufferRecorder::CommandBufferRecorder(CommandBufferRecorder&& other)
