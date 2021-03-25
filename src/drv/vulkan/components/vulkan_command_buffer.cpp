@@ -64,8 +64,8 @@ bool DrvVulkan::execute(drv::QueuePtr queue, unsigned int count, const drv::Exec
         submitInfos[i].pCommandBuffers =
           reinterpret_cast<VkCommandBuffer*>(infos[i].commandBuffers);
 
-        submitInfos[i].waitSemaphoreCount = 0;
-        // infos[i].numWaitTimelineSemaphores + infos[i].numWaitSemaphores;
+        submitInfos[i].waitSemaphoreCount =
+          infos[i].numWaitTimelineSemaphores + infos[i].numWaitSemaphores;
         submitTimelineInfos[i].waitSemaphoreValueCount =
           infos[i].numWaitTimelineSemaphores + infos[i].numWaitSemaphores;
         if (infos[i].numWaitTimelineSemaphores == 0) {
