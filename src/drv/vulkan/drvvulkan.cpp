@@ -64,6 +64,11 @@ uint32_t DrvVulkan::get_num_trackers() {
     return MAX_NUM_TRACKING_SLOTS;
 }
 
+DrvVulkan::DrvVulkan() {
+    for (uint32_t id = 0; id < get_num_trackers(); ++id)
+        freeTrackingSlot[id].store(true);
+}
+
 DrvVulkan::~DrvVulkan() {
     LOG_DRIVER_API("Closing vulkan driver");
     for (uint32_t id = 0; id < get_num_trackers(); ++id) {

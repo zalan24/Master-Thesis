@@ -37,6 +37,7 @@ struct PerResourceTrackData;
 class DrvVulkan final : public drv::IDriver
 {
  public:
+    DrvVulkan();
     ~DrvVulkan() override;
 
     // --- Interface ---
@@ -188,7 +189,7 @@ class DrvVulkan final : public drv::IDriver
     std::mutex devicesDataMutex;
     std::unordered_map<drv::LogicalDevicePtr, LogicalDeviceData> devicesData;
 
-    std::atomic<bool> freeTrackingSlot[MAX_NUM_TRACKING_SLOTS] = {true};
+    std::atomic<bool> freeTrackingSlot[MAX_NUM_TRACKING_SLOTS];
 };
 
 class DrvVulkanResourceTracker final : public drv::ResourceTracker
