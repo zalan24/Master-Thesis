@@ -72,7 +72,8 @@ void Game::record(FrameGraph& frameGraph, FrameId frameId) {
         // memory is made visible to all read operations (add this to tracker?) -- only available memory
         recorder.cmdSignalSemaphore(swapChainData.renderFinishedSemaphore);
         recorder.finishQueueWork();
-        recorder.getResourceTracker()->disableCommandLog();
+        if (frameId > 3)
+            recorder.getResourceTracker()->disableCommandLog();
     }
     else
         assert(frameGraph.isStopped());
