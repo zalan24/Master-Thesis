@@ -12,7 +12,7 @@ class Garbage
 {
  public:
     Garbage() : Garbage(0) {}
-    Garbage(FrameId frameId);
+    explicit Garbage(FrameId frameId);
 
     Garbage(const Garbage&) = delete;
     Garbage& operator=(const Garbage&) = delete;
@@ -27,6 +27,8 @@ class Garbage
     void resetCommandBuffer(drv::CommandBufferCirculator::CommandBufferHandle&& cmdBuffer);
     void releaseEvent(EventPool::EventHandle&& event);
     FrameId getFrameId() const;
+
+    //  void allocate();
 
  private:
     FrameId frameId;

@@ -12,6 +12,8 @@
 #include <drvcmdbufferbank.h>
 #include <drvtypes.h>
 
+#include "garbagesystem.h"
+
 class ExecutionQueue;
 struct ExecutionPackage
 {
@@ -37,12 +39,22 @@ struct ExecutionPackage
         };
         drv::QueuePtr queue;
         drv::CommandBufferCirculator::CommandBufferHandle bufferHandle;
-        // TODO use frame mem for this
-        std::vector<SemaphoreSignalInfo> signalSemaphores;
-        std::vector<TimelineSemaphoreSignalInfo> signalTimelineSemaphores;
-        std::vector<SemaphoreWaitInfo> waitSemaphores;
-        std::vector<TimelineSemaphoreWaitInfo> waitTimelineSemaphores;
-        // TODO
+        GarbageVector<SemaphoreSignalInfo> signalSemaphores;
+        GarbageVector<TimelineSemaphoreSignalInfo> signalTimelineSemaphores;
+        GarbageVector<SemaphoreWaitInfo> waitSemaphores;
+        GarbageVector<TimelineSemaphoreWaitInfo> waitTimelineSemaphores;
+        CommandBufferPackage(drv::QueuePtr _queue,
+                             drv::CommandBufferCirculator::CommandBufferHandle _bufferHandle,
+                             GarbageVector<SemaphoreSignalInfo> _signalSemaphores,
+                             GarbageVector<TimelineSemaphoreSignalInfo> _signalTimelineSemaphores,
+                             GarbageVector<SemaphoreWaitInfo> _waitSemaphores,
+                             GarbageVector<TimelineSemaphoreWaitInfo> _waitTimelineSemaphores)
+          : queue(_queue),
+            bufferHandle(std::move(_bufferHandle)),
+            signalSemaphores(std::move(_signalSemaphores)),
+            signalTimelineSemaphores(std::move(_signalTimelineSemaphores)),
+            waitSemaphores(std::move(_waitSemaphores)),
+            waitTimelineSemaphores(std::move(_waitTimelineSemaphores)) {}
     };
 
     using Functor = std::function<void(void)>;
@@ -76,11 +88,13 @@ struct ExecutionPackage
     };
 
     std::variant<CommandBufferPackage, Functor, MessagePackage, RecursiveQueue,
-                 std::unique_ptr<CustomFunctor>>
+                 std::unique_ptr<CustomFunctor>, const void*>
       package;
     // An optional mutex maybe?
 
-    ExecutionPackage() = default;
+    operator bool() const { return !std::holds_alternative<const void*>(package); }
+
+    ExecutionPackage() : package(nullptr) {}
     ExecutionPackage(CommandBufferPackage&& p) : package(std::move(p)) {}
     ExecutionPackage(Functor&& f) : package(std::move(f)) {}
     ExecutionPackage(MessagePackage&& m) : package(std::move(m)) {}

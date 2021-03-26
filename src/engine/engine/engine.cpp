@@ -319,6 +319,7 @@ void Engine::simulationLoop(volatile std::atomic<FrameId>* simulationFrame,
                 assert(frameGraph.isStopped());
                 break;
             }
+            garbageSystem.startGarbage(*simulationFrame);
         }
         if (!sampleInput(*simulationFrame)) {
             assert(frameGraph.isStopped());
@@ -406,7 +407,6 @@ void Engine::recordCommandsLoop(const volatile std::atomic<FrameId>* stopFrame) 
                 assert(frameGraph.isStopped());
                 break;
             }
-            garbageSystem.startGarbage(recordFrame);
             frameGraph.getExecutionQueue(recStartHandle)
               ->push(ExecutionPackage(ExecutionPackage::MessagePackage{
                 ExecutionPackage::Message::RECORD_START, recordFrame, 0, nullptr}));
@@ -687,7 +687,13 @@ Engine::CommandBufferRecorder::CommandBufferRecorder(
     nodeHandle(_nodeHandle),
     frameId(_frameId),
     cmdBuffer(std::move(_cmdBuffer)),
-    resourceTracker(nodeHandle->getNode().getResourceTracker(queueId)) {
+    resourceTracker(nodeHandle->getNode().getResourceTracker(queueId)),
+    signalSemaphores(engine->garbageSystem.getAllocator<decltype(signalSemaphores)::value_type>()),
+    signalTimelineSemaphores(
+      engine->garbageSystem.getAllocator<decltype(signalTimelineSemaphores)::value_type>()),
+    waitSemaphores(engine->garbageSystem.getAllocator<decltype(waitSemaphores)::value_type>()),
+    waitTimelineSemaphores(
+      engine->garbageSystem.getAllocator<decltype(waitTimelineSemaphores)::value_type>()) {
     assert(cmdBuffer);
     assert(
       getResourceTracker()->begin_primary_command_buffer(cmdBuffer.commandBufferPtr, true, false));

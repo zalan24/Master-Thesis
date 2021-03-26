@@ -21,12 +21,10 @@
 #include <eventpool.h>
 #include <framegraph.h>
 
-// #include <entitymanager.h>
 #include <input.h>
 #include <inputmanager.h>
-// #include <renderer.h>
 #include <corecontext.h>
-#include <garbage.h>
+#include <garbagesystem.h>
 #include <resourcemanager.h>
 #include <serializable.h>
 
@@ -150,12 +148,11 @@ class Engine
         drv::CommandBufferCirculator::CommandBufferHandle cmdBuffer;
         drv::ResourceTracker* resourceTracker;
 
-        // TODO frame mem allocator
-        std::vector<ExecutionPackage::CommandBufferPackage::SemaphoreSignalInfo> signalSemaphores;
-        std::vector<ExecutionPackage::CommandBufferPackage::TimelineSemaphoreSignalInfo>
+        GarbageVector<ExecutionPackage::CommandBufferPackage::SemaphoreSignalInfo> signalSemaphores;
+        GarbageVector<ExecutionPackage::CommandBufferPackage::TimelineSemaphoreSignalInfo>
           signalTimelineSemaphores;
-        std::vector<ExecutionPackage::CommandBufferPackage::SemaphoreWaitInfo> waitSemaphores;
-        std::vector<ExecutionPackage::CommandBufferPackage::TimelineSemaphoreWaitInfo>
+        GarbageVector<ExecutionPackage::CommandBufferPackage::SemaphoreWaitInfo> waitSemaphores;
+        GarbageVector<ExecutionPackage::CommandBufferPackage::TimelineSemaphoreWaitInfo>
           waitTimelineSemaphores;
 
         void close();

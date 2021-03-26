@@ -708,6 +708,17 @@ FrameGraph::NodeHandle::SignalInfo FrameGraph::NodeHandle::signalSemaphore(drv::
 void FrameGraph::NodeHandle::close() {
     if (frameGraph) {
         Node& n = *frameGraph->getNode(node);
+
+        auto signalSemaphores =
+          make_vector<ExecutionPackage::CommandBufferPackage::SemaphoreSignalInfo>(
+            frameGraph->garbageSystem);
+        auto waitSemaphores =
+          make_vector<ExecutionPackage::CommandBufferPackage::SemaphoreWaitInfo>(
+            frameGraph->garbageSystem);
+        auto waitTimelineSemaphores =
+          make_vector<ExecutionPackage::CommandBufferPackage::TimelineSemaphoreWaitInfo>(
+            frameGraph->garbageSystem);
+
         SemaphoreFlag flag = 1;
         bool clean = true;
         for (uint32_t i = 0; i < n.semaphores.size(); ++i) {
@@ -719,13 +730,18 @@ void FrameGraph::NodeHandle::close() {
                 ExecutionPackage::CommandBufferPackage::TimelineSemaphoreSignalInfo signal;
                 signal.semaphore = n.semaphores[i].semaphore;
                 signal.signalValue = getSignalValue();
-                // TODO frame mem
-                std::vector<ExecutionPackage::CommandBufferPackage::TimelineSemaphoreSignalInfo>
-                  signalTimelineSemaphores;
+                auto signalTimelineSemaphores =
+                  make_vector<ExecutionPackage::CommandBufferPackage::TimelineSemaphoreSignalInfo>(
+                    frameGraph->garbageSystem);
                 signalTimelineSemaphores.push_back(std::move(signal));
                 // TODO wait on semaphores to apply transitive dependencies
-                q->push(ExecutionPackage(ExecutionPackage::CommandBufferPackage{
-                  n.semaphores[i].queue, {}, {}, std::move(signalTimelineSemaphores), {}, {}}));
+                q->push(ExecutionPackage(
+                  ExecutionPackage::CommandBufferPackage{n.semaphores[i].queue,
+                                                         {},
+                                                         signalSemaphores,
+                                                         std::move(signalTimelineSemaphores),
+                                                         waitSemaphores,
+                                                         waitTimelineSemaphores}));
             }
             flag <<= 1;
         }
