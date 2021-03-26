@@ -33,7 +33,8 @@ bool DrvVulkan::get_physical_devices(drv::InstancePtr _instance, unsigned int* c
         vkGetPhysicalDeviceProperties(devices[i], &deviceProperties);
         // vkGetPhysicalDeviceFeatures(devices[i], &deviceFeatures);
 
-        LOG_DRIVER_API("Device found <%p>: %s", devices[i], deviceProperties.deviceName);
+        LOG_DRIVER_API("Device found <%p>: %s", static_cast<const void*>(devices[i]),
+                       deviceProperties.deviceName);
 
         switch (deviceProperties.deviceType) {
             case VK_PHYSICAL_DEVICE_TYPE_OTHER:
@@ -82,7 +83,8 @@ bool DrvVulkan::get_physical_device_queue_families(drv::PhysicalDevicePtr physic
     std::vector<VkQueueFamilyProperties> vkQueueFamilies(*count);
     vkGetPhysicalDeviceQueueFamilyProperties(convertPhysicalDevice(physicalDevice), count,
                                              vkQueueFamilies.data());
-    LOG_DRIVER_API("Listing queue families on device <%p>", convertPhysicalDevice(physicalDevice));
+    LOG_DRIVER_API("Listing queue families on device <%p>",
+                   static_cast<const void*>(convertPhysicalDevice(physicalDevice)));
     for (unsigned int i = 0; i < *count; ++i) {
         LOG_DRIVER_API("#%d/%d: support:(Graphics%c Compute%c Transfer%c), queues:%d", i + 1,
                        *count, vkQueueFamilies[i].queueFlags & VK_QUEUE_GRAPHICS_BIT ? '+' : '-',

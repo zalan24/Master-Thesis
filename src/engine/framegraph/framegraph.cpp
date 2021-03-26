@@ -461,7 +461,7 @@ FrameGraph::NodeHandle FrameGraph::tryAcquireNode(NodeId nodeId, FrameId frame,
                   sourceNode->getSemaphore(getQueue(dep.srcQueue));
                 semaphore) {
                 if (!semaphore->wait(get_semaphore_value(requiredFrame),
-                                     (maxDuration - duration).count()))
+                                     static_cast<uint64_t>((maxDuration - duration).count())))
                     return NodeHandle();
             }
         }

@@ -15,7 +15,8 @@ drv::LogicalDevicePtr DrvVulkan::create_logical_device(const drv::LogicalDeviceC
     std::vector<VkDeviceQueueCreateInfo> queues(info->queueInfoCount);
     LogicalDeviceData deviceData;
     LOG_DRIVER_API("Creating logical device with queues <%p>: %d",
-                   convertPhysicalDevice(info->physicalDevice), info->queueInfoCount);
+                   static_cast<const void*>(convertPhysicalDevice(info->physicalDevice)),
+                   info->queueInfoCount);
     for (unsigned int i = 0; i < info->queueInfoCount; ++i) {
         std::stringstream priorities;
         for (uint32_t j = 0; j < info->queueInfoPtr[i].count; ++j)
@@ -62,8 +63,9 @@ drv::LogicalDevicePtr DrvVulkan::create_logical_device(const drv::LogicalDeviceC
     VkResult result =
       vkCreateDevice(convertPhysicalDevice(info->physicalDevice), &createInfo, nullptr, &device);
     drv::drv_assert(result == VK_SUCCESS, "Logical device could not be created");
-    LOG_DRIVER_API("Logical device created <%p> for physical device: %p", convertDevice(device),
-                   convertPhysicalDevice(info->physicalDevice));
+    LOG_DRIVER_API("Logical device created <%p> for physical device: %p",
+                   static_cast<const void*>(convertDevice(device)),
+                   static_cast<const void*>(convertPhysicalDevice(info->physicalDevice)));
 
     drv::LogicalDevicePtr ret = reinterpret_cast<drv::LogicalDevicePtr>(device);
     {
@@ -78,7 +80,7 @@ bool DrvVulkan::delete_logical_device(drv::LogicalDevicePtr device) {
         std::unique_lock<std::mutex> lock(devicesDataMutex);
         devicesData.erase(device);
     }
-    LOG_DRIVER_API("Destroy logical device <%p>", convertDevice(device));
+    LOG_DRIVER_API("Destroy logical device <%p>", static_cast<const void*>(convertDevice(device)));
     vkDestroyDevice(reinterpret_cast<VkDevice>(device), nullptr);
     return true;
 }

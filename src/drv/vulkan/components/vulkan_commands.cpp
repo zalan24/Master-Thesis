@@ -25,7 +25,8 @@ bool DrvVulkanResourceTracker::begin_primary_command_buffer(drv::CommandBufferPt
     VkResult result = vkBeginCommandBuffer(convertCommandBuffer(cmdBuffer), &info);
 #ifdef DEBUG
     if (commandLogEnabled)
-        LOG_COMMAND("Cmd begin command buffer: <%p>", convertCommandBuffer(cmdBuffer));
+        LOG_COMMAND("Cmd begin command buffer: <%p>",
+                    static_cast<const void*>(convertCommandBuffer(cmdBuffer)));
 #endif
     return result == VK_SUCCESS;
 }
@@ -38,7 +39,8 @@ bool DrvVulkanResourceTracker::end_primary_command_buffer(drv::CommandBufferPtr 
     VkResult result = vkEndCommandBuffer(convertCommandBuffer(cmdBuffer));
 #ifdef DEBUG
     if (commandLogEnabled)
-        LOG_COMMAND("Cmd end command buffer: <%p>", convertCommandBuffer(cmdBuffer));
+        LOG_COMMAND("Cmd end command buffer: <%p>",
+                    static_cast<const void*>(convertCommandBuffer(cmdBuffer)));
 #endif
     return result == VK_SUCCESS;
 }
@@ -67,8 +69,9 @@ void DrvVulkanResourceTracker::cmd_clear_image(
 
 #ifdef DEBUG
     if (commandLogEnabled)
-        LOG_COMMAND("Cmd clear image <%p>: <%p>", convertCommandBuffer(cmdBuffer),
-                    convertImage(image));
+        LOG_COMMAND("Cmd clear image <%p>: <%p>",
+                    static_cast<const void*>(convertCommandBuffer(cmdBuffer)),
+                    static_cast<const void*>(convertImage(image)));
 #endif
 
     vkCmdClearColorImage(convertCommandBuffer(cmdBuffer), convertImage(image)->image,

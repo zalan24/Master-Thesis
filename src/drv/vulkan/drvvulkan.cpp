@@ -133,7 +133,7 @@ void DrvVulkanResourceTracker::add_memory_access(PerResourceTrackData& resourceD
                                                  bool read, bool write, drv::PipelineStages stages,
                                                  drv::MemoryBarrier::AccessFlagBitType accessMask) {
     accessMask = drv::MemoryBarrier::resolve(accessMask);
-    // drv::QueueFamilyPtr currentFamily = driver->get_queue_family(device, queue);
+    drv::QueueFamilyPtr currentFamily = driver->get_queue_family(device, queue);
     drv::PipelineStages::FlagType currentStages = stages.resolve(queueSupport);
     const drv::PipelineStages::FlagType requiredAndUsable =
       subresourceData.usableStages & currentStages;
@@ -147,7 +147,7 @@ void DrvVulkanResourceTracker::add_memory_access(PerResourceTrackData& resourceD
     }
     subresourceData.ongoingWrites |= write ? currentStages : 0;
     subresourceData.ongoingReads |= read ? currentStages : 0;
-    // resourceData.ownership = currentFamily;
+    resourceData.ownership = currentFamily;
 }
 
 void DrvVulkanResourceTracker::add_memory_sync(
@@ -595,7 +595,8 @@ void DrvVulkanResourceTracker::flushBarrier(drv::CommandBufferPtr cmdBuffer, Bar
                            << vkImageBarriers[i].srcAccessMask << "->"
                            << vkImageBarriers[i].dstAccessMask << ") ";
         LOG_COMMAND("Cmd barrier recorded <%p>: %d->%d, event:%p, subresources: %s",
-                    convertCommandBuffer(cmdBuffer), convertPipelineStages(barrier.srcStages),
+                    static_cast<const void*>(convertCommandBuffer(cmdBuffer)),
+                    convertPipelineStages(barrier.srcStages),
                     convertPipelineStages(barrier.dstStages), barrier.event,
                     subresourcesSS.str().c_str());
     }
@@ -652,7 +653,8 @@ void DrvVulkanResourceTracker::cmd_signal_event(drv::CommandBufferPtr cmdBuffer,
                   convertPipelineStages(srcStages));
 #ifdef DEBUG
     if (commandLogEnabled) {
-        LOG_COMMAND("Cmd event signalled <%p>: %d", convertCommandBuffer(cmdBuffer),
+        LOG_COMMAND("Cmd event signalled <%p>: %d",
+                    static_cast<const void*>(convertCommandBuffer(cmdBuffer)),
                     convertPipelineStages(srcStages));
     }
 #endif
