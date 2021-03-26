@@ -89,6 +89,7 @@ class ResourceTracker
 
     void enableCommandLog() { commandLogEnabled = true; }
     void disableCommandLog() { commandLogEnabled = false; }
+    bool isCommandLogEnabled() const { return commandLogEnabled; }
 
  protected:
     IDriver* driver;
@@ -96,6 +97,37 @@ class ResourceTracker
     QueuePtr queue;
     CommandTypeMask queueSupport;
     Config config;  // TODO set this from outside
-    bool commandLogEnabled = true;
+    bool commandLogEnabled = false;
 };
+
+struct ScopedCommandLog
+{
+    ResourceTracker* resourceTracker;
+    bool enabled;
+    explicit ScopedCommandLog(ResourceTracker* tracker)
+      : resourceTracker(tracker), enabled(resourceTracker->isCommandLogEnabled()) {
+        resourceTracker->enableCommandLog();
+    }
+    ScopedCommandLog(const ScopedCommandLog&) = delete;
+    ScopedCommandLog& operator=(const ScopedCommandLog&) = delete;
+    ScopedCommandLog(ScopedCommandLog&& other)
+      : resourceTracker(other.resourceTracker), enabled(other.enabled) {
+        other.resourceTracker = nullptr;
+    }
+    ScopedCommandLog& operator=(ScopedCommandLog&& other) {
+        if (this == &other)
+            return *this;
+        close();
+        resourceTracker = other.resourceTracker;
+        enabled = other.enabled;
+        other.resourceTracker = nullptr;
+        return *this;
+    }
+    ~ScopedCommandLog() { close(); }
+    void close() {
+        if (resourceTracker && enabled)
+            resourceTracker->disableCommandLog();
+    }
+};
+
 }  // namespace drv

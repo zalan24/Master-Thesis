@@ -1,6 +1,7 @@
 #include "game.h"
 
 // #include <iostream>
+#include <optional>
 
 #include <util.hpp>
 
@@ -54,6 +55,8 @@ void Game::record(FrameGraph& frameGraph, FrameId frameId) {
         Engine::AcquiredImageData swapChainData = engine->acquiredSwapchainImage(testDrawHandle);
         Engine::CommandBufferRecorder recorder =
           engine->acquireCommandRecorder(testDrawHandle, frameId, queues.renderQueue.id);
+        if (frameId < 3)
+            recorder.getResourceTracker()->enableCommandLog();
         drv::ClearColorValue clearValue(1.f, 1.f, 0.f, 1.f);
         recorder.cmdWaitSemaphore(swapChainData.imageAvailableSemaphore,
                                   drv::IMAGE_USAGE_TRANSFER_DESTINATION);
@@ -69,6 +72,7 @@ void Game::record(FrameGraph& frameGraph, FrameId frameId) {
         // memory is made visible to all read operations (add this to tracker?) -- only available memory
         recorder.cmdSignalSemaphore(swapChainData.renderFinishedSemaphore);
         recorder.finishQueueWork();
+        recorder.getResourceTracker()->disableCommandLog();
     }
     else
         assert(frameGraph.isStopped());
