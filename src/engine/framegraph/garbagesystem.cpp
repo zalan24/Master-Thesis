@@ -1,10 +1,14 @@
 #include "garbagesystem.h"
 
-GarbageSystem::GarbageSystem() {
+GarbageSystem::GarbageSystem(size_t _memorySize) : memorySize(_memorySize) {
+    resize(0);
 }
 
 void GarbageSystem::resize(size_t count) {
-    trashBins.resize(count);
+    trashBins.clear();
+    trashBins.reserve(count);
+    for (size_t i = 0; i < count; ++i)
+        trashBins.emplace_back(memorySize);
 }
 
 void GarbageSystem::startGarbage(FrameId frameId) {

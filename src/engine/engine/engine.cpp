@@ -52,6 +52,7 @@ void Engine::Config::writeJson(json& out) const {
     WRITE_OBJECT(screenWidth, out);
     WRITE_OBJECT(screenHeight, out);
     WRITE_OBJECT(stackMemorySizeKb, out);
+    WRITE_OBJECT(frameMemorySizeKb, out);
     WRITE_OBJECT(inputBufferSize, out);
     WRITE_OBJECT(title, out);
     WRITE_OBJECT(imagesInSwapchain, out);
@@ -65,6 +66,7 @@ void Engine::Config::readJson(const json& in) {
     READ_OBJECT(screenWidth, in);
     READ_OBJECT(screenHeight, in);
     READ_OBJECT(stackMemorySizeKb, in);
+    READ_OBJECT(frameMemorySizeKb, in);
     READ_OBJECT(inputBufferSize, in);
     READ_OBJECT(title, in);
     READ_OBJECT(imagesInSwapchain, in);
@@ -189,6 +191,7 @@ Engine::Engine(int argc, char* argv[], const Config& cfg, const std::string& sha
     syncBlock(device, safe_cast<uint32_t>(config.maxFramesInFlight)),
     shaderBin(shaderbinFile),
     resourceMgr(std::move(resource_infos)),
+    garbageSystem(safe_cast<size_t>(config.frameMemorySizeKb)),
     frameGraph(physicalDevice, device, &garbageSystem, &eventPool) {
     json configJson = ISerializable::serialize(config);
     std::stringstream ss;

@@ -36,20 +36,27 @@ class FlexibleArray
         count++;
     }
 
-    void resize(size_t size) {
+    void reserve(size_t size) {
+        if (size > S)
+            vector.reserve(size - S);
+    }
+
+    template <typename... Args>
+    void resize(size_t size, Args&&... args) {
         if (size > S)
             vector.resize(S - size);
         else
             vector.clear();
         for (size_t i = size; i < count && i < S; ++i)
-            array[i] = T{};
+            array[i] = T(std::forward<Args>(args)...);
         count = size;
     }
 
-    void clear() {
+    template <typename... Args>
+    void clear(Args&&... args) {
         vector.clear();
         for (size_t i = 0; i < count && i < S; ++i)
-            array[i] = T{};
+            array[i] = T(std::forward<Args>(args)...);
         count = 0;
     }
 
@@ -62,12 +69,13 @@ class FlexibleArray
     const T& front() const { return (*this)[0]; }
     T& front() { return (*this)[0]; }
 
-    void pop_back() {
+    template <typename... Args>
+    void pop_back(Args&&... args) {
         if (!empty()) {
             if (count > S)
                 vector.pop_back();
             else
-                back() = T{};
+                back() = T(std::forward<Args>(args)...);
             count--;
         }
     }

@@ -21,10 +21,10 @@
 #include <eventpool.h>
 #include <framegraph.h>
 
-#include <input.h>
-#include <inputmanager.h>
 #include <corecontext.h>
 #include <garbagesystem.h>
+#include <input.h>
+#include <inputmanager.h>
 #include <resourcemanager.h>
 #include <serializable.h>
 
@@ -48,6 +48,7 @@ class Engine
         std::string driver;
         int inputBufferSize;
         int stackMemorySizeKb;
+        int frameMemorySizeKb;
         std::string logs;
         void writeJson(json& out) const override final;
         void readJson(const json& in) override final;

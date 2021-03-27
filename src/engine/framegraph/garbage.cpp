@@ -1,10 +1,18 @@
 #include "garbage.h"
 
-Garbage::Garbage(FrameId _frameId) : frameId(_frameId) {
+#include <drverror.h>
+
+Garbage::Garbage(size_t memorySize, FrameId _frameId)
+  : frameId(_frameId), memory(memorySize), memoryTop(0) {
 }
 
 Garbage::Garbage(Garbage&& other)
-  : frameId(other.frameId), cmdBuffersToReset(std::move(other.cmdBuffersToReset)) {
+  : frameId(other.frameId),
+    memory(std::move(other.memory)),
+    allocCount(other.allocCount),
+    memoryTop(other.memoryTop),
+    cmdBuffersToReset(std::move(other.cmdBuffersToReset)),
+    events(std::move(other.events)) {
 }
 
 Garbage& Garbage::operator=(Garbage&& other) {
@@ -13,7 +21,11 @@ Garbage& Garbage::operator=(Garbage&& other) {
     std::unique_lock<std::mutex> lock(mutex);
     close();
     frameId = other.frameId;
+    memory = std::move(other.memory);
+    allocCount = other.allocCount;
+    memoryTop = other.memoryTop;
     cmdBuffersToReset = std::move(other.cmdBuffersToReset);
+    events = std::move(other.events);
     return *this;
 }
 
@@ -40,10 +52,13 @@ void Garbage::close() noexcept {
         cmdBuffer.circulator->finished(std::move(cmdBuffer));
     cmdBuffersToReset.clear();
     events.clear();
+    drv::drv_assert(allocCount == 0, "Something was not deallocated from garbage memory");
 }
 
 void Garbage::reset(FrameId _frameId) {
     std::unique_lock<std::mutex> lock(mutex);
     close();
     frameId = _frameId;
+    allocCount = 0;
+    memoryTop = 0;
 }
