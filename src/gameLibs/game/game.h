@@ -3,7 +3,7 @@
 #include <memory>
 
 #include <drvrenderpass.h>
-#include <drvboundrousrce.hpp>
+#include <drvboundresource.hpp>
 
 #include <irenderer.h>
 #include <isimulation.h>
