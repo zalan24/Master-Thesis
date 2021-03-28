@@ -201,7 +201,9 @@
         "xxatomic": "cpp",
         "strstream": "cpp",
         "csetjmp": "cpp",
-        "scoped_allocator": "cpp"
+        "scoped_allocator": "cpp",
+        "compare": "cpp",
+        "concepts": "cpp"
     },
     "cSpell.words": [
         "alignas",

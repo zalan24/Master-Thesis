@@ -38,16 +38,8 @@ inline drv::ImagePtr convertImage(drv_vulkan::Image* image) {
     return reinterpret_cast<drv::ImagePtr>(image);
 }
 
-inline VkImageView convertImageView(drv::ImageViewPtr view) {
-    return reinterpret_cast<VkImageView>(view);
-}
-
-inline VkImageView* convertImageViews(drv::ImageViewPtr* views) {
-    return reinterpret_cast<VkImageView*>(views);
-}
-
-inline drv::ImageViewPtr convertImageView(VkImageView view) {
-    return reinterpret_cast<drv::ImageViewPtr>(view);
+inline drv_vulkan::ImageView* convertImageView(drv::ImageViewPtr view) {
+    return reinterpret_cast<drv_vulkan::ImageView*>(view);
 }
 
 inline VkDevice convertDevice(drv::LogicalDevicePtr device) {

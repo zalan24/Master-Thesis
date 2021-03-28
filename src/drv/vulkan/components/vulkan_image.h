@@ -13,6 +13,8 @@ struct Image
     uint32_t numMipLevels = 1;
     uint32_t arraySize = 1;
     drv::ImageAspectBitType aspects = 0;
+    drv::ImageCreateInfo::SampleCount sampleCount;
+    drv::ImageFormat format;
     bool sharedResource = true;
     bool swapchainImage = false;
     drv::DeviceMemoryPtr memoryPtr = drv::NULL_HANDLE;
@@ -32,5 +34,12 @@ struct Image
     };
 
     TrackingState trackingStates[MAX_NUM_TRACKING_SLOTS];
+};
+
+struct ImageView
+{
+    drv::ImagePtr image;
+    VkImageView view;
+    drv::ImageFormat format;
 };
 }  // namespace drv_vulkan

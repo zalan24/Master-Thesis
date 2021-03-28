@@ -5,7 +5,12 @@
 #include <drverror.h>
 
 Garbage::Garbage(size_t memorySize, FrameId _frameId)
-  : frameId(_frameId), memory(memorySize), memoryTop(0) {
+  : frameId(_frameId),
+    memory(memorySize),
+    memoryTop(0),
+    cmdBuffersToReset(getAllocator<decltype(cmdBuffersToReset[0])>()),
+    events(getAllocator<decltype(events[0])>()),
+    imageViews(getAllocator<decltype(imageViews[0])>()) {
 }
 
 Garbage::Garbage(Garbage&& other)
@@ -14,7 +19,8 @@ Garbage::Garbage(Garbage&& other)
     allocCount(other.allocCount),
     memoryTop(other.memoryTop),
     cmdBuffersToReset(std::move(other.cmdBuffersToReset)),
-    events(std::move(other.events))
+    events(std::move(other.events)),
+    imageViews(std::move(other.imageViews))
 #if FRAME_MEM_SANITIZATION > 0
     ,
     allocations(std::move(other.allocations))
@@ -33,6 +39,7 @@ Garbage& Garbage::operator=(Garbage&& other) {
     memoryTop = other.memoryTop;
     cmdBuffersToReset = std::move(other.cmdBuffersToReset);
     events = std::move(other.events);
+    imageViews = std::move(other.imageViews);
 #if FRAME_MEM_SANITIZATION > 0
     allocations = std::move(other.allocations);
 #endif
@@ -53,6 +60,11 @@ void Garbage::releaseEvent(EventPool::EventHandle&& event) {
     events.push_back(std::move(event));
 }
 
+void Garbage::releaseImageView(drv::ImageView&& view) {
+    std::unique_lock<std::mutex> lock(mutex);
+    imageViews.push_back(std::move(view));
+}
+
 FrameId Garbage::getFrameId() const {
     return frameId;
 }
@@ -61,6 +73,7 @@ void Garbage::close() noexcept {
     for (auto& cmdBuffer : cmdBuffersToReset)
         cmdBuffer.circulator->finished(std::move(cmdBuffer));
     cmdBuffersToReset.clear();
+    imageViews.clear();
     events.clear();
 #if FRAME_MEM_SANITIZATION > 0
     for (const auto& [ptr, info] : allocations) {

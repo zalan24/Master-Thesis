@@ -2,6 +2,9 @@
 
 #include <memory>
 
+#include <drvrenderpass.h>
+#include <drvboundrousrce.hpp>
+
 #include <irenderer.h>
 #include <isimulation.h>
 #include <shaderobject.h>
@@ -28,5 +31,11 @@ class Game final
  private:
     Engine* engine;
 
+    std::unique_ptr<drv::RenderPass> testRenderPass;
+    drv::AttachmentId testColorAttachment;
+    drv::SubpassId testSubpass;
     FrameGraph::NodeId testDraw;
+    std::vector<drv::BoundResource<drv::ImagePtr, drv::ImageView, const Game*>> imageViews;
+
+    drv::ImageViewPtr getView(drv::ImagePtr image, uint32_t imageIndex);
 };

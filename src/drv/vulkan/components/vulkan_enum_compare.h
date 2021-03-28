@@ -470,3 +470,18 @@ COMPARE_ENUMS(unsigned int, drv::ImageViewCreateInfo::ComponentSwizzle::R, VK_CO
 COMPARE_ENUMS(unsigned int, drv::ImageViewCreateInfo::ComponentSwizzle::G, VK_COMPONENT_SWIZZLE_G);
 COMPARE_ENUMS(unsigned int, drv::ImageViewCreateInfo::ComponentSwizzle::B, VK_COMPONENT_SWIZZLE_B);
 COMPARE_ENUMS(unsigned int, drv::ImageViewCreateInfo::ComponentSwizzle::A, VK_COMPONENT_SWIZZLE_A);
+
+COMPARE_ENUMS(unsigned int, drv::AttachmentLoadOp::CLEAR, VK_ATTACHMENT_LOAD_OP_CLEAR);
+COMPARE_ENUMS(unsigned int, drv::AttachmentLoadOp::LOAD, VK_ATTACHMENT_LOAD_OP_LOAD);
+COMPARE_ENUMS(unsigned int, drv::AttachmentLoadOp::DONT_CARE, VK_ATTACHMENT_LOAD_OP_DONT_CARE);
+
+COMPARE_ENUMS(unsigned int, drv::AttachmentStoreOp::DONT_CARE, VK_ATTACHMENT_STORE_OP_DONT_CARE);
+COMPARE_ENUMS(unsigned int, drv::AttachmentStoreOp::STORE, VK_ATTACHMENT_STORE_OP_STORE);
+
+COMPARE_ENUMS(uint32_t, drv::ImageCreateInfo::SAMPLE_COUNT_1, VK_SAMPLE_COUNT_1_BIT);
+COMPARE_ENUMS(uint32_t, drv::ImageCreateInfo::SAMPLE_COUNT_2, VK_SAMPLE_COUNT_2_BIT);
+COMPARE_ENUMS(uint32_t, drv::ImageCreateInfo::SAMPLE_COUNT_4, VK_SAMPLE_COUNT_4_BIT);
+COMPARE_ENUMS(uint32_t, drv::ImageCreateInfo::SAMPLE_COUNT_8, VK_SAMPLE_COUNT_8_BIT);
+COMPARE_ENUMS(uint32_t, drv::ImageCreateInfo::SAMPLE_COUNT_16, VK_SAMPLE_COUNT_16_BIT);
+COMPARE_ENUMS(uint32_t, drv::ImageCreateInfo::SAMPLE_COUNT_32, VK_SAMPLE_COUNT_32_BIT);
+COMPARE_ENUMS(uint32_t, drv::ImageCreateInfo::SAMPLE_COUNT_64, VK_SAMPLE_COUNT_64_BIT);

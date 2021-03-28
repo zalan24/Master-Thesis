@@ -8,6 +8,7 @@
 
 #ifdef DRIVER_VULKAN
 #    include <drvvulkan.h>
+#    include <vulkan_render_pass.h>
 #endif
 
 static drv::Driver current_driver;
@@ -55,6 +56,23 @@ std::unique_ptr<drv::ResourceTracker> drv::create_resource_tracker(QueuePtr queu
 #ifdef DRIVER_VULKAN
             return std::make_unique<DrvVulkanResourceTracker>(
               static_cast<DrvVulkan*>(current_driver_interface), physicalDevice, device, queue);
+#else
+            break;
+#endif
+        case Driver::NUM_PLATFORMS:
+            break;
+    }
+    return nullptr;
+}
+
+std::unique_ptr<drv::RenderPass> drv::create_render_pass(LogicalDevicePtr device,
+                                                         std::string name) {
+    assert(current_driver_interface != nullptr);
+    switch (current_driver) {
+        case Driver::VULKAN:
+#ifdef DRIVER_VULKAN
+            return std::make_unique<VulkanRenderPass>(
+              static_cast<DrvVulkan*>(current_driver_interface), device, std::move(name));
 #else
             break;
 #endif

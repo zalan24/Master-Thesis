@@ -29,7 +29,7 @@ drv::ImagePtr DrvVulkan::create_image(drv::LogicalDevicePtr device,
     createInfo.extent = convertExtent(info->extent);
     createInfo.mipLevels = info->mipLevels;
     createInfo.arrayLayers = info->arrayLayers;
-    createInfo.samples = VK_SAMPLE_COUNT_1_BIT;  // TODO
+    createInfo.samples = static_cast<VkSampleCountFlagBits>(info->sampleCount);
     createInfo.tiling = static_cast<VkImageTiling>(info->tiling);
     createInfo.usage = static_cast<VkImageUsageFlags>(info->usage);
     createInfo.sharingMode = static_cast<VkSharingMode>(info->sharingType);
@@ -47,6 +47,8 @@ drv::ImagePtr DrvVulkan::create_image(drv::LogicalDevicePtr device,
         ret->arraySize = info->arrayLayers;
         ret->aspects = drv::get_format_aspects(info->format);
         ret->sharedResource = info->sharingType == drv::SharingType::CONCURRENT;
+        ret->sampleCount = info->sampleCount;
+        ret->format = info->format;
         return reinterpret_cast<drv::ImagePtr>(ret);
     }
     catch (...) {
@@ -96,11 +98,28 @@ drv::ImageViewPtr DrvVulkan::create_image_view(drv::LogicalDevicePtr device,
     VkImageView ret;
     VkResult result = vkCreateImageView(convertDevice(device), &viewInfo, nullptr, &ret);
     drv::drv_assert(result == VK_SUCCESS, "Could not create buffer");
-    return reinterpret_cast<drv::ImageViewPtr>(ret);
+
+    drv_vulkan::ImageView* view = nullptr;
+    try {
+        view = new drv_vulkan::ImageView();
+        view->image = info->image;
+        view->view = ret;
+        view->format = info->format;
+        return reinterpret_cast<drv::ImageViewPtr>(view);
+    }
+    catch (...) {
+        if (view != nullptr) {
+            delete view;
+            view = nullptr;
+        }
+        vkDestroyImageView(convertDevice(device), ret, nullptr);
+        throw;
+    }
 }
 
 bool DrvVulkan::destroy_image_view(drv::LogicalDevicePtr device, drv::ImageViewPtr view) {
-    vkDestroyImageView(convertDevice(device), convertImageView(view), nullptr);
+    vkDestroyImageView(convertDevice(device), convertImageView(view)->view, nullptr);
+    delete convertImageView(view);
     return true;
 }
 
@@ -334,6 +353,7 @@ drv::TextureInfo DrvVulkan::get_texture_info(drv::ImagePtr _image) {
     drv::TextureInfo ret;
     ret.numMips = image->numMipLevels;
     ret.arraySize = image->arraySize;
+    ret.format = image->format;
     // ret.aspects = image->aspects;
     return ret;
 }

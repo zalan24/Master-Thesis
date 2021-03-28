@@ -1239,7 +1239,15 @@ struct ImageCreateInfo
     Extent3D extent;
     uint32_t mipLevels;
     uint32_t arrayLayers;
-    // samples
+    enum SampleCount : uint32_t {
+        SAMPLE_COUNT_1 = 0x00000001,
+        SAMPLE_COUNT_2 = 0x00000002,
+        SAMPLE_COUNT_4 = 0x00000004,
+        SAMPLE_COUNT_8 = 0x00000008,
+        SAMPLE_COUNT_16 = 0x00000010,
+        SAMPLE_COUNT_32 = 0x00000020,
+        SAMPLE_COUNT_64 = 0x00000040,
+    }sampleCount;
     enum Tiling
     {
         TILING_OPTIMAL = 0,
@@ -1348,6 +1356,7 @@ struct TextureInfo
 {
     uint32_t numMips;
     uint32_t arraySize;
+    ImageFormat format;
     // ImageAspectBitType aspects;
 };
 
@@ -1377,6 +1386,18 @@ struct SwapchainCreateInfo
     SharingType sharingType;
     unsigned int familyCount = 0;
     QueueFamilyPtr* families = nullptr;
+};
+
+enum class AttachmentLoadOp
+{
+    LOAD = 0,
+    CLEAR = 1,
+    DONT_CARE = 2,
+};
+enum class AttachmentStoreOp
+{
+    STORE = 0,
+    DONT_CARE = 1,
 };
 
 };  // namespace drv

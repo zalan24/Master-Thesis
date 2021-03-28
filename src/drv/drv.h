@@ -4,6 +4,7 @@
 
 #include <memory>
 #include <mutex>
+#include <string>
 
 extern "C"
 {
@@ -24,24 +25,7 @@ enum class Driver : DriverIndex
     NUM_PLATFORMS
 };
 class ResourceTracker;
-
-// TODO Shaders
-
-// This struct is used to define driver info outside the engine
-// struct DriverRegistry
-// {
-//     struct ShaderLoaders
-//     {
-//         using ShaderLoaderF = bool (*)(LogicalDevicePtr);
-//         ShaderLoaderF load_shaders = nullptr;
-//         ShaderLoaderF free_shaders = nullptr;
-//     } shaderLoaders;
-// };
-
-// DriverRegistry& get_driver_registry();
-// DriverRegistry& get_driver_registry(Driver driver);
-
-// void register_shader_loaders(Driver driver, const DriverRegistry::ShaderLoaders& shaderLoaders);
+class RenderPass;
 
 // Registers the first available driver on the list
 bool init(const Driver* drivers, unsigned int count);
@@ -50,6 +34,8 @@ bool close();
 std::unique_ptr<ResourceTracker> create_resource_tracker(QueuePtr queue,
                                                          PhysicalDevicePtr physicalDevice,
                                                          LogicalDevicePtr device);
+
+std::unique_ptr<RenderPass> create_render_pass(LogicalDevicePtr device, std::string name);
 
 InstancePtr create_instance(const InstanceCreateInfo* info);
 bool delete_instance(InstancePtr ptr);
@@ -110,11 +96,6 @@ BufferMemoryInfo get_buffer_memory_info(LogicalDevicePtr device, BufferPtr buffe
 bool map_memory(LogicalDevicePtr device, DeviceMemoryPtr memory, DeviceSize offset, DeviceSize size,
                 void** data);
 bool unmap_memory(LogicalDevicePtr device, DeviceMemoryPtr memory);
-
-// bool push_data(LogicalDevicePtr device, )
-
-// bool load_shaders(LogicalDevicePtr device);
-// bool free_shaders(LogicalDevicePtr device);
 
 DescriptorSetLayoutPtr create_descriptor_set_layout(LogicalDevicePtr device,
                                                     const DescriptorSetLayoutCreateInfo* info);

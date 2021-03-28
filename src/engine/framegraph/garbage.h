@@ -4,7 +4,9 @@
 #include <unordered_map>
 #include <vector>
 
+#include <drv_wrappers.h>
 #include <drvcmdbufferbank.h>
+
 #include <eventpool.h>
 
 #include "framegraphDecl.h"
@@ -40,6 +42,7 @@ class Garbage
 
     void resetCommandBuffer(drv::CommandBufferCirculator::CommandBufferHandle&& cmdBuffer);
     void releaseEvent(EventPool::EventHandle&& event);
+    void releaseImageView(drv::ImageView&& view);
     FrameId getFrameId() const;
 
     template <typename T>
@@ -140,6 +143,9 @@ class Garbage
         return Allocator<T>(this);
     }
 
+    template <typename T>
+    using Vector = std::vector<T, Allocator<T>>;
+
  private:
     FrameId frameId;
     mutable std::mutex mutex;
@@ -148,8 +154,9 @@ class Garbage
     std::vector<Byte> memory;
     size_t allocCount = 0;
     size_t memoryTop = 0;
-    std::vector<drv::CommandBufferCirculator::CommandBufferHandle> cmdBuffersToReset;
-    std::vector<EventPool::EventHandle> events;
+    Vector<drv::CommandBufferCirculator::CommandBufferHandle> cmdBuffersToReset;
+    Vector<EventPool::EventHandle> events;
+    Vector<drv::ImageView> imageViews;
 
 #if FRAME_MEM_SANITIZATION > 0
     struct AllocInfo
@@ -166,7 +173,7 @@ class Garbage
 };
 
 template <typename T>
-using GarbageVector = std::vector<T, Garbage::Allocator<T>>;
+using GarbageVector = Garbage::Vector<T>;
 
 template <typename T>
 GarbageVector<T> make_vector(Garbage* garbage) {

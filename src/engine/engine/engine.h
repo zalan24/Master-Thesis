@@ -162,6 +162,8 @@ class Engine
     CommandBufferRecorder acquireCommandRecorder(FrameGraph::NodeHandle& acquiringNodeHandle,
                                                  FrameId frameId, FrameGraph::QueueId queueId);
 
+    GarbageSystem* getGarbageSystem() { return &garbageSystem; }
+
  private:
     struct ErrorCallback
     {
