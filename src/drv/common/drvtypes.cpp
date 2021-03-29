@@ -14,6 +14,9 @@ PipelineStages drv::get_image_usage_stages(ImageResourceUsageFlag usages) {
                 case IMAGE_USAGE_PRESENT:
                     ret.add(PipelineStages::BOTTOM_OF_PIPE_BIT);  // based on vulkan spec
                     break;
+                case IMAGE_USAGE_COLOR_OUTPUT:
+                    ret.add();  // based on vulkan spec
+                    break;
             }
         }
         usages >>= 1;
@@ -33,6 +36,9 @@ MemoryBarrier::AccessFlagBitType drv::get_image_usage_accesses(ImageResourceUsag
                     break;
                 case IMAGE_USAGE_PRESENT:
                     ret |= 0;  // made visible automatically by presentation engine
+                    break;
+                case IMAGE_USAGE_COLOR_OUTPUT:
+                    ret |= ;
                     break;
             }
         }
@@ -56,6 +62,9 @@ ImageLayoutMask drv::get_accepted_image_layouts(ImageResourceUsageFlag usages) {
                 case IMAGE_USAGE_PRESENT:
                     ret &= static_cast<ImageLayoutMask>(drv::ImageLayout::PRESENT_SRC_KHR)
                            | static_cast<ImageLayoutMask>(drv::ImageLayout::SHARED_PRESENT_KHR);
+                    break;
+                case IMAGE_USAGE_COLOR_OUTPUT:
+                    ret &= ;
                     break;
             }
         }

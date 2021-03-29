@@ -16,7 +16,7 @@ class Game final
   , public ISimulation
 {
  public:
-    Game(Engine* engine);
+    explicit Game(Engine* engine);
     ~Game() override;
 
     bool initRenderFrameGraph(FrameGraph& frameGraph, const IRenderer::FrameGraphData& data,

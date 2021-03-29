@@ -589,7 +589,7 @@ class Swapchain
     uint32_t currentWidth = 0;
     uint32_t currentHeight = 0;
     ImageCreateInfo::UsageType usages;
-        SharingType sharingType;
+    SharingType sharingType;
     std::vector<ImagePtr> images;
     std::vector<QueueFamilyPtr> userFamilies;
 

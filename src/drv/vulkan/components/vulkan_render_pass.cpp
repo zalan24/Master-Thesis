@@ -8,6 +8,41 @@
 #include "vulkan_image.h"
 
 void VulkanRenderPass::build() {
+    vkSubpasses.resize(subpasses.size());
+    uint32_t attachmentRefCount = 0;
+    for (uint32_t i = 0; i < subpasses.size(); ++i)
+        attachmentRefCount += subpasses[i].colorOutputs.size() + subpasses[i].inputs.size()
+                              + (subpasses[i].depthStencil.id != drv::INVALID_ATTACHMENT ? 1 : 0);
+    attachmentRefs.resize(attachmentRefCount);
+    uint32_t attachmentId = 0;
+
+    for (uint32_t i = 0; i < subpasses.size(); ++i) {
+        vkSubpasses[i].flags = 0;
+        vkSubpasses[i].pipelineBindPoint = ;
+
+        vkSubpasses[i].inputAttachmentCount = uint32_t(subpasses[i].inputs.size());
+        vkSubpasses[i].pInputAttachments = attachmentRefs.data() + attachmentId;
+        for (uint32_t j = 0; j < subpasses[i].inputs.size(); ++j)
+            attachmentRefs[attachmentId++] = get_attachment_ref(subpasses[i].inputs[j]);
+
+        vkSubpasses[i].colorAttachmentCount = uint32_t(subpasses[i].colorOutputs.size());
+        vkSubpasses[i].pColorAttachments = attachmentRefs.data() + attachmentId;
+        for (uint32_t j = 0; j < subpasses[i].inputs.size(); ++j)
+            attachmentRefs[attachmentId++] = get_attachment_ref(subpasses[i].colorOutputs[j]);
+
+        vkSubpasses[i].pResolveAttachments = nullptr;  // TODO multisampling
+        vkSubpasses[i].pDepthStencilAttachment =
+          &(attachmentRefs[attachmentId++] = get_attachment_ref(subpasses[i].depthStencil));
+        vkSubpasses[i].preserveAttachmentCount = ;
+        vkSubpasses[i].pPreserveAttachments = ;
+    }
+}
+
+static VkAttachmentReference get_attachment_ref(const drv::RenderPass::AttachmentRef& ref) {
+    VkAttachmentReference ret;
+    ret.attachment = ref.id == drv::UNUSED_ATTACHMENT ? VK_ATTACHMENT_UNUSED : ref.id;
+    ret.layout = convertImageLayout(ref.layout);
+    return ret;
 }
 
 drv::CmdRenderPass VulkanRenderPass::begin(const ImageInfo* images) {
@@ -17,6 +52,7 @@ drv::CmdRenderPass VulkanRenderPass::begin(const ImageInfo* images) {
         clear();
         StackMemory::MemoryHandle<VkAttachmentDescription> vkAttachments(attachments.size(),
                                                                          TEMPMEM);
+
         for (uint32_t i = 0; i < attachments.size(); ++i) {
             vkAttachments[i].flags = 0;  // TODO aliasing
             vkAttachments[i].format =
@@ -39,8 +75,9 @@ drv::CmdRenderPass VulkanRenderPass::begin(const ImageInfo* images) {
         createInfo.flags = 0;
         createInfo.attachmentCount = uint32_t(attachments.size());
         createInfo.pAttachments = vkAttachments;
-        createInfo.subpassCount = ;
-        createInfo.pSubpasses = ;
+        drv::drv_assert(vkSubpasses.size() == subpasses.size());
+        createInfo.subpassCount = uint32_t(vkSubpasses.size());
+        createInfo.pSubpasses = vkSubpasses.data();
         createInfo.dependencyCount = ;
         createInfo.pDependencies = ;
         VkResult result =

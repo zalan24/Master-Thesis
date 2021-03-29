@@ -1345,7 +1345,8 @@ using ImageResourceUsageFlag = uint64_t;
 enum ImageResourceUsage : ImageResourceUsageFlag
 {
     IMAGE_USAGE_TRANSFER_DESTINATION = 1ull << 0,
-    IMAGE_USAGE_PRESENT = 1ull << 1
+    IMAGE_USAGE_PRESENT = 1ull << 1,
+    IMAGE_USAGE_COLOR_OUTPUT = 1ull <<2
 };
 
 PipelineStages get_image_usage_stages(ImageResourceUsageFlag usages);

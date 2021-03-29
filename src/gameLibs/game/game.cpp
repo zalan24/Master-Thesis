@@ -23,8 +23,17 @@ Game::Game(Engine* _engine) : engine(_engine) {
 
     testRenderPass = drv::create_render_pass(engine->getDevice(), "Test pass");
     drv::RenderPass::AttachmentInfo colorInfo;
+    colorInfo.initialLayout = drv::ImageLayout::UNDEFINED;
+    colorInfo.finalLayout = drv::ImageLayout::PRESENT_SRC_KHR;
+    colorInfo.loadOp = drv::AttachmentLoadOp::DONT_CARE;
+    colorInfo.storeOp = drv::AttachmentStoreOp::STORE;
+    colorInfo.stencilLoadOp = drv::AttachmentLoadOp::DONT_CARE;
+    colorInfo.stencilStoreOp = drv::AttachmentStoreOp::DONT_CARE;
     testColorAttachment = testRenderPass->createAttachment(std::move(colorInfo));
     drv::RenderPass::SubpassInfo subpassInfo;
+    subpassInfo.colorOutputs.push_back({testColorAttachment,
+                                        drv::ImageLayout::COLOR_ATTACHMENT_OPTIMAL,
+                                        drv::IMAGE_USAGE_COLOR_OUTPUT});
     testSubpass = testRenderPass->createSubpass(std::move(subpassInfo));
     testRenderPass->build();
 }

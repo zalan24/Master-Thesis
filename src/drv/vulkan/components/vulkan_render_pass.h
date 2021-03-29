@@ -2,6 +2,8 @@
 
 #include "drvvulkan.h"
 
+#include <vector>
+
 #include <vulkan/vulkan.h>
 
 #include <drvrenderpass.h>
@@ -21,6 +23,8 @@ class VulkanRenderPass final : public drv::RenderPass
 
  private:
     VkRenderPass renderPass = VK_NULL_HANDLE;
+    std::vector<VkAttachmentReference> attachmentRefs;
+    std::vector<VkSubpassDescription> vkSubpasses;
 
     void clear();
 };

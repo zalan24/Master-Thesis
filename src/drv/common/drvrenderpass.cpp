@@ -11,3 +11,9 @@ AttachmentId RenderPass::createAttachment(AttachmentInfo info) {
     attachments.push_back(std::move(info));
     return ret;
 }
+
+SubpassId RenderPass::createSubpass(SubpassInfo& info) {
+    SubpassId ret = SubpassId(subpasses.size());
+    subpasses.push_back(std::move(info));
+    return ret;
+}

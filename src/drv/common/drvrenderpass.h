@@ -2,6 +2,7 @@
 
 #include "drvtypes.h"
 
+#include <limits>
 #include <string>
 #include <vector>
 
@@ -12,6 +13,9 @@ class RenderPass;
 
 using AttachmentId = uint32_t;
 using SubpassId = uint32_t;
+
+static constexpr AttachmentId INVALID_ATTACHMENT = std::numeric_limits<AttachmentId>::max();
+static constexpr AttachmentId UNUSED_ATTACHMENT = INVALID_ATTACHMENT;
 
 class CmdRenderPass final
 {
@@ -58,8 +62,18 @@ class RenderPass
     };
     AttachmentId createAttachment(AttachmentInfo info);
 
+    struct AttachmentRef
+    {
+        AttachmentId id = INVALID_ATTACHMENT;
+        ImageLayout layout = ImageLayout::UNDEFINED;
+        ImageResourceUsageFlag usages = 0;
+    };
     struct SubpassInfo
-    {};
+    {
+        std::vector<AttachmentRef> inputs;
+        std::vector<AttachmentRef> colorOutputs;
+        AttachmentRef depthStencil;
+    };
     SubpassId createSubpass(SubpassInfo& info);
 
     virtual void build() = 0;
@@ -76,6 +90,7 @@ class RenderPass
     std::string name;
 
     std::vector<AttachmentInfo> attachments;
+    std::vector<SubpassInfo> subpasses;
 
  private:
     virtual void beginRenderPass(CommandBufferPtr cmdBuffer) const = 0;
