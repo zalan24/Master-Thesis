@@ -289,6 +289,7 @@ Get a triangle on screen:
     ☐ Create an api consts header file and put all const values there (barrier limits, tracker limits, etc.)
     ✔ Add logging @done (3/28/2021, 12:39:53 PM)
     ✔ Discard image data using undefined oldLayout in transition (add a cmd for this, or add this to the barrier struct???) @done (3/13/2021, 7:52:00 PM)
+    ☐ Check out "streamline trace": https://github.com/KhronosGroup/Vulkan-Samples/blob/master/samples/performance/render_passes/render_passes_tutorial.md
 
 Cleanup & other:
     ☐ Remove useless common driver stuff (drv/common)

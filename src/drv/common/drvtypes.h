@@ -339,7 +339,7 @@ struct MemoryType
         HOST_VISIBLE_BIT = 0x00000002,
         HOST_COHERENT_BIT = 0x00000004,
         HOST_CACHED_BIT = 0x00000008,
-        LAZILY_ALLOCATED_BIT = 0x00000010,
+        LAZILY_ALLOCATED_BIT = 0x00000010,  // not allocated if only needed in tile based memory
         PROTECTED_BIT = 0x00000020,
         // DEVICE_COHERENT_BIT_AMD = 0x00000040,
         // DEVICE_UNCACHED_BIT_AMD = 0x00000080,
@@ -1239,7 +1239,8 @@ struct ImageCreateInfo
     Extent3D extent;
     uint32_t mipLevels;
     uint32_t arrayLayers;
-    enum SampleCount : uint32_t {
+    enum SampleCount : uint32_t
+    {
         SAMPLE_COUNT_1 = 0x00000001,
         SAMPLE_COUNT_2 = 0x00000002,
         SAMPLE_COUNT_4 = 0x00000004,
@@ -1247,7 +1248,7 @@ struct ImageCreateInfo
         SAMPLE_COUNT_16 = 0x00000010,
         SAMPLE_COUNT_32 = 0x00000020,
         SAMPLE_COUNT_64 = 0x00000040,
-    }sampleCount;
+    } sampleCount;
     enum Tiling
     {
         TILING_OPTIMAL = 0,
@@ -1346,7 +1347,9 @@ enum ImageResourceUsage : ImageResourceUsageFlag
 {
     IMAGE_USAGE_TRANSFER_DESTINATION = 1ull << 0,
     IMAGE_USAGE_PRESENT = 1ull << 1,
-    IMAGE_USAGE_COLOR_OUTPUT = 1ull <<2
+    IMAGE_USAGE_COLOR_OUTPUT = 1ull << 2,
+    IMAGE_USAGE_ATTACHMENT_INPUT = 1ull << 3,
+    IMAGE_USAGE_DEPTH_STENCIL = 1ull << 4,
 };
 
 PipelineStages get_image_usage_stages(ImageResourceUsageFlag usages);

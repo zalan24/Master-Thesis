@@ -31,9 +31,8 @@ Game::Game(Engine* _engine) : engine(_engine) {
     colorInfo.stencilStoreOp = drv::AttachmentStoreOp::DONT_CARE;
     testColorAttachment = testRenderPass->createAttachment(std::move(colorInfo));
     drv::RenderPass::SubpassInfo subpassInfo;
-    subpassInfo.colorOutputs.push_back({testColorAttachment,
-                                        drv::ImageLayout::COLOR_ATTACHMENT_OPTIMAL,
-                                        drv::IMAGE_USAGE_COLOR_OUTPUT});
+    subpassInfo.colorOutputs.push_back(
+      {testColorAttachment, drv::ImageLayout::COLOR_ATTACHMENT_OPTIMAL});
     testSubpass = testRenderPass->createSubpass(std::move(subpassInfo));
     testRenderPass->build();
 }
@@ -108,7 +107,7 @@ void Game::record(FrameGraph& frameGraph, FrameId frameId) {
           engine->acquireCommandRecorder(testDrawHandle, frameId, queues.renderQueue.id);
         if (frameId < 3)
             recorder.getResourceTracker()->enableCommandLog();
-        drv::RenderPass::ImageInfo testImageInfo[1];
+        drv::RenderPass::AttachmentData testImageInfo[1];
         testImageInfo[testColorAttachment].image = swapChainData.image;
         testImageInfo[testColorAttachment].view =
           getView(swapChainData.image, swapChainData.imageIndex);
