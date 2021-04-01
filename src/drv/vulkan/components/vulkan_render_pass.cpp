@@ -8,21 +8,65 @@
 #include "vulkan_image.h"
 
 void VulkanRenderPass::build() {
+    struct AttachmentUsage
+    {
+        AttachmentRef attachment;
+        drv::ImageResourceUsageFlag usages;
+    };
+
+    std::vector<std::vector<drv::ImageResourceUsageFlag>> attachmentUsages;
+    attachmentUsages.resize(subpasses.size());
+    for (uint32_t pass = 0; pass < subpasses.size(); ++pass) {
+        attachmentUsages[pass].resize(attachments.size(), 0);
+        if (subpasses[pass].depthStencil.id != drv::INVALID_ATTACHMENT) {
+            drv::ImageResourceUsageFlag usages = 0;
+            if (attachments[subpasses[pass].depthStencil.id].loadOp == drv::AttachmentLoadOp::LOAD)
+                usages |= drv::IMAGE_USAGE_COLOR_OUTPUT_READ;
+            if (attachments[subpasses[pass].depthStencil.id].loadOp == drv::AttachmentLoadOp::CLEAR)
+                usages |= drv::IMAGE_USAGE_COLOR_OUTPUT_WRITE;
+            if (attachments[subpasses[pass].depthStencil.id].storeOp
+                == drv::AttachmentStoreOp::STORE)
+                usages |= drv::IMAGE_USAGE_COLOR_OUTPUT_WRITE;
+            if (attachments[subpasses[pass].depthStencil.id].stencilLoadOp
+                == drv::AttachmentLoadOp::LOAD)
+                usages |= drv::IMAGE_USAGE_COLOR_OUTPUT_READ;
+            if (attachments[subpasses[pass].depthStencil.id].stencilLoadOp
+                == drv::AttachmentLoadOp::CLEAR)
+                usages |= drv::IMAGE_USAGE_COLOR_OUTPUT_WRITE;
+            if (attachments[subpasses[pass].depthStencil.id].stencilStoreOp
+                == drv::AttachmentStoreOp::STORE)
+                usages |= drv::IMAGE_USAGE_COLOR_OUTPUT_WRITE;
+            attachmentUsages[pass][subpasses[pass].depthStencil.id] |= usages;
+        }
+        for (uint32_t i = 0; i < subpasses[pass].inputs.size(); ++i)
+            attachmentUsages[pass][subpasses[pass].inputs[i].id] |=
+              drv::IMAGE_USAGE_ATTACHMENT_INPUT;
+        for (uint32_t i = 0; i < subpasses[pass].colorOutputs.size(); ++i) {
+            drv::ImageResourceUsageFlag usages = 0;
+            if (attachments[subpasses[pass].colorOutputs[i].id].loadOp
+                == drv::AttachmentLoadOp::LOAD)
+                usages |= drv::IMAGE_USAGE_COLOR_OUTPUT_READ;
+            if (attachments[subpasses[pass].colorOutputs[i].id].loadOp
+                == drv::AttachmentLoadOp::CLEAR)
+                usages |= drv::IMAGE_USAGE_COLOR_OUTPUT_WRITE;
+            if (attachments[subpasses[pass].colorOutputs[i].id].storeOp
+                == drv::AttachmentStoreOp::STORE)
+                usages |= drv::IMAGE_USAGE_COLOR_OUTPUT_WRITE;
+            attachmentUsages[pass][subpasses[pass].colorOutputs[i].id] |= usages;
+        }
+    }
+
     for (uint32_t src = 0; src < subpasses.size(); ++src) {
-        // TODO external deps
+        TODO;  // external deps
+
         for (uint32_t dst = src + 1; dst < subpasses.size(); ++dst) {
             drv::PipelineStages srcStages = drv::PipelineStages::TOP_OF_PIPE_BIT;
             drv::PipelineStages dstStages = drv::PipelineStages::BOTTOM_OF_PIPE_BIT;
             drv::MemoryBarrier::AccessFlagBitType srcAccessFlags = 0;
             drv::MemoryBarrier::AccessFlagBitType dstAccessFlags = 0;
 
-            auto addAttachmentDep = [&](drv::ImageResourceUsageFlag srcUsages,
-                                        drv::ImageResourceUsageFlag dstUsages) {
-                srcStages.add(drv::get_image_usage_stages(srcUsages));
-                dstStages.add(drv::get_image_usage_stages(dstUsages));
-            };
             auto addResourceDep = [&](drv::ImageResourceUsageFlag srcUsages,
-                                      drv::ImageResourceUsageFlag dstUsages) {
+                                      drv::ImageResourceUsageFlag dstUsages, bool manageCache) {
                 drv::MemoryBarrier::AccessFlagBitType srcAccess =
                   drv::get_image_usage_accesses(srcUsages);
                 drv::MemoryBarrier::AccessFlagBitType dstAccess =
@@ -31,48 +75,23 @@ void VulkanRenderPass::build() {
                     || drv::MemoryBarrier::get_write_bits(dstUsages)) {
                     srcStages.add(drv::get_image_usage_stages(srcUsages));
                     dstStages.add(drv::get_image_usage_stages(dstUsages));
-                    srcAccessFlags |= srcAccess;
-                    dstAccessFlags |= dstAccess;
+                    if (manageCache) {
+                        srcAccessFlags |= srcAccess;
+                        dstAccessFlags |= dstAccess;
+                    }
                 }
             };
 
-            TODO;  // do this in a nicer way
-            TODO;  // depth stencil
-            // input-input dependency is only required if layout transition is performed
-            for (uint32_t i = 0; i < subpasses[src].inputs.size(); ++i) {
-                // if (subpasses[dst].depthStencil.id == subpasses[src].inputs[i].id)
-                //     addAttachmentDep(drv::IMAGE_USAGE_ATTACHMENT_INPUT,
-                //                      drv::IMAGE_USAGE_DEPTH_STENCIL);
-                for (uint32_t j = 0; j < subpasses[dst].inputs.size(); ++j)
-                    if (subpasses[src].inputs[i].id == subpasses[dst].inputs[j].id
-                        && subpasses[src].inputs[i].layout != subpasses[dst].inputs[j].layout)
-                        addAttachmentDep(drv::IMAGE_USAGE_ATTACHMENT_INPUT,
-                                         drv::IMAGE_USAGE_ATTACHMENT_INPUT);
-            }
-            for (uint32_t i = 0; i < subpasses[src].inputs.size(); ++i)
-                for (uint32_t j = 0; j < subpasses[dst].colorOutputs.size(); ++j)
-                    if (subpasses[src].inputs[i].id == subpasses[dst].colorOutputs[j].id)
-                        addAttachmentDep(drv::IMAGE_USAGE_ATTACHMENT_INPUT,
-                                         drv::IMAGE_USAGE_COLOR_OUTPUT);
-            for (uint32_t i = 0; i < subpasses[src].colorOutputs.size(); ++i) {
-                // if (subpasses[dst].depthStencil.id == subpasses[src].colorOutputs[i].id)
-                // addAttachmentDep(drv::IMAGE_USAGE_COLOR_OUTPUT, drv::IMAGE_USAGE_DEPTH_STENCIL);
-                for (uint32_t j = 0; j < subpasses[dst].inputs.size(); ++j)
-                    if (subpasses[src].colorOutputs[i].id == subpasses[dst].inputs[j].id)
-                        addAttachmentDep(drv::IMAGE_USAGE_COLOR_OUTPUT,
-                                         drv::IMAGE_USAGE_ATTACHMENT_INPUT);
-            }
-            for (uint32_t i = 0; i < subpasses[src].colorOutputs.size(); ++i)
-                for (uint32_t j = 0; j < subpasses[dst].colorOutputs.size(); ++j)
-                    if (subpasses[src].colorOutputs[i].id == subpasses[dst].colorOutputs[j].id)
-                        addAttachmentDep(drv::IMAGE_USAGE_COLOR_OUTPUT,
-                                         drv::IMAGE_USAGE_COLOR_OUTPUT);
+            for (uint32_t i = 0; i < attachments.size(); ++i)
+                if (attachmentUsages[src][i] != 0 && attachmentUsages[dst][i] != 0)
+                    addResourceDep(attachmentUsages[src][i], attachmentUsages[dst][i], false);
+
             for (uint32_t i = 0; i < subpasses[src].resources.size(); ++i) {
                 for (uint32_t j = 0; j < subpasses[dst].resources.size(); ++j) {
                     if (subpasses[src].resources[i].resource
                         == subpasses[dst].resources[j].resource) {
                         addResourceDep(subpasses[src].resources[i].imageUsages,
-                                       subpasses[dst].resources[j].imageUsages);
+                                       subpasses[dst].resources[j].imageUsages, true);
                         // TODO buffer usages
                         // addResourceDep(subpasses[src].resources[i].imageUsages,
                         //                subpasses[dst].resources[j].imageUsages);
@@ -80,7 +99,7 @@ void VulkanRenderPass::build() {
                 }
             }
 
-            if () {
+            if (srcStages.stageFlags != drv::PipelineStages::TOP_OF_PIPE_BIT) {
                 VkSubpassDependency dep;
                 dep.srcSubpass = src;
                 dep.dstSubpass = dst;
@@ -88,12 +107,19 @@ void VulkanRenderPass::build() {
                 dep.dstStageMask = convertPipelineStages(dstStages);
                 dep.srcAccessMask = static_cast<VkAccessFlags>(srcAccessFlags);
                 dep.dstAccessMask = static_cast<VkAccessFlags>(dstAccessFlags);
-                dep.dependencyFlags = ;
+                const drv::PipelineStages framebufferStages(
+                  drv::PipelineStages::FRAGMENT_SHADER_BIT
+                  | drv::PipelineStages::EARLY_FRAGMENT_TESTS_BIT
+                  | drv::PipelineStages::LATE_FRAGMENT_TESTS_BIT
+                  | drv::PipelineStages::COLOR_ATTACHMENT_OUTPUT_BIT);
+                dep.dependencyFlags = 0;
+                if (srcStages.hasAnyStage_resolved(framebufferStages.stageFlags)
+                    && dstStages.hasAnyStage_resolved(framebufferStages.stageFlags))
+                    dep.dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
                 dependencies.push_back(dep);
             }
-            else {
+            else
                 drv::drv_assert(srcAccessFlags == 0 && dstAccessFlags == 0);
-            }
         }
     }
 
@@ -107,7 +133,7 @@ void VulkanRenderPass::build() {
 
     for (uint32_t i = 0; i < subpasses.size(); ++i) {
         vkSubpasses[i].flags = 0;
-        vkSubpasses[i].pipelineBindPoint = ;
+        vkSubpasses[i].pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
 
         vkSubpasses[i].inputAttachmentCount = uint32_t(subpasses[i].inputs.size());
         vkSubpasses[i].pInputAttachments = attachmentRefs.data() + attachmentId;
@@ -122,8 +148,9 @@ void VulkanRenderPass::build() {
         vkSubpasses[i].pResolveAttachments = nullptr;  // TODO multisampling
         vkSubpasses[i].pDepthStencilAttachment =
           &(attachmentRefs[attachmentId++] = get_attachment_ref(subpasses[i].depthStencil));
-        vkSubpasses[i].preserveAttachmentCount = ;
-        vkSubpasses[i].pPreserveAttachments = ;
+
+        vkSubpasses[i].preserveAttachmentCount = uint32_t(subpasses[i].preserve.size());
+        vkSubpasses[i].pPreserveAttachments = subpasses[i].preserve.data();
     }
 }
 
@@ -191,6 +218,7 @@ void VulkanRenderPass::clear() {
 
 void VulkanRenderPass::beginRenderPass(drv::CommandBufferPtr cmdBuffer,
                                        drv::ResourceTracker* tracker) const {
+    TODO;  // apply attachment usages as well
     applySync(tracker, 0);
     VkRenderPassBeginInfo beginInfo;
     beginInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;

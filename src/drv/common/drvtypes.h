@@ -211,6 +211,18 @@ struct PipelineStages
     void add(FlagType flags) { stageFlags |= flags; }
     void add(PipelineStageFlagBits stage) { stageFlags |= stage; }
     void add(const PipelineStages& stages) { stageFlags |= stages.stageFlags; }
+    bool hasAllStages_resolved(FlagType flags) const {
+        drv::drv_assert((stageFlags & ALL_GRAPHICS_BIT) == 0
+                        && (stageFlags & ALL_COMMANDS_BIT) == 0);
+        return stageFlags & flags == flags;
+    }
+    bool hasAllStages_resolved(PipelineStageFlagBits stage) const { return hasAllStages_resolved(FlagType(stage));}
+    bool hasAnyStage_resolved(FlagType flags) const {
+        drv::drv_assert((stageFlags & ALL_GRAPHICS_BIT) == 0
+                        && (stageFlags & ALL_COMMANDS_BIT) == 0);
+        return stageFlags & flags != 0;
+    }
+    bool hasAnyStages_resolved(PipelineStageFlagBits stage) const { return hasAnyStages_resolved(FlagType(stage));}
     static FlagType get_graphics_bits() {
         return DRAW_INDIRECT_BIT | VERTEX_INPUT_BIT | VERTEX_SHADER_BIT
                | TESSELLATION_CONTROL_SHADER_BIT | TESSELLATION_EVALUATION_SHADER_BIT
@@ -1347,9 +1359,11 @@ enum ImageResourceUsage : ImageResourceUsageFlag
 {
     IMAGE_USAGE_TRANSFER_DESTINATION = 1ull << 0,
     IMAGE_USAGE_PRESENT = 1ull << 1,
-    IMAGE_USAGE_COLOR_OUTPUT = 1ull << 2,
-    IMAGE_USAGE_ATTACHMENT_INPUT = 1ull << 3,
-    IMAGE_USAGE_DEPTH_STENCIL = 1ull << 4,
+    IMAGE_USAGE_ATTACHMENT_INPUT = 1ull << 2,
+    IMAGE_USAGE_COLOR_OUTPUT_READ = 1ull << 3,
+    IMAGE_USAGE_COLOR_OUTPUT_WRITE = 1ull << 4,
+    IMAGE_USAGE_DEPTH_STENCIL_READ = 1ull << 5,
+    IMAGE_USAGE_DEPTH_STENCIL_WRITE = 1ull << 6,
 };
 
 PipelineStages get_image_usage_stages(ImageResourceUsageFlag usages);

@@ -14,13 +14,19 @@ PipelineStages drv::get_image_usage_stages(ImageResourceUsageFlag usages) {
                 case IMAGE_USAGE_PRESENT:
                     ret.add(PipelineStages::BOTTOM_OF_PIPE_BIT);  // based on vulkan spec
                     break;
-                case IMAGE_USAGE_COLOR_OUTPUT:
-                    ret.add();
-                    break;
                 case IMAGE_USAGE_ATTACHMENT_INPUT:
                     ret.add();
                     break;
-                case IMAGE_USAGE_DEPTH_STENCIL:
+                case IMAGE_USAGE_COLOR_OUTPUT_READ:
+                    ret.add();
+                    break;
+                case IMAGE_USAGE_COLOR_OUTPUT_WRITE:
+                    ret.add();
+                    break;
+                case IMAGE_USAGE_DEPTH_STENCIL_READ:
+                    ret.add();
+                    break;
+                case IMAGE_USAGE_DEPTH_STENCIL_WRITE:
                     ret.add();
                     break;
             }
@@ -43,14 +49,20 @@ MemoryBarrier::AccessFlagBitType drv::get_image_usage_accesses(ImageResourceUsag
                 case IMAGE_USAGE_PRESENT:
                     ret |= 0;  // made visible automatically by presentation engine
                     break;
-                case IMAGE_USAGE_COLOR_OUTPUT:
-                    ret |= ;
-                    break;
                 case IMAGE_USAGE_ATTACHMENT_INPUT:
-                    ret |= ;
+                    ret |= MemoryBarrier::AccessFlagBits::INPUT_ATTACHMENT_READ_BIT;
                     break;
-                case IMAGE_USAGE_DEPTH_STENCIL:
-                    ret |= ;
+                case IMAGE_USAGE_COLOR_OUTPUT_READ:
+                    ret |= MemoryBarrier::AccessFlagBits::COLOR_ATTACHMENT_READ_BIT;
+                    break;
+                case IMAGE_USAGE_COLOR_OUTPUT_WRITE:
+                    ret |= MemoryBarrier::AccessFlagBits::COLOR_ATTACHMENT_WRITE_BIT;
+                    break;
+                case IMAGE_USAGE_DEPTH_STENCIL_READ:
+                    ret |= MemoryBarrier::AccessFlagBits::DEPTH_STENCIL_ATTACHMENT_READ_BIT;
+                    break;
+                case IMAGE_USAGE_DEPTH_STENCIL_WRITE:
+                    ret |= MemoryBarrier::AccessFlagBits::DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
                     break;
             }
         }
@@ -75,14 +87,34 @@ ImageLayoutMask drv::get_accepted_image_layouts(ImageResourceUsageFlag usages) {
                     ret &= static_cast<ImageLayoutMask>(drv::ImageLayout::PRESENT_SRC_KHR)
                            | static_cast<ImageLayoutMask>(drv::ImageLayout::SHARED_PRESENT_KHR);
                     break;
-                case IMAGE_USAGE_COLOR_OUTPUT:
-                    ret &= ;
-                    break;
                 case IMAGE_USAGE_ATTACHMENT_INPUT:
-                    ret &= ;
+                    ret &=
+                      static_cast<ImageLayoutMask>(drv::ImageLayout::GENERAL)
+                      | static_cast<ImageLayoutMask>(drv::ImageLayout::SHADER_READ_ONLY_OPTIMAL)
+                      | static_cast<ImageLayoutMask>(
+                        drv::ImageLayout::DEPTH_STENCIL_READ_ONLY_OPTIMAL);
                     break;
-                case IMAGE_USAGE_DEPTH_STENCIL:
-                    ret &= ;
+                case IMAGE_USAGE_COLOR_OUTPUT_READ:
+                    ret &=
+                      static_cast<ImageLayoutMask>(drv::ImageLayout::GENERAL)
+                      | static_cast<ImageLayoutMask>(drv::ImageLayout::COLOR_ATTACHMENT_OPTIMAL);
+                    break;
+                case IMAGE_USAGE_COLOR_OUTPUT_WRITE:
+                    ret &=
+                      static_cast<ImageLayoutMask>(drv::ImageLayout::GENERAL)
+                      | static_cast<ImageLayoutMask>(drv::ImageLayout::COLOR_ATTACHMENT_OPTIMAL);
+                    break;
+                case IMAGE_USAGE_DEPTH_STENCIL_READ:
+                    ret &= static_cast<ImageLayoutMask>(drv::ImageLayout::GENERAL)
+                           | static_cast<ImageLayoutMask>(
+                             drv::ImageLayout::DEPTH_STENCIL_READ_ONLY_OPTIMAL)
+                           | static_cast<ImageLayoutMask>(
+                             drv::ImageLayout::DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
+                    break;
+                case IMAGE_USAGE_DEPTH_STENCIL_WRITE:
+                    ret &= static_cast<ImageLayoutMask>(drv::ImageLayout::GENERAL)
+                           | static_cast<ImageLayoutMask>(
+                             drv::ImageLayout::DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
                     break;
             }
         }

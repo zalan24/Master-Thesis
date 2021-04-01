@@ -29,6 +29,8 @@ Game::Game(Engine* _engine) : engine(_engine) {
     colorInfo.storeOp = drv::AttachmentStoreOp::STORE;
     colorInfo.stencilLoadOp = drv::AttachmentLoadOp::DONT_CARE;
     colorInfo.stencilStoreOp = drv::AttachmentStoreOp::DONT_CARE;
+    colorInfo.srcUsage = 0;
+    colorInfo.dstUsage = drv::IMAGE_USAGE_PRESENT;
     testColorAttachment = testRenderPass->createAttachment(std::move(colorInfo));
     drv::RenderPass::SubpassInfo subpassInfo;
     subpassInfo.colorOutputs.push_back(

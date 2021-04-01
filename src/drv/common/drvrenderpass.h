@@ -62,6 +62,9 @@ class RenderPass
         AttachmentStoreOp stencilStoreOp;
         ImageLayout initialLayout;
         ImageLayout finalLayout;
+        // optional parameters
+        ImageResourceUsageFlag srcUsage = 0;
+        ImageResourceUsageFlag dstUsage = 0;
     };
     AttachmentId createAttachment(AttachmentInfo info);
 
@@ -83,8 +86,8 @@ class RenderPass
     {
         std::vector<AttachmentRef> inputs;
         std::vector<AttachmentRef> colorOutputs;
+        std::vector<AttachmentId> preserve;
         std::vector<ResourceUsageInfo> resources;
-        // TODO external dependencies
         AttachmentRef depthStencil;
     };
     SubpassId createSubpass(SubpassInfo& info);
