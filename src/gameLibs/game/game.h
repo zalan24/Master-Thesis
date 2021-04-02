@@ -2,8 +2,8 @@
 
 #include <memory>
 
+#include <boundimageview.h>
 #include <drvrenderpass.h>
-#include <drvboundresource.hpp>
 
 #include <irenderer.h>
 #include <isimulation.h>
@@ -35,7 +35,7 @@ class Game final
     drv::AttachmentId testColorAttachment;
     drv::SubpassId testSubpass;
     FrameGraph::NodeId testDraw;
-    std::vector<drv::BoundResource<drv::ImagePtr, drv::ImageView, const Game*>> imageViews;
+    std::vector<BoundImageView> imageViews;
 
     drv::ImageViewPtr getView(drv::ImagePtr image, uint32_t imageIndex);
 };

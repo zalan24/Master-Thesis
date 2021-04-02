@@ -10,7 +10,7 @@ Garbage::Garbage(size_t memorySize, FrameId _frameId)
     memoryTop(0),
     cmdBuffersToReset(getAllocator<decltype(cmdBuffersToReset[0])>()),
     events(getAllocator<decltype(events[0])>()),
-    imageViews(getAllocator<decltype(imageViews[0])>()) {
+    resources(getAllocator<GeneralResource>()) {
 }
 
 Garbage::Garbage(Garbage&& other)
@@ -20,7 +20,7 @@ Garbage::Garbage(Garbage&& other)
     memoryTop(other.memoryTop),
     cmdBuffersToReset(std::move(other.cmdBuffersToReset)),
     events(std::move(other.events)),
-    imageViews(std::move(other.imageViews))
+    resources(std::move(other.resources))
 #if FRAME_MEM_SANITIZATION > 0
     ,
     allocations(std::move(other.allocations))
@@ -39,7 +39,7 @@ Garbage& Garbage::operator=(Garbage&& other) {
     memoryTop = other.memoryTop;
     cmdBuffersToReset = std::move(other.cmdBuffersToReset);
     events = std::move(other.events);
-    imageViews = std::move(other.imageViews);
+    resources = std::move(other.resources);
 #if FRAME_MEM_SANITIZATION > 0
     allocations = std::move(other.allocations);
 #endif
@@ -62,7 +62,7 @@ void Garbage::releaseEvent(EventPool::EventHandle&& event) {
 
 void Garbage::releaseImageView(drv::ImageView&& view) {
     std::unique_lock<std::mutex> lock(mutex);
-    imageViews.push_back(std::move(view));
+    resources.push(std::move(view));
 }
 
 FrameId Garbage::getFrameId() const {
@@ -73,8 +73,9 @@ void Garbage::close() noexcept {
     for (auto& cmdBuffer : cmdBuffersToReset)
         cmdBuffer.circulator->finished(std::move(cmdBuffer));
     cmdBuffersToReset.clear();
-    imageViews.clear();
     events.clear();
+    while (!resources.empty())
+        resources.pop();
 #if FRAME_MEM_SANITIZATION > 0
     for (const auto& [ptr, info] : allocations) {
         LOG_F(ERROR, "Unallocated memory at <%p>: type name: %s", ptr, info.typeName.c_str());

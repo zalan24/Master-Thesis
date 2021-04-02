@@ -1,7 +1,9 @@
 #pragma once
 
 #include <mutex>
+#include <stack>
 #include <unordered_map>
+#include <variant>
 #include <vector>
 
 #include <drv_wrappers.h>
@@ -146,6 +148,11 @@ class Garbage
     template <typename T>
     using Vector = std::vector<T, Allocator<T>>;
 
+    template <typename T>
+    using Stack = std::stack<T, Allocator<T>>;
+
+    using GeneralResource = std::variant<drv::ImageView>;
+
  private:
     FrameId frameId;
     mutable std::mutex mutex;
@@ -156,7 +163,7 @@ class Garbage
     size_t memoryTop = 0;
     Vector<drv::CommandBufferCirculator::CommandBufferHandle> cmdBuffersToReset;
     Vector<EventPool::EventHandle> events;
-    Vector<drv::ImageView> imageViews;
+    Stack<GeneralResource> resources;
 
 #if FRAME_MEM_SANITIZATION > 0
     struct AllocInfo
