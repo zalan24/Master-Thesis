@@ -113,6 +113,8 @@ void Game::record(FrameGraph& frameGraph, FrameId frameId) {
         testImageInfo[testColorAttachment].image = swapChainData.image;
         testImageInfo[testColorAttachment].view =
           getView(swapChainData.image, swapChainData.imageIndex);
+        testImageInfo[testColorAttachment].clearValue.color =
+          drv::ClearColorValue(0.f, 1.f, 0.f, 1.f);
         drv::CmdRenderPass testPass = testRenderPass->begin(testImageInfo);
         testPass.beginSubpass(testSubpass);
         testPass.end();

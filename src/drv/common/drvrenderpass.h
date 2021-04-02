@@ -37,6 +37,7 @@ class CmdRenderPass final
     ResourceTracker* tracker = nullptr;
     CommandBufferPtr cmdBuffer = NULL_HANDLE;
     RenderPass* renderPass = nullptr;
+    drv::Rect2D renderArea;
     SubpassId subpassCount = 0;
 
     SubpassId currentPass = INVALID_SUBPASS;
@@ -100,8 +101,10 @@ class RenderPass
     {
         ImagePtr image;
         ImageViewPtr view;
+        ClearValue clearValue;
     };
-    virtual CmdRenderPass begin(const AttachmentData* attachments) = 0;
+    virtual CmdRenderPass begin(const drv::Rect2D& renderArea,
+                                const AttachmentData* attachments) = 0;
 
  protected:
     LogicalDevicePtr device;
@@ -110,7 +113,8 @@ class RenderPass
     std::vector<AttachmentInfo> attachments;
     std::vector<SubpassInfo> subpasses;
 
-    virtual void beginRenderPass(CommandBufferPtr cmdBuffer, ResourceTracker* tracker) const = 0;
+    virtual void beginRenderPass(const drv::Rect2D& renderArea, CommandBufferPtr cmdBuffer,
+                                 ResourceTracker* tracker) const = 0;
     virtual void endRenderPass(CommandBufferPtr cmdBuffer, ResourceTracker* tracker) const = 0;
     virtual void startNextSubpass(CommandBufferPtr cmdBuffer, ResourceTracker* tracker,
                                   drv::SubpassId id) const = 0;

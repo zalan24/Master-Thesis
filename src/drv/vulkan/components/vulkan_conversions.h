@@ -106,6 +106,34 @@ inline VkClearColorValue convertClearColor(const drv::ClearColorValue& values) {
     return ret;
 }
 
+inline VkClearDepthStencilValue convertClearDepthStencil(const drv::ClearDepthStencilValue& value) {
+    VkClearDepthStencilValue ret;
+    ret.depth = value.depth;
+    ret.stencil = value.stencil;
+    return ret;
+}
+
+inline VkOffset2D convertOffset2D(const drv::Offset2D& value) {
+    VkOffset2D ret;
+    ret.x = value.x;
+    ret.y = value.y;
+    return ret;
+}
+
+inline VkExtent2D convertExtent2D(const drv::Extent2D& value) {
+    VkExtent2D ret;
+    ret.height = value.height;
+    ret.width = value.width;
+    return ret;
+}
+
+inline VkRect2D convertRect2D(const drv::Rect2D& value) {
+    VkRect2D ret;
+    ret.extent = convertExtent2D(value.extent);
+    ret.offset = convertOffset2D(value.offset);
+    return ret;
+}
+
 inline VkCommandBuffer convertCommandBuffer(drv::CommandBufferPtr buffer) {
     return reinterpret_cast<VkCommandBuffer>(buffer);
 }

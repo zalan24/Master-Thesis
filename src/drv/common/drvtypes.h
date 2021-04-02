@@ -216,13 +216,17 @@ struct PipelineStages
                         && (stageFlags & ALL_COMMANDS_BIT) == 0);
         return stageFlags & flags == flags;
     }
-    bool hasAllStages_resolved(PipelineStageFlagBits stage) const { return hasAllStages_resolved(FlagType(stage));}
+    bool hasAllStages_resolved(PipelineStageFlagBits stage) const {
+        return hasAllStages_resolved(FlagType(stage));
+    }
     bool hasAnyStage_resolved(FlagType flags) const {
         drv::drv_assert((stageFlags & ALL_GRAPHICS_BIT) == 0
                         && (stageFlags & ALL_COMMANDS_BIT) == 0);
         return stageFlags & flags != 0;
     }
-    bool hasAnyStages_resolved(PipelineStageFlagBits stage) const { return hasAnyStages_resolved(FlagType(stage));}
+    bool hasAnyStages_resolved(PipelineStageFlagBits stage) const {
+        return hasAnyStages_resolved(FlagType(stage));
+    }
     static FlagType get_graphics_bits() {
         return DRAW_INDIRECT_BIT | VERTEX_INPUT_BIT | VERTEX_SHADER_BIT
                | TESSELLATION_CONTROL_SHADER_BIT | TESSELLATION_EVALUATION_SHADER_BIT
@@ -1354,6 +1358,18 @@ struct ClearColorValue
     }
 };
 
+struct ClearDepthStencilValue
+{
+    float depth;
+    uint32_t stencil;
+};
+
+union ClearValue
+{
+    ClearColorValue color;
+    ClearDepthStencilValue depthStencil;
+};
+
 using ImageResourceUsageFlag = uint64_t;
 enum ImageResourceUsage : ImageResourceUsageFlag
 {
@@ -1416,6 +1432,21 @@ enum class AttachmentStoreOp
 {
     STORE = 0,
     DONT_CARE = 1,
+};
+
+struct Offset2D {
+    int32_t    x;
+    int32_t    y;
+};
+
+struct Extent2D {
+    uint32_t    width;
+    uint32_t    height;
+};
+
+struct Rect2D {
+    Offset2D    offset;
+    Extent2D    extent;
 };
 
 };  // namespace drv

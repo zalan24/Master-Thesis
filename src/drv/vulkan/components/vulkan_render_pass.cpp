@@ -152,6 +152,8 @@ void VulkanRenderPass::build() {
         vkSubpasses[i].preserveAttachmentCount = uint32_t(subpasses[i].preserve.size());
         vkSubpasses[i].pPreserveAttachments = subpasses[i].preserve.data();
     }
+
+    clearValues.resize(attachments.size());
 }
 
 static VkAttachmentReference get_attachment_ref(const drv::RenderPass::AttachmentRef& ref) {
@@ -161,7 +163,8 @@ static VkAttachmentReference get_attachment_ref(const drv::RenderPass::Attachmen
     return ret;
 }
 
-drv::CmdRenderPass VulkanRenderPass::begin(const AttachmentData* images) {
+drv::CmdRenderPass VulkanRenderPass::begin(const drv::Rect2D& renderArea,
+                                           const AttachmentData* images) {
     TODO;  // prohibit resources that are also attachments
     if (renderPass == VK_NULL_HANDLE || changed()) {
 #ifdef DEBUG
@@ -207,6 +210,10 @@ drv::CmdRenderPass VulkanRenderPass::begin(const AttachmentData* images) {
           vkCreateRenderPass(convertDevice(device), &createInfo, nullptr, &renderPass);
         drv::drv_assert(result == VK_SUCCESS, "Could not create renderpass");
     }
+
+    for (uint32_t i = 0; i < attachments.size(); ++i) {
+        clearValues[i] = ;
+    }
 }
 
 void VulkanRenderPass::clear() {
@@ -216,7 +223,8 @@ void VulkanRenderPass::clear() {
     }
 }
 
-void VulkanRenderPass::beginRenderPass(drv::CommandBufferPtr cmdBuffer,
+void VulkanRenderPass::beginRenderPass(const drv::Rect2D& renderArea,
+                                       drv::CommandBufferPtr cmdBuffer,
                                        drv::ResourceTracker* tracker) const {
     TODO;  // apply attachment usages as well
     applySync(tracker, 0);
@@ -225,9 +233,9 @@ void VulkanRenderPass::beginRenderPass(drv::CommandBufferPtr cmdBuffer,
     beginInfo.pNext = nullptr;
     beginInfo.renderPass = renderPass;
     beginInfo.framebuffer = ;
-    beginInfo.renderArea = ;
-    beginInfo.clearValueCount = ;
-    beginInfo.pClearValues = ;
+    beginInfo.renderArea = convertRect2D(renderArea);
+    beginInfo.clearValueCount = uint32_t(clearValues.size());
+    beginInfo.pClearValues = clearValues.data();
     VkSubpassContents contents = VK_SUBPASS_CONTENTS_INLINE;  // TODO
     vkCmdBeginRenderPass(convertCommandBuffer(cmdBuffer), &beginInfo, contents);
 }

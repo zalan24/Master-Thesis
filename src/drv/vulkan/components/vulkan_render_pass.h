@@ -19,10 +19,11 @@ class VulkanRenderPass final : public drv::RenderPass
 
     void build() override;
 
-    drv::CmdRenderPass begin(const AttachmentData* attachments) override;
+    drv::CmdRenderPass begin(const drv::Rect2D& renderArea,
+                             const AttachmentData* attachments) override;
 
  protected:
-    void beginRenderPass(drv::CommandBufferPtr cmdBuffer,
+    void beginRenderPass(const drv::Rect2D& renderArea, drv::CommandBufferPtr cmdBuffer,
                          drv::ResourceTracker* tracker) const override;
     void endRenderPass(drv::CommandBufferPtr cmdBuffer,
                        drv::ResourceTracker* tracker) const override;
@@ -34,6 +35,7 @@ class VulkanRenderPass final : public drv::RenderPass
     std::vector<VkAttachmentReference> attachmentRefs;
     std::vector<VkSubpassDescription> vkSubpasses;
     std::vector<VkSubpassDependency> dependencies;
+    std::vector<VkClearValue> clearValues;
 
     void clear();
     void applySync(drv::ResourceTracker* tracker, drv::SubpassId id) const;
