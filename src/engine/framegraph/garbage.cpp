@@ -8,8 +8,8 @@ Garbage::Garbage(size_t memorySize, FrameId _frameId)
   : frameId(_frameId),
     memory(memorySize),
     memoryTop(0),
-    cmdBuffersToReset(getAllocator<decltype(cmdBuffersToReset[0])>()),
-    events(getAllocator<decltype(events[0])>()),
+    cmdBuffersToReset(getAllocator<std::decay_t<decltype(cmdBuffersToReset[0])>>()),
+    events(getAllocator<std::decay_t<decltype(events[0])>>()),
     resources(getAllocator<GeneralResource>()) {
 }
 
@@ -62,7 +62,7 @@ void Garbage::releaseEvent(EventPool::EventHandle&& event) {
 
 void Garbage::releaseImageView(drv::ImageView&& view) {
     std::unique_lock<std::mutex> lock(mutex);
-    resources.push(std::move(view));
+    resources.push_back(std::move(view));
 }
 
 FrameId Garbage::getFrameId() const {
@@ -75,7 +75,7 @@ void Garbage::close() noexcept {
     cmdBuffersToReset.clear();
     events.clear();
     while (!resources.empty())
-        resources.pop();
+        resources.pop_front();
 #if FRAME_MEM_SANITIZATION > 0
     for (const auto& [ptr, info] : allocations) {
         LOG_F(ERROR, "Unallocated memory at <%p>: type name: %s", ptr, info.typeName.c_str());

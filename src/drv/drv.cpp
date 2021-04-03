@@ -5,6 +5,7 @@
 
 #include <drivers.h>
 #include <drverror.h>
+#include <drvrenderpass.h>
 
 #ifdef DRIVER_VULKAN
 #    include <drvvulkan.h>

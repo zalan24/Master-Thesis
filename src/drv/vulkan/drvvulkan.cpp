@@ -18,7 +18,7 @@ using namespace drv_vulkan;
 
 std::unique_ptr<drv::RenderPass> DrvVulkan::create_render_pass(drv::LogicalDevicePtr device,
                                                                std::string name) {
-    return std::make_unique<VulkanRenderPass>(this, device, std::move(name));
+    return std::make_unique<VulkanRenderPass>(device, std::move(name));
 }
 
 std::unique_lock<std::mutex> DrvVulkan::lock_queue(drv::LogicalDevicePtr device,

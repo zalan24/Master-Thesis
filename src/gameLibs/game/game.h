@@ -4,11 +4,10 @@
 
 #include <drvrenderpass.h>
 
+#include <engine.h>
 #include <irenderer.h>
 #include <isimulation.h>
 #include <shaderobject.h>
-
-class Engine;
 
 class Game final
   : public IRenderer

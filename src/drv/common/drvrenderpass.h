@@ -99,7 +99,7 @@ class RenderPass
         std::vector<ResourceUsageInfo> resources;
         AttachmentRef depthStencil;
     };
-    SubpassId createSubpass(SubpassInfo& info);
+    SubpassId createSubpass(SubpassInfo info);
 
     RenderPassResourceId createResource();
 

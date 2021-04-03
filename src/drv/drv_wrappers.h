@@ -462,6 +462,7 @@ class ImageView
   , private Exclusive
 {
  public:
+    ImageView() : device(NULL_HANDLE), ptr(NULL_HANDLE) {}
     ImageView(LogicalDevicePtr device, const ImageViewCreateInfo& info);
     ~ImageView() noexcept;
 

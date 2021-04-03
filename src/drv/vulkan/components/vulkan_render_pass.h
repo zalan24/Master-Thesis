@@ -11,8 +11,8 @@
 class VulkanRenderPass final : public drv::RenderPass
 {
  public:
-    explicit VulkanRenderPass(DrvVulkan* driver, drv::LogicalDevicePtr device, std::string name);
-    ~VulkanRenderPass();
+    explicit VulkanRenderPass(drv::LogicalDevicePtr device, std::string name);
+    ~VulkanRenderPass() override;
 
     VulkanRenderPass(const VulkanRenderPass&) = delete;
     VulkanRenderPass& operator=(const VulkanRenderPass&) = delete;

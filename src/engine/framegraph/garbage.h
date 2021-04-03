@@ -1,5 +1,6 @@
 #pragma once
 
+#include <deque>
 #include <mutex>
 #include <stack>
 #include <unordered_map>
@@ -149,7 +150,10 @@ class Garbage
     using Vector = std::vector<T, Allocator<T>>;
 
     template <typename T>
-    using Stack = std::stack<T, Allocator<T>>;
+    using Deque = std::deque<T, Allocator<T>>;
+
+    template <typename T>
+    using Stack = std::stack<T, Deque<T>>;
 
     using GeneralResource = std::variant<drv::ImageView>;
 
@@ -163,7 +167,7 @@ class Garbage
     size_t memoryTop = 0;
     Vector<drv::CommandBufferCirculator::CommandBufferHandle> cmdBuffersToReset;
     Vector<EventPool::EventHandle> events;
-    Stack<GeneralResource> resources;
+    Deque<GeneralResource> resources;
 
 #if FRAME_MEM_SANITIZATION > 0
     struct AllocInfo

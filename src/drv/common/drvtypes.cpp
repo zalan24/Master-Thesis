@@ -17,19 +17,19 @@ PipelineStages drv::get_image_usage_stages(ImageResourceUsageFlag usages) {
                     ret.add(PipelineStages::BOTTOM_OF_PIPE_BIT);  // based on vulkan spec
                     break;
                 case IMAGE_USAGE_ATTACHMENT_INPUT:
-                    ret.add();
+                    ret.add(PipelineStages::FRAGMENT_SHADER_BIT);
                     break;
                 case IMAGE_USAGE_COLOR_OUTPUT_READ:
-                    ret.add();
+                    ret.add(PipelineStages::COLOR_ATTACHMENT_OUTPUT_BIT);
                     break;
                 case IMAGE_USAGE_COLOR_OUTPUT_WRITE:
-                    ret.add();
+                    ret.add(PipelineStages::COLOR_ATTACHMENT_OUTPUT_BIT);
                     break;
                 case IMAGE_USAGE_DEPTH_STENCIL_READ:
-                    ret.add();
+                    ret.add(PipelineStages::EARLY_FRAGMENT_TESTS_BIT);
                     break;
                 case IMAGE_USAGE_DEPTH_STENCIL_WRITE:
-                    ret.add();
+                    ret.add(PipelineStages::LATE_FRAGMENT_TESTS_BIT);
                     break;
             }
         }
@@ -93,21 +93,25 @@ ImageLayoutMask drv::get_accepted_image_layouts(ImageResourceUsageFlag usages) {
                     ret &=
                       static_cast<ImageLayoutMask>(drv::ImageLayout::GENERAL)
                       | static_cast<ImageLayoutMask>(drv::ImageLayout::SHADER_READ_ONLY_OPTIMAL)
+                      | static_cast<ImageLayoutMask>(drv::ImageLayout::SHARED_PRESENT_KHR)
                       | static_cast<ImageLayoutMask>(
                         drv::ImageLayout::DEPTH_STENCIL_READ_ONLY_OPTIMAL);
                     break;
                 case IMAGE_USAGE_COLOR_OUTPUT_READ:
                     ret &=
                       static_cast<ImageLayoutMask>(drv::ImageLayout::GENERAL)
+                      | static_cast<ImageLayoutMask>(drv::ImageLayout::SHARED_PRESENT_KHR)
                       | static_cast<ImageLayoutMask>(drv::ImageLayout::COLOR_ATTACHMENT_OPTIMAL);
                     break;
                 case IMAGE_USAGE_COLOR_OUTPUT_WRITE:
                     ret &=
                       static_cast<ImageLayoutMask>(drv::ImageLayout::GENERAL)
+                      | static_cast<ImageLayoutMask>(drv::ImageLayout::SHARED_PRESENT_KHR)
                       | static_cast<ImageLayoutMask>(drv::ImageLayout::COLOR_ATTACHMENT_OPTIMAL);
                     break;
                 case IMAGE_USAGE_DEPTH_STENCIL_READ:
                     ret &= static_cast<ImageLayoutMask>(drv::ImageLayout::GENERAL)
+                           | static_cast<ImageLayoutMask>(drv::ImageLayout::SHARED_PRESENT_KHR)
                            | static_cast<ImageLayoutMask>(
                              drv::ImageLayout::DEPTH_STENCIL_READ_ONLY_OPTIMAL)
                            | static_cast<ImageLayoutMask>(
@@ -115,6 +119,7 @@ ImageLayoutMask drv::get_accepted_image_layouts(ImageResourceUsageFlag usages) {
                     break;
                 case IMAGE_USAGE_DEPTH_STENCIL_WRITE:
                     ret &= static_cast<ImageLayoutMask>(drv::ImageLayout::GENERAL)
+                           | static_cast<ImageLayoutMask>(drv::ImageLayout::SHARED_PRESENT_KHR)
                            | static_cast<ImageLayoutMask>(
                              drv::ImageLayout::DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
                     break;
@@ -366,7 +371,7 @@ bool PipelineStages::hasAnyStage_resolved(FlagType flags) const {
     return (stageFlags & flags) != 0;
 }
 bool PipelineStages::hasAnyStages_resolved(PipelineStageFlagBits stage) const {
-    return hasAnyStages_resolved(FlagType(stage));
+    return hasAnyStage_resolved(stage);
 }
 PipelineStages::FlagType PipelineStages::get_graphics_bits() {
     return DRAW_INDIRECT_BIT | VERTEX_INPUT_BIT | VERTEX_SHADER_BIT
