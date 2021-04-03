@@ -2,6 +2,7 @@ set(WARNINGFLAGS "${WARNINGFLAGS}   -Weverything \
                                     -Werror-return-type \
                                     -Werror-parentheses \
                                     -Werror-defaulted-function-deleted \
+                                    -Werror-uninitialized \
                                     -Wno-c++98-compat \
                                     -Wno-c++98-c++11-compat-binary-literal \
                                     -Wno-c++98-compat-pedantic \

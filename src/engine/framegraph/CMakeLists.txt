@@ -12,4 +12,5 @@ target_link_libraries(AnimationsFramegraph PUBLIC
     AnimationsDrv
     AnimationsEventPool
     AnimationsDataStructures
+    boost_align_external
 )

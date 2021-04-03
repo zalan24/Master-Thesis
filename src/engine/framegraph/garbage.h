@@ -1,11 +1,15 @@
 #pragma once
 
+#include <cstdlib>
 #include <deque>
+#include <memory>
 #include <mutex>
 #include <stack>
 #include <unordered_map>
 #include <variant>
 #include <vector>
+
+#include <boost/align/aligned_alloc.hpp>
 
 #include <drv_wrappers.h>
 #include <drvcmdbufferbank.h>
@@ -30,7 +34,7 @@ class Garbage
 {
  public:
     Garbage() : Garbage(0, 0) {}
-    explicit Garbage(size_t memorySize) : Garbage(memorySize, 0) {}
+    explicit Garbage(size_t _memorySize) : Garbage(_memorySize, 0) {}
     explicit Garbage(size_t memorySize, FrameId frameId);
 
     Garbage(const Garbage&) = delete;
@@ -48,55 +52,97 @@ class Garbage
     void releaseImageView(drv::ImageView&& view);
     FrameId getFrameId() const;
 
-    template <typename T>
-    T* allocate(size_t n) {
-        if (n == 0)
-            return nullptr;
-        std::unique_lock<std::mutex> lock(mutex);
-        T* ret = nullptr;
-        if (memoryTop < memory.size()) {
-            uintptr_t align = reinterpret_cast<uintptr_t>(&memory[memoryTop]) % alignof(T);
-            if (align != 0)
-                align = alignof(T) - align;
-            size_t requiredAlign = (align + sizeof(Byte) - 1) / sizeof(Byte);
-            size_t requiredBytes = n * sizeof(T) / sizeof(Byte);
-            if (memory.size() - memoryTop <= requiredBytes + requiredAlign) {
-                static_assert(sizeof(Byte) == 1);
-                ret =
-                  reinterpret_cast<T*>(reinterpret_cast<Byte*>(memory.data() + memoryTop) + align);
-                memoryTop += requiredAlign + requiredBytes;
-            }
-            else
-                ret = new T[n];
-        }
-        else
-            ret = new T[n];
-        if (ret != nullptr) {
-            allocCount++;
+    struct AllocatorData
+    {
+        explicit AllocatorData(size_t memorySize);
+        AllocatorData(const AllocatorData&) = delete;
+        AllocatorData& operator=(const AllocatorData&) = delete;
+        ~AllocatorData();
 #if FRAME_MEM_SANITIZATION > 0
-            allocations[reinterpret_cast<const void*>(ret)].typeName = typeid(T).name();
+        struct AllocInfo
+        {
+            std::string typeName;
+            uint64_t allocationId;
 #    if FRAME_MEM_SANITIZATION == FRAME_MEM_SANITIZATION_FULL
             TODO;  // callstack
 #    endif
+        };
+        uint64_t allocationId = 0;
+        std::unordered_map<const void*, AllocInfo> allocations;
 #endif
-        }
-        return ret;
-    }
 
-    template <typename T>
-    void deallocate(T* p, size_t n) {
-        if (p == nullptr || n == 0)
-            return;
-        std::unique_lock<std::mutex> lock(mutex);
-        allocCount--;
+        using Byte = uint8_t;
+        std::vector<Byte> memory;
+        size_t allocCount = 0;
+        size_t memoryTop = 0;
+
+        mutable std::mutex mutex;
+
+        template <typename T>
+        T* allocate(size_t n) {
+            if (n == 0)
+                return nullptr;
+            std::unique_lock<std::mutex> lock(mutex);
+            T* ret = nullptr;
+            if (memoryTop < memory.size()) {
+                uintptr_t align = reinterpret_cast<uintptr_t>(&memory[memoryTop]) % alignof(T);
+                if (align != 0)
+                    align = alignof(T) - align;
+                size_t requiredAlign = (align + sizeof(Byte) - 1) / sizeof(Byte);
+                size_t requiredBytes = n * sizeof(T) / sizeof(Byte);
+                if (memory.size() - memoryTop <= requiredBytes + requiredAlign) {
+                    static_assert(sizeof(Byte) == 1);
+                    ret = reinterpret_cast<T*>(reinterpret_cast<Byte*>(memory.data() + memoryTop)
+                                               + align);
+                    memoryTop += requiredAlign + requiredBytes;
+                }
+            }
+            if (ret == nullptr) {
+                // TODO;
+                // Why the hell is aligned_alloc undeclared???
+                ret = reinterpret_cast<T*>(
+                  alignof(T) > 1 ? boost::alignment::aligned_alloc(alignof(T), sizeof(T) * n)
+                                 : std::malloc(sizeof(T) * n));
+                // size_t size = (alignof(T) > 1) ? sizeof(T) * (n + 1) : sizeof(T) * n;
+                // Byte* ptr = reinterpret_cast<Byte*>(std::malloc(size));
+                // ret = reinterpret_cast<T*>(std::align(alignof(T), size, ));
+                // size_t offset = std::alignm ptr % (alignof(T) / sizeof(Byte));
+                // if (offset > 0)
+                //     ptr += (sizeof(T) / sizeof(Byte)) - offset;
+                // ret = reinterpret_cast<T*>(ptr);
+            }
+            if (ret != nullptr) {
+                allocCount++;
 #if FRAME_MEM_SANITIZATION > 0
-        allocations.erase(reinterpret_cast<void*>(p));
+                allocations[reinterpret_cast<const void*>(ret)].typeName = typeid(T).name();
+                allocations[reinterpret_cast<const void*>(ret)].allocationId = allocationId++;
+#    if FRAME_MEM_SANITIZATION == FRAME_MEM_SANITIZATION_FULL
+                TODO;  // callstack
+#    endif
 #endif
-        if (reinterpret_cast<uintptr_t>(p) < reinterpret_cast<uintptr_t>(memory.data())
-            || reinterpret_cast<uintptr_t>(p)
-                 > reinterpret_cast<uintptr_t>(memory.data() + memoryTop))
-            delete[] p;
-    }
+            }
+            return ret;
+        }
+
+        template <typename T>
+        void deallocate(T* p, size_t n) {
+            if (p == nullptr || n == 0)
+                return;
+            std::unique_lock<std::mutex> lock(mutex);
+            allocCount--;
+#if FRAME_MEM_SANITIZATION > 0
+            allocations.erase(reinterpret_cast<void*>(p));
+#endif
+            if (reinterpret_cast<uintptr_t>(p) < reinterpret_cast<uintptr_t>(memory.data())
+                || reinterpret_cast<uintptr_t>(p)
+                     > reinterpret_cast<uintptr_t>(memory.data() + memoryTop)) {
+                if (alignof(T) == 1)
+                    std::free(p);
+                else
+                    boost::alignment::aligned_free(p);
+            }
+        }
+    };
 
     template <typename T>
     class Allocator
@@ -104,10 +150,10 @@ class Garbage
      public:
         using value_type = T;
 
-        explicit Allocator(Garbage* _garbage) : garbage(_garbage) {}
+        explicit Allocator(AllocatorData* _data) : data(_data) {}
 
         template <typename U>
-        Allocator(const Allocator<U>& a) : garbage(a.getGarbage()) {}
+        Allocator(const Allocator<U>& a) : data(a.getData()) {}
 
         Allocator(const Allocator&) = default;
         Allocator& operator=(const Allocator&) = default;
@@ -116,39 +162,39 @@ class Garbage
         ~Allocator() = default;
 
         T* allocate(size_t n) {
-            if (!garbage)
+            if (!data)
                 return nullptr;
-            T* ret = garbage->allocate<T>(n);
-            for (size_t i = 0; i < n; ++i)
-                new (ret + i) T();
+            T* ret = data->allocate<T>(n);
+            // for (size_t i = 0; i < n; ++i)
+            //     new (ret + i) T();
             return ret;
         }
         void deallocate(T* p, size_t n) {
             if (p == nullptr)
                 return;
             for (size_t i = 0; i < n; ++i) {
-                p[i].~T();
+                // p[i].~T();
                 ::operator delete(static_cast<void*>(p + i), p + i);
             }
-            garbage->deallocate(p, n);
+            data->deallocate(p, n);
         }
 
         template <typename U>
         struct rebind
         { using other = Allocator<U>; };
 
-        Garbage* getGarbage() const { return garbage; }
+        AllocatorData* getData() const { return data; }
 
-        bool operator==(const Allocator& other) const { return garbage == other.garbage; }
+        bool operator==(const Allocator& other) const { return data == other.data; }
         bool operator!=(const Allocator& other) const { return !(*this == other); }
 
      private:
-        Garbage* garbage;
+        AllocatorData* data;
     };
 
     template <typename T>
     Allocator<T> getAllocator() {
-        return Allocator<T>(this);
+        return Allocator<T>(allocatorData.get());
     }
 
     template <typename T>
@@ -164,26 +210,18 @@ class Garbage
 
  private:
     FrameId frameId;
-    mutable std::mutex mutex;
 
-#if FRAME_MEM_SANITIZATION > 0
-    struct AllocInfo
+    size_t memorySize;
+    std::unique_ptr<AllocatorData> allocatorData;
+
+    struct Trash
     {
-        std::string typeName;
-#    if FRAME_MEM_SANITIZATION == FRAME_MEM_SANITIZATION_FULL
-        TODO;  // callstack
-#    endif
+        Trash(Garbage* garbage);
+        Vector<drv::CommandBufferCirculator::CommandBufferHandle> cmdBuffersToReset;
+        Vector<EventPool::EventHandle> events;
+        Deque<GeneralResource> resources;
     };
-    std::unordered_map<const void*, AllocInfo> allocations;
-#endif
-
-    using Byte = uint8_t;
-    std::vector<Byte> memory;
-    size_t allocCount = 0;
-    size_t memoryTop = 0;
-    Vector<drv::CommandBufferCirculator::CommandBufferHandle> cmdBuffersToReset;
-    Vector<EventPool::EventHandle> events;
-    Deque<GeneralResource> resources;
+    Trash* trash = nullptr;
 
     void close() noexcept;
 };

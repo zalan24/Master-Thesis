@@ -4,45 +4,41 @@
 
 #include <drverror.h>
 
-Garbage::Garbage(size_t memorySize, FrameId _frameId)
-  : frameId(_frameId),
-    memory(memorySize),
-    memoryTop(0),
-    cmdBuffersToReset(getAllocator<std::decay_t<decltype(cmdBuffersToReset[0])>>()),
-    events(getAllocator<std::decay_t<decltype(events[0])>>()),
-    resources(getAllocator<GeneralResource>()) {
+Garbage::Trash::Trash(Garbage* garbage)
+  : cmdBuffersToReset(garbage->getAllocator<std::decay_t<decltype(cmdBuffersToReset[0])>>()),
+    events(garbage->getAllocator<std::decay_t<decltype(events[0])>>()),
+    resources(garbage->getAllocator<GeneralResource>()) {
+}
+
+Garbage::AllocatorData::AllocatorData(size_t _memorySize) : memory(_memorySize), memoryTop(0) {
+}
+
+Garbage::AllocatorData::~AllocatorData() {
+}
+
+Garbage::Garbage(size_t _memorySize, FrameId _frameId)
+  : frameId(_frameId), memorySize(_memorySize) {
+    allocatorData = std::make_unique<AllocatorData>(memorySize);
+    trash = new (getAllocator<Trash>().allocate(1)) Trash(this);
 }
 
 Garbage::Garbage(Garbage&& other)
   : frameId(other.frameId),
-#if FRAME_MEM_SANITIZATION > 0
-    allocations(std::move(other.allocations)),
-#endif
-    memory(std::move(other.memory)),
-    allocCount(other.allocCount),
-    memoryTop(other.memoryTop),
-    cmdBuffersToReset(std::move(other.cmdBuffersToReset)),
-    events(std::move(other.events)),
-    resources(std::move(other.resources))
-
-{
+    memorySize(other.memorySize),
+    allocatorData(std::move(other.allocatorData)),
+    trash(other.trash) {
+    other.trash = nullptr;
 }
 
 Garbage& Garbage::operator=(Garbage&& other) {
     if (&other == this)
         return *this;
-    std::unique_lock<std::mutex> lock(mutex);
     close();
     frameId = other.frameId;
-#if FRAME_MEM_SANITIZATION > 0
-    allocations = std::move(other.allocations);
-#endif
-    memory = std::move(other.memory);
-    allocCount = other.allocCount;
-    memoryTop = other.memoryTop;
-    cmdBuffersToReset = std::move(other.cmdBuffersToReset);
-    events = std::move(other.events);
-    resources = std::move(other.resources);
+    memorySize = other.memorySize;
+    allocatorData = std::move(other.allocatorData);
+    trash = other.trash;
+    other.trash = nullptr;
     return *this;
 }
 
@@ -51,18 +47,18 @@ Garbage::~Garbage() {
 }
 
 void Garbage::resetCommandBuffer(drv::CommandBufferCirculator::CommandBufferHandle&& cmdBuffer) {
-    std::unique_lock<std::mutex> lock(mutex);
-    cmdBuffersToReset.push_back(std::move(cmdBuffer));
+    std::unique_lock<std::mutex> lock(allocatorData->mutex);
+    trash->cmdBuffersToReset.push_back(std::move(cmdBuffer));
 }
 
 void Garbage::releaseEvent(EventPool::EventHandle&& event) {
-    std::unique_lock<std::mutex> lock(mutex);
-    events.push_back(std::move(event));
+    std::unique_lock<std::mutex> lock(allocatorData->mutex);
+    trash->events.push_back(std::move(event));
 }
 
 void Garbage::releaseImageView(drv::ImageView&& view) {
-    std::unique_lock<std::mutex> lock(mutex);
-    resources.push_back(std::move(view));
+    std::unique_lock<std::mutex> lock(allocatorData->mutex);
+    trash->resources.push_back(std::move(view));
 }
 
 FrameId Garbage::getFrameId() const {
@@ -70,31 +66,33 @@ FrameId Garbage::getFrameId() const {
 }
 
 void Garbage::close() noexcept {
-    for (auto& cmdBuffer : cmdBuffersToReset)
+    if (!trash)
+        return;
+    for (auto& cmdBuffer : trash->cmdBuffersToReset)
         cmdBuffer.circulator->finished(std::move(cmdBuffer));
-    cmdBuffersToReset.clear();
-    events.clear();
-    while (!resources.empty())
-        resources.pop_front();
+    trash->cmdBuffersToReset.clear();
+    trash->events.clear();
+    while (!trash->resources.empty())
+        trash->resources.pop_front();
+    getAllocator<Trash>().deallocate(trash, 1);
 #if FRAME_MEM_SANITIZATION > 0
-    for (const auto& [ptr, info] : allocations) {
-        LOG_F(ERROR, "Unallocated memory at <%p>: type name: %s", ptr, info.typeName.c_str());
+    for (const auto& [ptr, info] : allocatorData->allocations) {
+        LOG_F(ERROR, "Unallocated memory at <%p>: type name: %s, allocationId: %lld", ptr,
+              info.typeName.c_str(), info.allocationId);
 #    if FRAME_MEM_SANITIZATION == FRAME_MEM_SANITIZATION_FULL
         TODO;  // callstack
 #    endif
     }
-    allocations.clear();
+    allocatorData->allocations.clear();
 #endif
-    drv::drv_assert(allocCount == 0, "Something was not deallocated from garbage memory");
+    drv::drv_assert(allocatorData->allocCount == 0,
+                    "Something was not deallocated from garbage memory");
+    allocatorData.reset();
 }
 
 void Garbage::reset(FrameId _frameId) {
-    std::unique_lock<std::mutex> lock(mutex);
     close();
+    allocatorData = std::make_unique<AllocatorData>(memorySize);
+    trash = new (getAllocator<Trash>().allocate(1)) Trash(this);
     frameId = _frameId;
-    allocCount = 0;
-    memoryTop = 0;
-#if FRAME_MEM_SANITIZATION > 0
-    allocations.clear();
-#endif
 }
