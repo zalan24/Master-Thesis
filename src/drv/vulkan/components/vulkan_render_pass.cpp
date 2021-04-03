@@ -14,6 +14,8 @@ void VulkanRenderPass::build() {
         drv::ImageResourceUsageFlag usages;
     };
 
+    globalAttachmentUsages = std::vector<drv::ImageResourceUsageFlag>(attachments.size(), 0);
+
     std::vector<std::vector<drv::ImageResourceUsageFlag>> attachmentUsages;
     attachmentUsages.resize(subpasses.size());
     for (uint32_t pass = 0; pass < subpasses.size(); ++pass) {
@@ -54,6 +56,8 @@ void VulkanRenderPass::build() {
                 usages |= drv::IMAGE_USAGE_COLOR_OUTPUT_WRITE;
             attachmentUsages[pass][subpasses[pass].colorOutputs[i].id] |= usages;
         }
+        for (uint32_t i = 0; i < attachments.size(); ++i)
+            globalAttachmentUsages[i] |= attachmentUsages[pass][i];
     }
 
     for (uint32_t src = 0; src < subpasses.size(); ++src) {
@@ -154,6 +158,7 @@ void VulkanRenderPass::build() {
     }
 
     clearValues.resize(attachments.size());
+    attachmentImages.resize(attachments.size());
 }
 
 static VkAttachmentReference get_attachment_ref(const drv::RenderPass::AttachmentRef& ref) {
@@ -164,7 +169,11 @@ static VkAttachmentReference get_attachment_ref(const drv::RenderPass::Attachmen
 }
 
 bool VulkanRenderPass::needRecreation(const AttachmentData* images) {
-    // TODO prohibit resources that are also attachments
+    for (uint32_t i = 0; i < attachments.size(); ++i) {
+        attachmentImages[i].image = images[i].image;
+        attachmentImages[i].subresource = convertImageView(images[i].view)->subresource;
+    }
+    TODO;  // prohibit resources that are also attachments
     bool changed = false;
     for (uint32_t i = 0; i < attachmentInfos.size() && !changed; ++i) {
         if (attachmentInfos[i].format != convertImageView(images[i].view)->format)
@@ -285,8 +294,28 @@ void VulkanRenderPass::clear() {
 void VulkanRenderPass::beginRenderPass(drv::FramebufferPtr frameBuffer,
                                        const drv::Rect2D& renderArea,
                                        drv::CommandBufferPtr cmdBuffer,
-                                       drv::ResourceTracker* tracker) const {
-    TODO;  // apply attachment usages as well
+                                       drv::ResourceTracker* _tracker) const {
+    DrvVulkanResourceTracker* tracker = static_cast<DrvVulkanResourceTracker*>(_tracker);
+    for (uint32_t i = 0; i < attachments.size(); ++i) {
+        TODO;  // apply starting auto external barriers
+
+        drv::PipelineStages stages = drv::get_image_usage_stages(globalAttachmentUsages[i]);
+        drv::MemoryBarrier::AccessFlagBitType accessMask =
+          drv::get_image_usage_accesses(globalAttachmentUsages[i]);
+        bool transitionLayout = attachments[i].initialLayout != attachments[i].finalLayout;
+        uint32_t requiredLayoutMask =
+          attachments[i].initialLayout == drv::ImageLayout::UNDEFINED
+            ? drv::get_all_layouts_mask()
+            : static_cast<drv::ImageLayoutMask>(attachments[i].initialLayout);
+        tracker->add_memory_access(
+          cmdBuffer, attachmentImages[i].image, 1, &attachmentImages[i].subresource,
+          drv::MemoryBarrier::get_read_bits(accessMask) != 0,
+          drv::MemoryBarrier::get_write_bits(accessMask) != 0 || transitionLayout, stages,
+          accessMask, requiredLayoutMask, true, nullptr, transitionLayout,
+          attachments[i].finalLayout);
+
+        TODO;  // apply finishing auto external barriers
+    }
     applySync(tracker, 0);
     VkRenderPassBeginInfo beginInfo;
     beginInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
@@ -302,7 +331,6 @@ void VulkanRenderPass::beginRenderPass(drv::FramebufferPtr frameBuffer,
 
 void VulkanRenderPass::endRenderPass(drv::CommandBufferPtr cmdBuffer, drv::ResourceTracker*) const {
     vkCmdEndRenderPass(convertCommandBuffer(cmdBuffer));
-    TODO;  // track the new layout of attachments
 }
 
 void VulkanRenderPass::startNextSubpass(drv::CommandBufferPtr cmdBuffer,
@@ -313,10 +341,10 @@ void VulkanRenderPass::startNextSubpass(drv::CommandBufferPtr cmdBuffer,
 }
 
 void VulkanRenderPass::applySync(drv::ResourceTracker* tracker, drv::SubpassId id) const {
+    // track only resources, not attachments
     TODO;  // apply external incoming dependencies in tracker
     TODO;  // apply external outgoing dependencies in tracker
     TODO;  // apply internal dependencies in tracker
-    TODO;  // apply layout transition in tracker
 }
 
 bool DrvVulkan::destroy_framebuffer(drv::LogicalDevicePtr device, drv::FramebufferPtr frameBuffer) {

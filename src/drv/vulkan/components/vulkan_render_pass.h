@@ -40,12 +40,19 @@ class VulkanRenderPass final : public drv::RenderPass
     std::vector<VkSubpassDescription> vkSubpasses;
     std::vector<VkSubpassDependency> dependencies;
     std::vector<VkClearValue> clearValues;
+    std::vector<drv::ImageResourceUsageFlag> globalAttachmentUsages;
     struct AttachmentInfo
     {
         drv::ImageFormat format;
         drv::ImageCreateInfo::SampleCount samples;
     };
     std::vector<AttachmentInfo> attachmentInfos;
+    struct AttachmentImage
+    {
+        drv::ImagePtr image;
+        drv::ImageSubresourceRange subresource;
+    };
+    std::vector<AttachmentImage> attachmentImages;
     enum State
     {
         UNCHECKED,
