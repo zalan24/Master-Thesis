@@ -131,7 +131,7 @@ drv::Swapchain::CreateInfo Engine::get_swapchain_create_info(const Config& confi
                                  drv::SwapchainCreateInfo::PresentMode::FIFO_RELAXED,
                                  drv::SwapchainCreateInfo::PresentMode::FIFO};
     ret.sharingType = drv::SharingType::CONCURRENT;  // TODO use exclusive
-    ret.usages = drv::ImageCreateInfo::TRANSFER_DST_BIT;
+    ret.usages = drv::ImageCreateInfo::COLOR_ATTACHMENT_BIT;
     ret.userQueues = {present_queue, render_queue};
     return ret;
 }

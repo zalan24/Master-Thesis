@@ -1309,7 +1309,7 @@ void Framebuffer::close() {
 }
 
 void Framebuffer::destroy() {
-    if (frameBuffer != NULL_HANDLE) {
+    if (device != NULL_HANDLE && frameBuffer != NULL_HANDLE) {
         drv::destroy_framebuffer(device, frameBuffer);
         frameBuffer = NULL_HANDLE;
     }

@@ -203,7 +203,8 @@
         "csetjmp": "cpp",
         "scoped_allocator": "cpp",
         "compare": "cpp",
-        "concepts": "cpp"
+        "concepts": "cpp",
+        "execution": "cpp"
     },
     "cSpell.words": [
         "alignas",

@@ -25,7 +25,7 @@ Game::Game(Engine* _engine) : engine(_engine) {
     drv::RenderPass::AttachmentInfo colorInfo;
     colorInfo.initialLayout = drv::ImageLayout::UNDEFINED;
     colorInfo.finalLayout = drv::ImageLayout::PRESENT_SRC_KHR;
-    colorInfo.loadOp = drv::AttachmentLoadOp::DONT_CARE;
+    colorInfo.loadOp = drv::AttachmentLoadOp::CLEAR;
     colorInfo.storeOp = drv::AttachmentStoreOp::STORE;
     colorInfo.stencilLoadOp = drv::AttachmentLoadOp::DONT_CARE;
     colorInfo.stencilStoreOp = drv::AttachmentStoreOp::DONT_CARE;
@@ -71,6 +71,7 @@ void Game::recreateViews(uint32_t imageCount, const drv::ImagePtr* images) {
             imageViews.pop_back();
         });
     }
+    frameBuffers.clear();
     for (uint32_t i = 0; i < imageCount; ++i) {
         drv::ImageViewCreateInfo createInfo;
         createInfo.image = images[i];
@@ -86,8 +87,8 @@ void Game::recreateViews(uint32_t imageCount, const drv::ImagePtr* images) {
         createInfo.subresourceRange.layerCount = createInfo.subresourceRange.REMAINING_ARRAY_LAYERS;
         createInfo.subresourceRange.levelCount = createInfo.subresourceRange.REMAINING_MIP_LEVELS;
         imageViews.emplace_back(engine->getDevice(), createInfo);
+        frameBuffers.emplace_back(engine->getDevice());
     }
-    frameBuffers.resize(imageCount);
 }
 
 void Game::record(FrameGraph& frameGraph, FrameId frameId) {
@@ -108,6 +109,9 @@ void Game::record(FrameGraph& frameGraph, FrameId frameId) {
             recorder.getResourceTracker()->enableCommandLog();
         recorder.cmdWaitSemaphore(swapChainData.imageAvailableSemaphore,
                                   drv::IMAGE_USAGE_COLOR_OUTPUT_WRITE);
+        // recorder.cmdImageBarrier(
+        //   {swapChainData.image, drv::IMAGE_USAGE_COLOR_OUTPUT_WRITE, drv::ImageLayout::UNDEFINED,
+        //    true, drv::get_queue_family(engine->getDevice(), queues.renderQueue.handle)});
         drv::RenderPass::AttachmentData testImageInfo[1];
         testImageInfo[testColorAttachment].image = swapChainData.image;
         testImageInfo[testColorAttachment].view = imageViews[swapChainData.imageIndex];
@@ -122,6 +126,7 @@ void Game::record(FrameGraph& frameGraph, FrameId frameId) {
         drv::ClearValue clearValues[1];
         clearValues[testColorAttachment].type = drv::ClearValue::COLOR;
         clearValues[testColorAttachment].value.color = drv::ClearColorValue(0.f, 1.f, 0.f, 1.f);
+        // clearValues[testColorAttachment].value.color = drv::ClearColorValue(255, 255, 255, 255);
         drv::Rect2D renderArea;
         renderArea.extent = swapChainData.extent;
         renderArea.offset = {0, 0};

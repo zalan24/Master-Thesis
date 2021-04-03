@@ -47,17 +47,14 @@ Garbage::~Garbage() {
 }
 
 void Garbage::resetCommandBuffer(drv::CommandBufferCirculator::CommandBufferHandle&& cmdBuffer) {
-    std::unique_lock<std::mutex> lock(allocatorData->mutex);
     trash->cmdBuffersToReset.push_back(std::move(cmdBuffer));
 }
 
 void Garbage::releaseEvent(EventPool::EventHandle&& event) {
-    std::unique_lock<std::mutex> lock(allocatorData->mutex);
     trash->events.push_back(std::move(event));
 }
 
 void Garbage::releaseImageView(drv::ImageView&& view) {
-    std::unique_lock<std::mutex> lock(allocatorData->mutex);
     trash->resources.push_back(std::move(view));
 }
 
@@ -74,6 +71,7 @@ void Garbage::close() noexcept {
     trash->events.clear();
     while (!trash->resources.empty())
         trash->resources.pop_front();
+    trash->~Trash();
     getAllocator<Trash>().deallocate(trash, 1);
 #if FRAME_MEM_SANITIZATION > 0
     for (const auto& [ptr, info] : allocatorData->allocations) {

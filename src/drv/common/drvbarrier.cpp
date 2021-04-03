@@ -62,8 +62,8 @@ ImageMemoryBarrier::ImageMemoryBarrier(ImagePtr _image, ImageResourceUsageFlag _
     transitionLayout(true),
     discardCurrentContent(_discardCurrentContent),
     resultLayout(transition) {
-    drv_assert(get_accepted_image_layouts(usages) & static_cast<ImageLayoutMask>(transition),
-               "Transition target layout is not supported by all specified usages");
+    // drv_assert(get_accepted_image_layouts(usages) & static_cast<ImageLayoutMask>(transition),
+    //            "Transition target layout is not supported by all specified usages");
     requestedOwnership = targetFamily;
     requestedOwnership = targetFamily;
     numSubresourceRanges = 1;
@@ -107,8 +107,8 @@ ImageMemoryBarrier::ImageMemoryBarrier(ImagePtr _image, uint32_t numRanges,
     transitionLayout(true),
     discardCurrentContent(_discardCurrentContent),
     resultLayout(transition) {
-    drv_assert(get_accepted_image_layouts(usages) & static_cast<ImageLayoutMask>(transition),
-               "Transition target layout is not supported by all specified usages");
+    // drv_assert(get_accepted_image_layouts(usages) & static_cast<ImageLayoutMask>(transition),
+    //            "Transition target layout is not supported by all specified usages");
     requestedOwnership = targetFamily;
     if (numSubresourceRanges == 1)
         ranges.range = _ranges[0];
