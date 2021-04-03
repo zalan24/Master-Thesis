@@ -1365,10 +1365,16 @@ struct ClearDepthStencilValue
     uint32_t stencil;
 };
 
-union ClearValue
+struct ClearValue
 {
+    enum Type {
+        COLOR,
+        DEPTH
+    } type;
+    union Value {
     ClearColorValue color;
     ClearDepthStencilValue depthStencil;
+    } value;
 };
 
 using ImageResourceUsageFlag = uint64_t;

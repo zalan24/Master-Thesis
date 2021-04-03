@@ -266,13 +266,12 @@ drv::FramebufferPtr VulkanRenderPass::createFramebuffer(const AttachmentData* im
 
 drv::CmdRenderPass VulkanRenderPass::begin(drv::FramebufferPtr frameBuffer,
                                            const drv::Rect2D& renderArea,
-                                           const drv::ClearValue* clearValues) {
+                                           const drv::ClearValue* _clearValues) {
     drv::drv_assert(
       state == OK,
       "Use the needRecreation() (and recreate() if needed) functions before beginning the render pass");
-    for (uint32_t i = 0; i < attachments.size(); ++i) {
-        clearValues[i] = ;
-    }
+    for (uint32_t i = 0; i < attachments.size(); ++i)
+        clearValues[i] = convertClearValue(_clearValues[i]);
     state = UNCHECKED;
 }
 

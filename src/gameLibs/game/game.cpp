@@ -117,7 +117,8 @@ void Game::record(FrameGraph& frameGraph, FrameId frameId) {
             frameBuffers[swapChainData.imageIndex].set(
               testRenderPass->createFramebuffer(testImageInfo));
         drv::ClearValue clearValues[1];
-        clearValues[testColorAttachment].color = drv::ClearColorValue(0.f, 1.f, 0.f, 1.f);
+        clearValues[testColorAttachment].type = drv::ClearValue::COLOR;
+        clearValues[testColorAttachment].value.color = drv::ClearColorValue(0.f, 1.f, 0.f, 1.f);
         drv::Rect2D renderArea;
         renderArea.extent = swapChainData.extent;
         renderArea.offset = {0, 0};

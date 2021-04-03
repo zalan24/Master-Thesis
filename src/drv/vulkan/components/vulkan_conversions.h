@@ -110,6 +110,19 @@ inline VkClearColorValue convertClearColor(const drv::ClearColorValue& values) {
     return ret;
 }
 
+inline VkClearValue convertClearValue(const drv::ClearValue& value) {
+    VkClearValue ret;
+    switch (value.type) {
+        case drv::ClearValue::COLOR:
+            ret.color = convertClearColor(value.value.color);
+            break;
+        case drv::ClearValue::DEPTH:
+            ret.depthStencil = convertClearDepthStencil(value.value.depthStencil);
+            break;
+    }
+    return ret;
+}
+
 inline VkClearDepthStencilValue convertClearDepthStencil(const drv::ClearDepthStencilValue& value) {
     VkClearDepthStencilValue ret;
     ret.depth = value.depth;
