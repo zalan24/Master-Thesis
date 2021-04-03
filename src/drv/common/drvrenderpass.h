@@ -22,6 +22,14 @@ static constexpr SubpassId INVALID_SUBPASS = std::numeric_limits<SubpassId>::max
 class CmdRenderPass final
 {
  public:
+    CmdRenderPass(ResourceTracker* _tracker, CommandBufferPtr _cmdBuffer, RenderPass* _renderPass,
+                  Rect2D _renderArea, FramebufferPtr _frameBuffer, SubpassId _subpassCount)
+      : tracker(_tracker),
+        cmdBuffer(_cmdBuffer),
+        renderPass(_renderPass),
+        renderArea(_renderArea),
+        frameBuffer(_frameBuffer),
+        subpassCount(_subpassCount) {}
     CmdRenderPass(const CmdRenderPass&) = delete;
     CmdRenderPass& operator=(const CmdRenderPass&) = delete;
     CmdRenderPass(CmdRenderPass&& other);
@@ -43,8 +51,6 @@ class CmdRenderPass final
 
     SubpassId currentPass = INVALID_SUBPASS;
     bool ended = false;
-
-    CmdRenderPass() = default;
     void close();
 };
 
@@ -65,8 +71,9 @@ class RenderPass
         ImageLayout initialLayout;
         ImageLayout finalLayout;
         // optional parameters
-        ImageResourceUsageFlag srcUsage = 0;
-        ImageResourceUsageFlag dstUsage = 0;
+        // TODO
+        // ImageResourceUsageFlag srcUsage = 0;
+        // ImageResourceUsageFlag dstUsage = 0;
     };
     AttachmentId createAttachment(AttachmentInfo info);
 
@@ -106,7 +113,8 @@ class RenderPass
     virtual bool needRecreation(const AttachmentData* attachments) = 0;
     virtual void recreate(const AttachmentData* attachments) = 0;
     virtual FramebufferPtr createFramebuffer(const AttachmentData* attachments) const = 0;
-    virtual CmdRenderPass begin(FramebufferPtr frameBuffer, const drv::Rect2D& renderArea,
+    virtual CmdRenderPass begin(ResourceTracker* tracker, CommandBufferPtr cmdBuffer,
+                                FramebufferPtr frameBuffer, const drv::Rect2D& renderArea,
                                 const ClearValue* clearValues) = 0;
 
  protected:

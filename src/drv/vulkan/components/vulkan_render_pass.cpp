@@ -7,6 +7,13 @@
 #include "vulkan_enum_compare.h"
 #include "vulkan_image.h"
 
+static VkAttachmentReference get_attachment_ref(const drv::RenderPass::AttachmentRef& ref) {
+    VkAttachmentReference ret;
+    ret.attachment = ref.id == drv::UNUSED_ATTACHMENT ? VK_ATTACHMENT_UNUSED : ref.id;
+    ret.layout = convertImageLayout(ref.layout);
+    return ret;
+}
+
 void VulkanRenderPass::build() {
     struct AttachmentUsage
     {
@@ -61,7 +68,7 @@ void VulkanRenderPass::build() {
     }
 
     for (uint32_t src = 0; src < subpasses.size(); ++src) {
-        TODO;  // external deps
+        // TODO;  // external deps
 
         for (uint32_t dst = src + 1; dst < subpasses.size(); ++dst) {
             drv::PipelineStages srcStages = drv::PipelineStages::TOP_OF_PIPE_BIT;
@@ -161,19 +168,12 @@ void VulkanRenderPass::build() {
     attachmentImages.resize(attachments.size());
 }
 
-static VkAttachmentReference get_attachment_ref(const drv::RenderPass::AttachmentRef& ref) {
-    VkAttachmentReference ret;
-    ret.attachment = ref.id == drv::UNUSED_ATTACHMENT ? VK_ATTACHMENT_UNUSED : ref.id;
-    ret.layout = convertImageLayout(ref.layout);
-    return ret;
-}
-
 bool VulkanRenderPass::needRecreation(const AttachmentData* images) {
     for (uint32_t i = 0; i < attachments.size(); ++i) {
         attachmentImages[i].image = images[i].image;
         attachmentImages[i].subresource = convertImageView(images[i].view)->subresource;
     }
-    TODO;  // prohibit resources that are also attachments
+    // TODO;  // prohibit resources that are also attachments
     bool changed = false;
     for (uint32_t i = 0; i < attachmentInfos.size() && !changed; ++i) {
         if (attachmentInfos[i].format != convertImageView(images[i].view)->format)
@@ -273,7 +273,9 @@ drv::FramebufferPtr VulkanRenderPass::createFramebuffer(const AttachmentData* im
     return reinterpret_cast<drv::FramebufferPtr>(ret);
 }
 
-drv::CmdRenderPass VulkanRenderPass::begin(drv::FramebufferPtr frameBuffer,
+drv::CmdRenderPass VulkanRenderPass::begin(drv::ResourceTracker* tracker,
+                                           drv::CommandBufferPtr cmdBuffer,
+                                           drv::FramebufferPtr frameBuffer,
                                            const drv::Rect2D& renderArea,
                                            const drv::ClearValue* _clearValues) {
     drv::drv_assert(
@@ -282,6 +284,7 @@ drv::CmdRenderPass VulkanRenderPass::begin(drv::FramebufferPtr frameBuffer,
     for (uint32_t i = 0; i < attachments.size(); ++i)
         clearValues[i] = convertClearValue(_clearValues[i]);
     state = UNCHECKED;
+    return drv::CmdRenderPass(tracker, cmdBuffer, this, renderArea, frameBuffer, subpasses.size());
 }
 
 void VulkanRenderPass::clear() {
@@ -297,7 +300,7 @@ void VulkanRenderPass::beginRenderPass(drv::FramebufferPtr frameBuffer,
                                        drv::ResourceTracker* _tracker) const {
     DrvVulkanResourceTracker* tracker = static_cast<DrvVulkanResourceTracker*>(_tracker);
     for (uint32_t i = 0; i < attachments.size(); ++i) {
-        TODO;  // apply starting auto external barriers
+        // TODO;  // apply starting auto external barriers
 
         drv::PipelineStages stages = drv::get_image_usage_stages(globalAttachmentUsages[i]);
         drv::MemoryBarrier::AccessFlagBitType accessMask =
@@ -314,7 +317,7 @@ void VulkanRenderPass::beginRenderPass(drv::FramebufferPtr frameBuffer,
           accessMask, requiredLayoutMask, true, nullptr, transitionLayout,
           attachments[i].finalLayout);
 
-        TODO;  // apply finishing auto external barriers
+        // TODO;  // apply finishing auto external barriers
     }
     applySync(tracker, 0);
     VkRenderPassBeginInfo beginInfo;
@@ -342,9 +345,9 @@ void VulkanRenderPass::startNextSubpass(drv::CommandBufferPtr cmdBuffer,
 
 void VulkanRenderPass::applySync(drv::ResourceTracker* tracker, drv::SubpassId id) const {
     // track only resources, not attachments
-    TODO;  // apply external incoming dependencies in tracker
-    TODO;  // apply external outgoing dependencies in tracker
-    TODO;  // apply internal dependencies in tracker
+    //     TODO;  // apply external incoming dependencies in tracker
+    //     TODO;  // apply external outgoing dependencies in tracker
+    //     TODO;  // apply internal dependencies in tracker
 }
 
 bool DrvVulkan::destroy_framebuffer(drv::LogicalDevicePtr device, drv::FramebufferPtr frameBuffer) {

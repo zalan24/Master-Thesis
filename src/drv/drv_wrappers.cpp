@@ -1180,10 +1180,7 @@ Swapchain::Swapchain(drv::PhysicalDevicePtr physicalDevice, LogicalDevicePtr _de
                         "Could not get swapchain images");
         drv::drv_assert(count > 0, "No images in swapchain");
         images.resize(count);
-        StackMemory::MemoryHandle<ImagePtr> imagePtrs(count, TEMPMEM);
-        get_swapchain_images(device, ptr, &count, imagePtrs);
-        for (uint32_t i = 0; i < count; ++i)
-            images[i].set(imagePtrs[i]);
+        get_swapchain_images(device, ptr, &count, images.data());
     }
 }
 
@@ -1199,10 +1196,7 @@ void Swapchain::recreate(drv::PhysicalDevicePtr physicalDevice, IWindow* window)
                         "Could not get swapchain images");
         drv::drv_assert(count > 0, "No images in swapchain");
         images.resize(count);
-        StackMemory::MemoryHandle<ImagePtr> imagePtrs(count, TEMPMEM);
-        get_swapchain_images(device, ptr, &count, imagePtrs);
-        for (uint32_t i = 0; i < count; ++i)
-            images[i].set(imagePtrs[i]);
+        get_swapchain_images(device, ptr, &count, images.data());
     }
     // TODO free old swapchain???
 }
@@ -1272,10 +1266,10 @@ PresentResult Swapchain::present(QueuePtr queue, const PresentInfo& info) {
     return ret;
 }
 
-ImageBindingBase* Swapchain::getAcquiredImage() const {
+drv::ImagePtr Swapchain::getAcquiredImage() const {
     if (acquiredIndex == INVALID_INDEX)
         return NULL_HANDLE;
-    return &images[acquiredIndex];
+    return images[acquiredIndex];
 }
 
 Framebuffer::Framebuffer(LogicalDevicePtr _device) : device(_device) {
@@ -1288,10 +1282,14 @@ Framebuffer::Framebuffer(Framebuffer&& other)
 }
 
 Framebuffer& Framebuffer::operator=(Framebuffer&& other) {
+    if (&other == this)
+        return *this;
+    close();
     device = other.device;
     frameBuffer = other.frameBuffer;
     other.device = NULL_HANDLE;
     other.frameBuffer = NULL_HANDLE;
+    return *this;
 }
 
 Framebuffer::~Framebuffer() {
@@ -1312,7 +1310,7 @@ void Framebuffer::close() {
 
 void Framebuffer::destroy() {
     if (frameBuffer != NULL_HANDLE) {
-        TODO;
+        drv::destroy_framebuffer(device, frameBuffer);
         frameBuffer = NULL_HANDLE;
     }
 }

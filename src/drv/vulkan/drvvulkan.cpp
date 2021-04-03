@@ -11,9 +11,15 @@
 #include <drverror.h>
 
 #include "components/vulkan_conversions.h"
+#include "components/vulkan_render_pass.h"
 #include "components/vulkan_resource_track_data.h"
 
 using namespace drv_vulkan;
+
+std::unique_ptr<drv::RenderPass> DrvVulkan::create_render_pass(drv::LogicalDevicePtr device,
+                                                               std::string name) {
+    return std::make_unique<VulkanRenderPass>(this, device, std::move(name));
+}
 
 std::unique_lock<std::mutex> DrvVulkan::lock_queue(drv::LogicalDevicePtr device,
                                                    drv::QueuePtr queue) {

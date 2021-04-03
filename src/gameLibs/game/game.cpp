@@ -4,6 +4,8 @@
 
 #include <util.hpp>
 
+#include <drverror.h>
+
 #include <engine.h>
 #include <garbage.h>
 
@@ -28,8 +30,8 @@ Game::Game(Engine* _engine) : engine(_engine) {
     colorInfo.storeOp = drv::AttachmentStoreOp::STORE;
     colorInfo.stencilLoadOp = drv::AttachmentLoadOp::DONT_CARE;
     colorInfo.stencilStoreOp = drv::AttachmentStoreOp::DONT_CARE;
-    colorInfo.srcUsage = 0;
-    colorInfo.dstUsage = drv::IMAGE_USAGE_PRESENT;
+    // colorInfo.srcUsage = 0;
+    // colorInfo.dstUsage = drv::IMAGE_USAGE_PRESENT;
     testColorAttachment = testRenderPass->createAttachment(std::move(colorInfo));
     drv::RenderPass::SubpassInfo subpassInfo;
     subpassInfo.colorOutputs.push_back(
@@ -105,6 +107,8 @@ void Game::record(FrameGraph& frameGraph, FrameId frameId) {
           engine->acquireCommandRecorder(testDrawHandle, frameId, queues.renderQueue.id);
         if (frameId < 3)
             recorder.getResourceTracker()->enableCommandLog();
+        recorder.cmdWaitSemaphore(swapChainData.imageAvailableSemaphore,
+                                  drv::IMAGE_USAGE_COLOR_OUTPUT_WRITE);
         drv::RenderPass::AttachmentData testImageInfo[1];
         testImageInfo[testColorAttachment].image = swapChainData.image;
         testImageInfo[testColorAttachment].view = imageViews[swapChainData.imageIndex];
@@ -123,24 +127,23 @@ void Game::record(FrameGraph& frameGraph, FrameId frameId) {
         renderArea.extent = swapChainData.extent;
         renderArea.offset = {0, 0};
         drv::CmdRenderPass testPass =
-          testRenderPass->begin(frameBuffers[swapChainData.imageIndex], renderArea, clearValues);
+          testRenderPass->begin(recorder.getResourceTracker(), recorder.getCommandBuffer(),
+                                frameBuffers[swapChainData.imageIndex], renderArea, clearValues);
         testPass.beginSubpass(testSubpass);
         testPass.end();
 
-        /// --- oroginal clear ---
-        drv::ClearColorValue clearValue(1.f, 1.f, 0.f, 1.f);
-        recorder.cmdWaitSemaphore(swapChainData.imageAvailableSemaphore,
-                                  drv::IMAGE_USAGE_TRANSFER_DESTINATION);
-        recorder.cmdImageBarrier(
-          {swapChainData.image, drv::IMAGE_USAGE_TRANSFER_DESTINATION,
-           drv::ImageMemoryBarrier::AUTO_TRANSITION, true,
-           drv::get_queue_family(engine->getDevice(), queues.renderQueue.handle)});
-        recorder.cmdClearImage(swapChainData.image, &clearValue);
+        // /// --- oroginal clear ---
+        // recorder.cmdImageBarrier(
+        //   {swapChainData.image, drv::IMAGE_USAGE_TRANSFER_DESTINATION,
+        //    drv::ImageMemoryBarrier::AUTO_TRANSITION, true,
+        //    drv::get_queue_family(engine->getDevice(), queues.renderQueue.handle)});
+        // drv::ClearColorValue clearValue(1.f, 1.f, 0.f, 1.f);
+        // recorder.cmdClearImage(swapChainData.image, &clearValue);
+        // /// --- clear ---
+
         recorder.cmdImageBarrier(
           {swapChainData.image, drv::IMAGE_USAGE_PRESENT, drv::ImageMemoryBarrier::AUTO_TRANSITION,
            false, drv::get_queue_family(engine->getDevice(), queues.presentQueue.handle)});
-        /// --- clear ---
-
         // TODO according to vulkan spec https://khronos.org/registry/vulkan/specs/1.2-extensions/man/html/vkQueuePresentKHR.html
         // memory is made visible to all read operations (add this to tracker?) -- only available memory
         recorder.cmdSignalSemaphore(swapChainData.renderFinishedSemaphore);

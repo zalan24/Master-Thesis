@@ -1,5 +1,6 @@
 set(WARNINGFLAGS "${WARNINGFLAGS}   -Weverything \
                                     -Werror-return-type \
+                                    -Werror-parentheses \
                                     -Werror-defaulted-function-deleted \
                                     -Wno-c++98-compat \
                                     -Wno-c++98-c++11-compat-binary-literal \

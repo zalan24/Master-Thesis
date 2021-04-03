@@ -392,6 +392,7 @@ Engine::AcquiredImageData Engine::acquiredSwapchainImage(
         ret.extent = {0, 0};
         ret.version = INVALID_SWAPCHAIN;
         ret.imageCount = 0;
+        ret.images = nullptr;
     }
     acquireImageSemaphoreId =
       (acquireImageSemaphoreId + 1) % syncBlock.imageAvailableSemaphores.size();

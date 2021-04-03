@@ -42,6 +42,9 @@ class DrvVulkan final : public drv::IDriver
 
     // --- Interface ---
 
+    std::unique_ptr<drv::RenderPass> create_render_pass(drv::LogicalDevicePtr device,
+                                                        std::string name) override;
+
     drv::InstancePtr create_instance(const drv::InstanceCreateInfo* info) override;
     bool delete_instance(drv::InstancePtr ptr) override;
     bool get_physical_devices(drv::InstancePtr instance, unsigned int* count,

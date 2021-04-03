@@ -2,7 +2,6 @@
 
 #include <memory>
 
-#include <boundimageview.h>
 #include <drvrenderpass.h>
 
 #include <irenderer.h>

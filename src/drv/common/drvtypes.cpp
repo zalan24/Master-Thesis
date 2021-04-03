@@ -2,6 +2,8 @@
 
 using namespace drv;
 
+#include "drverror.h"
+
 PipelineStages drv::get_image_usage_stages(ImageResourceUsageFlag usages) {
     ImageResourceUsageFlag usage = 1;
     PipelineStages ret;
@@ -337,4 +339,81 @@ ImageAspectBitType drv::get_format_aspects(ImageFormat format) {
 PipelineStages::PipelineStageFlagBits PipelineStages::getEarliestStage(
   CommandTypeMask queueSupport) const {
     return getStage(queueSupport, 0);
+}
+
+PipelineStages::PipelineStages(FlagType flags) : stageFlags(flags) {
+}
+PipelineStages::PipelineStages(PipelineStageFlagBits stage) : stageFlags(stage) {
+}
+void PipelineStages::add(FlagType flags) {
+    stageFlags |= flags;
+}
+void PipelineStages::add(PipelineStageFlagBits stage) {
+    stageFlags |= stage;
+}
+void PipelineStages::add(const PipelineStages& stages) {
+    stageFlags |= stages.stageFlags;
+}
+bool PipelineStages::hasAllStages_resolved(FlagType flags) const {
+    drv::drv_assert((stageFlags & ALL_GRAPHICS_BIT) == 0 && (stageFlags & ALL_COMMANDS_BIT) == 0);
+    return (stageFlags & flags) == flags;
+}
+bool PipelineStages::hasAllStages_resolved(PipelineStageFlagBits stage) const {
+    return hasAllStages_resolved(FlagType(stage));
+}
+bool PipelineStages::hasAnyStage_resolved(FlagType flags) const {
+    drv::drv_assert((stageFlags & ALL_GRAPHICS_BIT) == 0 && (stageFlags & ALL_COMMANDS_BIT) == 0);
+    return (stageFlags & flags) != 0;
+}
+bool PipelineStages::hasAnyStages_resolved(PipelineStageFlagBits stage) const {
+    return hasAnyStages_resolved(FlagType(stage));
+}
+PipelineStages::FlagType PipelineStages::get_graphics_bits() {
+    return DRAW_INDIRECT_BIT | VERTEX_INPUT_BIT | VERTEX_SHADER_BIT
+           | TESSELLATION_CONTROL_SHADER_BIT | TESSELLATION_EVALUATION_SHADER_BIT
+           | GEOMETRY_SHADER_BIT | FRAGMENT_SHADER_BIT | EARLY_FRAGMENT_TESTS_BIT
+           | LATE_FRAGMENT_TESTS_BIT | COLOR_ATTACHMENT_OUTPUT_BIT;
+    //     | MESH_SHADER_BIT_NV
+    //    | CONDITIONAL_RENDERING_BIT_EXT | TRANSFORM_FEEDBACK_BIT_EXT
+    //    | FRAGMENT_SHADING_RATE_ATTACHMENT_BIT_KHR | TASK_SHADER_BIT_NV
+    //    | FRAGMENT_DENSITY_PROCESS_BIT_EXT;
+}
+PipelineStages::FlagType PipelineStages::get_all_bits(CommandTypeBase queueSupport) {
+    FlagType ret = HOST_BIT | TOP_OF_PIPE_BIT | BOTTOM_OF_PIPE_BIT;
+    if (queueSupport & CMD_TYPE_TRANSFER)
+        ret |= TRANSFER_BIT;
+    if (queueSupport & CMD_TYPE_GRAPHICS)
+        ret |= get_graphics_bits();
+    if (queueSupport & CMD_TYPE_COMPUTE)
+        ret |= COMPUTE_SHADER_BIT;
+    return ret;
+}
+PipelineStages::FlagType PipelineStages::resolve(CommandTypeMask queueSupport) const {
+    FlagType ret = stageFlags;
+    if (ret & ALL_GRAPHICS_BIT)
+        ret = (ret ^ ALL_GRAPHICS_BIT) | get_graphics_bits();
+    if (ret & ALL_COMMANDS_BIT)
+        ret = (ret ^ ALL_COMMANDS_BIT) | get_all_bits(queueSupport);
+    return ret;
+}
+uint32_t PipelineStages::getStageCount(CommandTypeMask queueSupport) const {
+    FlagType stages = resolve(queueSupport);
+    uint32_t ret = 0;
+    while (stages) {
+        ret += stages & 0b1;
+        stages >>= 1;
+    }
+    return ret;
+}
+PipelineStages::PipelineStageFlagBits PipelineStages::getStage(CommandTypeMask queueSupport,
+                                                               uint32_t index) const {
+    FlagType stages = resolve(queueSupport);
+    FlagType ret = 1;
+    while (ret <= stages) {
+        if (stages & ret)
+            if (index-- == 0)
+                return static_cast<PipelineStageFlagBits>(ret);
+        ret <<= 1;
+    }
+    throw std::runtime_error("Invalid index for stage");
 }

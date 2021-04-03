@@ -8,8 +8,6 @@
 #include <exclusive.h>
 #include <util.hpp>
 
-#include <drvboundtypes.h>
-
 #include "drv.h"
 
 class IWindow;
@@ -612,7 +610,7 @@ class Framebuffer : public NoCopy
     ~Framebuffer();
 
     operator FramebufferPtr() const { return frameBuffer; }
-    operator bool() const {return device != NULL_HANDLE && frameBuffer != NULL_HANDLE;}
+    operator bool() const { return device != NULL_HANDLE && frameBuffer != NULL_HANDLE; }
 
     void set(FramebufferPtr buffer);
 

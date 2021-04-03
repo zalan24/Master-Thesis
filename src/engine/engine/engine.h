@@ -84,7 +84,7 @@ class Engine
         drv::Extent2D extent;
         SwapchaingVersion version;  // incremented upon recreation
         uint32_t imageCount;
-        const drv::ImagePtr images = nullptr;
+        const drv::ImagePtr* images = nullptr;
     };
     AcquiredImageData acquiredSwapchainImage(FrameGraph::NodeHandle& acquiringNodeHandle);
 
@@ -139,6 +139,8 @@ class Engine
         void finishQueueWork();
 
         drv::ResourceTracker* getResourceTracker() const;
+
+        drv::CommandBufferPtr getCommandBuffer() const { return cmdBuffer.commandBufferPtr; }
 
      private:
         CommandBufferRecorder(std::unique_lock<std::mutex>&& queueLock, drv::QueuePtr queue,
