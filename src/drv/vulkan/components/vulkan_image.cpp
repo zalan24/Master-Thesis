@@ -43,6 +43,7 @@ drv::ImagePtr DrvVulkan::create_image(drv::LogicalDevicePtr device,
     try {
         drv_vulkan::Image* ret = new drv_vulkan::Image();
         ret->image = vkImage;
+        ret->extent = info->extent;
         ret->numMipLevels = info->mipLevels;
         ret->arraySize = info->arrayLayers;
         ret->aspects = drv::get_format_aspects(info->format);
@@ -351,6 +352,7 @@ void DrvVulkanResourceTracker::flushBarriersFor(
 drv::TextureInfo DrvVulkan::get_texture_info(drv::ImagePtr _image) {
     drv_vulkan::Image* image = convertImage(_image);
     drv::TextureInfo ret;
+    ret.extent = image->extent;
     ret.numMips = image->numMipLevels;
     ret.arraySize = image->arraySize;
     ret.format = image->format;

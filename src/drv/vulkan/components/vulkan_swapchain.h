@@ -10,6 +10,7 @@ namespace drv_vulkan
 struct Swapchain
 {
     VkSwapchainKHR swapchain = VK_NULL_HANDLE;
+    drv::Extent2D extent;
     bool sharedImages;
     drv::ImageFormat format;
 };

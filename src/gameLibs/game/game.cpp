@@ -64,38 +64,65 @@ void Game::initSimulationFrameGraph(FrameGraph& frameGraph,
 }
 
 drv::ImageViewPtr Game::getView(drv::ImagePtr image, uint32_t imageIndex) {
-    while (imageViews.size() <= imageIndex)
-        imageViews.emplace_back(
-          this,
-          [](const Game*, drv::ImagePtr current, drv::ImagePtr newParent, const drv::ImageView&) {
-              // eq
-              return current == newParent;
-          },
-          [](const Game* game, drv::ImagePtr parent) {
-              // gen
-              drv::ImageViewCreateInfo createInfo;
-              createInfo.image = parent;
-              createInfo.type = drv::ImageViewCreateInfo::TYPE_2D;
-              createInfo.format = drv::get_texture_info(parent).format;
-              createInfo.components.r = drv::ImageViewCreateInfo::ComponentSwizzle::IDENTITY;
-              createInfo.components.g = drv::ImageViewCreateInfo::ComponentSwizzle::IDENTITY;
-              createInfo.components.b = drv::ImageViewCreateInfo::ComponentSwizzle::IDENTITY;
-              createInfo.components.a = drv::ImageViewCreateInfo::ComponentSwizzle::IDENTITY;
-              createInfo.subresourceRange.aspectMask = drv::COLOR_BIT;
-              createInfo.subresourceRange.baseArrayLayer = 0;
-              createInfo.subresourceRange.baseMipLevel = 0;
-              createInfo.subresourceRange.layerCount =
-                createInfo.subresourceRange.REMAINING_ARRAY_LAYERS;
-              createInfo.subresourceRange.levelCount =
-                createInfo.subresourceRange.REMAINING_MIP_LEVELS;
-              return drv::ImageView(game->engine->getDevice(), createInfo);
-          },
-          [](const Game* game, drv::ImageView&& view) {
-              // del
-              game->engine->getGarbageSystem()->useGarbage(
-                [&](Garbage* trashBin) { trashBin->releaseImageView(std::move(view)); });
-          });
-    return imageViews[imageIndex].bind(image);
+    TODO;
+    // while (imageViews.size() <= imageIndex)
+    //     imageViews.emplace_back(
+    //       this,
+    //       [](const Game*, drv::ImagePtr current, drv::ImagePtr newParent, const drv::ImageView&) {
+    //           // eq
+    //           return current == newParent;
+    //       },
+    //       [](const Game* game, drv::ImagePtr parent) {
+    //           // gen
+    //           drv::ImageViewCreateInfo createInfo;
+    //           createInfo.image = parent;
+    //           createInfo.type = drv::ImageViewCreateInfo::TYPE_2D;
+    //           createInfo.format = drv::get_texture_info(parent).format;
+    //           createInfo.components.r = drv::ImageViewCreateInfo::ComponentSwizzle::IDENTITY;
+    //           createInfo.components.g = drv::ImageViewCreateInfo::ComponentSwizzle::IDENTITY;
+    //           createInfo.components.b = drv::ImageViewCreateInfo::ComponentSwizzle::IDENTITY;
+    //           createInfo.components.a = drv::ImageViewCreateInfo::ComponentSwizzle::IDENTITY;
+    //           createInfo.subresourceRange.aspectMask = drv::COLOR_BIT;
+    //           createInfo.subresourceRange.baseArrayLayer = 0;
+    //           createInfo.subresourceRange.baseMipLevel = 0;
+    //           createInfo.subresourceRange.layerCount =
+    //             createInfo.subresourceRange.REMAINING_ARRAY_LAYERS;
+    //           createInfo.subresourceRange.levelCount =
+    //             createInfo.subresourceRange.REMAINING_MIP_LEVELS;
+    //           return drv::ImageView(game->engine->getDevice(), createInfo);
+    //       },
+    //       [](const Game* game, drv::ImageView&& view) {
+    //           // del
+    //           game->engine->getGarbageSystem()->useGarbage(
+    //             [&](Garbage* trashBin) { trashBin->releaseImageView(std::move(view)); });
+    //       });
+    // return imageViews[imageIndex].bind(image);
+}
+
+void Game::recreateFrameBuffer(uint32_t imageCount, const drv::ImagePtr* images) {
+    while (imageViews.size()) {
+        engine->getGarbageSystem()->useGarbage([this](Garbage* trashBin) {
+            trashBin->releaseImageView(std::move(imageViews.back()));
+            imageViews.pop_back();
+        });
+    }
+    for (uint32_t i = 0; i < imageCount; ++i) {
+        drv::ImageViewCreateInfo createInfo;
+        createInfo.image = images[i];
+        createInfo.type = drv::ImageViewCreateInfo::TYPE_2D;
+        createInfo.format = drv::get_texture_info(images[i]).format;
+        createInfo.components.r = drv::ImageViewCreateInfo::ComponentSwizzle::IDENTITY;
+        createInfo.components.g = drv::ImageViewCreateInfo::ComponentSwizzle::IDENTITY;
+        createInfo.components.b = drv::ImageViewCreateInfo::ComponentSwizzle::IDENTITY;
+        createInfo.components.a = drv::ImageViewCreateInfo::ComponentSwizzle::IDENTITY;
+        createInfo.subresourceRange.aspectMask = drv::COLOR_BIT;
+        createInfo.subresourceRange.baseArrayLayer = 0;
+        createInfo.subresourceRange.baseMipLevel = 0;
+        createInfo.subresourceRange.layerCount = createInfo.subresourceRange.REMAINING_ARRAY_LAYERS;
+        createInfo.subresourceRange.levelCount = createInfo.subresourceRange.REMAINING_MIP_LEVELS;
+        imageViews.emplace_back(engine->getDevice(), createInfo);
+    }
+    TODO;  // frame buffer
 }
 
 void Game::record(FrameGraph& frameGraph, FrameId frameId) {
@@ -105,17 +132,26 @@ void Game::record(FrameGraph& frameGraph, FrameId frameId) {
         testDrawHandle) {
         std::this_thread::sleep_for(std::chrono::milliseconds(4));
         Engine::AcquiredImageData swapChainData = engine->acquiredSwapchainImage(testDrawHandle);
+        drv::drv_assert(swapChainData.version != Engine::INVALID_SWAPCHAIN, "Handle this somehow");
         Engine::CommandBufferRecorder recorder =
           engine->acquireCommandRecorder(testDrawHandle, frameId, queues.renderQueue.id);
         if (frameId < 3)
             recorder.getResourceTracker()->enableCommandLog();
         drv::RenderPass::AttachmentData testImageInfo[1];
         testImageInfo[testColorAttachment].image = swapChainData.image;
-        testImageInfo[testColorAttachment].view =
-          getView(swapChainData.image, swapChainData.imageIndex);
-        testImageInfo[testColorAttachment].clearValue.color =
-          drv::ClearColorValue(0.f, 1.f, 0.f, 1.f);
-        drv::CmdRenderPass testPass = testRenderPass->begin(testImageInfo);
+        testImageInfo[testColorAttachment].view = imageViews[swapChainData.imageIndex];
+        if (testRenderPass->needRecreation(testImageInfo))
+            testRenderPass->recreate(testImageInfo);
+        if (swapchainVersion != swapChainData.version) {
+            recreateFrameBuffer(swapChainData.imageCount, swapChainData.images);
+            swapchainVersion = swapChainData.version;
+        }
+        drv::ClearValue clearValues[1];
+        clearValues[testColorAttachment].color = drv::ClearColorValue(0.f, 1.f, 0.f, 1.f);
+        drv::Rect2D renderArea;
+        renderArea.extent = swapChainData.extent;
+        renderArea.offset = {0, 0};
+        drv::CmdRenderPass testPass = testRenderPass->begin(renderArea, clearValues);
         testPass.beginSubpass(testSubpass);
         testPass.end();
 

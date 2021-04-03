@@ -101,10 +101,10 @@ class RenderPass
     {
         ImagePtr image;
         ImageViewPtr view;
-        ClearValue clearValue;
     };
-    virtual CmdRenderPass begin(const drv::Rect2D& renderArea,
-                                const AttachmentData* attachments) = 0;
+    virtual bool needRecreation(const AttachmentData* attachments) = 0;
+    virtual void recreate(const AttachmentData* attachments) = 0;
+    virtual CmdRenderPass begin(const drv::Rect2D& renderArea, const ClearValue* clearValues) = 0;
 
  protected:
     LogicalDevicePtr device;

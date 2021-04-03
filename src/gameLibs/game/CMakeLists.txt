@@ -13,5 +13,4 @@ target_link_libraries(AnimationsGame PUBLIC
     AnimationsShaderManager
     AnimationShaders
     AnimationsEngine
-    AnimationsResourceBindings
 )

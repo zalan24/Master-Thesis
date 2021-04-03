@@ -163,57 +163,78 @@ static VkAttachmentReference get_attachment_ref(const drv::RenderPass::Attachmen
     return ret;
 }
 
-drv::CmdRenderPass VulkanRenderPass::begin(const drv::Rect2D& renderArea,
-                                           const AttachmentData* images) {
-    TODO;  // prohibit resources that are also attachments
-    if (renderPass == VK_NULL_HANDLE || changed()) {
+bool VulkanRenderPass::needRecreation(const AttachmentData* images) {
+    // TODO prohibit resources that are also attachments
+    bool changed = false;
+    for (uint32_t i = 0; i < attachmentInfos.size() && !changed; ++i) {
+        if (attachmentInfos[i].format != convertImageView(images[i].view)->format)
+            changed = true;
+        if (attachmentInfos[i].samples != convertImage(images[i].image)->sampleCount)
+            changed = true;
+    }
+    if (renderPass == VK_NULL_HANDLE || attachmentInfos.size() == 0 || changed) {
+        state = NEED_RECREATE;
+        return true;
+    }
+    state = OK;
+    return false;
+}
+
+void VulkanRenderPass::recreate(const AttachmentData* images) {
+    drv::drv_assert(state == NEED_RECREATE, "Render pass recreated for no reason");
 #ifdef DEBUG
-        for (uint32_t i = 0; i < attachments.size(); ++i)
-            for (uint32_t j = i + 1; j < attachments.size(); ++j)
-                if (images[i].image == images[j].image)
-                    LOG_F(WARNING, "Are the dependencies handled correctly in this case?");  // TODO
+    for (uint32_t i = 0; i < attachments.size(); ++i)
+        for (uint32_t j = i + 1; j < attachments.size(); ++j)
+            if (images[i].image == images[j].image)
+                LOG_F(WARNING, "Are the dependencies handled correctly in this case?");  // TODO
 #endif
-        if (renderPass != VK_NULL_HANDLE)
-            LOG_DRIVER_API("Recreating render pass: %s", name.c_str());
-        clear();
-        StackMemory::MemoryHandle<VkAttachmentDescription> vkAttachments(attachments.size(),
-                                                                         TEMPMEM);
-
-        for (uint32_t i = 0; i < attachments.size(); ++i) {
-            vkAttachments[i].flags = 0;  // TODO aliasing
-            vkAttachments[i].format =
-              static_cast<VkFormat>(convertImageView(images[i].view)->format);
-            vkAttachments[i].samples =
-              static_cast<VkSampleCountFlagBits>(convertImage(images[i].image)->sampleCount);
-            vkAttachments[i].loadOp = static_cast<VkAttachmentLoadOp>(attachments[i].loadOp);
-            vkAttachments[i].storeOp = static_cast<VkAttachmentStoreOp>(attachments[i].storeOp);
-            vkAttachments[i].stencilLoadOp =
-              static_cast<VkAttachmentLoadOp>(attachments[i].stencilLoadOp);
-            vkAttachments[i].stencilStoreOp =
-              static_cast<VkAttachmentStoreOp>(attachments[i].stencilStoreOp);
-            vkAttachments[i].initialLayout = convertImageLayout(attachments[i].initialLayout);
-            vkAttachments[i].finalLayout = convertImageLayout(attachments[i].finalLayout);
-        }
-
-        VkRenderPassCreateInfo createInfo = {};
-        createInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
-        createInfo.pNext = nullptr;
-        createInfo.flags = 0;
-        createInfo.attachmentCount = uint32_t(attachments.size());
-        createInfo.pAttachments = vkAttachments;
-        drv::drv_assert(vkSubpasses.size() == subpasses.size());
-        createInfo.subpassCount = uint32_t(vkSubpasses.size());
-        createInfo.pSubpasses = vkSubpasses.data();
-        createInfo.dependencyCount = dependencies.size();
-        createInfo.pDependencies = dependencies.data();
-        VkResult result =
-          vkCreateRenderPass(convertDevice(device), &createInfo, nullptr, &renderPass);
-        drv::drv_assert(result == VK_SUCCESS, "Could not create renderpass");
+    if (renderPass != VK_NULL_HANDLE)
+        LOG_DRIVER_API("Recreating render pass: %s", name.c_str());
+    clear();
+    StackMemory::MemoryHandle<VkAttachmentDescription> vkAttachments(attachments.size(), TEMPMEM);
+    attachmentInfos.resize(attachments.size());
+    for (uint32_t i = 0; i < attachments.size(); ++i) {
+        attachmentInfos[i].format = convertImageView(images[i].view)->format;
+        attachmentInfos[i].samples = convertImage(images[i].image)->sampleCount;
+        vkAttachments[i].flags = 0;  // TODO aliasing
+        vkAttachments[i].format = static_cast<VkFormat>(convertImageView(images[i].view)->format);
+        vkAttachments[i].samples =
+          static_cast<VkSampleCountFlagBits>(convertImage(images[i].image)->sampleCount);
+        vkAttachments[i].loadOp = static_cast<VkAttachmentLoadOp>(attachments[i].loadOp);
+        vkAttachments[i].storeOp = static_cast<VkAttachmentStoreOp>(attachments[i].storeOp);
+        vkAttachments[i].stencilLoadOp =
+          static_cast<VkAttachmentLoadOp>(attachments[i].stencilLoadOp);
+        vkAttachments[i].stencilStoreOp =
+          static_cast<VkAttachmentStoreOp>(attachments[i].stencilStoreOp);
+        vkAttachments[i].initialLayout = convertImageLayout(attachments[i].initialLayout);
+        vkAttachments[i].finalLayout = convertImageLayout(attachments[i].finalLayout);
     }
 
+    VkRenderPassCreateInfo createInfo = {};
+    createInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+    createInfo.pNext = nullptr;
+    createInfo.flags = 0;
+    createInfo.attachmentCount = uint32_t(attachments.size());
+    createInfo.pAttachments = vkAttachments;
+    drv::drv_assert(vkSubpasses.size() == subpasses.size());
+    createInfo.subpassCount = uint32_t(vkSubpasses.size());
+    createInfo.pSubpasses = vkSubpasses.data();
+    createInfo.dependencyCount = dependencies.size();
+    createInfo.pDependencies = dependencies.data();
+    VkResult result = vkCreateRenderPass(convertDevice(device), &createInfo, nullptr, &renderPass);
+    drv::drv_assert(result == VK_SUCCESS, "Could not create renderpass");
+    state = OK;
+}
+
+drv::CmdRenderPass VulkanRenderPass::begin(const drv::Rect2D& renderArea,
+                                           const drv::ClearValue* clearValues) {
+    drv::drv_assert(
+      state == OK,
+      "Use the needRecreation() (and recreate() if needed) functions before beginning the render pass");
     for (uint32_t i = 0; i < attachments.size(); ++i) {
         clearValues[i] = ;
     }
+    state = UNCHECKED;
 }
 
 void VulkanRenderPass::clear() {

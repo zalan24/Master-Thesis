@@ -1386,14 +1386,6 @@ PipelineStages get_image_usage_stages(ImageResourceUsageFlag usages);
 MemoryBarrier::AccessFlagBitType get_image_usage_accesses(ImageResourceUsageFlag usages);
 uint32_t get_accepted_image_layouts(ImageResourceUsageFlag usages);
 
-struct TextureInfo
-{
-    uint32_t numMips;
-    uint32_t arraySize;
-    ImageFormat format;
-    // ImageAspectBitType aspects;
-};
-
 ImageAspectBitType get_format_aspects(ImageFormat format);
 
 struct SwapchainCreateInfo
@@ -1447,6 +1439,15 @@ struct Extent2D {
 struct Rect2D {
     Offset2D    offset;
     Extent2D    extent;
+};
+
+struct TextureInfo
+{
+    Extent3D extent;
+    uint32_t numMips;
+    uint32_t arraySize;
+    ImageFormat format;
+    // ImageAspectBitType aspects;
 };
 
 };  // namespace drv

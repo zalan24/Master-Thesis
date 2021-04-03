@@ -10,6 +10,7 @@ namespace drv_vulkan
 struct Image
 {
     VkImage image = VK_NULL_HANDLE;
+    drv::Extent3D extent;
     uint32_t numMipLevels = 1;
     uint32_t arraySize = 1;
     drv::ImageAspectBitType aspects = 0;

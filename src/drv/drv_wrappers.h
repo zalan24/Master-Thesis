@@ -8,6 +8,8 @@
 #include <exclusive.h>
 #include <util.hpp>
 
+#include <drvboundtypes.h>
+
 #include "drv.h"
 
 class IWindow;
@@ -580,6 +582,9 @@ class Swapchain
     uint32_t getCurrentHeight() const { return currentHeight; }
 
     ImagePtr getAcquiredImage() const;
+
+    uint32_t getImageCount() const { return static_cast<uint32_t>(images.size()); }
+    const ImagePtr* getImages() const { return images.data(); }
 
  private:
     CreateInfo createInfo;

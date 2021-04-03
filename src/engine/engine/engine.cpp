@@ -355,7 +355,8 @@ void Engine::present(FrameId presentFrame, uint32_t imageIndex) {
     drv::drv_assert(result != drv::PresentResult::ERROR, "Present error");
     if (result == drv::PresentResult::RECREATE_ADVISED
         || result == drv::PresentResult::RECREATE_REQUIRED) {
-        throw std::runtime_error("Implement swapchain recreation");
+        throw std::runtime_error("Implement swapchain recreation and increment swapchainVersion");
+        // TODO swapchainVersion ++;
         // state->recreateSwapchain = presentFrame;
     }
 }
@@ -376,12 +377,21 @@ Engine::AcquiredImageData Engine::acquiredSwapchainImage(
         ret.imageAvailableSemaphore = syncBlock.imageAvailableSemaphores[acquireImageSemaphoreId];
         ret.renderFinishedSemaphore = syncBlock.renderFinishedSemaphores[acquireImageSemaphoreId];
         ret.imageIndex = acquireImageSemaphoreId;
+        drv::TextureInfo info = drv::get_texture_info(ret.image);
+        drv::drv_assert(info.extent.depth == 1);
+        ret.extent = {info.extent.width, info.extent.height};
+        ret.version = swapchainVersion;
+        ret.imageCount = swapchain.getImageCount();
+        ret.images = swapchain.getImages();
     }
     else {
         ret.image = drv::NULL_HANDLE;
         ret.imageAvailableSemaphore = drv::NULL_HANDLE;
         ret.renderFinishedSemaphore = drv::NULL_HANDLE;
         ret.imageIndex = 0;
+        ret.extent = {0, 0};
+        ret.version = INVALID_SWAPCHAIN;
+        ret.imageCount = 0;
     }
     acquireImageSemaphoreId =
       (acquireImageSemaphoreId + 1) % syncBlock.imageAvailableSemaphores.size();

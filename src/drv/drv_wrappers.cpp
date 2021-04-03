@@ -1180,7 +1180,10 @@ Swapchain::Swapchain(drv::PhysicalDevicePtr physicalDevice, LogicalDevicePtr _de
                         "Could not get swapchain images");
         drv::drv_assert(count > 0, "No images in swapchain");
         images.resize(count);
-        get_swapchain_images(device, ptr, &count, images.data());
+        StackMemory::MemoryHandle<ImagePtr> imagePtrs(count, TEMPMEM);
+        get_swapchain_images(device, ptr, &count, imagePtrs);
+        for (uint32_t i = 0; i < count; ++i)
+            images[i].set(imagePtrs[i]);
     }
 }
 
@@ -1196,7 +1199,10 @@ void Swapchain::recreate(drv::PhysicalDevicePtr physicalDevice, IWindow* window)
                         "Could not get swapchain images");
         drv::drv_assert(count > 0, "No images in swapchain");
         images.resize(count);
-        get_swapchain_images(device, ptr, &count, images.data());
+        StackMemory::MemoryHandle<ImagePtr> imagePtrs(count, TEMPMEM);
+        get_swapchain_images(device, ptr, &count, imagePtrs);
+        for (uint32_t i = 0; i < count; ++i)
+            images[i].set(imagePtrs[i]);
     }
     // TODO free old swapchain???
 }
@@ -1266,10 +1272,10 @@ PresentResult Swapchain::present(QueuePtr queue, const PresentInfo& info) {
     return ret;
 }
 
-ImagePtr Swapchain::getAcquiredImage() const {
+ImageBindingBase* Swapchain::getAcquiredImage() const {
     if (acquiredIndex == INVALID_INDEX)
         return NULL_HANDLE;
-    return images[acquiredIndex];
+    return &images[acquiredIndex];
 }
 
 // PipelineLayoutManager::PipelineLayoutManager(LogicalDevicePtr _device) : device(_device) {

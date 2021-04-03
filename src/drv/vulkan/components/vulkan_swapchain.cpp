@@ -78,6 +78,7 @@ drv::SwapchainPtr DrvVulkan::create_swapchain(drv::PhysicalDevicePtr physicalDev
                     "User queue families need to be specified when creating an exclusive resource");
     drv_vulkan::Swapchain* ret = new drv_vulkan::Swapchain();
     ret->swapchain = swapChain;
+    ret->extent = {info->width, info->height};
     ret->sharedImages = info->sharingType == drv::SharingType::CONCURRENT;
     ret->format = *formatItr;
     return reinterpret_cast<drv::SwapchainPtr>(ret);
@@ -128,6 +129,8 @@ bool DrvVulkan::get_swapchain_images(drv::LogicalDevicePtr device, drv::Swapchai
         for (uint32_t i = 0; i < *count; ++i) {
             images[i] = new drv_vulkan::Image();
             convertImage(images[i])->image = vkImages[i];
+            convertImage(images[i])->extent = {convertSwapchain(swapchain)->extent.width,
+                                               convertSwapchain(swapchain)->extent.height, 1};
             convertImage(images[i])->swapchainImage = true;
             convertImage(images[i])->numMipLevels = 1;
             convertImage(images[i])->arraySize = 1;

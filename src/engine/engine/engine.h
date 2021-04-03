@@ -72,12 +72,19 @@ class Engine
     drv::LogicalDevicePtr getDevice() const { return device; }
     const ShaderBin* getShaderBin() const { return &shaderBin; }
 
+    using SwapchaingVersion = uint64_t;
+    static constexpr SwapchaingVersion INVALID_SWAPCHAIN =
+      std::numeric_limits<SwapchaingVersion>::max();
     struct AcquiredImageData
     {
         drv::ImagePtr image;
         uint32_t imageIndex;
         drv::SemaphorePtr imageAvailableSemaphore;
         drv::SemaphorePtr renderFinishedSemaphore;
+        drv::Extent2D extent;
+        SwapchaingVersion version;  // incremented upon recreation
+        uint32_t imageCount;
+        const drv::ImagePtr images = nullptr;
     };
     AcquiredImageData acquiredSwapchainImage(FrameGraph::NodeHandle& acquiringNodeHandle);
 
@@ -228,6 +235,7 @@ class Engine
     QueueInfo queueInfos;
 
     uint32_t acquireImageSemaphoreId = 0;
+    SwapchaingVersion swapchainVersion = 0;
 
     mutable std::shared_mutex stopFrameMutex;
     mutable std::mutex executionMutex;

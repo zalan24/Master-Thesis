@@ -35,7 +35,8 @@ class Game final
     drv::AttachmentId testColorAttachment;
     drv::SubpassId testSubpass;
     FrameGraph::NodeId testDraw;
-    std::vector<BoundImageView> imageViews;
+    std::vector<drv::ImageView> imageViews;
+    Engine::SwapchaingVersion swapchainVersion = Engine::INVALID_SWAPCHAIN;
 
-    drv::ImageViewPtr getView(drv::ImagePtr image, uint32_t imageIndex);
+    void recreateFrameBuffer(uint32_t imageCount, const drv::ImagePtr* images);
 };
