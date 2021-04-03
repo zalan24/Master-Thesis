@@ -15,16 +15,16 @@ Garbage::Garbage(size_t memorySize, FrameId _frameId)
 
 Garbage::Garbage(Garbage&& other)
   : frameId(other.frameId),
+#if FRAME_MEM_SANITIZATION > 0
+    allocations(std::move(other.allocations)),
+#endif
     memory(std::move(other.memory)),
     allocCount(other.allocCount),
     memoryTop(other.memoryTop),
     cmdBuffersToReset(std::move(other.cmdBuffersToReset)),
     events(std::move(other.events)),
     resources(std::move(other.resources))
-#if FRAME_MEM_SANITIZATION > 0
-    ,
-    allocations(std::move(other.allocations))
-#endif
+
 {
 }
 
@@ -34,15 +34,15 @@ Garbage& Garbage::operator=(Garbage&& other) {
     std::unique_lock<std::mutex> lock(mutex);
     close();
     frameId = other.frameId;
+#if FRAME_MEM_SANITIZATION > 0
+    allocations = std::move(other.allocations);
+#endif
     memory = std::move(other.memory);
     allocCount = other.allocCount;
     memoryTop = other.memoryTop;
     cmdBuffersToReset = std::move(other.cmdBuffersToReset);
     events = std::move(other.events);
     resources = std::move(other.resources);
-#if FRAME_MEM_SANITIZATION > 0
-    allocations = std::move(other.allocations);
-#endif
     return *this;
 }
 

@@ -53,23 +53,28 @@ class Garbage
         if (n == 0)
             return nullptr;
         std::unique_lock<std::mutex> lock(mutex);
-        uintptr_t align = reinterpret_cast<uintptr_t>(&memory[memoryTop]) % alignof(T);
-        if (align != 0)
-            align = alignof(T) - align;
-        size_t requiredAlign = (align + sizeof(Byte) - 1) / sizeof(Byte);
-        size_t requiredBytes = n * sizeof(T) / sizeof(Byte);
         T* ret = nullptr;
-        if (memory.size() - memoryTop <= requiredBytes + requiredAlign) {
-            static_assert(sizeof(Byte) == 1);
-            ret = reinterpret_cast<T*>(reinterpret_cast<Byte*>(memory.data() + memoryTop) + align);
-            memoryTop += requiredAlign + requiredBytes;
+        if (memoryTop < memory.size()) {
+            uintptr_t align = reinterpret_cast<uintptr_t>(&memory[memoryTop]) % alignof(T);
+            if (align != 0)
+                align = alignof(T) - align;
+            size_t requiredAlign = (align + sizeof(Byte) - 1) / sizeof(Byte);
+            size_t requiredBytes = n * sizeof(T) / sizeof(Byte);
+            if (memory.size() - memoryTop <= requiredBytes + requiredAlign) {
+                static_assert(sizeof(Byte) == 1);
+                ret =
+                  reinterpret_cast<T*>(reinterpret_cast<Byte*>(memory.data() + memoryTop) + align);
+                memoryTop += requiredAlign + requiredBytes;
+            }
+            else
+                ret = new T[n];
         }
         else
             ret = new T[n];
         if (ret != nullptr) {
             allocCount++;
 #if FRAME_MEM_SANITIZATION > 0
-            allocations[reinterpret_cast<void*>(ret)].typeName = typeid(T).name();
+            allocations[reinterpret_cast<const void*>(ret)].typeName = typeid(T).name();
 #    if FRAME_MEM_SANITIZATION == FRAME_MEM_SANITIZATION_FULL
             TODO;  // callstack
 #    endif
@@ -161,14 +166,6 @@ class Garbage
     FrameId frameId;
     mutable std::mutex mutex;
 
-    using Byte = uint8_t;
-    std::vector<Byte> memory;
-    size_t allocCount = 0;
-    size_t memoryTop = 0;
-    Vector<drv::CommandBufferCirculator::CommandBufferHandle> cmdBuffersToReset;
-    Vector<EventPool::EventHandle> events;
-    Deque<GeneralResource> resources;
-
 #if FRAME_MEM_SANITIZATION > 0
     struct AllocInfo
     {
@@ -177,8 +174,16 @@ class Garbage
         TODO;  // callstack
 #    endif
     };
-    std::unordered_map<void*, AllocInfo> allocations;
+    std::unordered_map<const void*, AllocInfo> allocations;
 #endif
+
+    using Byte = uint8_t;
+    std::vector<Byte> memory;
+    size_t allocCount = 0;
+    size_t memoryTop = 0;
+    Vector<drv::CommandBufferCirculator::CommandBufferHandle> cmdBuffersToReset;
+    Vector<EventPool::EventHandle> events;
+    Deque<GeneralResource> resources;
 
     void close() noexcept;
 };
