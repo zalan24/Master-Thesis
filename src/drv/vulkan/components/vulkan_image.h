@@ -42,5 +42,6 @@ struct ImageView
     drv::ImagePtr image;
     VkImageView view;
     drv::ImageFormat format;
+    drv::ImageSubresourceRange subresource;
 };
 }  // namespace drv_vulkan

@@ -36,7 +36,8 @@ class Game final
     drv::SubpassId testSubpass;
     FrameGraph::NodeId testDraw;
     std::vector<drv::ImageView> imageViews;
+    std::vector<drv::Framebuffer> frameBuffers;
     Engine::SwapchaingVersion swapchainVersion = Engine::INVALID_SWAPCHAIN;
 
-    void recreateFrameBuffer(uint32_t imageCount, const drv::ImagePtr* images);
+    void recreateViews(uint32_t imageCount, const drv::ImagePtr* images);
 };

@@ -72,7 +72,7 @@ void Renderer::setCharacter(EntityManager::EntityId character) {
         cameraController->activate();
 }
 
-void Renderer::updateFrameBuffer(Framebuffer& framebuffer, unsigned int width,
+void Renderer::updateFramebuffer(Framebuffer& framebuffer, unsigned int width,
                                  unsigned int height) {
     if (framebuffer.setResolution(width, height)) {
         framebuffer.bind();
@@ -93,7 +93,7 @@ void Renderer::render(EntityManager* entityManager, int width, int height) {
     float ratio;
     if (width <= 0 || height <= 0)
         return;
-    updateFrameBuffer(frame.framebuffer, static_cast<unsigned int>(width),
+    updateFramebuffer(frame.framebuffer, static_cast<unsigned int>(width),
                       static_cast<unsigned int>(height));
     frame.framebuffer.bind();
     ratio = static_cast<float>(width) / static_cast<float>(height);
@@ -125,7 +125,7 @@ void Renderer::render(EntityManager* entityManager, int width, int height) {
 
     checkError();
     frame.framebuffer.unbind();
-    glBlitNamedFramebuffer(frame.framebuffer.getFrameBufferObject(), 0, 0, 0, width, height, 0, 0,
+    glBlitNamedFramebuffer(frame.framebuffer.getFramebufferObject(), 0, 0, 0, width, height, 0, 0,
                            width, height, GL_COLOR_BUFFER_BIT, GL_NEAREST);
     checkError();
 }

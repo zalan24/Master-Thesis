@@ -46,6 +46,10 @@ inline VkDevice convertDevice(drv::LogicalDevicePtr device) {
     return reinterpret_cast<VkDevice>(device);
 }
 
+inline VkFramebuffer convertFramebuffer(drv::FramebufferPtr framebuffer) {
+    return reinterpret_cast<VkFramebuffer>(framebuffer);
+}
+
 inline VkSemaphore convertSemaphore(drv::TimelineSemaphorePtr semaphore) {
     return reinterpret_cast<VkSemaphore>(semaphore);
 }

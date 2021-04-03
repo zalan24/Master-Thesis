@@ -176,6 +176,9 @@ class DrvVulkan final : public drv::IDriver
 
     drv::TextureInfo get_texture_info(drv::ImagePtr image) override;
 
+    bool destroy_framebuffer(drv::LogicalDevicePtr device,
+                             drv::FramebufferPtr frameBuffer) override;
+
     uint32_t acquire_tracking_slot();
     void release_tracking_slot(uint32_t id);
     uint32_t get_num_trackers() override;

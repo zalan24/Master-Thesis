@@ -45,7 +45,7 @@ class Renderer
     ControllerCamera* cameraController;
     std::unique_ptr<InputListener> inputListener;
 
-    static void updateFrameBuffer(Framebuffer& framebuffer, unsigned int width,
+    static void updateFramebuffer(Framebuffer& framebuffer, unsigned int width,
                                   unsigned int height);
     friend class RendererInput;
 };

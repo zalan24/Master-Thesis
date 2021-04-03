@@ -226,7 +226,46 @@ void VulkanRenderPass::recreate(const AttachmentData* images) {
     state = OK;
 }
 
-drv::CmdRenderPass VulkanRenderPass::begin(const drv::Rect2D& renderArea,
+drv::FramebufferPtr VulkanRenderPass::createFramebuffer(const AttachmentData* images) const {
+    if (attachments.size() == 0)
+        return drv::NULL_HANDLE;
+    StackMemory::MemoryHandle<VkImageView> views(attachments.size(), TEMPMEM);
+    VkFramebufferCreateInfo info = {};
+    info.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+    info.width = convertImage(images[0].image)->extent.width;
+    info.height = convertImage(images[0].image)->extent.height;
+    info.layers = convertImageView(images[0].view)->subresource.layerCount
+                      == drv::ImageSubresourceRange::REMAINING_ARRAY_LAYERS
+                    ? convertImage(images[0].image)->numMipLevels
+                        - convertImageView(images[0].view)->subresource.baseArrayLayer
+                    : convertImageView(images[0].view)->subresource.layerCount;
+    for (uint32_t i = 0; i < attachments.size(); ++i) {
+        const drv_vulkan::ImageView* view = convertImageView(images[i].view);
+        views[i] = view->view;
+        drv::drv_assert(convertImage(images[i].image)->extent.width == info.width
+                          && convertImage(images[i].image)->extent.height == info.height,
+                        "Attachments of different size are currently not supported");
+        uint32_t layers = convertImageView(images[i].view)->subresource.layerCount
+                              == drv::ImageSubresourceRange::REMAINING_ARRAY_LAYERS
+                            ? convertImage(images[i].image)->numMipLevels
+                                - convertImageView(images[i].view)->subresource.baseArrayLayer
+                            : convertImageView(images[i].view)->subresource.layerCount;
+        drv::drv_assert(layers == info.layers,
+                        "Attachnets with different number of layers are not supported");
+    }
+    info.pNext = nullptr;
+    info.flags = 0;
+    info.renderPass = renderPass;
+    info.attachmentCount = uint32_t(attachments.size());
+    info.pAttachments = views;
+    VkFramebuffer ret;
+    VkResult result = vkCreateFramebuffer(convertDevice(device), &info, nullptr, &ret);
+    drv::drv_assert(result == VK_SUCCESS, "Could not create frame buffer");
+    return reinterpret_cast<drv::FramebufferPtr>(ret);
+}
+
+drv::CmdRenderPass VulkanRenderPass::begin(drv::FramebufferPtr frameBuffer,
+                                           const drv::Rect2D& renderArea,
                                            const drv::ClearValue* clearValues) {
     drv::drv_assert(
       state == OK,
@@ -244,7 +283,8 @@ void VulkanRenderPass::clear() {
     }
 }
 
-void VulkanRenderPass::beginRenderPass(const drv::Rect2D& renderArea,
+void VulkanRenderPass::beginRenderPass(drv::FramebufferPtr frameBuffer,
+                                       const drv::Rect2D& renderArea,
                                        drv::CommandBufferPtr cmdBuffer,
                                        drv::ResourceTracker* tracker) const {
     TODO;  // apply attachment usages as well
@@ -253,7 +293,7 @@ void VulkanRenderPass::beginRenderPass(const drv::Rect2D& renderArea,
     beginInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
     beginInfo.pNext = nullptr;
     beginInfo.renderPass = renderPass;
-    beginInfo.framebuffer = ;
+    beginInfo.framebuffer = convertFramebuffer(frameBuffer);
     beginInfo.renderArea = convertRect2D(renderArea);
     beginInfo.clearValueCount = uint32_t(clearValues.size());
     beginInfo.pClearValues = clearValues.data();
@@ -278,4 +318,9 @@ void VulkanRenderPass::applySync(drv::ResourceTracker* tracker, drv::SubpassId i
     TODO;  // apply external outgoing dependencies in tracker
     TODO;  // apply internal dependencies in tracker
     TODO;  // apply layout transition in tracker
+}
+
+bool DrvVulkan::destroy_framebuffer(drv::LogicalDevicePtr device, drv::FramebufferPtr frameBuffer) {
+    vkDestroyFramebuffer(convertDevice(device), convertFramebuffer(frameBuffer), nullptr);
+    return true;
 }

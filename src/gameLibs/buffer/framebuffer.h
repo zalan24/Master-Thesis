@@ -31,7 +31,7 @@ class Framebuffer
     unsigned int getCurrentWidth() const { return width; }
     unsigned int getCurrentHeight() const { return height; }
 
-    GLuint getFrameBufferObject() const { return fbo; }
+    GLuint getFramebufferObject() const { return fbo; }
 
     bool isComplete() const;
 

@@ -1278,6 +1278,45 @@ ImageBindingBase* Swapchain::getAcquiredImage() const {
     return &images[acquiredIndex];
 }
 
+Framebuffer::Framebuffer(LogicalDevicePtr _device) : device(_device) {
+}
+
+Framebuffer::Framebuffer(Framebuffer&& other)
+  : device(other.device), frameBuffer(other.frameBuffer) {
+    other.device = NULL_HANDLE;
+    other.frameBuffer = NULL_HANDLE;
+}
+
+Framebuffer& Framebuffer::operator=(Framebuffer&& other) {
+    device = other.device;
+    frameBuffer = other.frameBuffer;
+    other.device = NULL_HANDLE;
+    other.frameBuffer = NULL_HANDLE;
+}
+
+Framebuffer::~Framebuffer() {
+    close();
+}
+
+void Framebuffer::set(FramebufferPtr buffer) {
+    destroy();
+    frameBuffer = buffer;
+}
+
+void Framebuffer::close() {
+    if (device != NULL_HANDLE) {
+        destroy();
+        device = NULL_HANDLE;
+    }
+}
+
+void Framebuffer::destroy() {
+    if (frameBuffer != NULL_HANDLE) {
+        TODO;
+        frameBuffer = NULL_HANDLE;
+    }
+}
+
 // PipelineLayoutManager::PipelineLayoutManager(LogicalDevicePtr _device) : device(_device) {
 // }
 

@@ -37,6 +37,7 @@ using ShaderModulePtr = Ptr;
 using SwapchainPtr = Ptr;
 using EventPtr = Ptr;
 using ImageViewPtr = Ptr;
+using FramebufferPtr = Ptr;
 
 using ShaderIdType = StrHash;
 #define SHADER(name) (#name##_hash)
@@ -1426,19 +1427,22 @@ enum class AttachmentStoreOp
     DONT_CARE = 1,
 };
 
-struct Offset2D {
-    int32_t    x;
-    int32_t    y;
+struct Offset2D
+{
+    int32_t x;
+    int32_t y;
 };
 
-struct Extent2D {
-    uint32_t    width;
-    uint32_t    height;
+struct Extent2D
+{
+    uint32_t width;
+    uint32_t height;
 };
 
-struct Rect2D {
-    Offset2D    offset;
-    Extent2D    extent;
+struct Rect2D
+{
+    Offset2D offset;
+    Extent2D extent;
 };
 
 struct TextureInfo

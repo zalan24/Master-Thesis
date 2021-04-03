@@ -21,11 +21,13 @@ class VulkanRenderPass final : public drv::RenderPass
 
     bool needRecreation(const AttachmentData* attachments) override;
     void recreate(const AttachmentData* attachments) override;
-    drv::CmdRenderPass begin(const drv::Rect2D& renderArea,
+    drv::FramebufferPtr createFramebuffer(const AttachmentData* attachments) const override;
+    drv::CmdRenderPass begin(drv::FramebufferPtr frameBuffer, const drv::Rect2D& renderArea,
                              const drv::ClearValue* clearValues) override;
 
  protected:
-    void beginRenderPass(const drv::Rect2D& renderArea, drv::CommandBufferPtr cmdBuffer,
+    void beginRenderPass(drv::FramebufferPtr frameBuffer, const drv::Rect2D& renderArea,
+                         drv::CommandBufferPtr cmdBuffer,
                          drv::ResourceTracker* tracker) const override;
     void endRenderPass(drv::CommandBufferPtr cmdBuffer,
                        drv::ResourceTracker* tracker) const override;

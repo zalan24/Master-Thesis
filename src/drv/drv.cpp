@@ -417,3 +417,7 @@ uint32_t drv::get_num_trackers() {
 drv::TextureInfo drv::get_texture_info(drv::ImagePtr image) {
     return current_driver_interface->get_texture_info(image);
 }
+
+bool drv::destroy_framebuffer(LogicalDevicePtr device, FramebufferPtr frameBuffer) {
+    return current_driver_interface->destroy_framebuffer(device, frameBuffer);
+}

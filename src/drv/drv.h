@@ -159,6 +159,7 @@ std::unique_lock<std::mutex> lock_queue(LogicalDevicePtr device, QueuePtr queue)
 QueueFamilyPtr get_queue_family(LogicalDevicePtr device, QueuePtr queue);
 bool device_wait_idle(LogicalDevicePtr device);
 TextureInfo get_texture_info(drv::ImagePtr image);
+bool destroy_framebuffer(LogicalDevicePtr device, FramebufferPtr frameBuffer);
 
 uint32_t get_num_trackers();
 

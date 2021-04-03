@@ -132,6 +132,8 @@ class IDriver
 
     virtual TextureInfo get_texture_info(drv::ImagePtr image) = 0;
 
+    virtual bool destroy_framebuffer(LogicalDevicePtr device, FramebufferPtr frameBuffer) = 0;
+
     virtual uint32_t get_num_trackers() = 0;
 };
 }  // namespace drv

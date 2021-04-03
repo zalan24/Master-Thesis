@@ -106,6 +106,7 @@ drv::ImageViewPtr DrvVulkan::create_image_view(drv::LogicalDevicePtr device,
         view->image = info->image;
         view->view = ret;
         view->format = info->format;
+        view->subresource = info->subresourceRange;
         return reinterpret_cast<drv::ImageViewPtr>(view);
     }
     catch (...) {

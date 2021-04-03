@@ -24,7 +24,7 @@ void CmdRenderPass::beginSubpass(SubpassId id) {
     if (id == 0) {
         drv::drv_assert(currentPass == INVALID_SUBPASS,
                         "Subpasses need to be executed in order of declaration");
-        renderPass->beginRenderPass(renderArea, cmdBuffer, tracker);
+        renderPass->beginRenderPass(frameBuffer, renderArea, cmdBuffer, tracker);
     }
     else {
         drv::drv_assert(currentPass + 1 == id,

@@ -602,6 +602,30 @@ class Swapchain
     SwapchainCreateInfo getSwapchainInfo(uint32_t width, uint32_t height);
 };
 
+class Framebuffer : public NoCopy
+{
+ public:
+    Framebuffer() = default;
+    Framebuffer(LogicalDevicePtr device);
+    Framebuffer(Framebuffer&& other);
+    Framebuffer& operator=(Framebuffer&& other);
+    ~Framebuffer();
+
+    operator FramebufferPtr() const { return frameBuffer; }
+    operator bool() const {return device != NULL_HANDLE && frameBuffer != NULL_HANDLE;}
+
+    void set(FramebufferPtr buffer);
+
+    void reset() { set(NULL_HANDLE); }
+
+ private:
+    LogicalDevicePtr device = NULL_HANDLE;
+    FramebufferPtr frameBuffer = NULL_HANDLE;
+
+    void close();
+    void destroy();
+};
+
 // class PipelineLayoutManager
 //   : public NoCopy
 //   , private Exclusive
