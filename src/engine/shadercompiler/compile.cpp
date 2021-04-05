@@ -232,11 +232,20 @@ bool generate_header(Cache& cache, const std::string& shaderFile, const std::str
             return false;
         }
     }
+    Resources resources;
+    if (resourcesBlockCount == 1) {
+        const BlockFile* resourcesBlock = descBlock->getNode("resources");
+        if (!read_resources(resourcesBlock, resources)) {
+            std::cerr << "Could not read resources: " << shaderFile << std::endl;
+            return false;
+        }
+    }
     const std::string className = "shader_" + name + "_descriptor";
     incData.desriptorClassName = className;
     incData.name = name;
     out << "#pragma once\n\n";
-    out << "#include <shaderdescriptor.h>\n\n";
+    out << "#include <shaderdescriptor.h>\n";
+    out << "#include <shadertypes.h>\n\n";
     out << "class " << className << " final : public ShaderDescriptor\n";
     out << "{\n";
     out << "  public:\n";
@@ -257,6 +266,12 @@ bool generate_header(Cache& cache, const std::string& shaderFile, const std::str
         std::string valName = get_variant_enum_val_name(variantName);
         out << "    void setVariant_" << variantName << "(" << enumName << " value) {\n";
         out << "        " << valName << " = value;\n";
+        out << "    }\n";
+    }
+    for (const auto& [varName, varType] : resources.variables) {
+        out << "    " << varType << " " << varName << " = " << varType << "_default_value;\n";
+        out << "    void set_" << varName << "(const " << varType << " &_" << varName << ") {\n";
+        out << "        " << varName << " = _" << varName << ";\n";
         out << "    }\n";
     }
     incData.totalVarintMultiplier = variantMul;
@@ -377,6 +392,27 @@ bool read_variants(const BlockFile* blockFile, Variants& variants) {
             std::string value = (*regJ)[1];
             vec.push_back(value);
         }
+    }
+    return true;
+}
+
+bool read_resources(const BlockFile* blockFile, Resources& resources) {
+    resources = {};
+    if (blockFile->hasNodes()) {
+        std::cerr << "resources block cannot contain nested blocks" << std::endl;
+        return false;
+    }
+    if (!blockFile->hasContent())
+        return true;
+    const std::string* resourcesContent = blockFile->getContent();
+    std::regex varReg{"(int|int2|int3|int4|float|vec2|vec3|vec4|mat44)\\s+(\\w+)\\s*;"};
+    auto resourcesBegin =
+      std::sregex_iterator(resourcesContent->begin(), resourcesContent->end(), varReg);
+    auto resourcesEnd = std::sregex_iterator();
+    for (std::sregex_iterator regI = resourcesBegin; regI != resourcesEnd; ++regI) {
+        std::string varType = (*regI)[1];
+        std::string varName = (*regI)[2];
+        resources.variables[varName] = varType;
     }
     return true;
 }

@@ -9,7 +9,7 @@ descriptor {
         TestVariant: one, two, three;
     }
     resources {
-
+        int testVal;
     }
 }
 

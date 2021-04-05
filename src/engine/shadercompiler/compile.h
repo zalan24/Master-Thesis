@@ -21,6 +21,12 @@ struct Variants
     std::unordered_map<std::string, std::vector<std::string>> values;
 };
 
+struct Resources
+{
+    // name -> type
+    std::unordered_map<std::string, std::string> variables;
+};
+
 struct VariantConfig
 {
     std::unordered_map<std::string, size_t> variantValues;
@@ -56,6 +62,7 @@ class Cache final : public ISerializable
 };
 
 bool read_variants(const BlockFile* blockFile, Variants& variants);
+bool read_resources(const BlockFile* blockFile, Resources& resources);
 
 bool compile_shader(const Compiler* compiler, ShaderBin& shaderBin, Cache& cache,
                     const std::string& shaderFile, const std::string& outputFolder,
