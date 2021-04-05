@@ -2,6 +2,7 @@
 
 #include <map>
 #include <set>
+#include <shared_mutex>
 #include <stack>
 #include <thread>
 #include <type_traits>
@@ -15,10 +16,7 @@ class StackMemory
     using size_t = unsigned long;
 
     explicit StackMemory(size_t _maxSize) : maxSize(_maxSize) {}
-    ~StackMemory() {
-        for (auto& itr : cache)
-            *itr = nullptr;
-    }
+    ~StackMemory() {}
 
     // TODO add an argument for 'bool required' to allocation and avoid repeated asserts
     // also add some more operators, so the ::get() function doesn't need to be called
@@ -107,22 +105,25 @@ class StackMemory
     };
     size_t maxSize;
     std::map<std::thread::id, std::unique_ptr<MemoryBlock>> blocks;
-    std::set<MemoryBlock**> cache;
+
+    mutable std::shared_mutex mutex;
 
     MemoryBlock* getBlock() {
-        static thread_local MemoryBlock* value = nullptr;
-        if (value != nullptr)
-            return value;
-        cache.insert(&value);
         std::thread::id id = std::this_thread::get_id();
-        auto itr = blocks.find(id);
-        if (itr != std::end(blocks))
-            return value = itr->second.get();
-        std::unique_ptr<MemoryBlock> block{new MemoryBlock};
-        block->memory.resize(maxSize, static_cast<unsigned char>(0));
-        value = block.get();
-        blocks[id] = std::move(block);
-        return value;
+        {
+            std::shared_lock<std::shared_mutex> lock(mutex);
+            auto itr = blocks.find(id);
+            if (itr != std::end(blocks))
+                return itr->second.get();
+        }
+        {
+            std::unique_lock<std::shared_mutex> lock(mutex);
+            std::unique_ptr<MemoryBlock> block{new MemoryBlock};
+            block->memory.resize(maxSize, static_cast<unsigned char>(0));
+            MemoryBlock* ret = block.get();
+            blocks[id] = std::move(block);
+            return ret;
+        }
     }
 
     void* allocate(size_t size, std::size_t alignment) noexcept {
