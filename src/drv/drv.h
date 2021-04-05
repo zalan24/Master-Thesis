@@ -1,6 +1,7 @@
 #pragma once
 
 #include <drv_resource_tracker.h>
+#include <drvshader.h>
 #include <drvtypes.h>
 
 #include <memory>
@@ -37,6 +38,7 @@ std::unique_ptr<ResourceTracker> create_resource_tracker(QueuePtr queue,
                                                          ResourceTracker::Config config);
 
 std::unique_ptr<RenderPass> create_render_pass(LogicalDevicePtr device, std::string name);
+std::unique_ptr<DrvShader> create_shader(LogicalDevicePtr device);
 
 InstancePtr create_instance(const InstanceCreateInfo* info);
 bool delete_instance(InstancePtr ptr);

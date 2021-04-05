@@ -6,6 +6,8 @@
 
 #include <drverror.h>
 
+#include "vulkan_shader.h"
+
 namespace drv_vulkan
 {
 struct ShaderCreateData
@@ -34,4 +36,8 @@ bool DrvVulkan::destroy_shader_module(drv::LogicalDevicePtr device, drv::ShaderM
     vkDestroyShaderModule(reinterpret_cast<VkDevice>(device),
                           reinterpret_cast<VkShaderModule>(module), nullptr);
     return true;
+}
+
+std::unique_ptr<drv::DrvShader> DrvVulkan::create_shader(drv::LogicalDevicePtr device) {
+    return std::make_unique<VulkanShader>();
 }

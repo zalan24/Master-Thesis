@@ -1,5 +1,6 @@
 #pragma once
 
+#include "drvshader.h"
 #include "drvtypes.h"
 
 #include <mutex>
@@ -19,6 +20,7 @@ class IDriver
     virtual std::unique_ptr<RenderPass> create_render_pass(LogicalDevicePtr device,
                                                            std::string name) = 0;
     virtual InstancePtr create_instance(const InstanceCreateInfo* info) = 0;
+    virtual std::unique_ptr<DrvShader> create_shader(LogicalDevicePtr device) = 0;
     virtual bool delete_instance(InstancePtr ptr) = 0;
     virtual bool get_physical_devices(InstancePtr instance, unsigned int* count,
                                       PhysicalDeviceInfo* infos) = 0;

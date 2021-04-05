@@ -245,8 +245,10 @@ bool generate_header(Cache& cache, const std::string& shaderFile, const std::str
     incData.name = name;
     out << "#pragma once\n\n";
     out << "#include <shaderdescriptor.h>\n";
-    out << "#include <shadertypes.h>\n\n";
-    out << "class " << className << " final : public ShaderDescriptor\n";
+    out << "#include <shadertypes.h>\n";
+    out << "#include <drvshader.h>\n\n";
+    out << "class " << className
+        << " final : public ShaderDescriptor, public drv::DrvShaderResourceProvider\n";
     out << "{\n";
     out << "  public:\n";
     out << "    ~" << className << "() override {}\n";
@@ -698,9 +700,10 @@ bool compile_shader(const Compiler* compiler, ShaderBin& shaderBin, Cache& cache
     const std::string className = "shader_obj_" + shaderName;
 
     shaderObj << "#pragma once\n\n";
+    shaderObj << "#include <drvshader.h>\n";
+    shaderObj << "#include <shaderbin.h>\n";
     shaderObj << "#include <shaderobject.h>\n";
-    shaderObj << "#include <shaderdescriptorcollection.h>\n";
-    shaderObj << "#include <shaderbin.h>\n\n";
+    shaderObj << "#include <shaderdescriptorcollection.h>\n\n";
     shaderObj << "\n";
     shaderObj << "class " << className << " final : public ShaderObject {\n";
     shaderObj << "  public:\n";
@@ -772,6 +775,7 @@ bool compile_shader(const Compiler* compiler, ShaderBin& shaderBin, Cache& cache
     shaderObj << "            throw std::runtime_error(\"Shader not found: " << shaderName
               << "\");\n";
     shaderObj << "        loadShader(*shader);\n";
+    shaderObj << "        drvShader = drv::create_shader(device);\n";
     shaderObj << "    }\n";
     shaderObj << "    ~" << className << "() override {}\n";
     shaderObj << "  protected:\n";
@@ -781,6 +785,7 @@ bool compile_shader(const Compiler* compiler, ShaderBin& shaderBin, Cache& cache
       << "        return static_cast<const Descriptor*>(descriptors)->getLocalVariantId();\n";
     shaderObj << "    }\n";
     shaderObj << "  private:\n";
+    shaderObj << "    std::unique_ptr<drv::DrvShader> drvShader;\n";
     shaderObj << "};\n";
 
     const std::string h = hash_string(shaderObj.str());
