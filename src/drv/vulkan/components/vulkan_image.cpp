@@ -275,8 +275,15 @@ drv::PipelineStages DrvVulkanResourceTracker::add_memory_sync(
         subresourceData.dirtyMask = 0;
         subresourceData.visible = accessMask;
         subresourceData.usableStages = stages;
-        barrier.oldLayout = discardContent ? drv::ImageLayout::UNDEFINED : subresourceData.layout;
-        barrier.newLayout = resultLayout;
+        if (resultLayout != drv::ImageLayout::UNDEFINED) {
+            barrier.oldLayout =
+              discardContent ? drv::ImageLayout::UNDEFINED : subresourceData.layout;
+            barrier.newLayout = resultLayout;
+        }
+        else {
+            barrier.oldLayout = subresourceData.layout;
+            barrier.newLayout = subresourceData.layout;
+        }
         subresourceData.layout = resultLayout;
     }
     else {

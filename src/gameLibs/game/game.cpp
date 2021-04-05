@@ -23,7 +23,7 @@ Game::Game(Engine* _engine) : engine(_engine) {
 
     testRenderPass = drv::create_render_pass(engine->getDevice(), "Test pass");
     drv::RenderPass::AttachmentInfo colorInfo;
-    colorInfo.initialLayout = drv::ImageLayout::COLOR_ATTACHMENT_OPTIMAL;
+    colorInfo.initialLayout = drv::ImageLayout::UNDEFINED;
     colorInfo.finalLayout = drv::ImageLayout::PRESENT_SRC_KHR;
     colorInfo.loadOp = drv::AttachmentLoadOp::CLEAR;
     colorInfo.storeOp = drv::AttachmentStoreOp::STORE;
@@ -112,9 +112,8 @@ void Game::record(FrameGraph& frameGraph, FrameId frameId) {
         recorder.cmdWaitSemaphore(swapChainData.imageAvailableSemaphore,
                                   drv::IMAGE_USAGE_COLOR_OUTPUT_WRITE);
         recorder.cmdImageBarrier(
-          {swapChainData.image, drv::IMAGE_USAGE_COLOR_OUTPUT_WRITE,
-           drv::ImageLayout::COLOR_ATTACHMENT_OPTIMAL, true,
-           drv::get_queue_family(engine->getDevice(), queues.renderQueue.handle)});
+          {swapChainData.image, drv::IMAGE_USAGE_COLOR_OUTPUT_WRITE, drv::ImageLayout::UNDEFINED,
+           true, drv::get_queue_family(engine->getDevice(), queues.renderQueue.handle)});
         drv::RenderPass::AttachmentData testImageInfo[1];
         testImageInfo[testColorAttachment].image = swapChainData.image;
         testImageInfo[testColorAttachment].view = imageViews[swapChainData.imageIndex];
