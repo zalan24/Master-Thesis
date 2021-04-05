@@ -23,7 +23,7 @@ Game::Game(Engine* _engine) : engine(_engine) {
 
     testRenderPass = drv::create_render_pass(engine->getDevice(), "Test pass");
     drv::RenderPass::AttachmentInfo colorInfo;
-    colorInfo.initialLayout = drv::ImageLayout::UNDEFINED;
+    colorInfo.initialLayout = drv::ImageLayout::COLOR_ATTACHMENT_OPTIMAL;
     colorInfo.finalLayout = drv::ImageLayout::PRESENT_SRC_KHR;
     colorInfo.loadOp = drv::AttachmentLoadOp::CLEAR;
     colorInfo.storeOp = drv::AttachmentStoreOp::STORE;
@@ -92,7 +92,7 @@ void Game::recreateViews(uint32_t imageCount, const drv::ImagePtr* images) {
 }
 
 void Game::record(FrameGraph& frameGraph, FrameId frameId) {
-    std::cout << "Record: " << frameId << std::endl;
+    // std::cout << "Record: " << frameId << std::endl;
     Engine::QueueInfo queues = engine->getQueues();
     if (FrameGraph::NodeHandle testDrawHandle = frameGraph.acquireNode(testDraw, frameId);
         testDrawHandle) {
@@ -103,15 +103,18 @@ void Game::record(FrameGraph& frameGraph, FrameId frameId) {
             recreateViews(swapChainData.imageCount, swapChainData.images);
             swapchainVersion = swapChainData.version;
         }
+        // LOG_F(INFO, "Frame %lld  Swapchain image: %d Image: %p", frameId, swapChainData.imageIndex,
+        //       static_cast<const void*>(swapChainData.image));
         Engine::CommandBufferRecorder recorder =
           engine->acquireCommandRecorder(testDrawHandle, frameId, queues.renderQueue.id);
         if (frameId < 3)
             recorder.getResourceTracker()->enableCommandLog();
         recorder.cmdWaitSemaphore(swapChainData.imageAvailableSemaphore,
                                   drv::IMAGE_USAGE_COLOR_OUTPUT_WRITE);
-        // recorder.cmdImageBarrier(
-        //   {swapChainData.image, drv::IMAGE_USAGE_COLOR_OUTPUT_WRITE, drv::ImageLayout::UNDEFINED,
-        //    true, drv::get_queue_family(engine->getDevice(), queues.renderQueue.handle)});
+        recorder.cmdImageBarrier(
+          {swapChainData.image, drv::IMAGE_USAGE_COLOR_OUTPUT_WRITE,
+           drv::ImageLayout::COLOR_ATTACHMENT_OPTIMAL, true,
+           drv::get_queue_family(engine->getDevice(), queues.renderQueue.handle)});
         drv::RenderPass::AttachmentData testImageInfo[1];
         testImageInfo[testColorAttachment].image = swapChainData.image;
         testImageInfo[testColorAttachment].view = imageViews[swapChainData.imageIndex];
@@ -125,7 +128,10 @@ void Game::record(FrameGraph& frameGraph, FrameId frameId) {
               testRenderPass->createFramebuffer(testImageInfo));
         drv::ClearValue clearValues[1];
         clearValues[testColorAttachment].type = drv::ClearValue::COLOR;
-        clearValues[testColorAttachment].value.color = drv::ClearColorValue(0.f, 1.f, 0.f, 1.f);
+        if ((frameId / 100) % 2 == 0)
+            clearValues[testColorAttachment].value.color = drv::ClearColorValue(0.f, 1.f, 0.f, 1.f);
+        else
+            clearValues[testColorAttachment].value.color = drv::ClearColorValue(1.f, 0.f, 0.f, 1.f);
         // clearValues[testColorAttachment].value.color = drv::ClearColorValue(255, 255, 255, 255);
         drv::Rect2D renderArea;
         renderArea.extent = swapChainData.extent;
@@ -161,6 +167,7 @@ void Game::record(FrameGraph& frameGraph, FrameId frameId) {
 
 void Game::simulate(FrameGraph& frameGraph, FrameId frameId) {
     UNUSED(frameGraph);
+    UNUSED(frameId);
     std::this_thread::sleep_for(std::chrono::milliseconds(4));
-    std::cout << "Simulate: " << frameId << std::endl;
+    // std::cout << "Simulate: " << frameId << std::endl;
 }

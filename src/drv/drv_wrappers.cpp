@@ -982,7 +982,6 @@ ImageView::~ImageView() noexcept {
 }
 
 void ImageView::close() {
-    CHECK_THREAD;
     if (ptr != NULL_HANDLE) {
         drv::drv_assert(destroy_image_view(device, ptr), "Could not destroy image view");
         ptr = NULL_HANDLE;

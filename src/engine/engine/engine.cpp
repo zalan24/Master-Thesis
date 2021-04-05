@@ -346,11 +346,11 @@ void Engine::simulationLoop(volatile std::atomic<FrameId>* simulationFrame,
     }
 }
 
-void Engine::present(FrameId presentFrame, uint32_t imageIndex) {
+void Engine::present(FrameId presentFrame, uint32_t semaphoreIndex) {
     UNUSED(presentFrame);
     drv::PresentInfo info;
     info.semaphoreCount = 1;
-    drv::SemaphorePtr semaphore = syncBlock.renderFinishedSemaphores[imageIndex];
+    drv::SemaphorePtr semaphore = syncBlock.renderFinishedSemaphores[semaphoreIndex];
     info.waitSemaphores = &semaphore;
     drv::PresentResult result = swapchain.present(presentQueue.queue, info);
     // TODO;  // what's gonna wait on this?
@@ -378,7 +378,7 @@ Engine::AcquiredImageData Engine::acquiredSwapchainImage(
         ret.image = swapchain.getAcquiredImage();
         ret.imageAvailableSemaphore = syncBlock.imageAvailableSemaphores[acquireImageSemaphoreId];
         ret.renderFinishedSemaphore = syncBlock.renderFinishedSemaphores[acquireImageSemaphoreId];
-        ret.imageIndex = acquireImageSemaphoreId;
+        ret.imageIndex = swapchain.getImageIndex();
         drv::TextureInfo info = drv::get_texture_info(ret.image);
         drv::drv_assert(info.extent.depth == 1);
         ret.extent = {info.extent.width, info.extent.height};
@@ -427,7 +427,7 @@ void Engine::recordCommandsLoop(const volatile std::atomic<FrameId>* stopFrame) 
               ->push(ExecutionPackage(ExecutionPackage::MessagePackage{
                 ExecutionPackage::Message::RECORD_START, recordFrame, 0, nullptr}));
         }
-        const uint32_t presentFrame = acquireImageSemaphoreId;
+        const uint32_t semaphoreIndex = acquireImageSemaphoreId;
         renderer->record(frameGraph, recordFrame);
         {
             FrameGraph::NodeHandle presentHandle =
@@ -439,7 +439,7 @@ void Engine::recordCommandsLoop(const volatile std::atomic<FrameId>* stopFrame) 
             if (swapchain.getAcquiredImage() != drv::NULL_HANDLE) {
                 frameGraph.getExecutionQueue(presentHandle)
                   ->push(ExecutionPackage(ExecutionPackage::MessagePackage{
-                    ExecutionPackage::Message::PRESENT, recordFrame, presentFrame, nullptr}));
+                    ExecutionPackage::Message::PRESENT, recordFrame, semaphoreIndex, nullptr}));
             }
         }
         {

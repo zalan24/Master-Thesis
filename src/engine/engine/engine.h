@@ -251,7 +251,7 @@ class Engine
     void executeCommandsLoop();
     void cleanUpLoop(const volatile std::atomic<FrameId>* stopFrame);
     bool execute(FrameId& executionFrame, ExecutionPackage&& package);
-    void present(FrameId presentFrame, uint32_t imageIndex);
+    void present(FrameId presentFrame, uint32_t semaphoreIndex);
     bool sampleInput(FrameId frameId);
 
     static drv::PhysicalDevice::SelectionInfo get_device_selection_info(

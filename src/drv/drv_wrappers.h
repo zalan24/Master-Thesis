@@ -457,9 +457,7 @@ class Event
     void close();
 };
 
-class ImageView
-  : public NoCopy
-  , private Exclusive
+class ImageView : public NoCopy
 {
  public:
     ImageView() : device(NULL_HANDLE), ptr(NULL_HANDLE) {}
@@ -581,6 +579,7 @@ class Swapchain
     uint32_t getCurrentHeight() const { return currentHeight; }
 
     ImagePtr getAcquiredImage() const;
+    uint32_t getImageIndex() const { return acquiredIndex; }
 
     uint32_t getImageCount() const { return static_cast<uint32_t>(images.size()); }
     const ImagePtr* getImages() const { return images.data(); }

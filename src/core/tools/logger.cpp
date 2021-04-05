@@ -28,7 +28,7 @@ Logger::Logger(int argc, char* argv[], const std::string& logDir) {
                      loguru::Verbosity_2);
     loguru::add_file((logs / fs::path{"command_log.log"}).string().c_str(), loguru::Truncate,
                      loguru::Verbosity_9);
-    loguru::g_stderr_verbosity = loguru::Verbosity_ERROR;
+    loguru::g_stderr_verbosity = loguru::Verbosity_INFO;
     loguru::g_colorlogtostderr = true;
 
     loguru::set_verbosity_to_name_callback([](loguru::Verbosity verbosity) -> const char* {
