@@ -32,7 +32,7 @@ Game::Game(Engine* _engine) : engine(_engine) {
     // colorInfo.srcUsage = 0;
     // colorInfo.dstUsage = drv::IMAGE_USAGE_PRESENT;
     testColorAttachment = testRenderPass->createAttachment(std::move(colorInfo));
-    drv::RenderPass::SubpassInfo subpassInfo;
+    drv::SubpassInfo subpassInfo;
     subpassInfo.colorOutputs.push_back(
       {testColorAttachment, drv::ImageLayout::COLOR_ATTACHMENT_OPTIMAL});
     testSubpass = testRenderPass->createSubpass(std::move(subpassInfo));
@@ -140,6 +140,8 @@ void Game::record(FrameGraph& frameGraph, FrameId frameId) {
           testRenderPass->begin(recorder.getResourceTracker(), recorder.getCommandBuffer(),
                                 frameBuffers[swapChainData.imageIndex], renderArea, clearValues);
         testPass.beginSubpass(testSubpass);
+        testPass.clearColorAttachment(testColorAttachment,
+                                      drv::ClearColorValue(0.f, 0.f, 1.f, 1.f));
         testPass.end();
 
         // /// --- oroginal clear ---

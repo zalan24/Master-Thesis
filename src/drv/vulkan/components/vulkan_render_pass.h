@@ -34,6 +34,11 @@ class VulkanRenderPass final : public drv::RenderPass
                        drv::ResourceTracker* tracker) const override;
     void startNextSubpass(drv::CommandBufferPtr cmdBuffer, drv::ResourceTracker* tracker,
                           drv::SubpassId id) const override;
+    void clearAttachments(drv::CommandBufferPtr cmdBuffer, drv::ResourceTracker* tracker,
+                          uint32_t attachmentCount, const uint32_t* attachmentId,
+                          const drv::ClearValue* clearValues,
+                          const drv::ImageAspectBitType* aspects, uint32_t rectCount,
+                          const drv::ClearRect* rects) const override;
 
  private:
     VkRenderPass renderPass = VK_NULL_HANDLE;

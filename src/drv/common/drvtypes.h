@@ -1405,4 +1405,10 @@ struct TextureInfo
     // ImageAspectBitType aspects;
 };
 
+struct ClearRect {
+    Rect2D rect;
+    uint32_t baseLayer;
+    uint32_t layerCount;
+};
+
 };  // namespace drv

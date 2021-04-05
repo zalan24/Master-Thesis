@@ -151,6 +151,16 @@ inline VkRect2D convertRect2D(const drv::Rect2D& value) {
     return ret;
 }
 
+inline VkClearRect convertClearRect(const drv::ClearRect& clearRect) {
+    VkClearRect ret;
+    ret.rect = convertRect2D(clearRect.rect);
+    ret.baseArrayLayer = clearRect.baseLayer;
+    ret.layerCount = clearRect.layerCount == drv::ImageSubresourceRange::REMAINING_ARRAY_LAYERS
+                       ? VK_REMAINING_ARRAY_LAYERS
+                       : clearRect.layerCount;
+    return ret;
+}
+
 inline VkCommandBuffer convertCommandBuffer(drv::CommandBufferPtr buffer) {
     return reinterpret_cast<VkCommandBuffer>(buffer);
 }

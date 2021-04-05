@@ -20,6 +20,23 @@ SubpassId RenderPass::createSubpass(SubpassInfo info) {
     return ret;
 }
 
+CmdRenderPass::CmdRenderPass(ResourceTracker* _tracker, CommandBufferPtr _cmdBuffer,
+                             RenderPass* _renderPass, Rect2D _renderArea,
+                             FramebufferPtr _frameBuffer, SubpassId _subpassCount,
+                             const SubpassInfo* _subpassInfos, uint32_t _layerCount)
+  : tracker(_tracker),
+    cmdBuffer(_cmdBuffer),
+    renderPass(_renderPass),
+    renderArea(_renderArea),
+    frameBuffer(_frameBuffer),
+    subpassCount(_subpassCount),
+    subpassInfos(_subpassInfos),
+    layerCount(_layerCount) {
+    fullRect.baseLayer = 0;
+    fullRect.layerCount = layerCount;
+    fullRect.rect = renderArea;
+}
+
 void CmdRenderPass::beginSubpass(SubpassId id) {
     if (id == 0) {
         drv::drv_assert(currentPass == INVALID_SUBPASS,
@@ -51,4 +68,31 @@ void CmdRenderPass::close() {
 
 CmdRenderPass::~CmdRenderPass() {
     close();
+}
+
+uint32_t CmdRenderPass::getSubpassAttachmentId(AttachmentId id) const {
+    if (subpassInfos[currentPass].depthStencil.id == id)
+        return 0;
+    for (uint32_t ret = 0; ret < subpassInfos[currentPass].colorOutputs.size(); ++ret)
+        if (subpassInfos[currentPass].colorOutputs[ret].id == id)
+            return ret;
+    drv::drv_assert(false, ("Could not find attachment in subpass: subpass: "
+                            + std::to_string(currentPass) + "; attachment: " + std::to_string(id))
+                             .c_str());
+    return 0;
+}
+
+void CmdRenderPass::clearColorAttachment(AttachmentId attachment, ClearColorValue value,
+                                         uint32_t rectCount, const drv::ClearRect* rects) {
+    const ImageAspectBitType aspect = COLOR_BIT;
+    if (rectCount == 0) {
+        rectCount = 1;
+        rects = &fullRect;
+    }
+    const uint32_t id = getSubpassAttachmentId(attachment);
+    ClearValue clearValue;
+    clearValue.type = clearValue.COLOR;
+    clearValue.value.color = value;
+    renderPass->clearAttachments(cmdBuffer, tracker, 1, &id, &clearValue, &aspect, rectCount,
+                                 rects);
 }

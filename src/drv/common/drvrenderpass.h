@@ -19,17 +19,35 @@ static constexpr AttachmentId INVALID_ATTACHMENT = std::numeric_limits<Attachmen
 static constexpr AttachmentId UNUSED_ATTACHMENT = INVALID_ATTACHMENT;
 static constexpr SubpassId INVALID_SUBPASS = std::numeric_limits<SubpassId>::max();
 
+struct AttachmentRef
+{
+    AttachmentId id = INVALID_ATTACHMENT;
+    ImageLayout layout = ImageLayout::UNDEFINED;
+    // ImageResourceUsageFlag usages = 0;
+};
+
+struct ResourceUsageInfo
+{
+    RenderPassResourceId resource;
+    ImageResourceUsageFlag imageUsages = 0;
+    // TODO buffer usages
+};
+
+struct SubpassInfo
+{
+    std::vector<AttachmentRef> inputs;
+    std::vector<AttachmentRef> colorOutputs;
+    std::vector<AttachmentId> preserve;
+    std::vector<ResourceUsageInfo> resources;
+    AttachmentRef depthStencil;
+};
+
 class CmdRenderPass final
 {
  public:
     CmdRenderPass(ResourceTracker* _tracker, CommandBufferPtr _cmdBuffer, RenderPass* _renderPass,
-                  Rect2D _renderArea, FramebufferPtr _frameBuffer, SubpassId _subpassCount)
-      : tracker(_tracker),
-        cmdBuffer(_cmdBuffer),
-        renderPass(_renderPass),
-        renderArea(_renderArea),
-        frameBuffer(_frameBuffer),
-        subpassCount(_subpassCount) {}
+                  Rect2D _renderArea, FramebufferPtr _frameBuffer, SubpassId _subpassCount,
+                  const SubpassInfo* _subpassInfos, uint32_t _layerCount);
     CmdRenderPass(const CmdRenderPass&) = delete;
     CmdRenderPass& operator=(const CmdRenderPass&) = delete;
     CmdRenderPass(CmdRenderPass&& other);
@@ -41,6 +59,10 @@ class CmdRenderPass final
 
     friend class RenderPass;
 
+    // TODO implement different versions for depth/stencil/multiple attachments
+    void clearColorAttachment(AttachmentId attachment, ClearColorValue value,
+                              uint32_t rectCount = 0, const drv::ClearRect* rects = nullptr);
+
  private:
     ResourceTracker* tracker = nullptr;
     CommandBufferPtr cmdBuffer = NULL_HANDLE;
@@ -48,10 +70,14 @@ class CmdRenderPass final
     Rect2D renderArea;
     FramebufferPtr frameBuffer = NULL_HANDLE;
     SubpassId subpassCount = 0;
+    const SubpassInfo* subpassInfos = nullptr;
+    uint32_t layerCount = 0;
+    ClearRect fullRect;
 
     SubpassId currentPass = INVALID_SUBPASS;
     bool ended = false;
     void close();
+    uint32_t getSubpassAttachmentId(AttachmentId id) const;
 };
 
 class RenderPass
@@ -77,28 +103,6 @@ class RenderPass
     };
     AttachmentId createAttachment(AttachmentInfo info);
 
-    struct AttachmentRef
-    {
-        AttachmentId id = INVALID_ATTACHMENT;
-        ImageLayout layout = ImageLayout::UNDEFINED;
-        // ImageResourceUsageFlag usages = 0;
-    };
-
-    struct ResourceUsageInfo
-    {
-        RenderPassResourceId resource;
-        ImageResourceUsageFlag imageUsages = 0;
-        // TODO buffer usages
-    };
-
-    struct SubpassInfo
-    {
-        std::vector<AttachmentRef> inputs;
-        std::vector<AttachmentRef> colorOutputs;
-        std::vector<AttachmentId> preserve;
-        std::vector<ResourceUsageInfo> resources;
-        AttachmentRef depthStencil;
-    };
     SubpassId createSubpass(SubpassInfo info);
 
     RenderPassResourceId createResource();
@@ -129,6 +133,10 @@ class RenderPass
     virtual void endRenderPass(CommandBufferPtr cmdBuffer, ResourceTracker* tracker) const = 0;
     virtual void startNextSubpass(CommandBufferPtr cmdBuffer, ResourceTracker* tracker,
                                   drv::SubpassId id) const = 0;
+    virtual void clearAttachments(CommandBufferPtr cmdBuffer, ResourceTracker* tracker,
+                                  uint32_t attachmentCount, const uint32_t* attachmentId,
+                                  const ClearValue* clearValues, const ImageAspectBitType* aspects,
+                                  uint32_t rectCount, const drv::ClearRect* rects) const = 0;
 };
 
 }  // namespace drv

@@ -7,7 +7,7 @@
 #include "vulkan_enum_compare.h"
 #include "vulkan_image.h"
 
-static VkAttachmentReference get_attachment_ref(const drv::RenderPass::AttachmentRef& ref) {
+static VkAttachmentReference get_attachment_ref(const drv::AttachmentRef& ref) {
     VkAttachmentReference ret;
     ret.attachment = ref.id == drv::UNUSED_ATTACHMENT ? VK_ATTACHMENT_UNUSED : ref.id;
     ret.layout = convertImageLayout(ref.layout);
@@ -25,7 +25,7 @@ VulkanRenderPass::~VulkanRenderPass() {
 void VulkanRenderPass::build() {
     struct AttachmentUsage
     {
-        AttachmentRef attachment;
+        drv::AttachmentRef attachment;
         drv::ImageResourceUsageFlag usages;
     };
 
@@ -284,8 +284,9 @@ drv::CmdRenderPass VulkanRenderPass::begin(drv::ResourceTracker* tracker,
     for (uint32_t i = 0; i < attachments.size(); ++i)
         clearValues[i] = convertClearValue(_clearValues[i]);
     state = UNCHECKED;
+    uint32_t numLayers = attachments.size() > 0 ? attachmentImages[0].subresource.layerCount : 0;
     return drv::CmdRenderPass(tracker, cmdBuffer, this, renderArea, frameBuffer,
-                              uint32_t(subpasses.size()));
+                              uint32_t(subpasses.size()), subpasses.data(), numLayers);
 }
 
 void VulkanRenderPass::clear() {
@@ -356,4 +357,22 @@ void VulkanRenderPass::applySync(drv::ResourceTracker* tracker, drv::SubpassId i
 bool DrvVulkan::destroy_framebuffer(drv::LogicalDevicePtr device, drv::FramebufferPtr frameBuffer) {
     vkDestroyFramebuffer(convertDevice(device), convertFramebuffer(frameBuffer), nullptr);
     return true;
+}
+
+void VulkanRenderPass::clearAttachments(drv::CommandBufferPtr cmdBuffer, drv::ResourceTracker*,
+                                        uint32_t attachmentCount, const uint32_t* attachmentId,
+                                        const drv::ClearValue* _clearValues,
+                                        const drv::ImageAspectBitType* aspects, uint32_t rectCount,
+                                        const drv::ClearRect* rects) const {
+    StackMemory::MemoryHandle<VkClearAttachment> vkAttachments(attachmentCount, TEMPMEM);
+    StackMemory::MemoryHandle<VkClearRect> vkRects(rectCount, TEMPMEM);
+    for (uint32_t i = 0; i < attachmentCount; ++i) {
+        vkAttachments[i].aspectMask = static_cast<VkImageAspectFlags>(aspects[i]);
+        vkAttachments[i].clearValue = convertClearValue(_clearValues[i]);
+        vkAttachments[i].colorAttachment = attachmentId[i];
+    }
+    for (uint32_t i = 0; i < rectCount; ++i)
+        vkRects[i] = convertClearRect(rects[i]);
+    vkCmdClearAttachments(convertCommandBuffer(cmdBuffer), attachmentCount, vkAttachments,
+                          rectCount, vkRects);
 }
