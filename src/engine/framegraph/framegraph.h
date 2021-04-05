@@ -240,11 +240,13 @@ class FrameGraph
     drv::QueuePtr getQueue(QueueId queueId) const;
 
     FrameGraph(drv::PhysicalDevice _physicalDevice, drv::LogicalDevicePtr _device,
-               GarbageSystem* _garbageSystem, EventPool* _eventPool)
+               GarbageSystem* _garbageSystem, EventPool* _eventPool,
+               drv::ResourceTracker::Config _trackerConfig)
       : physicalDevice(_physicalDevice),
         device(_device),
         garbageSystem(_garbageSystem),
-        eventPool(_eventPool) {}
+        eventPool(_eventPool),
+        trackerConfig(_trackerConfig) {}
 
     drv::ResourceTracker* getOrCreateResourceTracker(NodeId nodeId, QueueId queueId);
 
@@ -267,6 +269,7 @@ class FrameGraph
     drv::LogicalDevicePtr device;
     GarbageSystem* garbageSystem;
     EventPool* eventPool;
+    drv::ResourceTracker::Config trackerConfig;
     ExecutionQueue executionQueue;
     std::vector<Node> nodes;
     std::unordered_map<QueueId, std::vector<TrackerData>> resourceTrackers;

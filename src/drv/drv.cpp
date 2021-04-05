@@ -49,13 +49,15 @@ bool drv::init(const Driver* drivers, unsigned int count) {
 
 std::unique_ptr<drv::ResourceTracker> drv::create_resource_tracker(QueuePtr queue,
                                                                    PhysicalDevicePtr physicalDevice,
-                                                                   LogicalDevicePtr device) {
+                                                                   LogicalDevicePtr device,
+                                                                   ResourceTracker::Config config) {
     assert(current_driver_interface != nullptr);
     switch (current_driver) {
         case Driver::VULKAN:
 #ifdef DRIVER_VULKAN
             return std::make_unique<DrvVulkanResourceTracker>(
-              static_cast<DrvVulkan*>(current_driver_interface), physicalDevice, device, queue);
+              static_cast<DrvVulkan*>(current_driver_interface), physicalDevice, device, queue,
+              std::move(config));
 #else
             break;
 #endif

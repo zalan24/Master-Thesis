@@ -97,7 +97,8 @@ void DrvVulkanResourceTracker::validate_memory_access(
     bool needWait = 0;
 
     drv::QueueFamilyPtr currentFamily = driver->get_queue_family(device, queue);
-    if (!sharedRes && resourceData.ownership != currentFamily) {
+    if (!sharedRes && resourceData.ownership != currentFamily
+        && resourceData.ownership != drv::NULL_HANDLE) {
         invalidate(SUBOPTIMAL,
                    "Resource has exclusive usage and it's owned by a different queue family");
         transferOwnership = currentFamily;

@@ -601,7 +601,8 @@ drv::ResourceTracker* FrameGraph::getOrCreateResourceTracker(NodeId nodeId, Queu
         }
     }
     TrackerData t;
-    t.tracker = drv::create_resource_tracker(getQueue(queueId), physicalDevice, device);
+    t.tracker =
+      drv::create_resource_tracker(getQueue(queueId), physicalDevice, device, trackerConfig);
     t.users.insert(nodeId);
     drv::ResourceTracker* ret = t.tracker.get();
     trackers.push_back(std::move(t));

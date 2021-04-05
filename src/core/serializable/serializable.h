@@ -140,6 +140,15 @@ class ISerializable
         return out;
     }
 
+    template <typename T, size_t C>
+    static auto serializeEnum(T value, const std::pair<T, const char*> (&names)[C]) {
+        uint32_t ind = 0;
+        while (ind < C && names[ind].first != value)
+            ind++;
+        assert(ind != C);
+        return serialize(std::string(names[ind].second));
+    }
+
     template <typename T>
     static void serialize(const json& in, std::vector<T>& data) {
         if (!in.is_array())
@@ -269,6 +278,20 @@ class ISerializable
         serialize(in[3], value[3]);
     }
 
+    template <typename T, size_t C>
+    static void serializeEnum(const json& in, T& value,
+                              const std::pair<T, const char*> (&names)[C]) {
+        std::string name;
+        serialize(in, name);
+        uint32_t ind = 0;
+        while (ind < C && strcmp(names[ind].second, name.c_str()) != 0)
+            ind++;
+        if (ind == C)
+            throw std::runtime_error("Invalid enum value <" + name
+                                     + "> for type: " + std::string(typeid(T).name()));
+        value = names[ind].first;
+    }
+
  protected:
     ~ISerializable() = default;
 };
@@ -290,10 +313,17 @@ class IVirtualSerializable : public ISerializable
 
 #define WRITE_OBJECT(name, json) json[#name] = serialize(name)
 #define WRITE_OBJECTS(name, count, json) json[#name] = serialize(count, name)
+#define WRITE_ENUM(name, json, names) json[#name] = serializeEnum(name, names)
 #define READ_OBJECT(name, json) serialize(json[#name], name)
 #define READ_OBJECTS(name, count, json) serialize(json[#name], count, name)
+#define READ_ENUM(name, json, names) serialize(json[#name], name, names)
 #define READ_OBJECT_OPT(name, json, def) \
     if (json.count(#name) > 0)           \
         serialize(json[#name], name);    \
     else                                 \
+        name = def
+#define READ_ENUM_OPT(name, json, def, names)    \
+    if (json.count(#name) > 0)                   \
+        serializeEnum(json[#name], name, names); \
+    else                                         \
         name = def

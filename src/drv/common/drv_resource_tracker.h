@@ -2,6 +2,8 @@
 
 #include <functional>
 
+#include <serializable.h>
+
 #include "drv_interface.h"
 #include "drvbarrier.h"
 #include "drvtypes.h"
@@ -15,16 +17,7 @@ namespace drv
 class ResourceTracker
 {
  public:
-    ResourceTracker(IDriver* _driver, PhysicalDevicePtr physicalDevice, LogicalDevicePtr _device,
-                    QueuePtr _queue)
-      : driver(_driver),
-        device(_device),
-        queue(_queue),
-        queueSupport(
-          driver->get_command_type_mask(physicalDevice, driver->get_queue_family(device, queue))) {}
-    virtual ~ResourceTracker() {}
-
-    struct Config
+    struct Config final : public ISerializable
     {
         enum Verbosity
         {
@@ -44,7 +37,19 @@ class ResourceTracker
         bool forceFlush = false;
         bool forceInvalidateAll = false;
         bool syncAllOperations = false;
+        void writeJson(json& out) const override final;
+        void readJson(const json& in) override final;
     };
+
+    ResourceTracker(IDriver* _driver, PhysicalDevicePtr physicalDevice, LogicalDevicePtr _device,
+                    QueuePtr _queue, Config _config)
+      : driver(_driver),
+        device(_device),
+        queue(_queue),
+        queueSupport(
+          driver->get_command_type_mask(physicalDevice, driver->get_queue_family(device, queue))),
+        config(_config) {}
+    virtual ~ResourceTracker() {}
 
     virtual PipelineStages cmd_image_barrier(CommandBufferPtr cmdBuffer,
                                              const ImageMemoryBarrier& barrier,
@@ -96,7 +101,7 @@ class ResourceTracker
     LogicalDevicePtr device;
     QueuePtr queue;
     CommandTypeMask queueSupport;
-    Config config;  // TODO set this from outside
+    Config config;
     bool commandLogEnabled = false;
 };
 

@@ -12,4 +12,5 @@ set_target_properties(  AnimationsDrvCommon
 target_link_libraries(AnimationsDrvCommon PUBLIC
     AnimationsDrvProfiler
     AnimationsTools
+    AnimationsSerializable
 )

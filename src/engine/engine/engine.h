@@ -14,10 +14,12 @@
 
 #include <drv.h>
 #include <drv_queue_manager.h>
+#include <drv_resource_tracker.h>
 #include <drv_wrappers.h>
 #include <drvbarrier.h>
 #include <drvcmdbufferbank.h>
 #include <drvlane.h>
+
 #include <eventpool.h>
 #include <framegraph.h>
 
@@ -49,6 +51,7 @@ class Engine
         int inputBufferSize;
         int stackMemorySizeKb;
         int frameMemorySizeKb;
+        drv::ResourceTracker::Config trackerConfig;
         std::string logs;
         void writeJson(json& out) const override final;
         void readJson(const json& in) override final;

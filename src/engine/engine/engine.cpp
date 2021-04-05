@@ -60,6 +60,7 @@ void Engine::Config::writeJson(json& out) const {
     WRITE_OBJECT(maxFramesInFlight, out);
     WRITE_OBJECT(driver, out);
     WRITE_OBJECT(logs, out);
+    WRITE_OBJECT(trackerConfig, out);
 }
 
 void Engine::Config::readJson(const json& in) {
@@ -74,6 +75,7 @@ void Engine::Config::readJson(const json& in) {
     READ_OBJECT(maxFramesInFlight, in);
     READ_OBJECT(driver, in);
     READ_OBJECT(logs, in);
+    READ_OBJECT_OPT(trackerConfig, in, {});
 }
 
 static Engine::Config get_config(const std::string& file) {
@@ -192,7 +194,7 @@ Engine::Engine(int argc, char* argv[], const Config& cfg, const std::string& sha
     shaderBin(shaderbinFile),
     resourceMgr(std::move(resource_infos)),
     garbageSystem(safe_cast<size_t>(config.frameMemorySizeKb)),
-    frameGraph(physicalDevice, device, &garbageSystem, &eventPool) {
+    frameGraph(physicalDevice, device, &garbageSystem, &eventPool, config.trackerConfig) {
     json configJson = ISerializable::serialize(config);
     std::stringstream ss;
     ss << configJson;

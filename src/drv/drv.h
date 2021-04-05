@@ -1,5 +1,6 @@
 #pragma once
 
+#include <drv_resource_tracker.h>
 #include <drvtypes.h>
 
 #include <memory>
@@ -24,7 +25,6 @@ enum class Driver : DriverIndex
     VULKAN = 0,
     NUM_PLATFORMS
 };
-class ResourceTracker;
 class RenderPass;
 
 // Registers the first available driver on the list
@@ -33,7 +33,8 @@ bool close();
 
 std::unique_ptr<ResourceTracker> create_resource_tracker(QueuePtr queue,
                                                          PhysicalDevicePtr physicalDevice,
-                                                         LogicalDevicePtr device);
+                                                         LogicalDevicePtr device,
+                                                         ResourceTracker::Config config);
 
 std::unique_ptr<RenderPass> create_render_pass(LogicalDevicePtr device, std::string name);
 

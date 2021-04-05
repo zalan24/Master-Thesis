@@ -202,8 +202,8 @@ class DrvVulkanResourceTracker final : public drv::ResourceTracker
 {
  public:
     DrvVulkanResourceTracker(DrvVulkan* _driver, drv::PhysicalDevicePtr physicalDevice,
-                             drv::LogicalDevicePtr _device, drv::QueuePtr _queue)
-      : ResourceTracker(_driver, physicalDevice, _device, _queue),
+                             drv::LogicalDevicePtr _device, drv::QueuePtr _queue, Config _config)
+      : ResourceTracker(_driver, physicalDevice, _device, _queue, std::move(_config)),
         trackingSlot(_driver->acquire_tracking_slot()) {}
     ~DrvVulkanResourceTracker() override;
 
