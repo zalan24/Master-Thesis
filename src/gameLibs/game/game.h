@@ -8,6 +8,7 @@
 #include <irenderer.h>
 #include <isimulation.h>
 #include <shaderobject.h>
+#include <shaderregistry.h>
 
 class Game final
   : public IRenderer
@@ -28,6 +29,8 @@ class Game final
 
  private:
     Engine* engine;
+    ShaderHeaderRegistry shaderHeaders;
+    ShaderObjRegistry shaderObjects;
 
     std::unique_ptr<drv::RenderPass> testRenderPass;
     drv::AttachmentId testColorAttachment;

@@ -178,7 +178,8 @@ static std::string get_variant_enum_value(std::string value) {
     return value;
 }
 
-bool generate_header(Cache& cache, const std::string& shaderFile, const std::string& outputFolder,
+bool generate_header(Cache& cache, ShaderRegistryOutput& registry, const std::string& shaderFile,
+                     const std::string& outputFolder,
                      std::unordered_map<std::string, IncludeData>& includeData) {
     if (!fs::exists(fs::path(outputFolder)) && !fs::create_directories(fs::path(outputFolder))) {
         std::cerr << "Could not create directory for shader headers: " << outputFolder << std::endl;
@@ -352,7 +353,9 @@ bool generate_header(Cache& cache, const std::string& shaderFile, const std::str
     }
     out << "};\n";
 
-    fs::path filePath = fs::path(outputFolder) / fs::path("shader_" + name + ".h");
+    fs::path fileName = fs::path("shader_" + name + ".h");
+    fs::path filePath = fs::path(outputFolder) / fileName;
+    registry.includes << "#include <" << fileName.string() << ">\n";
     incData.headerFileName = fs::path{filePath};
     const std::string h = hash_string(out.str());
     if (auto itr = cache.headerHashes.find(name);
@@ -625,10 +628,12 @@ static void include_all(std::ostream& out, const fs::path& root,
 }
 
 bool compile_shader(const Compiler* compiler, ShaderBin& shaderBin, Cache& cache,
-                    const std::string& shaderFile, const std::string& outputFolder,
+                    ShaderRegistryOutput& registry, const std::string& shaderFile,
+                    const std::string& outputFolder,
                     std::unordered_map<std::string, IncludeData>& includeData) {
     std::stringstream cu;
     std::stringstream shaderObj;
+    shaderObj << "#pragma once\n\n";
     std::set<std::string> includes;
     std::set<std::string> progress;
     std::vector<std::string> directIncludes;
@@ -699,7 +704,11 @@ bool compile_shader(const Compiler* compiler, ShaderBin& shaderBin, Cache& cache
 
     const std::string className = "shader_obj_" + shaderName;
 
-    shaderObj << "#pragma once\n\n";
+    registry.objectsStart << "    " << className << " " << shaderName << ";\n";
+    registry.objectsCtor << "      " << (registry.firstObj ? ':' : ',') << " " << shaderName
+                         << "(device, shaderBin)\n";
+    registry.firstObj = false;
+
     shaderObj << "#include <drvshader.h>\n";
     shaderObj << "#include <shaderbin.h>\n";
     shaderObj << "#include <shaderobject.h>\n";
@@ -788,11 +797,15 @@ bool compile_shader(const Compiler* compiler, ShaderBin& shaderBin, Cache& cache
     shaderObj << "    std::unique_ptr<drv::DrvShader> drvShader;\n";
     shaderObj << "};\n";
 
+    fs::path fileName = fs::path("shader_obj_" + shaderName + ".h");
+
+    registry.includes << "#include <" << fileName.string() << ">\n";
+
     const std::string h = hash_string(shaderObj.str());
     const std::string cacheEntry = shaderName + "_obj";
     if (auto itr = cache.headerHashes.find(cacheEntry);
         itr == cache.headerHashes.end() || itr->second != h) {
-        fs::path filePath = fs::path(outputFolder) / fs::path("shader_obj_" + shaderName + ".h");
+        fs::path filePath = fs::path(outputFolder) / fileName;
         std::ofstream outFile(filePath.string());
         if (!outFile.is_open()) {
             std::cerr << "Could not open output file: " << filePath.string() << std::endl;
@@ -811,4 +824,21 @@ void Cache::writeJson(json& out) const {
 
 void Cache::readJson(const json& in) {
     READ_OBJECT_OPT(headerHashes, in, {});
+}
+
+void init_registry(ShaderRegistryOutput& registry) {
+    registry.includes << "#pragma once\n\n";
+    registry.includes << "#include <drvtypes.h>\n";
+    registry.includes << "#include <shaderbin.h>\n";
+    registry.headers << "struct ShaderHeaderRegistry {\n";
+    registry.objectsStart << "struct ShaderObjRegistry {\n";
+    registry.objectsCtor
+      << "    ShaderObjRegistry(drv::LogicalDevicePtr device, const ShaderBin &shaderBin)\n";
+}
+
+void finish_registry(ShaderRegistryOutput& registry) {
+    registry.includes << "\n";
+    registry.headers << "};\n\n";
+    registry.objectsEnd << "};\n";
+    registry.objectsCtor << "    {\n    }\n";
 }

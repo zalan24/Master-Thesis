@@ -10,8 +10,8 @@
 
 #include <shader_obj_test.h>
 
-Game::Game(Engine* _engine) : engine(_engine) {
-    shader_obj_test testShader(engine->getDevice(), *engine->getShaderBin());
+Game::Game(Engine* _engine)
+  : engine(_engine), shaderObjects(engine->getDevice(), *engine->getShaderBin()) {
     shader_obj_test::Descriptor descriptor;
     descriptor.setVariant("Color", "red");
     descriptor.setVariant("TestVariant", "two");

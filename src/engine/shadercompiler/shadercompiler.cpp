@@ -63,6 +63,7 @@ int main(int argc, char* argv[]) {
 
     fs::path cacheFolder = fs::path{cacheF};
     fs::path cacheFile = cacheFolder / fs::path{"cache.json"};
+    fs::path registryFile = headers / fs::path{"shaderregistry.h"};
 
     {
         std::ifstream cacheIn(cacheFile.string());
@@ -74,6 +75,9 @@ int main(int argc, char* argv[]) {
     }
 
     try {
+        ShaderRegistryOutput registryData;
+        init_registry(registryData);
+
         for (const std::string& f : files) {
             std::smatch m;
             if (!std::regex_match(f, m, headerRegex) && !std::regex_match(f, m, shaderRegex)) {
@@ -82,7 +86,7 @@ int main(int argc, char* argv[]) {
                   << std::endl;
                 return 1;
             }
-            if (!::generate_header(cache, f, headers, includeData)) {
+            if (!::generate_header(cache, registryData, f, headers, includeData)) {
                 std::cerr << "Could not generate header for: " << f << std::endl;
                 return 1;
             }
@@ -92,10 +96,18 @@ int main(int argc, char* argv[]) {
             if (!std::regex_match(f, m, shaderRegex))
                 continue;
             std::cout << "Compiling: " << f << std::endl;
-            if (!compile_shader(&compiler, shaderBin, cache, f, headers, includeData)) {
+            if (!compile_shader(&compiler, shaderBin, cache, registryData, f, headers,
+                                includeData)) {
                 std::cerr << "Failed to compile a shader: " << f << std::endl;
                 return 1;
             }
+        }
+        finish_registry(registryData);
+        {
+            std::ofstream registry(registryFile.c_str());
+            registry << registryData.includes.str() << registryData.headers.str()
+                     << registryData.objectsStart.str() << registryData.objectsCtor.str()
+                     << registryData.objectsEnd.str();
         }
         std::ofstream binOut(output, std::ios::binary | std::ios::out);
         if (!binOut.is_open()) {

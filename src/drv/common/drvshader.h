@@ -22,3 +22,15 @@ class DrvShader
  private:
 };
 }  // namespace drv
+
+// Shader header type (not instance)
+// + discriptor set layout(s) (multiple if shader variants require so)
+
+// Shader definition type (not instance)
+// + pipeline layouts (combining the descriptors sets of the headers)
+
+// Shader header
+// + descriptor set(s) keep a descriptor alive for each layout? or just one?
+
+// Shader object (collection)
+// + pipelines

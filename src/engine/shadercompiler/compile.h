@@ -52,6 +52,16 @@ struct ShaderGenerationInput
     std::stringstream csCfg;
 };
 
+struct ShaderRegistryOutput
+{
+    std::stringstream includes;
+    std::stringstream headers;
+    std::stringstream objectsStart;
+    std::stringstream objectsCtor;
+    std::stringstream objectsEnd;
+    bool firstObj = true;
+};
+
 class Cache final : public ISerializable
 {
  public:
@@ -65,8 +75,13 @@ bool read_variants(const BlockFile* blockFile, Variants& variants);
 bool read_resources(const BlockFile* blockFile, Resources& resources);
 
 bool compile_shader(const Compiler* compiler, ShaderBin& shaderBin, Cache& cache,
-                    const std::string& shaderFile, const std::string& outputFolder,
+                    ShaderRegistryOutput& registry, const std::string& shaderFile,
+                    const std::string& outputFolder,
                     std::unordered_map<std::string, IncludeData>& includeData);
 
-bool generate_header(Cache& cache, const std::string& shaderFile, const std::string& outputFolder,
+bool generate_header(Cache& cache, ShaderRegistryOutput& registry, const std::string& shaderFile,
+                     const std::string& outputFolder,
                      std::unordered_map<std::string, IncludeData>& includeData);
+
+void init_registry(ShaderRegistryOutput& registry);
+void finish_registry(ShaderRegistryOutput& registry);
