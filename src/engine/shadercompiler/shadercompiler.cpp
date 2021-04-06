@@ -105,7 +105,8 @@ int main(int argc, char* argv[]) {
         finish_registry(registryData);
         {
             std::ofstream registry(registryFile.c_str());
-            registry << registryData.includes.str() << registryData.headers.str()
+            registry << registryData.includes.str() << registryData.headersStart.str()
+                     << registryData.headersCtor.str() << registryData.headersEnd.str()
                      << registryData.objectsStart.str() << registryData.objectsCtor.str()
                      << registryData.objectsEnd.str();
         }

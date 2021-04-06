@@ -38,7 +38,8 @@ std::unique_ptr<ResourceTracker> create_resource_tracker(QueuePtr queue,
                                                          ResourceTracker::Config config);
 
 std::unique_ptr<RenderPass> create_render_pass(LogicalDevicePtr device, std::string name);
-std::unique_ptr<DrvShader> create_shader(LogicalDevicePtr device);
+// std::unique_ptr<DrvShader> create_shader(LogicalDevicePtr device);
+std::unique_ptr<DrvShaderHeaderRegistry> create_shader_header_registry(LogicalDevicePtr device);
 
 InstancePtr create_instance(const InstanceCreateInfo* info);
 bool delete_instance(InstancePtr ptr);

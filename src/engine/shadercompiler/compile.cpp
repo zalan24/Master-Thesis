@@ -242,14 +242,26 @@ bool generate_header(Cache& cache, ShaderRegistryOutput& registry, const std::st
         }
     }
     const std::string className = "shader_" + name + "_descriptor";
+    const std::string registryClassName = "shader_" + name + "_registry";
     incData.desriptorClassName = className;
     incData.name = name;
     out << "#pragma once\n\n";
+    out << "#include <memory>\n\n";
     out << "#include <shaderdescriptor.h>\n";
     out << "#include <shadertypes.h>\n";
     out << "#include <drvshader.h>\n\n";
-    out << "class " << className
-        << " final : public ShaderDescriptor, public drv::DrvShaderResourceProvider\n";
+
+    out << "class " << registryClassName << " {\n";
+    out << "  public:\n";
+    out << "    " << registryClassName << "(drv::LogicalDevicePtr device)\n";
+    out << "      : reg(drv::create_shader_header_registry(device))\n";
+    out << "    {\n";
+    out << "    }\n\n";
+    out << "  private:\n";
+    out << "    std::unique_ptr<drv::DrvShaderHeaderRegistry> reg;\n";
+    out << "};\n\n";
+
+    out << "class " << className << " final : public ShaderDescriptor\n";
     out << "{\n";
     out << "  public:\n";
     out << "    ~" << className << "() override {}\n";
@@ -352,6 +364,11 @@ bool generate_header(Cache& cache, ShaderRegistryOutput& registry, const std::st
         out << "    " << enumName << " " << valName << ";\n";
     }
     out << "};\n";
+
+    registry.headersStart << "    " << registryClassName << " " << name << ";\n";
+    registry.headersCtor << "      " << (registry.firstHeader ? ':' : ',') << " " << name
+                         << "(device)\n";
+    registry.firstHeader = false;
 
     fs::path fileName = fs::path("shader_" + name + ".h");
     fs::path filePath = fs::path(outputFolder) / fileName;
@@ -784,7 +801,6 @@ bool compile_shader(const Compiler* compiler, ShaderBin& shaderBin, Cache& cache
     shaderObj << "            throw std::runtime_error(\"Shader not found: " << shaderName
               << "\");\n";
     shaderObj << "        loadShader(*shader);\n";
-    shaderObj << "        drvShader = drv::create_shader(device);\n";
     shaderObj << "    }\n";
     shaderObj << "    ~" << className << "() override {}\n";
     shaderObj << "  protected:\n";
@@ -794,7 +810,6 @@ bool compile_shader(const Compiler* compiler, ShaderBin& shaderBin, Cache& cache
       << "        return static_cast<const Descriptor*>(descriptors)->getLocalVariantId();\n";
     shaderObj << "    }\n";
     shaderObj << "  private:\n";
-    shaderObj << "    std::unique_ptr<drv::DrvShader> drvShader;\n";
     shaderObj << "};\n";
 
     fs::path fileName = fs::path("shader_obj_" + shaderName + ".h");
@@ -830,15 +845,23 @@ void init_registry(ShaderRegistryOutput& registry) {
     registry.includes << "#pragma once\n\n";
     registry.includes << "#include <drvtypes.h>\n";
     registry.includes << "#include <shaderbin.h>\n";
-    registry.headers << "struct ShaderHeaderRegistry {\n";
+    registry.headersStart << "struct ShaderHeaderRegistry {\n";
+    registry.headersStart << "    ShaderHeaderRegistry(const ShaderHeaderRegistry&) = delete;\n";
+    registry.headersStart
+      << "    ShaderHeaderRegistry& operator=(const ShaderHeaderRegistry&) = delete;\n";
+    registry.headersCtor << "    ShaderHeaderRegistry(drv::LogicalDevicePtr device)\n";
     registry.objectsStart << "struct ShaderObjRegistry {\n";
+    registry.objectsStart << "    ShaderObjRegistry(const ShaderObjRegistry&) = delete;\n";
+    registry.objectsStart
+      << "    ShaderObjRegistry& operator=(const ShaderObjRegistry&) = delete;\n";
     registry.objectsCtor
       << "    ShaderObjRegistry(drv::LogicalDevicePtr device, const ShaderBin &shaderBin)\n";
 }
 
 void finish_registry(ShaderRegistryOutput& registry) {
     registry.includes << "\n";
-    registry.headers << "};\n\n";
+    registry.headersEnd << "};\n\n";
     registry.objectsEnd << "};\n";
     registry.objectsCtor << "    {\n    }\n";
+    registry.headersCtor << "    {\n    }\n";
 }

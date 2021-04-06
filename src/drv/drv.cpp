@@ -72,8 +72,13 @@ std::unique_ptr<drv::RenderPass> drv::create_render_pass(LogicalDevicePtr device
     return current_driver_interface->create_render_pass(device, std::move(name));
 }
 
-std::unique_ptr<drv::DrvShader> drv::create_shader(LogicalDevicePtr device) {
-    return current_driver_interface->create_shader(device);
+// std::unique_ptr<drv::DrvShader> drv::create_shader(LogicalDevicePtr device) {
+//     return current_driver_interface->create_shader(device);
+// }
+
+std::unique_ptr<drv::DrvShaderHeaderRegistry> drv::create_shader_header_registry(
+  LogicalDevicePtr device) {
+    return current_driver_interface->create_shader_header_registry(device);
 }
 
 bool drv::close() {

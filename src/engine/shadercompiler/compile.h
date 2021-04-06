@@ -55,7 +55,10 @@ struct ShaderGenerationInput
 struct ShaderRegistryOutput
 {
     std::stringstream includes;
-    std::stringstream headers;
+    std::stringstream headersStart;
+    std::stringstream headersCtor;
+    std::stringstream headersEnd;
+    bool firstHeader = true;
     std::stringstream objectsStart;
     std::stringstream objectsCtor;
     std::stringstream objectsEnd;

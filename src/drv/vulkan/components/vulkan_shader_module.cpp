@@ -38,6 +38,6 @@ bool DrvVulkan::destroy_shader_module(drv::LogicalDevicePtr device, drv::ShaderM
     return true;
 }
 
-std::unique_ptr<drv::DrvShader> DrvVulkan::create_shader(drv::LogicalDevicePtr device) {
-    return std::make_unique<VulkanShader>();
-}
+// std::unique_ptr<drv::DrvShader> DrvVulkan::create_shader(drv::LogicalDevicePtr device) {
+//     return std::make_unique<VulkanShader>();
+// }

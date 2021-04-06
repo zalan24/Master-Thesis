@@ -4,23 +4,34 @@
 
 namespace drv
 {
-class DrvShaderResourceProvider
+class DrvShaderHeaderRegistry
 {
  public:
-    // describe what the current variant requires (what push constants, textures, etc.)
-    // provide the values stored in shader descriptor
- protected:
-    ~DrvShaderResourceProvider() {}
-};
+    DrvShaderHeaderRegistry() = default;
+    DrvShaderHeaderRegistry(const DrvShaderHeaderRegistry&) = delete;
+    DrvShaderHeaderRegistry& operator=(const DrvShaderHeaderRegistry&) = delete;
+    virtual ~DrvShaderHeaderRegistry() {}
 
-class DrvShader
-{
- public:
-    virtual ~DrvShader() {}
-
-    // manage pipeline layouts and pipelines
  private:
 };
+
+// class DrvShaderResourceProvider
+// {
+//  public:
+//     // describe what the current variant requires (what push constants, textures, etc.)
+//     // provide the values stored in shader descriptor
+//  protected:
+//     ~DrvShaderResourceProvider() {}
+// };
+
+// class DrvShader
+// {
+//  public:
+//     virtual ~DrvShader() {}
+
+//     // manage pipeline layouts and pipelines
+//  private:
+// };
 }  // namespace drv
 
 // Shader header type (not instance)

@@ -1,4 +1,5 @@
 file(GLOB SHADERS_SOURCES *.sd *.sh)
+file(GLOB SHADER_HEADERS "${CMAKE_CURRENT_BINARY_DIR}/shaders/*.h")
 set(SHADERBIN "${CMAKE_BINARY_DIR}/shaders/shaders.bin")
 
 add_custom_target(ShaderCodes ALL DEPENDS ${SHADERBIN})
@@ -9,7 +10,7 @@ add_custom_command(
     DEPENDS  ${SHADERS_SOURCES} AnimationsShaderCompiler
 )
 
-add_library(AnimationShaders INTERFACE)
+add_library(AnimationShaders INTERFACE ${SHADER_HEADERS})
 add_dependencies(AnimationShaders ShaderCodes)
 
 target_include_directories(AnimationShaders INTERFACE ${CMAKE_CURRENT_BINARY_DIR})
