@@ -1,5 +1,5 @@
 file(GLOB SHADERS_SOURCES *.sd *.sh)
-file(GLOB SHADER_HEADERS "${CMAKE_CURRENT_BINARY_DIR}/shaders/*.h")
+file(GLOB SHADER_HEADERS "${CMAKE_CURRENT_BINARY_DIR}/*.h")
 set(SHADERBIN "${CMAKE_BINARY_DIR}/shaders/shaders.bin")
 
 add_custom_target(ShaderCodes ALL DEPENDS ${SHADERBIN})

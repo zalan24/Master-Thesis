@@ -13,7 +13,7 @@
 Game::Game(Engine* _engine)
   : engine(_engine),
     shaderHeaders(engine->getDevice()),
-    shaderObjects(engine->getDevice(), *engine->getShaderBin()) {
+    shaderObjects(engine->getDevice(), *engine->getShaderBin(), shaderHeaders) {
     shader_obj_test::Descriptor descriptor;
     descriptor.setVariant("Color", "red");
     descriptor.setVariant("TestVariant", "two");

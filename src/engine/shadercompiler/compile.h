@@ -38,6 +38,7 @@ struct IncludeData
     std::filesystem::path shaderFileName;
     std::filesystem::path headerFileName;
     std::string desriptorClassName;
+    std::string desriptorRegistryClassName;
     std::vector<std::string> included;
     uint64_t totalVarintMultiplier;
     std::unordered_map<std::string, uint64_t> variantMultiplier;

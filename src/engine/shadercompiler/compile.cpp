@@ -244,6 +244,7 @@ bool generate_header(Cache& cache, ShaderRegistryOutput& registry, const std::st
     const std::string className = "shader_" + name + "_descriptor";
     const std::string registryClassName = "shader_" + name + "_registry";
     incData.desriptorClassName = className;
+    incData.desriptorRegistryClassName = registryClassName;
     incData.name = name;
     out << "#pragma once\n\n";
     out << "#include <memory>\n\n";
@@ -723,7 +724,13 @@ bool compile_shader(const Compiler* compiler, ShaderBin& shaderBin, Cache& cache
 
     registry.objectsStart << "    " << className << " " << shaderName << ";\n";
     registry.objectsCtor << "      " << (registry.firstObj ? ':' : ',') << " " << shaderName
-                         << "(device, shaderBin)\n";
+                         << "(device, shaderBin";
+    for (const std::string& inc : allIncludes) {
+        auto itr = includeData.find(inc);
+        assert(itr != includeData.end());
+        registry.objectsCtor << ", &headers." << itr->second.name;
+    }
+    registry.objectsCtor << ")\n";
     registry.firstObj = false;
 
     shaderObj << "#include <drvshader.h>\n";
@@ -792,8 +799,14 @@ bool compile_shader(const Compiler* compiler, ShaderBin& shaderBin, Cache& cache
                   << ";\n";
     }
     shaderObj << "    };\n";
-    shaderObj << "    " << className
-              << "(drv::LogicalDevicePtr device, const ShaderBin &shaderBin)\n";
+    shaderObj << "    " << className << "(drv::LogicalDevicePtr device, const ShaderBin &shaderBin";
+    for (const std::string& inc : allIncludes) {
+        auto itr = includeData.find(inc);
+        assert(itr != includeData.end());
+        shaderObj << ", const " << itr->second.desriptorRegistryClassName << " *reg_"
+                  << itr->second.name;
+    }
+    shaderObj << ")\n";
     shaderObj << "      : ShaderObject(device)\n";
     shaderObj << "      , reg(drv::create_shader_obj_registry(device))\n";
     shaderObj << "    {\n";
@@ -858,7 +871,7 @@ void init_registry(ShaderRegistryOutput& registry) {
     registry.objectsStart
       << "    ShaderObjRegistry& operator=(const ShaderObjRegistry&) = delete;\n";
     registry.objectsCtor
-      << "    ShaderObjRegistry(drv::LogicalDevicePtr device, const ShaderBin &shaderBin)\n";
+      << "    ShaderObjRegistry(drv::LogicalDevicePtr device, const ShaderBin &shaderBin, const ShaderHeaderRegistry& headers)\n";
 }
 
 void finish_registry(ShaderRegistryOutput& registry) {
