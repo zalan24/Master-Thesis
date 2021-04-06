@@ -15,6 +15,17 @@ class DrvShaderHeaderRegistry
  private:
 };
 
+class DrvShaderObjectRegistry
+{
+ public:
+    DrvShaderObjectRegistry() = default;
+    DrvShaderObjectRegistry(const DrvShaderObjectRegistry&) = delete;
+    DrvShaderObjectRegistry& operator=(const DrvShaderObjectRegistry&) = delete;
+    virtual ~DrvShaderObjectRegistry() {}
+
+ private:
+};
+
 // class DrvShaderResourceProvider
 // {
 //  public:

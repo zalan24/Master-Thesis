@@ -792,9 +792,11 @@ bool compile_shader(const Compiler* compiler, ShaderBin& shaderBin, Cache& cache
                   << ";\n";
     }
     shaderObj << "    };\n";
-    shaderObj
-      << "    " << className
-      << "(drv::LogicalDevicePtr device, const ShaderBin &shaderBin) : ShaderObject(device) {\n";
+    shaderObj << "    " << className
+              << "(drv::LogicalDevicePtr device, const ShaderBin &shaderBin)\n";
+    shaderObj << "      : ShaderObject(device)\n";
+    shaderObj << "      , reg(drv::create_shader_obj_registry(device))\n";
+    shaderObj << "    {\n";
     shaderObj << "        const ShaderBin::ShaderData *shader = shaderBin.getShader(\""
               << shaderName << "\");\n";
     shaderObj << "        if (shader == nullptr)\n";
@@ -810,6 +812,7 @@ bool compile_shader(const Compiler* compiler, ShaderBin& shaderBin, Cache& cache
       << "        return static_cast<const Descriptor*>(descriptors)->getLocalVariantId();\n";
     shaderObj << "    }\n";
     shaderObj << "  private:\n";
+    shaderObj << "    std::unique_ptr<drv::DrvShaderObjectRegistry> reg;\n";
     shaderObj << "};\n";
 
     fs::path fileName = fs::path("shader_obj_" + shaderName + ".h");

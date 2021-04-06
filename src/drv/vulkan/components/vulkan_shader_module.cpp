@@ -8,14 +8,6 @@
 
 #include "vulkan_shader.h"
 
-namespace drv_vulkan
-{
-struct ShaderCreateData
-{
-    std::vector<uint32_t> data;
-};
-}  // namespace drv_vulkan
-
 using namespace drv_vulkan;
 
 drv::ShaderModulePtr DrvVulkan::create_shader_module(drv::LogicalDevicePtr device,
@@ -36,6 +28,16 @@ bool DrvVulkan::destroy_shader_module(drv::LogicalDevicePtr device, drv::ShaderM
     vkDestroyShaderModule(reinterpret_cast<VkDevice>(device),
                           reinterpret_cast<VkShaderModule>(module), nullptr);
     return true;
+}
+
+std::unique_ptr<drv::DrvShaderHeaderRegistry> DrvVulkan::create_shader_header_registry(
+  drv::LogicalDevicePtr device) {
+    return std::make_unique<VulkanShaderHeaderRegistry>(device);
+}
+
+std::unique_ptr<drv::DrvShaderObjectRegistry> DrvVulkan::create_shader_obj_registry(
+  drv::LogicalDevicePtr device) {
+    return std::make_unique<VulkanShaderObjRegistry>(device);
 }
 
 // std::unique_ptr<drv::DrvShader> DrvVulkan::create_shader(drv::LogicalDevicePtr device) {

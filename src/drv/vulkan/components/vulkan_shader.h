@@ -14,7 +14,7 @@
 class VulkanShaderHeaderRegistry final : public drv::DrvShaderHeaderRegistry
 {
  public:
-    VulkanShaderHeaderRegistry(drv::LogicalDevicePtr _device) : device(_device) {}
+    explicit VulkanShaderHeaderRegistry(drv::LogicalDevicePtr _device) : device(_device) {}
     VulkanShaderHeaderRegistry(const VulkanShaderHeaderRegistry&) = delete;
     VulkanShaderHeaderRegistry& operator=(const VulkanShaderHeaderRegistry&) = delete;
 
@@ -29,10 +29,22 @@ class VulkanShaderHeaderRegistry final : public drv::DrvShaderHeaderRegistry
     std::vector<VkDescriptorSetLayout> layouts;
 };
 
-std::unique_ptr<drv::DrvShaderHeaderRegistry> DrvVulkan::create_shader_header_registry(
-  drv::LogicalDevicePtr device) {
-    return std::make_unique<VulkanShaderHeaderRegistry>(device);
-}
+class VulkanShaderObjRegistry final : public drv::DrvShaderObjectRegistry
+{
+ public:
+    explicit VulkanShaderObjRegistry(drv::LogicalDevicePtr _device) : device(_device) {}
+    VulkanShaderObjRegistry(const VulkanShaderObjRegistry&) = delete;
+    VulkanShaderObjRegistry& operator=(const VulkanShaderObjRegistry&) = delete;
+    ~VulkanShaderObjRegistry() override {
+        for (VkPipelineLayout& layout : pipelineLayouts)
+            vkDestroyPipelineLayout(convertDevice(device), layout, nullptr);
+        pipelineLayouts.clear();
+    }
+
+ private:
+    drv::LogicalDevicePtr device;
+    std::vector<VkPipelineLayout> pipelineLayouts;
+};
 
 // class VulkanShader : public drv::DrvShader
 // {
