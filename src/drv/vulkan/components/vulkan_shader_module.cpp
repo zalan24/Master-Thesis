@@ -46,8 +46,7 @@ std::unique_ptr<drv::DrvShaderHeader> DrvVulkan::create_shader_header(
       device, static_cast<const VulkanShaderHeaderRegistry*>(reg));
 }
 
-std::unique_ptr<drv::DrvShader> DrvVulkan::create_shader(
-  drv::LogicalDevicePtr device, const drv::DrvShaderObjectRegistry* reg, size_t numHeaders,
-  const drv::DrvShaderHeader* const* headers) {
+std::unique_ptr<drv::DrvShader> DrvVulkan::create_shader(drv::LogicalDevicePtr device,
+                                                         const drv::DrvShaderObjectRegistry* reg) {
     return std::make_unique<VulkanShader>(device, static_cast<const VulkanShaderObjRegistry*>(reg));
 }

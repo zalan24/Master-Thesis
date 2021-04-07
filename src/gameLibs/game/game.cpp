@@ -6,14 +6,13 @@
 
 #include <drverror.h>
 
-#include <garbage.h>
-
-#include <shader_obj_test.h>
-
 Game::Game(Engine* _engine)
   : engine(_engine),
     shaderHeaders(engine->getDevice()),
-    shaderObjects(engine->getDevice(), *engine->getShaderBin(), shaderHeaders) {
+    shaderObjects(engine->getDevice(), *engine->getShaderBin(), shaderHeaders),
+    shaderGlobalDesc(engine->getDevice(), &shaderHeaders.global),
+    shaderTestDesc(engine->getDevice(), &shaderHeaders.test),
+    testShader(engine->getDevice(), &shaderObjects.test) {
     // shader_obj_test::Descriptor descriptor;
     // descriptor.setVariant("Color", "red");
     // descriptor.setVariant("TestVariant", "two");
@@ -92,6 +91,16 @@ void Game::recreateViews(uint32_t imageCount, const drv::ImagePtr* images) {
     }
 }
 
+void Game::initShader() {
+    testShader.clear();  // TODO
+    shaderTestDesc.setVariant_Color(shader_test_descriptor::Color::BLUE);
+    testShader.prepare(testRenderPass.get(), testSubpass, shaderGlobalDesc, shaderTestDesc);
+    shaderTestDesc.setVariant_Color(shader_test_descriptor::Color::GREEN);
+    testShader.prepare(testRenderPass.get(), testSubpass, shaderGlobalDesc, shaderTestDesc);
+    shaderTestDesc.setVariant_Color(shader_test_descriptor::Color::RED);
+    testShader.prepare(testRenderPass.get(), testSubpass, shaderGlobalDesc, shaderTestDesc);
+}
+
 void Game::record(FrameGraph& frameGraph, FrameId frameId) {
     // std::cout << "Record: " << frameId << std::endl;
     Engine::QueueInfo queues = engine->getQueues();
@@ -136,6 +145,7 @@ void Game::record(FrameGraph& frameGraph, FrameId frameId) {
             for (auto& framebuffer : frameBuffers)
                 framebuffer.reset();
             testRenderPass->recreate(testImageInfo);
+            initShader();
         }
         if (!frameBuffers[swapChainData.imageIndex])
             frameBuffers[swapChainData.imageIndex].set(

@@ -43,8 +43,7 @@ std::unique_ptr<DrvShaderObjectRegistry> create_shader_obj_registry(LogicalDevic
 std::unique_ptr<DrvShaderHeader> create_shader_header(LogicalDevicePtr device,
                                                       const DrvShaderHeaderRegistry* reg);
 std::unique_ptr<DrvShader> create_shader(LogicalDevicePtr device,
-                                         const DrvShaderObjectRegistry* reg, size_t numHeaders,
-                                         const DrvShaderHeader* const* headers);
+                                         const DrvShaderObjectRegistry* reg);
 
 InstancePtr create_instance(const InstanceCreateInfo* info);
 bool delete_instance(InstancePtr ptr);

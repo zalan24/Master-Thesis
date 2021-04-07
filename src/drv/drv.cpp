@@ -88,10 +88,8 @@ std::unique_ptr<drv::DrvShaderHeader> drv::create_shader_header(
 }
 
 std::unique_ptr<drv::DrvShader> drv::create_shader(LogicalDevicePtr device,
-                                                   const DrvShaderObjectRegistry* reg,
-                                                   size_t numHeaders,
-                                                   const DrvShaderHeader* const* headers) {
-    return current_driver_interface->create_shader(device, reg, numHeaders, headers);
+                                                   const DrvShaderObjectRegistry* reg) {
+    return current_driver_interface->create_shader(device, reg);
 }
 
 bool drv::close() {

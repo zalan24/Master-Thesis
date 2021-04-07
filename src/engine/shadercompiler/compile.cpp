@@ -753,6 +753,7 @@ bool compile_shader(const Compiler* compiler, ShaderBin& shaderBin, Cache& cache
 
     shaderObj << "#include <drvshader.h>\n";
     shaderObj << "#include <shaderbin.h>\n";
+    shaderObj << "#include <drvrenderpass.h>\n";
     shaderObj << "#include <shaderobjectregistry.h>\n";
     shaderObj << "#include <shaderdescriptorcollection.h>\n\n";
 
@@ -792,9 +793,23 @@ bool compile_shader(const Compiler* compiler, ShaderBin& shaderBin, Cache& cache
     shaderObj << "  public:\n";
     shaderObj << "    " << className << "(drv::LogicalDevicePtr device, const " << registryClassName
               << " *reg)\n";
-    shaderObj << "      : shader(drv::create_shader(device, reg->reg.get(), 0, nullptr))\n";
+    shaderObj << "      : shader(drv::create_shader(device, reg->reg.get()))\n";
     shaderObj << "    {\n";
-    shaderObj << "    }\n";
+    shaderObj << "    }\n\n";
+    shaderObj << "    void clear() {\n";
+    shaderObj
+      << "        // TODO probably return unique ptr, then the caller can put it in the garbage or just ignore it for immediate destruction\n";
+    shaderObj << "    }\n\n";
+    shaderObj << "    void prepare(const drv::RenderPass *renderPass, drv::SubpassId subpass";
+    for (const std::string& inc : allIncludes) {
+        auto itr = includeData.find(inc);
+        assert(itr != includeData.end());
+        shaderObj << ", const " << itr->second.desriptorClassName << " &" << itr->second.name;
+    }
+    shaderObj << ") {\n";
+    shaderObj
+      << "        // TODO This configuration needs to be supported, a pipeline needs to be maintained for this\n";
+    shaderObj << "    }\n\n";
     // uint32_t descId = 0;
     // for (const std::string& inc : allIncludes) {
     //     auto itr = includeData.find(inc);

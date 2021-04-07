@@ -9,6 +9,8 @@
 #include <isimulation.h>
 #include <shaderregistry.h>
 
+#include <shader_obj_test.h>
+
 class Game final
   : public IRenderer
   , public ISimulation
@@ -30,6 +32,9 @@ class Game final
     Engine* engine;
     ShaderHeaderRegistry shaderHeaders;
     ShaderObjRegistry shaderObjects;
+    shader_global_descriptor shaderGlobalDesc;
+    shader_test_descriptor shaderTestDesc;
+    shader_test testShader;
 
     std::unique_ptr<drv::RenderPass> testRenderPass;
     drv::AttachmentId testColorAttachment;
@@ -40,4 +45,5 @@ class Game final
     Engine::SwapchaingVersion swapchainVersion = Engine::INVALID_SWAPCHAIN;
 
     void recreateViews(uint32_t imageCount, const drv::ImagePtr* images);
+    void initShader();
 };

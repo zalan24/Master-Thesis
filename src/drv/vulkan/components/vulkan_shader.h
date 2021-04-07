@@ -64,7 +64,7 @@ class VulkanShaderHeader final : public drv::DrvShaderHeader
 
  private:
     drv::LogicalDevicePtr device;
-    VkDescriptorPool descriptorPool;
+    VkDescriptorPool descriptorPool = VK_NULL_HANDLE;
     std::vector<VkDescriptorSet> descriptorSets;
 };
 
