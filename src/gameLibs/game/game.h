@@ -7,7 +7,6 @@
 #include <engine.h>
 #include <irenderer.h>
 #include <isimulation.h>
-#include <shaderobject.h>
 #include <shaderregistry.h>
 
 class Game final

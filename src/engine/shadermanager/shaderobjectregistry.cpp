@@ -1,11 +1,11 @@
-#include "shaderobject.h"
+#include "shaderobjectregistry.h"
 
 #include <unordered_map>
 
-ShaderObject::ShaderObject(drv::LogicalDevicePtr _device) : device(_device) {
+ShaderObjectRegistry::ShaderObjectRegistry(drv::LogicalDevicePtr _device) : device(_device) {
 }
 
-void ShaderObject::close() {
+void ShaderObjectRegistry::close() {
     if (device != drv::NULL_HANDLE) {
         size_t destroyed = 0;
         try {
@@ -27,18 +27,18 @@ void ShaderObject::close() {
     variants.clear();
 }
 
-ShaderObject::~ShaderObject() {
+ShaderObjectRegistry::~ShaderObjectRegistry() {
     close();
 }
 
-ShaderObject::ShaderObject(ShaderObject&& other) {
+ShaderObjectRegistry::ShaderObjectRegistry(ShaderObjectRegistry&& other) {
     device = other.device;
     variants = std::move(other.variants);
     shaders = std::move(other.shaders);
     other.device = drv::NULL_HANDLE;
 }
 
-ShaderObject& ShaderObject::operator=(ShaderObject&& other) {
+ShaderObjectRegistry& ShaderObjectRegistry::operator=(ShaderObjectRegistry&& other) {
     if (&other == this)
         return *this;
     close();
@@ -49,7 +49,7 @@ ShaderObject& ShaderObject::operator=(ShaderObject&& other) {
     return *this;
 }
 
-void ShaderObject::loadShader(const ShaderBin::ShaderData& data) {
+void ShaderObjectRegistry::loadShader(const ShaderBin::ShaderData& data) {
     std::unordered_map<uint64_t, uint32_t> offsetToModule;
     variants.clear();
     variants.resize(data.totalVariantCount);

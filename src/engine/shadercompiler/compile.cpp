@@ -737,7 +737,7 @@ bool compile_shader(const Compiler* compiler, ShaderBin& shaderBin, Cache& cache
 
     shaderBin.addShader(shaderName, std::move(shaderData));
 
-    const std::string className = "shader_obj_" + shaderName;
+    const std::string className = "shader_obj_registry_" + shaderName;
 
     registry.objectsStart << "    " << className << " " << shaderName << ";\n";
     registry.objectsCtor << "      " << (registry.firstObj ? ':' : ',') << " " << shaderName
@@ -752,70 +752,11 @@ bool compile_shader(const Compiler* compiler, ShaderBin& shaderBin, Cache& cache
 
     shaderObj << "#include <drvshader.h>\n";
     shaderObj << "#include <shaderbin.h>\n";
-    shaderObj << "#include <shaderobject.h>\n";
+    shaderObj << "#include <shaderobjectregistry.h>\n";
     shaderObj << "#include <shaderdescriptorcollection.h>\n\n";
-    shaderObj << "\n";
-    shaderObj << "class " << className << " final : public ShaderObject {\n";
+
+    shaderObj << "class " << className << " final : public ShaderObjectRegistry {\n";
     shaderObj << "  public:\n";
-    shaderObj << "    class Descriptor final : public ShaderDescriptorCollection {\n";
-    shaderObj << "      public:\n";
-    shaderObj << "        Descriptor() {\n";
-    uint32_t descId = 0;
-    for (const std::string& inc : allIncludes) {
-        auto itr = includeData.find(inc);
-        assert(itr != includeData.end());
-        shaderObj << "            addDescriptor(\"" << itr->second.name << "\", " << descId++
-                  << ", desc_" << itr->second.name << ");\n";
-    }
-    shaderObj << "        }\n";
-    shaderObj << "        ~Descriptor() override {}\n";
-    shaderObj << "        uint32_t getLocalVariantId() const override {\n";
-    shaderObj << "            uint32_t ret = 0;\n";
-    for (const std::string& inc : allIncludes) {
-        auto itr = includeData.find(inc);
-        assert(itr != includeData.end());
-        auto mulItr = variantIdMultiplier.find(inc);
-        assert(mulItr != variantIdMultiplier.end());
-        shaderObj << "            ret += desc_" << itr->second.name << ".getLocalVariantId() * "
-                  << mulItr->second << ";\n";
-    }
-    shaderObj << "            return ret;\n";
-    shaderObj << "        }\n";
-    shaderObj << "      protected:\n";
-    shaderObj << "        ShaderDescriptor* getDesc(const DescId& id) override {\n";
-    shaderObj << "            switch (id) {\n";
-    descId = 0;
-    for (const std::string& inc : allIncludes) {
-        auto itr = includeData.find(inc);
-        assert(itr != includeData.end());
-        shaderObj << "                case " << descId++ << ":\n";
-        shaderObj << "                    return &desc_" << itr->second.name << ";\n";
-    }
-    shaderObj << "                default:\n";
-    shaderObj << "                    throw std::runtime_error(\"Invalid desc id\");\n";
-    shaderObj << "            }\n";
-    shaderObj << "        }\n";
-    shaderObj << "        const ShaderDescriptor* getDesc(const DescId& id) const override {\n";
-    shaderObj << "            switch (id) {\n";
-    descId = 0;
-    for (const std::string& inc : allIncludes) {
-        auto itr = includeData.find(inc);
-        assert(itr != includeData.end());
-        shaderObj << "                case " << descId++ << ":\n";
-        shaderObj << "                    return &desc_" << itr->second.name << ";\n";
-    }
-    shaderObj << "                default:\n";
-    shaderObj << "                    throw std::runtime_error(\"Invalid desc id\");\n";
-    shaderObj << "            }\n";
-    shaderObj << "        }\n";
-    shaderObj << "      public:\n";
-    for (const std::string& inc : allIncludes) {
-        auto itr = includeData.find(inc);
-        assert(itr != includeData.end());
-        shaderObj << "        " << itr->second.desriptorClassName << " desc_" << itr->second.name
-                  << ";\n";
-    }
-    shaderObj << "    };\n";
     shaderObj << "    " << className << "(drv::LogicalDevicePtr device, const ShaderBin &shaderBin";
     for (const std::string& inc : allIncludes) {
         auto itr = includeData.find(inc);
@@ -824,7 +765,7 @@ bool compile_shader(const Compiler* compiler, ShaderBin& shaderBin, Cache& cache
                   << itr->second.name;
     }
     shaderObj << ")\n";
-    shaderObj << "      : ShaderObject(device)\n";
+    shaderObj << "      : ShaderObjectRegistry(device)\n";
     shaderObj << "      , reg(drv::create_shader_obj_registry(device))\n";
     shaderObj << "    {\n";
     shaderObj << "        const ShaderBin::ShaderData *shader = shaderBin.getShader(\""
@@ -834,16 +775,75 @@ bool compile_shader(const Compiler* compiler, ShaderBin& shaderBin, Cache& cache
               << "\");\n";
     shaderObj << "        loadShader(*shader);\n";
     shaderObj << "    }\n";
-    shaderObj << "    ~" << className << "() override {}\n";
     shaderObj << "  protected:\n";
-    shaderObj
-      << "    VariantId getShaderVariant(const ShaderDescriptorCollection* descriptors) const override {\n";
-    shaderObj
-      << "        return static_cast<const Descriptor*>(descriptors)->getLocalVariantId();\n";
-    shaderObj << "    }\n";
+    // shaderObj
+    //   << "    VariantId getShaderVariant(const ShaderDescriptorCollection* descriptors) const override {\n";
+    // shaderObj
+    //   << "        return static_cast<const Descriptor*>(descriptors)->getLocalVariantId();\n";
+    // shaderObj << "    }\n";
     shaderObj << "  private:\n";
     shaderObj << "    std::unique_ptr<drv::DrvShaderObjectRegistry> reg;\n";
     shaderObj << "};\n";
+
+    // shaderObj << "class Descriptor final : public ShaderDescriptorCollection {\n";
+    // shaderObj << "  public:\n";
+    // shaderObj << "    Descriptor() {\n";
+    // uint32_t descId = 0;
+    // for (const std::string& inc : allIncludes) {
+    //     auto itr = includeData.find(inc);
+    //     assert(itr != includeData.end());
+    //     shaderObj << "        addDescriptor(\"" << itr->second.name << "\", " << descId++
+    //               << ", desc_" << itr->second.name << ");\n";
+    // }
+    // shaderObj << "    }\n";
+    // shaderObj << "    ~Descriptor() override {}\n";
+    // shaderObj << "    uint32_t getLocalVariantId() const override {\n";
+    // shaderObj << "        uint32_t ret = 0;\n";
+    // for (const std::string& inc : allIncludes) {
+    //     auto itr = includeData.find(inc);
+    //     assert(itr != includeData.end());
+    //     auto mulItr = variantIdMultiplier.find(inc);
+    //     assert(mulItr != variantIdMultiplier.end());
+    //     shaderObj << "        ret += desc_" << itr->second.name << ".getLocalVariantId() * "
+    //               << mulItr->second << ";\n";
+    // }
+    // shaderObj << "        return ret;\n";
+    // shaderObj << "    }\n";
+    // shaderObj << "  protected:\n";
+    // shaderObj << "    ShaderDescriptor* getDesc(const DescId& id) override {\n";
+    // shaderObj << "        switch (id) {\n";
+    // descId = 0;
+    // for (const std::string& inc : allIncludes) {
+    //     auto itr = includeData.find(inc);
+    //     assert(itr != includeData.end());
+    //     shaderObj << "            case " << descId++ << ":\n";
+    //     shaderObj << "                return &desc_" << itr->second.name << ";\n";
+    // }
+    // shaderObj << "            default:\n";
+    // shaderObj << "                throw std::runtime_error(\"Invalid desc id\");\n";
+    // shaderObj << "        }\n";
+    // shaderObj << "    }\n";
+    // shaderObj << "    const ShaderDescriptor* getDesc(const DescId& id) const override {\n";
+    // shaderObj << "        switch (id) {\n";
+    // descId = 0;
+    // for (const std::string& inc : allIncludes) {
+    //     auto itr = includeData.find(inc);
+    //     assert(itr != includeData.end());
+    //     shaderObj << "            case " << descId++ << ":\n";
+    //     shaderObj << "                return &desc_" << itr->second.name << ";\n";
+    // }
+    // shaderObj << "            default:\n";
+    // shaderObj << "                throw std::runtime_error(\"Invalid desc id\");\n";
+    // shaderObj << "        }\n";
+    // shaderObj << "    }\n";
+    // shaderObj << "  public:\n";
+    // for (const std::string& inc : allIncludes) {
+    //     auto itr = includeData.find(inc);
+    //     assert(itr != includeData.end());
+    //     shaderObj << "    " << itr->second.desriptorClassName << " desc_" << itr->second.name
+    //               << ";\n";
+    // }
+    // shaderObj << "};\n";
 
     fs::path fileName = fs::path("shader_obj_" + shaderName + ".h");
 

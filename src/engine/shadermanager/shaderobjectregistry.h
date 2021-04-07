@@ -6,25 +6,26 @@
 #include <drv_wrappers.h>
 
 #include "shaderbin.h"
-#include "shaderdescriptorcollection.h"
+// #include "shaderdescriptorcollection.h"
 
-class ShaderObject
+class ShaderObjectRegistry
 {
  public:
-    ShaderObject(drv::LogicalDevicePtr device);
-    virtual ~ShaderObject();
+    explicit ShaderObjectRegistry(drv::LogicalDevicePtr device);
 
-    ShaderObject(const ShaderObject&) = delete;
-    ShaderObject& operator=(const ShaderObject&) = delete;
-    ShaderObject(ShaderObject&& other);
-    ShaderObject& operator=(ShaderObject&& other);
+    ShaderObjectRegistry(const ShaderObjectRegistry&) = delete;
+    ShaderObjectRegistry& operator=(const ShaderObjectRegistry&) = delete;
+    ShaderObjectRegistry(ShaderObjectRegistry&& other);
+    ShaderObjectRegistry& operator=(ShaderObjectRegistry&& other);
 
     void loadShader(const ShaderBin::ShaderData& data);
 
  protected:
     using VariantId = uint32_t;
     static constexpr VariantId INVALID_SHADER = std::numeric_limits<VariantId>::max();
-    virtual VariantId getShaderVariant(const ShaderDescriptorCollection* descriptors) const = 0;
+    //  virtual VariantId getShaderVariant(const ShaderDescriptorCollection* descriptors) const = 0;
+
+    ~ShaderObjectRegistry();
 
  private:
     struct VariantInfo
