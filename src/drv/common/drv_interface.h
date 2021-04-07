@@ -25,6 +25,8 @@ class IDriver
       LogicalDevicePtr device) = 0;
     virtual std::unique_ptr<DrvShaderObjectRegistry> create_shader_obj_registry(
       drv::LogicalDevicePtr device) = 0;
+    virtual std::unique_ptr<DrvShaderHeader> create_shader_header(
+      LogicalDevicePtr device, const DrvShaderHeaderRegistry* reg) = 0;
     virtual bool delete_instance(InstancePtr ptr) = 0;
     virtual bool get_physical_devices(InstancePtr instance, unsigned int* count,
                                       PhysicalDeviceInfo* infos) = 0;

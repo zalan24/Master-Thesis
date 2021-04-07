@@ -14,14 +14,14 @@ Game::Game(Engine* _engine)
   : engine(_engine),
     shaderHeaders(engine->getDevice()),
     shaderObjects(engine->getDevice(), *engine->getShaderBin(), shaderHeaders) {
-    shader_obj_test::Descriptor descriptor;
-    descriptor.setVariant("Color", "red");
-    descriptor.setVariant("TestVariant", "two");
-    descriptor.desc_global.setVariant_renderPass(shader_global_descriptor::Renderpass::DEPTH);
-    descriptor.desc_global.setVariant_someStuff(shader_global_descriptor::Somestuff::STUFF3);
-    std::cout << descriptor.desc_global.getLocalVariantId() << std::endl;
-    std::cout << descriptor.desc_test.getLocalVariantId() << std::endl;
-    std::cout << descriptor.getLocalVariantId() << std::endl;
+    // shader_obj_test::Descriptor descriptor;
+    // descriptor.setVariant("Color", "red");
+    // descriptor.setVariant("TestVariant", "two");
+    // descriptor.desc_global.setVariant_renderPass(shader_global_descriptor::Renderpass::DEPTH);
+    // descriptor.desc_global.setVariant_someStuff(shader_global_descriptor::Somestuff::STUFF3);
+    // std::cout << descriptor.desc_global.getLocalVariantId() << std::endl;
+    // std::cout << descriptor.desc_test.getLocalVariantId() << std::endl;
+    // std::cout << descriptor.getLocalVariantId() << std::endl;
 
     testRenderPass = drv::create_render_pass(engine->getDevice(), "Test pass");
     drv::RenderPass::AttachmentInfo colorInfo;

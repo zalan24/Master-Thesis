@@ -51,6 +51,8 @@ class DrvVulkan final : public drv::IDriver
       drv::LogicalDevicePtr device) override;
     std::unique_ptr<drv::DrvShaderObjectRegistry> create_shader_obj_registry(
       drv::LogicalDevicePtr device) override;
+    std::unique_ptr<drv::DrvShaderHeader> create_shader_header(
+      drv::LogicalDevicePtr device, const drv::DrvShaderHeaderRegistry* reg) override;
     bool delete_instance(drv::InstancePtr ptr) override;
     bool get_physical_devices(drv::InstancePtr instance, unsigned int* count,
                               drv::PhysicalDeviceInfo* infos) override;

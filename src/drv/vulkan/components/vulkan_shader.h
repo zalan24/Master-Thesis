@@ -46,6 +46,28 @@ class VulkanShaderObjRegistry final : public drv::DrvShaderObjectRegistry
     std::vector<VkPipelineLayout> pipelineLayouts;
 };
 
+class VulkanShaderHeader final : public drv::DrvShaderHeader
+{
+ public:
+    explicit VulkanShaderHeader(drv::LogicalDevicePtr _device,
+                                const VulkanShaderHeaderRegistry* reg)
+      : device(_device) {}
+    VulkanShaderHeader(const VulkanShaderHeader&) = delete;
+    VulkanShaderHeader& operator=(const VulkanShaderHeader&) = delete;
+    ~VulkanShaderHeader() override {
+        descriptorSets.clear();
+        if (descriptorPool != VK_NULL_HANDLE) {
+            vkDestroyDescriptorPool(convertDevice(device), descriptorPool, nullptr);
+            descriptorPool = VK_NULL_HANDLE;
+        }
+    }
+
+ private:
+    drv::LogicalDevicePtr device;
+    VkDescriptorPool descriptorPool;
+    std::vector<VkDescriptorSet> descriptorSets;
+};
+
 // class VulkanShader : public drv::DrvShader
 // {
 //  public:

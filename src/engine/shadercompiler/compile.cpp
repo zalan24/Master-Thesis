@@ -258,6 +258,7 @@ bool generate_header(Cache& cache, ShaderRegistryOutput& registry, const std::st
     out << "      : reg(drv::create_shader_header_registry(device))\n";
     out << "    {\n";
     out << "    }\n\n";
+    out << "    friend class " << className << ";\n";
     out << "  private:\n";
     out << "    std::unique_ptr<drv::DrvShaderHeaderRegistry> reg;\n";
     out << "};\n\n";
@@ -356,7 +357,23 @@ bool generate_header(Cache& cache, ShaderRegistryOutput& registry, const std::st
     }
     out << "        return ret;\n";
     out << "    }\n";
+    out << "    " << className << "(drv::LogicalDevicePtr device, const " << registryClassName
+        << " *_reg)\n";
+    out << "      : reg(_reg)\n";
+    out << "      , header(drv::create_shader_header(device, reg->reg.get()))\n";
+    for (const auto& [variantName, values] : variants.values) {
+        if (variantName.length() == 0 || values.size() == 0)
+            continue;
+        std::string enumName = get_variant_enum_name(variantName);
+        std::string valName = get_variant_enum_val_name(variantName);
+        out << "      , " << valName << "(" << enumName << "::" << get_variant_enum_value(values[0])
+            << ")\n";
+    }
+    out << "    {\n";
+    out << "    }\n";
     out << "  private:\n";
+    out << "    const " << registryClassName << " *reg;\n";
+    out << "    std::unique_ptr<drv::DrvShaderHeader> header;\n";
     for (const auto& [variantName, values] : variants.values) {
         if (variantName.length() == 0 || values.size() == 0)
             continue;
