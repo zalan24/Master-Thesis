@@ -4,6 +4,7 @@
 
 namespace drv
 {
+// discriptor set layout(s) (multiple if shader variants require so)
 class DrvShaderHeaderRegistry
 {
  public:
@@ -15,6 +16,7 @@ class DrvShaderHeaderRegistry
  private:
 };
 
+// pipeline layouts (combining the descriptors sets of the headers)
 class DrvShaderObjectRegistry
 {
  public:
@@ -26,6 +28,7 @@ class DrvShaderObjectRegistry
  private:
 };
 
+// descriptor set(s)
 class DrvShaderHeader
 {
  public:
@@ -37,33 +40,16 @@ class DrvShaderHeader
  private:
 };
 
-// class DrvShaderResourceProvider
-// {
-//  public:
-//     // describe what the current variant requires (what push constants, textures, etc.)
-//     // provide the values stored in shader descriptor
-//  protected:
-//     ~DrvShaderResourceProvider() {}
-// };
+// pipelines
+class DrvShader
+{
+ public:
+    DrvShader() = default;
+    DrvShader(const DrvShader&) = delete;
+    DrvShader& operator=(const DrvShader&) = delete;
+    virtual ~DrvShader() {}
 
-// class DrvShader
-// {
-//  public:
-//     virtual ~DrvShader() {}
+ private:
+};
 
-//     // manage pipeline layouts and pipelines
-//  private:
-// };
 }  // namespace drv
-
-// Shader header type (not instance)
-// + discriptor set layout(s) (multiple if shader variants require so)
-
-// Shader definition type (not instance)
-// + pipeline layouts (combining the descriptors sets of the headers)
-
-// Shader header
-// + descriptor set(s) keep a descriptor alive for each layout? or just one?
-
-// Shader object (collection)
-// + pipelines

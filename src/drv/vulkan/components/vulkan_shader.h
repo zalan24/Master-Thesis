@@ -68,10 +68,15 @@ class VulkanShaderHeader final : public drv::DrvShaderHeader
     std::vector<VkDescriptorSet> descriptorSets;
 };
 
-// class VulkanShader : public drv::DrvShader
-// {
-//  public:
-//     ~VulkanShader() override {}
+class VulkanShader final : public drv::DrvShader
+{
+ public:
+    explicit VulkanShader(drv::LogicalDevicePtr _device, const VulkanShaderObjRegistry* reg)
+      : device(_device) {}
+    VulkanShader(const VulkanShader&) = delete;
+    VulkanShader& operator=(const VulkanShader&) = delete;
+    ~VulkanShader() override {}
 
-//  private:
-// };
+ private:
+    drv::LogicalDevicePtr device;
+};

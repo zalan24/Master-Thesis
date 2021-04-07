@@ -737,9 +737,10 @@ bool compile_shader(const Compiler* compiler, ShaderBin& shaderBin, Cache& cache
 
     shaderBin.addShader(shaderName, std::move(shaderData));
 
-    const std::string className = "shader_obj_registry_" + shaderName;
+    const std::string className = "shader_" + shaderName;
+    const std::string registryClassName = "shader_obj_registry_" + shaderName;
 
-    registry.objectsStart << "    " << className << " " << shaderName << ";\n";
+    registry.objectsStart << "    " << registryClassName << " " << shaderName << ";\n";
     registry.objectsCtor << "      " << (registry.firstObj ? ':' : ',') << " " << shaderName
                          << "(device, shaderBin";
     for (const std::string& inc : allIncludes) {
@@ -755,9 +756,10 @@ bool compile_shader(const Compiler* compiler, ShaderBin& shaderBin, Cache& cache
     shaderObj << "#include <shaderobjectregistry.h>\n";
     shaderObj << "#include <shaderdescriptorcollection.h>\n\n";
 
-    shaderObj << "class " << className << " final : public ShaderObjectRegistry {\n";
+    shaderObj << "class " << registryClassName << " final : public ShaderObjectRegistry {\n";
     shaderObj << "  public:\n";
-    shaderObj << "    " << className << "(drv::LogicalDevicePtr device, const ShaderBin &shaderBin";
+    shaderObj << "    " << registryClassName
+              << "(drv::LogicalDevicePtr device, const ShaderBin &shaderBin";
     for (const std::string& inc : allIncludes) {
         auto itr = includeData.find(inc);
         assert(itr != includeData.end());
@@ -775,6 +777,7 @@ bool compile_shader(const Compiler* compiler, ShaderBin& shaderBin, Cache& cache
               << "\");\n";
     shaderObj << "        loadShader(*shader);\n";
     shaderObj << "    }\n";
+    shaderObj << "    friend class " << className << ";\n";
     shaderObj << "  protected:\n";
     // shaderObj
     //   << "    VariantId getShaderVariant(const ShaderDescriptorCollection* descriptors) const override {\n";
@@ -783,11 +786,15 @@ bool compile_shader(const Compiler* compiler, ShaderBin& shaderBin, Cache& cache
     // shaderObj << "    }\n";
     shaderObj << "  private:\n";
     shaderObj << "    std::unique_ptr<drv::DrvShaderObjectRegistry> reg;\n";
-    shaderObj << "};\n";
+    shaderObj << "};\n\n";
 
-    // shaderObj << "class Descriptor final : public ShaderDescriptorCollection {\n";
-    // shaderObj << "  public:\n";
-    // shaderObj << "    Descriptor() {\n";
+    shaderObj << "class " << className << " {\n";
+    shaderObj << "  public:\n";
+    shaderObj << "    " << className << "(drv::LogicalDevicePtr device, const " << registryClassName
+              << " *reg)\n";
+    shaderObj << "      : shader(drv::create_shader(device, reg->reg.get(), 0, nullptr))\n";
+    shaderObj << "    {\n";
+    shaderObj << "    }\n";
     // uint32_t descId = 0;
     // for (const std::string& inc : allIncludes) {
     //     auto itr = includeData.find(inc);
@@ -796,7 +803,6 @@ bool compile_shader(const Compiler* compiler, ShaderBin& shaderBin, Cache& cache
     //               << ", desc_" << itr->second.name << ");\n";
     // }
     // shaderObj << "    }\n";
-    // shaderObj << "    ~Descriptor() override {}\n";
     // shaderObj << "    uint32_t getLocalVariantId() const override {\n";
     // shaderObj << "        uint32_t ret = 0;\n";
     // for (const std::string& inc : allIncludes) {
@@ -843,7 +849,9 @@ bool compile_shader(const Compiler* compiler, ShaderBin& shaderBin, Cache& cache
     //     shaderObj << "    " << itr->second.desriptorClassName << " desc_" << itr->second.name
     //               << ";\n";
     // }
-    // shaderObj << "};\n";
+    shaderObj << "  private:\n";
+    shaderObj << "    std::unique_ptr<drv::DrvShader> shader;\n";
+    shaderObj << "};\n";
 
     fs::path fileName = fs::path("shader_obj_" + shaderName + ".h");
 
