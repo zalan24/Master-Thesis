@@ -713,12 +713,14 @@ static void include_all(std::ostream& out, const fs::path& root,
     }
 }
 
-void ResourcePack::generateCXX(const Resources& resources, std::ostream& out) const {
+void ResourcePack::generateCXX(const std::string& structName, const Resources& resources,
+                               std::ostream& out) const {
     // based on size
     std::vector<std::string> vars1;  // float
     std::vector<std::string> vars2;  // vec2
     std::vector<std::string> vars3;  // vec3
     std::vector<std::string> vars4;  // multiples of vec4
+    std::vector<std::string> initOrder;
     for (const std::string& var : shaderVars) {
         auto typeItr = resources.variables.find(var);
         if (typeItr == resources.variables.end())
@@ -736,25 +738,94 @@ void ResourcePack::generateCXX(const Resources& resources, std::ostream& out) co
         else
             throw std::runtime_error("Unhandled type: " + type + " for variable: " + var);
     }
-    out << "struct TODO_name {\n";
-    for (const std::string& var : vars4)
-        out << "    " << resources.variables.find(var)->second << " " << var << "\n;";
+    auto export_var = [&](uint32_t& ind, const std::vector<std::string>& vars) {
+        out << "    " << resources.variables.find(vars[ind])->second << " " << vars[ind] << ";\n";
+        initOrder.push_back(vars[ind]);
+        ind++;
+    };
+    uint32_t seperatorCount = 0;
+    auto gen_separator = [&](uint32_t size) {
+        if (size % 4 == 1)
+            out << "    float _separator_" << seperatorCount++ << " = 0;\n";
+        else if (size % 4 == 2)
+            out << "    vec2 _separator_" << seperatorCount++ << " = vec2(0, 0);\n";
+        else if (size % 4 == 3)
+            out << "    vec3 _separator_" << seperatorCount++ << " = vec3(0, 0, 0);\n";
+    };
+    out << "struct alignas(16) " << structName << " {\n";
+    uint32_t ind4 = 0;
+    while (ind4 < vars4.size())
+        export_var(ind4, vars4);
     uint32_t ind2 = 0;
     uint32_t ind1 = 0;
     uint32_t ind3 = 0;
     while (ind2 + 1 < vars2.size()) {
-        out << "    " << resources.variables.find(vars2[ind2])->second << " " << vars2[ind2]
-            << "\n;";
-        out << "    " << resources.variables.find(vars2[ind2 + 1])->second << " " << vars2[ind2 + 1]
-            << "\n;";
-        ind2 += 2;
+        export_var(ind2, vars2);
+        export_var(ind2, vars2);
     }
     if (ind2 < vars2.size()) {
-        out << "    " << resources.variables.find(vars2[ind2])->second << " " << vars2[ind2]
-            << "\n;";
-        TODO;  // add a separator...
+        export_var(ind2, vars2);
+        if (ind1 == vars1.size())
+            gen_separator(2);
+        else if (ind1 + 1 == vars1.size()) {
+            export_var(ind1, vars1);
+            gen_separator(1);
+        }
+        else {
+            export_var(ind1, vars1);
+            export_var(ind1, vars1);
+        }
     }
-    TODO;  // vars1 and vars3
+    while (ind1 < vars1.size() && ind3 < vars3.size()) {
+        export_var(ind3, vars3);
+        export_var(ind1, vars1);
+    }
+    while (ind3 < vars3.size()) {
+        export_var(ind3, vars3);
+        gen_separator(1);
+    }
+    while (ind1 < vars1.size()) {
+        export_var(ind1, vars1);
+    }
+    out << "    " << structName << "(";
+    bool first = true;
+    for (const auto& [name, type] : resources.variables) {
+        if (!first)
+            out << ", ";
+        first = false;
+        if (std::find(initOrder.begin(), initOrder.end(), name) != initOrder.end())
+            out << "const " << type << " &_" << name;
+        else
+            out << "const " << type << " & /*" << name << "*/";
+    }
+    out << ")\n";
+    first = true;
+    for (const std::string& var : initOrder) {
+        out << (first ? "      : " : "      , ");
+        first = false;
+        out << var << "(_" << var << ")\n";
+    }
+    out << "    {\n";
+    out << "    }\n";
+    out << "    " << structName << "(";
+    first = true;
+    for (const std::string& var : initOrder) {
+        if (!first)
+            out << ", ";
+        first = false;
+        auto itr = resources.variables.find(var);
+        assert(itr != resources.variables.end());
+        out << "const " << itr->second << " &_" << itr->first;
+    }
+    out << ")\n";
+    first = true;
+    for (const std::string& var : initOrder) {
+        out << (first ? "      : " : "      , ");
+        first = false;
+        out << var << "(_" << var << ")\n";
+    }
+    out << "    {\n";
+    out << "    }\n";
     out << "};\n\n";
 }
 
@@ -865,12 +936,15 @@ bool compile_shader(const Compiler* compiler, ShaderBin& shaderBin, Cache& cache
 
     std::set<ResourcePack> exportedPacks;
 
+    uint32_t structId = 0;
     for (const auto& itr : resourceObjects) {
         for (const auto& [stages, pack] : itr.second.packs) {
             if (exportedPacks.count(pack))
                 continue;
             exportedPacks.insert(pack);
-            pack.generateCXX(resources, shaderObj);
+            std::string structName =
+              "PushConstants_" + shaderName + "_" + std::to_string(structId++);
+            pack.generateCXX(structName, resources, shaderObj);
         }
     }
 

@@ -98,7 +98,8 @@ struct ResourcePack
         }
         return false;
     }
-    void generateCXX(const Resources& resources, std::ostream& out) const;
+    void generateCXX(const std::string& structName, const Resources& resources,
+                     std::ostream& out) const;
     void generateGLSL(const Resources& resources, std::ostream& out) const;
 };
 
