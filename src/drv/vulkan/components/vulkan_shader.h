@@ -7,6 +7,8 @@
 
 #include <vulkan/vulkan.h>
 
+#include <corecontext.h>
+
 #include <drvshader.h>
 
 #include "vulkan_conversions.h"
@@ -43,6 +45,27 @@ class VulkanShaderObjRegistry final : public drv::DrvShaderObjectRegistry
 
     uint32_t getNumConfigs() const override {
         return static_cast<uint32_t>(pipelineLayouts.size());
+    }
+
+    void addConfig(const ConfigInfo& config) override {
+        StackMemory::MemoryHandle<VkPushConstantRange> ranges(config.numRanges, TEMPMEM);
+        for (uint32_t i = 0; i < config.numRanges; ++i) {
+            ranges[i].stageFlags = static_cast<VkShaderStageFlagBits>(config.ranges[i].stages);
+            ranges[i].offset = safe_cast<uint32_t>(config.ranges[i].offset);
+            ranges[i].size = safe_cast<uint32_t>(config.ranges[i].size);
+        }
+        VkPipelineLayoutCreateInfo info = {};
+        info.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+        info.pNext = 0;
+        info.flags = 0;
+        info.setLayoutCount = 0;
+        info.pSetLayouts = nullptr;  // TODO
+        info.pushConstantRangeCount = config.numRanges;
+        info.pPushConstantRanges = ranges;
+        VkPipelineLayout layout;
+        VkResult result = vkCreatePipelineLayout(convertDevice(device), &info, nullptr, &layout);
+        drv::drv_assert(result != VK_SUCCESS, "Could not create pipeline layout");
+        pipelineLayouts.push_back(layout);
     }
 
  private:

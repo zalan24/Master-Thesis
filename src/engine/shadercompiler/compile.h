@@ -92,7 +92,7 @@ struct ResourcePack
             if (*itr1 < *itr2)
                 return true;
             if (*itr2 < *itr1)
-                return true;
+                return false;
             itr1++;
             itr2++;
         }

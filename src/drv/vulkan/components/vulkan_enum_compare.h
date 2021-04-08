@@ -133,8 +133,8 @@ COMPARE_ENUMS(unsigned int, drv::ShaderStage::TESSELLATION_EVALUATION_BIT,
 COMPARE_ENUMS(unsigned int, drv::ShaderStage::GEOMETRY_BIT, VK_SHADER_STAGE_GEOMETRY_BIT);
 COMPARE_ENUMS(unsigned int, drv::ShaderStage::FRAGMENT_BIT, VK_SHADER_STAGE_FRAGMENT_BIT);
 COMPARE_ENUMS(unsigned int, drv::ShaderStage::COMPUTE_BIT, VK_SHADER_STAGE_COMPUTE_BIT);
-COMPARE_ENUMS(unsigned int, drv::ShaderStage::ALL_GRAPHICS, VK_SHADER_STAGE_ALL_GRAPHICS);
-COMPARE_ENUMS(unsigned int, drv::ShaderStage::ALL, VK_SHADER_STAGE_ALL);
+// COMPARE_ENUMS(unsigned int, drv::ShaderStage::ALL_GRAPHICS, VK_SHADER_STAGE_ALL_GRAPHICS);
+// COMPARE_ENUMS(unsigned int, drv::ShaderStage::ALL, VK_SHADER_STAGE_ALL);
 COMPARE_ENUMS(unsigned int, drv::ShaderStage::RAYGEN_BIT_NV, VK_SHADER_STAGE_RAYGEN_BIT_NV);
 COMPARE_ENUMS(unsigned int, drv::ShaderStage::ANY_HIT_BIT_NV, VK_SHADER_STAGE_ANY_HIT_BIT_NV);
 COMPARE_ENUMS(unsigned int, drv::ShaderStage::CLOSEST_HIT_BIT_NV,
@@ -145,8 +145,8 @@ COMPARE_ENUMS(unsigned int, drv::ShaderStage::INTERSECTION_BIT_NV,
 COMPARE_ENUMS(unsigned int, drv::ShaderStage::CALLABLE_BIT_NV, VK_SHADER_STAGE_CALLABLE_BIT_NV);
 COMPARE_ENUMS(unsigned int, drv::ShaderStage::TASK_BIT_NV, VK_SHADER_STAGE_TASK_BIT_NV);
 COMPARE_ENUMS(unsigned int, drv::ShaderStage::MESH_BIT_NV, VK_SHADER_STAGE_MESH_BIT_NV);
-COMPARE_ENUMS(unsigned int, drv::ShaderStage::FLAG_BITS_MAX_ENUM,
-              VK_SHADER_STAGE_FLAG_BITS_MAX_ENUM);
+// COMPARE_ENUMS(unsigned int, drv::ShaderStage::FLAG_BITS_MAX_ENUM,
+//               VK_SHADER_STAGE_FLAG_BITS_MAX_ENUM);
 
 COMPARE_ENUMS(unsigned int, drv::SwapchainCreateInfo::FIFO, VK_PRESENT_MODE_FIFO_KHR);
 COMPARE_ENUMS(unsigned int, drv::SwapchainCreateInfo::MAILBOX, VK_PRESENT_MODE_MAILBOX_KHR);

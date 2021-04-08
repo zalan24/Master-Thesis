@@ -934,16 +934,15 @@ bool compile_shader(const Compiler* compiler, ShaderBin& shaderBin, Cache& cache
 
     shaderObj << "\n";
 
-    std::set<ResourcePack> exportedPacks;
-
     uint32_t structId = 0;
+    std::map<ResourcePack, std::string> exportedPacks;
     for (const auto& itr : resourceObjects) {
         for (const auto& [stages, pack] : itr.second.packs) {
-            if (exportedPacks.count(pack))
+            if (exportedPacks.find(pack) != exportedPacks.end())
                 continue;
-            exportedPacks.insert(pack);
             std::string structName =
               "PushConstants_" + shaderName + "_" + std::to_string(structId++);
+            exportedPacks[pack] = structName;
             pack.generateCXX(structName, resources, shaderObj);
         }
     }
@@ -968,6 +967,33 @@ bool compile_shader(const Compiler* compiler, ShaderBin& shaderBin, Cache& cache
     shaderObj << "            throw std::runtime_error(\"Shader not found: " << shaderName
               << "\");\n";
     shaderObj << "        loadShader(*shader);\n";
+
+    for (const auto& [usage, object] : resourceObjects) {
+        shaderObj << "        {\n";
+        shaderObj << "            drv::DrvShaderObjectRegistry::PushConstantRange ranges["
+                  << object.packs.size() << "];\n";
+        uint32_t id = 0;
+        for (const auto& [stages, pack] : object.packs) {
+            shaderObj << "            ranges[" << id << "].stages = 0";
+            if (stages & ResourceObject::VS)
+                shaderObj << " | drv::ShaderStage::VERTEX_BIT";
+            if (stages & ResourceObject::PS)
+                shaderObj << " | drv::ShaderStage::FRAGMENT_BIT";
+            if (stages & ResourceObject::CS)
+                shaderObj << " | drv::ShaderStage::COMPUTE_BIT";
+            shaderObj << ";\n";
+            shaderObj << "            ranges[" << id << "].offset = ;\n";
+            shaderObj << "            ranges[" << id << "].size = sizeof("
+                      << exportedPacks.find(pack)->second << ");\n";
+            id++;
+        }
+        shaderObj << "            drv::DrvShaderObjectRegistry::ConfigInfo config;\n";
+        shaderObj << "            config.numRanges = " << object.packs.size() << ";\n";
+        shaderObj << "            config.ranges = ranges;\n";
+        shaderObj << "            reg->addConfig(config);\n";
+        shaderObj << "        }\n";
+    }
+
     shaderObj << "    }\n";
     shaderObj << "    friend class " << className << ";\n";
     shaderObj << "  protected:\n";

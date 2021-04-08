@@ -16,6 +16,7 @@ descriptor {
 stages {
     ps {
         entry = main;
+        use testVal;
         #if renderPass == color
             use ambientLight;
             use sunLight;
@@ -28,6 +29,7 @@ stages {
         #if TestVariant == one
             use cameraPos;
         #endif
+        use testVal;
     }
 }
 

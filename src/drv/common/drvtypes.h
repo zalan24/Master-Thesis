@@ -355,8 +355,8 @@ enum ShaderStageFlagBits : FlagType
     GEOMETRY_BIT = 0x00000008,
     FRAGMENT_BIT = 0x00000010,
     COMPUTE_BIT = 0x00000020,
-    ALL_GRAPHICS = 0x0000001F,
-    ALL = 0x7FFFFFFF,
+    // ALL_GRAPHICS = 0x0000001F,
+    // ALL = 0x7FFFFFFF,
     RAYGEN_BIT_NV = 0x00000100,
     ANY_HIT_BIT_NV = 0x00000200,
     CLOSEST_HIT_BIT_NV = 0x00000400,
@@ -365,7 +365,7 @@ enum ShaderStageFlagBits : FlagType
     CALLABLE_BIT_NV = 0x00002000,
     TASK_BIT_NV = 0x00000040,
     MESH_BIT_NV = 0x00000080,
-    FLAG_BITS_MAX_ENUM = 0x7FFFFFFF
+    // FLAG_BITS_MAX_ENUM = 0x7FFFFFFF
 };
 };  // namespace ShaderStage
 
@@ -1410,5 +1410,4 @@ struct ClearRect {
     uint32_t baseLayer;
     uint32_t layerCount;
 };
-
 };  // namespace drv

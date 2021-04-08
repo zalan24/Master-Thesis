@@ -25,12 +25,27 @@ class DrvShaderHeaderRegistry
 class DrvShaderObjectRegistry
 {
  public:
+    struct PushConstantRange
+    {
+        ShaderStage::FlagType stages = 0;
+        size_t offset = 0;
+        size_t size = 0;
+    };
+    struct ConfigInfo
+    {
+        // TODO descriptors
+        uint32_t numRanges = 0;
+        const PushConstantRange* ranges = nullptr;
+    };
+
     DrvShaderObjectRegistry() = default;
     DrvShaderObjectRegistry(const DrvShaderObjectRegistry&) = delete;
     DrvShaderObjectRegistry& operator=(const DrvShaderObjectRegistry&) = delete;
     virtual ~DrvShaderObjectRegistry() {}
 
     virtual uint32_t getNumConfigs() const = 0;
+
+    virtual void addConfig(const ConfigInfo& config) = 0;
 
  private:
 };
