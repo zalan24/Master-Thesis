@@ -13,6 +13,11 @@ class DrvShaderHeaderRegistry
     DrvShaderHeaderRegistry& operator=(const DrvShaderHeaderRegistry&) = delete;
     virtual ~DrvShaderHeaderRegistry() {}
 
+    // TODO function to add binding sets and push constant ranges
+
+    //  virtual uint32_t getNumDescriptorConfigs() const = 0;
+    //  virtual uint32_t getNumPushContantConfigs() const = 0;
+
  private:
 };
 
@@ -24,6 +29,8 @@ class DrvShaderObjectRegistry
     DrvShaderObjectRegistry(const DrvShaderObjectRegistry&) = delete;
     DrvShaderObjectRegistry& operator=(const DrvShaderObjectRegistry&) = delete;
     virtual ~DrvShaderObjectRegistry() {}
+
+    virtual uint32_t getNumConfigs() const = 0;
 
  private:
 };

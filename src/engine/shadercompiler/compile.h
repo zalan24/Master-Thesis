@@ -8,6 +8,7 @@
 #include <sstream>
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 #include <serializable.h>
@@ -30,6 +31,54 @@ struct Resources
 struct VariantConfig
 {
     std::unordered_map<std::string, size_t> variantValues;
+};
+
+struct ResourceUsage
+{
+    std::unordered_set<std::string> usedVars;
+    // TODO bindings
+    bool operator<(const ResourceUsage& other) const {
+        if (usedVars.size() < other.usedVars.size())
+            return true;
+        auto itr1 = usedVars.begin();
+        auto itr2 = other.usedVars.begin();
+        while (itr1 != usedVars.end()) {
+            if (*itr1 < *itr2)
+                return true;
+            if (*itr2 < *itr1)
+                return false;
+            itr1++;
+            itr2++;
+        }
+        return false;
+    }
+};
+
+struct PipelineResourceUsage
+{
+    ResourceUsage psUsage;
+    ResourceUsage vsUsage;
+    ResourceUsage csUsage;
+    bool operator<(const PipelineResourceUsage& other) const {
+        if (psUsage < other.psUsage)
+            return true;
+        if (other.psUsage < psUsage)
+            return false;
+        if (vsUsage < other.vsUsage)
+            return true;
+        if (other.vsUsage < vsUsage)
+            return false;
+        if (csUsage < other.csUsage)
+            return true;
+        if (other.csUsage < csUsage)
+            return false;
+        return false;
+    }
+};
+
+struct ResourceObject
+{
+    std::stringstream pushConstantRange;
 };
 
 struct IncludeData

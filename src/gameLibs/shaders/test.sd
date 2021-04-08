@@ -16,9 +16,18 @@ descriptor {
 stages {
     ps {
         entry = main;
+        #if renderPass == color
+            use ambientLight;
+            use sunLight;
+            use sunDir;
+        #endif
     }
     vs {
         entry = main;
+        use viewProj;
+        #if TestVariant == one
+            use cameraPos;
+        #endif
     }
 }
 

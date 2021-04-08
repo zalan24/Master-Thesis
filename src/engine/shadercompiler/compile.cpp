@@ -45,7 +45,7 @@ static bool include_headers(const std::string& filename, std::ostream& out,
     }
     if (includes.count(filename) > 0)
         return true;
-    directIncludes.clear();
+    // directIncludes.clear();
     includes.insert(filename);
     std::ifstream in(filename.c_str());
     if (!in.is_open()) {
@@ -437,7 +437,6 @@ bool read_variants(const BlockFile* blockFile, Variants& variants) {
 }
 
 bool read_resources(const BlockFile* blockFile, Resources& resources) {
-    resources = {};
     if (blockFile->hasNodes()) {
         std::cerr << "resources block cannot contain nested blocks" << std::endl;
         return false;
@@ -452,6 +451,10 @@ bool read_resources(const BlockFile* blockFile, Resources& resources) {
     for (std::sregex_iterator regI = resourcesBegin; regI != resourcesEnd; ++regI) {
         std::string varType = (*regI)[1];
         std::string varName = (*regI)[2];
+        if (resources.variables.find(varName) != resources.variables.end()) {
+            std::cerr << "A variable already exists with this name: " << varName << std::endl;
+            return false;
+        }
         resources.variables[varName] = varType;
     }
     return true;
@@ -504,11 +507,12 @@ static std::string format_variant(
 }
 
 static bool generate_binary(
-  const Compiler* compiler, ShaderBin::ShaderData& shaderData, uint32_t variantId,
-  const std::vector<Variants>& variants, const std::stringstream& shader,
+  const Compiler* compiler, ShaderBin::ShaderData& shaderData, const ResourceObject& resourceObj,
+  uint32_t variantId, const std::vector<Variants>& variants, const std::stringstream& shader,
   std::unordered_map<ShaderHash, std::pair<size_t, size_t>>& codeOffsets,
   std::unordered_map<ShaderHash, std::pair<size_t, size_t>>& binaryOffsets, ShaderBin::Stage stage,
   const std::unordered_map<std::string, uint32_t>& variantParamMultiplier) {
+    // TODO add resources to shader code
     std::stringstream shaderCodeSS;
     generate_shader_code(shaderCodeSS);
     std::string shaderCode =
@@ -550,16 +554,35 @@ static std::unordered_map<std::string, std::string> read_values(const std::strin
     return ret;
 }
 
+static ResourceUsage read_used_resources(const std::string& s, const Resources& resources) {
+    std::regex resourceReg{"\\s*use\\s+(\\w+)\\s*;"};
+    ResourceUsage ret;
+    auto begin = std::sregex_iterator(s.begin(), s.end(), resourceReg);
+    auto end = std::sregex_iterator();
+    for (std::sregex_iterator regI = begin; regI != end; ++regI) {
+        std::string name = (*regI)[1];
+        if (resources.variables.find(name) != resources.variables.end())
+            ret.usedVars.insert(name);
+        else
+            throw std::runtime_error("Unknown resource: " + name);
+    }
+    return ret;
+}
+
 static ShaderBin::StageConfig read_stage_configs(
-  uint32_t variantId, const std::vector<Variants>& variants,
+  const Resources& resources, uint32_t variantId, const std::vector<Variants>& variants,
   const std::unordered_map<std::string, uint32_t>& variantParamMultiplier,
-  const std::stringstream& vs, const std::stringstream& ps, const std::stringstream& cs) {
+  const std::stringstream& vs, const std::stringstream& ps, const std::stringstream& cs,
+  PipelineResourceUsage& resourceUsage) {
     std::string vsInfo = format_variant(variantId, variants, vs, variantParamMultiplier);
     std::string psInfo = format_variant(variantId, variants, ps, variantParamMultiplier);
     std::string csInfo = format_variant(variantId, variants, cs, variantParamMultiplier);
     std::unordered_map<std::string, std::string> vsValues = read_values(vsInfo);
     std::unordered_map<std::string, std::string> psValues = read_values(psInfo);
     std::unordered_map<std::string, std::string> csValues = read_values(csInfo);
+    resourceUsage.vsUsage = read_used_resources(vsInfo, resources);
+    resourceUsage.psUsage = read_used_resources(psInfo, resources);
+    resourceUsage.csUsage = read_used_resources(csInfo, resources);
     ShaderBin::StageConfig ret;
     if (auto itr = vsValues.find("entry"); itr != vsValues.end())
         ret.vs.entryPoint = itr->second;
@@ -570,10 +593,16 @@ static ShaderBin::StageConfig read_stage_configs(
     return ret;
 }
 
-static bool generate_binary(
-  const Compiler* compiler, ShaderBin::ShaderData& shaderData,
-  const std::vector<Variants>& variants, ShaderGenerationInput&& input,
-  const std::unordered_map<std::string, uint32_t>& variantParamMultiplier) {
+static ResourceObject generate_resource_object(const Resources& resources,
+                                               const PipelineResourceUsage& usages) {
+    TODO;
+}
+
+static bool generate_binary(const Compiler* compiler, const Resources& resources,
+                            ShaderBin::ShaderData& shaderData,
+                            const std::vector<Variants>& variants, ShaderGenerationInput&& input,
+                            const std::unordered_map<std::string, uint32_t>& variantParamMultiplier,
+                            std::map<PipelineResourceUsage, ResourceObject>& resourceObjects) {
     std::set<std::string> variantParams;
     size_t count = 1;
     shaderData.variantParamNum = 0;
@@ -612,24 +641,32 @@ static bool generate_binary(
     std::unordered_map<ShaderHash, std::pair<size_t, size_t>> codeOffsets;
     std::unordered_map<ShaderHash, std::pair<size_t, size_t>> binaryOffsets;
     for (uint32_t variantId = 0; variantId < shaderData.totalVariantCount; ++variantId) {
-        ShaderBin::StageConfig cfg = read_stage_configs(variantId, variants, variantParamMultiplier,
-                                                        input.vsCfg, input.psCfg, input.csCfg);
+        PipelineResourceUsage resourceUsage;
+        ShaderBin::StageConfig cfg =
+          read_stage_configs(resources, variantId, variants, variantParamMultiplier, input.vsCfg,
+                             input.psCfg, input.csCfg, resourceUsage);
+        if (resourceObjects.find(resourceUsage) == resourceObjects.end())
+            resourceObjects[resourceUsage] = generate_resource_object(resources, resourceUsage);
+        const ResourceObject& resourceObj = resourceObjects[resourceUsage];
         shaderData.stages[variantId].configs = cfg;
         if (cfg.vs.entryPoint != ""
-            && !generate_binary(compiler, shaderData, variantId, variants, input.ps, codeOffsets,
-                                binaryOffsets, ShaderBin::PS, variantParamMultiplier)) {
+            && !generate_binary(compiler, shaderData, resourceObj, variantId, variants, input.ps,
+                                codeOffsets, binaryOffsets, ShaderBin::PS,
+                                variantParamMultiplier)) {
             std::cerr << "Could not generate PS binary." << std::endl;
             return false;
         }
         if (cfg.ps.entryPoint != ""
-            && !generate_binary(compiler, shaderData, variantId, variants, input.vs, codeOffsets,
-                                binaryOffsets, ShaderBin::VS, variantParamMultiplier)) {
+            && !generate_binary(compiler, shaderData, resourceObj, variantId, variants, input.vs,
+                                codeOffsets, binaryOffsets, ShaderBin::VS,
+                                variantParamMultiplier)) {
             std::cerr << "Could not generate VS binary." << std::endl;
             return false;
         }
         if (cfg.cs.entryPoint != ""
-            && !generate_binary(compiler, shaderData, variantId, variants, input.cs, codeOffsets,
-                                binaryOffsets, ShaderBin::CS, variantParamMultiplier)) {
+            && !generate_binary(compiler, shaderData, resourceObj, variantId, variants, input.cs,
+                                codeOffsets, binaryOffsets, ShaderBin::CS,
+                                variantParamMultiplier)) {
             std::cerr << "Could not generate CS binary." << std::endl;
             return false;
         }
@@ -669,6 +706,11 @@ bool compile_shader(const Compiler* compiler, ShaderBin& shaderBin, Cache& cache
     std::stringstream cu;
     std::stringstream shaderObj;
     shaderObj << "#pragma once\n\n";
+    shaderObj << "#include <drvshader.h>\n";
+    shaderObj << "#include <shaderbin.h>\n";
+    shaderObj << "#include <drvrenderpass.h>\n";
+    shaderObj << "#include <shaderobjectregistry.h>\n";
+    shaderObj << "#include <shaderdescriptorcollection.h>\n\n";
     std::set<std::string> includes;
     std::set<std::string> progress;
     std::vector<std::string> directIncludes;
@@ -707,30 +749,39 @@ bool compile_shader(const Compiler* compiler, ShaderBin& shaderBin, Cache& cache
 
     std::vector<Variants> variants;
     size_t descriptorCount = cuBlocks.getBlockCount("descriptor");
+    Resources resources;
     std::unordered_map<std::string, uint32_t> variantParamMultiplier;
     for (size_t i = 0; i < descriptorCount; ++i) {
         const BlockFile* descriptor = cuBlocks.getNode("descriptor", i);
-        if (descriptor->getBlockCount("variants") == 0)
-            continue;
-        Variants v;
-        read_variants(descriptor->getNode("variants"), v);
-        for (const auto& [name, values] : v.values) {
-            auto desc = variantParamToDescriptor.find(name);
-            assert(desc != variantParamToDescriptor.end());
-            auto descMulItr = variantIdMultiplier.find(desc->second);
-            assert(descMulItr != variantIdMultiplier.end());
-            auto inc = includeData.find(desc->second);
-            assert(inc != includeData.end());
-            auto variantMul = inc->second.variantMultiplier.find(name);
-            assert(variantMul != inc->second.variantMultiplier.end());
-            variantParamMultiplier[name] =
-              safe_cast<uint32_t>(descMulItr->second * variantMul->second);
+        if (descriptor->getBlockCount("variants") == 1) {
+            Variants v;
+            read_variants(descriptor->getNode("variants"), v);
+            for (const auto& [name, values] : v.values) {
+                auto desc = variantParamToDescriptor.find(name);
+                assert(desc != variantParamToDescriptor.end());
+                auto descMulItr = variantIdMultiplier.find(desc->second);
+                assert(descMulItr != variantIdMultiplier.end());
+                auto inc = includeData.find(desc->second);
+                assert(inc != includeData.end());
+                auto variantMul = inc->second.variantMultiplier.find(name);
+                assert(variantMul != inc->second.variantMultiplier.end());
+                variantParamMultiplier[name] =
+                  safe_cast<uint32_t>(descMulItr->second * variantMul->second);
+            }
+            variants.push_back(std::move(v));
         }
-        variants.push_back(std::move(v));
+        if (descriptor->getBlockCount("resources") == 1) {
+            const BlockFile* resourcesBlock = descriptor->getNode("resources");
+            if (!read_resources(resourcesBlock, resources)) {
+                std::cerr << "Could not read resources: " << shaderFile << std::endl;
+                return false;
+            }
+        }
     }
     ShaderBin::ShaderData shaderData;
-    if (!generate_binary(compiler, shaderData, variants, std::move(genInput),
-                         variantParamMultiplier)) {
+    std::map<PipelineResourceUsage, ResourceObject> resourceObjects;
+    if (!generate_binary(compiler, resources, shaderData, variants, std::move(genInput),
+                         variantParamMultiplier, resourceObjects)) {
         std::cerr << "Could not generate binary: " << shaderFile << std::endl;
         return false;
     }
@@ -751,11 +802,11 @@ bool compile_shader(const Compiler* compiler, ShaderBin& shaderBin, Cache& cache
     registry.objectsCtor << ")\n";
     registry.firstObj = false;
 
-    shaderObj << "#include <drvshader.h>\n";
-    shaderObj << "#include <shaderbin.h>\n";
-    shaderObj << "#include <drvrenderpass.h>\n";
-    shaderObj << "#include <shaderobjectregistry.h>\n";
-    shaderObj << "#include <shaderdescriptorcollection.h>\n\n";
+    shaderObj << "\n";
+
+    for (const auto& [usages, object] : resourceObjects) {
+        TODO;
+    }
 
     shaderObj << "class " << registryClassName << " final : public ShaderObjectRegistry {\n";
     shaderObj << "  public:\n";

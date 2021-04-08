@@ -41,6 +41,10 @@ class VulkanShaderObjRegistry final : public drv::DrvShaderObjectRegistry
         pipelineLayouts.clear();
     }
 
+    uint32_t getNumConfigs() const override {
+        return static_cast<uint32_t>(pipelineLayouts.size());
+    }
+
  private:
     drv::LogicalDevicePtr device;
     std::vector<VkPipelineLayout> pipelineLayouts;
