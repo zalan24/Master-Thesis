@@ -595,7 +595,20 @@ static ShaderBin::StageConfig read_stage_configs(
 
 static ResourceObject generate_resource_object(const Resources& resources,
                                                const PipelineResourceUsage& usages) {
-    TODO;
+    ResourceObject ret;
+    for (const auto& itr : resources.variables) {
+        const std::string& name = itr.first;
+        if (usages.csUsage.usedVars.count(name))
+            ret.packs[ResourceObject::CS].shaderVars.insert(name);
+        ResourceObject::Stages stages = 0;
+        if (usages.vsUsage.usedVars.count(name))
+            stages |= ResourceObject::VS;
+        if (usages.psUsage.usedVars.count(name))
+            stages |= ResourceObject::PS;
+        if (stages > 0)
+            ret.packs[stages].shaderVars.insert(name);
+    }
+    return ret;
 }
 
 static bool generate_binary(const Compiler* compiler, const Resources& resources,
@@ -648,6 +661,7 @@ static bool generate_binary(const Compiler* compiler, const Resources& resources
         if (resourceObjects.find(resourceUsage) == resourceObjects.end())
             resourceObjects[resourceUsage] = generate_resource_object(resources, resourceUsage);
         const ResourceObject& resourceObj = resourceObjects[resourceUsage];
+        // TODO add resource packs to shader codes
         shaderData.stages[variantId].configs = cfg;
         if (cfg.vs.entryPoint != ""
             && !generate_binary(compiler, shaderData, resourceObj, variantId, variants, input.ps,
@@ -697,6 +711,51 @@ static void include_all(std::ostream& out, const fs::path& root,
         variantIdMultiplier[inc] = variantIdMul;
         variantIdMul *= itr->second.totalVarintMultiplier;
     }
+}
+
+void ResourcePack::generateCXX(const Resources& resources, std::ostream& out) const {
+    // based on size
+    std::vector<std::string> vars1;  // float
+    std::vector<std::string> vars2;  // vec2
+    std::vector<std::string> vars3;  // vec3
+    std::vector<std::string> vars4;  // multiples of vec4
+    for (const std::string& var : shaderVars) {
+        auto typeItr = resources.variables.find(var);
+        if (typeItr == resources.variables.end())
+            throw std::runtime_error(
+              "Variable registered in resource pack is not found in the resource list");
+        const std::string& type = typeItr->second;
+        if (type == "int" || type == "float")
+            vars1.push_back(var);
+        else if (type == "int2" || type == "vec2")
+            vars2.push_back(var);
+        else if (type == "int3" || type == "vec3")
+            vars3.push_back(var);
+        else if (type == "int4" || type == "vec4" || type == "mat44")
+            vars4.push_back(var);
+        else
+            throw std::runtime_error("Unhandled type: " + type + " for variable: " + var);
+    }
+    out << "struct TODO_name {\n";
+    for (const std::string& var : vars4)
+        out << "    " << resources.variables.find(var)->second << " " << var << "\n;";
+    uint32_t ind2 = 0;
+    uint32_t ind1 = 0;
+    uint32_t ind3 = 0;
+    while (ind2 + 1 < vars2.size()) {
+        out << "    " << resources.variables.find(vars2[ind2])->second << " " << vars2[ind2]
+            << "\n;";
+        out << "    " << resources.variables.find(vars2[ind2 + 1])->second << " " << vars2[ind2 + 1]
+            << "\n;";
+        ind2 += 2;
+    }
+    if (ind2 < vars2.size()) {
+        out << "    " << resources.variables.find(vars2[ind2])->second << " " << vars2[ind2]
+            << "\n;";
+        TODO;  // add a separator...
+    }
+    TODO;  // vars1 and vars3
+    out << "};\n\n";
 }
 
 bool compile_shader(const Compiler* compiler, ShaderBin& shaderBin, Cache& cache,
@@ -804,8 +863,15 @@ bool compile_shader(const Compiler* compiler, ShaderBin& shaderBin, Cache& cache
 
     shaderObj << "\n";
 
-    for (const auto& [usages, object] : resourceObjects) {
-        TODO;
+    std::set<ResourcePack> exportedPacks;
+
+    for (const auto& itr : resourceObjects) {
+        for (const auto& [stages, pack] : itr.second.packs) {
+            if (exportedPacks.count(pack))
+                continue;
+            exportedPacks.insert(pack);
+            pack.generateCXX(resources, shaderObj);
+        }
     }
 
     shaderObj << "class " << registryClassName << " final : public ShaderObjectRegistry {\n";

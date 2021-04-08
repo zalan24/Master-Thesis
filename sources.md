@@ -95,3 +95,5 @@ class Goal
 - Synchronization https://themaister.net/blog/2019/08/14/yet-another-blog-explaining-vulkan-synchronization/
 - Validate synchronization https://www.lunarg.com/wp-content/uploads/2021/01/Final_Guide-to-Vulkan-Synchronization-Validation_Jan_21.pdf
 - Render passes https://vulkan.lunarg.com/doc/view/1.2.170.0/linux/tutorial/html/10-init_render_pass.html
+- Push constants https://vkguide.dev/docs/chapter-3/push_constants/
+  - how to bind several ranges: https://stackoverflow.com/questions/37056159/using-different-push-constants-in-different-shader-stages

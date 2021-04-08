@@ -40,6 +40,8 @@ struct ResourceUsage
     bool operator<(const ResourceUsage& other) const {
         if (usedVars.size() < other.usedVars.size())
             return true;
+        if (other.usedVars.size() < usedVars.size())
+            return false;
         auto itr1 = usedVars.begin();
         auto itr2 = other.usedVars.begin();
         while (itr1 != usedVars.end()) {
@@ -76,9 +78,40 @@ struct PipelineResourceUsage
     }
 };
 
+struct ResourcePack
+{
+    std::set<std::string> shaderVars;
+    bool operator<(const ResourcePack& other) const {
+        if (shaderVars.size() < other.shaderVars.size())
+            return true;
+        if (other.shaderVars.size() < shaderVars.size())
+            return false;
+        auto itr1 = shaderVars.begin();
+        auto itr2 = other.shaderVars.begin();
+        while (itr1 != shaderVars.end()) {
+            if (*itr1 < *itr2)
+                return true;
+            if (*itr2 < *itr1)
+                return true;
+            itr1++;
+            itr2++;
+        }
+        return false;
+    }
+    void generateCXX(const Resources& resources, std::ostream& out) const;
+    void generateGLSL(const Resources& resources, std::ostream& out) const;
+};
+
 struct ResourceObject
 {
-    std::stringstream pushConstantRange;
+    using Stages = uint32_t;
+    enum Stage : Stages
+    {
+        VS = 1,
+        PS = 2,
+        CS = 4
+    };
+    std::map<Stages, ResourcePack> packs;
 };
 
 struct IncludeData
