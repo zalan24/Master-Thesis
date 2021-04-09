@@ -100,6 +100,7 @@ struct ResourcePack
     }
     void generateCXX(const std::string& structName, const Resources& resources,
                      std::ostream& out) const;
+    // TODO export offsets from CXX and compare (or vice versa)
     void generateGLSL(const Resources& resources, std::ostream& out) const;
 };
 

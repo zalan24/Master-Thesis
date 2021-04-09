@@ -64,7 +64,7 @@ class VulkanShaderObjRegistry final : public drv::DrvShaderObjectRegistry
         info.pPushConstantRanges = ranges;
         VkPipelineLayout layout;
         VkResult result = vkCreatePipelineLayout(convertDevice(device), &info, nullptr, &layout);
-        drv::drv_assert(result != VK_SUCCESS, "Could not create pipeline layout");
+        drv::drv_assert(result == VK_SUCCESS, "Could not create pipeline layout");
         pipelineLayouts.push_back(layout);
     }
 

@@ -119,7 +119,6 @@ int main(int argc, char* argv[]) {
         std::cerr << "An unknown exception has ocurred" << std::endl;
         return 1;
     }
-
     {
         if (!fs::exists(fs::path(cacheFolder)) && !fs::create_directories(fs::path(cacheFolder))) {
             std::cerr << "Could not create directory for shader headers: " << cacheFolder

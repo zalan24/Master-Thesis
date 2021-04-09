@@ -5,6 +5,25 @@
   "version": "0.2.0",
   "configurations": [
   {
+    "name": "(Windows) Shader compiler",
+    "type": "cppvsdbg",
+    "request": "launch",
+    "program": "${workspaceFolder}/build/src/engine/shadercompiler/AnimationsShaderCompiler.exe",
+    "args": [
+      "-r${workspaceFolder}/src/gameLibs/shaders",
+      "-c${workspaceFolder}/build/src/gameLibs/shaders/shadercache",
+      "-d${workspaceFolder}/build/src/gameLibs/shaders",
+      "-o${workspaceFolder}/build/shaders/shaders.bin",
+      "${workspaceFolder}/src/gameLibs/shaders/global.sh",
+      "${workspaceFolder}/src/gameLibs/shaders/test.sd"
+    ],
+    "stopAtEntry": false,
+    "cwd": "${workspaceFolder}/build/src/gameLibs/shaders",
+    "environment": [],
+    "externalConsole": false,
+    "internalConsoleOptions": "openOnSessionStart"
+  },
+  {
     "name": "(Windows) Attach",
     "type": "cppvsdbg",
     "request": "attach",

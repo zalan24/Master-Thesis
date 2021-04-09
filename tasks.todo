@@ -290,6 +290,7 @@ Get a triangle on screen:
     ✔ Add logging @done (3/28/2021, 12:39:53 PM)
     ✔ Discard image data using undefined oldLayout in transition (add a cmd for this, or add this to the barrier struct???) @done (3/13/2021, 7:52:00 PM)
     ☐ Check out "streamline trace": https://github.com/KhronosGroup/Vulkan-Samples/blob/master/samples/performance/render_passes/render_passes_tutorial.md
+    ☐ Optimize push constant ranges: generate_resource_object() in compile.cpp
 
 Cleanup & other:
     ☐ Remove useless common driver stuff (drv/common)
