@@ -93,12 +93,16 @@ void Game::recreateViews(uint32_t imageCount, const drv::ImagePtr* images) {
 
 void Game::initShader() {
     testShader.clear();  // TODO
-    shaderTestDesc.setVariant_Color(shader_test_descriptor::Color::BLUE);
-    testShader.prepare(testRenderPass.get(), testSubpass, shaderGlobalDesc, shaderTestDesc);
-    shaderTestDesc.setVariant_Color(shader_test_descriptor::Color::GREEN);
-    testShader.prepare(testRenderPass.get(), testSubpass, shaderGlobalDesc, shaderTestDesc);
-    shaderTestDesc.setVariant_Color(shader_test_descriptor::Color::RED);
-    testShader.prepare(testRenderPass.get(), testSubpass, shaderGlobalDesc, shaderTestDesc);
+    shader_global_descriptor::VariantDesc globalDesc;
+    shader_test_descriptor::VariantDesc blueVariant;
+    shader_test_descriptor::VariantDesc greenVariant;
+    shader_test_descriptor::VariantDesc redVariant;
+    blueVariant.color = shader_test_descriptor::Color::BLUE;
+    greenVariant.color = shader_test_descriptor::Color::GREEN;
+    redVariant.color = shader_test_descriptor::Color::RED;
+    testShader.prepare(testRenderPass.get(), testSubpass, globalDesc, blueVariant);
+    testShader.prepare(testRenderPass.get(), testSubpass, globalDesc, greenVariant);
+    testShader.prepare(testRenderPass.get(), testSubpass, globalDesc, redVariant);
 }
 
 void Game::record(FrameGraph& frameGraph, FrameId frameId) {

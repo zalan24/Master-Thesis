@@ -292,9 +292,31 @@ bool generate_header(Cache& cache, ShaderRegistryOutput& registry, const std::st
         header << "    void setVariant_" << variantName << "(" << enumName << " value);\n";
         cxx << "void " << className << "::setVariant_" << variantName << "(" << enumName
             << " value) {\n";
-        cxx << "    " << valName << " = value;\n";
+        cxx << "    variantDesc." << valName << " = value;\n";
         cxx << "}\n";
     }
+    header << "    struct VariantDesc {\n";
+    for (const auto& [variantName, values] : variants.values) {
+        if (variantName.length() == 0 || values.size() == 0)
+            continue;
+        std::string enumName = get_variant_enum_name(variantName);
+        std::string valName = get_variant_enum_val_name(variantName);
+        header << "        " << enumName << " " << valName << " = " << enumName
+               << "::" << get_variant_enum_value(values[0]) << ";\n";
+    }
+    header << "        uint32_t getLocalVariantId() const;\n";
+    cxx << "uint32_t " << className << "::VariantDesc::getLocalVariantId() const {\n";
+    cxx << "    uint32_t ret = 0;\n";
+    for (const auto& [variantName, values] : variants.values) {
+        if (variantName.length() == 0 || values.size() == 0)
+            continue;
+        std::string valName = get_variant_enum_val_name(variantName);
+        cxx << "    ret += static_cast<uint32_t>(" << valName << ") * "
+            << incData.variantMultiplier[variantName] << ";\n";
+    }
+    cxx << "    return ret;\n";
+    cxx << "}\n";
+    header << "    };\n";
     for (const auto& [varName, varType] : resources.variables) {
         header << "    " << varType << " " << varName << " = " << varType << "_default_value;\n";
         header << "    void set_" << varName << "(const " << varType << " &_" << varName << ");\n";
@@ -319,7 +341,8 @@ bool generate_header(Cache& cache, ShaderRegistryOutput& registry, const std::st
         for (const std::string& variantVal : values) {
             const std::string val = get_variant_enum_value(variantVal);
             cxx << "        " << ifString2 << " (value == \"" << variantVal << "\")\n";
-            cxx << "            " << valName << " = " << enumName << "::" << val << ";\n";
+            cxx << "            variantDesc." << valName << " = " << enumName << "::" << val
+                << ";\n";
             ifString2 = "else if";
         }
         if (ifString2 != "if")
@@ -345,7 +368,7 @@ bool generate_header(Cache& cache, ShaderRegistryOutput& registry, const std::st
         std::string enumName = get_variant_enum_name(variantName);
         std::string valName = get_variant_enum_val_name(variantName);
         cxx << "    " << ifString << " (variantName == \"" << variantName << "\")\n";
-        cxx << "        " << valName << " = static_cast<" << enumName << ">(value);\n";
+        cxx << "        variantDesc." << valName << " = static_cast<" << enumName << ">(value);\n";
         ifString = "else if";
     }
     if (ifString != "if")
@@ -362,17 +385,10 @@ bool generate_header(Cache& cache, ShaderRegistryOutput& registry, const std::st
     }
     cxx << "    };\n";
     cxx << "}\n";
+    // TODO
     header << "    uint32_t getLocalVariantId() const override;\n";
     cxx << "uint32_t " << className << "::getLocalVariantId() const {\n";
-    cxx << "    uint32_t ret = 0;\n";
-    for (const auto& [variantName, values] : variants.values) {
-        if (variantName.length() == 0 || values.size() == 0)
-            continue;
-        std::string valName = get_variant_enum_val_name(variantName);
-        cxx << "    ret += static_cast<uint32_t>(" << valName << ") * "
-            << incData.variantMultiplier[variantName] << ";\n";
-    }
-    cxx << "    return ret;\n";
+    cxx << "    return variantDesc.getLocalVariantId();\n";
     cxx << "}\n";
     header << "    " << className << "(drv::LogicalDevicePtr device, const " << registryClassName
            << " *_reg);\n";
@@ -380,26 +396,12 @@ bool generate_header(Cache& cache, ShaderRegistryOutput& registry, const std::st
         << registryClassName << " *_reg)\n";
     cxx << "  : reg(_reg)\n";
     cxx << "  , header(drv::create_shader_header(device, reg->reg.get()))\n";
-    for (const auto& [variantName, values] : variants.values) {
-        if (variantName.length() == 0 || values.size() == 0)
-            continue;
-        std::string enumName = get_variant_enum_name(variantName);
-        std::string valName = get_variant_enum_val_name(variantName);
-        cxx << "  , " << valName << "(" << enumName << "::" << get_variant_enum_value(values[0])
-            << ")\n";
-    }
     cxx << "{\n";
     cxx << "}\n";
     header << "  private:\n";
+    header << "    VariantDesc variantDesc;\n";
     header << "    const " << registryClassName << " *reg;\n";
     header << "    std::unique_ptr<drv::DrvShaderHeader> header;\n";
-    for (const auto& [variantName, values] : variants.values) {
-        if (variantName.length() == 0 || values.size() == 0)
-            continue;
-        std::string enumName = get_variant_enum_name(variantName);
-        std::string valName = get_variant_enum_val_name(variantName);
-        header << "    " << enumName << " " << valName << ";\n";
-    }
     header << "};\n";
 
     registry.headersStart << "    " << registryClassName << " " << name << ";\n";
@@ -1094,8 +1096,10 @@ bool compile_shader(const Compiler* compiler, ShaderBin& shaderBin, Cache& cache
     for (const std::string& inc : allIncludes) {
         auto itr = includeData.find(inc);
         assert(itr != includeData.end());
-        header << ", const " << itr->second.desriptorClassName << " &" << itr->second.name;
-        cxx << ", const " << itr->second.desriptorClassName << " &" << itr->second.name;
+        header << ", const " << itr->second.desriptorClassName << "::VariantDesc &"
+               << itr->second.name;
+        cxx << ", const " << itr->second.desriptorClassName << "::VariantDesc &"
+            << itr->second.name;
     }
     header << ");\n";
     cxx << ") {\n";
