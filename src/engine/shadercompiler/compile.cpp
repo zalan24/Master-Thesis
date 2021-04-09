@@ -257,6 +257,7 @@ bool generate_header(Cache& cache, ShaderRegistryOutput& registry, const std::st
     header << "#include <drvshader.h>\n\n";
 
     cxx << "#include \"" << headerFileName.string() << "\"\n\n";
+    cxx << "#include <drv.h>\n\n";
 
     header << "class " << registryClassName << " {\n";
     header << "  public:\n";
@@ -900,6 +901,7 @@ bool compile_shader(const Compiler* compiler, ShaderBin& shaderBin, Cache& cache
     header << "#include <shaderobjectregistry.h>\n";
     header << "#include <shaderdescriptorcollection.h>\n\n";
     cxx << "#include \"" << headerFileName.string() << "\"\n\n";
+    cxx << "#include <drv.h>\n\n";
     std::set<std::string> includes;
     std::set<std::string> progress;
     std::vector<std::string> directIncludes;
@@ -1087,7 +1089,8 @@ bool compile_shader(const Compiler* compiler, ShaderBin& shaderBin, Cache& cache
       << "    // TODO probably return unique ptr, then the caller can put it in the garbage or just ignore it for immediate destruction\n";
     cxx << "}\n\n";
     header << "    void prepare(const drv::RenderPass *renderPass, drv::SubpassId subpass";
-    cxx << "    void prepare(const drv::RenderPass *renderPass, drv::SubpassId subpass";
+    cxx << "void " << className
+        << "::prepare(const drv::RenderPass *renderPass, drv::SubpassId subpass";
     for (const std::string& inc : allIncludes) {
         auto itr = includeData.find(inc);
         assert(itr != includeData.end());

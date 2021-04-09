@@ -97,3 +97,7 @@ class Goal
 - Render passes https://vulkan.lunarg.com/doc/view/1.2.170.0/linux/tutorial/html/10-init_render_pass.html
 - Push constants https://vkguide.dev/docs/chapter-3/push_constants/
   - how to bind several ranges: https://stackoverflow.com/questions/37056159/using-different-push-constants-in-different-shader-stages
+
+# Repeating patters
+
+- Quasi crystals and aperiodic tilings https://www.youtube.com/watch?v=48sCx-wBs34
