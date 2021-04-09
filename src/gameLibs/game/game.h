@@ -9,7 +9,7 @@
 #include <isimulation.h>
 #include <shaderregistry.h>
 
-#include <shader_obj_test.h>
+#include <shader_test.h>
 
 class Game final
   : public IRenderer

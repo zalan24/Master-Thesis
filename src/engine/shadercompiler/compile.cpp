@@ -225,7 +225,8 @@ bool generate_header(Cache& cache, ShaderRegistryOutput& registry, const std::st
     std::string name = fs::path(shaderFile).stem().string();
     for (char& c : name)
         c = static_cast<char>(tolower(c));
-    std::stringstream out;
+    std::stringstream header;
+    std::stringstream cxx;
     Variants variants;
     if (variantsBlockCount == 1) {
         const BlockFile* variantBlock = descBlock->getNode("variants");
@@ -244,30 +245,35 @@ bool generate_header(Cache& cache, ShaderRegistryOutput& registry, const std::st
     }
     const std::string className = "shader_" + name + "_descriptor";
     const std::string registryClassName = "shader_" + name + "_registry";
+    fs::path headerFileName = fs::path("shader_header_" + name + ".h");
+    fs::path cxxFileName = fs::path("shader_header_" + name + ".cpp");
     incData.desriptorClassName = className;
     incData.desriptorRegistryClassName = registryClassName;
     incData.name = name;
-    out << "#pragma once\n\n";
-    out << "#include <memory>\n\n";
-    out << "#include <shaderdescriptor.h>\n";
-    out << "#include <shadertypes.h>\n";
-    out << "#include <drvshader.h>\n\n";
+    header << "#pragma once\n\n";
+    header << "#include <memory>\n\n";
+    header << "#include <shaderdescriptor.h>\n";
+    header << "#include <shadertypes.h>\n";
+    header << "#include <drvshader.h>\n\n";
 
-    out << "class " << registryClassName << " {\n";
-    out << "  public:\n";
-    out << "    " << registryClassName << "(drv::LogicalDevicePtr device)\n";
-    out << "      : reg(drv::create_shader_header_registry(device))\n";
-    out << "    {\n";
-    out << "    }\n\n";
-    out << "    friend class " << className << ";\n";
-    out << "  private:\n";
-    out << "    std::unique_ptr<drv::DrvShaderHeaderRegistry> reg;\n";
-    out << "};\n\n";
+    cxx << "#include \"" << headerFileName.string() << "\"\n\n";
 
-    out << "class " << className << " final : public ShaderDescriptor\n";
-    out << "{\n";
-    out << "  public:\n";
-    out << "    ~" << className << "() override {}\n";
+    header << "class " << registryClassName << " {\n";
+    header << "  public:\n";
+    header << "    " << registryClassName << "(drv::LogicalDevicePtr device);\n";
+    cxx << registryClassName << "::" << registryClassName << "(drv::LogicalDevicePtr device)\n";
+    cxx << "  : reg(drv::create_shader_header_registry(device))\n";
+    cxx << "{\n";
+    cxx << "}\n\n";
+    header << "    friend class " << className << ";\n";
+    header << "  private:\n";
+    header << "    std::unique_ptr<drv::DrvShaderHeaderRegistry> reg;\n";
+    header << "};\n\n";
+
+    header << "class " << className << " final : public ShaderDescriptor\n";
+    header << "{\n";
+    header << "  public:\n";
+    header << "    ~" << className << "() override {}\n";
     uint64_t variantMul = 1;
     for (const auto& [variantName, values] : variants.values) {
         if (variantName.length() == 0 || values.size() == 0)
@@ -275,133 +281,151 @@ bool generate_header(Cache& cache, ShaderRegistryOutput& registry, const std::st
         incData.variantMultiplier[variantName] = variantMul;
         variantMul *= values.size();
         std::string enumName = get_variant_enum_name(variantName);
-        out << "    enum class " << enumName << " {\n";
+        header << "    enum class " << enumName << " {\n";
         for (size_t i = 0; i < values.size(); ++i) {
             std::string val = get_variant_enum_value(values[i]);
-            out << "        " << val << " = " << i << ",\n";
+            header << "        " << val << " = " << i << ",\n";
         }
-        out << "    };\n";
+        header << "    };\n";
         std::string valName = get_variant_enum_val_name(variantName);
-        out << "    void setVariant_" << variantName << "(" << enumName << " value) {\n";
-        out << "        " << valName << " = value;\n";
-        out << "    }\n";
+        header << "    void setVariant_" << variantName << "(" << enumName << " value);\n";
+        cxx << "void " << className << "::setVariant_" << variantName << "(" << enumName
+            << " value) {\n";
+        cxx << "    " << valName << " = value;\n";
+        cxx << "}\n";
     }
     for (const auto& [varName, varType] : resources.variables) {
-        out << "    " << varType << " " << varName << " = " << varType << "_default_value;\n";
-        out << "    void set_" << varName << "(const " << varType << " &_" << varName << ") {\n";
-        out << "        " << varName << " = _" << varName << ";\n";
-        out << "    }\n";
+        header << "    " << varType << " " << varName << " = " << varType << "_default_value;\n";
+        header << "    void set_" << varName << "(const " << varType << " &_" << varName << ");\n";
+        cxx << "void " << className << "::set_" << varName << "(const " << varType << " &_"
+            << varName << ") {\n";
+        cxx << "    " << varName << " = _" << varName << ";\n";
+        cxx << "}\n";
     }
     incData.totalVarintMultiplier = variantMul;
-    out
-      << "    void setVariant(const std::string& variantName, const std::string& value) override {\n";
+    header
+      << "    void setVariant(const std::string& variantName, const std::string& value) override;\n";
+    cxx << "void " << className
+        << "::setVariant(const std::string& variantName, const std::string& value) {\n";
     std::string ifString = "if";
     for (const auto& [variantName, values] : variants.values) {
         if (variantName.length() == 0 || values.size() == 0)
             continue;
         std::string enumName = get_variant_enum_name(variantName);
         std::string valName = get_variant_enum_val_name(variantName);
-        out << "        " << ifString << " (variantName == \"" << variantName << "\") {\n";
+        cxx << "    " << ifString << " (variantName == \"" << variantName << "\") {\n";
         std::string ifString2 = "if";
         for (const std::string& variantVal : values) {
             const std::string val = get_variant_enum_value(variantVal);
-            out << "            " << ifString2 << " (value == \"" << variantVal << "\")\n";
-            out << "                " << valName << " = " << enumName << "::" << val << ";\n";
+            cxx << "        " << ifString2 << " (value == \"" << variantVal << "\")\n";
+            cxx << "            " << valName << " = " << enumName << "::" << val << ";\n";
             ifString2 = "else if";
         }
         if (ifString2 != "if")
-            out << "            else\n    ";
-        out
-          << "            throw std::runtime_error(\"Unknown value (\" + value + \") for shader variant param: "
+            cxx << "        else\n    ";
+        cxx
+          << "        throw std::runtime_error(\"Unknown value (\" + value + \") for shader variant param: "
           << variantName << "\");\n";
-        out << "        }";
+        cxx << "    }";
         ifString = " else if";
     }
     if (ifString != "if")
-        out << " else\n    ";
+        cxx << " else\n    ";
     else
-        out << "\n";
-    out << "        throw std::runtime_error(\"Unknown variant param: \" + variantName);\n";
-    out << "    }\n";
-    out << "    void setVariant(const std::string& variantName, int value) override {\n";
+        cxx << "\n";
+    cxx << "    throw std::runtime_error(\"Unknown variant param: \" + variantName);\n";
+    cxx << "}\n";
+    header << "    void setVariant(const std::string& variantName, int value) override;\n";
+    cxx << "void " << className << "::setVariant(const std::string& variantName, int value) {\n";
     ifString = "if";
     for (const auto& [variantName, values] : variants.values) {
         if (variantName.length() == 0 || values.size() == 0)
             continue;
         std::string enumName = get_variant_enum_name(variantName);
         std::string valName = get_variant_enum_val_name(variantName);
-        out << "        " << ifString << " (variantName == \"" << variantName << "\")\n";
-        out << "            " << valName << " = static_cast<" << enumName << ">(value);\n";
+        cxx << "    " << ifString << " (variantName == \"" << variantName << "\")\n";
+        cxx << "        " << valName << " = static_cast<" << enumName << ">(value);\n";
         ifString = "else if";
     }
     if (ifString != "if")
-        out << "        else\n    ";
-    out << "        throw std::runtime_error(\"Unknown variant param: \" + variantName);\n";
-    out << "    }\n";
-    out << "    std::vector<std::string> getVariantParamNames() const override {\n";
-    out << "        return {\n";
+        cxx << "    else\n    ";
+    cxx << "    throw std::runtime_error(\"Unknown variant param: \" + variantName);\n";
+    cxx << "}\n";
+    header << "    std::vector<std::string> getVariantParamNames() const override;\n";
+    cxx << "std::vector<std::string> " << className << "::getVariantParamNames() const {\n";
+    cxx << "    return {\n";
     for (const auto& [variantName, values] : variants.values) {
         if (variantName.length() == 0 || values.size() == 0)
             continue;
-        out << "            \"" << variantName << "\",\n";
+        cxx << "        \"" << variantName << "\",\n";
     }
-    out << "        };\n";
-    out << "    }\n";
-    out << "    uint32_t getLocalVariantId() const override {\n";
-    out << "        uint32_t ret = 0;\n";
+    cxx << "    };\n";
+    cxx << "}\n";
+    header << "    uint32_t getLocalVariantId() const override;\n";
+    cxx << "uint32_t " << className << "::getLocalVariantId() const {\n";
+    cxx << "    uint32_t ret = 0;\n";
     for (const auto& [variantName, values] : variants.values) {
         if (variantName.length() == 0 || values.size() == 0)
             continue;
         std::string valName = get_variant_enum_val_name(variantName);
-        out << "        ret += static_cast<uint32_t>(" << valName << ") * "
+        cxx << "    ret += static_cast<uint32_t>(" << valName << ") * "
             << incData.variantMultiplier[variantName] << ";\n";
     }
-    out << "        return ret;\n";
-    out << "    }\n";
-    out << "    " << className << "(drv::LogicalDevicePtr device, const " << registryClassName
-        << " *_reg)\n";
-    out << "      : reg(_reg)\n";
-    out << "      , header(drv::create_shader_header(device, reg->reg.get()))\n";
+    cxx << "    return ret;\n";
+    cxx << "}\n";
+    header << "    " << className << "(drv::LogicalDevicePtr device, const " << registryClassName
+           << " *_reg);\n";
+    cxx << className << "::" << className << "(drv::LogicalDevicePtr device, const "
+        << registryClassName << " *_reg)\n";
+    cxx << "  : reg(_reg)\n";
+    cxx << "  , header(drv::create_shader_header(device, reg->reg.get()))\n";
     for (const auto& [variantName, values] : variants.values) {
         if (variantName.length() == 0 || values.size() == 0)
             continue;
         std::string enumName = get_variant_enum_name(variantName);
         std::string valName = get_variant_enum_val_name(variantName);
-        out << "      , " << valName << "(" << enumName << "::" << get_variant_enum_value(values[0])
+        cxx << "  , " << valName << "(" << enumName << "::" << get_variant_enum_value(values[0])
             << ")\n";
     }
-    out << "    {\n";
-    out << "    }\n";
-    out << "  private:\n";
-    out << "    const " << registryClassName << " *reg;\n";
-    out << "    std::unique_ptr<drv::DrvShaderHeader> header;\n";
+    cxx << "{\n";
+    cxx << "}\n";
+    header << "  private:\n";
+    header << "    const " << registryClassName << " *reg;\n";
+    header << "    std::unique_ptr<drv::DrvShaderHeader> header;\n";
     for (const auto& [variantName, values] : variants.values) {
         if (variantName.length() == 0 || values.size() == 0)
             continue;
         std::string enumName = get_variant_enum_name(variantName);
         std::string valName = get_variant_enum_val_name(variantName);
-        out << "    " << enumName << " " << valName << ";\n";
+        header << "    " << enumName << " " << valName << ";\n";
     }
-    out << "};\n";
+    header << "};\n";
 
     registry.headersStart << "    " << registryClassName << " " << name << ";\n";
     registry.headersCtor << "      " << (registry.firstHeader ? ':' : ',') << " " << name
                          << "(device)\n";
     registry.firstHeader = false;
 
-    fs::path fileName = fs::path("shader_" + name + ".h");
-    fs::path filePath = fs::path(outputFolder) / fileName;
-    registry.includes << "#include <" << fileName.string() << ">\n";
-    incData.headerFileName = fs::path{filePath};
-    const std::string h = hash_string(out.str());
+    fs::path headerFilePath = fs::path(outputFolder) / headerFileName;
+    fs::path cxxFilePath = fs::path(outputFolder) / cxxFileName;
+    registry.includes << "#include <" << headerFileName.string() << ">\n";
+    incData.headerFileName = fs::path{headerFileName};
+    const std::string h = hash_string(header.str() + cxx.str());
     if (auto itr = cache.headerHashes.find(name);
         itr == cache.headerHashes.end() || itr->second != h) {
-        std::ofstream outFile(filePath.string());
-        if (!outFile.is_open()) {
-            std::cerr << "Could not open output file: " << filePath.string() << std::endl;
+        std::ofstream outHeaderFile(headerFilePath.string());
+        if (!outHeaderFile.is_open()) {
+            std::cerr << "Could not open output file: " << headerFileName.string() << std::endl;
             return false;
         }
-        outFile << out.str();
+        outHeaderFile << header.str();
+        outHeaderFile.close();
+        std::ofstream outCxxFile(cxxFilePath.string());
+        if (!outCxxFile.is_open()) {
+            std::cerr << "Could not open output file: " << cxxFileName.string() << std::endl;
+            return false;
+        }
+        outCxxFile << cxx.str();
         cache.headerHashes[name] = h;
     }
     includeData[name] = std::move(incData);
@@ -863,14 +887,19 @@ bool compile_shader(const Compiler* compiler, ShaderBin& shaderBin, Cache& cache
                     const std::string& outputFolder,
                     std::unordered_map<std::string, IncludeData>& includeData) {
     std::stringstream cu;
-    std::stringstream shaderObj;
-    shaderObj << "#pragma once\n\n";
-    shaderObj << "#include <cstddef>\n";
-    shaderObj << "#include <drvshader.h>\n";
-    shaderObj << "#include <shaderbin.h>\n";
-    shaderObj << "#include <drvrenderpass.h>\n";
-    shaderObj << "#include <shaderobjectregistry.h>\n";
-    shaderObj << "#include <shaderdescriptorcollection.h>\n\n";
+    std::stringstream header;
+    std::stringstream cxx;
+    const std::string shaderName = fs::path{shaderFile}.stem().string();
+    fs::path headerFileName = fs::path("shader_" + shaderName + ".h");
+    fs::path cxxFileName = fs::path("shader_" + shaderName + ".cpp");
+    header << "#pragma once\n\n";
+    header << "#include <cstddef>\n";
+    header << "#include <drvshader.h>\n";
+    header << "#include <shaderbin.h>\n";
+    header << "#include <drvrenderpass.h>\n";
+    header << "#include <shaderobjectregistry.h>\n";
+    header << "#include <shaderdescriptorcollection.h>\n\n";
+    cxx << "#include \"" << headerFileName.string() << "\"\n\n";
     std::set<std::string> includes;
     std::set<std::string> progress;
     std::vector<std::string> directIncludes;
@@ -898,13 +927,12 @@ bool compile_shader(const Compiler* compiler, ShaderBin& shaderBin, Cache& cache
         return false;
     }
 
-    const std::string shaderName = fs::path{shaderFile}.stem().string();
     directIncludes.push_back(shaderName);  // include it's own header as well
     std::vector<std::string> allIncludes;
     std::unordered_map<std::string, std::string> variantParamToDescriptor;
     std::unordered_map<std::string, uint32_t> variantIdMultiplier;
     uint32_t variantIdMul = 1;
-    include_all(shaderObj, fs::path{outputFolder}, includeData, directIncludes, allIncludes,
+    include_all(header, fs::path{outputFolder}, includeData, directIncludes, allIncludes,
                 variantIdMultiplier, variantParamToDescriptor, variantIdMul);
 
     std::vector<Variants> variants;
@@ -962,7 +990,7 @@ bool compile_shader(const Compiler* compiler, ShaderBin& shaderBin, Cache& cache
     registry.objectsCtor << ")\n";
     registry.firstObj = false;
 
-    shaderObj << "\n";
+    header << "\n";
 
     uint32_t structId = 0;
     std::map<ResourcePack, std::string> exportedPacks;
@@ -973,95 +1001,104 @@ bool compile_shader(const Compiler* compiler, ShaderBin& shaderBin, Cache& cache
             std::string structName =
               "PushConstants_" + shaderName + "_" + std::to_string(structId++);
             exportedPacks[pack] = structName;
-            pack.generateCXX(structName, resources, shaderObj);
+            pack.generateCXX(structName, resources, cxx);
         }
     }
 
-    shaderObj << "class " << registryClassName << " final : public ShaderObjectRegistry {\n";
-    shaderObj << "  public:\n";
-    shaderObj << "    " << registryClassName
-              << "(drv::LogicalDevicePtr device, const ShaderBin &shaderBin";
+    header << "class " << registryClassName << " final : public ShaderObjectRegistry {\n";
+    header << "  public:\n";
+    header << "    " << registryClassName
+           << "(drv::LogicalDevicePtr device, const ShaderBin &shaderBin";
+    cxx << registryClassName << "::" << registryClassName
+        << "(drv::LogicalDevicePtr device, const ShaderBin &shaderBin";
     for (const std::string& inc : allIncludes) {
         auto itr = includeData.find(inc);
         assert(itr != includeData.end());
-        shaderObj << ", const " << itr->second.desriptorRegistryClassName << " *reg_"
-                  << itr->second.name;
+        header << ", const " << itr->second.desriptorRegistryClassName << " *reg_"
+               << itr->second.name;
+        cxx << ", const " << itr->second.desriptorRegistryClassName << " *reg_" << itr->second.name;
     }
-    shaderObj << ")\n";
-    shaderObj << "      : ShaderObjectRegistry(device)\n";
-    shaderObj << "      , reg(drv::create_shader_obj_registry(device))\n";
-    shaderObj << "    {\n";
-    shaderObj << "        const ShaderBin::ShaderData *shader = shaderBin.getShader(\""
-              << shaderName << "\");\n";
-    shaderObj << "        if (shader == nullptr)\n";
-    shaderObj << "            throw std::runtime_error(\"Shader not found: " << shaderName
-              << "\");\n";
-    shaderObj << "        loadShader(*shader);\n";
+    header << ");\n";
+    cxx << ")\n";
+    cxx << "  : ShaderObjectRegistry(device)\n";
+    cxx << "  , reg(drv::create_shader_obj_registry(device))\n";
+    cxx << "{\n";
+    cxx << "    const ShaderBin::ShaderData *shader = shaderBin.getShader(\"" << shaderName
+        << "\");\n";
+    cxx << "    if (shader == nullptr)\n";
+    cxx << "        throw std::runtime_error(\"Shader not found: " << shaderName << "\");\n";
+    cxx << "    loadShader(*shader);\n";
 
     for (const auto& [usage, object] : resourceObjects) {
-        shaderObj << "        {\n";
-        shaderObj << "            drv::DrvShaderObjectRegistry::PushConstantRange ranges["
-                  << object.packs.size() << "];\n";
+        cxx << "    {\n";
+        cxx << "        drv::DrvShaderObjectRegistry::PushConstantRange ranges["
+            << object.packs.size() << "];\n";
         uint32_t id = 0;
         for (const auto& [stages, pack] : object.packs) {
-            shaderObj << "            ranges[" << id << "].stages = 0";
+            cxx << "        ranges[" << id << "].stages = 0";
             if (stages & ResourceObject::VS)
-                shaderObj << " | drv::ShaderStage::VERTEX_BIT";
+                cxx << " | drv::ShaderStage::VERTEX_BIT";
             if (stages & ResourceObject::PS)
-                shaderObj << " | drv::ShaderStage::FRAGMENT_BIT";
+                cxx << " | drv::ShaderStage::FRAGMENT_BIT";
             if (stages & ResourceObject::CS)
-                shaderObj << " | drv::ShaderStage::COMPUTE_BIT";
-            shaderObj << ";\n";
-            shaderObj << "            ranges[" << id << "].offset = ";
+                cxx << " | drv::ShaderStage::COMPUTE_BIT";
+            cxx << ";\n";
+            cxx << "        ranges[" << id << "].offset = ";
             if (id == 0)
-                shaderObj << "0";
+                cxx << "0";
             else
-                shaderObj << "ranges[" << id - 1 << "].offset + ranges[" << id - 1 << "].size";
-            shaderObj << ";\n";
-            shaderObj << "            ranges[" << id << "].size = sizeof("
-                      << exportedPacks.find(pack)->second << ");\n";
+                cxx << "ranges[" << id - 1 << "].offset + ranges[" << id - 1 << "].size";
+            cxx << ";\n";
+            cxx << "        ranges[" << id << "].size = sizeof(" << exportedPacks.find(pack)->second
+                << ");\n";
             id++;
         }
-        shaderObj << "            drv::DrvShaderObjectRegistry::ConfigInfo config;\n";
-        shaderObj << "            config.numRanges = " << object.packs.size() << ";\n";
-        shaderObj << "            config.ranges = ranges;\n";
-        shaderObj << "            reg->addConfig(config);\n";
-        shaderObj << "        }\n";
+        cxx << "        drv::DrvShaderObjectRegistry::ConfigInfo config;\n";
+        cxx << "        config.numRanges = " << object.packs.size() << ";\n";
+        cxx << "        config.ranges = ranges;\n";
+        cxx << "        reg->addConfig(config);\n";
+        cxx << "    }\n";
     }
 
-    shaderObj << "    }\n";
-    shaderObj << "    friend class " << className << ";\n";
-    shaderObj << "  protected:\n";
+    cxx << "}\n";
+    header << "    friend class " << className << ";\n";
+    header << "  protected:\n";
     // shaderObj
     //   << "    VariantId getShaderVariant(const ShaderDescriptorCollection* descriptors) const override {\n";
     // shaderObj
     //   << "        return static_cast<const Descriptor*>(descriptors)->getLocalVariantId();\n";
     // shaderObj << "    }\n";
-    shaderObj << "  private:\n";
-    shaderObj << "    std::unique_ptr<drv::DrvShaderObjectRegistry> reg;\n";
-    shaderObj << "};\n\n";
+    header << "  private:\n";
+    header << "    std::unique_ptr<drv::DrvShaderObjectRegistry> reg;\n";
+    header << "};\n\n";
 
-    shaderObj << "class " << className << " {\n";
-    shaderObj << "  public:\n";
-    shaderObj << "    " << className << "(drv::LogicalDevicePtr device, const " << registryClassName
-              << " *reg)\n";
-    shaderObj << "      : shader(drv::create_shader(device, reg->reg.get()))\n";
-    shaderObj << "    {\n";
-    shaderObj << "    }\n\n";
-    shaderObj << "    void clear() {\n";
-    shaderObj
-      << "        // TODO probably return unique ptr, then the caller can put it in the garbage or just ignore it for immediate destruction\n";
-    shaderObj << "    }\n\n";
-    shaderObj << "    void prepare(const drv::RenderPass *renderPass, drv::SubpassId subpass";
+    header << "class " << className << " {\n";
+    header << "  public:\n";
+    header << "    " << className << "(drv::LogicalDevicePtr device, const " << registryClassName
+           << " *reg);\n";
+    cxx << className << "::" << className << "(drv::LogicalDevicePtr device, const "
+        << registryClassName << " *reg)\n";
+    cxx << "  : shader(drv::create_shader(device, reg->reg.get()))\n";
+    cxx << "{\n";
+    cxx << "}\n\n";
+    header << "    void clear();\n";
+    cxx << "void " << className << "::clear() {\n";
+    cxx
+      << "    // TODO probably return unique ptr, then the caller can put it in the garbage or just ignore it for immediate destruction\n";
+    cxx << "}\n\n";
+    header << "    void prepare(const drv::RenderPass *renderPass, drv::SubpassId subpass";
+    cxx << "    void prepare(const drv::RenderPass *renderPass, drv::SubpassId subpass";
     for (const std::string& inc : allIncludes) {
         auto itr = includeData.find(inc);
         assert(itr != includeData.end());
-        shaderObj << ", const " << itr->second.desriptorClassName << " &" << itr->second.name;
+        header << ", const " << itr->second.desriptorClassName << " &" << itr->second.name;
+        cxx << ", const " << itr->second.desriptorClassName << " &" << itr->second.name;
     }
-    shaderObj << ") {\n";
-    shaderObj
-      << "        // TODO This configuration needs to be supported, a pipeline needs to be maintained for this\n";
-    shaderObj << "    }\n\n";
+    header << ");\n";
+    cxx << ") {\n";
+    cxx
+      << "    // TODO This configuration needs to be supported, a pipeline needs to be maintained for this\n";
+    cxx << "}\n";
     // uint32_t descId = 0;
     // for (const std::string& inc : allIncludes) {
     //     auto itr = includeData.find(inc);
@@ -1116,25 +1153,31 @@ bool compile_shader(const Compiler* compiler, ShaderBin& shaderBin, Cache& cache
     //     shaderObj << "    " << itr->second.desriptorClassName << " desc_" << itr->second.name
     //               << ";\n";
     // }
-    shaderObj << "  private:\n";
-    shaderObj << "    std::unique_ptr<drv::DrvShader> shader;\n";
-    shaderObj << "};\n";
+    header << "  private:\n";
+    header << "    std::unique_ptr<drv::DrvShader> shader;\n";
+    header << "};\n";
 
-    fs::path fileName = fs::path("shader_obj_" + shaderName + ".h");
+    registry.includes << "#include <" << headerFileName.string() << ">\n";
 
-    registry.includes << "#include <" << fileName.string() << ">\n";
-
-    const std::string h = hash_string(shaderObj.str());
+    const std::string h = hash_string(header.str() + cxx.str());
     const std::string cacheEntry = shaderName + "_obj";
     if (auto itr = cache.headerHashes.find(cacheEntry);
         itr == cache.headerHashes.end() || itr->second != h) {
-        fs::path filePath = fs::path(outputFolder) / fileName;
-        std::ofstream outFile(filePath.string());
-        if (!outFile.is_open()) {
-            std::cerr << "Could not open output file: " << filePath.string() << std::endl;
+        fs::path headerFilePath = fs::path(outputFolder) / headerFileName;
+        fs::path cxxFilePath = fs::path(outputFolder) / cxxFileName;
+        std::ofstream headerFile(headerFilePath.string());
+        if (!headerFile.is_open()) {
+            std::cerr << "Could not open output file: " << headerFilePath.string() << std::endl;
             return false;
         }
-        outFile << shaderObj.str();
+        headerFile << header.str();
+        headerFile.close();
+        std::ofstream cxxFile(cxxFilePath.string());
+        if (!cxxFile.is_open()) {
+            std::cerr << "Could not open output file: " << cxxFilePath.string() << std::endl;
+            return false;
+        }
+        cxxFile << cxx.str();
         cache.headerHashes[cacheEntry] = h;
     }
 
