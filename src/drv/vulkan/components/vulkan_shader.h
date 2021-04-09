@@ -68,6 +68,8 @@ class VulkanShaderObjRegistry final : public drv::DrvShaderObjectRegistry
         pipelineLayouts.push_back(layout);
     }
 
+    VkPipelineLayout getLayout(uint32_t configId) const { return pipelineLayouts[configId]; }
+
  private:
     drv::LogicalDevicePtr device;
     std::vector<VkPipelineLayout> pipelineLayouts;
@@ -98,12 +100,25 @@ class VulkanShaderHeader final : public drv::DrvShaderHeader
 class VulkanShader final : public drv::DrvShader
 {
  public:
-    explicit VulkanShader(drv::LogicalDevicePtr _device, const VulkanShaderObjRegistry* reg)
-      : device(_device) {}
+    explicit VulkanShader(drv::LogicalDevicePtr _device, const VulkanShaderObjRegistry* _reg)
+      : device(_device), reg(_reg) {}
     VulkanShader(const VulkanShader&) = delete;
     VulkanShader& operator=(const VulkanShader&) = delete;
-    ~VulkanShader() override {}
+    ~VulkanShader() override {
+        for (VkPipeline pipeline : graphicalPipelines)
+            vkDestroyPipeline(convertDevice(device), pipeline, nullptr);
+        graphicalPipelines.clear();
+        for (VkPipeline pipeline : computePipelines)
+            vkDestroyPipeline(convertDevice(device), pipeline, nullptr);
+        computePipelines.clear();
+    }
+
+ protected:
+    void createGraphicalPipeline(const GraphicalPipelineCreateInfo& info) override;
 
  private:
     drv::LogicalDevicePtr device;
+    const VulkanShaderObjRegistry* reg;
+    std::vector<VkPipeline> graphicalPipelines;
+    std::vector<VkPipeline> computePipelines;
 };

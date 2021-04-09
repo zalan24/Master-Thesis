@@ -385,7 +385,7 @@ bool generate_header(Cache& cache, ShaderRegistryOutput& registry, const std::st
     }
     cxx << "    };\n";
     cxx << "}\n";
-    // TODO
+    header << "    const VariantDesc &getVariantDesc() const { return variantDesc; }\n";
     header << "    uint32_t getLocalVariantId() const override;\n";
     cxx << "uint32_t " << className << "::getLocalVariantId() const {\n";
     cxx << "    return variantDesc.getLocalVariantId();\n";
@@ -1009,6 +1009,8 @@ bool compile_shader(const Compiler* compiler, ShaderBin& shaderBin, Cache& cache
         }
     }
 
+    TODO;  // add variant id calculation here
+    TODO;  // add variant id -> layout index mapping here
     header << "class " << registryClassName << " final : public ShaderObjectRegistry {\n";
     header << "  public:\n";
     header << "    " << registryClassName
@@ -1085,6 +1087,7 @@ bool compile_shader(const Compiler* compiler, ShaderBin& shaderBin, Cache& cache
     cxx << "  : shader(drv::create_shader(device, reg->reg.get()))\n";
     cxx << "{\n";
     cxx << "}\n\n";
+    TODO;  // pass the cleared renderpass ?and a garbage?
     header << "    void clear();\n";
     cxx << "void " << className << "::clear() {\n";
     cxx
@@ -1161,6 +1164,7 @@ bool compile_shader(const Compiler* compiler, ShaderBin& shaderBin, Cache& cache
     //               << ";\n";
     // }
     header << "  private:\n";
+    TODO;  // use several drv::DrvShader objects. One for each renderpass that uses the shader
     header << "    std::unique_ptr<drv::DrvShader> shader;\n";
     header << "};\n";
 

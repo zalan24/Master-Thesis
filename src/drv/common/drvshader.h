@@ -71,6 +71,16 @@ class DrvShader
     DrvShader& operator=(const DrvShader&) = delete;
     virtual ~DrvShader() {}
 
+ protected:
+    struct GraphicalPipelineCreateInfo
+    {
+        const RenderPass* renderPass;
+        const SubpassId subpass;
+        uint32_t configIndex;
+    };
+
+    virtual void createGraphicalPipeline(const GraphicalPipelineCreateInfo& info) = 0;
+
  private:
 };
 

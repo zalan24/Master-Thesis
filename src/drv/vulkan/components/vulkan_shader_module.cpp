@@ -50,3 +50,31 @@ std::unique_ptr<drv::DrvShader> DrvVulkan::create_shader(drv::LogicalDevicePtr d
                                                          const drv::DrvShaderObjectRegistry* reg) {
     return std::make_unique<VulkanShader>(device, static_cast<const VulkanShaderObjRegistry*>(reg));
 }
+
+void VulkanShader::createGraphicalPipeline(const GraphicalPipelineCreateInfo& info) {
+    VkGraphicsPipelineCreateInfo info = {};
+    info.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+    info.pNext = nullptr;
+    info.flags = ;
+    info.stageCount = ;
+    info.pStages = ;
+    info.pVertexInputState = ;
+    info.pInputAssemblyState = ;
+    info.pTessellationState = ;
+    info.pViewportState = ;
+    info.pRasterizationState = ;
+    info.pMultisampleState = ;
+    info.pDepthStencilState = ;
+    info.pColorBlendState = ;
+    info.pDynamicState = ;
+    info.layout = reg->getLayout(info.configIndex);
+    info.renderPass = ;
+    info.subpass = ;
+    info.basePipelineHandle = ;
+    info.basePipelineIndex = ;
+    VkPipeline pipeline;
+    // TODO pipeline cache
+    VkResult result =
+      vkCreateGraphicsPipelines(convertDevice(device), nullptr, 1, &info, nullptr, &pipeline);
+    drv::drv_assert(result == VK_SUCCESS, "Could not create graphical pipeline");
+}
