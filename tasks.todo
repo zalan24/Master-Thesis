@@ -291,6 +291,7 @@ Get a triangle on screen:
     ✔ Discard image data using undefined oldLayout in transition (add a cmd for this, or add this to the barrier struct???) @done (3/13/2021, 7:52:00 PM)
     ☐ Check out "streamline trace": https://github.com/KhronosGroup/Vulkan-Samples/blob/master/samples/performance/render_passes/render_passes_tutorial.md
     ☐ Optimize push constant ranges: generate_resource_object() in compile.cpp
+    ☐ Mesh shading: https://www.khronos.org/registry/vulkan/specs/1.2-extensions/man/html/VkPipelineInputAssemblyStateCreateInfo.html
 
 Cleanup & other:
     ☐ Remove useless common driver stuff (drv/common)

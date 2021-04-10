@@ -1,5 +1,6 @@
 #pragma once
 
+#include "drvrenderpass.h"
 #include "drvtypes.h"
 
 namespace drv

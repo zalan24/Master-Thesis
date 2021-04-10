@@ -229,6 +229,7 @@
         "nlohmann",
         "prepend",
         "ransac",
+        "rasterization",
         "readonly",
         "respack",
         "schur",

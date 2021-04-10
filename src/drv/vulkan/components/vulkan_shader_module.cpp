@@ -6,6 +6,7 @@
 
 #include <drverror.h>
 
+#include "vulkan_render_pass.h"
 #include "vulkan_shader.h"
 
 using namespace drv_vulkan;
@@ -52,29 +53,120 @@ std::unique_ptr<drv::DrvShader> DrvVulkan::create_shader(drv::LogicalDevicePtr d
 }
 
 void VulkanShader::createGraphicalPipeline(const GraphicalPipelineCreateInfo& info) {
-    VkGraphicsPipelineCreateInfo info = {};
-    info.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
-    info.pNext = nullptr;
-    info.flags = ;
-    info.stageCount = ;
-    info.pStages = ;
-    info.pVertexInputState = ;
-    info.pInputAssemblyState = ;
-    info.pTessellationState = ;
-    info.pViewportState = ;
-    info.pRasterizationState = ;
-    info.pMultisampleState = ;
-    info.pDepthStencilState = ;
-    info.pColorBlendState = ;
-    info.pDynamicState = ;
-    info.layout = reg->getLayout(info.configIndex);
-    info.renderPass = ;
-    info.subpass = ;
-    info.basePipelineHandle = ;
-    info.basePipelineIndex = ;
+    VkGraphicsPipelineCreateInfo createInfo = {};
+    createInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+    createInfo.pNext = nullptr;
+    createInfo.flags = 0;  // derivatives
+    createInfo.stageCount = ;
+    createInfo.pStages = ;
+
+    VkPipelineVertexInputStateCreateInfo vertexInputStateInfo = {};
+    vertexInputStateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+    vertexInputStateInfo.pNext = nullptr;
+    vertexInputStateInfo.flags = 0;
+    vertexInputStateInfo.vertexBindingDescriptionCount = ;
+    vertexInputStateInfo.pVertexBindingDescriptions = ;
+    vertexInputStateInfo.vertexAttributeDescriptionCount = ;
+    vertexInputStateInfo.pVertexAttributeDescriptions = ;
+    createInfo.pVertexInputState = &vertexInputStateInfo;
+
+    VkPipelineInputAssemblyStateCreateInfo inputAssemblyInfo = {};
+    inputAssemblyInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
+    inputAssemblyInfo.pNext = nullptr;
+    inputAssemblyInfo.flags = 0;
+    inputAssemblyInfo.topology = ;
+    inputAssemblyInfo.primitiveRestartEnable = ;
+    createInfo.pInputAssemblyState = &inputAssemblyInfo;
+
+    VkPipelineTessellationStateCreateInfo tessellationInfo = {};
+    tessellationInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_TESSELLATION_STATE_CREATE_INFO;
+    tessellationInfo.pNext = nullptr;
+    tessellationInfo.flags = 0;
+    tessellationInfo.patchControlPoints = ;
+    createInfo.pTessellationState = &tessellationInfo;
+
+    VkPipelineViewportStateCreateInfo viewportInfo = {};
+    viewportInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
+    viewportInfo.pNext = nullptr;
+    viewportInfo.flags = 0;
+    viewportInfo.viewportCount = ;
+    viewportInfo.pViewports = ;
+    viewportInfo.scissorCount = ;
+    viewportInfo.pScissors = ;
+    createInfo.pViewportState = &viewportInfo;
+
+    VkPipelineRasterizationStateCreateInfo rasterizationInfo = {};
+    rasterizationInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
+    rasterizationInfo.pNext = nullptr;
+    rasterizationInfo.flags = 0;
+    rasterizationInfo.depthClampEnable = ;
+    rasterizationInfo.rasterizerDiscardEnable = ;
+    rasterizationInfo.polygonMode = ;
+    rasterizationInfo.cullMode = ;
+    rasterizationInfo.frontFace = ;
+    rasterizationInfo.depthBiasEnable = ;
+    rasterizationInfo.depthBiasConstantFactor = ;
+    rasterizationInfo.depthBiasClamp = ;
+    rasterizationInfo.depthBiasSlopeFactor = ;
+    rasterizationInfo.lineWidth = ;
+    createInfo.pRasterizationState = &rasterizationInfo;
+
+    VkPipelineMultisampleStateCreateInfo multisampleInfo = {};
+    multisampleInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
+    multisampleInfo.pNext = nullptr;
+    multisampleInfo.flags = 0;
+    multisampleInfo.rasterizationSamples = ;
+    multisampleInfo.sampleShadingEnable = ;
+    multisampleInfo.minSampleShading = ;
+    multisampleInfo.pSampleMask = ;
+    multisampleInfo.alphaToCoverageEnable = ;
+    multisampleInfo.alphaToOneEnable = ;
+    createInfo.pMultisampleState = &multisampleInfo;
+
+    VkPipelineDepthStencilStateCreateInfo depthStencilInfo = {};
+    depthStencilInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
+    depthStencilInfo.pNext = nullptr;
+    depthStencilInfo.flags = 0;
+    depthStencilInfo.depthTestEnable = ;
+    depthStencilInfo.depthWriteEnable = ;
+    depthStencilInfo.depthCompareOp = ;
+    depthStencilInfo.depthBoundsTestEnable = ;
+    depthStencilInfo.stencilTestEnable = ;
+    depthStencilInfo.front = ;
+    depthStencilInfo.back = ;
+    depthStencilInfo.minDepthBounds = ;
+    depthStencilInfo.maxDepthBounds = ;
+    createInfo.pDepthStencilState = &depthStencilInfo;
+
+    VkPipelineColorBlendStateCreateInfo blendInfo = {};
+    blendInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
+    blendInfo.pNext = nullptr;
+    blendInfo.flags = 0;
+    blendInfo.logicOpEnable = ;
+    blendInfo.logicOp = ;
+    blendInfo.attachmentCount = ;
+    blendInfo.pAttachments = ;
+    blendInfo.blendConstants[4] = ;
+    createInfo.pColorBlendState = &blendInfo;
+
+    VkPipelineDynamicStateCreateInfo dynamicStateInfo = {};
+    dynamicStateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
+    dynamicStateInfo.pNext = nullptr;
+    dynamicStateInfo.flags = 0;
+    dynamicStateInfo.dynamicStateCount = ;
+    dynamicStateInfo.pDynamicStates = ;
+    createInfo.pDynamicState = &dynamicStateInfo;
+
+    createInfo.layout = reg->getLayout(info.configIndex);
+    createInfo.renderPass = static_cast<const VulkanRenderPass*>(info.renderPass)->getRenderPass();
+    createInfo.subpass = info.subpass;
+    // TODO
+    createInfo.basePipelineHandle = nullptr;
+    createInfo.basePipelineIndex = -1;
+    drv::drv_assert(info.renderPass != VK_NULL_HANDLE);
     VkPipeline pipeline;
     // TODO pipeline cache
     VkResult result =
-      vkCreateGraphicsPipelines(convertDevice(device), nullptr, 1, &info, nullptr, &pipeline);
+      vkCreateGraphicsPipelines(convertDevice(device), nullptr, 1, &createInfo, nullptr, &pipeline);
     drv::drv_assert(result == VK_SUCCESS, "Could not create graphical pipeline");
 }

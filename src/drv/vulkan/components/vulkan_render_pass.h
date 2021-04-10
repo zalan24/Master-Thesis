@@ -19,6 +19,8 @@ class VulkanRenderPass final : public drv::RenderPass
 
     void build() override;
 
+    VkRenderPass getRenderPass() const { return renderPass; }
+
     bool needRecreation(const AttachmentData* attachments) override;
     void recreate(const AttachmentData* attachments) override;
     drv::FramebufferPtr createFramebuffer(const AttachmentData* attachments) const override;
