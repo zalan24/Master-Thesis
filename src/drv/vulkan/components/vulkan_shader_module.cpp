@@ -69,6 +69,14 @@ void VulkanShader::createGraphicalPipeline(const GraphicalPipelineCreateInfo& in
         stages[numStages].pSpecializationInfo = nullptr;  // TODO specialization consts
         numStages++;
     };
+    constexpr uint32_t MAX_DYNAMIC_STATES = 30;
+    StackMemory::MemoryHandle<VkDynamicState> dynamicStates(MAX_DYNAMIC_STATES, TEMPMEM);
+    uint32_t numDynamicStates = 0;
+    auto add_dynamic_state = [&](VkDynamicState state) {
+        drv::drv_assert(numDynamicStates < MAX_DYNAMIC_STATES);
+        dynamicStates[numDynamicStates++] = state;
+    };
+
     add_stage(VK_SHADER_STAGE_VERTEX_BIT, info.vs);
     add_stage(VK_SHADER_STAGE_FRAGMENT_BIT, info.ps);
     add_stage(VK_SHADER_STAGE_COMPUTE_BIT, info.cs);
@@ -96,7 +104,8 @@ void VulkanShader::createGraphicalPipeline(const GraphicalPipelineCreateInfo& in
     inputAssemblyInfo.pNext = nullptr;
     inputAssemblyInfo.flags = 0;
     inputAssemblyInfo.topology = static_cast<VkPrimitiveTopology>(info.topology);
-    inputAssemblyInfo.primitiveRestartEnable = VK_FALSE;  // TODO instancing
+    inputAssemblyInfo.primitiveRestartEnable =
+      VK_FALSE;  // TODO instancing or break up strip topology (like lines)
     createInfo.pInputAssemblyState = &inputAssemblyInfo;
 
     // TODO tessellation
@@ -111,10 +120,19 @@ void VulkanShader::createGraphicalPipeline(const GraphicalPipelineCreateInfo& in
     viewportInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
     viewportInfo.pNext = nullptr;
     viewportInfo.flags = 0;
-    viewportInfo.viewportCount = ;
-    viewportInfo.pViewports = ;
-    viewportInfo.scissorCount = ;
-    viewportInfo.pScissors = ;
+    VkViewport viewport;
+    viewport.x = info.viewport.x;
+    viewport.y = info.viewport.y;
+    viewport.width = info.viewport.width;
+    viewport.height = info.viewport.height;
+    viewport.minDepth = info.viewport.minDepth;
+    viewport.maxDepth = info.viewport.maxDepth;
+    VkRect2D scissor;
+    scissor = convertRect2D(info.scissor);
+    viewportInfo.viewportCount = 1;
+    viewportInfo.pViewports = &viewport;
+    viewportInfo.scissorCount = 1;
+    viewportInfo.pScissors = &scissor;
     createInfo.pViewportState = &viewportInfo;
 
     VkPipelineRasterizationStateCreateInfo rasterizationInfo = {};
@@ -175,8 +193,8 @@ void VulkanShader::createGraphicalPipeline(const GraphicalPipelineCreateInfo& in
     dynamicStateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
     dynamicStateInfo.pNext = nullptr;
     dynamicStateInfo.flags = 0;
-    dynamicStateInfo.dynamicStateCount = ;
-    dynamicStateInfo.pDynamicStates = ;
+    dynamicStateInfo.dynamicStateCount = numDynamicStates;
+    dynamicStateInfo.pDynamicStates = dynamicStates;
     createInfo.pDynamicState = &dynamicStateInfo;
 
     createInfo.layout = reg->getLayout(info.configIndex);

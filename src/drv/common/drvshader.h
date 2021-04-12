@@ -78,12 +78,23 @@ class DrvShader
         const char* entry = nullptr;
         ShaderModulePtr shaderModule = NULL_HANDLE;
     };
+    struct Viewport
+    {
+        float x = 0;
+        float y = 0;
+        float width = 0;
+        float height = 0;
+        float minDepth = 0;
+        float maxDepth = 0;
+    };
     struct GraphicalPipelineCreateInfo
     {
         const RenderPass* renderPass;
         const SubpassId subpass;
         uint32_t configIndex;
         PrimitiveTopology topology;
+        Viewport viewport;                  // 0 size = dynamic state
+        Rect2D scissor = {{0, 0}, {0, 0}};  // 0 size = dynamic state
         ShaderStage vs;
         ShaderStage ps;
         ShaderStage cs;
