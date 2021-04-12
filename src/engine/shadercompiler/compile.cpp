@@ -613,6 +613,9 @@ static ShaderBin::StageConfig read_stage_configs(
     resourceUsage.psUsage = read_used_resources(psInfo, resources);
     resourceUsage.csUsage = read_used_resources(csInfo, resources);
     ShaderBin::StageConfig ret;
+    TODO;  // add relevant pipeline states here
+    // assert if the value is already set (assest here won't work though)
+    // later there should be some kind of override priority or something like that
     if (auto itr = vsValues.find("entry"); itr != vsValues.end())
         ret.vs.entryPoint = itr->second;
     if (auto itr = psValues.find("entry"); itr != psValues.end())

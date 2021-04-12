@@ -92,12 +92,22 @@ class DrvShader
         const RenderPass* renderPass;
         const SubpassId subpass;
         uint32_t configIndex;
-        PrimitiveTopology topology;
         Viewport viewport;                  // 0 size = dynamic state
         Rect2D scissor = {{0, 0}, {0, 0}};  // 0 size = dynamic state
         ShaderStage vs;
         ShaderStage ps;
         ShaderStage cs;
+
+        // TODO import these from the ?object?
+        // the shader should have a way to set these too probably
+        PrimitiveTopology topology;
+        FrontFace frontFace;
+
+        // TODO import these from the shader
+        bool useDepthClamp;
+        PolygonMode polygonMode;
+        CullMode cullMode;
+        bool depthBiasEnable;
     };
 
     virtual void createGraphicalPipeline(const GraphicalPipelineCreateInfo& info) = 0;

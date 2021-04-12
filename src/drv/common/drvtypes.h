@@ -1429,4 +1429,23 @@ enum class PrimitiveTopology
     // TRIANGLE_STRIP_WITH_ADJACENCY = 9,
     // PATCH_LIST = 10
 };
+
+enum class PolygonMode {
+    FILL = 0,
+    LINE = 1,
+    POINT = 2,
+};
+
+enum class CullMode {
+    NONE = 0,
+    FRONT_BIT = 0x00000001,
+    BACK_BIT = 0x00000002,
+    FRONT_AND_BACK = 0x00000003,
+};
+
+enum class FrontFace {
+    COUNTER_CLOCKWISE = 0,
+    CLOCKWISE = 1,
+};
+
 };  // namespace drv

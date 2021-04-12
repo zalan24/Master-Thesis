@@ -139,16 +139,17 @@ void VulkanShader::createGraphicalPipeline(const GraphicalPipelineCreateInfo& in
     rasterizationInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
     rasterizationInfo.pNext = nullptr;
     rasterizationInfo.flags = 0;
-    rasterizationInfo.depthClampEnable = ;
-    rasterizationInfo.rasterizerDiscardEnable = ;
-    rasterizationInfo.polygonMode = ;
-    rasterizationInfo.cullMode = ;
-    rasterizationInfo.frontFace = ;
-    rasterizationInfo.depthBiasEnable = ;
-    rasterizationInfo.depthBiasConstantFactor = ;
-    rasterizationInfo.depthBiasClamp = ;
-    rasterizationInfo.depthBiasSlopeFactor = ;
-    rasterizationInfo.lineWidth = ;
+    rasterizationInfo.depthClampEnable = info.useDepthClamp ? VK_TRUE : VK_FALSE;
+    rasterizationInfo.rasterizerDiscardEnable = VK_FALSE;
+    rasterizationInfo.polygonMode = static_cast<VkPolygonMode>(info.polygonMode);
+    rasterizationInfo.cullMode = static_cast<VkCullModeFlagBits>(info.cullMode);
+    rasterizationInfo.frontFace = static_cast<VkFrontFace>(info.frontFace);
+    rasterizationInfo.depthBiasEnable = info.depthBiasEnable ? VK_TRUE : VK_FALSE;
+    drv::drv_assert(!info.depthBiasEnable, "Implement depth bias");  // TODO depth bias
+    rasterizationInfo.depthBiasConstantFactor = 0;
+    rasterizationInfo.depthBiasClamp = 0;
+    rasterizationInfo.depthBiasSlopeFactor = 0;
+    rasterizationInfo.lineWidth = 1.f;  // TODO enable wide lines
     createInfo.pRasterizationState = &rasterizationInfo;
 
     VkPipelineMultisampleStateCreateInfo multisampleInfo = {};
