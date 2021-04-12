@@ -75,7 +75,7 @@ class DrvShader
  protected:
     struct ShaderStage
     {
-        const char *entry = nullptr;
+        const char* entry = nullptr;
         ShaderModulePtr shaderModule = NULL_HANDLE;
     };
     struct GraphicalPipelineCreateInfo
@@ -83,6 +83,7 @@ class DrvShader
         const RenderPass* renderPass;
         const SubpassId subpass;
         uint32_t configIndex;
+        PrimitiveTopology topology;
         ShaderStage vs;
         ShaderStage ps;
         ShaderStage cs;

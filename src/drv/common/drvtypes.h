@@ -1312,13 +1312,15 @@ struct ClearDepthStencilValue
 
 struct ClearValue
 {
-    enum Type {
+    enum Type
+    {
         COLOR,
         DEPTH
     } type;
-    union Value {
-    ClearColorValue color;
-    ClearDepthStencilValue depthStencil;
+    union Value
+    {
+        ClearColorValue color;
+        ClearDepthStencilValue depthStencil;
     } value;
 };
 
@@ -1405,9 +1407,26 @@ struct TextureInfo
     // ImageAspectBitType aspects;
 };
 
-struct ClearRect {
+struct ClearRect
+{
     Rect2D rect;
     uint32_t baseLayer;
     uint32_t layerCount;
+};
+
+enum class PrimitiveTopology
+{
+    POINT_LIST = 0,
+    LINE_LIST = 1,
+    LINE_STRIP = 2,
+    TRIANGLE_LIST = 3,
+    TRIANGLE_STRIP = 4,
+    TRIANGLE_FAN = 5,
+    // TODO tessellation or geometry shader
+    // LINE_LIST_WITH_ADJACENCY = 6,
+    // LINE_STRIP_WITH_ADJACENCY = 7,
+    // TRIANGLE_LIST_WITH_ADJACENCY = 8,
+    // TRIANGLE_STRIP_WITH_ADJACENCY = 9,
+    // PATCH_LIST = 10
 };
 };  // namespace drv

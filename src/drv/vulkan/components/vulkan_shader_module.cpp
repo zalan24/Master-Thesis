@@ -84,25 +84,27 @@ void VulkanShader::createGraphicalPipeline(const GraphicalPipelineCreateInfo& in
     vertexInputStateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
     vertexInputStateInfo.pNext = nullptr;
     vertexInputStateInfo.flags = 0;
-    vertexInputStateInfo.vertexBindingDescriptionCount = ;
-    vertexInputStateInfo.pVertexBindingDescriptions = ;
-    vertexInputStateInfo.vertexAttributeDescriptionCount = ;
-    vertexInputStateInfo.pVertexAttributeDescriptions = ;
+    // TODO vertex input
+    vertexInputStateInfo.vertexBindingDescriptionCount = 0;
+    vertexInputStateInfo.pVertexBindingDescriptions = nullptr;
+    vertexInputStateInfo.vertexAttributeDescriptionCount = 0;
+    vertexInputStateInfo.pVertexAttributeDescriptions = nullptr;
     createInfo.pVertexInputState = &vertexInputStateInfo;
 
     VkPipelineInputAssemblyStateCreateInfo inputAssemblyInfo = {};
     inputAssemblyInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
     inputAssemblyInfo.pNext = nullptr;
     inputAssemblyInfo.flags = 0;
-    inputAssemblyInfo.topology = ;
-    inputAssemblyInfo.primitiveRestartEnable = ;
+    inputAssemblyInfo.topology = static_cast<VkPrimitiveTopology>(info.topology);
+    inputAssemblyInfo.primitiveRestartEnable = VK_FALSE;  // TODO instancing
     createInfo.pInputAssemblyState = &inputAssemblyInfo;
 
+    // TODO tessellation
     VkPipelineTessellationStateCreateInfo tessellationInfo = {};
     tessellationInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_TESSELLATION_STATE_CREATE_INFO;
     tessellationInfo.pNext = nullptr;
     tessellationInfo.flags = 0;
-    tessellationInfo.patchControlPoints = ;
+    tessellationInfo.patchControlPoints = 0;
     createInfo.pTessellationState = &tessellationInfo;
 
     VkPipelineViewportStateCreateInfo viewportInfo = {};
