@@ -1067,6 +1067,34 @@ bool compile_shader(const Compiler* compiler, ShaderBin& shaderBin, Cache& cache
     }
 
     cxx << "}\n";
+    header << "    static uint32_t getVariantId(";
+    cxx << "uint32_t " << registryClassName << "::getVariantId(";
+    bool first = true;
+    for (const std::string& inc : allIncludes) {
+        auto itr = includeData.find(inc);
+        assert(itr != includeData.end());
+        if (!first) {
+            header << ", ";
+            cxx << ", ";
+            first = false;
+        }
+        header << "const " << itr->second.desriptorClassName << "::VariantDesc &"
+               << itr->second.name;
+        cxx << "const " << itr->second.desriptorClassName << "::VariantDesc &" << itr->second.name;
+    }
+    header << ") override;\n";
+    cxx << ") {\n";
+    cxx << "    uint32_t ret = 0;\n";
+    for (const std::string& inc : allIncludes) {
+        auto itr = includeData.find(inc);
+        assert(itr != includeData.end());
+        auto mulItr = variantIdMultiplier.find(inc);
+        assert(mulItr != variantIdMultiplier.end());
+        cxx << "    ret += desc_" << itr->second.name << ".getLocalVariantId() * " << mulItr->second
+            << ";\n";
+    }
+    cxx << "    return ret;\n";
+    cxx << "}\n";
     header << "    friend class " << className << ";\n";
     header << "  protected:\n";
     // shaderObj

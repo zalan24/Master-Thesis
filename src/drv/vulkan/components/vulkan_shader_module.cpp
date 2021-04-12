@@ -22,7 +22,7 @@ drv::ShaderModulePtr DrvVulkan::create_shader_module(drv::LogicalDevicePtr devic
     VkResult result =
       vkCreateShaderModule(reinterpret_cast<VkDevice>(device), &createInfo, nullptr, &shaderModule);
     drv::drv_assert(result == VK_SUCCESS, "Could not create shader module");
-    return reinterpret_cast<VkShaderModule>(shaderModule);
+    return reinterpret_cast<drv::ShaderModulePtr>(shaderModule);
 }
 
 bool DrvVulkan::destroy_shader_module(drv::LogicalDevicePtr device, drv::ShaderModulePtr module) {
@@ -53,12 +53,32 @@ std::unique_ptr<drv::DrvShader> DrvVulkan::create_shader(drv::LogicalDevicePtr d
 }
 
 void VulkanShader::createGraphicalPipeline(const GraphicalPipelineCreateInfo& info) {
+    constexpr uint32_t MAX_STAGES = 6;
+    StackMemory::MemoryHandle<VkPipelineShaderStageCreateInfo> stages(MAX_STAGES, TEMPMEM);
+    uint32_t numStages = 0;
+    auto add_stage = [&](VkShaderStageFlagBits stage, const ShaderStage& stageInfo) {
+        if (stageInfo.shaderModule == drv::NULL_HANDLE)
+            return;
+        drv::drv_assert(numStages < MAX_STAGES);
+        stages[numStages].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+        stages[numStages].pNext = nullptr;
+        stages[numStages].flags = 0;
+        stages[numStages].stage = stage;
+        stages[numStages].module = reinterpret_cast<VkShaderModule>(stageInfo.shaderModule);
+        stages[numStages].pName = stageInfo.entry;
+        stages[numStages].pSpecializationInfo = nullptr;  // TODO specialization consts
+        numStages++;
+    };
+    add_stage(VK_SHADER_STAGE_VERTEX_BIT, info.vs);
+    add_stage(VK_SHADER_STAGE_FRAGMENT_BIT, info.ps);
+    add_stage(VK_SHADER_STAGE_COMPUTE_BIT, info.cs);
+
     VkGraphicsPipelineCreateInfo createInfo = {};
     createInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
     createInfo.pNext = nullptr;
     createInfo.flags = 0;  // derivatives
-    createInfo.stageCount = ;
-    createInfo.pStages = ;
+    createInfo.stageCount = numStages;
+    createInfo.pStages = stages;
 
     VkPipelineVertexInputStateCreateInfo vertexInputStateInfo = {};
     vertexInputStateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;

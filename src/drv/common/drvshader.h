@@ -73,11 +73,19 @@ class DrvShader
     virtual ~DrvShader() {}
 
  protected:
+    struct ShaderStage
+    {
+        const char *entry = nullptr;
+        ShaderModulePtr shaderModule = NULL_HANDLE;
+    };
     struct GraphicalPipelineCreateInfo
     {
         const RenderPass* renderPass;
         const SubpassId subpass;
         uint32_t configIndex;
+        ShaderStage vs;
+        ShaderStage ps;
+        ShaderStage cs;
     };
 
     virtual void createGraphicalPipeline(const GraphicalPipelineCreateInfo& info) = 0;

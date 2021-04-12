@@ -292,6 +292,7 @@ Get a triangle on screen:
     ☐ Check out "streamline trace": https://github.com/KhronosGroup/Vulkan-Samples/blob/master/samples/performance/render_passes/render_passes_tutorial.md
     ☐ Optimize push constant ranges: generate_resource_object() in compile.cpp
     ☐ Mesh shading: https://www.khronos.org/registry/vulkan/specs/1.2-extensions/man/html/VkPipelineInputAssemblyStateCreateInfo.html
+    ☐ Specialization constants: https://www.khronos.org/registry/vulkan/specs/1.2-extensions/html/vkspec.html#pipelines-specialization-constants
 
 Cleanup & other:
     ☐ Remove useless common driver stuff (drv/common)
