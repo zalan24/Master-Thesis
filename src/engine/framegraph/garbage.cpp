@@ -58,6 +58,10 @@ void Garbage::releaseImageView(drv::ImageView&& view) {
     trash->resources.push_back(std::move(view));
 }
 
+void Garbage::releaseShaderObj(std::unique_ptr<drv::DrvShader>&& shaderObj) {
+    trash->resources.push_back(std::move(shaderObj));
+}
+
 FrameId Garbage::getFrameId() const {
     return frameId;
 }

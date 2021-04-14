@@ -303,3 +303,19 @@ Target safe_cast(T&& value) {
 #else
 #    define BREAK_POINT static_cast<void>(0)
 #endif
+
+union FourC
+{
+    char chars[4];
+    unsigned int value;
+};
+
+FourC operator"" _4c(const char* chars, unsigned long size) {
+    FourC ret;
+    ret.value = 0;
+    ret.chars[0] = size > 0 ? chars[0] : 0;
+    ret.chars[1] = size > 1 ? chars[1] : 0;
+    ret.chars[2] = size > 2 ? chars[2] : 0;
+    ret.chars[3] = size > 3 ? chars[3] : 0;
+    return ret;
+}

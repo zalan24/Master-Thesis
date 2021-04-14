@@ -50,6 +50,7 @@ class Garbage
     void resetCommandBuffer(drv::CommandBufferCirculator::CommandBufferHandle&& cmdBuffer);
     void releaseEvent(EventPool::EventHandle&& event);
     void releaseImageView(drv::ImageView&& view);
+    void releaseShaderObj(std::unique_ptr<drv::DrvShader>&& shaderObj);
     FrameId getFrameId() const;
 
     struct AllocatorData
@@ -206,7 +207,7 @@ class Garbage
     template <typename T>
     using Stack = std::stack<T, Deque<T>>;
 
-    using GeneralResource = std::variant<drv::ImageView>;
+    using GeneralResource = std::variant<drv::ImageView, std::unique_ptr<drv::DrvShader>>;
 
  private:
     FrameId frameId;

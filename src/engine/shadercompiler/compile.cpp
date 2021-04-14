@@ -646,7 +646,8 @@ static bool generate_binary(const Compiler* compiler, const Resources& resources
                             ShaderBin::ShaderData& shaderData,
                             const std::vector<Variants>& variants, ShaderGenerationInput&& input,
                             const std::unordered_map<std::string, uint32_t>& variantParamMultiplier,
-                            std::map<PipelineResourceUsage, ResourceObject>& resourceObjects) {
+                            std::map<PipelineResourceUsage, ResourceObject>& resourceObjects,
+                            std::vector<PipelineResourceUsage>& varintToResourceUsage) {
     std::set<std::string> variantParams;
     size_t count = 1;
     shaderData.variantParamNum = 0;
@@ -684,6 +685,7 @@ static bool generate_binary(const Compiler* compiler, const Resources& resources
     shaderData.stages.resize(shaderData.totalVariantCount);
     std::unordered_map<ShaderHash, std::pair<size_t, size_t>> codeOffsets;
     std::unordered_map<ShaderHash, std::pair<size_t, size_t>> binaryOffsets;
+    varintToResourceUsage.resize(shaderData.totalVariantCount);
     for (uint32_t variantId = 0; variantId < shaderData.totalVariantCount; ++variantId) {
         PipelineResourceUsage resourceUsage;
         ShaderBin::StageConfig cfg =
@@ -692,6 +694,7 @@ static bool generate_binary(const Compiler* compiler, const Resources& resources
         if (resourceObjects.find(resourceUsage) == resourceObjects.end())
             resourceObjects[resourceUsage] = generate_resource_object(resources, resourceUsage);
         const ResourceObject& resourceObj = resourceObjects[resourceUsage];
+        varintToResourceUsage[variantId] = resourceUsage;
         // TODO add resource packs to shader codes
         shaderData.stages[variantId].configs = cfg;
         if (cfg.vs.entryPoint != ""
@@ -906,7 +909,9 @@ bool compile_shader(const Compiler* compiler, ShaderBin& shaderBin, Cache& cache
     header << "#include <shaderobjectregistry.h>\n";
     header << "#include <shaderdescriptorcollection.h>\n\n";
     cxx << "#include \"" << headerFileName.string() << "\"\n\n";
-    cxx << "#include <drv.h>\n\n";
+    cxx << "#include <drv.h>\n";
+    cxx << "#include <garbage.h>\n\n";
+    header << "class Garbage;\n\n";
     std::set<std::string> includes;
     std::set<std::string> progress;
     std::vector<std::string> directIncludes;
@@ -975,8 +980,9 @@ bool compile_shader(const Compiler* compiler, ShaderBin& shaderBin, Cache& cache
     }
     ShaderBin::ShaderData shaderData;
     std::map<PipelineResourceUsage, ResourceObject> resourceObjects;
+    std::vector<PipelineResourceUsage> varintToResourceUsage;
     if (!generate_binary(compiler, resources, shaderData, variants, std::move(genInput),
-                         variantParamMultiplier, resourceObjects)) {
+                         variantParamMultiplier, resourceObjects, varintToResourceUsage)) {
         std::cerr << "Could not generate binary: " << shaderFile << std::endl;
         return false;
     }
@@ -1012,8 +1018,6 @@ bool compile_shader(const Compiler* compiler, ShaderBin& shaderBin, Cache& cache
         }
     }
 
-    TODO;  // add variant id calculation here
-    TODO;  // add variant id -> layout index mapping here
     header << "class " << registryClassName << " final : public ShaderObjectRegistry {\n";
     header << "  public:\n";
     header << "    " << registryClassName
@@ -1038,11 +1042,13 @@ bool compile_shader(const Compiler* compiler, ShaderBin& shaderBin, Cache& cache
     cxx << "        throw std::runtime_error(\"Shader not found: " << shaderName << "\");\n";
     cxx << "    loadShader(*shader);\n";
 
+    std::map<PipelineResourceUsage, uint32_t> resourceUsageToConfigId;
+    uint32_t configId = 0;
     for (const auto& [usage, object] : resourceObjects) {
         cxx << "    {\n";
         cxx << "        drv::DrvShaderObjectRegistry::PushConstantRange ranges["
             << object.packs.size() << "];\n";
-        uint32_t id = 0;
+        uint32_t rangeId = 0;
         for (const auto& [stages, pack] : object.packs) {
             cxx << "        ranges[" << id << "].stages = 0";
             if (stages & ResourceObject::VS)
@@ -1052,26 +1058,40 @@ bool compile_shader(const Compiler* compiler, ShaderBin& shaderBin, Cache& cache
             if (stages & ResourceObject::CS)
                 cxx << " | drv::ShaderStage::COMPUTE_BIT";
             cxx << ";\n";
-            cxx << "        ranges[" << id << "].offset = ";
-            if (id == 0)
-                cxx << "0";
-            else
-                cxx << "ranges[" << id - 1 << "].offset + ranges[" << id - 1 << "].size";
-            cxx << ";\n";
-            cxx << "        ranges[" << id << "].size = sizeof(" << exportedPacks.find(pack)->second
-                << ");\n";
-            id++;
+            if (!pack.shaderVars.empty()) {
+                cxx << "        ranges[" << rangeId << "].offset = ";
+                if (rangeId == 0)
+                    cxx << "0";
+                else
+                    cxx << "ranges[" << rangeId - 1 << "].offset + ranges[" << rangeId - 1
+                        << "].size";
+                cxx << ";\n";
+                cxx << "        ranges[" << rangeId << "].size = sizeof("
+                    << exportedPacks.find(pack)->second << ");\n";
+                rangeId++;
+            }
         }
         cxx << "        drv::DrvShaderObjectRegistry::ConfigInfo config;\n";
-        cxx << "        config.numRanges = " << object.packs.size() << ";\n";
+        cxx << "        config.numRanges = " << rangeId << ";\n";
         cxx << "        config.ranges = ranges;\n";
         cxx << "        reg->addConfig(config);\n";
         cxx << "    }\n";
+        resourceUsageToConfigId[usage] = configId++;
     }
+    cxx << "}\n\n";
 
-    cxx << "}\n";
-    header << "    static uint32_t getVariantId(";
-    cxx << "uint32_t " << registryClassName << "::getVariantId(";
+    cxx << "static uint32_t CONFIG_INDEX[] = {";
+    for (uint32_t i = 0; i < varintToResourceUsage.size(); ++i) {
+        if (i > 0)
+            cxx << ", ";
+        auto itr = resourceUsageToConfigId.find(varintToResourceUsage[i]);
+        assert(itr != varintToResourceUsage[i].end());
+        cxx << itr->second;
+    }
+    cxx << "};\n\n";
+
+    header << "    static uint32_t get_variant_id(";
+    cxx << "uint32_t " << registryClassName << "::get_variant_id(";
     bool first = true;
     for (const std::string& inc : allIncludes) {
         auto itr = includeData.find(inc);
@@ -1098,6 +1118,10 @@ bool compile_shader(const Compiler* compiler, ShaderBin& shaderBin, Cache& cache
     }
     cxx << "    return ret;\n";
     cxx << "}\n";
+    header << "    static uint32_t get_config_id(uint32_t variantId);\n";
+    cxx << "uint32_t " << registryClassName << "::get_config_id(uint32_t variantId) {\n";
+    cxx << "    return CONFIG_INDEX[variantId];\n";
+    cxx << "}\n";
     header << "    friend class " << className << ";\n";
     header << "  protected:\n";
     // shaderObj
@@ -1118,11 +1142,11 @@ bool compile_shader(const Compiler* compiler, ShaderBin& shaderBin, Cache& cache
     cxx << "  : shader(drv::create_shader(device, reg->reg.get()))\n";
     cxx << "{\n";
     cxx << "}\n\n";
-    TODO;  // pass the cleared renderpass ?and a garbage?
-    header << "    void clear();\n";
-    cxx << "void " << className << "::clear() {\n";
-    cxx
-      << "    // TODO probably return unique ptr, then the caller can put it in the garbage or just ignore it for immediate destruction\n";
+    header << "    void clear(Garbage *trashBin);\n";
+    cxx << "void " << className << "::clear(Garbage *trashBin) {\n";
+    cxx << "    if (trashBin != nullptr)\n";
+    cxx << "        trashBin->releaseShaderObj(std::move(shader));\n";
+    cxx << "    shader = drv::create_shader(device, reg->reg.get());\n";
     cxx << "}\n\n";
     header << "    void prepare(const drv::RenderPass *renderPass, drv::SubpassId subpass";
     cxx << "void " << className
@@ -1195,7 +1219,6 @@ bool compile_shader(const Compiler* compiler, ShaderBin& shaderBin, Cache& cache
     //               << ";\n";
     // }
     header << "  private:\n";
-    TODO;  // use several drv::DrvShader objects. One for each renderpass that uses the shader
     header << "    std::unique_ptr<drv::DrvShader> shader;\n";
     header << "};\n";
 
