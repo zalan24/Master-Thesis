@@ -6,7 +6,6 @@
 #include <drv_wrappers.h>
 
 #include "shaderbin.h"
-// #include "shaderdescriptorcollection.h"
 
 class ShaderObjectRegistry
 {
@@ -20,10 +19,11 @@ class ShaderObjectRegistry
 
     void loadShader(const ShaderBin::ShaderData& data);
 
+    friend class ShaderObject;
+
  protected:
     using VariantId = uint32_t;
     static constexpr VariantId INVALID_SHADER = std::numeric_limits<VariantId>::max();
-    //  virtual VariantId getShaderVariant(const ShaderDescriptorCollection* descriptors) const = 0;
 
     ~ShaderObjectRegistry();
 
@@ -39,4 +39,7 @@ class ShaderObjectRegistry
     std::vector<drv::ShaderModulePtr> shaders;
 
     void close();
+
+ protected:
+    std::unique_ptr<drv::DrvShaderObjectRegistry> reg;
 };

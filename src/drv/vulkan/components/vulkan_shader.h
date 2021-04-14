@@ -56,7 +56,7 @@ class VulkanShaderObjRegistry final : public drv::DrvShaderObjectRegistry
         }
         VkPipelineLayoutCreateInfo info = {};
         info.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-        info.pNext = 0;
+        info.pNext = nullptr;
         info.flags = 0;
         info.setLayoutCount = 0;
         info.pSetLayouts = nullptr;  // TODO

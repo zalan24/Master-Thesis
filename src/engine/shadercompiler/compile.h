@@ -35,7 +35,7 @@ struct VariantConfig
 
 struct ResourceUsage
 {
-    std::unordered_set<std::string> usedVars;
+    std::set<std::string> usedVars;
     // TODO bindings
     bool operator<(const ResourceUsage& other) const {
         if (usedVars.size() < other.usedVars.size())

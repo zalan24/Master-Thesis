@@ -613,7 +613,7 @@ static ShaderBin::StageConfig read_stage_configs(
     resourceUsage.psUsage = read_used_resources(psInfo, resources);
     resourceUsage.csUsage = read_used_resources(csInfo, resources);
     ShaderBin::StageConfig ret;
-    TODO;  // add relevant pipeline states here
+    // TODO;  // add relevant pipeline states here
     // assert if the value is already set (assest here won't work though)
     // later there should be some kind of override priority or something like that
     if (auto itr = vsValues.find("entry"); itr != vsValues.end())
@@ -905,13 +905,12 @@ bool compile_shader(const Compiler* compiler, ShaderBin& shaderBin, Cache& cache
     header << "#include <cstddef>\n";
     header << "#include <drvshader.h>\n";
     header << "#include <shaderbin.h>\n";
+    header << "#include <shaderobject.h>\n";
     header << "#include <drvrenderpass.h>\n";
     header << "#include <shaderobjectregistry.h>\n";
     header << "#include <shaderdescriptorcollection.h>\n\n";
     cxx << "#include \"" << headerFileName.string() << "\"\n\n";
     cxx << "#include <drv.h>\n";
-    cxx << "#include <garbage.h>\n\n";
-    header << "class Garbage;\n\n";
     std::set<std::string> includes;
     std::set<std::string> progress;
     std::vector<std::string> directIncludes;
@@ -1034,7 +1033,6 @@ bool compile_shader(const Compiler* compiler, ShaderBin& shaderBin, Cache& cache
     header << ");\n";
     cxx << ")\n";
     cxx << "  : ShaderObjectRegistry(device)\n";
-    cxx << "  , reg(drv::create_shader_obj_registry(device))\n";
     cxx << "{\n";
     cxx << "    const ShaderBin::ShaderData *shader = shaderBin.getShader(\"" << shaderName
         << "\");\n";
@@ -1050,15 +1048,15 @@ bool compile_shader(const Compiler* compiler, ShaderBin& shaderBin, Cache& cache
             << object.packs.size() << "];\n";
         uint32_t rangeId = 0;
         for (const auto& [stages, pack] : object.packs) {
-            cxx << "        ranges[" << id << "].stages = 0";
-            if (stages & ResourceObject::VS)
-                cxx << " | drv::ShaderStage::VERTEX_BIT";
-            if (stages & ResourceObject::PS)
-                cxx << " | drv::ShaderStage::FRAGMENT_BIT";
-            if (stages & ResourceObject::CS)
-                cxx << " | drv::ShaderStage::COMPUTE_BIT";
-            cxx << ";\n";
             if (!pack.shaderVars.empty()) {
+                cxx << "        ranges[" << rangeId << "].stages = 0";
+                if (stages & ResourceObject::VS)
+                    cxx << " | drv::ShaderStage::VERTEX_BIT";
+                if (stages & ResourceObject::PS)
+                    cxx << " | drv::ShaderStage::FRAGMENT_BIT";
+                if (stages & ResourceObject::CS)
+                    cxx << " | drv::ShaderStage::COMPUTE_BIT";
+                cxx << ";\n";
                 cxx << "        ranges[" << rangeId << "].offset = ";
                 if (rangeId == 0)
                     cxx << "0";
@@ -1085,7 +1083,7 @@ bool compile_shader(const Compiler* compiler, ShaderBin& shaderBin, Cache& cache
         if (i > 0)
             cxx << ", ";
         auto itr = resourceUsageToConfigId.find(varintToResourceUsage[i]);
-        assert(itr != varintToResourceUsage[i].end());
+        assert(itr != resourceUsageToConfigId.end());
         cxx << itr->second;
     }
     cxx << "};\n\n";
@@ -1099,13 +1097,14 @@ bool compile_shader(const Compiler* compiler, ShaderBin& shaderBin, Cache& cache
         if (!first) {
             header << ", ";
             cxx << ", ";
-            first = false;
         }
+        else
+            first = false;
         header << "const " << itr->second.desriptorClassName << "::VariantDesc &"
                << itr->second.name;
         cxx << "const " << itr->second.desriptorClassName << "::VariantDesc &" << itr->second.name;
     }
-    header << ") override;\n";
+    header << ");\n";
     cxx << ") {\n";
     cxx << "    uint32_t ret = 0;\n";
     for (const std::string& inc : allIncludes) {
@@ -1113,7 +1112,7 @@ bool compile_shader(const Compiler* compiler, ShaderBin& shaderBin, Cache& cache
         assert(itr != includeData.end());
         auto mulItr = variantIdMultiplier.find(inc);
         assert(mulItr != variantIdMultiplier.end());
-        cxx << "    ret += desc_" << itr->second.name << ".getLocalVariantId() * " << mulItr->second
+        cxx << "    ret += " << itr->second.name << ".getLocalVariantId() * " << mulItr->second
             << ";\n";
     }
     cxx << "    return ret;\n";
@@ -1129,25 +1128,18 @@ bool compile_shader(const Compiler* compiler, ShaderBin& shaderBin, Cache& cache
     // shaderObj
     //   << "        return static_cast<const Descriptor*>(descriptors)->getLocalVariantId();\n";
     // shaderObj << "    }\n";
-    header << "  private:\n";
-    header << "    std::unique_ptr<drv::DrvShaderObjectRegistry> reg;\n";
     header << "};\n\n";
 
-    header << "class " << className << " {\n";
+    header << "class " << className << " final : public ShaderObject {\n";
     header << "  public:\n";
     header << "    " << className << "(drv::LogicalDevicePtr device, const " << registryClassName
            << " *reg);\n";
-    cxx << className << "::" << className << "(drv::LogicalDevicePtr device, const "
-        << registryClassName << " *reg)\n";
-    cxx << "  : shader(drv::create_shader(device, reg->reg.get()))\n";
+    cxx << className << "::" << className << "(drv::LogicalDevicePtr _device, const "
+        << registryClassName << " *_reg)\n";
+    cxx << "  : ShaderObject(_device, _reg)\n";
     cxx << "{\n";
     cxx << "}\n\n";
-    header << "    void clear(Garbage *trashBin);\n";
-    cxx << "void " << className << "::clear(Garbage *trashBin) {\n";
-    cxx << "    if (trashBin != nullptr)\n";
-    cxx << "        trashBin->releaseShaderObj(std::move(shader));\n";
-    cxx << "    shader = drv::create_shader(device, reg->reg.get());\n";
-    cxx << "}\n\n";
+    header << "    ~" << className << "() override {}\n";
     header << "    void prepare(const drv::RenderPass *renderPass, drv::SubpassId subpass";
     cxx << "void " << className
         << "::prepare(const drv::RenderPass *renderPass, drv::SubpassId subpass";
@@ -1218,8 +1210,6 @@ bool compile_shader(const Compiler* compiler, ShaderBin& shaderBin, Cache& cache
     //     shaderObj << "    " << itr->second.desriptorClassName << " desc_" << itr->second.name
     //               << ";\n";
     // }
-    header << "  private:\n";
-    header << "    std::unique_ptr<drv::DrvShader> shader;\n";
     header << "};\n";
 
     registry.includes << "#include <" << headerFileName.string() << ">\n";

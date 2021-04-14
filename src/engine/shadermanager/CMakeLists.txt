@@ -7,5 +7,5 @@ set_target_properties(  AnimationsShaderManager
                         COMPILE_FLAGS ${TARGETCOMPILEFLAGS}
                         LINK_OPTIONS "${TARGET_LINK_FLAGS}")
 target_include_directories(AnimationsShaderManager PUBLIC . ${CMAKE_CURRENT_BINARY_DIR})
-target_link_libraries(AnimationsShaderManager PRIVATE AnimationsSerializable)
+target_link_libraries(AnimationsShaderManager PRIVATE AnimationsSerializable AnimationsFramegraph)
 target_link_libraries(AnimationsShaderManager PUBLIC AnimationsDrv glm_external)

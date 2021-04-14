@@ -2,7 +2,8 @@
 
 #include <unordered_map>
 
-ShaderObjectRegistry::ShaderObjectRegistry(drv::LogicalDevicePtr _device) : device(_device) {
+ShaderObjectRegistry::ShaderObjectRegistry(drv::LogicalDevicePtr _device)
+  : device(_device), reg(drv::create_shader_obj_registry(device)) {
 }
 
 void ShaderObjectRegistry::close() {
@@ -31,10 +32,11 @@ ShaderObjectRegistry::~ShaderObjectRegistry() {
     close();
 }
 
-ShaderObjectRegistry::ShaderObjectRegistry(ShaderObjectRegistry&& other) {
-    device = other.device;
-    variants = std::move(other.variants);
-    shaders = std::move(other.shaders);
+ShaderObjectRegistry::ShaderObjectRegistry(ShaderObjectRegistry&& other)
+  : device(other.device),
+    variants(std::move(other.variants)),
+    shaders(std::move(other.shaders)),
+    reg(std::move(other.reg)) {
     other.device = drv::NULL_HANDLE;
 }
 
@@ -45,6 +47,7 @@ ShaderObjectRegistry& ShaderObjectRegistry::operator=(ShaderObjectRegistry&& oth
     device = other.device;
     variants = std::move(other.variants);
     shaders = std::move(other.shaders);
+    reg = std::move(other.reg);
     other.device = drv::NULL_HANDLE;
     return *this;
 }

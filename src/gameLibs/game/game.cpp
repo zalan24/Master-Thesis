@@ -92,7 +92,8 @@ void Game::recreateViews(uint32_t imageCount, const drv::ImagePtr* images) {
 }
 
 void Game::initShader() {
-    testShader.clear();  // TODO
+    engine->getGarbageSystem()->useGarbage(
+      [this](Garbage* trashBin) { testShader.clear(trashBin); });
     shader_global_descriptor::VariantDesc globalDesc;
     shader_test_descriptor::VariantDesc blueVariant;
     shader_test_descriptor::VariantDesc greenVariant;

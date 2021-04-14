@@ -310,7 +310,7 @@ union FourC
     unsigned int value;
 };
 
-FourC operator"" _4c(const char* chars, unsigned long size) {
+inline FourC operator"" _4c(const char* chars, size_t size) {
     FourC ret;
     ret.value = 0;
     ret.chars[0] = size > 0 ? chars[0] : 0;
