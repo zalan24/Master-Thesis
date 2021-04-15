@@ -19,26 +19,42 @@ void ShaderObject::clear(Garbage* trashBin) {
     shader = drv::create_shader(device, reg->reg.get());
 }
 
+drv::DrvShader::ShaderStage ShaderObject::getShaderStage(
+  const ShaderObjectRegistry::VariantId& variant) {
+    if (variant == ShaderObjectRegistry::INVALID_SHADER)
+        return {};
+    drv::DrvShader::ShaderStage ret;
+    ret.entry = ;
+    ret.shaderModule = reg->shaders[variant];
+}
+
 drv::DrvShader::GraphicalPipelineCreateInfo ShaderObject::getGraphicsPipelineCreateInfo(
   const GraphicsPipelineDescriptor& desc) const {
     drv::DrvShader::GraphicalPipelineCreateInfo ret;
 
-    // ret.renderPass = ;
-    // ret.subpass = ;
-    // ret.configIndex = ;
-    // ret.viewport = ;
-    // ret.scissor = ;
-    // ret.vs = ;
-    // ret.ps = ;
-    // ret.cs = ;
+    ret.renderPass = desc.renderPass;
+    ret.subpass = desc.subpass;
+    ret.configIndex = desc.configIndex;
+    ret.sampleCount = ;
+    ret.viewport = ;
+    ret.scissor = ;
+    ret.numAttachments = ;
+    ret.attachmentStates = ;
 
-    // ret.topology = ;
-    // ret.frontFace = ;
+    ret.topology = drv::PrimitiveTopology::TRIANGLE_LIST;  // TODO
+    ret.frontFace = drv::FrontFace::CLOCKWISE;             // TODO
 
-    // ret.useDepthClamp = ;
-    // ret.polygonMode = ;
-    // ret.cullMode = ;
-    // ret.depthBiasEnable = ;
+    ret.vs = getShaderStage(reg->variants[desc.variantId].vsOffset);
+    ret.ps = getShaderStage(reg->variants[desc.variantId].psOffset);
+    ret.cs = {};
+    ret.useDepthClamp = ;
+    ret.polygonMode = ;
+    ret.cullMode = ;
+    ret.depthBiasEnable = ;
+    ret.depthTest = ;
+    ret.depthWrite = ;
+    ret.depthCompare = ;
+    ret.stencilTest = ;
     throw std::runtime_error("Unimplemented");
 }
 

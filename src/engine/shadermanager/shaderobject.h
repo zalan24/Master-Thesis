@@ -36,8 +36,11 @@ class ShaderObject
 
     struct GraphicsPipelineDescriptor
     {
+        drv::RenderPass* renderPass;
+        drv::SubpassId subpass;
+        uint32_t configIndex;
+        ShaderObjectRegistry::VariantId variantId;
         GraphicsPipelineStates states;
-        //   VariantId variant;
     };
 
     uint32_t getGraphicsPipeline(PipelineCreateMode createMode,
@@ -45,9 +48,9 @@ class ShaderObject
 
  private:
     std::string name;
+    std::unordered_map<GraphicsPipelineDescriptor, uint32_t> pipelines;
 
     drv::DrvShader::GraphicalPipelineCreateInfo getGraphicsPipelineCreateInfo(
       const GraphicsPipelineDescriptor& desc) const;
-
-    std::unordered_map<GraphicsPipelineDescriptor, uint32_t> pipelines;
+    drv::DrvShader::ShaderStage getShaderStage(const ShaderObjectRegistry::VariantId& variant);
 };

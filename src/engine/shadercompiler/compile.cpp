@@ -1088,8 +1088,8 @@ bool compile_shader(const Compiler* compiler, ShaderBin& shaderBin, Cache& cache
     }
     cxx << "};\n\n";
 
-    header << "    static uint32_t get_variant_id(";
-    cxx << "uint32_t " << registryClassName << "::get_variant_id(";
+    header << "    static VariantId get_variant_id(";
+    cxx << "ShaderObjectRegistry::VariantId " << registryClassName << "::get_variant_id(";
     bool first = true;
     for (const std::string& inc : allIncludes) {
         auto itr = includeData.find(inc);
