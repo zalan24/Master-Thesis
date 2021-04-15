@@ -7,10 +7,14 @@
 #include <unordered_map>
 #include <vector>
 
+#include <drvtypes.h>
+
 class ShaderBin
 {
  public:
     static constexpr size_t MAX_VARIANT_PARAM_COUNT = 8;
+    static constexpr uint32_t FILE_HEADER = 0x12345678;
+    static constexpr uint32_t FILE_END = 0xEDCBA987;
 
     enum Stage
     {
@@ -22,18 +26,17 @@ class ShaderBin
 
     struct StageConfig
     {
-        struct PsConfig
-        {
-            std::string entryPoint = "";
-        } ps;
-        struct VsConfig
-        {
-            std::string entryPoint = "";
-        } vs;
-        struct CsConfig
-        {
-            std::string entryPoint = "";
-        } cs;
+        std::string psEntryPoint = "";
+        std::string vsEntryPoint = "";
+        std::string csEntryPoint = "";
+        drv::PolygonMode polygonMode = drv::PolygonMode::FILL;
+        drv::CullMode cullMode = drv::CullMode::NONE;
+        drv::CompareOp depthCompare = drv::CompareOp::GREATER_OR_EQUAL;
+        bool useDepthClamp = false;
+        bool depthBiasEnable = false;
+        bool depthTest = false;
+        bool depthWrite = false;
+        bool stencilTest = false;
     };
 
     struct ShaderData

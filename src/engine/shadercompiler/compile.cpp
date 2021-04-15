@@ -107,15 +107,15 @@ static bool include_headers(const std::string& filename, std::ostream& out,
     return ret;
 }
 
-static bool collect_shader(const BlockFile& blockFile, std::ostream& out, std::ostream& cfgOut,
-                           const std::string& type) {
+static bool collect_shader_cfg(const BlockFile& blockFile, std::ostream& stagesOut,
+                               const std::string& type) {
     for (size_t i = 0; i < blockFile.getBlockCount("stages"); ++i) {
         const BlockFile* b = blockFile.getNode("stages", i);
         if (b->hasNodes()) {
             for (size_t j = 0; j < b->getBlockCount(type); ++j) {
                 const BlockFile* b2 = b->getNode(type, j);
                 if (b2->hasContent()) {
-                    cfgOut << *b2->getContent();
+                    stagesOut << *b2->getContent();
                 }
                 else if (b2->hasNodes()) {
                     // completely empty block is allowed
@@ -133,6 +133,13 @@ static bool collect_shader(const BlockFile& blockFile, std::ostream& out, std::o
             return false;
         }
     }
+    return true;
+}
+
+static bool collect_shader(const BlockFile& blockFile, std::ostream& out, std::ostream& cfgOut,
+                           const std::string& type) {
+    if (!collect_shader_cfg(blockFile, cfgOut, type))
+        return false;
     for (size_t i = 0; i < blockFile.getBlockCount("global"); ++i) {
         const BlockFile* b = blockFile.getNode("global", i);
         if (b->hasContent()) {
@@ -598,14 +605,30 @@ static ResourceUsage read_used_resources(const std::string& s, const Resources& 
     return ret;
 }
 
+template <typename T>
+static const T& translate_input(const std::string& str, const std::map<std::string, T>& values) {
+    auto itr = values.find(str);
+    if (itr != values.end())
+        return itr->second;
+    std::stringstream message;
+    message << "Invalid value: <" << str << ">. Valid values are {";
+    for (const auto& itr : values)
+        message << " " << itr.first;
+    message << " }";
+    throw std::runtime_error(message.str());
+}
+
 static ShaderBin::StageConfig read_stage_configs(
   const Resources& resources, uint32_t variantId, const std::vector<Variants>& variants,
   const std::unordered_map<std::string, uint32_t>& variantParamMultiplier,
-  const std::stringstream& vs, const std::stringstream& ps, const std::stringstream& cs,
-  PipelineResourceUsage& resourceUsage) {
+  const std::stringstream& states, const std::stringstream& vs, const std::stringstream& ps,
+  const std::stringstream& cs, PipelineResourceUsage& resourceUsage) {
+    // TODO report an error for unknown values
+    std::string statesInfo = format_variant(variantId, variants, states, variantParamMultiplier);
     std::string vsInfo = format_variant(variantId, variants, vs, variantParamMultiplier);
     std::string psInfo = format_variant(variantId, variants, ps, variantParamMultiplier);
     std::string csInfo = format_variant(variantId, variants, cs, variantParamMultiplier);
+    std::unordered_map<std::string, std::string> statesValues = read_values(statesInfo);
     std::unordered_map<std::string, std::string> vsValues = read_values(vsInfo);
     std::unordered_map<std::string, std::string> psValues = read_values(psInfo);
     std::unordered_map<std::string, std::string> csValues = read_values(csInfo);
@@ -613,15 +636,40 @@ static ShaderBin::StageConfig read_stage_configs(
     resourceUsage.psUsage = read_used_resources(psInfo, resources);
     resourceUsage.csUsage = read_used_resources(csInfo, resources);
     ShaderBin::StageConfig ret;
-    // TODO;  // add relevant pipeline states here
-    // assert if the value is already set (assest here won't work though)
-    // later there should be some kind of override priority or something like that
+    if (vsValues.count("entry") > 1 || psValues.count("entry") > 1 || csValues.count("entry") > 1
+        || statesValues.count("polygonMode") > 1 || statesValues.count("cull") > 1
+        || statesValues.count("depthCompare") > 1 || statesValues.count("useDepthClamp") > 1
+        || statesValues.count("depthBiasEnable") > 1 || statesValues.count("depthTest") > 1
+        || statesValues.count("depthWrite") > 1 || statesValues.count("stencilTest") > 1)
+        throw std::runtime_error("Shater state overwrites are currently not supported");
+
     if (auto itr = vsValues.find("entry"); itr != vsValues.end())
-        ret.vs.entryPoint = itr->second;
+        ret.vsEntryPoint = itr->second;
     if (auto itr = psValues.find("entry"); itr != psValues.end())
-        ret.ps.entryPoint = itr->second;
+        ret.psEntryPoint = itr->second;
     if (auto itr = csValues.find("entry"); itr != csValues.end())
-        ret.cs.entryPoint = itr->second;
+        ret.csEntryPoint = itr->second;
+    if (auto itr = statesValues.find("polygonMode"); itr != statesValues.end())
+        ret.polygonMode = read_stage_configs(itr->second, {{"fill", drv::PolygonMode::FILL},
+                                                           {"line", drv::PolygonMode::LINE},
+                                                           {"point", drv::PolygonMode::POINT}});
+    if (auto itr = statesValues.find("cull"); itr != statesValues.end())
+        ret.cullMode = read_stage_configs(itr->second, {{"none", drv::CullMode::NONE},
+                                                        {"front", drv::CullMode::FRONT_BIT},
+                                                        {"back", drv::CullMode::BACK_BIT},
+                                                        {"all", drv::CullMode::FRONT_AND_BACK}});
+    if (auto itr = statesValues.find("depthCompare"); itr != statesValues.end())
+        ret.depthCompare = read_stage_configs(itr->second, {{"true", true}, {"false", false}});
+    if (auto itr = statesValues.find("useDepthClamp"); itr != statesValues.end())
+        ret.useDepthClamp = read_stage_configs(itr->second, {{"true", true}, {"false", false}});
+    if (auto itr = statesValues.find("depthBiasEnable"); itr != statesValues.end())
+        ret.depthBiasEnable = read_stage_configs(itr->second, {{"true", true}, {"false", false}});
+    if (auto itr = statesValues.find("depthTest"); itr != statesValues.end())
+        ret.depthTest = read_stage_configs(itr->second, {{"true", true}, {"false", false}});
+    if (auto itr = statesValues.find("depthWrite"); itr != statesValues.end())
+        ret.depthWrite = read_stage_configs(itr->second, {{"true", true}, {"false", false}});
+    if (auto itr = statesValues.find("stencilTest"); itr != statesValues.end())
+        ret.stencilTest = read_stage_configs(itr->second, {{"true", true}, {"false", false}});
     return ret;
 }
 
@@ -689,29 +737,29 @@ static bool generate_binary(const Compiler* compiler, const Resources& resources
     for (uint32_t variantId = 0; variantId < shaderData.totalVariantCount; ++variantId) {
         PipelineResourceUsage resourceUsage;
         ShaderBin::StageConfig cfg =
-          read_stage_configs(resources, variantId, variants, variantParamMultiplier, input.vsCfg,
-                             input.psCfg, input.csCfg, resourceUsage);
+          read_stage_configs(resources, variantId, variants, variantParamMultiplier,
+                             input.statesCfg input.vsCfg, input.psCfg, input.csCfg, resourceUsage);
         if (resourceObjects.find(resourceUsage) == resourceObjects.end())
             resourceObjects[resourceUsage] = generate_resource_object(resources, resourceUsage);
         const ResourceObject& resourceObj = resourceObjects[resourceUsage];
         varintToResourceUsage[variantId] = resourceUsage;
         // TODO add resource packs to shader codes
         shaderData.stages[variantId].configs = cfg;
-        if (cfg.vs.entryPoint != ""
+        if (cfg.vsEntryPoint != ""
             && !generate_binary(compiler, shaderData, resourceObj, variantId, variants, input.ps,
                                 codeOffsets, binaryOffsets, ShaderBin::PS,
                                 variantParamMultiplier)) {
             std::cerr << "Could not generate PS binary." << std::endl;
             return false;
         }
-        if (cfg.ps.entryPoint != ""
+        if (cfg.psEntryPoint != ""
             && !generate_binary(compiler, shaderData, resourceObj, variantId, variants, input.vs,
                                 codeOffsets, binaryOffsets, ShaderBin::VS,
                                 variantParamMultiplier)) {
             std::cerr << "Could not generate VS binary." << std::endl;
             return false;
         }
-        if (cfg.cs.entryPoint != ""
+        if (cfg.csEntryPoint != ""
             && !generate_binary(compiler, shaderData, resourceObj, variantId, variants, input.cs,
                                 codeOffsets, binaryOffsets, ShaderBin::CS,
                                 variantParamMultiplier)) {
@@ -925,6 +973,11 @@ bool compile_shader(const Compiler* compiler, ShaderBin& shaderBin, Cache& cache
     }
     ShaderGenerationInput genInput;
 
+    if (!collect_shader_cfg(cuBlocks, genInput.statesCfg, "states")) {
+        std::cerr << "Could not collect shader stages/states content in: " << shaderFile
+                  << std::endl;
+        return false;
+    }
     if (!collect_shader(cuBlocks, genInput.vs, genInput.vsCfg, "vs")) {
         std::cerr << "Could not collect vs shader content in: " << shaderFile << std::endl;
         return false;

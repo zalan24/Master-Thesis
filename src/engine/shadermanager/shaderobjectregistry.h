@@ -10,6 +10,9 @@
 class ShaderObjectRegistry
 {
  public:
+    using VariantId = uint32_t;
+    static constexpr VariantId INVALID_SHADER = std::numeric_limits<VariantId>::max();
+
     explicit ShaderObjectRegistry(drv::LogicalDevicePtr device);
 
     ShaderObjectRegistry(const ShaderObjectRegistry&) = delete;
@@ -19,12 +22,11 @@ class ShaderObjectRegistry
 
     void loadShader(const ShaderBin::ShaderData& data);
 
+    const ShaderBin::StageConfig& getStageConfig(VariantId variantId) const;
+
     friend class ShaderObject;
 
  protected:
-    using VariantId = uint32_t;
-    static constexpr VariantId INVALID_SHADER = std::numeric_limits<VariantId>::max();
-
     ~ShaderObjectRegistry();
 
  private:
@@ -42,4 +44,5 @@ class ShaderObjectRegistry
 
  protected:
     std::unique_ptr<drv::DrvShaderObjectRegistry> reg;
+    std::vector<ShaderBin::StageConfig> stageConfigs;
 };

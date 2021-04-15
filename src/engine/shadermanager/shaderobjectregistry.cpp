@@ -57,7 +57,10 @@ void ShaderObjectRegistry::loadShader(const ShaderBin::ShaderData& data) {
     variants.clear();
     variants.resize(data.totalVariantCount);
     shaders.clear();
+    stageConfigs.clear();
+    stageConfigs.reserve(data.totalVariantCount);
     for (uint32_t i = 0; i < data.totalVariantCount; ++i) {
+        stageConfigs.push_back(data.stages[i].configs);
         uint64_t vsOffset = data.stages[i].stageOffsets[ShaderBin::VS];
         uint64_t psOffset = data.stages[i].stageOffsets[ShaderBin::PS];
         uint64_t csOffset = data.stages[i].stageOffsets[ShaderBin::CS];
@@ -95,4 +98,8 @@ void ShaderObjectRegistry::loadShader(const ShaderBin::ShaderData& data) {
             offsetToModule[csOffset] = safe_cast<VariantId>(offset);
         }
     }
+}
+
+const ShaderBin::StageConfig& ShaderObjectRegistry::getStageConfig(VariantId variantId) const {
+    return stageConfigs[variantId];
 }

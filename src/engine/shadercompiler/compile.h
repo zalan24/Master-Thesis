@@ -129,6 +129,7 @@ struct IncludeData
 };
 struct ShaderGenerationInput
 {
+    std::stringstream statesCfg;
     std::stringstream vs;
     std::stringstream vsCfg;
     std::stringstream ps;

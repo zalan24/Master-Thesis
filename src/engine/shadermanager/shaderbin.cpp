@@ -14,27 +14,45 @@ ShaderBin::ShaderBin(const std::string& binfile) {
 }
 
 static void write_configs(std::ostream& out, const ShaderBin::StageConfig& configs) {
-    // vs
-    write_string(out, configs.vs.entryPoint);
-    // ps
-    write_string(out, configs.ps.entryPoint);
-    // cs
-    write_string(out, configs.cs.entryPoint);
+    write_string(out, configs.vsEntryPoint);
+    write_string(out, configs.psEntryPoint);
+    write_string(out, configs.csEntryPoint);
+
+    write_data(out, configs.polygonMode);
+    write_data(out, configs.cullMode);
+    write_data(out, configs.depthCompare);
+
+    write_data(out, configs.useDepthClamp);
+    write_data(out, configs.depthBiasEnable);
+    write_data(out, configs.depthTest);
+    write_data(out, configs.depthWrite);
+    write_data(out, configs.stencilTest);
 }
 
 static void read_configs(std::istream& in, ShaderBin::StageConfig& configs) {
-    // vs
-    read_string(in, configs.vs.entryPoint);
-    // ps
-    read_string(in, configs.ps.entryPoint);
-    // cs
-    read_string(in, configs.cs.entryPoint);
+    read_string(in, configs.vsEntryPoint);
+    read_string(in, configs.psEntryPoint);
+    read_string(in, configs.csEntryPoint);
+
+    read_data(in, configs.polygonMode);
+    read_data(in, configs.cullMode);
+    read_data(in, configs.depthCompare);
+
+    read_data(in, configs.useDepthClamp);
+    read_data(in, configs.depthBiasEnable);
+    read_data(in, configs.depthTest);
+    read_data(in, configs.depthWrite);
+    read_data(in, configs.stencilTest);
 }
 
 void ShaderBin::read(std::istream& in) {
     clear();
     if (!in.binary)
         throw std::runtime_error("Binary file expected for shaderBin input");
+    uint32_t header;
+    read_data(in, header);
+    if (header != FILE_HEADER)
+        throw std::runtime_error("Invalid file header: " + std::to_string(header));
     uint32_t shaderCount = 0;
     read_data(in, shaderCount);
     for (size_t i = 0; i < shaderCount; ++i) {
@@ -53,11 +71,16 @@ void ShaderBin::read(std::istream& in) {
         read_vector(in, data.codes);
         shaders[name] = std::move(data);
     }
+    uint32_t ending;
+    read_data(in, ending);
+    if (ending != FILE_END)
+        throw std::runtime_error("Invalid file ending: " + std::to_string(ending));
 }
 
 void ShaderBin::write(std::ostream& out) const {
     if (!out.binary)
         throw std::runtime_error("Binary file expected for shaderBin output");
+    write_data(out, FILE_HEADER);
     uint32_t shaderCount = static_cast<uint32_t>(shaders.size());
     write_data(out, shaderCount);
     for (const auto& [name, data] : shaders) {
@@ -73,6 +96,7 @@ void ShaderBin::write(std::ostream& out) const {
         }
         write_vector(out, data.codes);
     }
+    write_data(out, FILE_END);
 }
 
 void ShaderBin::addShader(const std::string& name, ShaderData&& shader) {

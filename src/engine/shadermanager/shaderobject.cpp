@@ -20,17 +20,19 @@ void ShaderObject::clear(Garbage* trashBin) {
 }
 
 drv::DrvShader::ShaderStage ShaderObject::getShaderStage(
-  const ShaderObjectRegistry::VariantId& variant) {
+  const ShaderObjectRegistry::VariantId& variant, const char* entryPoint) {
     if (variant == ShaderObjectRegistry::INVALID_SHADER)
         return {};
     drv::DrvShader::ShaderStage ret;
-    ret.entry = ;
+    ret.entry = entryPoint;
     ret.shaderModule = reg->shaders[variant];
 }
 
 drv::DrvShader::GraphicalPipelineCreateInfo ShaderObject::getGraphicsPipelineCreateInfo(
   const GraphicsPipelineDescriptor& desc) const {
     drv::DrvShader::GraphicalPipelineCreateInfo ret;
+
+    const ShaderBin::StageConfig& config = reg->getStageConfig(desc.variantId);
 
     ret.renderPass = desc.renderPass;
     ret.subpass = desc.subpass;
@@ -44,18 +46,18 @@ drv::DrvShader::GraphicalPipelineCreateInfo ShaderObject::getGraphicsPipelineCre
     ret.topology = drv::PrimitiveTopology::TRIANGLE_LIST;  // TODO
     ret.frontFace = drv::FrontFace::CLOCKWISE;             // TODO
 
-    ret.vs = getShaderStage(reg->variants[desc.variantId].vsOffset);
-    ret.ps = getShaderStage(reg->variants[desc.variantId].psOffset);
+    ret.vs = getShaderStage(reg->variants[desc.variantId].vsOffset, config.vsEntryPoint.c_str());
+    ret.ps = getShaderStage(reg->variants[desc.variantId].psOffset, config.psEntryPoint.c_str());
     ret.cs = {};
-    ret.useDepthClamp = ;
-    ret.polygonMode = ;
-    ret.cullMode = ;
-    ret.depthBiasEnable = ;
-    ret.depthTest = ;
-    ret.depthWrite = ;
-    ret.depthCompare = ;
-    ret.stencilTest = ;
-    throw std::runtime_error("Unimplemented");
+    ret.useDepthClamp = config.useDepthClamp;
+    ret.polygonMode = config.polygonMode;
+    ret.cullMode = config.cullMode;
+    ret.depthBiasEnable = config.depthBiasEnable;
+    ret.depthTest = config.depthTest;
+    ret.depthWrite = config.depthWrite;
+    ret.depthCompare = config.depthCompare;
+    ret.stencilTest = config.stencilTest;
+    return ret;
 }
 
 uint32_t ShaderObject::getGraphicsPipeline(PipelineCreateMode createMode,

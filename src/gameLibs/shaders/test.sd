@@ -14,6 +14,9 @@ descriptor {
 }
 
 stages {
+    states {
+        
+    }
     ps {
         entry = main;
         use testVal;
