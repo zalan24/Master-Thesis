@@ -1136,7 +1136,7 @@ bool compile_shader(const Compiler* compiler, ShaderBin& shaderBin, Cache& cache
            << " *reg);\n";
     cxx << className << "::" << className << "(drv::LogicalDevicePtr _device, const "
         << registryClassName << " *_reg)\n";
-    cxx << "  : ShaderObject(_device, _reg)\n";
+    cxx << "  : ShaderObject(_device, _reg, \"" << shaderName << "\")\n";
     cxx << "{\n";
     cxx << "}\n\n";
     header << "    ~" << className << "() override {}\n";
@@ -1151,8 +1151,8 @@ bool compile_shader(const Compiler* compiler, ShaderBin& shaderBin, Cache& cache
         cxx << ", const " << itr->second.desriptorClassName << "::VariantDesc &"
             << itr->second.name;
     }
-    header << ");\n";
-    cxx << ") {\n";
+    header << ", const GraphicsPipelineStates &overrideStates = {});\n";
+    cxx << ", const GraphicsPipelineStates &overrideStates) {\n";
     cxx
       << "    // TODO This configuration needs to be supported, a pipeline needs to be maintained for this\n";
     cxx << "}\n";

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <memory>
+#include <unordered_map>
 
 #include <drvshader.h>
 
@@ -11,14 +12,42 @@ class Garbage;
 class ShaderObject
 {
  public:
-    ShaderObject(drv::LogicalDevicePtr device, const ShaderObjectRegistry* reg);
+    ShaderObject(drv::LogicalDevicePtr device, const ShaderObjectRegistry* reg, std::string name);
 
     virtual ~ShaderObject() {}
 
     void clear(Garbage* trashBin);
 
+    enum PipelineCreateMode
+    {
+        CREATE_SILENT,
+        CREATE_WARNING
+    };
+
+    struct GraphicsPipelineStates
+    {
+        // TODO;
+    };
+
  protected:
     drv::LogicalDevicePtr device;
     const ShaderObjectRegistry* reg;
     std::unique_ptr<drv::DrvShader> shader;
+
+    struct GraphicsPipelineDescriptor
+    {
+        GraphicsPipelineStates states;
+        //   VariantId variant;
+    };
+
+    uint32_t getGraphicsPipeline(PipelineCreateMode createMode,
+                                 const GraphicsPipelineDescriptor& desc);
+
+ private:
+    std::string name;
+
+    drv::DrvShader::GraphicalPipelineCreateInfo getGraphicsPipelineCreateInfo(
+      const GraphicsPipelineDescriptor& desc) const;
+
+    std::unordered_map<GraphicsPipelineDescriptor, uint32_t> pipelines;
 };

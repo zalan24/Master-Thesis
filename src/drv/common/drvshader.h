@@ -72,7 +72,6 @@ class DrvShader
     DrvShader& operator=(const DrvShader&) = delete;
     virtual ~DrvShader() {}
 
- protected:
     struct ShaderStage
     {
         const char* entry = nullptr;
@@ -110,7 +109,7 @@ class DrvShader
         bool depthBiasEnable;
     };
 
-    virtual void createGraphicalPipeline(const GraphicalPipelineCreateInfo& info) = 0;
+    virtual uint32_t createGraphicalPipeline(const GraphicalPipelineCreateInfo& info) = 0;
 
  private:
 };

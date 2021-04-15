@@ -113,8 +113,7 @@ class VulkanShader final : public drv::DrvShader
         computePipelines.clear();
     }
 
- protected:
-    void createGraphicalPipeline(const GraphicalPipelineCreateInfo& info) override;
+    uint32_t createGraphicalPipeline(const GraphicalPipelineCreateInfo& info) override;
 
  private:
     drv::LogicalDevicePtr device;

@@ -52,7 +52,7 @@ std::unique_ptr<drv::DrvShader> DrvVulkan::create_shader(drv::LogicalDevicePtr d
     return std::make_unique<VulkanShader>(device, static_cast<const VulkanShaderObjRegistry*>(reg));
 }
 
-void VulkanShader::createGraphicalPipeline(const GraphicalPipelineCreateInfo& info) {
+uint32_t VulkanShader::createGraphicalPipeline(const GraphicalPipelineCreateInfo& info) {
     // constexpr uint32_t MAX_STAGES = 6;
     // StackMemory::MemoryHandle<VkPipelineShaderStageCreateInfo> stages(MAX_STAGES, TEMPMEM);
     // uint32_t numStages = 0;
@@ -205,9 +205,12 @@ void VulkanShader::createGraphicalPipeline(const GraphicalPipelineCreateInfo& in
     // createInfo.basePipelineHandle = nullptr;
     // createInfo.basePipelineIndex = -1;
     // drv::drv_assert(info.renderPass != VK_NULL_HANDLE);
-    // VkPipeline pipeline;
+    VkPipeline pipeline;
     // // TODO pipeline cache
     // VkResult result =
     //   vkCreateGraphicsPipelines(convertDevice(device), nullptr, 1, &createInfo, nullptr, &pipeline);
     // drv::drv_assert(result == VK_SUCCESS, "Could not create graphical pipeline");
+    uint32_t ret = graphicalPipelines.size();
+    graphicalPipelines.push_back(pipeline);
+    return ret;
 }
