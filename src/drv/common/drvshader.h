@@ -91,6 +91,8 @@ class DrvShader
         const RenderPass* renderPass;
         const SubpassId subpass;
         uint32_t configIndex;
+        // currently it should match the attachment sample count
+        ImageCreateInfo::SampleCount sampleCount;
         Viewport viewport;                  // 0 size = dynamic state
         Rect2D scissor = {{0, 0}, {0, 0}};  // 0 size = dynamic state
         ShaderStage vs;
@@ -107,6 +109,10 @@ class DrvShader
         PolygonMode polygonMode;
         CullMode cullMode;
         bool depthBiasEnable;
+        bool depthTest;
+        bool depthWrite;
+        CompareOp depthCompare;
+        bool stencilTest;
     };
 
     virtual uint32_t createGraphicalPipeline(const GraphicalPipelineCreateInfo& info) = 0;

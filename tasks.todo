@@ -293,6 +293,9 @@ Get a triangle on screen:
     ☐ Optimize push constant ranges: generate_resource_object() in compile.cpp
     ☐ Mesh shading: https://www.khronos.org/registry/vulkan/specs/1.2-extensions/man/html/VkPipelineInputAssemblyStateCreateInfo.html
     ☐ Specialization constants: https://www.khronos.org/registry/vulkan/specs/1.2-extensions/html/vkspec.html#pipelines-specialization-constants
+    ☐ Sample shading (pipeline creation)
+    ☐ Alpha coverage (pipeline creation)
+    ☐ Depth bounds test (pipeline creation)
 
 Cleanup & other:
     ☐ Remove useless common driver stuff (drv/common)
