@@ -296,6 +296,8 @@ Get a triangle on screen:
     ☐ Sample shading (pipeline creation)
     ☐ Alpha coverage (pipeline creation)
     ☐ Depth bounds test (pipeline creation)
+    ☐ Blend constants (pipeline creation)
+    ☐ Color blending (pipeline creation)
 
 Cleanup & other:
     ☐ Remove useless common driver stuff (drv/common)

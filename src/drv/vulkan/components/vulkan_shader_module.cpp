@@ -76,6 +76,19 @@ uint32_t VulkanShader::createGraphicalPipeline(const GraphicalPipelineCreateInfo
         drv::drv_assert(numDynamicStates < MAX_DYNAMIC_STATES);
         dynamicStates[numDynamicStates++] = state;
     };
+    StackMemory::MemoryHandle<VkPipelineColorBlendAttachmentState> attachmentStates(
+      info.numAttachments, TEMPMEM);
+    for (uint32_t i = 0; i < info.numAttachments; ++i) {
+        attachmentStates[i].colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT
+                                             | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+        attachmentStates[i].blendEnable = VK_FALSE; // TODO color blending
+        attachmentStates[i].srcColorBlendFactor = VK_BLEND_FACTOR_ONE;   
+        attachmentStates[i].dstColorBlendFactor = VK_BLEND_FACTOR_ZERO;  
+        attachmentStates[i].colorBlendOp = VK_BLEND_OP_ADD;              
+        attachmentStates[i].srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;   
+        attachmentStates[i].dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;  
+        attachmentStates[i].alphaBlendOp = VK_BLEND_OP_ADD;              
+    }
 
     add_stage(VK_SHADER_STAGE_VERTEX_BIT, info.vs);
     add_stage(VK_SHADER_STAGE_FRAGMENT_BIT, info.ps);
@@ -186,11 +199,14 @@ uint32_t VulkanShader::createGraphicalPipeline(const GraphicalPipelineCreateInfo
     blendInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
     blendInfo.pNext = nullptr;
     blendInfo.flags = 0;
-    blendInfo.logicOpEnable = ;
-    blendInfo.logicOp = ;
-    blendInfo.attachmentCount = ;
-    blendInfo.pAttachments = ;
-    blendInfo.blendConstants[4] = ;
+    blendInfo.logicOpEnable = VK_FALSE;  // TODO logical operator
+    blendInfo.logicOp = VK_LOGIC_OP_COPY;
+    blendInfo.attachmentCount = info.numAttachments;
+    blendInfo.pAttachments = attachmentStates;
+    blendInfo.blendConstants[0] = 0.f;  // TODO blend constants
+    blendInfo.blendConstants[1] = 0.f;
+    blendInfo.blendConstants[2] = 0.f;
+    blendInfo.blendConstants[3] = 0.f;
     createInfo.pColorBlendState = &blendInfo;
 
     VkPipelineDynamicStateCreateInfo dynamicStateInfo = {};

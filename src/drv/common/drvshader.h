@@ -86,6 +86,8 @@ class DrvShader
         float minDepth = 0;
         float maxDepth = 0;
     };
+    struct AttachmentState
+    {};
     struct GraphicalPipelineCreateInfo
     {
         const RenderPass* renderPass;
@@ -95,16 +97,18 @@ class DrvShader
         ImageCreateInfo::SampleCount sampleCount;
         Viewport viewport;                  // 0 size = dynamic state
         Rect2D scissor = {{0, 0}, {0, 0}};  // 0 size = dynamic state
-        ShaderStage vs;
-        ShaderStage ps;
-        ShaderStage cs;
+        uint32_t numAttachments = 0;
+        const AttachmentState* attachmentStates;
 
         // TODO import these from the ?object?
-        // the shader should have a way to set these too probably
+        // ?the shader should have a way to set these too probably?
         PrimitiveTopology topology;
         FrontFace frontFace;
 
         // TODO import these from the shader
+        ShaderStage vs;
+        ShaderStage ps;
+        ShaderStage cs;
         bool useDepthClamp;
         PolygonMode polygonMode;
         CullMode cullMode;
