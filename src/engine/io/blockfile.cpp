@@ -102,6 +102,31 @@ bool BlockFile::hasNodes() const {
     return std::holds_alternative<Map>(content);
 }
 
+size_t BlockFile::getBlockCount() const {
+    if (!hasNodes())
+        throw std::runtime_error("This BlockFile doesn't hold any blocks");
+    const Map& m = std::get<Map>(content);
+    return m.size();
+}
+
+const BlockFile* BlockFile::getNode(size_t index) const {
+    if (!hasNodes())
+        throw std::runtime_error("This BlockFile doesn't hold any blocks");
+    if (getBlockCount() <= index)
+        throw std::runtime_error("index out of range");
+    const Map& m = std::get<Map>(content);
+    return &std::next(m.begin(), static_cast<decltype(m.begin())::difference_type>(index))->second;
+}
+
+const std::string& BlockFile::getBlockName(size_t index) const {
+    if (!hasNodes())
+        throw std::runtime_error("This BlockFile doesn't hold any blocks");
+    if (getBlockCount() <= index)
+        throw std::runtime_error("index out of range");
+    const Map& m = std::get<Map>(content);
+    return std::next(m.begin(), static_cast<decltype(m.begin())::difference_type>(index))->first;
+}
+
 size_t BlockFile::getBlockCount(const std::string& name) const {
     if (!hasNodes())
         throw std::runtime_error("This BlockFile doesn't hold any blocks");

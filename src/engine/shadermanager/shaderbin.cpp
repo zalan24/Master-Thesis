@@ -27,6 +27,14 @@ static void write_configs(std::ostream& out, const ShaderBin::StageConfig& confi
     write_data(out, configs.depthTest);
     write_data(out, configs.depthWrite);
     write_data(out, configs.stencilTest);
+
+    uint32_t count = static_cast<uint32_t>(configs.attachments.size());
+    write_data(out, count);
+    for (uint32_t i = 0; i < count; ++i) {
+        write_string(out, configs.attachments[i].name);
+        write_data(out, configs.attachments[i].info);
+        write_data(out, configs.attachments[i].location);
+    }
 }
 
 static void read_configs(std::istream& in, ShaderBin::StageConfig& configs) {
@@ -43,6 +51,15 @@ static void read_configs(std::istream& in, ShaderBin::StageConfig& configs) {
     read_data(in, configs.depthTest);
     read_data(in, configs.depthWrite);
     read_data(in, configs.stencilTest);
+
+    uint32_t count = 0;
+    read_data(in, count);
+    configs.attachments.resize(count);
+    for (uint32_t i = 0; i < count; ++i) {
+        read_string(in, configs.attachments[i].name);
+        read_data(in, configs.attachments[i].info);
+        read_data(in, configs.attachments[i].location);
+    }
 }
 
 void ShaderBin::read(std::istream& in) {

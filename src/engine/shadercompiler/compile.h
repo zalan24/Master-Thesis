@@ -136,6 +136,7 @@ struct ShaderGenerationInput
     std::stringstream psCfg;
     std::stringstream cs;
     std::stringstream csCfg;
+    std::map<std::string, std::stringstream> attachments;
 };
 
 struct ShaderRegistryOutput

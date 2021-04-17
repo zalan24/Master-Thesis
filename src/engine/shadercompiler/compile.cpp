@@ -107,22 +107,14 @@ static bool include_headers(const std::string& filename, std::ostream& out,
     return ret;
 }
 
-static bool collect_shader_cfg(const BlockFile& blockFile, std::ostream& stagesOut,
-                               const std::string& type) {
+template <typename F>
+static bool collect_shader_f(const BlockFile& blockFile, const std::string& type, F&& f) {
     for (size_t i = 0; i < blockFile.getBlockCount("stages"); ++i) {
         const BlockFile* b = blockFile.getNode("stages", i);
         if (b->hasNodes()) {
             for (size_t j = 0; j < b->getBlockCount(type); ++j) {
                 const BlockFile* b2 = b->getNode(type, j);
-                if (b2->hasContent()) {
-                    stagesOut << *b2->getContent();
-                }
-                else if (b2->hasNodes()) {
-                    // completely empty block is allowed
-                    std::cerr << "A shader block (stages/" << type
-                              << ") contains nested blocks instead of content." << std::endl;
-                    return false;
-                }
+                f(i, b, j, b2);
             }
         }
         else if (b->hasContent()) {
@@ -134,6 +126,22 @@ static bool collect_shader_cfg(const BlockFile& blockFile, std::ostream& stagesO
         }
     }
     return true;
+}
+
+static bool collect_shader_cfg(const BlockFile& blockFile, std::ostream& stagesOut,
+                               const std::string& type) {
+    return collect_shader_f(
+      blockFile, type, [&](size_t, const BlockFile*, size_t, const BlockFile* node) {
+          if (node->hasContent()) {
+              stagesOut << *node->getContent();
+          }
+          else if (node->hasNodes()) {
+              // completely empty block is allowed
+              std::cerr << "A shader block (stages/" << type
+                        << ") contains nested blocks instead of content." << std::endl;
+              return false;
+          }
+      });
 }
 
 static bool collect_shader(const BlockFile& blockFile, std::ostream& out, std::ostream& cfgOut,
@@ -516,6 +524,20 @@ static void generate_shader_code(std::ostream& out /* resources */) {
     out << "#extension GL_ARB_separate_shader_objects : enable\n";
 }
 
+static void generate_shader_attachments(const ShaderBin::StageConfig& configs,
+                                        std::stringstream& code) {
+    for (const auto& [name, attachment] : configs.attachments) {
+        code << "layout(location = " << attachment.location << ") ";
+        if (attachment.info & ShaderBin::AttachmentInfo::WRITE)
+            code << "out ";
+        else
+            throw std::runtime_error("Implement input attachments as well");
+        // TODO handle depth attachment
+        code << "vec4 " << attachment.name << ";\n"
+    }
+    code << "\n";
+}
+
 static std::vector<uint32_t> compile_shader_binary(const Compiler* compiler, ShaderBin::Stage stage,
                                                    size_t len, const char* code) {
     UNUSED(len);
@@ -551,6 +573,8 @@ static bool generate_binary(
     // TODO add resources to shader code
     std::stringstream shaderCodeSS;
     generate_shader_code(shaderCodeSS);
+    if (stage == ShaderBin::PS)
+        generate_shader_attachments(shaderData.stages[variantId].configs, shaderCodeSS);
     std::string shaderCode =
       shaderCodeSS.str() + format_variant(variantId, variants, shader, variantParamMultiplier);
 
@@ -621,13 +645,13 @@ static const T& translate_input(const std::string& str, const std::map<std::stri
 static ShaderBin::StageConfig read_stage_configs(
   const Resources& resources, uint32_t variantId, const std::vector<Variants>& variants,
   const std::unordered_map<std::string, uint32_t>& variantParamMultiplier,
-  const std::stringstream& states, const std::stringstream& vs, const std::stringstream& ps,
-  const std::stringstream& cs, PipelineResourceUsage& resourceUsage) {
+  const ShaderGenerationInput& input, PipelineResourceUsage& resourceUsage) {
     // TODO report an error for unknown values
-    std::string statesInfo = format_variant(variantId, variants, states, variantParamMultiplier);
-    std::string vsInfo = format_variant(variantId, variants, vs, variantParamMultiplier);
-    std::string psInfo = format_variant(variantId, variants, ps, variantParamMultiplier);
-    std::string csInfo = format_variant(variantId, variants, cs, variantParamMultiplier);
+    std::string statesInfo =
+      format_variant(variantId, variants, input.statesCfg, variantParamMultiplier);
+    std::string vsInfo = format_variant(variantId, variants, input.vsCfg, variantParamMultiplier);
+    std::string psInfo = format_variant(variantId, variants, input.psCfg, variantParamMultiplier);
+    std::string csInfo = format_variant(variantId, variants, input.csCfg, variantParamMultiplier);
     std::unordered_map<std::string, std::string> statesValues = read_values(statesInfo);
     std::unordered_map<std::string, std::string> vsValues = read_values(vsInfo);
     std::unordered_map<std::string, std::string> psValues = read_values(psInfo);
@@ -650,26 +674,66 @@ static ShaderBin::StageConfig read_stage_configs(
     if (auto itr = csValues.find("entry"); itr != csValues.end())
         ret.csEntryPoint = itr->second;
     if (auto itr = statesValues.find("polygonMode"); itr != statesValues.end())
-        ret.polygonMode = read_stage_configs(itr->second, {{"fill", drv::PolygonMode::FILL},
-                                                           {"line", drv::PolygonMode::LINE},
-                                                           {"point", drv::PolygonMode::POINT}});
+        ret.polygonMode = translate_input(itr->second, {{"fill", drv::PolygonMode::FILL},
+                                                        {"line", drv::PolygonMode::LINE},
+                                                        {"point", drv::PolygonMode::POINT}});
     if (auto itr = statesValues.find("cull"); itr != statesValues.end())
-        ret.cullMode = read_stage_configs(itr->second, {{"none", drv::CullMode::NONE},
-                                                        {"front", drv::CullMode::FRONT_BIT},
-                                                        {"back", drv::CullMode::BACK_BIT},
-                                                        {"all", drv::CullMode::FRONT_AND_BACK}});
+        ret.cullMode = translate_input(itr->second, {{"none", drv::CullMode::NONE},
+                                                     {"front", drv::CullMode::FRONT_BIT},
+                                                     {"back", drv::CullMode::BACK_BIT},
+                                                     {"all", drv::CullMode::FRONT_AND_BACK}});
     if (auto itr = statesValues.find("depthCompare"); itr != statesValues.end())
-        ret.depthCompare = read_stage_configs(itr->second, {{"true", true}, {"false", false}});
+        ret.depthCompare = translate_input(itr->second, {{"true", true}, {"false", false}});
     if (auto itr = statesValues.find("useDepthClamp"); itr != statesValues.end())
-        ret.useDepthClamp = read_stage_configs(itr->second, {{"true", true}, {"false", false}});
+        ret.useDepthClamp = translate_input(itr->second, {{"true", true}, {"false", false}});
     if (auto itr = statesValues.find("depthBiasEnable"); itr != statesValues.end())
-        ret.depthBiasEnable = read_stage_configs(itr->second, {{"true", true}, {"false", false}});
+        ret.depthBiasEnable = translate_input(itr->second, {{"true", true}, {"false", false}});
     if (auto itr = statesValues.find("depthTest"); itr != statesValues.end())
-        ret.depthTest = read_stage_configs(itr->second, {{"true", true}, {"false", false}});
+        ret.depthTest = translate_input(itr->second, {{"true", true}, {"false", false}});
     if (auto itr = statesValues.find("depthWrite"); itr != statesValues.end())
-        ret.depthWrite = read_stage_configs(itr->second, {{"true", true}, {"false", false}});
+        ret.depthWrite = translate_input(itr->second, {{"true", true}, {"false", false}});
     if (auto itr = statesValues.find("stencilTest"); itr != statesValues.end())
-        ret.stencilTest = read_stage_configs(itr->second, {{"true", true}, {"false", false}});
+        ret.stencilTest = translate_input(itr->second, {{"true", true}, {"false", false}});
+    for (const auto& [name, cfg] : input.attachments) {
+        std::string attachments = format_variant(variantId, variants, cfg, variantParamMultiplier);
+        std::unordered_map<std::string, std::string> values = read_values(attachments);
+        ShaderBin::AttachmentInfo attachmentInfo;
+        if (auto itr = values.find("location"); itr != value.end()) {
+            int loc = std::to_integer(itr->second);
+            if (loc < 0)
+                continue;
+            attachmentInfo.location = safe_cast<uint8_t>(loc);
+        }
+        else
+            throw std::runtime_error(
+              "An attachment description must contain a 'location' parameter: " + name);
+        attachmentInfo.name = name;
+        attachmentInfo.info = 0;
+        if (auto itr = values.find("channels"); itr != values.end()) {
+            if (itr->second.find('a'))
+                attachmentInfo.info |= ShaderBin::AttachmentInfo::USE_ALPHA;
+            if (itr->second.find('r'))
+                attachmentInfo.info |= ShaderBin::AttachmentInfo::USE_RED;
+            if (itr->second.find('g'))
+                attachmentInfo.info |= ShaderBin::AttachmentInfo::USE_GREEN;
+            if (itr->second.find('b'))
+                attachmentInfo.info |= ShaderBin::AttachmentInfo::USE_BLUE;
+            if (attachmentInfo.info == 0)
+                throw std::runtime_error("No channels are used by an attachment: " + name);
+        }
+        else
+            throw std::runtime_error("Missing 'channels' parameter from attachment description: "
+                                     + name);
+        if (auto itr = values.find("type"); itr != values.end()) {
+            // TODO depth stencil
+            if (itr->second == "output")
+                attachmentInfo.info |= ShaderBin::AttachmentInfo::WRITE;
+            else if (itr->second != "input")
+                throw std::runtime_error("Unknown attachment type: " + itr->second + "  ("
+                                         + name ")");
+        }
+        ret.attachments.push_back(std::move(attachmentInfo));
+    }
     return ret;
 }
 
@@ -736,9 +800,8 @@ static bool generate_binary(const Compiler* compiler, const Resources& resources
     varintToResourceUsage.resize(shaderData.totalVariantCount);
     for (uint32_t variantId = 0; variantId < shaderData.totalVariantCount; ++variantId) {
         PipelineResourceUsage resourceUsage;
-        ShaderBin::StageConfig cfg =
-          read_stage_configs(resources, variantId, variants, variantParamMultiplier,
-                             input.statesCfg input.vsCfg, input.psCfg, input.csCfg, resourceUsage);
+        ShaderBin::StageConfig cfg = read_stage_configs(
+          resources, variantId, variants, variantParamMultiplier, input, resourceUsage);
         if (resourceObjects.find(resourceUsage) == resourceObjects.end())
             resourceObjects[resourceUsage] = generate_resource_object(resources, resourceUsage);
         const ResourceObject& resourceObj = resourceObjects[resourceUsage];
@@ -990,6 +1053,34 @@ bool compile_shader(const Compiler* compiler, ShaderBin& shaderBin, Cache& cache
         std::cerr << "Could not collect cs shader content in: " << shaderFile << std::endl;
         return false;
     }
+    if (
+      !collect_shader_f(
+        cuBlocks, "attachments", [&](size_t, const BlockFile*, size_t, const BlockFile* node) {
+            if (node->hasNodes()) {
+                for (size_t i = 0; i < node->getBlockCount(); ++i) {
+                    const BlockFile* attachment = node->getNode(i);
+                    if (attachment->hasNodes()) {
+                        std::cerr
+                          << "Attachment infos inside the attachments block must not contain other blocks: "
+                          << shaderFile << std::endl;
+                        return false;
+                    }
+                    if (attachment->hasContent())
+                        genInput.attachments[node->getBlockName(i)] << *attachment->getContent();
+                    else
+                        genInput.attachments[node->getBlockName(i)] << "";
+                }
+            }
+            else if (node->hasContent()) {
+                std::cerr
+                  << "The attachments block in shader stage infos must contain a block for each used attachment, not raw content: "
+                  << shaderFile << std::endl;
+                return false;
+            }
+        })) {
+        std::cerr << "Could not collect attachments in: " << shaderFile << std::endl;
+        return false;
+    }
 
     directIncludes.push_back(shaderName);  // include it's own header as well
     std::vector<std::string> allIncludes;
@@ -1193,9 +1284,11 @@ bool compile_shader(const Compiler* compiler, ShaderBin& shaderBin, Cache& cache
     cxx << "{\n";
     cxx << "}\n\n";
     header << "    ~" << className << "() override {}\n";
-    header << "    void prepare(const drv::RenderPass *renderPass, drv::SubpassId subpass";
-    cxx << "void " << className
-        << "::prepare(const drv::RenderPass *renderPass, drv::SubpassId subpass";
+    header
+      << "    void prepare(const drv::RenderPass *renderPass, drv::SubpassId subpass, const DynamicState &fixedDynamicStates";
+    cxx
+      << "void " << className
+      << "::prepare(const drv::RenderPass *renderPass, drv::SubpassId subpass, const DynamicState &fixedDynamicStates";
     for (const std::string& inc : allIncludes) {
         auto itr = includeData.find(inc);
         assert(itr != includeData.end());

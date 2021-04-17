@@ -52,7 +52,7 @@ class VulkanRenderPass final : public drv::RenderPass
     struct AttachmentInfo
     {
         drv::ImageFormat format;
-        drv::ImageCreateInfo::SampleCount samples;
+        drv::SampleCount samples;
     };
     std::vector<AttachmentInfo> attachmentInfos;
     struct AttachmentImage

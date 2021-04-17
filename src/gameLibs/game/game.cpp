@@ -94,6 +94,7 @@ void Game::recreateViews(uint32_t imageCount, const drv::ImagePtr* images) {
 void Game::initShader() {
     engine->getGarbageSystem()->useGarbage(
       [this](Garbage* trashBin) { testShader.clear(trashBin); });
+    ShaderObject::DynamicState fixedDynStates;
     shader_global_descriptor::VariantDesc globalDesc;
     shader_test_descriptor::VariantDesc blueVariant;
     shader_test_descriptor::VariantDesc greenVariant;
@@ -101,9 +102,9 @@ void Game::initShader() {
     blueVariant.color = shader_test_descriptor::Color::BLUE;
     greenVariant.color = shader_test_descriptor::Color::GREEN;
     redVariant.color = shader_test_descriptor::Color::RED;
-    testShader.prepare(testRenderPass.get(), testSubpass, globalDesc, blueVariant);
-    testShader.prepare(testRenderPass.get(), testSubpass, globalDesc, greenVariant);
-    testShader.prepare(testRenderPass.get(), testSubpass, globalDesc, redVariant);
+    testShader.prepare(testRenderPass.get(), testSubpass, fixedDynStates, globalDesc, blueVariant);
+    testShader.prepare(testRenderPass.get(), testSubpass, fixedDynStates, globalDesc, greenVariant);
+    testShader.prepare(testRenderPass.get(), testSubpass, fixedDynStates, globalDesc, redVariant);
 }
 
 void Game::record(FrameGraph& frameGraph, FrameId frameId) {

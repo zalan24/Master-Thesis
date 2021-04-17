@@ -94,11 +94,13 @@ class DrvShader
         const SubpassId subpass;
         uint32_t configIndex;
         // currently it should match the attachment sample count
-        ImageCreateInfo::SampleCount sampleCount;
-        Viewport viewport;                  // 0 size = dynamic state
-        Rect2D scissor = {{0, 0}, {0, 0}};  // 0 size = dynamic state
+        SampleCount sampleCount;
         uint32_t numAttachments = 0;
         const AttachmentState* attachmentStates;
+
+        // dynamic state
+        Viewport viewport;                  // 0 size = dynamic state
+        Rect2D scissor = {{0, 0}, {0, 0}};  // 0 size = dynamic state
 
         // TODO import these from the ?object?
         // ?the shader should have a way to set these too probably?

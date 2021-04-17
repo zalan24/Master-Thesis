@@ -24,6 +24,21 @@ class ShaderBin
         NUM_STAGES
     };
 
+    struct AttachmentInfo
+    {
+        std::string name;  // only for debugging
+        enum InfoBits
+        {
+            WRITE = 1,
+            USE_RED = 2,
+            USE_GREEN = 4,
+            USE_BLUE = 8,
+            USE_ALPHA = 16,
+        };
+        uint8_t info = 0;
+        uint8_t location = 0;
+    };
+
     struct StageConfig
     {
         std::string psEntryPoint = "";
@@ -37,6 +52,7 @@ class ShaderBin
         bool depthTest = false;
         bool depthWrite = false;
         bool stencilTest = false;
+        std::vector<AttachmentInfo> attachments;
     };
 
     struct ShaderData

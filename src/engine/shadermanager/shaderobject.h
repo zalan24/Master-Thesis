@@ -24,10 +24,14 @@ class ShaderObject
         CREATE_WARNING
     };
 
-    struct GraphicsPipelineStates
+    struct DynamicState
     {
-        // TODO;
+        Viewport viewport;
+        Rect2D scissor = {{0, 0}, {0, 0}};
     };
+
+    struct GraphicsPipelineStates
+    {};
 
  protected:
     drv::LogicalDevicePtr device;
@@ -41,6 +45,7 @@ class ShaderObject
         uint32_t configIndex;
         ShaderObjectRegistry::VariantId variantId;
         GraphicsPipelineStates states;
+        DynamicState fixedDynamicStates;
     };
 
     uint32_t getGraphicsPipeline(PipelineCreateMode createMode,

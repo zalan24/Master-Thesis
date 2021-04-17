@@ -14,7 +14,7 @@ struct Image
     uint32_t numMipLevels = 1;
     uint32_t arraySize = 1;
     drv::ImageAspectBitType aspects = 0;
-    drv::ImageCreateInfo::SampleCount sampleCount;
+    drv::SampleCount sampleCount;
     drv::ImageFormat format;
     bool sharedResource = true;
     bool swapchainImage = false;

@@ -37,11 +37,13 @@ drv::DrvShader::GraphicalPipelineCreateInfo ShaderObject::getGraphicsPipelineCre
     ret.renderPass = desc.renderPass;
     ret.subpass = desc.subpass;
     ret.configIndex = desc.configIndex;
+
     ret.sampleCount = ;
-    ret.viewport = ;
-    ret.scissor = ;
     ret.numAttachments = ;
     ret.attachmentStates = ;
+
+    ret.viewport = desc.states.fixedDynamicStates.viewport;
+    ret.scissor = desc.states.fixedDynamicStates.scissor;
 
     ret.topology = drv::PrimitiveTopology::TRIANGLE_LIST;  // TODO
     ret.frontFace = drv::FrontFace::CLOCKWISE;             // TODO

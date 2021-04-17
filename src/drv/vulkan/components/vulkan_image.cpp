@@ -364,6 +364,7 @@ drv::TextureInfo DrvVulkan::get_texture_info(drv::ImagePtr _image) {
     ret.numMips = image->numMipLevels;
     ret.arraySize = image->arraySize;
     ret.format = image->format;
+    ret.samples = image->sampleCount;
     // ret.aspects = image->aspects;
     return ret;
 }

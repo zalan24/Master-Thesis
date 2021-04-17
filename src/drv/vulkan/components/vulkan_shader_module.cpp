@@ -79,15 +79,14 @@ uint32_t VulkanShader::createGraphicalPipeline(const GraphicalPipelineCreateInfo
     StackMemory::MemoryHandle<VkPipelineColorBlendAttachmentState> attachmentStates(
       info.numAttachments, TEMPMEM);
     for (uint32_t i = 0; i < info.numAttachments; ++i) {
-        attachmentStates[i].colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT
-                                             | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
-        attachmentStates[i].blendEnable = VK_FALSE; // TODO color blending
-        attachmentStates[i].srcColorBlendFactor = VK_BLEND_FACTOR_ONE;   
-        attachmentStates[i].dstColorBlendFactor = VK_BLEND_FACTOR_ZERO;  
-        attachmentStates[i].colorBlendOp = VK_BLEND_OP_ADD;              
-        attachmentStates[i].srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;   
-        attachmentStates[i].dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;  
-        attachmentStates[i].alphaBlendOp = VK_BLEND_OP_ADD;              
+        attachmentStates[i].colorWriteMask = ;
+        attachmentStates[i].blendEnable = VK_FALSE;  // TODO color blending
+        attachmentStates[i].srcColorBlendFactor = VK_BLEND_FACTOR_ONE;
+        attachmentStates[i].dstColorBlendFactor = VK_BLEND_FACTOR_ZERO;
+        attachmentStates[i].colorBlendOp = VK_BLEND_OP_ADD;
+        attachmentStates[i].srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
+        attachmentStates[i].dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
+        attachmentStates[i].alphaBlendOp = VK_BLEND_OP_ADD;
     }
 
     add_stage(VK_SHADER_STAGE_VERTEX_BIT, info.vs);
@@ -142,6 +141,10 @@ uint32_t VulkanShader::createGraphicalPipeline(const GraphicalPipelineCreateInfo
     viewport.maxDepth = info.viewport.maxDepth;
     VkRect2D scissor;
     scissor = convertRect2D(info.scissor);
+    if (info.scissor.extent.width == 0)
+        add_dynamic_state(VK_DYNAMIC_STATE_SCISSOR);
+    if (info.viewport.width == 0)
+        add_dynamic_state(VK_DYNAMIC_STATE_VIEWPORT);
     viewportInfo.viewportCount = 1;
     viewportInfo.pViewports = &viewport;
     viewportInfo.scissorCount = 1;

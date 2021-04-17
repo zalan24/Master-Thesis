@@ -12,6 +12,9 @@ class BlockFile
     bool hasContent() const;
     bool hasNodes() const;
 
+    size_t getBlockCount() const;
+    const BlockFile* getNode(size_t index) const;
+    const std::string& getBlockName(size_t index) const;
     size_t getBlockCount(const std::string& name) const;
     const BlockFile* getNode(const std::string& name, size_t index = 0) const;
 
