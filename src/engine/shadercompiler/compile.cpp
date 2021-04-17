@@ -1289,6 +1289,8 @@ bool compile_shader(const Compiler* compiler, ShaderBin& shaderBin, Cache& cache
     cxx
       << "void " << className
       << "::prepare(const drv::RenderPass *renderPass, drv::SubpassId subpass, const DynamicState &fixedDynamicStates";
+    std::stringstream varintIdInput;
+    first = true;
     for (const std::string& inc : allIncludes) {
         auto itr = includeData.find(inc);
         assert(itr != includeData.end());
@@ -1296,66 +1298,25 @@ bool compile_shader(const Compiler* compiler, ShaderBin& shaderBin, Cache& cache
                << itr->second.name;
         cxx << ", const " << itr->second.desriptorClassName << "::VariantDesc &"
             << itr->second.name;
+        if (!first)
+            varintIdInput << ", ";
+        else
+            first = false;
+        varintIdInput << itr->second.name;
     }
     header << ", const GraphicsPipelineStates &overrideStates = {});\n";
     cxx << ", const GraphicsPipelineStates &overrideStates) {\n";
-    cxx
-      << "    // TODO This configuration needs to be supported, a pipeline needs to be maintained for this\n";
+    cxx << "    const GraphicsPipelineDescriptor desc;\n";
+    cxx << "    desc.renderPass = renderPass;\n";
+    cxx << "    desc.subpass = subpass;\n";
+    cxx << "    desc.variantId = static_cast<const " << registryClassName
+        << "*>(reg)->get_variant_id(" << varintIdInput.str() << ");\n";
+    cxx << "    desc.configIndex = static_cast<const " << registryClassName
+        << "*>(reg)->get_config_id(desc.variantId);\n";
+    cxx << "    desc.states = overrideStates;\n";
+    cxx << "    desc.fixedDynamicStates = fixedDynamicStates;\n";
+    cxx << "    getGraphicsPipeline(ShaderObject::CREATE_SILENT, desc);\n";
     cxx << "}\n";
-    // uint32_t descId = 0;
-    // for (const std::string& inc : allIncludes) {
-    //     auto itr = includeData.find(inc);
-    //     assert(itr != includeData.end());
-    //     shaderObj << "        addDescriptor(\"" << itr->second.name << "\", " << descId++
-    //               << ", desc_" << itr->second.name << ");\n";
-    // }
-    // shaderObj << "    }\n";
-    // shaderObj << "    uint32_t getLocalVariantId() const override {\n";
-    // shaderObj << "        uint32_t ret = 0;\n";
-    // for (const std::string& inc : allIncludes) {
-    //     auto itr = includeData.find(inc);
-    //     assert(itr != includeData.end());
-    //     auto mulItr = variantIdMultiplier.find(inc);
-    //     assert(mulItr != variantIdMultiplier.end());
-    //     shaderObj << "        ret += desc_" << itr->second.name << ".getLocalVariantId() * "
-    //               << mulItr->second << ";\n";
-    // }
-    // shaderObj << "        return ret;\n";
-    // shaderObj << "    }\n";
-    // shaderObj << "  protected:\n";
-    // shaderObj << "    ShaderDescriptor* getDesc(const DescId& id) override {\n";
-    // shaderObj << "        switch (id) {\n";
-    // descId = 0;
-    // for (const std::string& inc : allIncludes) {
-    //     auto itr = includeData.find(inc);
-    //     assert(itr != includeData.end());
-    //     shaderObj << "            case " << descId++ << ":\n";
-    //     shaderObj << "                return &desc_" << itr->second.name << ";\n";
-    // }
-    // shaderObj << "            default:\n";
-    // shaderObj << "                throw std::runtime_error(\"Invalid desc id\");\n";
-    // shaderObj << "        }\n";
-    // shaderObj << "    }\n";
-    // shaderObj << "    const ShaderDescriptor* getDesc(const DescId& id) const override {\n";
-    // shaderObj << "        switch (id) {\n";
-    // descId = 0;
-    // for (const std::string& inc : allIncludes) {
-    //     auto itr = includeData.find(inc);
-    //     assert(itr != includeData.end());
-    //     shaderObj << "            case " << descId++ << ":\n";
-    //     shaderObj << "                return &desc_" << itr->second.name << ";\n";
-    // }
-    // shaderObj << "            default:\n";
-    // shaderObj << "                throw std::runtime_error(\"Invalid desc id\");\n";
-    // shaderObj << "        }\n";
-    // shaderObj << "    }\n";
-    // shaderObj << "  public:\n";
-    // for (const std::string& inc : allIncludes) {
-    //     auto itr = includeData.find(inc);
-    //     assert(itr != includeData.end());
-    //     shaderObj << "    " << itr->second.desriptorClassName << " desc_" << itr->second.name
-    //               << ";\n";
-    // }
     header << "};\n";
 
     registry.includes << "#include <" << headerFileName.string() << ">\n";

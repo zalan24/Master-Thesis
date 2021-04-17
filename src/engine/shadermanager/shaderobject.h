@@ -49,14 +49,14 @@ class ShaderObject
     };
 
     uint32_t getGraphicsPipeline(PipelineCreateMode createMode,
-                                 const GraphicsPipelineDescriptor& desc,
-                                 std::vector<drv::DrvShader::AttachmentState>& attachmentStates);
+                                 const GraphicsPipelineDescriptor& desc);
 
  private:
     std::string name;
     std::unordered_map<GraphicsPipelineDescriptor, uint32_t> pipelines;
 
     drv::DrvShader::GraphicalPipelineCreateInfo getGraphicsPipelineCreateInfo(
-      const GraphicsPipelineDescriptor& desc) const;
+      const GraphicsPipelineDescriptor& desc,
+      std::vector<drv::DrvShader::AttachmentState>& attachmentStates) const;
     drv::DrvShader::ShaderStage getShaderStage(const ShaderObjectRegistry::VariantId& variant);
 };

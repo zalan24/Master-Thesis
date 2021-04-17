@@ -89,6 +89,8 @@ uint32_t ShaderObject::getGraphicsPipeline(PipelineCreateMode createMode,
             LOG_F(WARNING, "A pipeline has not been prepared before usage for shader <%s>",
                   name.c_str());
     }
-    drv::DrvShader::GraphicalPipelineCreateInfo createInfo = getGraphicsPipelineCreateInfo(desc);
+    std::vector<drv::DrvShader::AttachmentState> attachmentStates;
+    drv::DrvShader::GraphicalPipelineCreateInfo createInfo =
+      getGraphicsPipelineCreateInfo(desc, attachmentStates);
     return pipelines[desc] = shader->createGraphicalPipeline(createInfo);
 }
