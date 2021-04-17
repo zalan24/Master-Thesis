@@ -49,7 +49,8 @@ class ShaderObject
     };
 
     uint32_t getGraphicsPipeline(PipelineCreateMode createMode,
-                                 const GraphicsPipelineDescriptor& desc);
+                                 const GraphicsPipelineDescriptor& desc,
+                                 std::vector<drv::DrvShader::AttachmentState>& attachmentStates);
 
  private:
     std::string name;

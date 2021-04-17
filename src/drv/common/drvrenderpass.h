@@ -107,6 +107,7 @@ class RenderPass
 
     RenderPassResourceId createResource();
 
+    virtual SampleCount getSampleCount(SubpassId subpass) const = 0;
     virtual void build() = 0;
 
     struct AttachmentData

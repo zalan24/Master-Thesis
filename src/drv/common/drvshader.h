@@ -87,7 +87,12 @@ class DrvShader
         float maxDepth = 0;
     };
     struct AttachmentState
-    {};
+    {
+        uint8_t use_r : 0;
+        uint8_t use_g : 0;
+        uint8_t use_b : 0;
+        uint8_t use_a : 0;
+    };
     struct GraphicalPipelineCreateInfo
     {
         const RenderPass* renderPass;

@@ -17,6 +17,7 @@ class VulkanRenderPass final : public drv::RenderPass
     VulkanRenderPass(const VulkanRenderPass&) = delete;
     VulkanRenderPass& operator=(const VulkanRenderPass&) = delete;
 
+    drv::SampleCount getSampleCount(drv::SubpassId subpass) const override;
     void build() override;
 
     VkRenderPass getRenderPass() const { return renderPass; }

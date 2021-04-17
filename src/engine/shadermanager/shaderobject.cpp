@@ -3,6 +3,8 @@
 #include <logger.h>
 #include <util.hpp>
 
+#include <drverror.h>
+
 #include <garbage.h>
 
 ShaderObject::ShaderObject(drv::LogicalDevicePtr _device, const ShaderObjectRegistry* _reg,
@@ -26,10 +28,12 @@ drv::DrvShader::ShaderStage ShaderObject::getShaderStage(
     drv::DrvShader::ShaderStage ret;
     ret.entry = entryPoint;
     ret.shaderModule = reg->shaders[variant];
+    return ret;
 }
 
 drv::DrvShader::GraphicalPipelineCreateInfo ShaderObject::getGraphicsPipelineCreateInfo(
-  const GraphicsPipelineDescriptor& desc) const {
+  const GraphicsPipelineDescriptor& desc,
+  std::vector<drv::DrvShader::AttachmentState>& attachmentStates) const {
     drv::DrvShader::GraphicalPipelineCreateInfo ret;
 
     const ShaderBin::StageConfig& config = reg->getStageConfig(desc.variantId);
@@ -38,9 +42,19 @@ drv::DrvShader::GraphicalPipelineCreateInfo ShaderObject::getGraphicsPipelineCre
     ret.subpass = desc.subpass;
     ret.configIndex = desc.configIndex;
 
-    ret.sampleCount = ;
-    ret.numAttachments = ;
-    ret.attachmentStates = ;
+    attachmentStates.resize(reg->stageConfigs[desc.variantId].attachments.size());
+    for (const auto& attachment : reg->stageConfigs[desc.variantId].attachments) {
+        drv::drv_assert(attachment.location < attachmentStates.size(),
+                        "Shader attachments are not in contineuos locations");
+        attachmentStates[attachment.location].use_r = attachment.info & attachment.USE_RED;
+        attachmentStates[attachment.location].use_g = attachment.info & attachment.USE_GREEN;
+        attachmentStates[attachment.location].use_b = attachment.info & attachment.USE_BLUE;
+        attachmentStates[attachment.location].use_a = attachment.info & attachment.USE_ALPHA;
+    }
+
+    ret.sampleCount = desc.renderPass->getSampleCount(desc.subpass);
+    ret.numAttachments = static_cast<uint32_t>(attachmentStates.size());
+    ret.attachmentStates = attachmentStates.data();
 
     ret.viewport = desc.states.fixedDynamicStates.viewport;
     ret.scissor = desc.states.fixedDynamicStates.scissor;

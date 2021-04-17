@@ -79,7 +79,15 @@ uint32_t VulkanShader::createGraphicalPipeline(const GraphicalPipelineCreateInfo
     StackMemory::MemoryHandle<VkPipelineColorBlendAttachmentState> attachmentStates(
       info.numAttachments, TEMPMEM);
     for (uint32_t i = 0; i < info.numAttachments; ++i) {
-        attachmentStates[i].colorWriteMask = ;
+        attachmentStates[i].colorWriteMask = 0;
+        if (info.attachmentStates[i].use_r)
+            attachmentStates[i].colorWriteMask |= VK_COLOR_COMPONENT_R_BIT;
+        if (info.attachmentStates[i].use_g)
+            attachmentStates[i].colorWriteMask |= VK_COLOR_COMPONENT_G_BIT;
+        if (info.attachmentStates[i].use_b)
+            attachmentStates[i].colorWriteMask |= VK_COLOR_COMPONENT_B_BIT;
+        if (info.attachmentStates[i].use_a)
+            attachmentStates[i].colorWriteMask |= VK_COLOR_COMPONENT_A_BIT;
         attachmentStates[i].blendEnable = VK_FALSE;  // TODO color blending
         attachmentStates[i].srcColorBlendFactor = VK_BLEND_FACTOR_ONE;
         attachmentStates[i].dstColorBlendFactor = VK_BLEND_FACTOR_ZERO;
