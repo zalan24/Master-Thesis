@@ -26,9 +26,11 @@ int main(int argc, char* argv[]) {
     std::string root = "";
     app.add_option("-r,--root", root, "Shaders source root folder");
     std::string headers = "";
-    app.add_option("-d,--headers", headers, "Headers output dir");
+    app.add_option("--headers", headers, "Headers output dir");
     std::string output = "";
     app.add_option("-o,--output", output, "Output binary file");
+    std::string debugOut = "";
+    app.add_option("-d,--debug", debugOut, "Debug output folder");
     std::string cacheF = "";
     app.add_option("-c,--cache", cacheF, "Cache folder");
 
@@ -36,15 +38,19 @@ int main(int argc, char* argv[]) {
 
     std::unordered_map<std::string, fs::path> headerPaths;
 
-    if (root == "" || output == "" || headers == "") {
+    if (root == "" || output == "" || headers == "" || debugOut == "") {
         std::cerr
-          << "Please provide a source root folder, a header output dir and an output bin file"
+          << "Please provide a source root folder, a debug output dir, a header output dir and an output bin file"
           << std::endl;
         return 1;
     }
     if (files.size() == 0)
         return 0;
     fs::path rootPath = root;
+    fs::path debugPath = debugOut;
+
+    if (!fs::exists(debugPath))
+        fs::create_directories(debugPath);
 
     std::regex headerRegex("(.*)\\.sh");
     std::regex shaderRegex("(.*)\\.sd");
@@ -89,7 +95,7 @@ int main(int argc, char* argv[]) {
             if (!std::regex_match(f, m, shaderRegex))
                 continue;
             std::cout << "Compiling: " << f << std::endl;
-            if (!compile_shader(&compiler, shaderBin, cache, registryData, f, headers,
+            if (!compile_shader(debugPath, &compiler, shaderBin, cache, registryData, f, headers,
                                 includeData)) {
                 std::cerr << "Failed to compile a shader: " << f << std::endl;
                 return 1;

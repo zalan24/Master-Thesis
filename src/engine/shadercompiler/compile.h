@@ -14,6 +14,8 @@
 #include <serializable.h>
 #include <shaderbin.h>
 
+namespace fs = std::filesystem;
+
 class Compiler;
 class BlockFile;
 
@@ -164,8 +166,8 @@ class Cache final : public ISerializable
 bool read_variants(const BlockFile* blockFile, Variants& variants);
 bool read_resources(const BlockFile* blockFile, Resources& resources);
 
-bool compile_shader(const Compiler* compiler, ShaderBin& shaderBin, Cache& cache,
-                    ShaderRegistryOutput& registry, const std::string& shaderFile,
+bool compile_shader(const fs::path& debugPath, const Compiler* compiler, ShaderBin& shaderBin,
+                    Cache& cache, ShaderRegistryOutput& registry, const std::string& shaderFile,
                     const std::string& outputFolder,
                     std::unordered_map<std::string, IncludeData>& includeData);
 

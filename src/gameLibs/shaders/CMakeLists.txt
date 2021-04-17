@@ -1,6 +1,7 @@
 file(GLOB SHADERS_HEADERS *.sh)
 file(GLOB SHADERS_SOURCES *.sd)
 set(SHADERBIN "${CMAKE_BINARY_DIR}/shaders/shaders.bin")
+set(SHADER_DEBUG "${CMAKE_BINARY_DIR}/shaders/debug/")
 
 set(GENERATED_FILES "${CMAKE_CURRENT_BINARY_DIR}/shaderregistry.h")
 
@@ -17,7 +18,7 @@ add_custom_target(ShaderCodes ALL DEPENDS ${SHADERBIN})
 
 add_custom_command(
     OUTPUT   ${SHADERBIN} ${GENERATED_FILES}
-    COMMAND  AnimationsShaderCompiler -r${CMAKE_CURRENT_SOURCE_DIR} -c${CMAKE_CURRENT_BINARY_DIR}/shadercache -d${CMAKE_CURRENT_BINARY_DIR} -o${SHADERBIN} ${SHADERS_HEADERS} ${SHADERS_SOURCES}
+    COMMAND  AnimationsShaderCompiler -r${CMAKE_CURRENT_SOURCE_DIR} -c${CMAKE_CURRENT_BINARY_DIR}/shadercache --headers ${CMAKE_CURRENT_BINARY_DIR} -o${SHADERBIN} -d${SHADER_DEBUG} ${SHADERS_HEADERS} ${SHADERS_SOURCES}
     DEPENDS  ${SHADERS_HEADERS} ${SHADERS_SOURCES} AnimationsShaderCompiler
 )
 

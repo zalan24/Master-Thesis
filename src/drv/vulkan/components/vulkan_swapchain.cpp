@@ -134,7 +134,7 @@ bool DrvVulkan::get_swapchain_images(drv::LogicalDevicePtr device, drv::Swapchai
             convertImage(images[i])->swapchainImage = true;
             convertImage(images[i])->numMipLevels = 1;
             convertImage(images[i])->arraySize = 1;
-            convertImage(images[i])->sampleCount = drv::ImageCreateInfo::SAMPLE_COUNT_1;
+            convertImage(images[i])->sampleCount = drv::SampleCount::SAMPLE_COUNT_1;
             convertImage(images[i])->aspects =
               drv::get_format_aspects(convertSwapchain(swapchain)->format);
             convertImage(images[i])->format = convertSwapchain(swapchain)->format;

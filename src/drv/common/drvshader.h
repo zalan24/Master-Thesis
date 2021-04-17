@@ -88,15 +88,15 @@ class DrvShader
     };
     struct AttachmentState
     {
-        uint8_t use_r : 0;
-        uint8_t use_g : 0;
-        uint8_t use_b : 0;
-        uint8_t use_a : 0;
+        uint8_t use_r : 1;
+        uint8_t use_g : 1;
+        uint8_t use_b : 1;
+        uint8_t use_a : 1;
     };
     struct GraphicalPipelineCreateInfo
     {
         const RenderPass* renderPass;
-        const SubpassId subpass;
+        SubpassId subpass;
         uint32_t configIndex;
         // currently it should match the attachment sample count
         SampleCount sampleCount;

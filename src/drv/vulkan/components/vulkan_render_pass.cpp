@@ -195,7 +195,7 @@ drv::SampleCount VulkanRenderPass::getSampleCount(drv::SubpassId subpass) const 
     if (subpasses[subpass].inputs.size() > 0)
         return attachmentInfos[subpasses[subpass].inputs[0].id].samples;
     if (subpasses[subpass].preserve.size() > 0)
-        return attachmentInfos[subpasses[subpass].preserve[0].id].samples;
+        return attachmentInfos[subpasses[subpass].preserve[0]].samples;
     drv::drv_assert(subpasses[subpass].depthStencil.id != drv::INVALID_ATTACHMENT,
                     "Subpass has no attachments");
     return attachmentInfos[subpasses[subpass].depthStencil.id].samples;

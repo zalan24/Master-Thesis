@@ -22,7 +22,7 @@ void ShaderObject::clear(Garbage* trashBin) {
 }
 
 drv::DrvShader::ShaderStage ShaderObject::getShaderStage(
-  const ShaderObjectRegistry::VariantId& variant, const char* entryPoint) {
+  const ShaderObjectRegistry::VariantId& variant, const char* entryPoint) const {
     if (variant == ShaderObjectRegistry::INVALID_SHADER)
         return {};
     drv::DrvShader::ShaderStage ret;
@@ -56,8 +56,8 @@ drv::DrvShader::GraphicalPipelineCreateInfo ShaderObject::getGraphicsPipelineCre
     ret.numAttachments = static_cast<uint32_t>(attachmentStates.size());
     ret.attachmentStates = attachmentStates.data();
 
-    ret.viewport = desc.states.fixedDynamicStates.viewport;
-    ret.scissor = desc.states.fixedDynamicStates.scissor;
+    ret.viewport = desc.fixedDynamicStates.viewport;
+    ret.scissor = desc.fixedDynamicStates.scissor;
 
     ret.topology = drv::PrimitiveTopology::TRIANGLE_LIST;  // TODO
     ret.frontFace = drv::FrontFace::CLOCKWISE;             // TODO

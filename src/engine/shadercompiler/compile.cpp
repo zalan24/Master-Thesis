@@ -114,7 +114,8 @@ static bool collect_shader_f(const BlockFile& blockFile, const std::string& type
         if (b->hasNodes()) {
             for (size_t j = 0; j < b->getBlockCount(type); ++j) {
                 const BlockFile* b2 = b->getNode(type, j);
-                f(i, b, j, b2);
+                if (!f(i, b, j, b2))
+                    return false;
             }
         }
         else if (b->hasContent()) {
@@ -141,6 +142,7 @@ static bool collect_shader_cfg(const BlockFile& blockFile, std::ostream& stagesO
                         << ") contains nested blocks instead of content." << std::endl;
               return false;
           }
+          return true;
       });
 }
 
@@ -526,22 +528,31 @@ static void generate_shader_code(std::ostream& out /* resources */) {
 
 static void generate_shader_attachments(const ShaderBin::StageConfig& configs,
                                         std::stringstream& code) {
-    for (const auto& [name, attachment] : configs.attachments) {
-        code << "layout(location = " << attachment.location << ") ";
+    for (const auto& attachment : configs.attachments) {
+        code << "layout(location = " << static_cast<uint32_t>(attachment.location) << ") ";
         if (attachment.info & ShaderBin::AttachmentInfo::WRITE)
             code << "out ";
         else
             throw std::runtime_error("Implement input attachments as well");
         // TODO handle depth attachment
-        code << "vec4 " << attachment.name << ";\n"
+        code << "vec4 " << attachment.name << ";\n";
     }
     code << "\n";
 }
 
-static std::vector<uint32_t> compile_shader_binary(const Compiler* compiler, ShaderBin::Stage stage,
+static std::vector<uint32_t> compile_shader_binary(const fs::path& debugPath,
+                                                   const Compiler* compiler, ShaderBin::Stage stage,
                                                    size_t len, const char* code) {
     UNUSED(len);
-    return compiler->GLSLtoSPV(stage, code);
+    try {
+        return compiler->GLSLtoSPV(stage, code);
+    }
+    catch (...) {
+        fs::path debugFile = debugPath / fs::path{"error_compiled_shader.glsl"};
+        std::ofstream debugOut(debugFile.c_str());
+        debugOut << code;
+        throw;
+    }
 }
 
 static std::string format_variant(
@@ -565,8 +576,9 @@ static std::string format_variant(
 }
 
 static bool generate_binary(
-  const Compiler* compiler, ShaderBin::ShaderData& shaderData, const ResourceObject& resourceObj,
-  uint32_t variantId, const std::vector<Variants>& variants, const std::stringstream& shader,
+  const fs::path& debugPath, const Compiler* compiler, ShaderBin::ShaderData& shaderData,
+  const ResourceObject& resourceObj, uint32_t variantId, const std::vector<Variants>& variants,
+  const std::stringstream& shader,
   std::unordered_map<ShaderHash, std::pair<size_t, size_t>>& codeOffsets,
   std::unordered_map<ShaderHash, std::pair<size_t, size_t>>& binaryOffsets, ShaderBin::Stage stage,
   const std::unordered_map<std::string, uint32_t>& variantParamMultiplier) {
@@ -585,7 +597,7 @@ static bool generate_binary(
         return true;
     }
     std::vector<uint32_t> binary =
-      compile_shader_binary(compiler, stage, shaderCode.length(), shaderCode.c_str());
+      compile_shader_binary(debugPath, compiler, stage, shaderCode.length(), shaderCode.c_str());
     ShaderHash binHash = hash_binary(binary.size(), binary.data());
     if (auto itr = binaryOffsets.find(binHash); itr != binaryOffsets.end()) {
         shaderData.stages[variantId].stageOffsets[stage] = itr->second.first;
@@ -636,8 +648,8 @@ static const T& translate_input(const std::string& str, const std::map<std::stri
         return itr->second;
     std::stringstream message;
     message << "Invalid value: <" << str << ">. Valid values are {";
-    for (const auto& itr : values)
-        message << " " << itr.first;
+    for (const auto& value : values)
+        message << " " << value.first;
     message << " }";
     throw std::runtime_error(message.str());
 }
@@ -674,32 +686,43 @@ static ShaderBin::StageConfig read_stage_configs(
     if (auto itr = csValues.find("entry"); itr != csValues.end())
         ret.csEntryPoint = itr->second;
     if (auto itr = statesValues.find("polygonMode"); itr != statesValues.end())
-        ret.polygonMode = translate_input(itr->second, {{"fill", drv::PolygonMode::FILL},
-                                                        {"line", drv::PolygonMode::LINE},
-                                                        {"point", drv::PolygonMode::POINT}});
+        ret.polygonMode =
+          translate_input<drv::PolygonMode>(itr->second, {{"fill", drv::PolygonMode::FILL},
+                                                          {"line", drv::PolygonMode::LINE},
+                                                          {"point", drv::PolygonMode::POINT}});
     if (auto itr = statesValues.find("cull"); itr != statesValues.end())
-        ret.cullMode = translate_input(itr->second, {{"none", drv::CullMode::NONE},
-                                                     {"front", drv::CullMode::FRONT_BIT},
-                                                     {"back", drv::CullMode::BACK_BIT},
-                                                     {"all", drv::CullMode::FRONT_AND_BACK}});
+        ret.cullMode =
+          translate_input<drv::CullMode>(itr->second, {{"none", drv::CullMode::NONE},
+                                                       {"front", drv::CullMode::FRONT_BIT},
+                                                       {"back", drv::CullMode::BACK_BIT},
+                                                       {"all", drv::CullMode::FRONT_AND_BACK}});
     if (auto itr = statesValues.find("depthCompare"); itr != statesValues.end())
-        ret.depthCompare = translate_input(itr->second, {{"true", true}, {"false", false}});
+        ret.depthCompare = translate_input<drv::CompareOp>(
+          itr->second, {{"never", drv::CompareOp::NEVER},
+                        {"less", drv::CompareOp::LESS},
+                        {"equal", drv::CompareOp::EQUAL},
+                        {"less_or_equal", drv::CompareOp::LESS_OR_EQUAL},
+                        {"greater", drv::CompareOp::GREATER},
+                        {"not_equal", drv::CompareOp::NOT_EQUAL},
+                        {"greater_or_equal", drv::CompareOp::GREATER_OR_EQUAL},
+                        {"always", drv::CompareOp::ALWAYS}});
     if (auto itr = statesValues.find("useDepthClamp"); itr != statesValues.end())
-        ret.useDepthClamp = translate_input(itr->second, {{"true", true}, {"false", false}});
+        ret.useDepthClamp = translate_input<bool>(itr->second, {{"true", true}, {"false", false}});
     if (auto itr = statesValues.find("depthBiasEnable"); itr != statesValues.end())
-        ret.depthBiasEnable = translate_input(itr->second, {{"true", true}, {"false", false}});
+        ret.depthBiasEnable =
+          translate_input<bool>(itr->second, {{"true", true}, {"false", false}});
     if (auto itr = statesValues.find("depthTest"); itr != statesValues.end())
-        ret.depthTest = translate_input(itr->second, {{"true", true}, {"false", false}});
+        ret.depthTest = translate_input<bool>(itr->second, {{"true", true}, {"false", false}});
     if (auto itr = statesValues.find("depthWrite"); itr != statesValues.end())
-        ret.depthWrite = translate_input(itr->second, {{"true", true}, {"false", false}});
+        ret.depthWrite = translate_input<bool>(itr->second, {{"true", true}, {"false", false}});
     if (auto itr = statesValues.find("stencilTest"); itr != statesValues.end())
-        ret.stencilTest = translate_input(itr->second, {{"true", true}, {"false", false}});
+        ret.stencilTest = translate_input<bool>(itr->second, {{"true", true}, {"false", false}});
     for (const auto& [name, cfg] : input.attachments) {
         std::string attachments = format_variant(variantId, variants, cfg, variantParamMultiplier);
         std::unordered_map<std::string, std::string> values = read_values(attachments);
         ShaderBin::AttachmentInfo attachmentInfo;
-        if (auto itr = values.find("location"); itr != value.end()) {
-            int loc = std::to_integer(itr->second);
+        if (auto itr = values.find("location"); itr != values.end()) {
+            int loc = std::atoi(itr->second.c_str());
             if (loc < 0)
                 continue;
             attachmentInfo.location = safe_cast<uint8_t>(loc);
@@ -729,8 +752,8 @@ static ShaderBin::StageConfig read_stage_configs(
             if (itr->second == "output")
                 attachmentInfo.info |= ShaderBin::AttachmentInfo::WRITE;
             else if (itr->second != "input")
-                throw std::runtime_error("Unknown attachment type: " + itr->second + "  ("
-                                         + name ")");
+                throw std::runtime_error("Unknown attachment type: " + itr->second + "  (" + name
+                                         + ")");
         }
         ret.attachments.push_back(std::move(attachmentInfo));
     }
@@ -754,8 +777,8 @@ static ResourceObject generate_resource_object(const Resources& resources,
     return ret;
 }
 
-static bool generate_binary(const Compiler* compiler, const Resources& resources,
-                            ShaderBin::ShaderData& shaderData,
+static bool generate_binary(const fs::path& debugPath, const Compiler* compiler,
+                            const Resources& resources, ShaderBin::ShaderData& shaderData,
                             const std::vector<Variants>& variants, ShaderGenerationInput&& input,
                             const std::unordered_map<std::string, uint32_t>& variantParamMultiplier,
                             std::map<PipelineResourceUsage, ResourceObject>& resourceObjects,
@@ -809,22 +832,22 @@ static bool generate_binary(const Compiler* compiler, const Resources& resources
         // TODO add resource packs to shader codes
         shaderData.stages[variantId].configs = cfg;
         if (cfg.vsEntryPoint != ""
-            && !generate_binary(compiler, shaderData, resourceObj, variantId, variants, input.ps,
-                                codeOffsets, binaryOffsets, ShaderBin::PS,
+            && !generate_binary(debugPath, compiler, shaderData, resourceObj, variantId, variants,
+                                input.ps, codeOffsets, binaryOffsets, ShaderBin::PS,
                                 variantParamMultiplier)) {
             std::cerr << "Could not generate PS binary." << std::endl;
             return false;
         }
         if (cfg.psEntryPoint != ""
-            && !generate_binary(compiler, shaderData, resourceObj, variantId, variants, input.vs,
-                                codeOffsets, binaryOffsets, ShaderBin::VS,
+            && !generate_binary(debugPath, compiler, shaderData, resourceObj, variantId, variants,
+                                input.vs, codeOffsets, binaryOffsets, ShaderBin::VS,
                                 variantParamMultiplier)) {
             std::cerr << "Could not generate VS binary." << std::endl;
             return false;
         }
         if (cfg.csEntryPoint != ""
-            && !generate_binary(compiler, shaderData, resourceObj, variantId, variants, input.cs,
-                                codeOffsets, binaryOffsets, ShaderBin::CS,
+            && !generate_binary(debugPath, compiler, shaderData, resourceObj, variantId, variants,
+                                input.cs, codeOffsets, binaryOffsets, ShaderBin::CS,
                                 variantParamMultiplier)) {
             std::cerr << "Could not generate CS binary." << std::endl;
             return false;
@@ -1002,8 +1025,8 @@ void ResourcePack::generateCXX(const std::string& structName, const Resources& r
     out << "static_assert(sizeof(" << structName << ") == " << predictedSize << ");\n\n";
 }
 
-bool compile_shader(const Compiler* compiler, ShaderBin& shaderBin, Cache& cache,
-                    ShaderRegistryOutput& registry, const std::string& shaderFile,
+bool compile_shader(const fs::path& debugPath, const Compiler* compiler, ShaderBin& shaderBin,
+                    Cache& cache, ShaderRegistryOutput& registry, const std::string& shaderFile,
                     const std::string& outputFolder,
                     std::unordered_map<std::string, IncludeData>& includeData) {
     std::stringstream cu;
@@ -1077,6 +1100,7 @@ bool compile_shader(const Compiler* compiler, ShaderBin& shaderBin, Cache& cache
                   << shaderFile << std::endl;
                 return false;
             }
+            return true;
         })) {
         std::cerr << "Could not collect attachments in: " << shaderFile << std::endl;
         return false;
@@ -1124,7 +1148,7 @@ bool compile_shader(const Compiler* compiler, ShaderBin& shaderBin, Cache& cache
     ShaderBin::ShaderData shaderData;
     std::map<PipelineResourceUsage, ResourceObject> resourceObjects;
     std::vector<PipelineResourceUsage> varintToResourceUsage;
-    if (!generate_binary(compiler, resources, shaderData, variants, std::move(genInput),
+    if (!generate_binary(debugPath, compiler, resources, shaderData, variants, std::move(genInput),
                          variantParamMultiplier, resourceObjects, varintToResourceUsage)) {
         std::cerr << "Could not generate binary: " << shaderFile << std::endl;
         return false;
@@ -1306,7 +1330,7 @@ bool compile_shader(const Compiler* compiler, ShaderBin& shaderBin, Cache& cache
     }
     header << ", const GraphicsPipelineStates &overrideStates = {});\n";
     cxx << ", const GraphicsPipelineStates &overrideStates) {\n";
-    cxx << "    const GraphicsPipelineDescriptor desc;\n";
+    cxx << "    GraphicsPipelineDescriptor desc;\n";
     cxx << "    desc.renderPass = renderPass;\n";
     cxx << "    desc.subpass = subpass;\n";
     cxx << "    desc.variantId = static_cast<const " << registryClassName
