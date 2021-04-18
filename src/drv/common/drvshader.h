@@ -85,6 +85,10 @@ class DrvShader
         float height = 0;
         float minDepth = 0;
         float maxDepth = 0;
+        bool operator==(const Viewport& rhs) const {
+            return x == rhs.x && y == rhs.y && width == rhs.width && height == rhs.height
+                   && minDepth == rhs.minDepth && rhs.maxDepth == maxDepth;
+        }
     };
     struct AttachmentState
     {
@@ -132,3 +136,16 @@ class DrvShader
 };
 
 }  // namespace drv
+
+namespace std
+{
+template <>
+struct hash<drv::DrvShader::Viewport>
+{
+    std::size_t operator()(const drv::DrvShader::Viewport& s) const noexcept {
+        return std::hash<float>{}(s.x) ^ std::hash<float>{}(s.y) ^ std::hash<float>{}(s.width)
+               ^ std::hash<float>{}(s.height) ^ std::hash<float>{}(s.minDepth)
+               ^ std::hash<float>{}(s.maxDepth);
+    }
+};
+}  // namespace std

@@ -3,10 +3,13 @@
 #include <cassert>
 #include <cstdint>
 #include <cstring>
+#include <functional>
 #include <limits>
 #include <stdexcept>
 
 #include <string_hash.h>
+
+// TODO split this file up
 
 namespace drv
 {
@@ -1386,18 +1389,25 @@ struct Offset2D
 {
     int32_t x;
     int32_t y;
+    bool operator==(const Offset2D& rhs) const { return x == rhs.x && y == rhs.y; }
 };
 
 struct Extent2D
 {
     uint32_t width;
     uint32_t height;
+    bool operator==(const Extent2D& rhs) const {
+        return width == rhs.width && height == rhs.height;
+    }
 };
 
 struct Rect2D
 {
     Offset2D offset;
     Extent2D extent;
+    bool operator==(const Rect2D& rhs) const {
+        return offset == rhs.offset && extent == rhs.extent;
+    }
 };
 
 struct TextureInfo
@@ -1433,25 +1443,29 @@ enum class PrimitiveTopology
     // PATCH_LIST = 10
 };
 
-enum class PolygonMode {
+enum class PolygonMode
+{
     FILL = 0,
     LINE = 1,
     POINT = 2,
 };
 
-enum class CullMode {
+enum class CullMode
+{
     NONE = 0,
     FRONT_BIT = 0x00000001,
     BACK_BIT = 0x00000002,
     FRONT_AND_BACK = 0x00000003,
 };
 
-enum class FrontFace {
+enum class FrontFace
+{
     COUNTER_CLOCKWISE = 0,
     CLOCKWISE = 1,
 };
 
-enum class CompareOp {
+enum class CompareOp
+{
     NEVER = 0,
     LESS = 1,
     EQUAL = 2,
@@ -1463,3 +1477,28 @@ enum class CompareOp {
 };
 
 };  // namespace drv
+
+namespace std
+{
+template <>
+struct hash<drv::Offset2D>
+{
+    std::size_t operator()(const drv::Offset2D& s) const noexcept {
+        return std::hash<int32_t>{}(s.x) ^ std::hash<int32_t>{}(s.y);
+    }
+};
+template <>
+struct hash<drv::Extent2D>
+{
+    std::size_t operator()(const drv::Extent2D& s) const noexcept {
+        return std::hash<uint32_t>{}(s.width) ^ std::hash<uint32_t>{}(s.height);
+    }
+};
+template <>
+struct hash<drv::Rect2D>
+{
+    std::size_t operator()(const drv::Rect2D& s) const noexcept {
+        return std::hash<drv::Offset2D>{}(s.offset) ^ std::hash<drv::Extent2D>{}(s.extent);
+    }
+};
+}  // namespace std

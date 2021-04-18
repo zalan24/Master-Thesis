@@ -239,7 +239,7 @@ uint32_t VulkanShader::createGraphicalPipeline(const GraphicalPipelineCreateInfo
     VkResult result =
       vkCreateGraphicsPipelines(convertDevice(device), nullptr, 1, &createInfo, nullptr, &pipeline);
     drv::drv_assert(result == VK_SUCCESS, "Could not create graphical pipeline");
-    uint32_t ret = graphicalPipelines.size();
+    uint32_t ret = static_cast<uint32_t>(graphicalPipelines.size());
     graphicalPipelines.push_back(pipeline);
     return ret;
 }

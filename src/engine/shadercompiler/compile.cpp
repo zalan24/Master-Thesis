@@ -1041,8 +1041,7 @@ bool compile_shader(const fs::path& debugPath, const Compiler* compiler, ShaderB
     header << "#include <shaderbin.h>\n";
     header << "#include <shaderobject.h>\n";
     header << "#include <drvrenderpass.h>\n";
-    header << "#include <shaderobjectregistry.h>\n";
-    header << "#include <shaderdescriptorcollection.h>\n\n";
+    header << "#include <shaderobjectregistry.h>\n\n";
     cxx << "#include \"" << headerFileName.string() << "\"\n\n";
     cxx << "#include <drv.h>\n";
     std::set<std::string> includes;
