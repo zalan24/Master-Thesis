@@ -26,6 +26,8 @@ class ShaderObject
 
     struct DynamicState
     {
+        // bool dynamicViewport = false;
+        // bool dynamicScissor = false;
         drv::DrvShader::Viewport viewport;
         drv::Rect2D scissor = {{0, 0}, {0, 0}};
         bool operator==(const DynamicState& rhs) const {
@@ -50,6 +52,8 @@ class ShaderObject
     {
         std::size_t operator()(const GraphicsPipelineStates&) const noexcept { return 0; }
     };
+
+    const drv::DrvShader* getShader() const { return shader.get(); }
 
  protected:
     drv::LogicalDevicePtr device;

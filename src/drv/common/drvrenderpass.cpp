@@ -96,3 +96,7 @@ void CmdRenderPass::clearColorAttachment(AttachmentId attachment, ClearColorValu
     renderPass->clearAttachments(cmdBuffer, tracker, 1, &id, &clearValue, &aspect, rectCount,
                                  rects);
 }
+
+void CmdRenderPass::bindGraphicsPipeline(const GraphicsPipelineBindInfo& info) {
+    renderPass->bindGraphicsPipeline(cmdBuffer, tracker, info);
+}

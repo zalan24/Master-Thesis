@@ -114,6 +114,7 @@ class VulkanShader final : public drv::DrvShader
     }
 
     uint32_t createGraphicalPipeline(const GraphicalPipelineCreateInfo& info) override;
+    VkPipeline getGraphicsPipeline(uint32_t id) const { return graphicalPipelines[id]; }
 
  private:
     drv::LogicalDevicePtr device;

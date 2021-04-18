@@ -110,9 +110,12 @@ void Game::initShader(drv::Extent2D extent) {
     blueVariant.color = shader_test_descriptor::Color::BLUE;
     greenVariant.color = shader_test_descriptor::Color::GREEN;
     redVariant.color = shader_test_descriptor::Color::RED;
-    testShader.prepare(testRenderPass.get(), testSubpass, fixedDynStates, globalDesc, blueVariant);
-    testShader.prepare(testRenderPass.get(), testSubpass, fixedDynStates, globalDesc, greenVariant);
-    testShader.prepare(testRenderPass.get(), testSubpass, fixedDynStates, globalDesc, redVariant);
+    testShader.prepareGraphicalPipeline(testRenderPass.get(), testSubpass, fixedDynStates,
+                                        globalDesc, blueVariant);
+    testShader.prepareGraphicalPipeline(testRenderPass.get(), testSubpass, fixedDynStates,
+                                        globalDesc, greenVariant);
+    testShader.prepareGraphicalPipeline(testRenderPass.get(), testSubpass, fixedDynStates,
+                                        globalDesc, redVariant);
 }
 
 void Game::record(FrameGraph& frameGraph, FrameId frameId) {
@@ -142,10 +145,14 @@ void Game::record(FrameGraph& frameGraph, FrameId frameId) {
            drv::ImageMemoryBarrier::AUTO_TRANSITION, true,
            drv::get_queue_family(engine->getDevice(), queues.renderQueue.handle)});
         drv::ClearColorValue clearValue(1.f, 1.f, 0.f, 1.f);
-        if ((frameId / 100) % 2 == 0)
+        if ((frameId / 100) % 2 == 0) {
             clearValue = drv::ClearColorValue(1.f, 1.f, 0.f, 1.f);
-        else
+            shaderTestDesc.setVariant_Color(shader_test_descriptor::Color::BLUE);
+        }
+        else {
             clearValue = drv::ClearColorValue(0.f, 1.f, 1.f, 1.f);
+            shaderTestDesc.setVariant_Color(shader_test_descriptor::Color::RED);
+        }
         recorder.cmdClearImage(swapChainData.image, &clearValue);
 
         recorder.cmdImageBarrier(
@@ -186,6 +193,8 @@ void Game::record(FrameGraph& frameGraph, FrameId frameId) {
         clearRect.layerCount = 1;
         testPass.clearColorAttachment(testColorAttachment, drv::ClearColorValue(0.f, 0.f, 1.f, 1.f),
                                       1, &clearRect);
+        testShader.bindGraphicsInfo(ShaderObject::CREATE_WARNING, testPass, , &shaderGlobalDesc,
+                                    &shaderTestDesc);
         testPass.end();
 
         // /// --- oroginal clear ---

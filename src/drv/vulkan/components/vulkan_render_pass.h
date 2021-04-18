@@ -42,6 +42,8 @@ class VulkanRenderPass final : public drv::RenderPass
                           const drv::ClearValue* clearValues,
                           const drv::ImageAspectBitType* aspects, uint32_t rectCount,
                           const drv::ClearRect* rects) const override;
+    void bindGraphicsPipeline(drv::CommandBufferPtr cmdBuffer, drv::ResourceTracker* tracker,
+                              const drv::GraphicsPipelineBindInfo& info) const override;
 
  private:
     VkRenderPass renderPass = VK_NULL_HANDLE;

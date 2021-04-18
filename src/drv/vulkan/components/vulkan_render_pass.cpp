@@ -6,6 +6,7 @@
 #include "vulkan_conversions.h"
 #include "vulkan_enum_compare.h"
 #include "vulkan_image.h"
+#include "vulkan_shader.h"
 
 static VkAttachmentReference get_attachment_ref(const drv::AttachmentRef& ref) {
     VkAttachmentReference ret;
@@ -387,4 +388,11 @@ void VulkanRenderPass::clearAttachments(drv::CommandBufferPtr cmdBuffer, drv::Re
         vkRects[i] = convertClearRect(rects[i]);
     vkCmdClearAttachments(convertCommandBuffer(cmdBuffer), attachmentCount, vkAttachments,
                           rectCount, vkRects);
+}
+
+void VulkanRenderPass::bindGraphicsPipeline(drv::CommandBufferPtr cmdBuffer, drv::ResourceTracker*,
+                                            const drv::GraphicsPipelineBindInfo& info) const {
+    const VulkanShader* shader = static_cast<const VulkanShader*>(info.shader);
+    vkCmdBindPipeline(convertCommandBuffer(cmdBuffer), VK_PIPELINE_BIND_POINT_GRAPHICS,
+                      shader->getGraphicsPipeline(info.pipelineId));
 }

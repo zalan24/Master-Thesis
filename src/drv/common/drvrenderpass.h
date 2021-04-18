@@ -10,6 +10,7 @@ namespace drv
 {
 class ResourceTracker;
 class RenderPass;
+class DrvShader;
 
 using AttachmentId = uint32_t;
 using SubpassId = uint32_t;
@@ -42,6 +43,13 @@ struct SubpassInfo
     AttachmentRef depthStencil;
 };
 
+struct GraphicsPipelineBindInfo
+{
+    const DrvShader* shader;
+    uint32_t pipelineId;
+    // TODO shader headers...
+};
+
 class CmdRenderPass final
 {
  public:
@@ -62,6 +70,10 @@ class CmdRenderPass final
     // TODO implement different versions for depth/stencil/multiple attachments
     void clearColorAttachment(AttachmentId attachment, ClearColorValue value,
                               uint32_t rectCount = 0, const drv::ClearRect* rects = nullptr);
+    void bindGraphicsPipeline(const GraphicsPipelineBindInfo& info);
+
+    const RenderPass* getRenderPass() const { return renderPass; }
+    SubpassId getSubpass() const { return currentPass; }
 
  private:
     ResourceTracker* tracker = nullptr;
@@ -138,6 +150,8 @@ class RenderPass
                                   uint32_t attachmentCount, const uint32_t* attachmentId,
                                   const ClearValue* clearValues, const ImageAspectBitType* aspects,
                                   uint32_t rectCount, const drv::ClearRect* rects) const = 0;
+    virtual void bindGraphicsPipeline(CommandBufferPtr cmdBuffer, ResourceTracker* tracker,
+                                      const GraphicsPipelineBindInfo& info) const = 0;
 };
 
 }  // namespace drv
