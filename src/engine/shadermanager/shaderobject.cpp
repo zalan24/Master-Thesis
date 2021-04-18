@@ -79,7 +79,7 @@ drv::DrvShader::GraphicalPipelineCreateInfo ShaderObject::getGraphicsPipelineCre
 uint32_t ShaderObject::getGraphicsPipeline(PipelineCreateMode createMode,
                                            const GraphicsPipelineDescriptor& desc) {
     auto itr = pipelines.find(desc);
-    if (itr == pipelines.end())
+    if (itr != pipelines.end())
         return itr->second;
     switch (createMode) {
         case CREATE_SILENT:

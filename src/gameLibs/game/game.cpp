@@ -91,10 +91,18 @@ void Game::recreateViews(uint32_t imageCount, const drv::ImagePtr* images) {
     }
 }
 
-void Game::initShader() {
+void Game::initShader(drv::Extent2D extent) {
     engine->getGarbageSystem()->useGarbage(
       [this](Garbage* trashBin) { testShader.clear(trashBin); });
     ShaderObject::DynamicState fixedDynStates;
+    fixedDynStates.scissor.offset = {0, 0};
+    fixedDynStates.scissor.extent = extent;
+    fixedDynStates.viewport.x = 0;
+    fixedDynStates.viewport.y = 0;
+    fixedDynStates.viewport.width = static_cast<float>(extent.width);
+    fixedDynStates.viewport.height = static_cast<float>(extent.height);
+    fixedDynStates.viewport.minDepth = 0;
+    fixedDynStates.viewport.maxDepth = 1;
     shader_global_descriptor::VariantDesc globalDesc;
     shader_test_descriptor::VariantDesc blueVariant;
     shader_test_descriptor::VariantDesc greenVariant;
@@ -151,7 +159,7 @@ void Game::record(FrameGraph& frameGraph, FrameId frameId) {
             for (auto& framebuffer : frameBuffers)
                 framebuffer.reset();
             testRenderPass->recreate(testImageInfo);
-            initShader();
+            initShader(swapChainData.extent);
         }
         if (!frameBuffers[swapChainData.imageIndex])
             frameBuffers[swapChainData.imageIndex].set(

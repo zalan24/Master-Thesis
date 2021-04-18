@@ -45,5 +45,5 @@ class Game final
     Engine::SwapchaingVersion swapchainVersion = Engine::INVALID_SWAPCHAIN;
 
     void recreateViews(uint32_t imageCount, const drv::ImagePtr* images);
-    void initShader();
+    void initShader(drv::Extent2D extent);
 };
