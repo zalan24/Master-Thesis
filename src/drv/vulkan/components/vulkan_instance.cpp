@@ -13,9 +13,18 @@
 
 static char const* EngineName = "Vulkan.hpp";
 
-static const char* const validationLayers[] = {"VK_LAYER_KHRONOS_validation"};
+static const char* const validationLayers[] = {"VK_LAYER_KHRONOS_validation",
+                                               "VK_LAYER_KHRONOS_synchronization2"};
 
-static const char* const captureLayers[] = {"VK_LAYER_RENDERDOC_Capture"};
+static const char* const rDocLayers[] = {"VK_LAYER_RENDERDOC_Capture"};
+
+static const char* const gfxLayers[] = {"VK_LAYER_LUNARG_gfxreconstruct"};
+
+#ifdef DEBUG
+static const char* const debugLayers[] = {"VK_LAYER_LUNARG_monitor"};
+#else
+static const char* const debugLayers[] = {};
+#endif
 
 using namespace drv_vulkan;
 
@@ -86,15 +95,33 @@ drv::InstancePtr DrvVulkan::create_instance(const drv::InstanceCreateInfo* info)
         }
     }
     if (info->renderdocEnabled) {
-        for (const char* layer : captureLayers) {
+        for (const char* layer : rDocLayers) {
             if (check_layer_support(layer))
                 layers.push_back(layer);
             else
-                LOG_F(WARNING, "A recommended layer is not available: %s", layer);
+                LOG_F(ERROR, "A RenderDoc layer is not available: %s", layer);
         }
+    }
+    if (info->gfxCaptureEnabled) {
+        for (const char* layer : gfxLayers) {
+            if (check_layer_support(layer))
+                layers.push_back(layer);
+            else
+                LOG_F(ERROR, "A gfx capture layer is not available: %s", layer);
+        }
+    }
+    for (const char* layer : debugLayers) {
+        if (check_layer_support(layer))
+            layers.push_back(layer);
+        else
+            LOG_F(WARNING, "A debug layer is not available: %s", layer);
     }
     createInfo.enabledLayerCount = static_cast<uint32_t>(layers.size());
     createInfo.ppEnabledLayerNames = layers.data();
+
+    LOG_DRIVER_API("Enabled instance layers:");
+    for (const char* layer : layers)
+        LOG_DRIVER_API(" - %s", layer);
 
     Instance* instance = new Instance;
     if (instance == nullptr)

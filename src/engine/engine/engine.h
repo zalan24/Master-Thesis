@@ -56,9 +56,11 @@ class Engine
         void writeJson(json& out) const override final;
         void readJson(const json& in) override final;
     };
-    
-    struct Args {
-      bool renderdocEnabled;
+
+    struct Args
+    {
+        bool renderdocEnabled;
+        bool gfxCaptureEnabled;
     };
 
     Engine(int argc, char* argv[], const Config& config, const std::string& shaderbinFile,

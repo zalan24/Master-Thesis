@@ -76,6 +76,7 @@ int main(int argc, char* argv[]) {
         app.add_option("-d,--data", resourceFolder, "Path to the data folder");
         Engine::Args args;
         app.add_flag("-r,--renderdoc", args.renderdocEnabled, "Enable renderdoc layer");
+        app.add_flag("-g,--gfx", args.gfxCaptureEnabled, "Enable gfx capture layer");
         // std::string root = "";
         // app.add_option("-r,--root", root, "Working directory for the specified folder");
 

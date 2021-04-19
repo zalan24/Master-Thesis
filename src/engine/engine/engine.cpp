@@ -1,6 +1,7 @@
 #include "engine.h"
 
 #include <chrono>
+#include <cstdlib>
 #include <fstream>
 #include <iostream>
 #include <map>
@@ -169,7 +170,8 @@ Engine::Engine(int argc, char* argv[], const Config& cfg, const std::string& sha
     window(&input, &inputManager,
            drv::WindowOptions{static_cast<unsigned int>(cfg.screenWidth),
                               static_cast<unsigned int>(cfg.screenHeight), cfg.title.c_str()}),
-    drvInstance(drv::InstanceCreateInfo{cfg.title.c_str(), args.renderdocEnabled}),
+    drvInstance(
+      drv::InstanceCreateInfo{cfg.title.c_str(), args.renderdocEnabled, args.gfxCaptureEnabled}),
     windowIniter(window, drvInstance),
     deviceExtensions(true),
     physicalDevice(get_device_selection_info(drvInstance, deviceExtensions), window),

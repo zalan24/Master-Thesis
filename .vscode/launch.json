@@ -4,45 +4,45 @@
   // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
   "version": "0.2.0",
   "configurations": [
-  {
-    "name": "(Windows) Shader compiler",
-    "type": "cppvsdbg",
-    "request": "launch",
-    "program": "${workspaceFolder}/build/src/engine/shadercompiler/AnimationsShaderCompiler.exe",
-    "args": [
-      "-r${workspaceFolder}/src/gameLibs/shaders",
-      "-c${workspaceFolder}/build/src/gameLibs/shaders/shadercache",
-      "-d${workspaceFolder}/build/src/gameLibs/shaders",
-      "-o${workspaceFolder}/build/shaders/shaders.bin",
-      "${workspaceFolder}/src/gameLibs/shaders/global.sh",
-      "${workspaceFolder}/src/gameLibs/shaders/test.sd"
-    ],
-    "stopAtEntry": false,
-    "cwd": "${workspaceFolder}/build/src/gameLibs/shaders",
-    "environment": [],
-    "externalConsole": false,
-    "internalConsoleOptions": "openOnSessionStart"
-  },
-  {
-    "name": "(Windows) Attach",
-    "type": "cppvsdbg",
-    "request": "attach",
-    "processId": "${command:pickProcess}"
-  },
     {
-      "type": "lldb",
+      "name": "(Windows) Shader compiler",
+      "type": "cppvsdbg",
       "request": "launch",
-      "name": "Playground (linux)",
-      "program": "${workspaceFolder}/build/src/apps/playground/Playground",
+      "program": "${workspaceFolder}/build/src/engine/shadercompiler/AnimationsShaderCompiler.exe",
       "args": [
-        "-c../data/configs/playground_default.json",
-        "-m../data/resources/models.json",
-        "-d../data/",
-        "-sshaders/shaders.bin"
+        "-r${workspaceFolder}/src/gameLibs/shaders",
+        "-c${workspaceFolder}/build/src/gameLibs/shaders/shadercache",
+        "-d${workspaceFolder}/build/src/gameLibs/shaders",
+        "-o${workspaceFolder}/build/shaders/shaders.bin",
+        "${workspaceFolder}/src/gameLibs/shaders/global.sh",
+        "${workspaceFolder}/src/gameLibs/shaders/test.sd"
       ],
-      "cwd": "${workspaceFolder}/build",
+      "stopAtEntry": false,
+      "cwd": "${workspaceFolder}/build/src/gameLibs/shaders",
+      "environment": [],
+      "externalConsole": false,
       "internalConsoleOptions": "openOnSessionStart"
     },
+    {
+      "name": "(Windows) Attach",
+      "type": "cppvsdbg",
+      "request": "attach",
+      "processId": "${command:pickProcess}"
+    },
+    // {
+    //   "type": "lldb",
+    //   "request": "launch",
+    //   "name": "Playground (linux)",
+    //   "program": "${workspaceFolder}/build/src/apps/playground/Playground",
+    //   "args": [
+    //     "-c../data/configs/playground_default.json",
+    //     "-m../data/resources/models.json",
+    //     "-d../data/",
+    //     "-sshaders/shaders.bin"
+    //   ],
+    //   "cwd": "${workspaceFolder}/build",
+    //   "internalConsoleOptions": "openOnSessionStart"
+    // },
     {
       "name": "Playground (win)",
       "type": "cppvsdbg",
@@ -50,16 +50,63 @@
       "program": "${workspaceFolder}/build/src/apps/playground/Playground.exe",
       "stopAtEntry": false,
       "cwd": "${workspaceFolder}/build",
-      "environment": [],
+      "environment": [
+        // {"name":"VK_LAYER_PATH", "value":"${workspaceFolder}/build/3rdParty/gfxreconstruct/bin/layer;${env:VK_LAYER_PATH}"},
+        {"name": "VK_LAYER_SETTINGS_PATH", "value": "${workspaceFolder}/data/captureCfg"}
+      ],
       "externalConsole": false,
       "internalConsoleOptions": "openOnSessionStart",
       "args": [
         "-c../data/configs/playground_default.json",
         "-m../data/resources/models.json",
         "-d../data/",
+        "--gfx",
         // "--renderdoc",
         "-sshaders/shaders.bin"
       ]
+    },
+    {
+      "name": "Gfx replay capture (win)",
+      "type": "cppvsdbg",
+      "request": "launch",
+      "program": "${workspaceFolder}/build/3rdParty/gfxreconstruct/bin/tools/replay/gfxrecon-replay.exe",
+      "args": [
+        "--paused",
+        "gfxrecon_capture_frames_1_through_10.gfxr"
+      ],
+      "stopAtEntry": false,
+      "cwd": "${workspaceFolder}/build",
+      "environment": [],
+      "externalConsole": false,
+      "internalConsoleOptions": "openOnSessionStart",
+    },
+    {
+      "name": "Gfx info (win)",
+      "type": "cppvsdbg",
+      "request": "launch",
+      "program": "${workspaceFolder}/build/3rdParty/gfxreconstruct/bin/tools/info/gfxrecon-info.exe",
+      "args": [
+        "gfxrecon_capture_frames_1_through_10.gfxr"
+      ],
+      "stopAtEntry": false,
+      "cwd": "${workspaceFolder}/build",
+      "environment": [],
+      "externalConsole": false,
+      "internalConsoleOptions": "openOnSessionStart",
+    },
+    {
+      "name": "Gfx extract shaders (win)",
+      "type": "cppvsdbg",
+      "request": "launch",
+      "program": "${workspaceFolder}/build/3rdParty/gfxreconstruct/bin/tools/extract/gfxrecon-extract.exe",
+      "args": [
+        "gfxrecon_capture_frames_1_through_10.gfxr"
+      ],
+      "stopAtEntry": false,
+      "cwd": "${workspaceFolder}/build",
+      "environment": [],
+      "externalConsole": false,
+      "internalConsoleOptions": "openOnSessionStart",
     }
   ]
 }
