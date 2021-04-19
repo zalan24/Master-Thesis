@@ -51,6 +51,7 @@ static constexpr QueueFamilyPtr IGNORE_FAMILY = nullptr;
 struct InstanceCreateInfo
 {
     const char* appname;
+bool renderdocEnabled = false;
 #ifdef DEBUG
     bool validationLayersEnabled = true;
 #else

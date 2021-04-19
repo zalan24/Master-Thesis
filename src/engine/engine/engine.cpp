@@ -117,8 +117,9 @@ Engine::WindowIniter::~WindowIniter() {
 }
 
 Engine::Engine(int argc, char* argv[], const std::string& configFile,
-               const std::string& shaderbinFile, ResourceManager::ResourceInfos resource_infos)
-  : Engine(argc, argv, get_config(configFile), shaderbinFile, std::move(resource_infos)) {
+               const std::string& shaderbinFile, ResourceManager::ResourceInfos resource_infos,
+               const Args& args)
+  : Engine(argc, argv, get_config(configFile), shaderbinFile, std::move(resource_infos), args) {
 }
 
 drv::Swapchain::CreateInfo Engine::get_swapchain_create_info(const Config& config,
@@ -159,7 +160,7 @@ static void log_queue(const char* name, const drv::QueueManager::Queue& queue) {
 }
 
 Engine::Engine(int argc, char* argv[], const Config& cfg, const std::string& shaderbinFile,
-               ResourceManager::ResourceInfos resource_infos)
+               ResourceManager::ResourceInfos resource_infos, const Args& args)
   : config(cfg),
     logger(argc, argv, config.logs),
     coreContext({safe_cast<size_t>(config.stackMemorySizeKb << 10)}),
@@ -168,7 +169,7 @@ Engine::Engine(int argc, char* argv[], const Config& cfg, const std::string& sha
     window(&input, &inputManager,
            drv::WindowOptions{static_cast<unsigned int>(cfg.screenWidth),
                               static_cast<unsigned int>(cfg.screenHeight), cfg.title.c_str()}),
-    drvInstance(drv::InstanceCreateInfo{cfg.title.c_str()}),
+    drvInstance(drv::InstanceCreateInfo{cfg.title.c_str(), args.renderdocEnabled}),
     windowIniter(window, drvInstance),
     deviceExtensions(true),
     physicalDevice(get_device_selection_info(drvInstance, deviceExtensions), window),

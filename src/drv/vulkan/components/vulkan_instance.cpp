@@ -5,6 +5,8 @@
 
 #include <vulkan/vulkan.h>
 
+#include <logger.h>
+
 #include <drverror.h>
 
 #include "vulkan_instance.h"
@@ -12,6 +14,8 @@
 static char const* EngineName = "Vulkan.hpp";
 
 static const char* const validationLayers[] = {"VK_LAYER_KHRONOS_validation"};
+
+static const char* const captureLayers[] = {"VK_LAYER_RENDERDOC_Capture"};
 
 using namespace drv_vulkan;
 
@@ -43,32 +47,24 @@ static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
     return VK_FALSE;
 }
 
-static bool checkValidationLayerSupport() {
+drv::InstancePtr DrvVulkan::create_instance(const drv::InstanceCreateInfo* info) {
     uint32_t layerCount;
     vkEnumerateInstanceLayerProperties(&layerCount, nullptr);
 
     std::vector<VkLayerProperties> availableLayers(layerCount);
     vkEnumerateInstanceLayerProperties(&layerCount, availableLayers.data());
 
-    for (const char* layerName : validationLayers) {
-        bool layerFound = false;
+    LOG_DRIVER_API("Available instance layers:");
+    for (const VkLayerProperties& props : availableLayers)
+        LOG_DRIVER_API(" - %s: %s", props.layerName, props.description);
 
-        for (const auto& layerProperties : availableLayers) {
-            if (strcmp(layerName, layerProperties.layerName) == 0) {
-                layerFound = true;
-                break;
-            }
-        }
+    auto check_layer_support = [&](const char* layer) {
+        for (const auto& layerProperties : availableLayers)
+            if (strcmp(layer, layerProperties.layerName) == 0)
+                return true;
+        return false;
+    };
 
-        if (!layerFound) {
-            return false;
-        }
-    }
-
-    return true;
-}
-
-drv::InstancePtr DrvVulkan::create_instance(const drv::InstanceCreateInfo* info) {
     VkApplicationInfo appInfo = {};
     appInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
     appInfo.pApplicationName = info->appname;
@@ -80,19 +76,25 @@ drv::InstancePtr DrvVulkan::create_instance(const drv::InstanceCreateInfo* info)
     VkInstanceCreateInfo createInfo = {};
     createInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
     createInfo.pApplicationInfo = &appInfo;
+    std::vector<const char*> layers;
     if (info->validationLayersEnabled) {
-        bool support = checkValidationLayerSupport();
-        drv::drv_assert(support, "Validation layer requested, but not supported");
-        if (support) {
-            createInfo.enabledLayerCount = sizeof(validationLayers) / sizeof(validationLayers[0]);
-            createInfo.ppEnabledLayerNames = validationLayers;
+        for (const char* layer : validationLayers) {
+            if (check_layer_support(layer))
+                layers.push_back(layer);
+            else
+                LOG_F(ERROR, "A validation layer requested, but not available: %s", layer);
         }
-        else
-            createInfo.enabledLayerCount = 0;
     }
-    else {
-        createInfo.enabledLayerCount = 0;
+    if (info->renderdocEnabled) {
+        for (const char* layer : captureLayers) {
+            if (check_layer_support(layer))
+                layers.push_back(layer);
+            else
+                LOG_F(WARNING, "A recommended layer is not available: %s", layer);
+        }
     }
+    createInfo.enabledLayerCount = static_cast<uint32_t>(layers.size());
+    createInfo.ppEnabledLayerNames = layers.data();
 
     Instance* instance = new Instance;
     if (instance == nullptr)

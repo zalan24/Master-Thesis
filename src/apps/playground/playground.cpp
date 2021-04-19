@@ -74,6 +74,8 @@ int main(int argc, char* argv[]) {
         app.add_option("-m,--models", modelResources, "Path to the model resources json file");
         std::string resourceFolder = "";
         app.add_option("-d,--data", resourceFolder, "Path to the data folder");
+        Engine::Args args;
+        app.add_flag("-r,--renderdoc", args.renderdocEnabled, "Enable renderdoc layer");
         // std::string root = "";
         // app.add_option("-r,--root", root, "Working directory for the specified folder");
 
@@ -95,7 +97,7 @@ int main(int argc, char* argv[]) {
         ResourceManager::ResourceInfos resourceInfos;
         resourceInfos.resourceFolder = resourceFolder;
         resourceInfos.modelResourcesJson = modelResources;
-        Engine engine(argc, argv, config, shaderbin, std::move(resourceInfos));
+        Engine engine(argc, argv, config, shaderbin, std::move(resourceInfos), args);
         Game game(&engine);
         engine.initGame(&game, &game);
         // engine.getRenderer()->getCamera().lookAt(glm::vec3{0, 3, -5}, glm::vec3{0, 1, 0},

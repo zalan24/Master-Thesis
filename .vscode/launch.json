@@ -57,6 +57,7 @@
         "-c../data/configs/playground_default.json",
         "-m../data/resources/models.json",
         "-d../data/",
+        // "--renderdoc",
         "-sshaders/shaders.bin"
       ]
     }

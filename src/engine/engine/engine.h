@@ -56,11 +56,15 @@ class Engine
         void writeJson(json& out) const override final;
         void readJson(const json& in) override final;
     };
+    
+    struct Args {
+      bool renderdocEnabled;
+    };
 
     Engine(int argc, char* argv[], const Config& config, const std::string& shaderbinFile,
-           ResourceManager::ResourceInfos resource_infos);
+           ResourceManager::ResourceInfos resource_infos, const Args& args);
     Engine(int argc, char* argv[], const std::string& configFile, const std::string& shaderbinFile,
-           ResourceManager::ResourceInfos resource_infos);
+           ResourceManager::ResourceInfos resource_infos, const Args& args);
     ~Engine();
 
     Engine(const Engine&) = delete;
