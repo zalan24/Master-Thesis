@@ -319,3 +319,10 @@ inline FourC operator"" _4c(const char* chars, size_t size) {
     ret.chars[3] = size > 3 ? chars[3] : 0;
     return ret;
 }
+
+#define TRUE_FALSE_ENUM(name, value_false, value_true) \
+    enum name                                          \
+    {                                                  \
+        value_false = 0,                               \
+        value_true = 1                                 \
+    }

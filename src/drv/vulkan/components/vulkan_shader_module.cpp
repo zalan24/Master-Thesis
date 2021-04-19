@@ -149,9 +149,9 @@ uint32_t VulkanShader::createGraphicalPipeline(const GraphicalPipelineCreateInfo
     viewport.maxDepth = info.viewport.maxDepth;
     VkRect2D scissor;
     scissor = convertRect2D(info.scissor);
-    if (info.scissor.extent.width == 0)
+    if (info.dynamicStates.scissor)
         add_dynamic_state(VK_DYNAMIC_STATE_SCISSOR);
-    if (info.viewport.width == 0)
+    if (info.dynamicStates.viewport)
         add_dynamic_state(VK_DYNAMIC_STATE_VIEWPORT);
     viewportInfo.viewportCount = 1;
     viewportInfo.pViewports = &viewport;

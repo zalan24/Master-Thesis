@@ -1300,18 +1300,18 @@ bool compile_shader(const fs::path& debugPath, const Compiler* compiler, ShaderB
     header << "class " << className << " final : public ShaderObject {\n";
     header << "  public:\n";
     header << "    " << className << "(drv::LogicalDevicePtr device, const " << registryClassName
-           << " *reg);\n";
+           << " *reg, drv::DrvShader::DynamicStates dynamicStates);\n";
     cxx << className << "::" << className << "(drv::LogicalDevicePtr _device, const "
-        << registryClassName << " *_reg)\n";
-    cxx << "  : ShaderObject(_device, _reg, \"" << shaderName << "\")\n";
+        << registryClassName << " *_reg, drv::DrvShader::DynamicStates dynamicStates)\n";
+    cxx << "  : ShaderObject(_device, _reg, \"" << shaderName << "\", std::move(dynamicStates))\n";
     cxx << "{\n";
     cxx << "}\n\n";
     header << "    ~" << className << "() override {}\n";
     header
-      << "    void prepareGraphicalPipeline(const drv::RenderPass *renderPass, drv::SubpassId subpass, const DynamicState &fixedDynamicStates";
+      << "    uint32_t prepareGraphicalPipeline(const drv::RenderPass *renderPass, drv::SubpassId subpass, const DynamicState &dynamicStates";
     cxx
-      << "void " << className
-      << "::prepareGraphicalPipeline(const drv::RenderPass *renderPass, drv::SubpassId subpass, const DynamicState &fixedDynamicStates";
+      << "uint32_t " << className
+      << "::prepareGraphicalPipeline(const drv::RenderPass *renderPass, drv::SubpassId subpass, const DynamicState &dynamicStates";
     std::stringstream varintIdInput;
     first = true;
     for (const std::string& inc : allIncludes) {
@@ -1338,8 +1338,8 @@ bool compile_shader(const fs::path& debugPath, const Compiler* compiler, ShaderB
     cxx << "    desc.configIndex = static_cast<const " << registryClassName
         << "*>(reg)->get_config_id(desc.variantId);\n";
     cxx << "    desc.states = overrideStates;\n";
-    cxx << "    desc.fixedDynamicStates = fixedDynamicStates;\n";
-    cxx << "    getGraphicsPipeline(createMode, desc);\n";
+    cxx << "    desc.dynamicStates = dynamicStates;\n";
+    cxx << "    return getGraphicsPipeline(createMode, desc);\n";
     cxx << "}\n";
     header
       << "    void bindGraphicsInfo(PipelineCreateMode createMode, drv::CmdRenderPass &renderPass, const DynamicState &dynamicStates";
@@ -1352,13 +1352,13 @@ bool compile_shader(const fs::path& debugPath, const Compiler* compiler, ShaderB
         assert(itr != includeData.end());
         header << ", const " << itr->second.desriptorClassName << " *" << itr->second.name;
         cxx << ", const " << itr->second.desriptorClassName << " *" << itr->second.name;
-        pipelineInput << "    " << itr->second.name << "->getVariantDesc(),\n";
+        pipelineInput << "        " << itr->second.name << "->getVariantDesc(),\n";
     }
     header << ", const GraphicsPipelineStates &overrideStates = {});\n";
     cxx << ", const GraphicsPipelineStates &overrideStates) {\n";
     cxx
-      << "    uint32_t pipelineId = prepareGraphicalPipeline(renderPass.getRenderPass(), renderPass.getSubpass(), ,\n"
-      << pipelineInput.str() << ", overrideStates, createMode);\n";
+      << "    uint32_t pipelineId = prepareGraphicalPipeline(renderPass.getRenderPass(), renderPass.getSubpass(), dynamicStates,\n"
+      << pipelineInput.str() << "        overrideStates, createMode);\n";
     cxx << "    drv::GraphicsPipelineBindInfo info;\n";
     cxx << "    info.shader = getShader();\n";
     cxx << "    info.pipelineId = pipelineId;\n";

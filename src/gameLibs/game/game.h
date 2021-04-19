@@ -34,6 +34,7 @@ class Game final
     ShaderObjRegistry shaderObjects;
     shader_global_descriptor shaderGlobalDesc;
     shader_test_descriptor shaderTestDesc;
+    drv::DrvShader::DynamicStates dynamicStates;
     shader_test testShader;
 
     std::unique_ptr<drv::RenderPass> testRenderPass;

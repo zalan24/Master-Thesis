@@ -8,11 +8,12 @@
 #include <garbage.h>
 
 ShaderObject::ShaderObject(drv::LogicalDevicePtr _device, const ShaderObjectRegistry* _reg,
-                           std::string _name)
+                           std::string _name, drv::DrvShader::DynamicStates _dynamicStates)
   : device(_device),
     reg(_reg),
     shader(drv::create_shader(device, reg->reg.get())),
-    name(std::move(_name)) {
+    name(std::move(_name)),
+    dynamicStates(std::move(_dynamicStates)) {
 }
 
 void ShaderObject::clear(Garbage* trashBin) {
@@ -56,8 +57,9 @@ drv::DrvShader::GraphicalPipelineCreateInfo ShaderObject::getGraphicsPipelineCre
     ret.numAttachments = static_cast<uint32_t>(attachmentStates.size());
     ret.attachmentStates = attachmentStates.data();
 
-    ret.viewport = desc.fixedDynamicStates.viewport;
-    ret.scissor = desc.fixedDynamicStates.scissor;
+    ret.dynamicStates = dynamicStates;
+    ret.viewport = desc.dynamicStates.viewport;
+    ret.scissor = desc.dynamicStates.scissor;
 
     ret.topology = drv::PrimitiveTopology::TRIANGLE_LIST;  // TODO
     ret.frontFace = drv::FrontFace::CLOCKWISE;             // TODO
@@ -78,7 +80,13 @@ drv::DrvShader::GraphicalPipelineCreateInfo ShaderObject::getGraphicsPipelineCre
 
 uint32_t ShaderObject::getGraphicsPipeline(PipelineCreateMode createMode,
                                            const GraphicsPipelineDescriptor& desc) {
-    auto itr = pipelines.find(desc);
+    GraphicsPipelineDescriptor key = desc;
+    if (!dynamicStates.scissor)
+        key.dynamicStates.scissor = {{0, 0}, {0, 0}};
+    if (dynamicStates.viewport)
+        key.dynamicStates.viewport = drv::DrvShader::Viewport();
+
+    auto itr = pipelines.find(key);
     if (itr != pipelines.end())
         return itr->second;
     switch (createMode) {
@@ -92,5 +100,5 @@ uint32_t ShaderObject::getGraphicsPipeline(PipelineCreateMode createMode,
     std::vector<drv::DrvShader::AttachmentState> attachmentStates;
     drv::DrvShader::GraphicalPipelineCreateInfo createInfo =
       getGraphicsPipelineCreateInfo(desc, attachmentStates);
-    return pipelines[desc] = shader->createGraphicalPipeline(createInfo);
+    return pipelines[key] = shader->createGraphicalPipeline(createInfo);
 }

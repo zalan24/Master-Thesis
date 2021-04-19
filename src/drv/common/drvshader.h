@@ -1,5 +1,7 @@
 #pragma once
 
+#include <util.hpp>
+
 #include "drvrenderpass.h"
 #include "drvtypes.h"
 
@@ -97,6 +99,16 @@ class DrvShader
         uint8_t use_b : 1;
         uint8_t use_a : 1;
     };
+    struct DynamicStates
+    {
+        TRUE_FALSE_ENUM(ScissorEnum, FIXED_SCISSOR, DYN_SCISSOR);
+        TRUE_FALSE_ENUM(ViewportEnum, FIXED_VIEWPORT, DYN_VIEWPORT);
+        uint8_t scissor : 1;
+        uint8_t viewport : 1;
+        DynamicStates() : scissor(0), viewport(0) {}
+        DynamicStates(ScissorEnum _scissor, ViewportEnum _viewport)
+          : scissor(_scissor), viewport(_viewport) {}
+    };
     struct GraphicalPipelineCreateInfo
     {
         const RenderPass* renderPass;
@@ -108,8 +120,9 @@ class DrvShader
         const AttachmentState* attachmentStates;
 
         // dynamic state
-        Viewport viewport;                  // 0 size = dynamic state
-        Rect2D scissor = {{0, 0}, {0, 0}};  // 0 size = dynamic state
+        DynamicStates dynamicStates;
+        Viewport viewport;
+        Rect2D scissor;
 
         // TODO import these from the ?object?
         // ?the shader should have a way to set these too probably?

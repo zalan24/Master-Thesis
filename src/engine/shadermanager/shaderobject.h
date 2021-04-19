@@ -12,7 +12,8 @@ class Garbage;
 class ShaderObject
 {
  public:
-    ShaderObject(drv::LogicalDevicePtr device, const ShaderObjectRegistry* reg, std::string name);
+    ShaderObject(drv::LogicalDevicePtr device, const ShaderObjectRegistry* reg, std::string name,
+                 drv::DrvShader::DynamicStates dynamicStates);
 
     virtual ~ShaderObject() {}
 
@@ -26,8 +27,6 @@ class ShaderObject
 
     struct DynamicState
     {
-        // bool dynamicViewport = false;
-        // bool dynamicScissor = false;
         drv::DrvShader::Viewport viewport;
         drv::Rect2D scissor = {{0, 0}, {0, 0}};
         bool operator==(const DynamicState& rhs) const {
@@ -67,12 +66,12 @@ class ShaderObject
         uint32_t configIndex;
         ShaderObjectRegistry::VariantId variantId;
         GraphicsPipelineStates states;
-        DynamicState fixedDynamicStates;
+        DynamicState dynamicStates;
         bool operator==(const GraphicsPipelineDescriptor& rhs) const {
             // configIndex is redundant
             return renderPass == rhs.renderPass && subpass == rhs.subpass
                    && configIndex == rhs.configIndex && variantId == rhs.variantId
-                   && states == rhs.states && fixedDynamicStates == rhs.fixedDynamicStates;
+                   && states == rhs.states && dynamicStates == rhs.dynamicStates;
         }
     };
 
@@ -83,7 +82,7 @@ class ShaderObject
                    ^ std::hash<drv::SubpassId>{}(s.subpass) ^ std::hash<uint32_t>{}(s.configIndex)
                    ^ std::hash<ShaderObjectRegistry::VariantId>{}(s.variantId)
                    ^ GraphicsPipelineStatesHash {}(s.states)
-                   ^ DynamicStatesHash {}(s.fixedDynamicStates);
+                   ^ DynamicStatesHash {}(s.dynamicStates);
         }
     };
 
@@ -92,6 +91,7 @@ class ShaderObject
 
  private:
     std::string name;
+    drv::DrvShader::DynamicStates dynamicStates;
     std::unordered_map<GraphicsPipelineDescriptor, uint32_t, GraphicsDescriptorHash> pipelines;
 
     drv::DrvShader::GraphicalPipelineCreateInfo getGraphicsPipelineCreateInfo(

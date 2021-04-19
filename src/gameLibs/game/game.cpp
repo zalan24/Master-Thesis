@@ -12,7 +12,9 @@ Game::Game(Engine* _engine)
     shaderObjects(engine->getDevice(), *engine->getShaderBin(), shaderHeaders),
     shaderGlobalDesc(engine->getDevice(), &shaderHeaders.global),
     shaderTestDesc(engine->getDevice(), &shaderHeaders.test),
-    testShader(engine->getDevice(), &shaderObjects.test) {
+    dynamicStates(drv::DrvShader::DynamicStates::FIXED_SCISSOR,
+                  drv::DrvShader::DynamicStates::FIXED_VIEWPORT),
+    testShader(engine->getDevice(), &shaderObjects.test, dynamicStates) {
     // shader_obj_test::Descriptor descriptor;
     // descriptor.setVariant("Color", "red");
     // descriptor.setVariant("TestVariant", "two");
@@ -91,18 +93,23 @@ void Game::recreateViews(uint32_t imageCount, const drv::ImagePtr* images) {
     }
 }
 
+static ShaderObject::DynamicState get_dynamic_states(drv::Extent2D extent) {
+    ShaderObject::DynamicState ret;
+    ret.scissor.offset = {0, 0};
+    ret.scissor.extent = extent;
+    ret.viewport.x = 0;
+    ret.viewport.y = 0;
+    ret.viewport.width = static_cast<float>(extent.width);
+    ret.viewport.height = static_cast<float>(extent.height);
+    ret.viewport.minDepth = 0;
+    ret.viewport.maxDepth = 1;
+    return ret;
+}
+
 void Game::initShader(drv::Extent2D extent) {
     engine->getGarbageSystem()->useGarbage(
       [this](Garbage* trashBin) { testShader.clear(trashBin); });
-    ShaderObject::DynamicState fixedDynStates;
-    fixedDynStates.scissor.offset = {0, 0};
-    fixedDynStates.scissor.extent = extent;
-    fixedDynStates.viewport.x = 0;
-    fixedDynStates.viewport.y = 0;
-    fixedDynStates.viewport.width = static_cast<float>(extent.width);
-    fixedDynStates.viewport.height = static_cast<float>(extent.height);
-    fixedDynStates.viewport.minDepth = 0;
-    fixedDynStates.viewport.maxDepth = 1;
+    ShaderObject::DynamicState dynStates = get_dynamic_states(extent);
     shader_global_descriptor::VariantDesc globalDesc;
     shader_test_descriptor::VariantDesc blueVariant;
     shader_test_descriptor::VariantDesc greenVariant;
@@ -110,12 +117,12 @@ void Game::initShader(drv::Extent2D extent) {
     blueVariant.color = shader_test_descriptor::Color::BLUE;
     greenVariant.color = shader_test_descriptor::Color::GREEN;
     redVariant.color = shader_test_descriptor::Color::RED;
-    testShader.prepareGraphicalPipeline(testRenderPass.get(), testSubpass, fixedDynStates,
-                                        globalDesc, blueVariant);
-    testShader.prepareGraphicalPipeline(testRenderPass.get(), testSubpass, fixedDynStates,
-                                        globalDesc, greenVariant);
-    testShader.prepareGraphicalPipeline(testRenderPass.get(), testSubpass, fixedDynStates,
-                                        globalDesc, redVariant);
+    testShader.prepareGraphicalPipeline(testRenderPass.get(), testSubpass, dynStates, globalDesc,
+                                        blueVariant);
+    testShader.prepareGraphicalPipeline(testRenderPass.get(), testSubpass, dynStates, globalDesc,
+                                        greenVariant);
+    testShader.prepareGraphicalPipeline(testRenderPass.get(), testSubpass, dynStates, globalDesc,
+                                        redVariant);
 }
 
 void Game::record(FrameGraph& frameGraph, FrameId frameId) {
@@ -193,7 +200,8 @@ void Game::record(FrameGraph& frameGraph, FrameId frameId) {
         clearRect.layerCount = 1;
         testPass.clearColorAttachment(testColorAttachment, drv::ClearColorValue(0.f, 0.f, 1.f, 1.f),
                                       1, &clearRect);
-        testShader.bindGraphicsInfo(ShaderObject::CREATE_WARNING, testPass, , &shaderGlobalDesc,
+        testShader.bindGraphicsInfo(ShaderObject::CREATE_WARNING, testPass,
+                                    get_dynamic_states(swapChainData.extent), &shaderGlobalDesc,
                                     &shaderTestDesc);
         testPass.end();
 
