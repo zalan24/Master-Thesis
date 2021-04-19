@@ -203,6 +203,7 @@ void Game::record(FrameGraph& frameGraph, FrameId frameId) {
         testShader.bindGraphicsInfo(ShaderObject::CREATE_WARNING, testPass,
                                     get_dynamic_states(swapChainData.extent), &shaderGlobalDesc,
                                     &shaderTestDesc);
+        testPass.draw(3, 1, 0, 0);
         testPass.end();
 
         // /// --- oroginal clear ---

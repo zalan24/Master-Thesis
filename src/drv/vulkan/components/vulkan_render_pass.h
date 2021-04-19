@@ -45,6 +45,9 @@ class VulkanRenderPass final : public drv::RenderPass
     void bindGraphicsPipeline(drv::CommandBufferPtr cmdBuffer, drv::ResourceTracker* tracker,
                               const drv::GraphicsPipelineBindInfo& info) const override;
 
+    void draw(drv::CommandBufferPtr cmdBuffer, drv::ResourceTracker* tracker, uint32_t vertexCount,
+              uint32_t instanceCount, uint32_t firstVertex, uint32_t firstInstance) const override;
+
  private:
     VkRenderPass renderPass = VK_NULL_HANDLE;
     std::vector<VkAttachmentReference> attachmentRefs;

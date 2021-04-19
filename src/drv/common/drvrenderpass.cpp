@@ -100,3 +100,8 @@ void CmdRenderPass::clearColorAttachment(AttachmentId attachment, ClearColorValu
 void CmdRenderPass::bindGraphicsPipeline(const GraphicsPipelineBindInfo& info) {
     renderPass->bindGraphicsPipeline(cmdBuffer, tracker, info);
 }
+
+void CmdRenderPass::draw(uint32_t vertexCount, uint32_t instanceCount, uint32_t firstVertex,
+                         uint32_t firstInstance) {
+    renderPass->draw(cmdBuffer, tracker, vertexCount, instanceCount, firstVertex, firstInstance);
+}

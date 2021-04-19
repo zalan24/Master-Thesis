@@ -70,6 +70,10 @@ class CmdRenderPass final
     // TODO implement different versions for depth/stencil/multiple attachments
     void clearColorAttachment(AttachmentId attachment, ClearColorValue value,
                               uint32_t rectCount = 0, const drv::ClearRect* rects = nullptr);
+
+    void draw(uint32_t vertexCount, uint32_t instanceCount, uint32_t firstVertex,
+              uint32_t firstInstance);
+
     void bindGraphicsPipeline(const GraphicsPipelineBindInfo& info);
 
     const RenderPass* getRenderPass() const { return renderPass; }
@@ -152,6 +156,10 @@ class RenderPass
                                   uint32_t rectCount, const drv::ClearRect* rects) const = 0;
     virtual void bindGraphicsPipeline(CommandBufferPtr cmdBuffer, ResourceTracker* tracker,
                                       const GraphicsPipelineBindInfo& info) const = 0;
+
+    virtual void draw(CommandBufferPtr cmdBuffer, ResourceTracker* tracker, uint32_t vertexCount,
+                      uint32_t instanceCount, uint32_t firstVertex,
+                      uint32_t firstInstance) const = 0;
 };
 
 }  // namespace drv
