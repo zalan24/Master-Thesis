@@ -151,3 +151,14 @@ lunarg_gfxreconstruct.log_break_on_error = true
 #     Note: Only available on Windows.
 #     Default is false
 #lunarg_gfxreconstruct.page_guard_external_memory = false
+
+
+
+
+
+# ------------ VK_LAYER_LUNARG_api_dump ------------
+
+lunarg_api_dump.file = api_dump.txt
+#lunarg_api_dump.log_filename = api_dump_log.txt
+lunarg_api_dump.show_timestamp = true
+#lunarg_api_dump.output_range = 1-10-1

@@ -20,6 +20,8 @@ static const char* const rDocLayers[] = {"VK_LAYER_RENDERDOC_Capture"};
 
 static const char* const gfxLayers[] = {"VK_LAYER_LUNARG_gfxreconstruct"};
 
+static const char* const apiDumpLayers[] = {"VK_LAYER_LUNARG_api_dump"};
+
 #ifdef DEBUG
 static const char* const debugLayers[] = {"VK_LAYER_LUNARG_monitor"};
 #else
@@ -108,6 +110,14 @@ drv::InstancePtr DrvVulkan::create_instance(const drv::InstanceCreateInfo* info)
                 layers.push_back(layer);
             else
                 LOG_F(ERROR, "A gfx capture layer is not available: %s", layer);
+        }
+    }
+    if (info->apiDumpEnabled) {
+        for (const char* layer : apiDumpLayers) {
+            if (check_layer_support(layer))
+                layers.push_back(layer);
+            else
+                LOG_F(ERROR, "An api dump layer is not available: %s", layer);
         }
     }
     for (const char* layer : debugLayers) {

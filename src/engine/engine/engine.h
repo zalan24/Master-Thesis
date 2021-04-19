@@ -61,6 +61,7 @@ class Engine
     {
         bool renderdocEnabled;
         bool gfxCaptureEnabled;
+        bool apiDumpEnabled;
     };
 
     Engine(int argc, char* argv[], const Config& config, const std::string& shaderbinFile,

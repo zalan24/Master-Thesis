@@ -53,6 +53,7 @@ struct InstanceCreateInfo
     const char* appname;
     bool renderdocEnabled = false;
     bool gfxCaptureEnabled = false;
+    bool apiDumpEnabled = false;
 #ifdef DEBUG
     bool validationLayersEnabled = true;
 #else

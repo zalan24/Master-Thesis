@@ -52,7 +52,9 @@
       "cwd": "${workspaceFolder}/build",
       "environment": [
         // {"name":"VK_LAYER_PATH", "value":"${workspaceFolder}/build/3rdParty/gfxreconstruct/bin/layer;${env:VK_LAYER_PATH}"},
-        {"name": "VK_LAYER_SETTINGS_PATH", "value": "${workspaceFolder}/data/captureCfg"}
+        {"name": "VK_LAYER_SETTINGS_PATH", "value": "${workspaceFolder}/data/captureCfg"},
+        {"name": "VK_APIDUMP_OUTPUT_RANGE", "value": "0-10-1"},
+        {"name": "VK_APIDUMP_LOG_FILENAME", "value": "${workspaceFolder}/build/api_dump_log.txt"},
       ],
       "externalConsole": false,
       "internalConsoleOptions": "openOnSessionStart",
@@ -61,6 +63,7 @@
         "-m../data/resources/models.json",
         "-d../data/",
         "--gfx",
+        "--api_dump",
         // "--renderdoc",
         "-sshaders/shaders.bin"
       ]
