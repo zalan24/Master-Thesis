@@ -154,12 +154,13 @@ void VulkanRenderPass::build() {
 
         vkSubpasses[i].colorAttachmentCount = uint32_t(subpasses[i].colorOutputs.size());
         vkSubpasses[i].pColorAttachments = attachmentRefs.data() + attachmentId;
-        for (uint32_t j = 0; j < subpasses[i].inputs.size(); ++j)
+        for (uint32_t j = 0; j < subpasses[i].colorOutputs.size(); ++j)
             attachmentRefs[attachmentId++] = get_attachment_ref(subpasses[i].colorOutputs[j]);
 
         vkSubpasses[i].pResolveAttachments = nullptr;  // TODO multisampling
-        vkSubpasses[i].pDepthStencilAttachment =
-          &(attachmentRefs[attachmentId++] = get_attachment_ref(subpasses[i].depthStencil));
+        if (subpasses[i].depthStencil.id != drv::UNUSED_ATTACHMENT)
+            vkSubpasses[i].pDepthStencilAttachment =
+              &(attachmentRefs[attachmentId++] = get_attachment_ref(subpasses[i].depthStencil));
 
         vkSubpasses[i].preserveAttachmentCount = uint32_t(subpasses[i].preserve.size());
         vkSubpasses[i].pPreserveAttachments = subpasses[i].preserve.data();
