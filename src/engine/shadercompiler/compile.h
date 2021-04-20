@@ -169,7 +169,8 @@ bool read_resources(const BlockFile* blockFile, Resources& resources);
 bool compile_shader(const fs::path& debugPath, const Compiler* compiler, ShaderBin& shaderBin,
                     Cache& cache, ShaderRegistryOutput& registry, const std::string& shaderFile,
                     const std::string& outputFolder,
-                    std::unordered_map<std::string, IncludeData>& includeData);
+                    std::unordered_map<std::string, IncludeData>& includeData,
+                    const std::string& genFolder);
 
 bool generate_header(Cache& cache, ShaderRegistryOutput& registry, const std::string& shaderFile,
                      const std::string& outputFolder,

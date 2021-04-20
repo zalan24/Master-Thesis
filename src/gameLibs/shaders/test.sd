@@ -15,6 +15,7 @@ descriptor {
 
 stages {
     states {
+        cull = back;
     }
     ps {
         entry = main;

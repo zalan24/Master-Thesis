@@ -581,7 +581,7 @@ static bool generate_binary(
   const std::stringstream& shader,
   std::unordered_map<ShaderHash, std::pair<size_t, size_t>>& codeOffsets,
   std::unordered_map<ShaderHash, std::pair<size_t, size_t>>& binaryOffsets, ShaderBin::Stage stage,
-  const std::unordered_map<std::string, uint32_t>& variantParamMultiplier) {
+  const std::unordered_map<std::string, uint32_t>& variantParamMultiplier, std::ostream* genOut) {
     // TODO add resources to shader code
     std::stringstream shaderCodeSS;
     generate_shader_code(shaderCodeSS);
@@ -589,6 +589,24 @@ static bool generate_binary(
         generate_shader_attachments(shaderData.stages[variantId].configs, shaderCodeSS);
     std::string shaderCode =
       shaderCodeSS.str() + format_variant(variantId, variants, shader, variantParamMultiplier);
+    if (genOut) {
+        *genOut << "// Stage: ";
+        switch (stage) {
+            case ShaderBin::PS:
+                *genOut << "PS";
+                break;
+            case ShaderBin::VS:
+                *genOut << "VS";
+                break;
+            case ShaderBin::CS:
+                *genOut << "CS";
+                break;
+            case ShaderBin::NUM_STAGES:
+                break;
+        }
+        *genOut << "\n\n";
+        *genOut << shaderCode << std::endl;
+    }
 
     ShaderHash codeHash = hash_code(shaderCode);
     if (auto itr = codeOffsets.find(codeHash); itr != codeOffsets.end()) {
@@ -782,7 +800,8 @@ static bool generate_binary(const fs::path& debugPath, const Compiler* compiler,
                             const std::vector<Variants>& variants, ShaderGenerationInput&& input,
                             const std::unordered_map<std::string, uint32_t>& variantParamMultiplier,
                             std::map<PipelineResourceUsage, ResourceObject>& resourceObjects,
-                            std::vector<PipelineResourceUsage>& varintToResourceUsage) {
+                            std::vector<PipelineResourceUsage>& varintToResourceUsage,
+                            const std::string& genFile) {
     std::set<std::string> variantParams;
     size_t count = 1;
     shaderData.variantParamNum = 0;
@@ -821,6 +840,13 @@ static bool generate_binary(const fs::path& debugPath, const Compiler* compiler,
     std::unordered_map<ShaderHash, std::pair<size_t, size_t>> codeOffsets;
     std::unordered_map<ShaderHash, std::pair<size_t, size_t>> binaryOffsets;
     varintToResourceUsage.resize(shaderData.totalVariantCount);
+    std::ostream* genOut = nullptr;
+    std::ofstream genOutF;
+    if (genFile != "") {
+        genOutF.open(genFile.c_str());
+        if (genOutF.is_open())
+            genOut = &genOutF;
+    }
     for (uint32_t variantId = 0; variantId < shaderData.totalVariantCount; ++variantId) {
         PipelineResourceUsage resourceUsage;
         ShaderBin::StageConfig cfg = read_stage_configs(
@@ -831,24 +857,38 @@ static bool generate_binary(const fs::path& debugPath, const Compiler* compiler,
         varintToResourceUsage[variantId] = resourceUsage;
         // TODO add resource packs to shader codes
         shaderData.stages[variantId].configs = cfg;
+        if (genOut) {
+            *genOut << "// ---------------------- Variant " << variantId
+                    << " ----------------------\n";
+            const VariantConfig config =
+              get_variant_config(variantId, variants, variantParamMultiplier);
+            for (const Variants& v : variants) {
+                for (const auto& [name, values] : v.values) {
+                    auto itr = config.variantValues.find(name);
+                    assert(itr != config.variantValues.end());
+                    *genOut << "// " << name << " = " << values[itr->second] << ";\n";
+                }
+            }
+            *genOut << " ---\n";
+        }
         if (cfg.vsEntryPoint != ""
             && !generate_binary(debugPath, compiler, shaderData, resourceObj, variantId, variants,
                                 input.ps, codeOffsets, binaryOffsets, ShaderBin::PS,
-                                variantParamMultiplier)) {
+                                variantParamMultiplier, genOut)) {
             std::cerr << "Could not generate PS binary." << std::endl;
             return false;
         }
         if (cfg.psEntryPoint != ""
             && !generate_binary(debugPath, compiler, shaderData, resourceObj, variantId, variants,
                                 input.vs, codeOffsets, binaryOffsets, ShaderBin::VS,
-                                variantParamMultiplier)) {
+                                variantParamMultiplier, genOut)) {
             std::cerr << "Could not generate VS binary." << std::endl;
             return false;
         }
         if (cfg.csEntryPoint != ""
             && !generate_binary(debugPath, compiler, shaderData, resourceObj, variantId, variants,
                                 input.cs, codeOffsets, binaryOffsets, ShaderBin::CS,
-                                variantParamMultiplier)) {
+                                variantParamMultiplier, genOut)) {
             std::cerr << "Could not generate CS binary." << std::endl;
             return false;
         }
@@ -1028,7 +1068,8 @@ void ResourcePack::generateCXX(const std::string& structName, const Resources& r
 bool compile_shader(const fs::path& debugPath, const Compiler* compiler, ShaderBin& shaderBin,
                     Cache& cache, ShaderRegistryOutput& registry, const std::string& shaderFile,
                     const std::string& outputFolder,
-                    std::unordered_map<std::string, IncludeData>& includeData) {
+                    std::unordered_map<std::string, IncludeData>& includeData,
+                    const std::string& genFolder) {
     std::stringstream cu;
     std::stringstream header;
     std::stringstream cxx;
@@ -1147,8 +1188,11 @@ bool compile_shader(const fs::path& debugPath, const Compiler* compiler, ShaderB
     ShaderBin::ShaderData shaderData;
     std::map<PipelineResourceUsage, ResourceObject> resourceObjects;
     std::vector<PipelineResourceUsage> varintToResourceUsage;
+    std::string genFile = "";
+    if (genFolder != "")
+        genFile = (fs::path{genFolder} / fs::path{shaderName + ".glsl"}).string();
     if (!generate_binary(debugPath, compiler, resources, shaderData, variants, std::move(genInput),
-                         variantParamMultiplier, resourceObjects, varintToResourceUsage)) {
+                         variantParamMultiplier, resourceObjects, varintToResourceUsage, genFile)) {
         std::cerr << "Could not generate binary: " << shaderFile << std::endl;
         return false;
     }

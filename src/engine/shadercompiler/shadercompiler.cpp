@@ -33,6 +33,8 @@ int main(int argc, char* argv[]) {
     app.add_option("-d,--debug", debugOut, "Debug output folder");
     std::string cacheF = "";
     app.add_option("-c,--cache", cacheF, "Cache folder");
+    std::string generated = "";
+    app.add_option("-g,--generated", generated, "Folder to export generated shaders");
 
     CLI11_PARSE(app, argc, argv)
 
@@ -63,6 +65,13 @@ int main(int argc, char* argv[]) {
     fs::path cacheFolder = fs::path{cacheF};
     fs::path cacheFile = cacheFolder / fs::path{"cache.json"};
     fs::path registryFile = headers / fs::path{"shaderregistry.h"};
+
+    if (generated != "") {
+        fs::path genFolder = fs::path{generated};
+        if (fs::exists(genFolder))
+            fs::remove_all(genFolder);
+        fs::create_directories(genFolder);
+    }
 
     {
         std::ifstream cacheIn(cacheFile.string());
@@ -96,7 +105,7 @@ int main(int argc, char* argv[]) {
                 continue;
             std::cout << "Compiling: " << f << std::endl;
             if (!compile_shader(debugPath, &compiler, shaderBin, cache, registryData, f, headers,
-                                includeData)) {
+                                includeData, generated)) {
                 std::cerr << "Failed to compile a shader: " << f << std::endl;
                 return 1;
             }

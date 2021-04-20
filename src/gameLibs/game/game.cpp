@@ -181,9 +181,11 @@ void Game::record(FrameGraph& frameGraph, FrameId frameId) {
         drv::ClearValue clearValues[1];
         clearValues[testColorAttachment].type = drv::ClearValue::COLOR;
         if ((frameId / 100) % 2 == 0)
-            clearValues[testColorAttachment].value.color = drv::ClearColorValue(0.f, 1.f, 0.f, 1.f);
+            clearValues[testColorAttachment].value.color =
+              drv::ClearColorValue(0.1f, 0.8f, 0.1f, 1.f);
         else
-            clearValues[testColorAttachment].value.color = drv::ClearColorValue(1.f, 0.f, 0.f, 1.f);
+            clearValues[testColorAttachment].value.color =
+              drv::ClearColorValue(0.8f, 0.1f, 0.1f, 1.f);
         // clearValues[testColorAttachment].value.color = drv::ClearColorValue(255, 255, 255, 255);
         drv::Rect2D renderArea;
         renderArea.extent = swapChainData.extent;
@@ -193,13 +195,13 @@ void Game::record(FrameGraph& frameGraph, FrameId frameId) {
                                 frameBuffers[swapChainData.imageIndex], renderArea, clearValues);
         testPass.beginSubpass(testSubpass);
         drv::ClearRect clearRect;
-        clearRect.rect.offset = {50, 50};
-        clearRect.rect.extent = {swapChainData.extent.width - 100,
-                                 swapChainData.extent.height - 100};
+        clearRect.rect.offset = {100, 100};
+        clearRect.rect.extent = {swapChainData.extent.width - 200,
+                                 swapChainData.extent.height - 200};
         clearRect.baseLayer = 0;
         clearRect.layerCount = 1;
-        testPass.clearColorAttachment(testColorAttachment, drv::ClearColorValue(0.f, 0.f, 1.f, 1.f),
-                                      1, &clearRect);
+        testPass.clearColorAttachment(testColorAttachment,
+                                      drv::ClearColorValue(0.f, 0.7f, 0.7f, 1.f), 1, &clearRect);
         testShader.bindGraphicsInfo(ShaderObject::CREATE_WARNING, testPass,
                                     get_dynamic_states(swapChainData.extent), &shaderGlobalDesc,
                                     &shaderTestDesc);

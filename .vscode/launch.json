@@ -12,8 +12,11 @@
       "args": [
         "-r${workspaceFolder}/src/gameLibs/shaders",
         "-c${workspaceFolder}/build/src/gameLibs/shaders/shadercache",
-        "-d${workspaceFolder}/build/src/gameLibs/shaders",
+        "--headers",
+        "${workspaceFolder}/build/src/gameLibs/shaders",
         "-o${workspaceFolder}/build/shaders/shaders.bin",
+        "-d${workspaceFolder}/build/shaders/debug/",
+        "-g${workspaceFolder}/build/shaders/debug/gen/",
         "${workspaceFolder}/src/gameLibs/shaders/global.sh",
         "${workspaceFolder}/src/gameLibs/shaders/test.sd"
       ],

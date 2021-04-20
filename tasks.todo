@@ -298,6 +298,7 @@ Get a triangle on screen:
     ☐ Depth bounds test (pipeline creation)
     ☐ Blend constants (pipeline creation)
     ☐ Color blending (pipeline creation)
+    ☐ Debug markers: https://www.saschawillems.de/blog/2016/05/28/tutorial-on-using-vulkans-vk_ext_debug_marker-with-renderdoc/
 
 Cleanup & other:
     ☐ Remove useless common driver stuff (drv/common)

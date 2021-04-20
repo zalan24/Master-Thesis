@@ -4,6 +4,7 @@ set(SHADERBIN "${CMAKE_BINARY_DIR}/shaders/shaders.bin")
 set(SHADER_DEBUG "${CMAKE_BINARY_DIR}/shaders/debug/")
 
 set(GENERATED_FILES "${CMAKE_CURRENT_BINARY_DIR}/shaderregistry.h")
+set(GENERATED_SHADERS "${CMAKE_BINARY_DIR}/shaders/debug/gen/")
 
 foreach(H IN LISTS SHADERS_HEADERS SHADERS_SOURCES)
     get_filename_component(NAME ${H} NAME_WE)
@@ -18,7 +19,7 @@ add_custom_target(ShaderCodes ALL DEPENDS ${SHADERBIN})
 
 add_custom_command(
     OUTPUT   ${SHADERBIN} ${GENERATED_FILES}
-    COMMAND  AnimationsShaderCompiler -r${CMAKE_CURRENT_SOURCE_DIR} -c${CMAKE_CURRENT_BINARY_DIR}/shadercache --headers ${CMAKE_CURRENT_BINARY_DIR} -o${SHADERBIN} -d${SHADER_DEBUG} ${SHADERS_HEADERS} ${SHADERS_SOURCES}
+    COMMAND  AnimationsShaderCompiler -r${CMAKE_CURRENT_SOURCE_DIR} -c${CMAKE_CURRENT_BINARY_DIR}/shadercache --headers ${CMAKE_CURRENT_BINARY_DIR} -o${SHADERBIN} -d${SHADER_DEBUG} -g${GENERATED_SHADERS} ${SHADERS_HEADERS} ${SHADERS_SOURCES}
     DEPENDS  ${SHADERS_HEADERS} ${SHADERS_SOURCES} AnimationsShaderCompiler
 )
 
