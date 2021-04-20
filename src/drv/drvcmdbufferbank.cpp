@@ -46,7 +46,7 @@ CommandBufferCirculator::CommandBufferHandle CommandBufferCirculator::acquire() 
     {
         std::unique_lock<std::shared_mutex> lock(mutex);
         ret.bufferIndex = commandBuffers.size();
-        commandBuffers.emplace_back(std::move(commandBuffer), commandBuffer, READY);
+        commandBuffers.emplace_back(std::move(commandBuffer), commandBuffer, RECORDING);
     }
     acquiredStates.fetch_add(1);
     return ret;
@@ -71,39 +71,45 @@ bool CommandBufferCirculator::tryAcquire(CommandBufferHandle& handle) {
 
 void CommandBufferCirculator::finished(CommandBufferHandle&& handle) {
     std::shared_lock<std::shared_mutex> lock(mutex);
-    if (handle.bufferIndex < commandBuffers.size()
-        && commandBuffers[handle.bufferIndex].commandBufferPtr == handle.commandBufferPtr)
+    drv::drv_assert(handle.bufferIndex < commandBuffers.size()
+                    && commandBuffers[handle.bufferIndex].commandBufferPtr
+                         == handle.commandBufferPtr);
+    // if (handle.bufferIndex < commandBuffers.size()
+    //     && commandBuffers[handle.bufferIndex].commandBufferPtr == handle.commandBufferPtr)
         commandBuffers[handle.bufferIndex].state = CommandBufferState::READY;
-    else {
-        auto itr = std::find_if(commandBuffers.begin(), commandBuffers.end(),
-                                [&handle](const CommandBufferData& data) {
-                                    return data.commandBufferPtr == handle.commandBufferPtr;
-                                });
-        drv::drv_assert(itr != commandBuffers.end(),
-                        "A command buffer was lost before it was released");
-        CommandBufferState expected = CommandBufferState::PENDING;
-        drv::drv_assert(itr->state.compare_exchange_strong(expected, CommandBufferState::READY),
-                        "Released command buffer was in the wrong state");
-    }
+    // else {
+    //     auto itr = std::find_if(commandBuffers.begin(), commandBuffers.end(),
+    //                             [&handle](const CommandBufferData& data) {
+    //                                 return data.commandBufferPtr == handle.commandBufferPtr;
+    //                             });
+    //     drv::drv_assert(itr != commandBuffers.end(),
+    //                     "A command buffer was lost before it was released");
+    //     CommandBufferState expected = CommandBufferState::PENDING;
+    //     drv::drv_assert(itr->state.compare_exchange_strong(expected, CommandBufferState::READY),
+    //                     "Released command buffer was in the wrong state");
+    // }
     acquiredStates.fetch_sub(1);
 }
 
 void CommandBufferCirculator::startExecution(CommandBufferHandle& handle) {
     std::shared_lock<std::shared_mutex> lock(mutex);
-    if (handle.bufferIndex < commandBuffers.size()
-        && commandBuffers[handle.bufferIndex].commandBufferPtr == handle.commandBufferPtr)
+    drv::drv_assert(handle.bufferIndex < commandBuffers.size()
+                    && commandBuffers[handle.bufferIndex].commandBufferPtr
+                         == handle.commandBufferPtr);
+    // if (handle.bufferIndex < commandBuffers.size()
+    //     && commandBuffers[handle.bufferIndex].commandBufferPtr == handle.commandBufferPtr)
         commandBuffers[handle.bufferIndex].state = CommandBufferState::PENDING;
-    else {
-        auto itr = std::find_if(commandBuffers.begin(), commandBuffers.end(),
-                                [&handle](const CommandBufferData& data) {
-                                    return data.commandBufferPtr == handle.commandBufferPtr;
-                                });
-        drv::drv_assert(itr != commandBuffers.end(),
-                        "A command buffer was lost before it was released");
-        CommandBufferState expected = CommandBufferState::RECORDING;
-        drv::drv_assert(itr->state.compare_exchange_strong(expected, CommandBufferState::PENDING),
-                        "Released command buffer was in the wrong state");
-    }
+    // else {
+    //     auto itr = std::find_if(commandBuffers.begin(), commandBuffers.end(),
+    //                             [&handle](const CommandBufferData& data) {
+    //                                 return data.commandBufferPtr == handle.commandBufferPtr;
+    //                             });
+    //     drv::drv_assert(itr != commandBuffers.end(),
+    //                     "A command buffer was lost before it was released");
+    //     CommandBufferState expected = CommandBufferState::RECORDING;
+    //     drv::drv_assert(itr->state.compare_exchange_strong(expected, CommandBufferState::PENDING),
+    //                     "Released command buffer was in the wrong state");
+    // }
 }
 
 CommandBufferBank::CommandBufferBank(LogicalDevicePtr _device) : device(_device) {

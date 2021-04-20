@@ -170,8 +170,8 @@ Engine::Engine(int argc, char* argv[], const Config& cfg, const std::string& sha
     window(&input, &inputManager,
            drv::WindowOptions{static_cast<unsigned int>(cfg.screenWidth),
                               static_cast<unsigned int>(cfg.screenHeight), cfg.title.c_str()}),
-    drvInstance(
-      drv::InstanceCreateInfo{cfg.title.c_str(), args.renderdocEnabled, args.gfxCaptureEnabled, args.apiDumpEnabled}),
+    drvInstance(drv::InstanceCreateInfo{cfg.title.c_str(), args.renderdocEnabled,
+                                        args.gfxCaptureEnabled, args.apiDumpEnabled}),
     windowIniter(window, drvInstance),
     deviceExtensions(true),
     physicalDevice(get_device_selection_info(drvInstance, deviceExtensions), window),
@@ -278,7 +278,7 @@ void Engine::initGame(IRenderer* _renderer, ISimulation* _simulation) {
     // frameGraph.addDependency(
     //   cleanUpNode, FrameGraph::QueueCpuDependency{presentFrameNode, queueInfos.presentQueue.id, 0});
     frameGraph.addDependency(cleanUpNode, FrameGraph::CpuDependency{executeEndNode, 0});
-    frameGraph.addDependency(recordStartNode,
+    frameGraph.addDependency(simStartNode,
                              FrameGraph::CpuDependency{cleanUpNode, cleanUpCpuOffset});
 
     ISimulation::FrameGraphData simData;

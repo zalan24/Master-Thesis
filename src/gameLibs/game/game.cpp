@@ -86,8 +86,8 @@ void Game::recreateViews(uint32_t imageCount, const drv::ImagePtr* images) {
         createInfo.subresourceRange.aspectMask = drv::COLOR_BIT;
         createInfo.subresourceRange.baseArrayLayer = 0;
         createInfo.subresourceRange.baseMipLevel = 0;
-        createInfo.subresourceRange.layerCount = createInfo.subresourceRange.REMAINING_ARRAY_LAYERS;
-        createInfo.subresourceRange.levelCount = createInfo.subresourceRange.REMAINING_MIP_LEVELS;
+        createInfo.subresourceRange.layerCount = 1;
+        createInfo.subresourceRange.levelCount = 1;
         imageViews.emplace_back(engine->getDevice(), createInfo);
         frameBuffers.emplace_back(engine->getDevice());
     }
@@ -141,8 +141,8 @@ void Game::record(FrameGraph& frameGraph, FrameId frameId) {
         //       static_cast<const void*>(swapChainData.image));
         Engine::CommandBufferRecorder recorder =
           engine->acquireCommandRecorder(testDrawHandle, frameId, queues.renderQueue.id);
-        if (frameId < 3)
-            recorder.getResourceTracker()->enableCommandLog();
+        // if (frameId < 3)
+        //     recorder.getResourceTracker()->enableCommandLog();
         recorder.cmdWaitSemaphore(
           swapChainData.imageAvailableSemaphore,
           drv::IMAGE_USAGE_COLOR_OUTPUT_WRITE | drv::IMAGE_USAGE_TRANSFER_DESTINATION);
@@ -222,8 +222,8 @@ void Game::record(FrameGraph& frameGraph, FrameId frameId) {
         // memory is made visible to all read operations (add this to tracker?) -- only available memory
         recorder.cmdSignalSemaphore(swapChainData.renderFinishedSemaphore);
         recorder.finishQueueWork();
-        if (frameId > 3)
-            recorder.getResourceTracker()->disableCommandLog();
+        // if (frameId > 3)
+        //     recorder.getResourceTracker()->disableCommandLog();
     }
     else
         assert(frameGraph.isStopped());

@@ -18,10 +18,6 @@ else()
     option(USE_SANITIZERS "Use sanitizers, only works on clang and gcc" OFF)
 endif()
 
-# TODO try to use win 64 by default
-set(CMAKE_GENERATOR_PLATFORM "x86" CACHE STRING "Platform (x86 or x64)")
-set_property(CACHE CMAKE_GENERATOR_PLATFORM PROPERTY STRINGS x86 x64)
-
 set(SANITIZE_COMPILE_FLAGS "")
 set(SANITIZE_LINK_FLAGS "")
 
