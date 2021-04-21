@@ -10,6 +10,7 @@
 #include <simplecpp.h>
 
 #include <blockfile.h>
+#include <features.h>
 #include <shadertypes.h>
 #include <uncomment.h>
 #include <util.hpp>
@@ -524,8 +525,9 @@ static VariantConfig get_variant_config(
 static void generate_shader_code(std::ostream& out /* resources */) {
     out << "#version 450\n";
     out << "#extension GL_ARB_separate_shader_objects : enable\n";
-    // TODO probably only in debug shader builds???
-    out << "#extension GL_EXT_debug_printf : enable\n";
+    if (featureconfig::shaderPrint) {
+        out << "#extension GL_EXT_debug_printf : enable\n";
+    }
 }
 
 static void generate_shader_attachments(const ShaderBin::StageConfig& configs,

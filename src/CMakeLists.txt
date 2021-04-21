@@ -1,3 +1,4 @@
+add_subdirectory(features)
 add_subdirectory(core)
 add_subdirectory(drv)
 add_subdirectory(engine)

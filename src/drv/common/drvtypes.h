@@ -54,11 +54,6 @@ struct InstanceCreateInfo
     bool renderdocEnabled = false;
     bool gfxCaptureEnabled = false;
     bool apiDumpEnabled = false;
-#ifdef DEBUG
-    bool validationLayersEnabled = true;
-#else
-    bool validationLayersEnabled = false;
-#endif
 };
 
 struct CallbackData

@@ -5,6 +5,7 @@
 
 #include <vulkan/vulkan.h>
 
+#include <features.h>
 #include <logger.h>
 
 #include <drverror.h>
@@ -89,7 +90,7 @@ drv::InstancePtr DrvVulkan::create_instance(const drv::InstanceCreateInfo* info)
     createInfo.pApplicationInfo = &appInfo;
     createInfo.pNext = nullptr;
     std::vector<const char*> layers;
-    if (info->validationLayersEnabled) {
+    if (featureconfig::debugLevel >= featureconfig::DEBUGGING_VALIDATION_LAYERS) {
         for (const char* layer : validationLayers) {
             if (check_layer_support(layer))
                 layers.push_back(layer);
@@ -138,11 +139,6 @@ drv::InstancePtr DrvVulkan::create_instance(const drv::InstanceCreateInfo* info)
     if (instance == nullptr)
         return drv::NULL_HANDLE;
     try {
-        if (info->validationLayersEnabled) {
-            instance->features.debug_utils = true;
-            instance->features.validation_features = true;
-        }
-
         unsigned int numExtensions = 0;
         get_extensions(instance->features, numExtensions, nullptr);
         std::vector<const char*> extensions(numExtensions);
@@ -153,22 +149,27 @@ drv::InstancePtr DrvVulkan::create_instance(const drv::InstanceCreateInfo* info)
         createInfo.enabledExtensionCount = static_cast<uint32_t>(extensions.size());
         createInfo.ppEnabledExtensionNames = extensions.data();
 
-        VkValidationFeatureEnableEXT validationFeaturesEnabled[] = {
-          VK_VALIDATION_FEATURE_ENABLE_GPU_ASSISTED_EXT,
-          VK_VALIDATION_FEATURE_ENABLE_GPU_ASSISTED_RESERVE_BINDING_SLOT_EXT,
-          VK_VALIDATION_FEATURE_ENABLE_BEST_PRACTICES_EXT,
-        //   VK_VALIDATION_FEATURE_ENABLE_DEBUG_PRINTF_EXT,
-          VK_VALIDATION_FEATURE_ENABLE_SYNCHRONIZATION_VALIDATION_EXT};
+        std::vector<VkValidationFeatureEnableEXT> validationFeaturesEnabled;
+        validationFeaturesEnabled.push_back(VK_VALIDATION_FEATURE_ENABLE_BEST_PRACTICES_EXT);
+        validationFeaturesEnabled.push_back(
+          VK_VALIDATION_FEATURE_ENABLE_SYNCHRONIZATION_VALIDATION_EXT);
+        if (featureconfig::shaderPrint)
+            validationFeaturesEnabled.push_back(VK_VALIDATION_FEATURE_ENABLE_DEBUG_PRINTF_EXT);
+        else {
+            validationFeaturesEnabled.push_back(VK_VALIDATION_FEATURE_ENABLE_GPU_ASSISTED_EXT);
+            validationFeaturesEnabled.push_back(
+              VK_VALIDATION_FEATURE_ENABLE_GPU_ASSISTED_RESERVE_BINDING_SLOT_EXT);
+        }
 
         VkValidationFeaturesEXT validationFeatures;
         validationFeatures.sType = VK_STRUCTURE_TYPE_VALIDATION_FEATURES_EXT;
         validationFeatures.pNext = nullptr;
         validationFeatures.disabledValidationFeatureCount = 0;
         validationFeatures.enabledValidationFeatureCount =
-          sizeof(validationFeaturesEnabled) / sizeof(validationFeaturesEnabled[0]);
-        validationFeatures.pEnabledValidationFeatures = validationFeaturesEnabled;
+          static_cast<uint32_t>(validationFeaturesEnabled.size());
+        validationFeatures.pEnabledValidationFeatures = validationFeaturesEnabled.data();
 
-        if (instance->features.validation_features) {
+        if (featureconfig::debugLevel >= featureconfig::DEBUGGING_EXTRA_VALIDATION) {
             append_p_next(&createInfo, &validationFeatures);
         }
 
@@ -178,7 +179,7 @@ drv::InstancePtr DrvVulkan::create_instance(const drv::InstanceCreateInfo* info)
 
         load_extensions(instance);
 
-        if (instance->features.debug_utils) {
+        if (featureconfig::debugLevel != featureconfig::DEBUGGING_NONE) {
             VkDebugUtilsMessengerCreateInfoEXT messengerCreateInfo = {};
             messengerCreateInfo.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
             messengerCreateInfo.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT
@@ -209,7 +210,7 @@ bool DrvVulkan::delete_instance(drv::InstancePtr ptr) {
     if (ptr == drv::NULL_HANDLE)
         return true;
     Instance* instance = reinterpret_cast<Instance*>(ptr);
-    if (instance->features.debug_utils)
+    if (featureconfig::debugLevel != featureconfig::DEBUGGING_NONE)
         drv::drv_assert(instance->vkDestroyDebugUtilsMessengerEXT != nullptr,
                         "An extension functios was not loaded");
     instance->vkDestroyDebugUtilsMessengerEXT(instance->instance, instance->debugMessenger,
