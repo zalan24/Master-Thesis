@@ -29,6 +29,8 @@ bool DrvVulkan::destroy_pipeline_layout(drv::LogicalDevicePtr device,
     return true;
 }
 
+// TODO probably remove this
+
 bool DrvVulkan::create_compute_pipeline(drv::LogicalDevicePtr device, unsigned int count,
                                         const drv::ComputePipelineCreateInfo* infos,
                                         drv::ComputePipelinePtr* pipelines) {
