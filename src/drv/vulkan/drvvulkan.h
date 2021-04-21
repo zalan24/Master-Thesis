@@ -396,3 +396,10 @@ class DrvVulkanResourceTracker final : public drv::ResourceTracker
     // if mergable => barrier0 := {}, barrier := barrier0 + barrier
     bool merge(BarrierInfo& barrier0, BarrierInfo& barrier) const;
 };
+
+template <typename T1, typename T2>
+void append_p_next(T1* parent, T2* child) {
+    drv::drv_assert(child->pNext == nullptr);
+    child->pNext = parent->pNext;
+    parent->pNext = child;
+}

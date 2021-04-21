@@ -398,7 +398,7 @@ void VulkanRenderPass::bindGraphicsPipeline(drv::CommandBufferPtr cmdBuffer, drv
                       shader->getGraphicsPipeline(info.pipelineId));
 }
 
-void VulkanRenderPass::draw(drv::CommandBufferPtr cmdBuffer, drv::ResourceTracker* tracker,
+void VulkanRenderPass::draw(drv::CommandBufferPtr cmdBuffer, drv::ResourceTracker*,
                             uint32_t vertexCount, uint32_t instanceCount, uint32_t firstVertex,
                             uint32_t firstInstance) const {
     vkCmdDraw(convertCommandBuffer(cmdBuffer), vertexCount, instanceCount, firstVertex,

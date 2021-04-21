@@ -18,6 +18,8 @@ void drv_vulkan::get_extensions(const Features& features, unsigned int& count,
 
     if (features.debug_utils)
         REG_EXT(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
+    if (features.validation_features)
+        REG_EXT(VK_EXT_VALIDATION_FEATURES_EXTENSION_NAME);
     if (features.glfw) {
         uint32_t c = 0;
         const char* const* exts = VulkanWindow::get_required_extensions(c);

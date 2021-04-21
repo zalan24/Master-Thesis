@@ -299,6 +299,7 @@ Get a triangle on screen:
     ☐ Blend constants (pipeline creation)
     ☐ Color blending (pipeline creation)
     ☐ Debug markers: https://www.saschawillems.de/blog/2016/05/28/tutorial-on-using-vulkans-vk_ext_debug_marker-with-renderdoc/
+    ☐ Performance queries: VK_KHR_performance_query
 
 Cleanup & other:
     ☐ Remove useless common driver stuff (drv/common)

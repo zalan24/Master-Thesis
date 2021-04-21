@@ -87,6 +87,7 @@ drv::InstancePtr DrvVulkan::create_instance(const drv::InstanceCreateInfo* info)
     VkInstanceCreateInfo createInfo = {};
     createInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
     createInfo.pApplicationInfo = &appInfo;
+    createInfo.pNext = nullptr;
     std::vector<const char*> layers;
     if (info->validationLayersEnabled) {
         for (const char* layer : validationLayers) {
@@ -137,15 +138,39 @@ drv::InstancePtr DrvVulkan::create_instance(const drv::InstanceCreateInfo* info)
     if (instance == nullptr)
         return drv::NULL_HANDLE;
     try {
-        if (info->validationLayersEnabled)
+        if (info->validationLayersEnabled) {
             instance->features.debug_utils = true;
+            instance->features.validation_features = true;
+        }
 
         unsigned int numExtensions = 0;
         get_extensions(instance->features, numExtensions, nullptr);
         std::vector<const char*> extensions(numExtensions);
         get_extensions(instance->features, numExtensions, extensions.data());
+        LOG_DRIVER_API("Enabled extensions:");
+        for (const char* ext : extensions)
+            LOG_DRIVER_API(" - %s", ext);
         createInfo.enabledExtensionCount = static_cast<uint32_t>(extensions.size());
         createInfo.ppEnabledExtensionNames = extensions.data();
+
+        VkValidationFeatureEnableEXT validationFeaturesEnabled[] = {
+          VK_VALIDATION_FEATURE_ENABLE_GPU_ASSISTED_EXT,
+          VK_VALIDATION_FEATURE_ENABLE_GPU_ASSISTED_RESERVE_BINDING_SLOT_EXT,
+          VK_VALIDATION_FEATURE_ENABLE_BEST_PRACTICES_EXT,
+        //   VK_VALIDATION_FEATURE_ENABLE_DEBUG_PRINTF_EXT,
+          VK_VALIDATION_FEATURE_ENABLE_SYNCHRONIZATION_VALIDATION_EXT};
+
+        VkValidationFeaturesEXT validationFeatures;
+        validationFeatures.sType = VK_STRUCTURE_TYPE_VALIDATION_FEATURES_EXT;
+        validationFeatures.pNext = nullptr;
+        validationFeatures.disabledValidationFeatureCount = 0;
+        validationFeatures.enabledValidationFeatureCount =
+          sizeof(validationFeaturesEnabled) / sizeof(validationFeaturesEnabled[0]);
+        validationFeatures.pEnabledValidationFeatures = validationFeaturesEnabled;
+
+        if (instance->features.validation_features) {
+            append_p_next(&createInfo, &validationFeatures);
+        }
 
         static_assert(sizeof(instance->instance) == sizeof(drv::InstancePtr));
         VkResult result = vkCreateInstance(&createInfo, nullptr, &instance->instance);

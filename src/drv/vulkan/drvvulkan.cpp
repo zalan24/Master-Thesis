@@ -74,14 +74,14 @@ uint32_t DrvVulkan::get_num_trackers() {
 DrvVulkan::DrvVulkan() {
     for (uint32_t id = 0; id < get_num_trackers(); ++id)
         freeTrackingSlot[id].store(true);
-    if (const char* value = std::getenv("VK_LAYER_PATH"); value)
-        LOG_DRIVER_API("Env variable 'VK_LAYER_PATH': %s", value);
-    else
-        LOG_DRIVER_API("Env variable 'VK_LAYER_PATH': not set");
-    if (const char* value = std::getenv("VK_LAYER_SETTINGS_PATH"); value)
-        LOG_DRIVER_API("Env variable 'VK_LAYER_SETTINGS_PATH': %s", value);
-    else
-        LOG_DRIVER_API("Env variable 'VK_LAYER_SETTINGS_PATH': not set");
+    // if (const char* value = std::getenv("VK_LAYER_PATH"); value)
+    //     LOG_DRIVER_API("Env variable 'VK_LAYER_PATH': %s", value);
+    // else
+    //     LOG_DRIVER_API("Env variable 'VK_LAYER_PATH': not set");
+    // if (const char* value = std::getenv("VK_LAYER_SETTINGS_PATH"); value)
+    //     LOG_DRIVER_API("Env variable 'VK_LAYER_SETTINGS_PATH': %s", value);
+    // else
+    //     LOG_DRIVER_API("Env variable 'VK_LAYER_SETTINGS_PATH': not set");
 }
 
 DrvVulkan::~DrvVulkan() {
