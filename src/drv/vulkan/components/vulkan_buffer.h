@@ -10,7 +10,7 @@ struct Buffer
 {
     drv::DeviceSize size = 0;
     VkBuffer buffer = VK_NULL_HANDLE;
-    drv::DeviceMemoryPtr memoryPtr = drv::NULL_HANDLE;
+    drv::DeviceMemoryPtr memoryPtr = nullptr;
     drv::DeviceSize offset = 0;
 };
 }  // namespace drv_vulkan

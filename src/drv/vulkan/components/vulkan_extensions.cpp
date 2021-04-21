@@ -18,9 +18,9 @@ void drv_vulkan::get_extensions(const Features& features, unsigned int& count,
         count++;                     \
     } while (false)
 
-    if (featureconfig::debugLevel != featureconfig::DEBUGGING_NONE)
+    if (featureconfig::params.debugLevel != featureconfig::DEBUGGING_NONE)
         REG_EXT(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
-    if (featureconfig::debugLevel >= featureconfig::DEBUGGING_EXTRA_VALIDATION)
+    if (featureconfig::params.debugLevel >= featureconfig::DEBUGGING_EXTRA_VALIDATION)
         REG_EXT(VK_EXT_VALIDATION_FEATURES_EXTENSION_NAME);
     if (features.glfw) {
         uint32_t c = 0;
@@ -37,7 +37,7 @@ void drv_vulkan::load_extensions(Instance* instance) {
     instance->func =   \
       reinterpret_cast<decltype(instance->func)>(vkGetInstanceProcAddr(instance->instance, #func))
 
-    if (featureconfig::debugLevel != featureconfig::DEBUGGING_NONE) {
+    if (featureconfig::params.debugLevel != featureconfig::DEBUGGING_NONE) {
         GET_FUNC(vkCreateDebugUtilsMessengerEXT);
         GET_FUNC(vkDestroyDebugUtilsMessengerEXT);
     }

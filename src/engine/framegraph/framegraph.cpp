@@ -703,7 +703,7 @@ FrameGraph::NodeHandle::SignalInfo FrameGraph::NodeHandle::signalSemaphore(drv::
         flag <<= 1;
     }
     drv::drv_assert(false, "Could not find semaphore");
-    return {drv::NULL_HANDLE, 0};
+    return {drv::get_null_ptr<TimelineSemaphorePtr>(), 0};
 }
 
 void FrameGraph::NodeHandle::close() {

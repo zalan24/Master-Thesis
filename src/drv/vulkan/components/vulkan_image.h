@@ -18,7 +18,7 @@ struct Image
     drv::ImageFormat format;
     bool sharedResource = true;
     bool swapchainImage = false;
-    drv::DeviceMemoryPtr memoryPtr = drv::NULL_HANDLE;
+    drv::DeviceMemoryPtr memoryPtr = nullptr;
     drv::DeviceSize offset = 0;
 
     struct SubresourceTrackData : PerSubresourceRangeTrackData

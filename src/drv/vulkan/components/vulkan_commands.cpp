@@ -34,7 +34,7 @@ bool DrvVulkanResourceTracker::begin_primary_command_buffer(drv::CommandBufferPt
 bool DrvVulkanResourceTracker::end_primary_command_buffer(drv::CommandBufferPtr cmdBuffer) {
     // TODO handle events with state objects
     for (uint32_t i = 0; i < barriers.size(); ++i)
-        if (barriers[i] && barriers[i].event == drv::NULL_HANDLE)
+        if (barriers[i] && drv::is_null_ptr(barriers[i].event))
             flushBarrier(cmdBuffer, barriers[i]);
     VkResult result = vkEndCommandBuffer(convertCommandBuffer(cmdBuffer));
 #ifdef DEBUG
@@ -88,7 +88,7 @@ drv::PipelineStages DrvVulkanResourceTracker::cmd_image_barrier(
     return add_memory_sync(cmdBuffer, barrier.image, barrier.numSubresourceRanges,
                            barrier.getRanges(), flush, dstStages, accessMask,
                            !convertImage(barrier.image)->sharedResource
-                             && barrier.requestedOwnership != drv::NULL_HANDLE,
+                             && barrier.requestedOwnership != drv::IGNORE_FAMILY,
                            barrier.requestedOwnership, barrier.transitionLayout,
                            barrier.discardCurrentContent, barrier.resultLayout, event);
 }
@@ -96,6 +96,6 @@ drv::PipelineStages DrvVulkanResourceTracker::cmd_image_barrier(
 void DrvVulkanResourceTracker::cmd_flush_waits_on(drv::CommandBufferPtr cmdBuffer,
                                                   drv::EventPtr event) {
     for (uint32_t i = 0; i < barriers.size(); ++i)
-        if (barriers[i] && barriers[i].event == event)
+        if (barriers[i] && drv::is_null_ptr(barriers[i].event))
             flushBarrier(cmdBuffer, barriers[i]);
 }

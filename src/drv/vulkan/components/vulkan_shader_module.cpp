@@ -57,7 +57,7 @@ uint32_t VulkanShader::createGraphicalPipeline(const GraphicalPipelineCreateInfo
     StackMemory::MemoryHandle<VkPipelineShaderStageCreateInfo> stages(MAX_STAGES, TEMPMEM);
     uint32_t numStages = 0;
     auto add_stage = [&](VkShaderStageFlagBits stage, const ShaderStage& stageInfo) {
-        if (stageInfo.shaderModule == drv::NULL_HANDLE)
+        if (drv::is_null_ptr(stageInfo.shaderModule))
             return;
         drv::drv_assert(numStages < MAX_STAGES);
         stages[numStages].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;

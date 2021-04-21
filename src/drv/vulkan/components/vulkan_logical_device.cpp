@@ -54,7 +54,7 @@ drv::LogicalDevicePtr DrvVulkan::create_logical_device(const drv::LogicalDeviceC
     std::vector<const char*> extensions = {};
     if (info->extensions.values.extensions.swapchain)
         extensions.push_back(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
-    if (featureconfig::shaderPrint)
+    if (featureconfig::params.shaderPrint)
         extensions.push_back(VK_KHR_SHADER_NON_SEMANTIC_INFO_EXTENSION_NAME);
 
     LOG_DRIVER_API("Used device extensions:");

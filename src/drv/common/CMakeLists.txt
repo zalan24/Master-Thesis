@@ -1,4 +1,4 @@
-file(GLOB DRV_COMMON_FILES *.cpp *.h *.hpp *.c)
+file(GLOB DRV_COMMON_FILES *.cpp *.h *.hpp *.c drvtypes/*.cpp drvtypes/*.h drvtypes/*.hpp drvtypes/*.c)
 
 add_library(AnimationsDrvCommon STATIC ${DRV_COMMON_FILES})
 target_include_directories(AnimationsDrvCommon PUBLIC
@@ -13,4 +13,5 @@ target_link_libraries(AnimationsDrvCommon PUBLIC
     AnimationsDrvProfiler
     AnimationsTools
     AnimationsSerializable
+    AnimationFeatures
 )

@@ -100,14 +100,14 @@ void DrvVulkanResourceTracker::validate_memory_access(
   drv::PipelineStages& barrierDstStage, ResourceBarrier& barrier) {
     accessMask = drv::MemoryBarrier::resolve(accessMask);
 
-    drv::QueueFamilyPtr transferOwnership = drv::NULL_HANDLE;
+    drv::QueueFamilyPtr transferOwnership = drv::IGNORE_FAMILY;
     drv::MemoryBarrier::AccessFlagBitType invalidateMask = 0;
     bool flush = false;
     bool needWait = 0;
 
     drv::QueueFamilyPtr currentFamily = driver->get_queue_family(device, queue);
     if (!sharedRes && resourceData.ownership != currentFamily
-        && resourceData.ownership != drv::NULL_HANDLE) {
+        && resourceData.ownership != drv::IGNORE_FAMILY) {
         invalidate(SUBOPTIMAL,
                    "Resource has exclusive usage and it's owned by a different queue family");
         transferOwnership = currentFamily;
@@ -138,9 +138,9 @@ void DrvVulkanResourceTracker::validate_memory_access(
         invalidate(SUBOPTIMAL, "Resource usage is different, than promised");
         needWait = true;
     }
-    if (invalidateMask != 0 || transferOwnership != drv::NULL_HANDLE || needWait)
+    if (invalidateMask != 0 || transferOwnership != drv::IGNORE_FAMILY || needWait)
         add_memory_sync(resourceData, subresourceData, flush, stages, accessMask,
-                        transferOwnership != drv::NULL_HANDLE, transferOwnership, barrierSrcStage,
+                        transferOwnership != drv::IGNORE_FAMILY, transferOwnership, barrierSrcStage,
                         barrierDstStage, barrier);
 }
 
@@ -180,7 +180,7 @@ void DrvVulkanResourceTracker::add_memory_sync(
         barrierSrcStage.add(drv::PipelineStages::ALL_COMMANDS_BIT);
     }
     if (transferOwnership && resourceData.ownership != newOwner) {
-        if (resourceData.ownership != drv::NULL_HANDLE) {
+        if (resourceData.ownership != drv::IGNORE_FAMILY) {
             barrier.srcFamily = resourceData.ownership;
             barrier.dstFamily = newOwner;
             barrierDstStage.add(dstStages);
@@ -291,7 +291,7 @@ void DrvVulkanResourceTracker::appendBarrier(drv::CommandBufferPtr cmdBuffer,
             if (merge(barriers[i], barrier)) {
                 freeSpot = i;
             }
-            else if (barriers[i].event == drv::NULL_HANDLE || requireFlush(barriers[i], barrier)) {
+            else if (drv::is_null_ptr(barriers[i].event) || requireFlush(barriers[i], barrier)) {
                 // if no event is in original barrier, better keep the order
                 // otherwise manually placed barriers could lose effectivity
                 freeSpot = i;
@@ -351,12 +351,12 @@ bool DrvVulkanResourceTracker::matches(const BarrierInfo& barrier0,
 
 bool DrvVulkanResourceTracker::swappable(const BarrierInfo& barrier0,
                                          const BarrierInfo& barrier1) const {
-    if (barrier0.event != drv::NULL_HANDLE && barrier1.event != drv::NULL_HANDLE)
+    if (!drv::is_null_ptr(barrier0.event) && !drv::is_null_ptr(barrier1.event))
         return true;
-    if (barrier1.event != drv::NULL_HANDLE)
+    if (!drv::is_null_ptr(barrier1.event))
         return (barrier0.srcStages.resolve(queueSupport) & barrier1.dstStages.resolve(queueSupport))
                == 0;
-    if (barrier0.event != drv::NULL_HANDLE)
+    if (!drv::is_null_ptr(barrier0.event))
         return (barrier0.dstStages.resolve(queueSupport) & barrier1.srcStages.resolve(queueSupport))
                == 0;
     return (barrier0.dstStages.resolve(queueSupport) & barrier1.srcStages.resolve(queueSupport))
@@ -508,11 +508,11 @@ void DrvVulkanResourceTracker::flushBarrier(drv::CommandBufferPtr cmdBuffer, Bar
                     vkImageBarriers[imageRangeCount].newLayout =
                       convertImageLayout(barrier.imageBarriers[i].newLayout);
                     vkImageBarriers[imageRangeCount].srcQueueFamilyIndex =
-                      barrier.imageBarriers[i].srcFamily != drv::NULL_HANDLE
+                      barrier.imageBarriers[i].srcFamily != drv::IGNORE_FAMILY
                         ? convertFamily(barrier.imageBarriers[i].srcFamily)
                         : VK_QUEUE_FAMILY_IGNORED;
                     vkImageBarriers[imageRangeCount].dstQueueFamilyIndex =
-                      barrier.imageBarriers[i].dstFamily != drv::NULL_HANDLE
+                      barrier.imageBarriers[i].dstFamily != drv::IGNORE_FAMILY
                         ? convertFamily(barrier.imageBarriers[i].dstFamily)
                         : VK_QUEUE_FAMILY_IGNORED;
                     vkImageBarriers[imageRangeCount].srcAccessMask =
@@ -618,7 +618,7 @@ void DrvVulkanResourceTracker::flushBarrier(drv::CommandBufferPtr cmdBuffer, Bar
     }
 #endif
 
-    if (barrier.event != drv::NULL_HANDLE) {
+    if (!drv::is_null_ptr(barrier.event)) {
         VkEvent vkEvent = convertEvent(barrier.event);
         vkCmdWaitEvents(
           convertCommandBuffer(cmdBuffer), 1, &vkEvent, convertPipelineStages(barrier.srcStages),
@@ -651,7 +651,7 @@ void DrvVulkanResourceTracker::flushBarrier(drv::CommandBufferPtr cmdBuffer, Bar
 
     barrier.dstStages = 0;
     barrier.srcStages = 0;
-    barrier.event = drv::NULL_HANDLE;
+    drv::reset_ptr(barrier.event);
     barrier.numImageRanges = 0;
 }
 

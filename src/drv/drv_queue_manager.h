@@ -24,8 +24,9 @@ class QueueManager
     };
     struct Queue
     {
-        QueuePtr queue = NULL_HANDLE;
+        QueuePtr queue;
         CommandLaneManager::Queue info;
+        Queue() : queue(get_null_ptr<QueuePtr>()) {}
     };
 
     explicit QueueManager(LogicalDevicePtr device, CommandLaneManager* commandLaneMgr);

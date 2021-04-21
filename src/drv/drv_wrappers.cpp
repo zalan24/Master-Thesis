@@ -38,15 +38,15 @@ Instance::~Instance() {
 
 void Instance::close() {
     CHECK_THREAD;
-    if (ptr != NULL_HANDLE) {
+    if (!is_null_ptr(ptr)) {
         delete_instance(ptr);
-        ptr = NULL_HANDLE;
+        reset_ptr(ptr);
     }
 }
 
 Instance::Instance(Instance&& other) {
     ptr = other.ptr;
-    other.ptr = NULL_HANDLE;
+    reset_ptr(other.ptr);
 }
 
 Instance& Instance::operator=(Instance&& other) {
@@ -54,12 +54,12 @@ Instance& Instance::operator=(Instance&& other) {
         return *this;
     close();
     ptr = other.ptr;
-    other.ptr = NULL_HANDLE;
+    reset_ptr(other.ptr);
     return *this;
 }
 
 Instance::operator bool() const {
-    return ptr != NULL_HANDLE;
+    return !is_null_ptr(ptr);
 }
 
 Instance::operator InstancePtr() const {
@@ -98,7 +98,7 @@ Window& Window::operator=(Window&& other) {
 }
 
 Window::operator bool() const {
-    return ptr != NULL_HANDLE;
+    return !is_null_ptr(ptr);
 }
 
 Window::operator IWindow*() const {
@@ -195,7 +195,7 @@ LogicalDevice::LogicalDevice(CreateInfo&& info) {
         createInfo.queueInfoPtr = queueInfos.data();
     }
     ptr = create_logical_device(&createInfo);
-    if (ptr == NULL_HANDLE)
+    if (is_null_ptr(ptr))
         return;
     for (unsigned int i = 0; i < createInfo.queueInfoCount; ++i) {
         for (unsigned int j = 0; j < createInfo.queueInfoPtr[i].count; ++j) {
@@ -219,15 +219,15 @@ LogicalDevice::~LogicalDevice() {
 
 LogicalDevice::LogicalDevice(LogicalDevice&& other) {
     ptr = other.ptr;
-    other.ptr = drv::NULL_HANDLE;
+    reset_ptr(other.ptr);
     queues = std::move(other.queues);
 }
 
 void LogicalDevice::close() {
     CHECK_THREAD;
-    if (ptr != drv::NULL_HANDLE) {
+    if (!is_null_ptr(ptr)) {
         drv::delete_logical_device(ptr);
-        ptr = NULL_HANDLE;
+        reset_ptr(ptr);
     }
 }
 
@@ -242,8 +242,8 @@ ShaderModule::~ShaderModule() {
 ShaderModule::ShaderModule(ShaderModule&& other) {
     device = other.device;
     ptr = other.ptr;
-    other.device = NULL_HANDLE;
-    other.ptr = NULL_HANDLE;
+    reset_ptr(other.device);
+    reset_ptr(other.ptr);
 }
 
 ShaderModule& ShaderModule::operator=(ShaderModule&& other) {
@@ -252,15 +252,15 @@ ShaderModule& ShaderModule::operator=(ShaderModule&& other) {
     close();
     device = other.device;
     ptr = other.ptr;
-    other.device = NULL_HANDLE;
+    reset_ptr(other.device);
     return *this;
 }
 
 void ShaderModule::close() {
     CHECK_THREAD;
-    if (ptr != drv::NULL_HANDLE) {
+    if (!is_null_ptr(ptr)) {
         drv::destroy_shader_module(device, ptr);
-        ptr = NULL_HANDLE;
+        reset_ptr(ptr);
     }
 }
 
@@ -273,16 +273,16 @@ LogicalDevice& LogicalDevice::operator=(LogicalDevice&& other) {
         return *this;
     close();
     ptr = other.ptr;
-    other.ptr = drv::NULL_HANDLE;
+    reset_ptr(other.ptr);
     queues = std::move(other.queues);
     return *this;
 }
 
-CommandPool::CommandPool() : ptr(NULL_HANDLE) {
+CommandPool::CommandPool() : ptr(get_null_ptr<CommandPoolPtr>()) {
 }
 
 CommandPool::operator bool() const {
-    return ptr != NULL_HANDLE;
+    return !is_null_ptr(ptr);
 }
 
 CommandPool::CommandPool(LogicalDevicePtr _device, QueueFamilyPtr queueFamily,
@@ -296,16 +296,16 @@ CommandPool::~CommandPool() noexcept {
 }
 
 void CommandPool::close() {
-    if (ptr != NULL_HANDLE) {
+    if (!is_null_ptr(ptr)) {
         destroy_command_pool(device, ptr);
-        ptr = NULL_HANDLE;
+        reset_ptr(ptr);
     }
 }
 
 CommandPool::CommandPool(CommandPool&& other) noexcept {
     device = other.device;
     ptr = other.ptr;
-    other.ptr = NULL_HANDLE;
+    reset_ptr(other.ptr);
 }
 
 CommandPool& CommandPool::operator=(CommandPool&& other) noexcept {
@@ -314,7 +314,7 @@ CommandPool& CommandPool::operator=(CommandPool&& other) noexcept {
     close();
     device = other.device;
     ptr = other.ptr;
-    other.ptr = NULL_HANDLE;
+    reset_ptr(other.ptr);
     return *this;
 }
 
@@ -335,25 +335,28 @@ CommandPoolSet::CommandPoolSet(LogicalDevicePtr device, unsigned int count,
 CommandPoolSet::operator bool() const {
     bool ret = true;
     for (const auto& itr : pools)
-        ret = ret && (static_cast<CommandPoolPtr>(itr.second) != NULL_HANDLE);
+        ret = ret && (!is_null_ptr(static_cast<CommandPoolPtr>(itr.second)));
     return ret;
 }
 
 CommandPoolPtr CommandPoolSet::get(QueueFamilyPtr family) const {
     auto itr = pools.find(family);
     if (itr == pools.end())
-        return NULL_HANDLE;
+        return get_null_ptr<CommandPoolPtr>();
     return itr->second;
 }
 
-CommandBuffer::CommandBuffer() : device(NULL_HANDLE), pool(NULL_HANDLE), ptr(NULL_HANDLE) {
+CommandBuffer::CommandBuffer()
+  : device(get_null_ptr<LogicalDevicePtr>()),
+    pool(get_null_ptr<CommandPoolPtr>()),
+    ptr(get_null_ptr<CommandBufferPtr>()) {
 }
 
 CommandBuffer::CommandBuffer(LogicalDevicePtr _device, CommandPoolPtr _pool,
                              const CommandBufferCreateInfo& createInfo)
   : device(_device), pool(_pool) {
     ptr = create_command_buffer(device, pool, &createInfo);
-    drv::drv_assert(ptr != NULL_HANDLE, "Could not create command buffer");
+    drv::drv_assert(!is_null_ptr(ptr), "Could not create command buffer");
 }
 
 CommandBuffer::~CommandBuffer() noexcept {
@@ -361,21 +364,21 @@ CommandBuffer::~CommandBuffer() noexcept {
 }
 
 CommandBuffer::operator bool() const {
-    return ptr != NULL_HANDLE;
+    return !is_null_ptr(ptr);
 }
 
 void CommandBuffer::close() {
-    if (ptr == NULL_HANDLE)
+    if (is_null_ptr(ptr))
         return;
     drv_assert(free_command_buffer(device, pool, 1, &ptr), "Could not free command buffer");
-    ptr = NULL_HANDLE;
+    reset_ptr(ptr);
 }
 
 CommandBuffer::CommandBuffer(CommandBuffer&& other) noexcept {
     device = std::move(other.device);
     pool = std::move(other.pool);
     ptr = std::move(other.ptr);
-    other.ptr = NULL_HANDLE;
+    reset_ptr(other.ptr);
 }
 
 CommandBuffer& CommandBuffer::operator=(CommandBuffer&& other) noexcept {
@@ -385,7 +388,7 @@ CommandBuffer& CommandBuffer::operator=(CommandBuffer&& other) noexcept {
     device = std::move(other.device);
     pool = std::move(other.pool);
     ptr = std::move(other.ptr);
-    other.ptr = NULL_HANDLE;
+    reset_ptr(other.ptr);
     return *this;
 }
 
@@ -497,10 +500,10 @@ BufferSet::BufferSet(PhysicalDevicePtr _physicalDevice, LogicalDevicePtr _device
     std::vector<DeviceSize> offsets;
     const auto createMemory = [&, this] {
         DeviceMemoryPtr* mem = nullptr;
-        if (memory == NULL_HANDLE)
+        if (memory == nullptr)
             mem = &memory;
         else {
-            extraMemories.push_back(NULL_HANDLE);
+            extraMemories.push_back(nullptr);
             mem = &extraMemories.back();
         }
         MemoryAllocationInfo allocInfo;
@@ -508,7 +511,7 @@ BufferSet::BufferSet(PhysicalDevicePtr _physicalDevice, LogicalDevicePtr _device
                    "Could not pick any acceptable memory");
         allocInfo.size = size;
         *mem = allocate_memory(device, &allocInfo);
-        drv_assert(*mem != NULL_HANDLE, "Could not allocate memory");
+        drv_assert(*mem != nullptr, "Could not allocate memory");
         for (unsigned int i = 0; i < offsets.size(); ++i)
             drv_assert(bind_buffer_memory(device, buffers[bufferInd + i], *mem, offsets[i]),
                        "Could not bind buffer");
@@ -545,14 +548,14 @@ BufferSet::~BufferSet() {
 void BufferSet::close() {
     CHECK_THREAD;
     // already deleted
-    if (device == NULL_HANDLE)
+    if (is_null_ptr(device))
         return;
     for (auto& buffer : buffers)
         drv_assert(destroy_buffer(device, buffer), "Could not destroy buffer");
     drv_assert(free_memory(device, memory), "Could not free memory");
     for (auto& mem : extraMemories)
         drv_assert(free_memory(device, mem), "Could not free memory");
-    device = NULL_HANDLE;
+    reset_ptr(device);
 }
 
 BufferSet::BufferSet(BufferSet&& other) {
@@ -561,7 +564,7 @@ BufferSet::BufferSet(BufferSet&& other) {
     memory = std::move(other.memory);
     buffers = std::move(other.buffers);
     extraMemories = std::move(other.extraMemories);
-    other.device = NULL_HANDLE;
+    reset_ptr(other.device);
 }
 
 BufferSet& BufferSet::operator=(BufferSet&& other) {
@@ -573,7 +576,7 @@ BufferSet& BufferSet::operator=(BufferSet&& other) {
     memory = std::move(other.memory);
     buffers = std::move(other.buffers);
     extraMemories = std::move(other.extraMemories);
-    other.device = NULL_HANDLE;
+    reset_ptr(other.device);
     return *this;
 }
 
@@ -689,10 +692,10 @@ ImageSet::ImageSet(PhysicalDevicePtr _physicalDevice, LogicalDevicePtr _device, 
     std::vector<DeviceSize> offsets;
     const auto createMemory = [&, this] {
         DeviceMemoryPtr* mem = nullptr;
-        if (memory == NULL_HANDLE)
+        if (memory == nullptr)
             mem = &memory;
         else {
-            extraMemories.push_back(NULL_HANDLE);
+            extraMemories.push_back(nullptr);
             mem = &extraMemories.back();
         }
         MemoryAllocationInfo allocInfo;
@@ -700,7 +703,7 @@ ImageSet::ImageSet(PhysicalDevicePtr _physicalDevice, LogicalDevicePtr _device, 
                    "Could not pick any acceptable memory");
         allocInfo.size = size;
         *mem = allocate_memory(device, &allocInfo);
-        drv_assert(*mem != NULL_HANDLE, "Could not allocate memory");
+        drv_assert(*mem != nullptr, "Could not allocate memory");
         for (unsigned int i = 0; i < offsets.size(); ++i)
             drv_assert(bind_buffer_memory(device, images[imageInd + i], *mem, offsets[i]),
                        "Could not bind buffer");
@@ -737,14 +740,14 @@ ImageSet::~ImageSet() {
 void ImageSet::close() {
     CHECK_THREAD;
     // already deleted
-    if (device == NULL_HANDLE)
+    if (is_null_ptr(device))
         return;
     for (auto& image : images)
         drv_assert(destroy_image(device, image), "Could not destroy image");
     drv_assert(free_memory(device, memory), "Could not free memory");
     for (auto& mem : extraMemories)
         drv_assert(free_memory(device, mem), "Could not free memory");
-    device = NULL_HANDLE;
+    reset_ptr(device);
 }
 
 ImageSet::ImageSet(ImageSet&& other) {
@@ -753,7 +756,7 @@ ImageSet::ImageSet(ImageSet&& other) {
     memory = std::move(other.memory);
     images = std::move(other.images);
     extraMemories = std::move(other.extraMemories);
-    other.device = NULL_HANDLE;
+    reset_ptr(other.device);
 }
 
 ImageSet& ImageSet::operator=(ImageSet&& other) {
@@ -765,7 +768,7 @@ ImageSet& ImageSet::operator=(ImageSet&& other) {
     memory = std::move(other.memory);
     images = std::move(other.images);
     extraMemories = std::move(other.extraMemories);
-    other.device = NULL_HANDLE;
+    reset_ptr(other.device);
     return *this;
 }
 
@@ -839,7 +842,7 @@ const void* MemoryMapper::get() const {
 
 Semaphore::Semaphore(LogicalDevicePtr _device) : device(_device) {
     ptr = create_semaphore(device);
-    drv::drv_assert(ptr != NULL_HANDLE, "Could not create semaphore");
+    drv::drv_assert(!is_null_ptr(ptr), "Could not create semaphore");
 }
 
 Semaphore::~Semaphore() noexcept {
@@ -848,16 +851,16 @@ Semaphore::~Semaphore() noexcept {
 
 void Semaphore::close() {
     CHECK_THREAD;
-    if (ptr != NULL_HANDLE) {
+    if (!is_null_ptr(ptr)) {
         drv::drv_assert(destroy_semaphore(device, ptr), "Could not destroy semaphore");
-        ptr = NULL_HANDLE;
+        reset_ptr(ptr);
     }
 }
 
 Semaphore::Semaphore(Semaphore&& other) noexcept {
     device = std::move(other.device);
     ptr = std::move(other.ptr);
-    other.ptr = NULL_HANDLE;
+    reset_ptr(other.ptr);
 }
 
 Semaphore& Semaphore::operator=(Semaphore&& other) noexcept {
@@ -866,7 +869,7 @@ Semaphore& Semaphore::operator=(Semaphore&& other) noexcept {
     close();
     device = std::move(other.device);
     ptr = std::move(other.ptr);
-    other.ptr = NULL_HANDLE;
+    reset_ptr(other.ptr);
     return *this;
 }
 
@@ -878,7 +881,7 @@ TimelineSemaphore::TimelineSemaphore(LogicalDevicePtr _device,
                                      const TimelineSemaphoreCreateInfo& info)
   : device(_device) {
     ptr = create_timeline_semaphore(device, &info);
-    drv::drv_assert(ptr != NULL_HANDLE, "Could not create timeline semaphore");
+    drv::drv_assert(!is_null_ptr(ptr), "Could not create timeline semaphore");
 }
 
 TimelineSemaphore::~TimelineSemaphore() noexcept {
@@ -887,17 +890,17 @@ TimelineSemaphore::~TimelineSemaphore() noexcept {
 
 void TimelineSemaphore::close() {
     CHECK_THREAD;
-    if (ptr != NULL_HANDLE) {
+    if (!is_null_ptr(ptr)) {
         drv::drv_assert(destroy_timeline_semaphore(device, ptr),
                         "Could not destroy timeline semaphore");
-        ptr = NULL_HANDLE;
+        reset_ptr(ptr);
     }
 }
 
 TimelineSemaphore::TimelineSemaphore(TimelineSemaphore&& other) noexcept {
     device = std::move(other.device);
     ptr = std::move(other.ptr);
-    other.ptr = NULL_HANDLE;
+    reset_ptr(other.ptr);
 }
 
 TimelineSemaphore& TimelineSemaphore::operator=(TimelineSemaphore&& other) noexcept {
@@ -906,7 +909,7 @@ TimelineSemaphore& TimelineSemaphore::operator=(TimelineSemaphore&& other) noexc
     close();
     device = std::move(other.device);
     ptr = std::move(other.ptr);
-    other.ptr = NULL_HANDLE;
+    reset_ptr(other.ptr);
     return *this;
 }
 
@@ -929,7 +932,7 @@ void TimelineSemaphore::signal(uint64_t value) const {
 
 Fence::Fence(LogicalDevicePtr _device, const FenceCreateInfo& info) : device(_device) {
     ptr = create_fence(device, &info);
-    drv::drv_assert(ptr != NULL_HANDLE, "Could not create fence");
+    drv::drv_assert(!is_null_ptr(ptr), "Could not create fence");
 }
 
 Fence::~Fence() noexcept {
@@ -938,16 +941,16 @@ Fence::~Fence() noexcept {
 
 void Fence::close() {
     CHECK_THREAD;
-    if (ptr != NULL_HANDLE) {
+    if (!is_null_ptr(ptr)) {
         drv::drv_assert(destroy_fence(device, ptr), "Could not destroy fence");
-        ptr = NULL_HANDLE;
+        reset_ptr(ptr);
     }
 }
 
 Fence::Fence(Fence&& other) noexcept {
     device = std::move(other.device);
     ptr = std::move(other.ptr);
-    other.ptr = NULL_HANDLE;
+    reset_ptr(other.ptr);
 }
 
 Fence& Fence::operator=(Fence&& other) noexcept {
@@ -956,7 +959,7 @@ Fence& Fence::operator=(Fence&& other) noexcept {
     close();
     device = std::move(other.device);
     ptr = std::move(other.ptr);
-    other.ptr = NULL_HANDLE;
+    reset_ptr(other.ptr);
     return *this;
 }
 
@@ -974,7 +977,7 @@ bool Fence::isSignalled() const {
 
 ImageView::ImageView(LogicalDevicePtr _device, const ImageViewCreateInfo& info) : device(_device) {
     ptr = create_image_view(device, &info);
-    drv::drv_assert(ptr != NULL_HANDLE, "Could not create image view");
+    drv::drv_assert(!is_null_ptr(ptr), "Could not create image view");
 }
 
 ImageView::~ImageView() noexcept {
@@ -982,16 +985,16 @@ ImageView::~ImageView() noexcept {
 }
 
 void ImageView::close() {
-    if (ptr != NULL_HANDLE) {
+    if (!is_null_ptr(ptr)) {
         drv::drv_assert(destroy_image_view(device, ptr), "Could not destroy image view");
-        ptr = NULL_HANDLE;
+        reset_ptr(ptr);
     }
 }
 
 ImageView::ImageView(ImageView&& other) noexcept {
     device = std::move(other.device);
     ptr = std::move(other.ptr);
-    other.ptr = NULL_HANDLE;
+    reset_ptr(other.ptr);
 }
 
 ImageView& ImageView::operator=(ImageView&& other) noexcept {
@@ -1000,7 +1003,7 @@ ImageView& ImageView::operator=(ImageView&& other) noexcept {
     close();
     device = std::move(other.device);
     ptr = std::move(other.ptr);
-    other.ptr = NULL_HANDLE;
+    reset_ptr(other.ptr);
     return *this;
 }
 
@@ -1010,7 +1013,7 @@ ImageView::operator ImageViewPtr() const {
 
 Event::Event(LogicalDevicePtr _device, const EventCreateInfo& info) : device(_device) {
     ptr = create_event(device, &info);
-    drv::drv_assert(ptr != NULL_HANDLE, "Could not create Event");
+    drv::drv_assert(!is_null_ptr(ptr), "Could not create Event");
 }
 
 Event::~Event() noexcept {
@@ -1019,16 +1022,16 @@ Event::~Event() noexcept {
 
 void Event::close() {
     CHECK_THREAD;
-    if (ptr != NULL_HANDLE) {
+    if (!is_null_ptr(ptr)) {
         drv::drv_assert(destroy_event(device, ptr), "Could not destroy Event");
-        ptr = NULL_HANDLE;
+        reset_ptr(ptr);
     }
 }
 
 Event::Event(Event&& other) noexcept {
     device = std::move(other.device);
     ptr = std::move(other.ptr);
-    other.ptr = NULL_HANDLE;
+    reset_ptr(other.ptr);
 }
 
 Event& Event::operator=(Event&& other) noexcept {
@@ -1037,7 +1040,7 @@ Event& Event::operator=(Event&& other) noexcept {
     close();
     device = std::move(other.device);
     ptr = std::move(other.ptr);
-    other.ptr = NULL_HANDLE;
+    reset_ptr(other.ptr);
     return *this;
 }
 
@@ -1080,7 +1083,7 @@ DescriptorSetLayout::~DescriptorSetLayout() noexcept {
 DescriptorSetLayout::DescriptorSetLayout(DescriptorSetLayout&& other) noexcept {
     device = other.device;
     ptr = other.ptr;
-    other.device = NULL_HANDLE;
+    reset_ptr(other.device);
 }
 
 DescriptorSetLayout& DescriptorSetLayout::operator=(DescriptorSetLayout&& other) noexcept {
@@ -1088,7 +1091,7 @@ DescriptorSetLayout& DescriptorSetLayout::operator=(DescriptorSetLayout&& other)
         return *this;
     device = other.device;
     ptr = other.ptr;
-    other.device = NULL_HANDLE;
+    reset_ptr(other.device);
     return *this;
 }
 
@@ -1097,11 +1100,11 @@ DescriptorSetLayout::operator DescriptorSetLayoutPtr() const {
 }
 
 void DescriptorSetLayout::close() {
-    if (device == NULL_HANDLE)
+    if (is_null_ptr(device))
         return;
     drv::drv_assert(drv::destroy_descriptor_set_layout(device, ptr),
                     "Could not destroy descriptor set layout");
-    device = NULL_HANDLE;
+    reset_ptr(device);
 }
 
 DescriptorPool::DescriptorPool(LogicalDevicePtr _device, const DescriptorPoolCreateInfo& info)
@@ -1116,7 +1119,7 @@ DescriptorPool::~DescriptorPool() noexcept {
 DescriptorPool::DescriptorPool(DescriptorPool&& other) noexcept {
     device = other.device;
     ptr = other.ptr;
-    other.device = NULL_HANDLE;
+    reset_ptr(other.device);
 }
 
 DescriptorPool& DescriptorPool::operator=(DescriptorPool&& other) noexcept {
@@ -1124,7 +1127,7 @@ DescriptorPool& DescriptorPool::operator=(DescriptorPool&& other) noexcept {
         return *this;
     device = other.device;
     ptr = other.ptr;
-    other.device = NULL_HANDLE;
+    reset_ptr(other.device);
     return *this;
 }
 
@@ -1133,11 +1136,11 @@ DescriptorPool::operator DescriptorPoolPtr() const {
 }
 
 void DescriptorPool::close() {
-    if (device == NULL_HANDLE)
+    if (is_null_ptr(device))
         return;
     drv::drv_assert(drv::destroy_descriptor_pool(device, ptr),
                     "Could not destroy descriptor set layout");
-    device = NULL_HANDLE;
+    reset_ptr(device);
 }
 
 SwapchainCreateInfo Swapchain::getSwapchainInfo(uint32_t width, uint32_t height) {
@@ -1160,7 +1163,7 @@ SwapchainCreateInfo Swapchain::getSwapchainInfo(uint32_t width, uint32_t height)
 
 Swapchain::Swapchain(drv::PhysicalDevicePtr physicalDevice, LogicalDevicePtr _device,
                      IWindow* window, const CreateInfo& info)
-  : createInfo(info), device(_device), ptr(NULL_HANDLE) {
+  : createInfo(info), device(_device), ptr(get_null_ptr<SwapchainPtr>()) {
     currentWidth = window->getWidth();
     currentHeight = window->getHeight();
     userFamilies.resize(info.userQueues.size());
@@ -1173,7 +1176,7 @@ Swapchain::Swapchain(drv::PhysicalDevicePtr physicalDevice, LogicalDevicePtr _de
     if (currentWidth > 0 && currentHeight > 0) {
         SwapchainCreateInfo swapchainInfo = getSwapchainInfo(currentWidth, currentHeight);
         ptr = create_swapchain(physicalDevice, device, window, &swapchainInfo);
-        drv::drv_assert(ptr != NULL_HANDLE, "Could not create Swapchain");
+        drv::drv_assert(!is_null_ptr(ptr), "Could not create Swapchain");
         uint32_t count = 0;
         drv::drv_assert(get_swapchain_images(device, ptr, &count, nullptr),
                         "Could not get swapchain images");
@@ -1189,7 +1192,7 @@ void Swapchain::recreate(drv::PhysicalDevicePtr physicalDevice, IWindow* window)
     if (currentWidth > 0 && currentHeight > 0) {
         SwapchainCreateInfo swapchainInfo = getSwapchainInfo(currentWidth, currentHeight);
         ptr = create_swapchain(physicalDevice, device, window, &swapchainInfo);
-        drv::drv_assert(ptr != NULL_HANDLE, "Could not create Swapchain");
+        drv::drv_assert(!is_null_ptr(ptr), "Could not create Swapchain");
         uint32_t count = 0;
         drv::drv_assert(get_swapchain_images(device, ptr, &count, nullptr),
                         "Could not get swapchain images");
@@ -1206,9 +1209,9 @@ Swapchain::~Swapchain() noexcept {
 
 void Swapchain::close() {
     CHECK_THREAD;
-    if (ptr != NULL_HANDLE) {
+    if (!is_null_ptr(ptr)) {
         drv::drv_assert(destroy_swapchain(device, ptr), "Could not destroy Swapchain");
-        ptr = NULL_HANDLE;
+        reset_ptr(ptr);
         acquiredIndex = INVALID_INDEX;
         currentWidth = 0;
         currentHeight = 0;
@@ -1223,7 +1226,7 @@ Swapchain::Swapchain(Swapchain&& other) noexcept {
     currentWidth = other.currentWidth;
     currentHeight = other.currentHeight;
     images = std::move(other.images);
-    other.ptr = NULL_HANDLE;
+    reset_ptr(other.ptr);
 }
 
 Swapchain& Swapchain::operator=(Swapchain&& other) noexcept {
@@ -1237,7 +1240,7 @@ Swapchain& Swapchain::operator=(Swapchain&& other) noexcept {
     currentWidth = other.currentWidth;
     currentHeight = other.currentHeight;
     images = std::move(other.images);
-    other.ptr = NULL_HANDLE;
+    reset_ptr(other.ptr);
     return *this;
 }
 
@@ -1267,7 +1270,7 @@ PresentResult Swapchain::present(QueuePtr queue, const PresentInfo& info) {
 
 drv::ImagePtr Swapchain::getAcquiredImage() const {
     if (acquiredIndex == INVALID_INDEX)
-        return NULL_HANDLE;
+        return get_null_ptr<ImagePtr>();
     return images[acquiredIndex];
 }
 
@@ -1276,8 +1279,8 @@ Framebuffer::Framebuffer(LogicalDevicePtr _device) : device(_device) {
 
 Framebuffer::Framebuffer(Framebuffer&& other)
   : device(other.device), frameBuffer(other.frameBuffer) {
-    other.device = NULL_HANDLE;
-    other.frameBuffer = NULL_HANDLE;
+    reset_ptr(other.device);
+    reset_ptr(other.frameBuffer);
 }
 
 Framebuffer& Framebuffer::operator=(Framebuffer&& other) {
@@ -1286,8 +1289,8 @@ Framebuffer& Framebuffer::operator=(Framebuffer&& other) {
     close();
     device = other.device;
     frameBuffer = other.frameBuffer;
-    other.device = NULL_HANDLE;
-    other.frameBuffer = NULL_HANDLE;
+    reset_ptr(other.device);
+    reset_ptr(other.frameBuffer);
     return *this;
 }
 
@@ -1301,16 +1304,16 @@ void Framebuffer::set(FramebufferPtr buffer) {
 }
 
 void Framebuffer::close() {
-    if (device != NULL_HANDLE) {
+    if (!is_null_ptr(device)) {
         destroy();
-        device = NULL_HANDLE;
+        reset_ptr(device);
     }
 }
 
 void Framebuffer::destroy() {
-    if (device != NULL_HANDLE && frameBuffer != NULL_HANDLE) {
+    if (!is_null_ptr(device) && !is_null_ptr(frameBuffer)) {
         drv::destroy_framebuffer(device, frameBuffer);
-        frameBuffer = NULL_HANDLE;
+        reset_ptr(frameBuffer);
     }
 }
 
@@ -1323,7 +1326,7 @@ void Framebuffer::destroy() {
 
 // void PipelineLayoutManager::close() {
 //     CHECK_THREAD;
-//     if (device == NULL_HANDLE)
+//     if (is_null_ptr(device))
 //         return;
 //     drv_assert(references.size() == 0 && layouts.size() == 0,
 //                "Not all pipeline layouts were freed");

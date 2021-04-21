@@ -211,7 +211,8 @@ VulkanWindow::WindowObject::~WindowObject() {
     window = nullptr;
 }
 
-VulkanWindow::Surface::Surface() : surface(VK_NULL_HANDLE), instance(drv::NULL_HANDLE) {
+VulkanWindow::Surface::Surface()
+  : surface(VK_NULL_HANDLE), instance(get_null_ptr<drv::InstancePtr>()) {
 }
 
 void VulkanWindow::Surface::close() {

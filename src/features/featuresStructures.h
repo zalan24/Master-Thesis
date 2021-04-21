@@ -9,4 +9,10 @@ enum Debugging
     DEBUGGING_VALIDATION_LAYERS = 2,
     DEBUGGING_EXTRA_VALIDATION = 3
 };
+
+struct Params
+{
+    Debugging debugLevel = DEBUGGING_NONE;
+    bool shaderPrint = false;  // disables some validation features
+};
 }  // namespace featureconfig

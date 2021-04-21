@@ -53,7 +53,7 @@ class ResourceTracker
 
     virtual PipelineStages cmd_image_barrier(CommandBufferPtr cmdBuffer,
                                              const ImageMemoryBarrier& barrier,
-                                             drv::EventPtr event = drv::NULL_HANDLE) = 0;
+                                             drv::EventPtr event = get_null_ptr<EventPtr>()) = 0;
 
     virtual void cmd_clear_image(CommandBufferPtr cmdBuffer, ImagePtr image,
                                  const ClearColorValue* clearColors, uint32_t ranges,

@@ -10,12 +10,13 @@ EventPool::EventHandle::EventHandle(EventPool* pool, drv::EventPtr _event, size_
   : eventPool(pool), event(_event), eventIndex(_eventIndex) {
 }
 
-EventPool::EventHandle::EventHandle() : eventPool(nullptr), event(drv::NULL_HANDLE), eventIndex(0) {
+EventPool::EventHandle::EventHandle()
+  : eventPool(nullptr), event(drv::get_null_ptr<drv::EventPtr>()), eventIndex(0) {
 }
 
 EventPool::EventHandle::EventHandle(EventHandle&& other)
   : eventPool(other.eventPool), event(other.event), eventIndex(other.eventIndex) {
-    other.event = drv::NULL_HANDLE;
+    drv::reset_ptr(other.event);
 }
 
 EventPool::EventHandle& EventPool::EventHandle::operator=(EventHandle&& other) {
@@ -25,7 +26,7 @@ EventPool::EventHandle& EventPool::EventHandle::operator=(EventHandle&& other) {
     eventPool = other.eventPool;
     event = other.event;
     eventIndex = other.eventIndex;
-    other.event = drv::NULL_HANDLE;
+    drv::reset_ptr(other.event);
     return *this;
 }
 
@@ -34,7 +35,7 @@ EventPool::EventHandle::~EventHandle() {
 }
 
 EventPool::EventHandle::operator bool() const {
-    return event != drv::NULL_HANDLE;
+    return !drv::is_null_ptr(event);
 }
 
 EventPool::EventHandle::operator drv::EventPtr() const {
@@ -42,9 +43,9 @@ EventPool::EventHandle::operator drv::EventPtr() const {
 }
 
 void EventPool::EventHandle::close() {
-    if (event != drv::NULL_HANDLE) {
+    if (!drv::is_null_ptr(event)) {
         eventPool->release(eventIndex);
-        event = drv::NULL_HANDLE;
+        drv::reset_ptr(event);
     }
 }
 
@@ -53,7 +54,7 @@ void EventPool::EventHandle::reset() {
 }
 
 EventPool::EventHandle EventPool::tryAcquire() noexcept {
-    assert(device != drv::NULL_HANDLE);
+    assert(!drv::is_null_ptr(device));
     std::shared_lock<std::shared_mutex> lock(vectorMutex);
     size_t maxCount = items.size();
     for (size_t i = 0; i < maxCount; ++i) {
@@ -68,7 +69,7 @@ EventPool::EventHandle EventPool::tryAcquire() noexcept {
 }
 
 EventPool::EventHandle EventPool::acquire() {
-    assert(device != drv::NULL_HANDLE);
+    assert(!drv::is_null_ptr(device));
     EventPool::EventHandle ret = tryAcquire();
     if (ret)
         return ret;
@@ -80,7 +81,7 @@ EventPool::EventHandle EventPool::acquire() {
 }
 
 void EventPool::release(size_t eventIndex) {
-    assert(device != drv::NULL_HANDLE);
+    assert(!drv::is_null_ptr(device));
     std::shared_lock<std::shared_mutex> lock(vectorMutex);
     items[eventIndex].event.reset();
     assert(items[eventIndex].used.exchange(false) == true);
@@ -88,13 +89,13 @@ void EventPool::release(size_t eventIndex) {
 }
 
 void EventPool::close() {
-    if (device == drv::NULL_HANDLE)
+    if (drv::is_null_ptr(device))
         return;
     std::unique_lock<std::shared_mutex> lock(vectorMutex);
     assert(acquiredCount.load() == 0);
     items.clear();
     currentIndex = 0;
-    device = drv::NULL_HANDLE;
+    drv::reset_ptr(device);
 }
 
 EventPool::EventPool(EventPool&& other)
@@ -103,7 +104,7 @@ EventPool::EventPool(EventPool&& other)
     acquiredCount(other.acquiredCount.load()),
     items(std::move(other.items)) {
     assert(other.acquiredCount == 0);
-    other.device = drv::NULL_HANDLE;
+    drv::reset_ptr(other.device);
 }
 
 EventPool& EventPool::operator=(EventPool&& other) {
@@ -115,6 +116,6 @@ EventPool& EventPool::operator=(EventPool&& other) {
     currentIndex = other.currentIndex.load();
     acquiredCount = other.acquiredCount.load();
     items = std::move(other.items);
-    other.device = drv::NULL_HANDLE;
+    drv::reset_ptr(other.device);
     return *this;
 }

@@ -392,9 +392,9 @@ Engine::AcquiredImageData Engine::acquiredSwapchainImage(
         ret.images = swapchain.getImages();
     }
     else {
-        ret.image = drv::NULL_HANDLE;
-        ret.imageAvailableSemaphore = drv::NULL_HANDLE;
-        ret.renderFinishedSemaphore = drv::NULL_HANDLE;
+        drv::reset_ptr(ret.image);
+        drv::reset_ptr(ret.imageAvailableSemaphore);
+        drv::reset_ptr(ret.renderFinishedSemaphore);
         ret.imageIndex = 0;
         ret.extent = {0, 0};
         ret.version = INVALID_SWAPCHAIN;
@@ -441,7 +441,7 @@ void Engine::recordCommandsLoop(const volatile std::atomic<FrameId>* stopFrame) 
                 assert(frameGraph.isStopped());
                 break;
             }
-            if (swapchain.getAcquiredImage() != drv::NULL_HANDLE) {
+            if (!drv::is_null_ptr(swapchain.getAcquiredImage())) {
                 frameGraph.getExecutionQueue(presentHandle)
                   ->push(ExecutionPackage(ExecutionPackage::MessagePackage{
                     ExecutionPackage::Message::PRESENT, recordFrame, semaphoreIndex, nullptr}));
@@ -551,7 +551,7 @@ bool Engine::execute(FrameId& executionFrame, ExecutionPackage&& package) {
           static_cast<unsigned int>(cmdBuffer.waitSemaphores.size());
         executionInfo.waitSemaphores = waitSemaphores;
         executionInfo.waitStages = waitSemaphoresStages;
-        if (cmdBuffer.bufferHandle.commandBufferPtr != drv::NULL_HANDLE) {
+        if (!drv::is_null_ptr(cmdBuffer.bufferHandle.commandBufferPtr)) {
             executionInfo.numCommandBuffers = 1;
             executionInfo.commandBuffers = &cmdBuffer.bufferHandle.commandBufferPtr;
         }

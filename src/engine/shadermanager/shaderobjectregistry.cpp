@@ -7,7 +7,7 @@ ShaderObjectRegistry::ShaderObjectRegistry(drv::LogicalDevicePtr _device)
 }
 
 void ShaderObjectRegistry::close() {
-    if (device != drv::NULL_HANDLE) {
+    if (!drv::is_null_ptr(device)) {
         size_t destroyed = 0;
         try {
             for (drv::ShaderModulePtr& ptr : shaders) {
@@ -22,7 +22,7 @@ void ShaderObjectRegistry::close() {
             }
             throw;
         }
-        device = drv::NULL_HANDLE;
+        drv::reset_ptr(device);
     }
     shaders.clear();
     variants.clear();
@@ -37,7 +37,7 @@ ShaderObjectRegistry::ShaderObjectRegistry(ShaderObjectRegistry&& other)
     variants(std::move(other.variants)),
     shaders(std::move(other.shaders)),
     reg(std::move(other.reg)) {
-    other.device = drv::NULL_HANDLE;
+    drv::reset_ptr(other.device);
 }
 
 ShaderObjectRegistry& ShaderObjectRegistry::operator=(ShaderObjectRegistry&& other) {
@@ -48,7 +48,7 @@ ShaderObjectRegistry& ShaderObjectRegistry::operator=(ShaderObjectRegistry&& oth
     variants = std::move(other.variants);
     shaders = std::move(other.shaders);
     reg = std::move(other.reg);
-    other.device = drv::NULL_HANDLE;
+    drv::reset_ptr(other.device);
     return *this;
 }
 

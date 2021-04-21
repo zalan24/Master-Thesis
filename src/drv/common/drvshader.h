@@ -77,7 +77,8 @@ class DrvShader
     struct ShaderStage
     {
         const char* entry = nullptr;
-        ShaderModulePtr shaderModule = NULL_HANDLE;
+        ShaderModulePtr shaderModule;
+        ShaderStage() : shaderModule(get_null_ptr<ShaderModulePtr>()) {}
     };
     struct Viewport
     {

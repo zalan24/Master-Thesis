@@ -30,7 +30,7 @@ void Engine::CommandBufferRecorder::cmdWaitHostEvent(drv::EventPtr event,
 }
 
 void Engine::CommandBufferRecorder::cmdImageBarrier(const drv::ImageMemoryBarrier& barrier) {
-    getResourceTracker()->cmd_image_barrier(cmdBuffer.commandBufferPtr, barrier, drv::NULL_HANDLE);
+    getResourceTracker()->cmd_image_barrier(cmdBuffer.commandBufferPtr, barrier);
 }
 
 void Engine::CommandBufferRecorder::cmdClearImage(

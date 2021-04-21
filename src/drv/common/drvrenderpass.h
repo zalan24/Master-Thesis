@@ -81,10 +81,10 @@ class CmdRenderPass final
 
  private:
     ResourceTracker* tracker = nullptr;
-    CommandBufferPtr cmdBuffer = NULL_HANDLE;
+    CommandBufferPtr cmdBuffer = get_null_ptr<CommandBufferPtr>();
     RenderPass* renderPass = nullptr;
     Rect2D renderArea;
-    FramebufferPtr frameBuffer = NULL_HANDLE;
+    FramebufferPtr frameBuffer = get_null_ptr<FramebufferPtr>();
     SubpassId subpassCount = 0;
     const SubpassInfo* subpassInfos = nullptr;
     uint32_t layerCount = 0;

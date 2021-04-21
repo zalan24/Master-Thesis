@@ -251,7 +251,7 @@ void VulkanRenderPass::recreate(const AttachmentData* images) {
 
 drv::FramebufferPtr VulkanRenderPass::createFramebuffer(const AttachmentData* images) const {
     if (attachments.size() == 0)
-        return drv::NULL_HANDLE;
+        return drv::get_null_ptr<drv::FramebufferPtr>();
     StackMemory::MemoryHandle<VkImageView> views(attachments.size(), TEMPMEM);
     VkFramebufferCreateInfo info = {};
     info.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;

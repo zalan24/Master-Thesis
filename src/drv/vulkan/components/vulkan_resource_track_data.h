@@ -24,6 +24,6 @@ struct PerSubresourceRangeTrackData
 };
 struct PerResourceTrackData
 {
-    drv::QueueFamilyPtr ownership = drv::NULL_HANDLE;
+    drv::QueueFamilyPtr ownership = drv::IGNORE_FAMILY;
 };
 }  // namespace drv_vulkan

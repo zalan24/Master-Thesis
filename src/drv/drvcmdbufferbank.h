@@ -54,10 +54,11 @@ class CommandBufferCirculator
     struct CommandBufferHandle
     {
         CommandBufferCirculator* circulator = nullptr;
-        QueueFamilyPtr family = NULL_HANDLE;
+        QueueFamilyPtr family = IGNORE_FAMILY;
         size_t bufferIndex = 0;
-        CommandBufferPtr commandBufferPtr = NULL_HANDLE;
-        operator bool() const { return commandBufferPtr != NULL_HANDLE; }
+        CommandBufferPtr commandBufferPtr;
+        operator bool() const { return !is_null_ptr(commandBufferPtr); }
+        CommandBufferHandle() : commandBufferPtr(get_null_ptr<CommandBufferPtr>()) {}
     };
 
     CommandBufferCirculator(LogicalDevicePtr device, QueueFamilyPtr family, CommandBufferType type,

@@ -9,44 +9,12 @@
 
 #include <string_hash.h>
 
+#include "drvtypes/drvresourceptrs.hpp"
+
 // TODO split this file up
 
 namespace drv
 {
-using Ptr = void*;
-using InstancePtr = Ptr;
-using PhysicalDevicePtr = Ptr;
-using LogicalDevicePtr = Ptr;
-using QueueFamilyPtr = Ptr;
-using QueuePtr = Ptr;
-using CommandPoolPtr = Ptr;
-using CommandBufferPtr = Ptr;
-using BufferPtr = Ptr;
-using ImagePtr = Ptr;
-using SemaphorePtr = Ptr;
-using TimelineSemaphorePtr = Ptr;
-using FencePtr = Ptr;
-using DeviceMemoryPtr = Ptr;
-using DeviceSize = unsigned long long;
-using DeviceMemoryTypeId = uint32_t;
-using DescriptorSetLayoutPtr = Ptr;
-using DescriptorPoolPtr = Ptr;
-using DescriptorSetPtr = Ptr;
-using ComputePipelinePtr = Ptr;
-using SamplerPtr = Ptr;
-using PipelineLayoutPtr = Ptr;
-using ComputePipelinePtr = Ptr;
-using ShaderModulePtr = Ptr;
-using SwapchainPtr = Ptr;
-using EventPtr = Ptr;
-using ImageViewPtr = Ptr;
-using FramebufferPtr = Ptr;
-
-using ShaderIdType = StrHash;
-#define SHADER(name) (#name##_hash)
-
-static constexpr Ptr NULL_HANDLE = nullptr;
-static constexpr QueueFamilyPtr IGNORE_FAMILY = nullptr;
 
 struct InstanceCreateInfo
 {
@@ -328,7 +296,8 @@ struct MemoryRequirements
 struct CommandExecutionData
 {
     QueuePtr queue;
-    FencePtr fence = NULL_HANDLE;
+    FencePtr fence;
+    CommandExecutionData() : queue(get_null_ptr<QueuePtr>()), fence(get_null_ptr<FencePtr>()) {}
 };
 
 struct CommandBufferCreateInfo

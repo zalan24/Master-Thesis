@@ -222,9 +222,9 @@ class DrvVulkanResourceTracker final : public drv::ResourceTracker
                                       bool simultaneousUse) override;
     bool end_primary_command_buffer(drv::CommandBufferPtr cmdBuffer) override;
 
-    drv::PipelineStages cmd_image_barrier(drv::CommandBufferPtr cmdBuffer,
-                                          const drv::ImageMemoryBarrier& barrier,
-                                          drv::EventPtr event = drv::NULL_HANDLE) override;
+    drv::PipelineStages cmd_image_barrier(
+      drv::CommandBufferPtr cmdBuffer, const drv::ImageMemoryBarrier& barrier,
+      drv::EventPtr event = drv::get_null_ptr<drv::EventPtr>()) override;
 
     void cmd_clear_image(drv::CommandBufferPtr cmdBuffer, drv::ImagePtr image,
                          const drv::ClearColorValue* clearColors, uint32_t ranges,
@@ -276,8 +276,8 @@ class DrvVulkanResourceTracker final : public drv::ResourceTracker
         drv::MemoryBarrier::AccessFlagBitType dstAccessFlags = 0;
 
         // ownership transfer
-        drv::QueueFamilyPtr srcFamily = drv::NULL_HANDLE;
-        drv::QueueFamilyPtr dstFamily = drv::NULL_HANDLE;
+        drv::QueueFamilyPtr srcFamily = drv::IGNORE_FAMILY;
+        drv::QueueFamilyPtr dstFamily = drv::IGNORE_FAMILY;
     };
 
     struct ImageSingleSubresourceMemoryBarrier : ResourceBarrier
@@ -285,7 +285,7 @@ class DrvVulkanResourceTracker final : public drv::ResourceTracker
         drv::ImageLayout oldLayout = drv::ImageLayout::UNDEFINED;
         drv::ImageLayout newLayout = drv::ImageLayout::UNDEFINED;
 
-        drv::ImagePtr image = drv::NULL_HANDLE;
+        drv::ImagePtr image = drv::get_null_ptr<drv::ImagePtr>();
         uint32_t layer = 0;
         uint32_t mipLevel = 0;
         drv::AspectFlagBits aspect;
@@ -296,7 +296,7 @@ class DrvVulkanResourceTracker final : public drv::ResourceTracker
         drv::ImageLayout oldLayout = drv::ImageLayout::UNDEFINED;
         drv::ImageLayout newLayout = drv::ImageLayout::UNDEFINED;
 
-        drv::ImagePtr image = drv::NULL_HANDLE;
+        drv::ImagePtr image = drv::get_null_ptr<drv::ImagePtr>();
         drv::ImageSubresourceSet subresourceSet;
     };
 
@@ -306,7 +306,7 @@ class DrvVulkanResourceTracker final : public drv::ResourceTracker
 
         drv::PipelineStages srcStages;
         drv::PipelineStages dstStages;
-        drv::EventPtr event = drv::NULL_HANDLE;
+        drv::EventPtr event = drv::get_null_ptr<drv::EventPtr>();
         FlushEventCallback* eventCallback;
 
         BarrierInfo(const BarrierInfo&) = delete;

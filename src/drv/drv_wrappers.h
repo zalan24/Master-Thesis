@@ -62,7 +62,7 @@ class Instance
     operator InstancePtr() const;
 
  private:
-    InstancePtr ptr = NULL_HANDLE;
+    InstancePtr ptr = get_null_ptr<InstancePtr>();
 
     void close();
 };
@@ -100,7 +100,7 @@ class PhysicalDevice
         drv::DeviceExtensions extensions;
         std::vector<CommandTypeMask> commandMasks;
         bool (*compare)(PhysicalDeviceInfo* lhs, PhysicalDeviceInfo* rhs) = nullptr;
-        InstancePtr instance = drv::NULL_HANDLE;
+        InstancePtr instance = get_null_ptr<InstancePtr>();
     };
 
     explicit PhysicalDevice(const SelectionInfo& info, IWindow* window);
@@ -108,7 +108,7 @@ class PhysicalDevice
     operator PhysicalDevicePtr() const;
 
  private:
-    PhysicalDevicePtr ptr = NULL_HANDLE;
+    PhysicalDevicePtr ptr = get_null_ptr<PhysicalDevicePtr>();
 };
 
 class LogicalDevice
@@ -131,7 +131,7 @@ class LogicalDevice
     operator LogicalDevicePtr() const;
 
  private:
-    LogicalDevicePtr ptr = NULL_HANDLE;
+    LogicalDevicePtr ptr = get_null_ptr<LogicalDevicePtr>();
     struct QueueInfo
     {
         QueuePtr handle;
@@ -281,9 +281,9 @@ class BufferSet : private Exclusive
     static_assert(std::is_same_v<MaskType, decltype(MemoryRequirements::memoryTypeBits)>,
                   "Type mismatch");
 
-    PhysicalDevicePtr physicalDevice = NULL_HANDLE;
-    LogicalDevicePtr device = NULL_HANDLE;
-    DeviceMemoryPtr memory = NULL_HANDLE;
+    PhysicalDevicePtr physicalDevice = get_null_ptr<PhysicalDevicePtr>();
+    LogicalDevicePtr device = get_null_ptr<LogicalDevicePtr>();
+    DeviceMemoryPtr memory = nullptr;
     std::vector<BufferPtr> buffers;
     // if not all buffers are compatible, they will allocate new memory
     std::vector<DeviceMemoryPtr> extraMemories;
@@ -348,9 +348,9 @@ class ImageSet : private Exclusive
     static_assert(std::is_same_v<MaskType, decltype(MemoryRequirements::memoryTypeBits)>,
                   "Type mismatch");
 
-    PhysicalDevicePtr physicalDevice = NULL_HANDLE;
-    LogicalDevicePtr device = NULL_HANDLE;
-    DeviceMemoryPtr memory = NULL_HANDLE;
+    PhysicalDevicePtr physicalDevice = get_null_ptr<PhysicalDevicePtr>();
+    LogicalDevicePtr device = get_null_ptr<LogicalDevicePtr>();
+    DeviceMemoryPtr memory = nullptr;
     std::vector<ImagePtr> images;
     // if not all buffers are compatible, they will allocate new memory
     std::vector<DeviceMemoryPtr> extraMemories;
@@ -460,7 +460,7 @@ class Event
 class ImageView : public NoCopy
 {
  public:
-    ImageView() : device(NULL_HANDLE), ptr(NULL_HANDLE) {}
+    ImageView() : device(get_null_ptr<LogicalDevicePtr>()), ptr(get_null_ptr<ImageViewPtr>()) {}
     ImageView(LogicalDevicePtr device, const ImageViewCreateInfo& info);
     ~ImageView() noexcept;
 
@@ -497,8 +497,8 @@ class MemoryMapper : private Exclusive
 
  private:
     void* data = nullptr;
-    LogicalDevicePtr device = NULL_HANDLE;
-    DeviceMemoryPtr memory = NULL_HANDLE;
+    LogicalDevicePtr device = get_null_ptr<LogicalDevicePtr>();
+    DeviceMemoryPtr memory = nullptr;
 
     void close();
 };
@@ -571,8 +571,8 @@ class Swapchain
     operator SwapchainPtr() const;
 
     void recreate(drv::PhysicalDevicePtr physicalDevice, IWindow* window);
-    bool acquire(SemaphorePtr semaphore = NULL_HANDLE, FencePtr fence = NULL_HANDLE,
-                 uint64_t timeoutNs = UINT16_MAX);
+    bool acquire(SemaphorePtr semaphore = get_null_ptr<SemaphorePtr>(),
+                 FencePtr fence = get_null_ptr<FencePtr>(), uint64_t timeoutNs = UINT16_MAX);
     PresentResult present(QueuePtr queue, const PresentInfo& info);
 
     uint32_t getCurrentWidth() const { return currentWidth; }
@@ -610,15 +610,15 @@ class Framebuffer : public NoCopy
     ~Framebuffer();
 
     operator FramebufferPtr() const { return frameBuffer; }
-    operator bool() const { return device != NULL_HANDLE && frameBuffer != NULL_HANDLE; }
+    operator bool() const { return !is_null_ptr(device) && !is_null_ptr(frameBuffer); }
 
     void set(FramebufferPtr buffer);
 
-    void reset() { set(NULL_HANDLE); }
+    void reset() { set(get_null_ptr<FramebufferPtr>()); }
 
  private:
-    LogicalDevicePtr device = NULL_HANDLE;
-    FramebufferPtr frameBuffer = NULL_HANDLE;
+    LogicalDevicePtr device = get_null_ptr<LogicalDevicePtr>();
+    FramebufferPtr frameBuffer = get_null_ptr<FramebufferPtr>();
 
     void close();
     void destroy();

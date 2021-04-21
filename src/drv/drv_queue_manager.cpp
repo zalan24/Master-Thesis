@@ -18,7 +18,7 @@ QueueManager::QueueManager(LogicalDevicePtr _device, CommandLaneManager* command
             QueueInfo qInfo;
             qInfo.info = qItr.second;
             qInfo.queue = drv::get_queue(device, qItr.second.familyPtr, qItr.second.queueIndex);
-            drv_assert(qInfo.queue != NULL_HANDLE, "Could not get queue");
+            drv_assert(!is_null_ptr(qInfo.queue), "Could not get queue");
             laneInfo.queues[qItr.first] = std::move(qInfo);
         }
         lanes[itr.first] = std::move(laneInfo);
