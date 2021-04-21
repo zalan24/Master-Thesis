@@ -29,9 +29,11 @@ bool DrvVulkan::get_physical_devices(drv::InstancePtr _instance, unsigned int* c
     vkEnumeratePhysicalDevices(instance->instance, count, devices.data());
     for (unsigned int i = 0; i < *count; ++i) {
         VkPhysicalDeviceProperties deviceProperties;
-        // VkPhysicalDeviceFeatures deviceFeatures;
+        VkPhysicalDeviceFeatures deviceFeatures;
         vkGetPhysicalDeviceProperties(devices[i], &deviceProperties);
-        // vkGetPhysicalDeviceFeatures(devices[i], &deviceFeatures);
+        vkGetPhysicalDeviceFeatures(devices[i], &deviceFeatures);
+
+        UNUSED(deviceFeatures);
 
         LOG_DRIVER_API("Device found <%p>: %s", static_cast<const void*>(devices[i]),
                        deviceProperties.deviceName);

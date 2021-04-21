@@ -5,6 +5,7 @@
 
 #include <vulkan/vulkan.h>
 
+#include <features.h>
 #include <logger.h>
 
 #include <drverror.h>
@@ -44,16 +45,21 @@ drv::LogicalDevicePtr DrvVulkan::create_logical_device(const drv::LogicalDeviceC
 
     VkDeviceCreateInfo createInfo = {};
     createInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
-    createInfo.pNext = &device12Features;
+    createInfo.pNext = nullptr;
     createInfo.pQueueCreateInfos = queues.data();
     createInfo.queueCreateInfoCount = static_cast<unsigned int>(queues.size());
 
     createInfo.pEnabledFeatures = &deviceFeatures;
 
-    std::vector<const char*> extensions = {VK_KHR_TIMELINE_SEMAPHORE_EXTENSION_NAME};
+    std::vector<const char*> extensions = {};
     if (info->extensions.values.extensions.swapchain)
         extensions.push_back(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
+    if (featureconfig::shaderPrint)
+        extensions.push_back(VK_KHR_SHADER_NON_SEMANTIC_INFO_EXTENSION_NAME);
 
+    LOG_DRIVER_API("Used device extensions:");
+    for (const char* ext : extensions)
+        LOG_DRIVER_API(" - %s", ext);
     createInfo.enabledExtensionCount = static_cast<uint32_t>(extensions.size());
     createInfo.ppEnabledExtensionNames = extensions.data();
 
