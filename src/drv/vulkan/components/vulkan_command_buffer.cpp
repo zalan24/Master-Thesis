@@ -67,7 +67,7 @@ bool DrvVulkan::execute(drv::QueuePtr queue, unsigned int count, const drv::Exec
         submitInfos[i].pNext = nullptr;
 
         submitInfos[i].commandBufferCount = infos[i].numCommandBuffers;
-        submitInfos[i].pCommandBuffers = &vkBuffers[commandBufferCount];
+        submitInfos[i].pCommandBuffers = &vkBuffers[commandBufferId];
         for (uint32_t j = 0; j < infos[i].numCommandBuffers; ++j)
             vkBuffers[commandBufferId++] =
               drv::resolve_ptr<VkCommandBuffer>(infos[i].commandBuffers[j]);
