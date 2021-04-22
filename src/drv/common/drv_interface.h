@@ -73,27 +73,27 @@ class IDriver
     virtual bool map_memory(LogicalDevicePtr device, DeviceMemoryPtr memory, DeviceSize offset,
                             DeviceSize size, void** data) = 0;
     virtual bool unmap_memory(LogicalDevicePtr device, DeviceMemoryPtr memory) = 0;
-    virtual DescriptorSetLayoutPtr create_descriptor_set_layout(
-      LogicalDevicePtr device, const DescriptorSetLayoutCreateInfo* info) = 0;
-    virtual bool destroy_descriptor_set_layout(LogicalDevicePtr device,
-                                               DescriptorSetLayoutPtr layout) = 0;
-    virtual DescriptorPoolPtr create_descriptor_pool(LogicalDevicePtr device,
-                                                     const DescriptorPoolCreateInfo* info) = 0;
-    virtual bool destroy_descriptor_pool(LogicalDevicePtr device, DescriptorPoolPtr pool) = 0;
-    virtual bool allocate_descriptor_sets(LogicalDevicePtr device,
-                                          const DescriptorSetAllocateInfo* allocateInfo,
-                                          DescriptorSetPtr* sets) = 0;
-    virtual bool update_descriptor_sets(LogicalDevicePtr device, uint32_t descriptorWriteCount,
-                                        const WriteDescriptorSet* writes,
-                                        uint32_t descriptorCopyCount,
-                                        const CopyDescriptorSet* copies) = 0;
-    virtual PipelineLayoutPtr create_pipeline_layout(LogicalDevicePtr device,
-                                                     const PipelineLayoutCreateInfo* info) = 0;
-    virtual bool destroy_pipeline_layout(LogicalDevicePtr device, PipelineLayoutPtr layout) = 0;
-    virtual bool create_compute_pipeline(LogicalDevicePtr device, unsigned int count,
-                                         const ComputePipelineCreateInfo* infos,
-                                         ComputePipelinePtr* pipelines) = 0;
-    virtual bool destroy_compute_pipeline(LogicalDevicePtr device, ComputePipelinePtr pipeline) = 0;
+    // virtual DescriptorSetLayoutPtr create_descriptor_set_layout(
+    //   LogicalDevicePtr device, const DescriptorSetLayoutCreateInfo* info) = 0;
+    // virtual bool destroy_descriptor_set_layout(LogicalDevicePtr device,
+    //                                            DescriptorSetLayoutPtr layout) = 0;
+    // virtual DescriptorPoolPtr create_descriptor_pool(LogicalDevicePtr device,
+    //                                                  const DescriptorPoolCreateInfo* info) = 0;
+    // virtual bool destroy_descriptor_pool(LogicalDevicePtr device, DescriptorPoolPtr pool) = 0;
+    // virtual bool allocate_descriptor_sets(LogicalDevicePtr device,
+    //                                       const DescriptorSetAllocateInfo* allocateInfo,
+    //                                       DescriptorSetPtr* sets) = 0;
+    // virtual bool update_descriptor_sets(LogicalDevicePtr device, uint32_t descriptorWriteCount,
+    //                                     const WriteDescriptorSet* writes,
+    //                                     uint32_t descriptorCopyCount,
+    //                                     const CopyDescriptorSet* copies) = 0;
+    // virtual PipelineLayoutPtr create_pipeline_layout(LogicalDevicePtr device,
+    //                                                  const PipelineLayoutCreateInfo* info) = 0;
+    // virtual bool destroy_pipeline_layout(LogicalDevicePtr device, PipelineLayoutPtr layout) = 0;
+    // virtual bool create_compute_pipeline(LogicalDevicePtr device, unsigned int count,
+    //                                      const ComputePipelineCreateInfo* infos,
+    //                                      ComputePipelinePtr* pipelines) = 0;
+    // virtual bool destroy_compute_pipeline(LogicalDevicePtr device, ComputePipelinePtr pipeline) = 0;
     virtual IWindow* create_window(Input* input, InputManager* inputManager,
                                    const WindowOptions& options) = 0;
     virtual bool can_present(PhysicalDevicePtr physicalDevice, IWindow* window,

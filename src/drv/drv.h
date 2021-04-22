@@ -104,29 +104,29 @@ bool map_memory(LogicalDevicePtr device, DeviceMemoryPtr memory, DeviceSize offs
                 void** data);
 bool unmap_memory(LogicalDevicePtr device, DeviceMemoryPtr memory);
 
-DescriptorSetLayoutPtr create_descriptor_set_layout(LogicalDevicePtr device,
-                                                    const DescriptorSetLayoutCreateInfo* info);
-bool destroy_descriptor_set_layout(LogicalDevicePtr device, DescriptorSetLayoutPtr layout);
+// DescriptorSetLayoutPtr create_descriptor_set_layout(LogicalDevicePtr device,
+//                                                     const DescriptorSetLayoutCreateInfo* info);
+// bool destroy_descriptor_set_layout(LogicalDevicePtr device, DescriptorSetLayoutPtr layout);
 
-DescriptorPoolPtr create_descriptor_pool(LogicalDevicePtr device,
-                                         const DescriptorPoolCreateInfo* info);
-bool destroy_descriptor_pool(LogicalDevicePtr device, DescriptorPoolPtr pool);
-bool allocate_descriptor_sets(LogicalDevicePtr device,
-                              const DescriptorSetAllocateInfo* allocateInfo,
-                              DescriptorSetPtr* sets);
-bool update_descriptor_sets(LogicalDevicePtr device, uint32_t descriptorWriteCount,
-                            const WriteDescriptorSet* writes, uint32_t descriptorCopyCount,
-                            const CopyDescriptorSet* copies);
+// DescriptorPoolPtr create_descriptor_pool(LogicalDevicePtr device,
+//                                          const DescriptorPoolCreateInfo* info);
+// bool destroy_descriptor_pool(LogicalDevicePtr device, DescriptorPoolPtr pool);
+// bool allocate_descriptor_sets(LogicalDevicePtr device,
+//                               const DescriptorSetAllocateInfo* allocateInfo,
+//                               DescriptorSetPtr* sets);
+// bool update_descriptor_sets(LogicalDevicePtr device, uint32_t descriptorWriteCount,
+//                             const WriteDescriptorSet* writes, uint32_t descriptorCopyCount,
+//                             const CopyDescriptorSet* copies);
 
 // bool destroy_shader_create_info(ShaderCreateInfoPtr info);
 
-PipelineLayoutPtr create_pipeline_layout(LogicalDevicePtr device,
-                                         const PipelineLayoutCreateInfo* info);
-bool destroy_pipeline_layout(LogicalDevicePtr device, PipelineLayoutPtr layout);
+// PipelineLayoutPtr create_pipeline_layout(LogicalDevicePtr device,
+//                                          const PipelineLayoutCreateInfo* info);
+// bool destroy_pipeline_layout(LogicalDevicePtr device, PipelineLayoutPtr layout);
 
-bool create_compute_pipeline(LogicalDevicePtr device, unsigned int count,
-                             const ComputePipelineCreateInfo* infos, ComputePipelinePtr* pipelines);
-bool destroy_compute_pipeline(LogicalDevicePtr device, ComputePipelinePtr pipeline);
+// bool create_compute_pipeline(LogicalDevicePtr device, unsigned int count,
+//                              const ComputePipelineCreateInfo* infos, ComputePipelinePtr* pipelines);
+// bool destroy_compute_pipeline(LogicalDevicePtr device, ComputePipelinePtr pipeline);
 
 IWindow* create_window(Input* input, InputManager* inputManager, const WindowOptions& options);
 bool can_present(PhysicalDevicePtr physicalDevice, IWindow* window, QueueFamilyPtr family);

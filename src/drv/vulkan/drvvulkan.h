@@ -108,30 +108,30 @@ class DrvVulkan final : public drv::IDriver
     bool unmap_memory(drv::LogicalDevicePtr device, drv::DeviceMemoryPtr memory) override;
     // bool load_shaders(drv::LogicalDevicePtr device) override;
     // bool free_shaders(drv::LogicalDevicePtr device) override;
-    drv::DescriptorSetLayoutPtr create_descriptor_set_layout(
-      drv::LogicalDevicePtr device, const drv::DescriptorSetLayoutCreateInfo* info) override;
-    bool destroy_descriptor_set_layout(drv::LogicalDevicePtr device,
-                                       drv::DescriptorSetLayoutPtr layout) override;
-    drv::DescriptorPoolPtr create_descriptor_pool(
-      drv::LogicalDevicePtr device, const drv::DescriptorPoolCreateInfo* info) override;
-    bool destroy_descriptor_pool(drv::LogicalDevicePtr device,
-                                 drv::DescriptorPoolPtr pool) override;
-    bool allocate_descriptor_sets(drv::LogicalDevicePtr device,
-                                  const drv::DescriptorSetAllocateInfo* allocateInfo,
-                                  drv::DescriptorSetPtr* sets) override;
-    bool update_descriptor_sets(drv::LogicalDevicePtr device, uint32_t descriptorWriteCount,
-                                const drv::WriteDescriptorSet* writes, uint32_t descriptorCopyCount,
-                                const drv::CopyDescriptorSet* copies) override;
+    // drv::DescriptorSetLayoutPtr create_descriptor_set_layout(
+    //   drv::LogicalDevicePtr device, const drv::DescriptorSetLayoutCreateInfo* info) override;
+    // bool destroy_descriptor_set_layout(drv::LogicalDevicePtr device,
+    //                                    drv::DescriptorSetLayoutPtr layout) override;
+    // drv::DescriptorPoolPtr create_descriptor_pool(
+    //   drv::LogicalDevicePtr device, const drv::DescriptorPoolCreateInfo* info) override;
+    // bool destroy_descriptor_pool(drv::LogicalDevicePtr device,
+    //                              drv::DescriptorPoolPtr pool) override;
+    // bool allocate_descriptor_sets(drv::LogicalDevicePtr device,
+    //                               const drv::DescriptorSetAllocateInfo* allocateInfo,
+    //                               drv::DescriptorSetPtr* sets) override;
+    // bool update_descriptor_sets(drv::LogicalDevicePtr device, uint32_t descriptorWriteCount,
+    //                             const drv::WriteDescriptorSet* writes, uint32_t descriptorCopyCount,
+    //                             const drv::CopyDescriptorSet* copies) override;
     // bool destroy_shader_create_info(drv::ShaderCreateInfoPtr info) override;
-    drv::PipelineLayoutPtr create_pipeline_layout(
-      drv::LogicalDevicePtr device, const drv::PipelineLayoutCreateInfo* info) override;
-    bool destroy_pipeline_layout(drv::LogicalDevicePtr device,
-                                 drv::PipelineLayoutPtr layout) override;
-    bool create_compute_pipeline(drv::LogicalDevicePtr device, unsigned int count,
-                                 const drv::ComputePipelineCreateInfo* infos,
-                                 drv::ComputePipelinePtr* pipelines) override;
-    bool destroy_compute_pipeline(drv::LogicalDevicePtr device,
-                                  drv::ComputePipelinePtr pipeline) override;
+    // drv::PipelineLayoutPtr create_pipeline_layout(
+    //   drv::LogicalDevicePtr device, const drv::PipelineLayoutCreateInfo* info) override;
+    // bool destroy_pipeline_layout(drv::LogicalDevicePtr device,
+    //                              drv::PipelineLayoutPtr layout) override;
+    // bool create_compute_pipeline(drv::LogicalDevicePtr device, unsigned int count,
+    //                              const drv::ComputePipelineCreateInfo* infos,
+    //                              drv::ComputePipelinePtr* pipelines) override;
+    // bool destroy_compute_pipeline(drv::LogicalDevicePtr device,
+    //                               drv::ComputePipelinePtr pipeline) override;
     drv::ShaderModulePtr create_shader_module(drv::LogicalDevicePtr device,
                                               const drv::ShaderCreateInfo* info) override;
     bool destroy_shader_module(drv::LogicalDevicePtr device, drv::ShaderModulePtr module) override;

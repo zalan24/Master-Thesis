@@ -504,45 +504,45 @@ class MemoryMapper : private Exclusive
     void close();
 };
 
-class DescriptorSetLayout
-  : public NoCopy
-  , private Exclusive
-{
- public:
-    DescriptorSetLayout(LogicalDevicePtr device, const DescriptorSetLayoutCreateInfo& info = {});
-    ~DescriptorSetLayout() noexcept;
+// class DescriptorSetLayout
+//   : public NoCopy
+//   , private Exclusive
+// {
+//  public:
+//     DescriptorSetLayout(LogicalDevicePtr device, const DescriptorSetLayoutCreateInfo& info = {});
+//     ~DescriptorSetLayout() noexcept;
 
-    DescriptorSetLayout(DescriptorSetLayout&& other) noexcept;
-    DescriptorSetLayout& operator=(DescriptorSetLayout&& other) noexcept;
+//     DescriptorSetLayout(DescriptorSetLayout&& other) noexcept;
+//     DescriptorSetLayout& operator=(DescriptorSetLayout&& other) noexcept;
 
-    operator DescriptorSetLayoutPtr() const;
+//     operator DescriptorSetLayoutPtr() const;
 
- private:
-    LogicalDevicePtr device;
-    DescriptorSetLayoutPtr ptr;
+//  private:
+//     LogicalDevicePtr device;
+//     DescriptorSetLayoutPtr ptr;
 
-    void close();
-};
+//     void close();
+// };
 
-class DescriptorPool
-  : public NoCopy
-  , private Exclusive
-{
- public:
-    DescriptorPool(LogicalDevicePtr device, const DescriptorPoolCreateInfo& info = {});
-    ~DescriptorPool() noexcept;
+// class DescriptorPool
+//   : public NoCopy
+//   , private Exclusive
+// {
+//  public:
+//     DescriptorPool(LogicalDevicePtr device, const DescriptorPoolCreateInfo& info = {});
+//     ~DescriptorPool() noexcept;
 
-    DescriptorPool(DescriptorPool&& other) noexcept;
-    DescriptorPool& operator=(DescriptorPool&& other) noexcept;
+//     DescriptorPool(DescriptorPool&& other) noexcept;
+//     DescriptorPool& operator=(DescriptorPool&& other) noexcept;
 
-    operator DescriptorPoolPtr() const;
+//     operator DescriptorPoolPtr() const;
 
- private:
-    LogicalDevicePtr device;
-    DescriptorPoolPtr ptr;
+//  private:
+//     LogicalDevicePtr device;
+//     DescriptorPoolPtr ptr;
 
-    void close();
-};
+//     void close();
+// };
 
 class Swapchain
   : public NoCopy

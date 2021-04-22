@@ -1070,78 +1070,78 @@ bool Event::isSet() {
 //                     "Could not cmd reset event");
 // }
 
-DescriptorSetLayout::DescriptorSetLayout(LogicalDevicePtr _device,
-                                         const DescriptorSetLayoutCreateInfo& info)
-  : device(_device) {
-    ptr = drv::create_descriptor_set_layout(device, &info);
-}
+// DescriptorSetLayout::DescriptorSetLayout(LogicalDevicePtr _device,
+//                                          const DescriptorSetLayoutCreateInfo& info)
+//   : device(_device) {
+//     ptr = drv::create_descriptor_set_layout(device, &info);
+// }
 
-DescriptorSetLayout::~DescriptorSetLayout() noexcept {
-    close();
-}
+// DescriptorSetLayout::~DescriptorSetLayout() noexcept {
+//     close();
+// }
 
-DescriptorSetLayout::DescriptorSetLayout(DescriptorSetLayout&& other) noexcept {
-    device = other.device;
-    ptr = other.ptr;
-    reset_ptr(other.device);
-}
+// DescriptorSetLayout::DescriptorSetLayout(DescriptorSetLayout&& other) noexcept {
+//     device = other.device;
+//     ptr = other.ptr;
+//     reset_ptr(other.device);
+// }
 
-DescriptorSetLayout& DescriptorSetLayout::operator=(DescriptorSetLayout&& other) noexcept {
-    if (this == &other)
-        return *this;
-    device = other.device;
-    ptr = other.ptr;
-    reset_ptr(other.device);
-    return *this;
-}
+// DescriptorSetLayout& DescriptorSetLayout::operator=(DescriptorSetLayout&& other) noexcept {
+//     if (this == &other)
+//         return *this;
+//     device = other.device;
+//     ptr = other.ptr;
+//     reset_ptr(other.device);
+//     return *this;
+// }
 
-DescriptorSetLayout::operator DescriptorSetLayoutPtr() const {
-    return ptr;
-}
+// DescriptorSetLayout::operator DescriptorSetLayoutPtr() const {
+//     return ptr;
+// }
 
-void DescriptorSetLayout::close() {
-    if (is_null_ptr(device))
-        return;
-    drv::drv_assert(drv::destroy_descriptor_set_layout(device, ptr),
-                    "Could not destroy descriptor set layout");
-    reset_ptr(device);
-}
+// void DescriptorSetLayout::close() {
+//     if (is_null_ptr(device))
+//         return;
+//     drv::drv_assert(drv::destroy_descriptor_set_layout(device, ptr),
+//                     "Could not destroy descriptor set layout");
+//     reset_ptr(device);
+// }
 
-DescriptorPool::DescriptorPool(LogicalDevicePtr _device, const DescriptorPoolCreateInfo& info)
-  : device(_device) {
-    ptr = drv::create_descriptor_pool(device, &info);
-}
+// DescriptorPool::DescriptorPool(LogicalDevicePtr _device, const DescriptorPoolCreateInfo& info)
+//   : device(_device) {
+//     ptr = drv::create_descriptor_pool(device, &info);
+// }
 
-DescriptorPool::~DescriptorPool() noexcept {
-    close();
-}
+// DescriptorPool::~DescriptorPool() noexcept {
+//     close();
+// }
 
-DescriptorPool::DescriptorPool(DescriptorPool&& other) noexcept {
-    device = other.device;
-    ptr = other.ptr;
-    reset_ptr(other.device);
-}
+// DescriptorPool::DescriptorPool(DescriptorPool&& other) noexcept {
+//     device = other.device;
+//     ptr = other.ptr;
+//     reset_ptr(other.device);
+// }
 
-DescriptorPool& DescriptorPool::operator=(DescriptorPool&& other) noexcept {
-    if (this == &other)
-        return *this;
-    device = other.device;
-    ptr = other.ptr;
-    reset_ptr(other.device);
-    return *this;
-}
+// DescriptorPool& DescriptorPool::operator=(DescriptorPool&& other) noexcept {
+//     if (this == &other)
+//         return *this;
+//     device = other.device;
+//     ptr = other.ptr;
+//     reset_ptr(other.device);
+//     return *this;
+// }
 
-DescriptorPool::operator DescriptorPoolPtr() const {
-    return ptr;
-}
+// DescriptorPool::operator DescriptorPoolPtr() const {
+//     return ptr;
+// }
 
-void DescriptorPool::close() {
-    if (is_null_ptr(device))
-        return;
-    drv::drv_assert(drv::destroy_descriptor_pool(device, ptr),
-                    "Could not destroy descriptor set layout");
-    reset_ptr(device);
-}
+// void DescriptorPool::close() {
+//     if (is_null_ptr(device))
+//         return;
+//     drv::drv_assert(drv::destroy_descriptor_pool(device, ptr),
+//                     "Could not destroy descriptor set layout");
+//     reset_ptr(device);
+// }
 
 SwapchainCreateInfo Swapchain::getSwapchainInfo(uint32_t width, uint32_t height) {
     SwapchainCreateInfo ret;

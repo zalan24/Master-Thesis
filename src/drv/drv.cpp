@@ -232,59 +232,59 @@ bool drv::unmap_memory(LogicalDevicePtr device, DeviceMemoryPtr memory) {
     return current_driver_interface->unmap_memory(device, memory);
 }
 
-drv::DescriptorSetLayoutPtr drv::create_descriptor_set_layout(
-  LogicalDevicePtr device, const DescriptorSetLayoutCreateInfo* info) {
-    return current_driver_interface->create_descriptor_set_layout(device, info);
-}
-
-bool drv::destroy_descriptor_set_layout(LogicalDevicePtr device, DescriptorSetLayoutPtr layout) {
-    return current_driver_interface->destroy_descriptor_set_layout(device, layout);
-}
-
-drv::DescriptorPoolPtr drv::create_descriptor_pool(LogicalDevicePtr device,
-                                                   const DescriptorPoolCreateInfo* info) {
-    return current_driver_interface->create_descriptor_pool(device, info);
-}
-
-bool drv::destroy_descriptor_pool(LogicalDevicePtr device, DescriptorPoolPtr pool) {
-    return current_driver_interface->destroy_descriptor_pool(device, pool);
-}
-
-bool drv::allocate_descriptor_sets(LogicalDevicePtr device,
-                                   const DescriptorSetAllocateInfo* allocateInfo,
-                                   DescriptorSetPtr* sets) {
-    return current_driver_interface->allocate_descriptor_sets(device, allocateInfo, sets);
-}
-
-bool drv::update_descriptor_sets(LogicalDevicePtr device, uint32_t descriptorWriteCount,
-                                 const WriteDescriptorSet* writes, uint32_t descriptorCopyCount,
-                                 const CopyDescriptorSet* copies) {
-    return current_driver_interface->update_descriptor_sets(device, descriptorWriteCount, writes,
-                                                            descriptorCopyCount, copies);
-}
-
-// bool drv::destroy_shader_create_info(ShaderCreateInfoPtr info) {
-//     return current_driver_interface->destroy_shader_create_info(info);
+// drv::DescriptorSetLayoutPtr drv::create_descriptor_set_layout(
+//   LogicalDevicePtr device, const DescriptorSetLayoutCreateInfo* info) {
+//     return current_driver_interface->create_descriptor_set_layout(device, info);
 // }
 
-drv::PipelineLayoutPtr drv::create_pipeline_layout(LogicalDevicePtr device,
-                                                   const PipelineLayoutCreateInfo* info) {
-    return current_driver_interface->create_pipeline_layout(device, info);
-}
+// bool drv::destroy_descriptor_set_layout(LogicalDevicePtr device, DescriptorSetLayoutPtr layout) {
+//     return current_driver_interface->destroy_descriptor_set_layout(device, layout);
+// }
 
-bool drv::destroy_pipeline_layout(LogicalDevicePtr device, PipelineLayoutPtr layout) {
-    return current_driver_interface->destroy_pipeline_layout(device, layout);
-}
+// drv::DescriptorPoolPtr drv::create_descriptor_pool(LogicalDevicePtr device,
+//                                                    const DescriptorPoolCreateInfo* info) {
+//     return current_driver_interface->create_descriptor_pool(device, info);
+// }
 
-bool drv::create_compute_pipeline(LogicalDevicePtr device, unsigned int count,
-                                  const ComputePipelineCreateInfo* infos,
-                                  ComputePipelinePtr* pipelines) {
-    return current_driver_interface->create_compute_pipeline(device, count, infos, pipelines);
-}
+// bool drv::destroy_descriptor_pool(LogicalDevicePtr device, DescriptorPoolPtr pool) {
+//     return current_driver_interface->destroy_descriptor_pool(device, pool);
+// }
 
-bool drv::destroy_compute_pipeline(LogicalDevicePtr device, ComputePipelinePtr pipeline) {
-    return current_driver_interface->destroy_compute_pipeline(device, pipeline);
-}
+// bool drv::allocate_descriptor_sets(LogicalDevicePtr device,
+//                                    const DescriptorSetAllocateInfo* allocateInfo,
+//                                    DescriptorSetPtr* sets) {
+//     return current_driver_interface->allocate_descriptor_sets(device, allocateInfo, sets);
+// }
+
+// bool drv::update_descriptor_sets(LogicalDevicePtr device, uint32_t descriptorWriteCount,
+//                                  const WriteDescriptorSet* writes, uint32_t descriptorCopyCount,
+//                                  const CopyDescriptorSet* copies) {
+//     return current_driver_interface->update_descriptor_sets(device, descriptorWriteCount, writes,
+//                                                             descriptorCopyCount, copies);
+// }
+
+// // bool drv::destroy_shader_create_info(ShaderCreateInfoPtr info) {
+// //     return current_driver_interface->destroy_shader_create_info(info);
+// // }
+
+// drv::PipelineLayoutPtr drv::create_pipeline_layout(LogicalDevicePtr device,
+//                                                    const PipelineLayoutCreateInfo* info) {
+//     return current_driver_interface->create_pipeline_layout(device, info);
+// }
+
+// bool drv::destroy_pipeline_layout(LogicalDevicePtr device, PipelineLayoutPtr layout) {
+//     return current_driver_interface->destroy_pipeline_layout(device, layout);
+// }
+
+// bool drv::create_compute_pipeline(LogicalDevicePtr device, unsigned int count,
+//                                   const ComputePipelineCreateInfo* infos,
+//                                   ComputePipelinePtr* pipelines) {
+//     return current_driver_interface->create_compute_pipeline(device, count, infos, pipelines);
+// }
+
+// bool drv::destroy_compute_pipeline(LogicalDevicePtr device, ComputePipelinePtr pipeline) {
+//     return current_driver_interface->destroy_compute_pipeline(device, pipeline);
+// }
 
 IWindow* drv::create_window(Input* input, InputManager* inputManager,
                             const WindowOptions& options) {
