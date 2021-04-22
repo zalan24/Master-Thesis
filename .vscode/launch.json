@@ -58,6 +58,7 @@
         {"name": "VK_LAYER_SETTINGS_PATH", "value": "${workspaceFolder}/data/captureCfg"},
         {"name": "VK_APIDUMP_OUTPUT_RANGE", "value": "0-10-1"},
         {"name": "VK_APIDUMP_LOG_FILENAME", "value": "${workspaceFolder}/build/api_dump_log.txt"},
+        {"name": "VK_LAYER_PATH", "value": "${workspaceFolder}/build/3rdParty/validation_layers/install/lib"}
       ],
       "externalConsole": false,
       "internalConsoleOptions": "openOnSessionStart",

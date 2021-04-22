@@ -12,7 +12,7 @@ function(external namespace)
 
     set(options)
     set(oneValueArgs INSTALL CUSTOM_PRE_CMAKE)
-    set(multiValueArgs TARGETS PROJECT_OPTIONS EXTERNAL_CXX_FLAGS EXTERNAL_C_FLAGS)
+    set(multiValueArgs TARGETS PROJECT_OPTIONS EXTERNAL_CXX_FLAGS EXTERNAL_C_FLAGS DEPENDENCIES)
     cmake_parse_arguments(EXTERNAL "${options}" "${oneValueArgs}"
                                     "${multiValueArgs}" ${ARGN} )
 
@@ -29,6 +29,7 @@ function(external namespace)
         INSTALL ${EXTERNAL_INSTALL}
         CUSTOM_PRE_CMAKE "${EXTERNAL_CUSTOM_PRE_CMAKE}"
         TARGETS ${EXTERNAL_TARGETS}
+        DEPENDENCIES ${EXTERNAL_DEPENDENCIES}
         PROJECT_OPTIONS
             ${EXTERNAL_PROJECT_OPTIONS}
             -DCMAKE_INSTALL_PREFIX:PATH=${PROJECT_BINARY_DIR}/3rdParty/${namespace}/install

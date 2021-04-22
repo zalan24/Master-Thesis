@@ -45,7 +45,7 @@ drv::LogicalDevicePtr DrvVulkan::create_logical_device(const drv::LogicalDeviceC
 
     VkDeviceCreateInfo createInfo = {};
     createInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
-    createInfo.pNext = nullptr;
+    createInfo.pNext = &device12Features;
     createInfo.pQueueCreateInfos = queues.data();
     createInfo.queueCreateInfoCount = static_cast<unsigned int>(queues.size());
 
