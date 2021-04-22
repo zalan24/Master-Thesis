@@ -9,6 +9,7 @@
 #include <util.hpp>
 
 #include "drv.h"
+#include "drvtypes/drvresourceptrs.hpp"
 
 class IWindow;
 
@@ -118,7 +119,7 @@ class LogicalDevice
  public:
     struct CreateInfo
     {
-        PhysicalDevicePtr physicalDevice = nullptr;
+        PhysicalDevicePtr physicalDevice = get_null_ptr<PhysicalDevicePtr>();
         std::unordered_map<QueueFamilyPtr, std::vector<float>> queues;
         DeviceExtensions deviceExtensions;
     };

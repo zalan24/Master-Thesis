@@ -70,7 +70,7 @@ bool DrvVulkan::execute(drv::QueuePtr queue, unsigned int count, const drv::Exec
         submitInfos[i].pCommandBuffers = &vkBuffers[commandBufferCount];
         for (uint32_t j = 0; j < infos[i].numCommandBuffers; ++j)
             vkBuffers[commandBufferId++] =
-              drv::reset_ptr<VkCommandBuffer>(infos[i].commandBuffers[j]);
+              drv::resolve_ptr<VkCommandBuffer>(infos[i].commandBuffers[j]);
 
         submitInfos[i].waitSemaphoreCount =
           infos[i].numWaitTimelineSemaphores + infos[i].numWaitSemaphores;
@@ -163,7 +163,7 @@ bool DrvVulkan::free_command_buffer(drv::LogicalDevicePtr device, drv::CommandPo
                                     unsigned int count, drv::CommandBufferPtr* buffers) {
     StackMemory::MemoryHandle<VkCommandBuffer> vkBuffers(count, TEMPMEM);
     for (uint32_t i = 0; i < count; ++i)
-        vkBuffers[i] = drv::reset_ptr<VkCommandBuffer>(buffers[i]);
+        vkBuffers[i] = drv::resolve_ptr<VkCommandBuffer>(buffers[i]);
     vkFreeCommandBuffers(drv::resolve_ptr<VkDevice>(device), drv::resolve_ptr<VkCommandPool>(pool),
                          count, vkBuffers);
     return true;

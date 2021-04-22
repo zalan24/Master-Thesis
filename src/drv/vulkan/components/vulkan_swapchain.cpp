@@ -48,7 +48,7 @@ drv::SwapchainPtr DrvVulkan::create_swapchain(drv::PhysicalDevicePtr physicalDev
 
     StackMemory::MemoryHandle<uint32_t> families(info->familyCount, TEMPMEM);
     for (uint32_t i = 0; i < info->familyCount; ++i)
-        families[i] = convertFamily(info->families[i]);
+        families[i] = convertFamilyToVk(info->families[i]);
     VkSwapchainCreateInfoKHR createInfo{};
     createInfo.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
     createInfo.flags = 0;
@@ -130,7 +130,7 @@ bool DrvVulkan::get_swapchain_images(drv::LogicalDevicePtr device, drv::Swapchai
         return false;
     if (images) {
         for (uint32_t i = 0; i < *count; ++i) {
-            images[i] = new drv_vulkan::Image();
+            images[i] = drv::store_ptr<drv::ImagePtr>(new drv_vulkan::Image());
             convertImage(images[i])->image = vkImages[i];
             convertImage(images[i])->extent = {convertSwapchain(swapchain)->extent.width,
                                                convertSwapchain(swapchain)->extent.height, 1};

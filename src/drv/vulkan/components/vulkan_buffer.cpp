@@ -16,7 +16,7 @@ drv::BufferPtr DrvVulkan::create_buffer(drv::LogicalDevicePtr device,
                                         const drv::BufferCreateInfo* info) {
     Buffer* buffer = new Buffer;
     if (buffer == nullptr)
-        return VK_NULL_HANDLE;
+        return drv::get_null_ptr<drv::BufferPtr>();
     try {
         buffer->size = info->size;
         VkBufferCreateInfo bufferCreateInfo;
@@ -37,7 +37,7 @@ drv::BufferPtr DrvVulkan::create_buffer(drv::LogicalDevicePtr device,
         StackMemory::MemoryHandle<uint32_t> queueFamilies(info->familyCount, TEMPMEM);
         if (info->familyCount > 0) {
             for (unsigned int i = 0; i < info->familyCount; ++i)
-                queueFamilies[i] = convertFamily(info->families[i]);
+                queueFamilies[i] = convertFamilyToVk(info->families[i]);
             bufferCreateInfo.pQueueFamilyIndices = queueFamilies;
         }
         bufferCreateInfo.usage = static_cast<VkBufferUsageFlags>(info->usage);

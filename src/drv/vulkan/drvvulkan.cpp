@@ -311,7 +311,8 @@ void DrvVulkanResourceTracker::appendBarrier(drv::CommandBufferPtr cmdBuffer,
         while (!barriers.empty() && !barriers.back())
             barriers.pop_back();
     }
-    if ((config.immediateBarriers && !event) || (config.immediateEventBarriers && event)) {
+    if ((config.immediateBarriers && drv::is_null_ptr<drv::EventPtr>(event))
+        || (config.immediateEventBarriers && !drv::is_null_ptr<drv::EventPtr>(event))) {
         drv::drv_assert(
           barriers[lastBarrier].srcStages.resolve(queueSupport) == srcStage.resolve(queueSupport)
           && barriers[lastBarrier].dstStages.resolve(queueSupport) == dstStage.resolve(queueSupport)
@@ -426,7 +427,7 @@ bool DrvVulkanResourceTracker::merge(BarrierInfo& barrier0, BarrierInfo& barrier
         }
         else if (j == 0
                  || (i > 0
-                     && barrier0.imageBarriers[i - 1].image > barrier.imageBarriers[j - 1].image)) {
+                     && barrier.imageBarriers[j - 1].image < barrier0.imageBarriers[i - 1].image)) {
             drv::drv_assert(k > j);
             barrier.imageBarriers[k - 1] = std::move(barrier0.imageBarriers[i - 1]);
             i--;
@@ -502,11 +503,11 @@ void DrvVulkanResourceTracker::flushBarrier(drv::CommandBufferPtr cmdBuffer, Bar
                       convertImageLayout(barrier.imageBarriers[i].newLayout);
                     vkImageBarriers[imageRangeCount].srcQueueFamilyIndex =
                       barrier.imageBarriers[i].srcFamily != drv::IGNORE_FAMILY
-                        ? convertFamily(barrier.imageBarriers[i].srcFamily)
+                        ? convertFamilyToVk(barrier.imageBarriers[i].srcFamily)
                         : VK_QUEUE_FAMILY_IGNORED;
                     vkImageBarriers[imageRangeCount].dstQueueFamilyIndex =
                       barrier.imageBarriers[i].dstFamily != drv::IGNORE_FAMILY
-                        ? convertFamily(barrier.imageBarriers[i].dstFamily)
+                        ? convertFamilyToVk(barrier.imageBarriers[i].dstFamily)
                         : VK_QUEUE_FAMILY_IGNORED;
                     vkImageBarriers[imageRangeCount].srcAccessMask =
                       static_cast<VkAccessFlags>(barrier.imageBarriers[i].sourceAccessFlags);
@@ -606,8 +607,8 @@ void DrvVulkanResourceTracker::flushBarrier(drv::CommandBufferPtr cmdBuffer, Bar
         LOG_COMMAND("Cmd barrier recorded <%p>: %d->%d, event:%p, subresources: %s",
                     static_cast<const void*>(convertCommandBuffer(cmdBuffer)),
                     convertPipelineStages(barrier.srcStages),
-                    convertPipelineStages(barrier.dstStages), barrier.event,
-                    subresourcesSS.str().c_str());
+                    convertPipelineStages(barrier.dstStages),
+                    static_cast<void*>(convertEvent(barrier.event)), subresourcesSS.str().c_str());
     }
 #endif
 
@@ -627,7 +628,7 @@ void DrvVulkanResourceTracker::flushBarrier(drv::CommandBufferPtr cmdBuffer, Bar
                              imageRangeCount, vkImageBarriers);
     }
 
-    if (barrier.event && barrier.eventCallback) {
+    if (!drv::is_null_ptr<drv::EventPtr>(barrier.event) && barrier.eventCallback) {
         bool found = false;
         for (uint32_t i = 0; i < barriers.size(); ++i) {
             if (barriers[i] && barriers[i].event == barrier.event) {
@@ -701,7 +702,8 @@ void DrvVulkanResourceTracker::cmd_wait_host_events(drv::CommandBufferPtr cmdBuf
 
 DrvVulkanResourceTracker::~DrvVulkanResourceTracker() {
     for (uint32_t i = 0; i < barriers.size(); ++i)
-        if (barriers[i] && barriers[i].event && barriers[i].eventCallback)
+        if (barriers[i] && !drv::is_null_ptr<drv::EventPtr>(barriers[i].event)
+            && barriers[i].eventCallback)
             barriers[i].eventCallback->release(DISCARDED);
     static_cast<DrvVulkan*>(driver)->release_tracking_slot(trackingSlot);
 }

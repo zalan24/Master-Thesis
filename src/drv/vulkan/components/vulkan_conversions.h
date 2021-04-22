@@ -5,18 +5,18 @@
 #include <vulkan/vulkan.h>
 
 #include <drverror.h>
-#include <drvresourceptrs.hpp>
+#include <drvtypes/drvresourceptrs.hpp>
 
 #include "vulkan_buffer.h"
 #include "vulkan_enum_compare.h"
 #include "vulkan_image.h"
 #include "vulkan_swapchain.h"
 
-inline uint32_t convertFamily(drv::QueueFamilyPtr family) {
+inline uint32_t convertFamilyToVk(drv::QueueFamilyPtr family) {
     return family;
 }
 
-inline drv::QueueFamilyPtr convertFamily(uint32_t id) {
+inline drv::QueueFamilyPtr convertFamilyFromVk(uint32_t id) {
     return id;
 }
 
@@ -42,6 +42,10 @@ inline drv_vulkan::ImageView* convertImageView(drv::ImageViewPtr view) {
 
 inline VkDevice convertDevice(drv::LogicalDevicePtr device) {
     return drv::resolve_ptr<VkDevice>(device);
+}
+
+inline VkQueue convertQueue(drv::QueuePtr queue) {
+    return drv::resolve_ptr<VkQueue>(queue);
 }
 
 inline VkFramebuffer convertFramebuffer(drv::FramebufferPtr framebuffer) {

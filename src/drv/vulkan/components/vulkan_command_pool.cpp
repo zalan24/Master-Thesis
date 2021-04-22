@@ -11,7 +11,7 @@ drv::CommandPoolPtr DrvVulkan::create_command_pool(drv::LogicalDevicePtr device,
                                                    const drv::CommandPoolCreateInfo* info) {
     VkCommandPoolCreateInfo poolInfo = {};
     poolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-    poolInfo.queueFamilyIndex = convertFamily(queueFamily);
+    poolInfo.queueFamilyIndex = convertFamilyToVk(queueFamily);
     poolInfo.flags = 0;
     if (info->transient)
         poolInfo.flags |= VK_COMMAND_POOL_CREATE_TRANSIENT_BIT;

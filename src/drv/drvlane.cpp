@@ -36,7 +36,7 @@ CommandLaneManager::CommandLaneManager(PhysicalDevicePtr physicalDevice, IWindow
         for (const CommandLaneInfo::CommandQueueInfo& queueInfo : laneInfo.queues) {
             Queue q;
             q.priority = queueInfo.priority;
-            q.familyPtr = nullptr;
+            q.familyPtr = IGNORE_FAMILY;
             q.commandTypes = queueInfo.commandTypes;
             unsigned int bestMatch = 0;
             for (size_t i = 0; i < familyCount; ++i) {
@@ -50,14 +50,14 @@ CommandLaneManager::CommandLaneManager(PhysicalDevicePtr physicalDevice, IWindow
                     continue;
                 unsigned int value =
                   bit_count(queueFamilies[i].commandTypeMask ^ queueInfo.preferenceMask);
-                if (q.familyPtr == nullptr || value < bestMatch) {
+                if (q.familyPtr == IGNORE_FAMILY || value < bestMatch) {
                     q.familyPtr = queueFamilies[i].handle;
                     bestMatch = value;
                     usedFamilies.insert(q.familyPtr);
                     q.queueIndex = queueFamilies[i].queueCount - remaining[queueFamilies[i].handle];
                 }
             }
-            if (q.familyPtr == nullptr)
+            if (q.familyPtr == IGNORE_FAMILY)
                 throw std::runtime_error("Could not find a queue for lane " + laneInfo.name
                                          + " / queue " + queueInfo.name);
             lane.queues[queueInfo.name] = std::move(q);

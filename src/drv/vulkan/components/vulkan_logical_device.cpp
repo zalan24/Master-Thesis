@@ -23,11 +23,11 @@ drv::LogicalDevicePtr DrvVulkan::create_logical_device(const drv::LogicalDeviceC
         for (uint32_t j = 0; j < info->queueInfoPtr[i].count; ++j)
             priorities << info->queueInfoPtr[i].prioritiesPtr[j] << " ";
         LOG_DRIVER_API("#%d/%d: Family:%d, count:%d, priorities: { %s}", i + 1,
-                       info->queueInfoCount, convertFamily(info->queueInfoPtr[i].family) + 1,
+                       info->queueInfoCount, info->queueInfoPtr[i].family,
                        info->queueInfoPtr[i].count, priorities.str().c_str());
         VkDeviceQueueCreateInfo queueCreateInfo = {};
         queueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
-        queueCreateInfo.queueFamilyIndex = convertFamily(info->queueInfoPtr[i].family);
+        queueCreateInfo.queueFamilyIndex = convertFamilyToVk(info->queueInfoPtr[i].family);
         queueCreateInfo.queueCount = info->queueInfoPtr[i].count;
         queueCreateInfo.pQueuePriorities = info->queueInfoPtr[i].prioritiesPtr;
 
@@ -70,7 +70,7 @@ drv::LogicalDevicePtr DrvVulkan::create_logical_device(const drv::LogicalDeviceC
       vkCreateDevice(convertPhysicalDevice(info->physicalDevice), &createInfo, nullptr, &device);
     drv::drv_assert(result == VK_SUCCESS, "Logical device could not be created");
     LOG_DRIVER_API("Logical device created <%p> for physical device: %p",
-                   static_cast<const void*>(convertDevice(device)),
+                   static_cast<const void*>(device),
                    static_cast<const void*>(convertPhysicalDevice(info->physicalDevice)));
 
     drv::LogicalDevicePtr ret = drv::store_ptr<drv::LogicalDevicePtr>(device);
@@ -94,14 +94,14 @@ bool DrvVulkan::delete_logical_device(drv::LogicalDevicePtr device) {
 drv::QueuePtr DrvVulkan::get_queue(drv::LogicalDevicePtr device, drv::QueueFamilyPtr family,
                                    unsigned int ind) {
     VkQueue queue;
-    vkGetDeviceQueue(drv::resolve_ptr<VkDevice>(device), convertFamily(family), ind, &queue);
+    vkGetDeviceQueue(drv::resolve_ptr<VkDevice>(device), convertFamilyToVk(family), ind, &queue);
     {
         std::unique_lock<std::mutex> lock(devicesDataMutex);
         auto itr = devicesData.find(device);
         drv::drv_assert(itr != devicesData.end());
-        itr->second.queueToFamily[queue] = family;
+        itr->second.queueToFamily[drv::store_ptr<drv::QueuePtr>(queue)] = family;
     }
-    return drv::resolve_ptr<drv::QueuePtr>(queue);
+    return drv::store_ptr<drv::QueuePtr>(queue);
 }
 
 bool DrvVulkan::device_wait_idle(drv::LogicalDevicePtr device) {

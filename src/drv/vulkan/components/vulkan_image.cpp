@@ -18,7 +18,7 @@ drv::ImagePtr DrvVulkan::create_image(drv::LogicalDevicePtr device,
                                       const drv::ImageCreateInfo* info) {
     StackMemory::MemoryHandle<uint32_t> families(info->familyCount, TEMPMEM);
     for (uint32_t i = 0; i < info->familyCount; ++i)
-        families[i] = convertFamily(info->families[i]);
+        families[i] = convertFamilyToVk(info->families[i]);
 
     VkImageCreateInfo createInfo;
     createInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
@@ -169,7 +169,8 @@ void DrvVulkanResourceTracker::add_memory_access_validate(
                            requiredLayoutMask, changeLayout, barrierSrcStages, barrierDstStages,
                            barrier);
 
-    appendBarrier(cmdBuffer, barrierSrcStages, barrierDstStages, std::move(barrier), nullptr);
+    appendBarrier(cmdBuffer, barrierSrcStages, barrierDstStages, std::move(barrier),
+                  drv::get_null_ptr<drv::EventPtr>());
 
     drv_vulkan::Image* image = convertImage(_image);
     drv_vulkan::Image::SubresourceTrackData& subresourceData =
@@ -193,7 +194,7 @@ void DrvVulkanResourceTracker::add_memory_access(
   bool changeLayout, drv::ImageLayout resultLayout) {
     drv::drv_assert(numSubresourceRanges > 0, "No subresource ranges given for add_memory_access");
     drv_vulkan::Image* image = convertImage(_image);
-    flushBarriersFor(cmdBuffer, image, numSubresourceRanges, subresourceRanges);
+    flushBarriersFor(cmdBuffer, _image, numSubresourceRanges, subresourceRanges);
     if (numSubresourceRanges) {
         drv::ImageSubresourceSet subresourcesHandled;
         for (uint32_t i = 0; i < numSubresourceRanges; ++i) {
@@ -236,7 +237,7 @@ void DrvVulkanResourceTracker::add_memory_access(
             }
         }
     }
-    flushBarriersFor(cmdBuffer, image, numSubresourceRanges, subresourceRanges);
+    flushBarriersFor(cmdBuffer, _image, numSubresourceRanges, subresourceRanges);
 }
 
 drv::PipelineStages DrvVulkanResourceTracker::add_memory_sync(

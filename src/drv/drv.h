@@ -82,7 +82,7 @@ FenceWaitResult wait_for_fence(LogicalDevicePtr device, unsigned int count, cons
                                bool waitAll, unsigned long long int timeOut);
 
 bool execute(QueuePtr queue, unsigned int count, const ExecutionInfo* infos,
-             FencePtr fence = nullptr);
+             FencePtr fence = get_null_ptr<FencePtr>());
 
 BufferPtr create_buffer(LogicalDevicePtr device, const BufferCreateInfo* info);
 bool destroy_buffer(LogicalDevicePtr device, BufferPtr buffer);

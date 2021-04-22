@@ -98,7 +98,7 @@ Window& Window::operator=(Window&& other) {
 }
 
 Window::operator bool() const {
-    return !is_null_ptr(ptr);
+    return ptr != nullptr;
 }
 
 Window::operator IWindow*() const {
@@ -518,7 +518,7 @@ BufferSet::BufferSet(PhysicalDevicePtr _physicalDevice, LogicalDevicePtr _device
     };
     for (unsigned int i = 0; i < count; ++i) {
         BufferPtr buffer = create_buffer(device, &infos[i]);
-        drv_assert(buffer != nullptr, "Could not create buffer");
+        drv_assert(!is_null_ptr(buffer), "Could not create buffer");
         MemoryRequirements req;
         drv_assert(get_buffer_memory_requirements(device, buffer, req),
                    "Could not get memory requirements");
@@ -710,7 +710,7 @@ ImageSet::ImageSet(PhysicalDevicePtr _physicalDevice, LogicalDevicePtr _device, 
     };
     for (unsigned int i = 0; i < count; ++i) {
         ImagePtr image = create_image(device, &infos[i]);
-        drv_assert(image != nullptr, "Could not create buffer");
+        drv_assert(!is_null_ptr(image), "Could not create buffer");
         MemoryRequirements req;
         drv_assert(get_buffer_memory_requirements(device, image, req),
                    "Could not get memory requirements");

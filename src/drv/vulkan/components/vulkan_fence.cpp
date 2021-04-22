@@ -38,7 +38,7 @@ bool DrvVulkan::reset_fences(drv::LogicalDevicePtr device, unsigned int count,
                              drv::FencePtr* fences) {
     StackMemory::MemoryHandle<VkFence> vkFences(count, TEMPMEM);
     for (uint32_t i = 0; i < count; ++i)
-        vkFences[i] = drv::reset_ptr<VkFence>(fences[i]);
+        vkFences[i] = drv::resolve_ptr<VkFence>(fences[i]);
     VkResult result = vkResetFences(drv::resolve_ptr<VkDevice>(device), count, vkFences);
     drv::drv_assert(result == VK_SUCCESS, "Could not reset fences");
     return true;
@@ -49,7 +49,7 @@ drv::FenceWaitResult DrvVulkan::wait_for_fence(drv::LogicalDevicePtr device, uns
                                                unsigned long long int timeOut) {
     StackMemory::MemoryHandle<VkFence> vkFences(count, TEMPMEM);
     for (uint32_t i = 0; i < count; ++i)
-        vkFences[i] = drv::reset_ptr<VkFence>(fences[i]);
+        vkFences[i] = drv::resolve_ptr<VkFence>(fences[i]);
     VkResult result =
       vkWaitForFences(drv::resolve_ptr<VkDevice>(device), count, vkFences, waitAll,
                       timeOut == 0 ? std::numeric_limits<decltype(timeOut)>::max() : timeOut);

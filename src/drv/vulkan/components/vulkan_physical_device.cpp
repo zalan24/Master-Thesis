@@ -95,7 +95,7 @@ bool DrvVulkan::get_physical_device_queue_families(drv::PhysicalDevicePtr physic
                        vkQueueFamilies[i].queueCount);
         queueFamilies[i].queueCount = vkQueueFamilies[i].queueCount;
         queueFamilies[i].commandTypeMask = get_mask(vkQueueFamilies[i].queueFlags);
-        queueFamilies[i].handle = convertFamily(i);
+        queueFamilies[i].handle = convertFamilyToVk(i);
     }
     return true;
 }
@@ -109,7 +109,7 @@ drv::CommandTypeMask DrvVulkan::get_command_type_mask(drv::PhysicalDevicePtr phy
     std::vector<VkQueueFamilyProperties> vkQueueFamilies(count);
     vkGetPhysicalDeviceQueueFamilyProperties(convertPhysicalDevice(physicalDevice), &count,
                                              vkQueueFamilies.data());
-    unsigned int i = convertFamily(queueFamily);
+    unsigned int i = convertFamilyToVk(queueFamily);
     return get_mask(vkQueueFamilies[i].queueFlags);
 }
 

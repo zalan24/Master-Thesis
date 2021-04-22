@@ -337,7 +337,7 @@ bool DrvVulkan::can_present(drv::PhysicalDevicePtr physicalDevice, IWindow* wind
                             drv::QueueFamilyPtr family) {
     VkBool32 presentSupport = false;
     VkSurfaceKHR surface = static_cast<VulkanWindow*>(window)->getSurface();
-    unsigned int i = convertFamily(family);
+    unsigned int i = convertFamilyToVk(family);
     vkGetPhysicalDeviceSurfaceSupportKHR(drv::resolve_ptr<VkPhysicalDevice>(physicalDevice), i,
                                          surface, &presentSupport);
     if (presentSupport == VK_FALSE)

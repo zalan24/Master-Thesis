@@ -141,7 +141,7 @@ class FrameGraph
         struct SyncData
         {
             // static constexpr drv::QueuePtr CPU = drv::NULL_HANDLE;
-            drv::QueuePtr queue = get_null_ptr<drv::QueuePtr>();
+            drv::QueuePtr queue = drv::get_null_ptr<drv::QueuePtr>();
             drv::TimelineSemaphore semaphore;
             // bool cpu() const { return queue == CPU; }
             // explicit SyncData(drv::LogicalDevicePtr device);

@@ -173,7 +173,6 @@ drv::InstancePtr DrvVulkan::create_instance(const drv::InstanceCreateInfo* info)
             append_p_next(&createInfo, &validationFeatures);
         }
 
-        static_assert(sizeof(instance->instance) == sizeof(drv::InstancePtr));
         VkResult result = vkCreateInstance(&createInfo, nullptr, &instance->instance);
         drv::drv_assert(result == VK_SUCCESS, "Vk instance could not be created");
 

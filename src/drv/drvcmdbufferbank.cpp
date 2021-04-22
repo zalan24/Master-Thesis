@@ -76,7 +76,7 @@ void CommandBufferCirculator::finished(CommandBufferHandle&& handle) {
                          == handle.commandBufferPtr);
     // if (handle.bufferIndex < commandBuffers.size()
     //     && commandBuffers[handle.bufferIndex].commandBufferPtr == handle.commandBufferPtr)
-        commandBuffers[handle.bufferIndex].state = CommandBufferState::READY;
+    commandBuffers[handle.bufferIndex].state = CommandBufferState::READY;
     // else {
     //     auto itr = std::find_if(commandBuffers.begin(), commandBuffers.end(),
     //                             [&handle](const CommandBufferData& data) {
@@ -98,7 +98,7 @@ void CommandBufferCirculator::startExecution(CommandBufferHandle& handle) {
                          == handle.commandBufferPtr);
     // if (handle.bufferIndex < commandBuffers.size()
     //     && commandBuffers[handle.bufferIndex].commandBufferPtr == handle.commandBufferPtr)
-        commandBuffers[handle.bufferIndex].state = CommandBufferState::PENDING;
+    commandBuffers[handle.bufferIndex].state = CommandBufferState::PENDING;
     // else {
     //     auto itr = std::find_if(commandBuffers.begin(), commandBuffers.end(),
     //                             [&handle](const CommandBufferData& data) {
