@@ -3,6 +3,7 @@ include(external)
 download_external(
     vulkan_hpp
     GIT_REPOSITORY https://github.com/KhronosGroup/Vulkan-Headers.git
+    GIT_TAG        v1.2.176
 )
 
 add_library(vulkan_hpp_external INTERFACE)
