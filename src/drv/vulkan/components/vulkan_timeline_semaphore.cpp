@@ -2,6 +2,7 @@
 
 #include <vulkan/vulkan.h>
 
+#include <corecontext.h>
 #include <drverror.h>
 
 #include "vulkan_conversions.h"
@@ -23,7 +24,7 @@ drv::TimelineSemaphorePtr DrvVulkan::create_timeline_semaphore(
 
     VkSemaphore timelineSemaphore;
     vkCreateSemaphore(convertDevice(device), &createInfo, nullptr, &timelineSemaphore);
-    return reinterpret_cast<drv::TimelineSemaphorePtr>(timelineSemaphore);
+    return drv::store_ptr<drv::TimelineSemaphorePtr>(timelineSemaphore);
 }
 
 bool DrvVulkan::destroy_timeline_semaphore(drv::LogicalDevicePtr device,
@@ -48,12 +49,15 @@ bool DrvVulkan::wait_on_timeline_semaphores(drv::LogicalDevicePtr device, uint32
                                             const drv::TimelineSemaphorePtr* semaphores,
                                             const uint64_t* waitValues, bool waitAll,
                                             uint64_t timeoutNs) {
+    StackMemory::MemoryHandle<VkSemaphore> vkSemaphores(count, TEMPMEM);
+    for (uint32_t i = 0; i < count; ++i)
+        vkSemaphores[i] = convertSemaphore(semaphores[i]);
     VkSemaphoreWaitInfo waitInfo;
     waitInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_WAIT_INFO;
     waitInfo.pNext = nullptr;
     waitInfo.flags = waitAll ? 0 : VK_SEMAPHORE_WAIT_ANY_BIT;
     waitInfo.semaphoreCount = count;
-    waitInfo.pSemaphores = convertSemaphores(semaphores);
+    waitInfo.pSemaphores = vkSemaphores;
     waitInfo.pValues = waitValues;
 
     VkResult result = vkWaitSemaphores(convertDevice(device), &waitInfo, timeoutNs);

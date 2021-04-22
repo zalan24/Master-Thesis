@@ -5,7 +5,7 @@
 #include <vulkan/vulkan.h>
 
 #include <drverror.h>
-#include <drvtypes.h>
+#include <drvresourceptrs.hpp>
 
 #include "vulkan_buffer.h"
 #include "vulkan_enum_compare.h"
@@ -13,53 +13,47 @@
 #include "vulkan_swapchain.h"
 
 inline uint32_t convertFamily(drv::QueueFamilyPtr family) {
-    return static_cast<uint32_t>(
-             std::distance(reinterpret_cast<char*>(0), reinterpret_cast<char*>(family)))
-           - 1;
+    return family;
 }
 
 inline drv::QueueFamilyPtr convertFamily(uint32_t id) {
-    return static_cast<drv::QueueFamilyPtr>(std::next(reinterpret_cast<char*>(0), id + 1));
+    return id;
 }
 
 inline VkBuffer convertBuffer(drv::BufferPtr buffer) {
-    return reinterpret_cast<drv_vulkan::Buffer*>(buffer)->buffer;
+    return drv::resolve_ptr<drv_vulkan::Buffer*>(buffer)->buffer;
 }
 
 inline drv_vulkan::Swapchain* convertSwapchain(drv::SwapchainPtr swapchain) {
-    return reinterpret_cast<drv_vulkan::Swapchain*>(swapchain);
+    return drv::resolve_ptr<drv_vulkan::Swapchain*>(swapchain);
 }
 
 inline drv_vulkan::Image* convertImage(drv::ImagePtr image) {
-    return reinterpret_cast<drv_vulkan::Image*>(image);
+    return drv::resolve_ptr<drv_vulkan::Image*>(image);
 }
 
 inline drv::ImagePtr convertImage(drv_vulkan::Image* image) {
-    return reinterpret_cast<drv::ImagePtr>(image);
+    return drv::store_ptr<drv::ImagePtr>(image);
 }
 
 inline drv_vulkan::ImageView* convertImageView(drv::ImageViewPtr view) {
-    return reinterpret_cast<drv_vulkan::ImageView*>(view);
+    return drv::resolve_ptr<drv_vulkan::ImageView*>(view);
 }
 
 inline VkDevice convertDevice(drv::LogicalDevicePtr device) {
-    return reinterpret_cast<VkDevice>(device);
+    return drv::resolve_ptr<VkDevice>(device);
 }
 
 inline VkFramebuffer convertFramebuffer(drv::FramebufferPtr framebuffer) {
-    return reinterpret_cast<VkFramebuffer>(framebuffer);
+    return drv::resolve_ptr<VkFramebuffer>(framebuffer);
 }
 
 inline VkSemaphore convertSemaphore(drv::TimelineSemaphorePtr semaphore) {
-    return reinterpret_cast<VkSemaphore>(semaphore);
-}
-
-inline const VkSemaphore* convertSemaphores(const drv::TimelineSemaphorePtr* semaphores) {
-    return reinterpret_cast<const VkSemaphore*>(semaphores);
+    return drv::resolve_ptr<VkSemaphore>(semaphore);
 }
 
 inline VkFence convertFence(drv::FencePtr fence) {
-    return reinterpret_cast<VkFence>(fence);
+    return drv::resolve_ptr<VkFence>(fence);
 }
 
 inline drv::Extent3D convertExtent(VkExtent3D extent) {
@@ -162,15 +156,11 @@ inline VkClearRect convertClearRect(const drv::ClearRect& clearRect) {
 }
 
 inline VkCommandBuffer convertCommandBuffer(drv::CommandBufferPtr buffer) {
-    return reinterpret_cast<VkCommandBuffer>(buffer);
-}
-
-inline VkCommandBuffer* convertCommandBuffers(drv::CommandBufferPtr* buffer) {
-    return reinterpret_cast<VkCommandBuffer*>(buffer);
+    return drv::resolve_ptr<VkCommandBuffer>(buffer);
 }
 
 inline VkEvent convertEvent(drv::EventPtr event) {
-    return reinterpret_cast<VkEvent>(event);
+    return drv::resolve_ptr<VkEvent>(event);
 }
 
 inline VkPipelineStageFlags convertPipelineStages(const drv::PipelineStages& stages) {
@@ -200,7 +190,7 @@ constexpr inline drv::ImageLayout convertImageLayout(VkImageLayout layout) {
 }
 
 inline VkPhysicalDevice convertPhysicalDevice(drv::PhysicalDevicePtr physicalDevice) {
-    return reinterpret_cast<VkPhysicalDevice>(physicalDevice);
+    return drv::resolve_ptr<VkPhysicalDevice>(physicalDevice);
 }
 
 static_assert(convertImageLayout(drv::ImageLayout::UNDEFINED) == VK_IMAGE_LAYOUT_UNDEFINED);
@@ -246,8 +236,4 @@ static_assert(drv::ImageLayout::SHARED_PRESENT_KHR
 
 // inline VkSemaphore convertSemaphore(drv::SemaphorePtr semaphore) {
 //     return reinterpret_cast<VkSemaphore>(semaphore);
-// }
-
-// inline const VkSemaphore* convertSemaphores(const drv::SemaphorePtr* semaphores) {
-//     return reinterpret_cast<const VkSemaphore*>(semaphores);
 // }

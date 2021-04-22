@@ -197,10 +197,10 @@ drv::InstancePtr DrvVulkan::create_instance(const drv::InstanceCreateInfo* info)
             drv::drv_assert(result == VK_SUCCESS, "Debug messenger could not be registered");
         }
 
-        return reinterpret_cast<drv::InstancePtr>(instance);
+        return drv::store_ptr<drv::InstancePtr>(instance);
     }
     catch (...) {
-        drv::drv_assert(delete_instance(reinterpret_cast<drv::InstancePtr>(instance)),
+        drv::drv_assert(delete_instance(drv::store_ptr<drv::InstancePtr>(instance)),
                         "Something went really wrong");
         throw;
     }
@@ -209,7 +209,7 @@ drv::InstancePtr DrvVulkan::create_instance(const drv::InstanceCreateInfo* info)
 bool DrvVulkan::delete_instance(drv::InstancePtr ptr) {
     if (drv::is_null_ptr(ptr))
         return true;
-    Instance* instance = reinterpret_cast<Instance*>(ptr);
+    Instance* instance = drv::resolve_ptr<Instance*>(ptr);
     if (featureconfig::params.debugLevel != featureconfig::DEBUGGING_NONE)
         drv::drv_assert(instance->vkDestroyDebugUtilsMessengerEXT != nullptr,
                         "An extension functios was not loaded");
@@ -217,6 +217,6 @@ bool DrvVulkan::delete_instance(drv::InstancePtr ptr) {
                                               nullptr);
     if (instance->instance != VK_NULL_HANDLE)
         vkDestroyInstance(instance->instance, nullptr);
-    delete reinterpret_cast<Instance*>(ptr);
+    delete drv::resolve_ptr<Instance*>(ptr);
     return true;
 }

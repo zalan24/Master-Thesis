@@ -73,7 +73,7 @@ drv::LogicalDevicePtr DrvVulkan::create_logical_device(const drv::LogicalDeviceC
                    static_cast<const void*>(convertDevice(device)),
                    static_cast<const void*>(convertPhysicalDevice(info->physicalDevice)));
 
-    drv::LogicalDevicePtr ret = reinterpret_cast<drv::LogicalDevicePtr>(device);
+    drv::LogicalDevicePtr ret = drv::store_ptr<drv::LogicalDevicePtr>(device);
     {
         std::unique_lock<std::mutex> lock(devicesDataMutex);
         devicesData[ret] = std::move(deviceData);
@@ -87,21 +87,21 @@ bool DrvVulkan::delete_logical_device(drv::LogicalDevicePtr device) {
         devicesData.erase(device);
     }
     LOG_DRIVER_API("Destroy logical device <%p>", static_cast<const void*>(convertDevice(device)));
-    vkDestroyDevice(reinterpret_cast<VkDevice>(device), nullptr);
+    vkDestroyDevice(drv::resolve_ptr<VkDevice>(device), nullptr);
     return true;
 }
 
 drv::QueuePtr DrvVulkan::get_queue(drv::LogicalDevicePtr device, drv::QueueFamilyPtr family,
                                    unsigned int ind) {
     VkQueue queue;
-    vkGetDeviceQueue(reinterpret_cast<VkDevice>(device), convertFamily(family), ind, &queue);
+    vkGetDeviceQueue(drv::resolve_ptr<VkDevice>(device), convertFamily(family), ind, &queue);
     {
         std::unique_lock<std::mutex> lock(devicesDataMutex);
         auto itr = devicesData.find(device);
         drv::drv_assert(itr != devicesData.end());
         itr->second.queueToFamily[queue] = family;
     }
-    return reinterpret_cast<drv::QueuePtr>(queue);
+    return drv::resolve_ptr<drv::QueuePtr>(queue);
 }
 
 bool DrvVulkan::device_wait_idle(drv::LogicalDevicePtr device) {

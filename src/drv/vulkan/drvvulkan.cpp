@@ -465,13 +465,6 @@ void DrvVulkanResourceTracker::flushBarrier(drv::CommandBufferPtr cmdBuffer, Bar
         maxImageSubresCount += mipCount * layerCount;
     }
     StackMemory::MemoryHandle<VkImageMemoryBarrier> vkImageBarriers(maxImageSubresCount, TEMPMEM);
-    //     VkMemoryBarrier* barriers = reinterpret_cast<VkMemoryBarrier*>(barrierMem.get());
-    //     VkBufferMemoryBarrier* vkBufferBarriers =
-    //       reinterpret_cast<VkBufferMemoryBarrier*>(bufferMem.get());
-    //     drv::drv_assert(barriers != nullptr || memoryBarrierCount == 0,
-    //                     "Could not allocate memory for barriers");
-    //     drv::drv_assert(bufferBarriers != nullptr || bufferBarrierCount == 0,
-    //                     "Could not allocate memory for buffer barriers");
 
     for (uint32_t i = 0; i < barrier.numImageRanges; ++i) {
         if ((barrier.imageBarriers[i].dstFamily == barrier.imageBarriers[i].srcFamily

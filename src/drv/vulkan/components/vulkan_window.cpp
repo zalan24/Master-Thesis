@@ -48,7 +48,7 @@ void VulkanWindow::error_callback [[noreturn]] (int, const char* description) {
 
 SwapChainSupportDetails drv_vulkan::query_swap_chain_support(drv::PhysicalDevicePtr physicalDevice,
                                                              VkSurfaceKHR surface) {
-    VkPhysicalDevice vkPhysicalDevice = reinterpret_cast<VkPhysicalDevice>(physicalDevice);
+    VkPhysicalDevice vkPhysicalDevice = drv::resolve_ptr<VkPhysicalDevice>(physicalDevice);
     SwapChainSupportDetails details;
     vkGetPhysicalDeviceSurfaceCapabilitiesKHR(vkPhysicalDevice, surface, &details.capabilities);
 
@@ -218,7 +218,7 @@ VulkanWindow::Surface::Surface()
 void VulkanWindow::Surface::close() {
     if (surface == VK_NULL_HANDLE)
         return;
-    vkDestroySurfaceKHR(reinterpret_cast<Instance*>(instance)->instance, surface, nullptr);
+    vkDestroySurfaceKHR(drv::resolve_ptr<Instance*>(instance)->instance, surface, nullptr);
     surface = VK_NULL_HANDLE;
 }
 
@@ -244,7 +244,7 @@ VulkanWindow::Surface::Surface(GLFWwindow* _window, drv::InstancePtr _instance)
     createInfo.sType = VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR;
     createInfo.hwnd = glfwGetWin32Window(_window);
     createInfo.hinstance = GetModuleHandle(nullptr);
-    drv::drv_assert(vkCreateWin32SurfaceKHR(reinterpret_cast<Instance*>(instance)->instance,
+    drv::drv_assert(vkCreateWin32SurfaceKHR(drv::resolve_ptr<Instance*>(instance)->instance,
                                             &createInfo, nullptr, &surface)
                       == VK_SUCCESS,
                     "Could not create window surface");
@@ -338,7 +338,7 @@ bool DrvVulkan::can_present(drv::PhysicalDevicePtr physicalDevice, IWindow* wind
     VkBool32 presentSupport = false;
     VkSurfaceKHR surface = static_cast<VulkanWindow*>(window)->getSurface();
     unsigned int i = convertFamily(family);
-    vkGetPhysicalDeviceSurfaceSupportKHR(reinterpret_cast<VkPhysicalDevice>(physicalDevice), i,
+    vkGetPhysicalDeviceSurfaceSupportKHR(drv::resolve_ptr<VkPhysicalDevice>(physicalDevice), i,
                                          surface, &presentSupport);
     if (presentSupport == VK_FALSE)
         return false;

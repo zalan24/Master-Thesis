@@ -9,13 +9,13 @@ drv::SemaphorePtr DrvVulkan::create_semaphore(drv::LogicalDevicePtr device) {
     VkSemaphoreCreateInfo semaphoreInfo = {};
     semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
     VkResult result =
-      vkCreateSemaphore(reinterpret_cast<VkDevice>(device), &semaphoreInfo, nullptr, &semaphore);
+      vkCreateSemaphore(drv::resolve_ptr<VkDevice>(device), &semaphoreInfo, nullptr, &semaphore);
     drv::drv_assert(result == VK_SUCCESS, "Could not create semaphore");
-    return reinterpret_cast<drv::SemaphorePtr>(semaphore);
+    return drv::store_ptr<drv::SemaphorePtr>(semaphore);
 }
 
 bool DrvVulkan::destroy_semaphore(drv::LogicalDevicePtr device, drv::SemaphorePtr semaphore) {
-    vkDestroySemaphore(reinterpret_cast<VkDevice>(device), reinterpret_cast<VkSemaphore>(semaphore),
+    vkDestroySemaphore(drv::resolve_ptr<VkDevice>(device), drv::resolve_ptr<VkSemaphore>(semaphore),
                        nullptr);
     return true;
 }

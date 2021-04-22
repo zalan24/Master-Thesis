@@ -50,7 +50,7 @@ drv::ImagePtr DrvVulkan::create_image(drv::LogicalDevicePtr device,
         ret->sharedResource = info->sharingType == drv::SharingType::CONCURRENT;
         ret->sampleCount = info->sampleCount;
         ret->format = info->format;
-        return reinterpret_cast<drv::ImagePtr>(ret);
+        return drv::store_ptr<drv::ImagePtr>(ret);
     }
     catch (...) {
         vkDestroyImage(convertDevice(device), vkImage, nullptr);
@@ -67,7 +67,7 @@ bool DrvVulkan::destroy_image(drv::LogicalDevicePtr device, drv::ImagePtr image)
 bool DrvVulkan::bind_image_memory(drv::LogicalDevicePtr device, drv::ImagePtr image,
                                   drv::DeviceMemoryPtr memory, drv::DeviceSize offset) {
     VkResult result = vkBindImageMemory(convertDevice(device), convertImage(image)->image,
-                                        reinterpret_cast<VkDeviceMemory>(memory), offset);
+                                        static_cast<VkDeviceMemory>(memory), offset);
     convertImage(image)->memoryPtr = memory;
     convertImage(image)->offset = offset;
     return result == VK_SUCCESS;
@@ -107,7 +107,7 @@ drv::ImageViewPtr DrvVulkan::create_image_view(drv::LogicalDevicePtr device,
         view->view = ret;
         view->format = info->format;
         view->subresource = info->subresourceRange;
-        return reinterpret_cast<drv::ImageViewPtr>(view);
+        return drv::store_ptr<drv::ImageViewPtr>(view);
     }
     catch (...) {
         if (view != nullptr) {

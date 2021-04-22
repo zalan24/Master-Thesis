@@ -301,6 +301,9 @@ Get a triangle on screen:
     ☐ Debug markers: https://www.saschawillems.de/blog/2016/05/28/tutorial-on-using-vulkans-vk_ext_debug_marker-with-renderdoc/
         ☐ Actually use the VK_EXT_debug_utils for this: https://www.khronos.org/registry/vulkan/specs/1.1-extensions/pdf/vkspec.pdf#%5B%7B%22num%22%3A30297%2C%22gen%22%3A0%7D%2C%7B%22name%22%3A%22XYZ%22%7D%2C0%2C740.55%2Cnull%5D
     ☐ Performance queries: VK_KHR_performance_query
+    ☐ Push constants
+        ☐ Create a some system, where the position of headers can be specified
+        ☐ Inside the scope of this system, these positions would be reserved for all shaders even if they don't use a header
 
 Cleanup & other:
     ☐ Remove useless common driver stuff (drv/common)

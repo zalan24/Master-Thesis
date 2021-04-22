@@ -34,21 +34,18 @@ drv::BufferPtr DrvVulkan::create_buffer(drv::LogicalDevicePtr device,
                 break;
         }
         bufferCreateInfo.queueFamilyIndexCount = info->familyCount;
-        StackMemory::MemoryHandle<uint32_t> mem(info->familyCount, TEMPMEM);
+        StackMemory::MemoryHandle<uint32_t> queueFamilies(info->familyCount, TEMPMEM);
         if (info->familyCount > 0) {
-            uint32_t* queueFamilies = reinterpret_cast<uint32_t*>(mem.get());
-            drv::drv_assert(queueFamilies != nullptr,
-                            "Could not allocate memory for queue families");
             for (unsigned int i = 0; i < info->familyCount; ++i)
                 queueFamilies[i] = convertFamily(info->families[i]);
             bufferCreateInfo.pQueueFamilyIndices = queueFamilies;
         }
-        bufferCreateInfo.usage = reinterpret_cast<VkBufferUsageFlags>(info->usage);
+        bufferCreateInfo.usage = static_cast<VkBufferUsageFlags>(info->usage);
 
-        VkResult result = vkCreateBuffer(reinterpret_cast<VkDevice>(device), &bufferCreateInfo,
+        VkResult result = vkCreateBuffer(drv::resolve_ptr<VkDevice>(device), &bufferCreateInfo,
                                          nullptr, &buffer->buffer);
         drv::drv_assert(result == VK_SUCCESS, "Could not create buffer");
-        return reinterpret_cast<drv::BufferPtr>(buffer);
+        return drv::store_ptr<drv::BufferPtr>(buffer);
     }
     catch (...) {
         delete buffer;
@@ -57,8 +54,8 @@ drv::BufferPtr DrvVulkan::create_buffer(drv::LogicalDevicePtr device,
 }
 
 bool DrvVulkan::destroy_buffer(drv::LogicalDevicePtr device, drv::BufferPtr _buffer) {
-    Buffer* buffer = reinterpret_cast<Buffer*>(_buffer);
-    vkDestroyBuffer(reinterpret_cast<VkDevice>(device), buffer->buffer, nullptr);
+    Buffer* buffer = drv::resolve_ptr<Buffer*>(_buffer);
+    vkDestroyBuffer(drv::resolve_ptr<VkDevice>(device), buffer->buffer, nullptr);
     delete buffer;
     return true;
 }
@@ -71,46 +68,45 @@ drv::DeviceMemoryPtr DrvVulkan::allocate_memory(drv::LogicalDevicePtr device,
     allocInfo.memoryTypeIndex = info->memoryType;
     VkDeviceMemory memory;
     VkResult result =
-      vkAllocateMemory(reinterpret_cast<VkDevice>(device), &allocInfo, nullptr, &memory);
+      vkAllocateMemory(drv::resolve_ptr<VkDevice>(device), &allocInfo, nullptr, &memory);
     drv::drv_assert(result == VK_SUCCESS, "Could not allocate memory");
-    return reinterpret_cast<drv::DeviceMemoryPtr>(memory);
+    return static_cast<drv::DeviceMemoryPtr>(memory);
 }
 
 bool DrvVulkan::free_memory(drv::LogicalDevicePtr device, drv::DeviceMemoryPtr memory) {
-    vkFreeMemory(reinterpret_cast<VkDevice>(device), reinterpret_cast<VkDeviceMemory>(memory),
-                 nullptr);
+    vkFreeMemory(drv::resolve_ptr<VkDevice>(device), static_cast<VkDeviceMemory>(memory), nullptr);
     return true;
 }
 
 bool DrvVulkan::bind_buffer_memory(drv::LogicalDevicePtr device, drv::BufferPtr _buffer,
                                    drv::DeviceMemoryPtr memory, drv::DeviceSize offset) {
-    Buffer* buffer = reinterpret_cast<Buffer*>(_buffer);
+    Buffer* buffer = drv::resolve_ptr<Buffer*>(_buffer);
     buffer->memoryPtr = memory;
     buffer->offset = offset;
-    VkResult result = vkBindBufferMemory(reinterpret_cast<VkDevice>(device), buffer->buffer,
-                                         reinterpret_cast<VkDeviceMemory>(memory), offset);
+    VkResult result = vkBindBufferMemory(drv::resolve_ptr<VkDevice>(device), buffer->buffer,
+                                         static_cast<VkDeviceMemory>(memory), offset);
     return result == VK_SUCCESS;
 }
 
 bool DrvVulkan::get_memory_properties(drv::PhysicalDevicePtr physicalDevice,
                                       drv::MemoryProperties& props) {
     VkPhysicalDeviceMemoryProperties memProperties;
-    vkGetPhysicalDeviceMemoryProperties(reinterpret_cast<VkPhysicalDevice>(physicalDevice),
+    vkGetPhysicalDeviceMemoryProperties(drv::resolve_ptr<VkPhysicalDevice>(physicalDevice),
                                         &memProperties);
     static_assert(drv::MemoryProperties::MAX_MEMORY_TYPES >= VK_MAX_MEMORY_TYPES,
                   "Memory types might not fit in th earray");
     props.memoryTypeCount = memProperties.memoryTypeCount;
     for (unsigned int i = 0; i < props.memoryTypeCount; ++i)
-        props.memoryTypes[i].properties = reinterpret_cast<drv::MemoryType::PropertyType>(
-          memProperties.memoryTypes[i].propertyFlags);
+        props.memoryTypes[i].properties =
+          static_cast<drv::MemoryType::PropertyType>(memProperties.memoryTypes[i].propertyFlags);
     return true;
 }
 
 bool DrvVulkan::get_buffer_memory_requirements(drv::LogicalDevicePtr device, drv::BufferPtr buffer,
                                                drv::MemoryRequirements& memoryRequirements) {
     VkMemoryRequirements memRequirements;
-    vkGetBufferMemoryRequirements(reinterpret_cast<VkDevice>(device),
-                                  reinterpret_cast<Buffer*>(buffer)->buffer, &memRequirements);
+    vkGetBufferMemoryRequirements(drv::resolve_ptr<VkDevice>(device),
+                                  drv::resolve_ptr<Buffer*>(buffer)->buffer, &memRequirements);
     memoryRequirements.alignment = memRequirements.alignment;
     memoryRequirements.size = memRequirements.size;
     memoryRequirements.memoryTypeBits = memRequirements.memoryTypeBits;
@@ -119,21 +115,21 @@ bool DrvVulkan::get_buffer_memory_requirements(drv::LogicalDevicePtr device, drv
 
 bool DrvVulkan::map_memory(drv::LogicalDevicePtr device, drv::DeviceMemoryPtr memory,
                            drv::DeviceSize offset, drv::DeviceSize size, void** data) {
-    VkResult result = vkMapMemory(reinterpret_cast<VkDevice>(device),
-                                  reinterpret_cast<VkDeviceMemory>(memory), offset, size, 0, data);
+    VkResult result = vkMapMemory(drv::resolve_ptr<VkDevice>(device),
+                                  static_cast<VkDeviceMemory>(memory), offset, size, 0, data);
     return result == VK_SUCCESS;
 }
 
 bool DrvVulkan::unmap_memory(drv::LogicalDevicePtr device, drv::DeviceMemoryPtr memory) {
-    vkUnmapMemory(reinterpret_cast<VkDevice>(device), reinterpret_cast<VkDeviceMemory>(memory));
+    vkUnmapMemory(drv::resolve_ptr<VkDevice>(device), static_cast<VkDeviceMemory>(memory));
     return true;
 }
 
 drv::BufferMemoryInfo DrvVulkan::get_buffer_memory_info(drv::LogicalDevicePtr,
                                                         drv::BufferPtr buffer) {
     drv::BufferMemoryInfo ret;
-    ret.memory = reinterpret_cast<Buffer*>(buffer)->memoryPtr;
-    ret.size = reinterpret_cast<Buffer*>(buffer)->size;
-    ret.offset = reinterpret_cast<Buffer*>(buffer)->offset;
+    ret.memory = drv::resolve_ptr<Buffer*>(buffer)->memoryPtr;
+    ret.size = drv::resolve_ptr<Buffer*>(buffer)->size;
+    ret.offset = drv::resolve_ptr<Buffer*>(buffer)->offset;
     return ret;
 }

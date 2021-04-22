@@ -53,11 +53,20 @@ void reset_ptr(P& ptr) {
 }
 
 template <typename T, typename P>
-T* resolve_ptr(const P& ptr) {
+T resolve_ptr(const P& ptr) {
 #if ENABLE_RESOURCE_PTR_VALIDATION
-    return std::any_cast<T*>(&ptr);
+    return std::any_cast<T>(&ptr);
 #else
-    return reinterpret_cast<T*>(ptr);
+    return reinterpret_cast<T>(ptr);
+#endif
+}
+
+template <typename P, typename T>
+P store_ptr(T value) {
+#if ENABLE_RESOURCE_PTR_VALIDATION
+    return std::any{value};
+#else
+    return reinterpret_cast<P>(value);
 #endif
 }
 

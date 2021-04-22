@@ -20,14 +20,14 @@ drv::ShaderModulePtr DrvVulkan::create_shader_module(drv::LogicalDevicePtr devic
 
     VkShaderModule shaderModule;
     VkResult result =
-      vkCreateShaderModule(reinterpret_cast<VkDevice>(device), &createInfo, nullptr, &shaderModule);
+      vkCreateShaderModule(drv::resolve_ptr<VkDevice>(device), &createInfo, nullptr, &shaderModule);
     drv::drv_assert(result == VK_SUCCESS, "Could not create shader module");
-    return reinterpret_cast<drv::ShaderModulePtr>(shaderModule);
+    return drv::store_ptr<drv::ShaderModulePtr>(shaderModule);
 }
 
 bool DrvVulkan::destroy_shader_module(drv::LogicalDevicePtr device, drv::ShaderModulePtr module) {
-    vkDestroyShaderModule(reinterpret_cast<VkDevice>(device),
-                          reinterpret_cast<VkShaderModule>(module), nullptr);
+    vkDestroyShaderModule(drv::resolve_ptr<VkDevice>(device),
+                          drv::resolve_ptr<VkShaderModule>(module), nullptr);
     return true;
 }
 
@@ -64,7 +64,7 @@ uint32_t VulkanShader::createGraphicalPipeline(const GraphicalPipelineCreateInfo
         stages[numStages].pNext = nullptr;
         stages[numStages].flags = 0;
         stages[numStages].stage = stage;
-        stages[numStages].module = reinterpret_cast<VkShaderModule>(stageInfo.shaderModule);
+        stages[numStages].module = drv::resolve_ptr<VkShaderModule>(stageInfo.shaderModule);
         stages[numStages].pName = stageInfo.entry;
         stages[numStages].pSpecializationInfo = nullptr;  // TODO specialization consts
         numStages++;

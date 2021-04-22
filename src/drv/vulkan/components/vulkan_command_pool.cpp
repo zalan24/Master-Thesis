@@ -20,15 +20,15 @@ drv::CommandPoolPtr DrvVulkan::create_command_pool(drv::LogicalDevicePtr device,
 
     VkCommandPool commandPool;
     VkResult result =
-      vkCreateCommandPool(reinterpret_cast<VkDevice>(device), &poolInfo, nullptr, &commandPool);
+      vkCreateCommandPool(drv::resolve_ptr<VkDevice>(device), &poolInfo, nullptr, &commandPool);
     drv::drv_assert(result == VK_SUCCESS, "Could not create command pool");
 
-    return reinterpret_cast<drv::CommandPoolPtr>(commandPool);
+    return drv::store_ptr<drv::CommandPoolPtr>(commandPool);
 }
 
 bool DrvVulkan::destroy_command_pool(drv::LogicalDevicePtr device,
                                      drv::CommandPoolPtr commandPool) {
-    vkDestroyCommandPool(reinterpret_cast<VkDevice>(device),
-                         reinterpret_cast<VkCommandPool>(commandPool), nullptr);
+    vkDestroyCommandPool(drv::resolve_ptr<VkDevice>(device),
+                         drv::resolve_ptr<VkCommandPool>(commandPool), nullptr);
     return true;
 }

@@ -284,7 +284,7 @@ drv::FramebufferPtr VulkanRenderPass::createFramebuffer(const AttachmentData* im
     VkFramebuffer ret;
     VkResult result = vkCreateFramebuffer(convertDevice(device), &info, nullptr, &ret);
     drv::drv_assert(result == VK_SUCCESS, "Could not create frame buffer");
-    return reinterpret_cast<drv::FramebufferPtr>(ret);
+    return drv::store_ptr<drv::FramebufferPtr>(ret);
 }
 
 drv::CmdRenderPass VulkanRenderPass::begin(drv::ResourceTracker* tracker,

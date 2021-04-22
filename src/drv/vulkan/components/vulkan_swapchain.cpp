@@ -69,10 +69,10 @@ drv::SwapchainPtr DrvVulkan::create_swapchain(drv::PhysicalDevicePtr physicalDev
     createInfo.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
     createInfo.presentMode = static_cast<VkPresentModeKHR>(*presentModeItr);
     createInfo.clipped = info->clipped;
-    createInfo.oldSwapchain = reinterpret_cast<VkSwapchainKHR>(info->oldSwapchain);
+    createInfo.oldSwapchain = drv::resolve_ptr<VkSwapchainKHR>(info->oldSwapchain);
     VkSwapchainKHR swapChain;
     VkResult result =
-      vkCreateSwapchainKHR(reinterpret_cast<VkDevice>(device), &createInfo, nullptr, &swapChain);
+      vkCreateSwapchainKHR(drv::resolve_ptr<VkDevice>(device), &createInfo, nullptr, &swapChain);
     drv::drv_assert(result == VK_SUCCESS, "Swapchain could not be created");
     drv::drv_assert(info->sharingType == drv::SharingType::CONCURRENT || info->familyCount > 0,
                     "User queue families need to be specified when creating an exclusive resource");
@@ -81,11 +81,11 @@ drv::SwapchainPtr DrvVulkan::create_swapchain(drv::PhysicalDevicePtr physicalDev
     ret->extent = {info->width, info->height};
     ret->sharedImages = info->sharingType == drv::SharingType::CONCURRENT;
     ret->format = *formatItr;
-    return reinterpret_cast<drv::SwapchainPtr>(ret);
+    return drv::store_ptr<drv::SwapchainPtr>(ret);
 }
 
 bool DrvVulkan::destroy_swapchain(drv::LogicalDevicePtr device, drv::SwapchainPtr swapchain) {
-    vkDestroySwapchainKHR(reinterpret_cast<VkDevice>(device),
+    vkDestroySwapchainKHR(drv::resolve_ptr<VkDevice>(device),
                           convertSwapchain(swapchain)->swapchain, nullptr);
     delete convertSwapchain(swapchain);
     return true;
@@ -93,16 +93,19 @@ bool DrvVulkan::destroy_swapchain(drv::LogicalDevicePtr device, drv::SwapchainPt
 
 drv::PresentResult DrvVulkan::present(drv::QueuePtr queue, drv::SwapchainPtr swapchain,
                                       const drv::PresentInfo& info, uint32_t imageIndex) {
+    StackMemory::MemoryHandle<VkSemaphore> vkSemaphores(info.semaphoreCount, TEMPMEM);
+    for (uint32_t i = 0; i < info.semaphoreCount; ++i)
+        vkSemaphores[i] = convertSemaphore(info.waitSemaphores[i]);
     VkPresentInfoKHR presentInfo{};
     presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
     presentInfo.pNext = nullptr;
     presentInfo.waitSemaphoreCount = info.semaphoreCount;
-    presentInfo.pWaitSemaphores = convertSemaphores(info.waitSemaphores);
+    presentInfo.pWaitSemaphores = vkSemaphores;
     presentInfo.swapchainCount = 1;
     presentInfo.pSwapchains = &convertSwapchain(swapchain)->swapchain;
     presentInfo.pImageIndices = &imageIndex;
     presentInfo.pResults = nullptr;
-    VkResult result = vkQueuePresentKHR(reinterpret_cast<VkQueue>(queue), &presentInfo);
+    VkResult result = vkQueuePresentKHR(drv::resolve_ptr<VkQueue>(queue), &presentInfo);
     if (result == VK_SUCCESS)
         return drv::PresentResult::SUCCESS;
     if (result == VK_SUBOPTIMAL_KHR)

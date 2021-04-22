@@ -21,7 +21,7 @@ static unsigned long int min(unsigned long int a, unsigned long int b) {
 
 bool DrvVulkan::get_physical_devices(drv::InstancePtr _instance, unsigned int* count,
                                      drv::PhysicalDeviceInfo* infos) {
-    Instance* instance = reinterpret_cast<Instance*>(_instance);
+    Instance* instance = drv::resolve_ptr<Instance*>(_instance);
     vkEnumeratePhysicalDevices(instance->instance, count, nullptr);
     if (infos == nullptr)
         return true;
@@ -59,7 +59,7 @@ bool DrvVulkan::get_physical_devices(drv::InstancePtr _instance, unsigned int* c
         }
         memcpy(infos[i].name, deviceProperties.deviceName,
                min(sizeof(infos[i].name), sizeof(deviceProperties.deviceName)));
-        infos[i].handle = reinterpret_cast<drv::PhysicalDevicePtr>(devices[i]);
+        infos[i].handle = drv::store_ptr<drv::PhysicalDevicePtr>(devices[i]);
     }
     return true;
 }
@@ -115,11 +115,11 @@ drv::CommandTypeMask DrvVulkan::get_command_type_mask(drv::PhysicalDevicePtr phy
 
 drv::DeviceExtensions DrvVulkan::get_supported_extensions(drv::PhysicalDevicePtr physicalDevice) {
     uint32_t extensionCount;
-    vkEnumerateDeviceExtensionProperties(reinterpret_cast<VkPhysicalDevice>(physicalDevice),
+    vkEnumerateDeviceExtensionProperties(drv::resolve_ptr<VkPhysicalDevice>(physicalDevice),
                                          nullptr, &extensionCount, nullptr);
 
     std::vector<VkExtensionProperties> availableExtensions(extensionCount);
-    vkEnumerateDeviceExtensionProperties(reinterpret_cast<VkPhysicalDevice>(physicalDevice),
+    vkEnumerateDeviceExtensionProperties(drv::resolve_ptr<VkPhysicalDevice>(physicalDevice),
                                          nullptr, &extensionCount, availableExtensions.data());
     drv::DeviceExtensions ret;
     ret.values.extensions.swapchain =

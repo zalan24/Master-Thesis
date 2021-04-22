@@ -19,25 +19,25 @@ drv::EventPtr DrvVulkan::create_event(drv::LogicalDevicePtr device, const drv::E
     createInfo.flags = 0;
     VkEvent event;
     VkResult result =
-      vkCreateEvent(reinterpret_cast<VkDevice>(device), &createInfo, nullptr, &event);
+      vkCreateEvent(drv::resolve_ptr<VkDevice>(device), &createInfo, nullptr, &event);
     drv::drv_assert(result == VK_SUCCESS, "Could not create event");
-    return reinterpret_cast<drv::EventPtr>(event);
+    return drv::store_ptr<drv::EventPtr>(event);
 }
 
 bool DrvVulkan::destroy_event(drv::LogicalDevicePtr device, drv::EventPtr event) {
-    vkDestroyEvent(reinterpret_cast<VkDevice>(device), convertEvent(event), nullptr);
+    vkDestroyEvent(drv::resolve_ptr<VkDevice>(device), convertEvent(event), nullptr);
     return true;
 }
 
 bool DrvVulkan::is_event_set(drv::LogicalDevicePtr device, drv::EventPtr event) {
-    return vkGetEventStatus(reinterpret_cast<VkDevice>(device), convertEvent(event))
+    return vkGetEventStatus(drv::resolve_ptr<VkDevice>(device), convertEvent(event))
            == VK_EVENT_SET;
 }
 
 bool DrvVulkan::reset_event(drv::LogicalDevicePtr device, drv::EventPtr event) {
-    return vkResetEvent(reinterpret_cast<VkDevice>(device), convertEvent(event)) == VK_SUCCESS;
+    return vkResetEvent(drv::resolve_ptr<VkDevice>(device), convertEvent(event)) == VK_SUCCESS;
 }
 
 bool DrvVulkan::set_event(drv::LogicalDevicePtr device, drv::EventPtr event) {
-    return vkSetEvent(reinterpret_cast<VkDevice>(device), convertEvent(event)) == VK_SUCCESS;
+    return vkSetEvent(drv::resolve_ptr<VkDevice>(device), convertEvent(event)) == VK_SUCCESS;
 }

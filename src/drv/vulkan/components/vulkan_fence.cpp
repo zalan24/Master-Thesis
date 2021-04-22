@@ -4,6 +4,7 @@
 
 #include <vulkan/vulkan.h>
 
+#include <corecontext.h>
 #include <drverror.h>
 
 drv::FencePtr DrvVulkan::create_fence(drv::LogicalDevicePtr device,
@@ -15,19 +16,19 @@ drv::FencePtr DrvVulkan::create_fence(drv::LogicalDevicePtr device,
     if (info->signalled)
         fenceCreateInfo.flags = fenceCreateInfo.flags | VK_FENCE_CREATE_SIGNALED_BIT;
     VkResult result =
-      vkCreateFence(reinterpret_cast<VkDevice>(device), &fenceCreateInfo, nullptr, &fence);
+      vkCreateFence(drv::resolve_ptr<VkDevice>(device), &fenceCreateInfo, nullptr, &fence);
     drv::drv_assert(result == VK_SUCCESS, "Could not create fence");
-    return reinterpret_cast<drv::FencePtr>(fence);
+    return drv::store_ptr<drv::FencePtr>(fence);
 }
 
 bool DrvVulkan::destroy_fence(drv::LogicalDevicePtr device, drv::FencePtr fence) {
-    vkDestroyFence(reinterpret_cast<VkDevice>(device), reinterpret_cast<VkFence>(fence), nullptr);
+    vkDestroyFence(drv::resolve_ptr<VkDevice>(device), drv::resolve_ptr<VkFence>(fence), nullptr);
     return true;
 }
 
 bool DrvVulkan::is_fence_signalled(drv::LogicalDevicePtr device, drv::FencePtr fence) {
     VkResult result =
-      vkGetFenceStatus(reinterpret_cast<VkDevice>(device), reinterpret_cast<VkFence>(fence));
+      vkGetFenceStatus(drv::resolve_ptr<VkDevice>(device), drv::resolve_ptr<VkFence>(fence));
     drv::drv_assert(result == VK_SUCCESS || result == VK_NOT_READY,
                     "Error why trying to get fence status");
     return result == VK_SUCCESS;
@@ -35,8 +36,10 @@ bool DrvVulkan::is_fence_signalled(drv::LogicalDevicePtr device, drv::FencePtr f
 
 bool DrvVulkan::reset_fences(drv::LogicalDevicePtr device, unsigned int count,
                              drv::FencePtr* fences) {
-    VkResult result =
-      vkResetFences(reinterpret_cast<VkDevice>(device), count, reinterpret_cast<VkFence*>(fences));
+    StackMemory::MemoryHandle<VkFence> vkFences(count, TEMPMEM);
+    for (uint32_t i = 0; i < count; ++i)
+        vkFences[i] = drv::reset_ptr<VkFence>(fences[i]);
+    VkResult result = vkResetFences(drv::resolve_ptr<VkDevice>(device), count, vkFences);
     drv::drv_assert(result == VK_SUCCESS, "Could not reset fences");
     return true;
 }
@@ -44,9 +47,12 @@ bool DrvVulkan::reset_fences(drv::LogicalDevicePtr device, unsigned int count,
 drv::FenceWaitResult DrvVulkan::wait_for_fence(drv::LogicalDevicePtr device, unsigned int count,
                                                const drv::FencePtr* fences, bool waitAll,
                                                unsigned long long int timeOut) {
-    VkResult result = vkWaitForFences(
-      reinterpret_cast<VkDevice>(device), count, reinterpret_cast<const VkFence*>(fences), waitAll,
-      timeOut == 0 ? std::numeric_limits<decltype(timeOut)>::max() : timeOut);
+    StackMemory::MemoryHandle<VkFence> vkFences(count, TEMPMEM);
+    for (uint32_t i = 0; i < count; ++i)
+        vkFences[i] = drv::reset_ptr<VkFence>(fences[i]);
+    VkResult result =
+      vkWaitForFences(drv::resolve_ptr<VkDevice>(device), count, vkFences, waitAll,
+                      timeOut == 0 ? std::numeric_limits<decltype(timeOut)>::max() : timeOut);
     drv::drv_assert(result == VK_SUCCESS || (result == VK_TIMEOUT && timeOut != 0),
                     "Could not wait fences");
     if (result == VK_SUCCESS)
