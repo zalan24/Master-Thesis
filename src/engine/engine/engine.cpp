@@ -152,8 +152,8 @@ Engine::SyncBlock::SyncBlock(drv::LogicalDevicePtr _device, uint32_t maxFramesIn
 }
 
 static void log_queue(const char* name, const drv::QueueManager::Queue& queue) {
-    LOG_ENGINE("Queue info <%s>: <%p> (G%c C%c T%c) priority:%f index:%d/family:%p", name,
-               queue.queue,
+    LOG_ENGINE("Queue info <%s>: <%p> (G%c C%c T%c) priority:%f index:%d/family:%d", name,
+               drv::get_ptr(queue.queue),
                queue.info.commandTypes & drv::CommandTypeBits::CMD_TYPE_GRAPHICS ? '+' : '-',
                queue.info.commandTypes & drv::CommandTypeBits::CMD_TYPE_COMPUTE ? '+' : '-',
                queue.info.commandTypes & drv::CommandTypeBits::CMD_TYPE_TRANSFER ? '+' : '-',

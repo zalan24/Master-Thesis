@@ -44,6 +44,8 @@ class Ptr
 
     std::size_t getHash() const noexcept { return std::hash<void*>{}(ptr); }
 
+    const void* getPtr() const { return ptr; }
+
  private:
     std::type_index type;
     void* ptr = nullptr;
@@ -127,6 +129,15 @@ bool is_null_ptr(const P& ptr) {
     return ptr.empty();
 #else
     return ptr == nullptr;
+#endif
+}
+
+template <typename P>
+const void* get_ptr(const P& ptr) {
+#if ENABLE_RESOURCE_PTR_VALIDATION
+    return ptr.getPtr();
+#else
+    return ptr;
 #endif
 }
 
