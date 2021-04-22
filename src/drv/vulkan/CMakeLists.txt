@@ -28,4 +28,19 @@ if (Vulkan_FOUND)
         vulkan_headers_external
         glfw_external
     )
+    set(VulkanLayersFolder "${PROJECT_BINARY_DIR}/vulkanLayers")
+    set(VULKAN_LAYER_CONFIGS
+        ${VulkanLayersFolder}/VkLayer_khronos_validation.json
+        ${VulkanLayersFolder}/VkLayer_gfxreconstruct.json
+    )
+
+    add_custom_command(OUTPUT ${VULKAN_LAYER_CONFIGS}
+        COMMAND ${CMAKE_COMMAND} -E copy_directory ${PROJECT_BINARY_DIR}/3rdParty/validation_layers/install/lib/ ${VulkanLayersFolder}
+        COMMAND ${CMAKE_COMMAND} -E copy_directory ${PROJECT_BINARY_DIR}/3rdParty/gfxreconstruct/install/bin/ ${VulkanLayersFolder}
+        COMMENT "Creating vulkan layers folder"
+    )
+
+    add_custom_target(VulkanLayers DEPENDS ${VULKAN_LAYER_CONFIGS})
+    add_dependencies(VulkanLayers validation_layers_external gfxreconstruct_external)
+    add_dependencies(AnimationsDrvVulkan VulkanLayers)
 endif()
