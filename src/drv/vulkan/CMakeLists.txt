@@ -28,4 +28,8 @@ if (Vulkan_FOUND)
         vulkan_headers_external
         glfw_external
     )
+    if (CMAKE_BUILD_TYPE EQUAL "DEBUG")
+        message("Using cultom built validation layers")
+        target_link_libraries(AnimationsDrvVulkan PRIVATE validation_layers_external)
+    endif()
 endif()
