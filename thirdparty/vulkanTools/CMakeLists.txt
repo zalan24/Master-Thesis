@@ -6,6 +6,7 @@ download_external(
 	GIT_TAG        v1.2.176
 )
 
+
 external(
     vulkan_tools
     INSTALL ON
@@ -15,6 +16,12 @@ external(
         -DVULKAN_HEADERS_INSTALL_DIR=${PROJECT_BINARY_DIR}/3rdParty/vulkan_headers/install
         -DVULKAN_VALIDATIONLAYERS_INSTALL_DIR=${PROJECT_BINARY_DIR}/3rdParty/validation_layers/install
         -DVULKAN_LOADER_INSTALL_DIR=${PROJECT_BINARY_DIR}/3rdParty/vulkan_loader/install
+        -DJSONCPP_INCLUDE_DIR=${PROJECT_BINARY_DIR}/3rdParty/json_cpp/install/include
 )
 
-target_link_libraries(vulkan_tools_external INTERFACE vulkan_headers_external vulkan_loader_external vulkan_headers_external)
+target_link_libraries(vulkan_tools_external INTERFACE
+    vulkan_headers_external
+    vulkan_loader_external
+    validation_layers_external
+    json_cpp_external
+)

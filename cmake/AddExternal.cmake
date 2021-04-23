@@ -17,7 +17,7 @@
 function(add_external namespace source_dir)
 
     set(options)
-    set(oneValueArgs INSTALL CUSTOM_PRE_CMAKE USE_PYTHON3)
+    set(oneValueArgs INSTALL CUSTOM_PRE_CMAKE USE_PYTHON3 SOURCE_COMMAND)
     set(multiValueArgs TARGETS PROJECT_OPTIONS DEPENDENCIES)
     cmake_parse_arguments(ADD_EXTERNAL "${options}" "${oneValueArgs}"
                                         "${multiValueArgs}" ${ARGN} )
@@ -117,6 +117,15 @@ function(add_external namespace source_dir)
             string(CONFIGURE "${export_snippet}" target_export @ONLY)
         endif()
         file(WRITE "${source_dir}/_target_export.cmake" "${target_export}")
+        if (NOT ${ADD_EXTERNAL_SOURCE_COMMAND} STREQUAL "")
+            execute_process(COMMAND ${ADD_EXTERNAL_SOURCE_COMMAND}
+                            RESULT_VARIABLE result
+                            WORKING_DIRECTORY "${source_dir}"
+            )
+            if(result)
+                message(FATAL_ERROR "Precmake step for ${namespace} failed: ${result}")
+            endif()
+        endif()
         execute_process(COMMAND "${CMAKE_COMMAND}" -G${CMAKE_GENERATOR} -DCMAKE_GENERATOR_PLATFORM=${CMAKE_GENERATOR_PLATFORM} -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE} -Wno-dev ${cmake_params} "${source_dir}"
                         RESULT_VARIABLE result
                         WORKING_DIRECTORY "${binary_dir}"
