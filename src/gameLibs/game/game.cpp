@@ -127,6 +127,7 @@ void Game::initShader(drv::Extent2D extent) {
 
 void Game::record(FrameGraph& frameGraph, FrameId frameId) {
     // std::cout << "Record: " << frameId << std::endl;
+    RUNTIME_STAT_SCOPE(gameRecord);
     Engine::QueueInfo queues = engine->getQueues();
     if (FrameGraph::NodeHandle testDrawHandle = frameGraph.acquireNode(testDraw, frameId);
         testDrawHandle) {

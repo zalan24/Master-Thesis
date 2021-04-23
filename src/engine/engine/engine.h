@@ -30,6 +30,7 @@
 #include <resourcemanager.h>
 #include <serializable.h>
 
+#include <runtimestats.h>
 #include <shaderbin.h>
 
 struct ExecutionPackage;
@@ -62,6 +63,7 @@ class Engine
         bool renderdocEnabled;
         bool gfxCaptureEnabled;
         bool apiDumpEnabled;
+        std::string runtimeStatsBin;
     };
 
     Engine(int argc, char* argv[], const Config& config, const std::string& shaderbinFile,
@@ -232,6 +234,7 @@ class Engine
     // EntityManager entityManager;
     GarbageSystem garbageSystem;
     FrameGraph frameGraph;
+    RuntimeStats runtimeStats;
 
     ISimulation* simulation = nullptr;
     IRenderer* renderer = nullptr;

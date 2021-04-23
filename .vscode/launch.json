@@ -69,6 +69,8 @@
         // "--gfx",
         "--api_dump",
         "--renderdoc",
+        "--runtime_stats",
+        "${workspaceFolder}/build/statistics/runtimeStats.bin",
         "-sshaders/shaders.bin"
       ]
     },

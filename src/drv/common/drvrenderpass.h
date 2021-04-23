@@ -50,6 +50,9 @@ struct GraphicsPipelineBindInfo
     // TODO shader headers...
 };
 
+struct ShaderHeaderInfo
+{};
+
 class CmdRenderPass final
 {
  public:

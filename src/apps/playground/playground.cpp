@@ -78,6 +78,8 @@ int main(int argc, char* argv[]) {
         app.add_flag("-r,--renderdoc", args.renderdocEnabled, "Enable renderdoc layer");
         app.add_flag("-g,--gfx", args.gfxCaptureEnabled, "Enable gfx capture layer");
         app.add_flag("--api_dump", args.apiDumpEnabled, "Enable vulkan api dump");
+        app.add_option("--runtime_stats", args.runtimeStatsBin,
+                       "Binary file for storing runtime statistics");
         // std::string root = "";
         // app.add_option("-r,--root", root, "Working directory for the specified folder");
 

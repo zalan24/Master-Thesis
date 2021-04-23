@@ -22,6 +22,7 @@ target_link_libraries(AnimationsEngine PUBLIC
     AnimationsShaderManager
     AnimationsFramegraph
     AnimationsEventPool
+    RuntimeStats
     concurrent_queue_external
     loguru_external
 )

@@ -203,7 +203,8 @@ Engine::Engine(int argc, char* argv[], const Config& cfg, const std::string& sha
     shaderBin(shaderbinFile),
     resourceMgr(std::move(resource_infos)),
     garbageSystem(safe_cast<size_t>(config.frameMemorySizeKb)),
-    frameGraph(physicalDevice, device, &garbageSystem, &eventPool, config.trackerConfig) {
+    frameGraph(physicalDevice, device, &garbageSystem, &eventPool, config.trackerConfig),
+    runtimeStats(args.runtimeStatsBin.c_str()) {
     json configJson = ISerializable::serialize(config);
     std::stringstream ss;
     ss << configJson;
@@ -228,6 +229,7 @@ Engine::~Engine() {
 }
 
 void Engine::initGame(IRenderer* _renderer, ISimulation* _simulation) {
+    RUNTIME_STAT_SCOPE(init);
     simulation = _simulation;
     renderer = _renderer;
 
@@ -323,6 +325,7 @@ bool Engine::sampleInput(FrameId frameId) {
 
 void Engine::simulationLoop(volatile std::atomic<FrameId>* simulationFrame,
                             const volatile std::atomic<FrameId>* stopFrame) {
+    RUNTIME_STAT_SCOPE(simulationLoop);
     loguru::set_thread_name("simulate");
     simulationFrame->store(0);
     while (!frameGraph.isStopped() && *simulationFrame <= *stopFrame) {
@@ -421,6 +424,7 @@ Engine::CommandBufferRecorder Engine::acquireCommandRecorder(
 }
 
 void Engine::recordCommandsLoop(const volatile std::atomic<FrameId>* stopFrame) {
+    RUNTIME_STAT_SCOPE(recordLoop);
     loguru::set_thread_name("record");
     FrameId recordFrame = 0;
     while (!frameGraph.isStopped() && recordFrame <= *stopFrame) {
@@ -602,6 +606,7 @@ bool Engine::execute(FrameId& executionFrame, ExecutionPackage&& package) {
 }
 
 void Engine::executeCommandsLoop() {
+    RUNTIME_STAT_SCOPE(executionLoop);
     loguru::set_thread_name("execution");
     std::unique_lock<std::mutex> executionLock(executionMutex);
     FrameId executionFrame = 0;
@@ -616,6 +621,7 @@ void Engine::executeCommandsLoop() {
 }
 
 void Engine::cleanUpLoop(const volatile std::atomic<FrameId>* stopFrame) {
+    RUNTIME_STAT_SCOPE(cleanupLoop);
     loguru::set_thread_name("clean up");
     FrameId cleanUpFrame = 0;
     while (!frameGraph.isStopped() && cleanUpFrame <= *stopFrame) {
@@ -639,6 +645,7 @@ void Engine::cleanUpLoop(const volatile std::atomic<FrameId>* stopFrame) {
 }
 
 void Engine::gameLoop() {
+    RUNTIME_STAT_SCOPE(gameLoop);
     if (simulation == nullptr || renderer == nullptr)
         throw std::runtime_error("Simulation or renderer was not initialized before game loop");
     // entityManager.start();

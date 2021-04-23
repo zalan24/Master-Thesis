@@ -3,6 +3,7 @@
 #include "../featuresStructures.h"
 
 #define ENABLE_RESOURCE_PTR_VALIDATION 1
+#define ENABLE_RUNTIME_STATS_GENERATION 1
 
 namespace featureconfig
 {
@@ -14,3 +15,5 @@ inline constexpr Params get_params() {
 }
 static constexpr Params params = get_params();
 }  // namespace featureconfig
+
+#include "featuresValidate.h"
