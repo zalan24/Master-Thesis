@@ -17,7 +17,7 @@
 function(add_external namespace source_dir)
 
     set(options)
-    set(oneValueArgs INSTALL CUSTOM_PRE_CMAKE)
+    set(oneValueArgs INSTALL CUSTOM_PRE_CMAKE USE_PYTHON3)
     set(multiValueArgs TARGETS PROJECT_OPTIONS DEPENDENCIES)
     cmake_parse_arguments(ADD_EXTERNAL "${options}" "${oneValueArgs}"
                                         "${multiValueArgs}" ${ARGN} )
@@ -84,6 +84,12 @@ function(add_external namespace source_dir)
         file(WRITE "${source_dir}/CMakeLists.txt" "${PRE_CMAKE}\n\n${cmake_list}\n\ninclude(_target_export.cmake)\n")
         file(SHA1 "${source_dir}/CMakeLists.txt" hash)
         file(WRITE "${source_dir}/CMakeLists.txt.hash" "${hash}")
+    endif()
+
+    if (${ADD_EXTERNAL_USE_PYTHON3})
+        find_package (Python3 COMPONENTS Interpreter Development REQUIRED)
+        list(APPEND ADD_EXTERNAL_PROJECT_OPTIONS "-DPYTHON_EXECUTABLE:FILEPATH=${Python3_EXECUTABLE}")
+        list(APPEND ADD_EXTERNAL_PROJECT_OPTIONS "-DPYTHON_LIBRARIES:FILEPATH=${Python3_LIBRARIES}")
     endif()
 
     foreach(param IN LISTS ADD_EXTERNAL_PROJECT_OPTIONS)

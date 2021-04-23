@@ -66,7 +66,7 @@
         "-c../data/configs/playground_default.json",
         "-m../data/resources/models.json",
         "-d../data/",
-        "--gfx",
+        // "--gfx",
         "--api_dump",
         // "--renderdoc",
         "-sshaders/shaders.bin"
