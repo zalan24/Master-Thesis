@@ -162,3 +162,9 @@ lunarg_api_dump.file = api_dump.txt
 #lunarg_api_dump.log_filename = api_dump_log.txt
 lunarg_api_dump.show_timestamp = true
 #lunarg_api_dump.output_range = 1-10-1
+
+
+# ------------ other ------------
+
+
+# khronos_validation.enables = VK_VALIDATION_FEATURE_ENABLE_DEBUG_PRINTF_EXT

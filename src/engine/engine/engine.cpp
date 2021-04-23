@@ -25,11 +25,14 @@
 static void callback(const drv::CallbackData* data) {
     switch (data->type) {
         case drv::CallbackData::Type::VERBOSE:
+            if (data->text)
+                std::cout << data->text << std::endl;
             // LOG_DRIVER_API("Driver info: %s", data->text);
             break;
         case drv::CallbackData::Type::NOTE:
-            LOG_DRIVER_API("Driver note: %s", data->text);
-            // std::cout << data->text << std::endl;
+            // LOG_DRIVER_API("Driver note: %s", data->text);
+            if (data->text)
+                std::cout << data->text << std::endl;
             break;
         case drv::CallbackData::Type::WARNING:
             // TODO reword command buffer usage
