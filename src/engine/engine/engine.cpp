@@ -32,8 +32,9 @@ static void callback(const drv::CallbackData* data) {
             // std::cout << data->text << std::endl;
             break;
         case drv::CallbackData::Type::WARNING:
+            // TODO reword command buffer usage
             LOG_F(WARNING, "Driver warning: %s", data->text);
-            BREAK_POINT;
+            // BREAK_POINT;
             // std::cerr << data->text << std::endl;
             break;
         case drv::CallbackData::Type::ERROR:

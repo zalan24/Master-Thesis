@@ -47,10 +47,14 @@ drv::DrvShader::GraphicalPipelineCreateInfo ShaderObject::getGraphicsPipelineCre
     for (const auto& attachment : reg->stageConfigs[desc.variantId].attachments) {
         drv::drv_assert(attachment.location < attachmentStates.size(),
                         "Shader attachments are not in contineuos locations");
-        attachmentStates[attachment.location].use_r = attachment.info & attachment.USE_RED;
-        attachmentStates[attachment.location].use_g = attachment.info & attachment.USE_GREEN;
-        attachmentStates[attachment.location].use_b = attachment.info & attachment.USE_BLUE;
-        attachmentStates[attachment.location].use_a = attachment.info & attachment.USE_ALPHA;
+        attachmentStates[attachment.location].use_r =
+          (attachment.info & attachment.USE_RED) ? 1 : 0;
+        attachmentStates[attachment.location].use_g =
+          (attachment.info & attachment.USE_GREEN) ? 1 : 0;
+        attachmentStates[attachment.location].use_b =
+          (attachment.info & attachment.USE_BLUE) ? 1 : 0;
+        attachmentStates[attachment.location].use_a =
+          (attachment.info & attachment.USE_ALPHA) ? 1 : 0;
     }
 
     ret.sampleCount = desc.renderPass->getSampleCount(desc.subpass);

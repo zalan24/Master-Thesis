@@ -304,6 +304,7 @@ Get a triangle on screen:
     ☐ Push constants
         ☐ Create a some system, where the position of headers can be specified
         ☐ Inside the scope of this system, these positions would be reserved for all shaders even if they don't use a header
+    ☐ Check how command pool usages / family queue usages are synced. Maybe not necessary?
 
 Cleanup & other:
     ☐ Remove useless common driver stuff (drv/common)
