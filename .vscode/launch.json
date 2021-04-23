@@ -68,7 +68,7 @@
         "-d../data/",
         // "--gfx",
         "--api_dump",
-        // "--renderdoc",
+        "--renderdoc",
         "-sshaders/shaders.bin"
       ]
     },

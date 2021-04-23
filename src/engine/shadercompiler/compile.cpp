@@ -756,13 +756,13 @@ static ShaderBin::StageConfig read_stage_configs(
         attachmentInfo.name = name;
         attachmentInfo.info = 0;
         if (auto itr = values.find("channels"); itr != values.end()) {
-            if (itr->second.find('a'))
+            if (itr->second.find('a') != std::string::npos)
                 attachmentInfo.info |= ShaderBin::AttachmentInfo::USE_ALPHA;
-            if (itr->second.find('r'))
+            if (itr->second.find('r') != std::string::npos)
                 attachmentInfo.info |= ShaderBin::AttachmentInfo::USE_RED;
-            if (itr->second.find('g'))
+            if (itr->second.find('g') != std::string::npos)
                 attachmentInfo.info |= ShaderBin::AttachmentInfo::USE_GREEN;
-            if (itr->second.find('b'))
+            if (itr->second.find('b') != std::string::npos)
                 attachmentInfo.info |= ShaderBin::AttachmentInfo::USE_BLUE;
             if (attachmentInfo.info == 0)
                 throw std::runtime_error("No channels are used by an attachment: " + name);
