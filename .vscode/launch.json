@@ -17,6 +17,10 @@
         "-o${workspaceFolder}/build/shaders/shaders.bin",
         "-d${workspaceFolder}/build/shaders/debug/",
         "-g${workspaceFolder}/build/shaders/debug/gen/",
+        "--hardware",
+        "${workspaceFolder}/data/compile/deviceLimits.json",
+        "--options",
+        "${workspaceFolder}/data/compile/shaderCompileOptions.json",
         "${workspaceFolder}/src/gameLibs/shaders/global.sh",
         "${workspaceFolder}/src/gameLibs/shaders/test.sd"
       ],

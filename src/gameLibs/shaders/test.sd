@@ -5,11 +5,12 @@ include {
 
 descriptor {
     variants {
-        Color: red, black, green, green2, blue;
+        Color: red, black, green, green2, blue, custom;
         TestVariant: one, two, three;
     }
     resources {
         int testVal;
+        vec3 customColor;
     }
 }
 
@@ -20,18 +21,12 @@ stages {
     ps {
         entry = main;
         use testVal;
-        #if renderPass == color
-            use ambientLight;
-            use sunLight;
-            use sunDir;
-        #endif
+#if Color == custom
+        use customColor;
+#endif
     }
     vs {
         entry = main;
-        use viewProj;
-        #if TestVariant == one
-            use cameraPos;
-        #endif
         use testVal;
     }
     attachments {
@@ -70,6 +65,9 @@ ps {
             outColor = vec4(0.0, 0.0, 0.0, 1.0);
         #elif Color == green || Color == green2
             outColor = vec4(0.0, 1.0, 0.0, 1.0);
+        #elif Color == custom
+            // outColor = customColor; // TODO
+            outColor = vec4(0.0, 0.0, 1.0, 1.0);
         #else
             outColor = vec4(0.0, 0.0, 1.0, 1.0);
         #endif

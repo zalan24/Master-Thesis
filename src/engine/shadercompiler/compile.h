@@ -84,6 +84,13 @@ struct PipelineResourceUsage
     }
 };
 
+struct PushConstObjData
+{
+    std::string name;
+    size_t effectiveSize;
+    size_t structSize;
+};
+
 struct ResourcePack
 {
     std::set<std::string> shaderVars;
@@ -104,8 +111,8 @@ struct ResourcePack
         }
         return false;
     }
-    void generateCXX(const std::string& structName, const Resources& resources,
-                     std::ostream& out) const;
+    PushConstObjData generateCXX(const std::string& structName, const Resources& resources,
+                                 std::ostream& out) const;
     // TODO export offsets from CXX and compare (or vice versa)
     void generateGLSL(const Resources& resources, std::ostream& out) const;
 };
@@ -130,8 +137,12 @@ struct IncludeData
     std::string desriptorClassName;
     std::string desriptorRegistryClassName;
     std::vector<std::string> included;
-    uint64_t totalVarintMultiplier;
-    std::unordered_map<std::string, uint64_t> variantMultiplier;
+    uint32_t totalVarintMultiplier;
+    Variants variants;
+    std::unordered_map<std::string, uint32_t> variantMultiplier;
+    std::map<PipelineResourceUsage, ResourceObject> resourceObjects;
+    std::vector<PipelineResourceUsage> varintToResourceUsage;
+    std::map<ResourcePack, PushConstObjData> exportedPacks;
 };
 struct ShaderGenerationInput
 {

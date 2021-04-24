@@ -197,322 +197,6 @@ static std::string get_variant_enum_value(std::string value) {
     return value;
 }
 
-bool generate_header(CompilerData& compileData, const std::string shaderFile) {
-    if (!fs::exists(fs::path(compileData.outputFolder))
-        && !fs::create_directories(fs::path(compileData.outputFolder))) {
-        std::cerr << "Could not create directory for shader headers: " << compileData.outputFolder
-                  << std::endl;
-        return false;
-    }
-    IncludeData incData;
-    incData.shaderFileName = fs::path{shaderFile};
-    std::ifstream shaderInput(shaderFile);
-    if (!shaderInput.is_open()) {
-        std::cerr << "Could not open file: " << shaderFile << std::endl;
-        return false;
-    }
-    BlockFile b(shaderInput);
-    shaderInput.close();
-    if (b.hasContent()) {
-        std::cerr << "Shader file has content on the root level (no blocks present): " << shaderFile
-                  << std::endl;
-        return false;
-    }
-    if (!b.hasNodes())
-        return true;
-    size_t descriptorCount = b.getBlockCount("descriptor");
-    if (descriptorCount == 0)
-        return true;
-    if (descriptorCount > 1) {
-        std::cerr << "A shader file may only contain one 'descriptor' block: " << shaderFile
-                  << std::endl;
-        return false;
-    }
-    const BlockFile* descBlock = b.getNode("descriptor");
-    if (descBlock->hasContent()) {
-        std::cerr << "The descriptor block must not have direct content." << std::endl;
-        return false;
-    }
-    size_t variantsBlockCount = descBlock->hasNodes() ? descBlock->getBlockCount("variants") : 0;
-    size_t resourcesBlockCount = descBlock->hasNodes() ? descBlock->getBlockCount("resources") : 0;
-    if (variantsBlockCount > 1 || resourcesBlockCount > 1) {
-        std::cerr << "The descriptor block can only have up to one variants and resources blocks"
-                  << std::endl;
-        return false;
-    }
-    std::string name = fs::path(shaderFile).stem().string();
-    for (char& c : name)
-        c = static_cast<char>(tolower(c));
-    std::stringstream header;
-    std::stringstream cxx;
-    Variants variants;
-    if (variantsBlockCount == 1) {
-        const BlockFile* variantBlock = descBlock->getNode("variants");
-        if (!read_variants(variantBlock, variants)) {
-            std::cerr << "Could not read variants: " << shaderFile << std::endl;
-            return false;
-        }
-    }
-    Resources resources;
-    if (resourcesBlockCount == 1) {
-        const BlockFile* resourcesBlock = descBlock->getNode("resources");
-        if (!read_resources(resourcesBlock, resources)) {
-            std::cerr << "Could not read resources: " << shaderFile << std::endl;
-            return false;
-        }
-    }
-    const std::string className = "shader_" + name + "_descriptor";
-    const std::string registryClassName = "shader_" + name + "_registry";
-    fs::path headerFileName = fs::path("shader_header_" + name + ".h");
-    fs::path cxxFileName = fs::path("shader_header_" + name + ".cpp");
-    incData.desriptorClassName = className;
-    incData.desriptorRegistryClassName = registryClassName;
-    incData.name = name;
-    header << "#pragma once\n\n";
-    header << "#include <memory>\n\n";
-    header << "#include <shaderdescriptor.h>\n";
-    header << "#include <shadertypes.h>\n";
-    header << "#include <drvshader.h>\n\n";
-
-    cxx << "#include \"" << headerFileName.string() << "\"\n\n";
-    cxx << "#include <drv.h>\n\n";
-
-    header << "class " << registryClassName << " final : public ShaderDescriptorReg {\n";
-    header << "  public:\n";
-    header << "    " << registryClassName << "(drv::LogicalDevicePtr device);\n";
-    cxx << registryClassName << "::" << registryClassName << "(drv::LogicalDevicePtr device)\n";
-    cxx << "  : reg(drv::create_shader_header_registry(device))\n";
-    cxx << "{\n";
-    cxx << "}\n\n";
-    header << "    friend class " << className << ";\n";
-    header << "  private:\n";
-    header << "    std::unique_ptr<drv::DrvShaderHeaderRegistry> reg;\n";
-    header << "};\n\n";
-
-    header << "class " << className << " final : public ShaderDescriptor\n";
-    header << "{\n";
-    header << "  public:\n";
-    header << "    ~" << className << "() override {}\n";
-    uint64_t variantMul = 1;
-    for (const auto& [variantName, values] : variants.values) {
-        if (variantName.length() == 0 || values.size() == 0)
-            continue;
-        incData.variantMultiplier[variantName] = variantMul;
-        variantMul *= values.size();
-        std::string enumName = get_variant_enum_name(variantName);
-        header << "    enum class " << enumName << " {\n";
-        for (size_t i = 0; i < values.size(); ++i) {
-            std::string val = get_variant_enum_value(values[i]);
-            header << "        " << val << " = " << i << ",\n";
-        }
-        header << "    };\n";
-        std::string valName = get_variant_enum_val_name(variantName);
-        header << "    void setVariant_" << variantName << "(" << enumName << " value);\n";
-        cxx << "void " << className << "::setVariant_" << variantName << "(" << enumName
-            << " value) {\n";
-        cxx << "    variantDesc." << valName << " = value;\n";
-        cxx << "}\n";
-    }
-    header << "    struct VariantDesc {\n";
-    for (const auto& [variantName, values] : variants.values) {
-        if (variantName.length() == 0 || values.size() == 0)
-            continue;
-        std::string enumName = get_variant_enum_name(variantName);
-        std::string valName = get_variant_enum_val_name(variantName);
-        header << "        " << enumName << " " << valName << " = " << enumName
-               << "::" << get_variant_enum_value(values[0]) << ";\n";
-    }
-    header << "        uint32_t getLocalVariantId() const;\n";
-    cxx << "uint32_t " << className << "::VariantDesc::getLocalVariantId() const {\n";
-    cxx << "    uint32_t ret = 0;\n";
-    for (const auto& [variantName, values] : variants.values) {
-        if (variantName.length() == 0 || values.size() == 0)
-            continue;
-        std::string valName = get_variant_enum_val_name(variantName);
-        cxx << "    ret += static_cast<uint32_t>(" << valName << ") * "
-            << incData.variantMultiplier[variantName] << ";\n";
-    }
-    cxx << "    return ret;\n";
-    cxx << "}\n";
-    header << "    };\n";
-    for (const auto& [varName, varType] : resources.variables) {
-        header << "    " << varType << " " << varName << " = " << varType << "_default_value;\n";
-        header << "    void set_" << varName << "(const " << varType << " &_" << varName << ");\n";
-        cxx << "void " << className << "::set_" << varName << "(const " << varType << " &_"
-            << varName << ") {\n";
-        cxx << "    if (" << varName << " != _" << varName << ") {\n";
-        cxx << "        " << varName << " = _" << varName << ";\n";
-        // cxx << "        if ()\n"; // TODo
-        cxx << "            invalidatePushConsts();\n";
-        cxx << "    }\n";
-        cxx << "}\n";
-    }
-    incData.totalVarintMultiplier = variantMul;
-    header
-      << "    void setVariant(const std::string& variantName, const std::string& value) override;\n";
-    cxx << "void " << className
-        << "::setVariant(const std::string& variantName, const std::string& value) {\n";
-    std::string ifString = "if";
-    for (const auto& [variantName, values] : variants.values) {
-        if (variantName.length() == 0 || values.size() == 0)
-            continue;
-        std::string enumName = get_variant_enum_name(variantName);
-        std::string valName = get_variant_enum_val_name(variantName);
-        cxx << "    " << ifString << " (variantName == \"" << variantName << "\") {\n";
-        std::string ifString2 = "if";
-        for (const std::string& variantVal : values) {
-            const std::string val = get_variant_enum_value(variantVal);
-            cxx << "        " << ifString2 << " (value == \"" << variantVal << "\")\n";
-            cxx << "            variantDesc." << valName << " = " << enumName << "::" << val
-                << ";\n";
-            ifString2 = "else if";
-        }
-        if (ifString2 != "if")
-            cxx << "        else\n    ";
-        cxx
-          << "        throw std::runtime_error(\"Unknown value (\" + value + \") for shader variant param: "
-          << variantName << "\");\n";
-        cxx << "    }";
-        ifString = " else if";
-    }
-    if (ifString != "if")
-        cxx << " else\n    ";
-    else
-        cxx << "\n";
-    cxx << "    throw std::runtime_error(\"Unknown variant param: \" + variantName);\n";
-    cxx << "}\n";
-    header << "    void setVariant(const std::string& variantName, int value) override;\n";
-    cxx << "void " << className << "::setVariant(const std::string& variantName, int value) {\n";
-    ifString = "if";
-    for (const auto& [variantName, values] : variants.values) {
-        if (variantName.length() == 0 || values.size() == 0)
-            continue;
-        std::string enumName = get_variant_enum_name(variantName);
-        std::string valName = get_variant_enum_val_name(variantName);
-        cxx << "    " << ifString << " (variantName == \"" << variantName << "\")\n";
-        cxx << "        variantDesc." << valName << " = static_cast<" << enumName << ">(value);\n";
-        ifString = "else if";
-    }
-    if (ifString != "if")
-        cxx << "    else\n    ";
-    cxx << "    throw std::runtime_error(\"Unknown variant param: \" + variantName);\n";
-    cxx << "}\n";
-    header << "    std::vector<std::string> getVariantParamNames() const override;\n";
-    cxx << "std::vector<std::string> " << className << "::getVariantParamNames() const {\n";
-    cxx << "    return {\n";
-    for (const auto& [variantName, values] : variants.values) {
-        if (variantName.length() == 0 || values.size() == 0)
-            continue;
-        cxx << "        \"" << variantName << "\",\n";
-    }
-    cxx << "    };\n";
-    cxx << "}\n";
-    header << "    const VariantDesc &getVariantDesc() const { return variantDesc; }\n";
-    header << "    uint32_t getLocalVariantId() const override;\n";
-    cxx << "uint32_t " << className << "::getLocalVariantId() const {\n";
-    cxx << "    return variantDesc.getLocalVariantId();\n";
-    cxx << "}\n";
-    header << "    " << className << "(drv::LogicalDevicePtr device, const " << registryClassName
-           << " *_reg);\n";
-    cxx << className << "::" << className << "(drv::LogicalDevicePtr device, const "
-        << registryClassName << " *_reg)\n";
-    cxx << "  : ShaderDescriptor(\"" << name << "\")\n";
-    cxx << "  , reg(_reg)\n";
-    cxx << "  , header(drv::create_shader_header(device, reg->reg.get()))\n";
-    cxx << "{\n";
-    cxx << "}\n";
-    header << "    const ShaderDescriptorReg* getReg() const override { return reg; }\n";
-    header << "  private:\n";
-    header << "    VariantDesc variantDesc;\n";
-    header << "    const " << registryClassName << " *reg;\n";
-    header << "    std::unique_ptr<drv::DrvShaderHeader> header;\n";
-    header << "};\n";
-
-    compileData.registry.headersStart << "    " << registryClassName << " " << name << ";\n";
-    compileData.registry.headersCtor << "      " << (compileData.registry.firstHeader ? ':' : ',')
-                                     << " " << name << "(device)\n";
-    compileData.registry.firstHeader = false;
-
-    fs::path headerFilePath = fs::path(compileData.outputFolder) / headerFileName;
-    fs::path cxxFilePath = fs::path(compileData.outputFolder) / cxxFileName;
-    compileData.registry.includes << "#include <" << headerFileName.string() << ">\n";
-    incData.headerFileName = fs::path{headerFileName};
-    const std::string h = hash_string(header.str() + cxx.str());
-    if (auto itr = compileData.cache.headerHashes.find(name);
-        itr == compileData.cache.headerHashes.end() || itr->second != h) {
-        std::ofstream outHeaderFile(headerFilePath.string());
-        if (!outHeaderFile.is_open()) {
-            std::cerr << "Could not open output file: " << headerFileName.string() << std::endl;
-            return false;
-        }
-        outHeaderFile << header.str();
-        outHeaderFile.close();
-        std::ofstream outCxxFile(cxxFilePath.string());
-        if (!outCxxFile.is_open()) {
-            std::cerr << "Could not open output file: " << cxxFileName.string() << std::endl;
-            return false;
-        }
-        outCxxFile << cxx.str();
-        compileData.cache.headerHashes[name] = h;
-    }
-    compileData.includeData[name] = std::move(incData);
-
-    return true;
-}
-
-bool read_variants(const BlockFile* blockFile, Variants& variants) {
-    variants = {};
-    if (blockFile->hasNodes()) {
-        std::cerr << "variants block cannot contain nested blocks" << std::endl;
-        return false;
-    }
-    if (!blockFile->hasContent())
-        return true;
-    const std::string* variantContent = blockFile->getContent();
-    std::regex paramReg{"(\\w+)\\s*:((\\s*\\w+\\s*,)+\\s*\\w+\\s*);"};
-    std::regex valueReg{"\\s*(\\w+)\\s*(,)?"};
-    auto variantsBegin =
-      std::sregex_iterator(variantContent->begin(), variantContent->end(), paramReg);
-    auto variantsEnd = std::sregex_iterator();
-    for (std::sregex_iterator regI = variantsBegin; regI != variantsEnd; ++regI) {
-        std::string paramName = (*regI)[1];
-        std::string values = (*regI)[2];
-        auto& vec = variants.values[paramName] = {};
-        auto valuesBegin = std::sregex_iterator(values.begin(), values.end(), valueReg);
-        auto valuesEnd = std::sregex_iterator();
-        for (std::sregex_iterator regJ = valuesBegin; regJ != valuesEnd; ++regJ) {
-            std::string value = (*regJ)[1];
-            vec.push_back(value);
-        }
-    }
-    return true;
-}
-
-bool read_resources(const BlockFile* blockFile, Resources& resources) {
-    if (blockFile->hasNodes()) {
-        std::cerr << "resources block cannot contain nested blocks" << std::endl;
-        return false;
-    }
-    if (!blockFile->hasContent())
-        return true;
-    const std::string* resourcesContent = blockFile->getContent();
-    std::regex varReg{
-      "(uint|uint2|uint3|uint4|int|int2|int3|int4|float|vec2|vec3|vec4|mat44)\\s+(\\w+)\\s*;"};
-    auto resourcesBegin =
-      std::sregex_iterator(resourcesContent->begin(), resourcesContent->end(), varReg);
-    auto resourcesEnd = std::sregex_iterator();
-    for (std::sregex_iterator regI = resourcesBegin; regI != resourcesEnd; ++regI) {
-        std::string varType = (*regI)[1];
-        std::string varName = (*regI)[2];
-        if (resources.variables.find(varName) != resources.variables.end()) {
-            std::cerr << "A variable already exists with this name: " << varName << std::endl;
-            return false;
-        }
-        resources.variables[varName] = varType;
-    }
-    return true;
-}
-
 static VariantConfig get_variant_config(
   uint32_t variantId, const std::vector<Variants>& variants,
   const std::unordered_map<std::string, uint32_t>& variantParamMultiplier) {
@@ -528,42 +212,21 @@ static VariantConfig get_variant_config(
     return ret;
 }
 
-static void generate_shader_code(std::ostream& out /* resources */) {
-    out << "#version 450\n";
-    out << "#extension GL_ARB_separate_shader_objects : enable\n";
-    if constexpr (featureconfig::params.shaderPrint) {
-        out << "#extension GL_EXT_debug_printf : enable\n";
+static ResourceObject generate_resource_object(const Resources& resources,
+                                               const PipelineResourceUsage& usages) {
+    ResourceObject ret;
+    for (const auto& itr : resources.variables) {
+        const std::string& name = itr.first;
+        if (usages.csUsage.usedVars.count(name))
+            ret.packs[ResourceObject::CS].shaderVars.insert(name);
+        if (usages.vsUsage.usedVars.count(name))
+            ret.packs[ResourceObject::VS].shaderVars.insert(name);
+        if (usages.psUsage.usedVars.count(name))
+            ret.packs[ResourceObject::PS].shaderVars.insert(name);
     }
-    out << "\n";
-}
-
-static void generate_shader_attachments(const ShaderBin::StageConfig& configs,
-                                        std::stringstream& code) {
-    for (const auto& attachment : configs.attachments) {
-        code << "layout(location = " << static_cast<uint32_t>(attachment.location) << ") ";
-        if (attachment.info & ShaderBin::AttachmentInfo::WRITE)
-            code << "out ";
-        else
-            throw std::runtime_error("Implement input attachments as well");
-        // TODO handle depth attachment
-        code << "vec4 " << attachment.name << ";\n";
-    }
-    code << "\n";
-}
-
-static std::vector<uint32_t> compile_shader_binary(const fs::path& debugPath,
-                                                   const Compiler* compiler, ShaderBin::Stage stage,
-                                                   size_t len, const char* code) {
-    UNUSED(len);
-    try {
-        return compiler->GLSLtoSPV(stage, code);
-    }
-    catch (...) {
-        fs::path debugFile = debugPath / fs::path{"error_compiled_shader.glsl"};
-        std::ofstream debugOut(debugFile.c_str());
-        debugOut << code;
-        throw;
-    }
+    // TODO push constant ranges could be combined
+    // overlaps should also be supported
+    return ret;
 }
 
 static std::string format_variant(
@@ -584,65 +247,6 @@ static std::string format_variant(
     simplecpp::TokenList outputTokens(files);
     simplecpp::preprocess(outputTokens, rawtokens, files, included, dui);
     return outputTokens.stringify();
-}
-
-static bool generate_binary(
-  const fs::path& debugPath, const Compiler* compiler, ShaderBin::ShaderData& shaderData,
-  const ResourceObject& resourceObj, uint32_t variantId, const std::vector<Variants>& variants,
-  const std::stringstream& shader,
-  std::unordered_map<ShaderHash, std::pair<size_t, size_t>>& codeOffsets,
-  std::unordered_map<ShaderHash, std::pair<size_t, size_t>>& binaryOffsets, ShaderBin::Stage stage,
-  const std::unordered_map<std::string, uint32_t>& variantParamMultiplier, std::ostream* genOut) {
-    // TODO add resources to shader code
-    std::stringstream shaderCodeSS;
-    generate_shader_code(shaderCodeSS);
-    if (stage == ShaderBin::PS)
-        generate_shader_attachments(shaderData.stages[variantId].configs, shaderCodeSS);
-    std::string shaderCode =
-      shaderCodeSS.str() + format_variant(variantId, variants, shader, variantParamMultiplier);
-    if (genOut) {
-        *genOut << "// Stage: ";
-        switch (stage) {
-            case ShaderBin::PS:
-                *genOut << "PS";
-                break;
-            case ShaderBin::VS:
-                *genOut << "VS";
-                break;
-            case ShaderBin::CS:
-                *genOut << "CS";
-                break;
-            case ShaderBin::NUM_STAGES:
-                break;
-        }
-        *genOut << "\n\n";
-        *genOut << shaderCode << std::endl;
-    }
-
-    ShaderHash codeHash = hash_code(shaderCode);
-    if (auto itr = codeOffsets.find(codeHash); itr != codeOffsets.end()) {
-        shaderData.stages[variantId].stageOffsets[stage] = itr->second.first;
-        shaderData.stages[variantId].stageCodeSizes[stage] = itr->second.second;
-        return true;
-    }
-    std::vector<uint32_t> binary =
-      compile_shader_binary(debugPath, compiler, stage, shaderCode.length(), shaderCode.c_str());
-    ShaderHash binHash = hash_binary(binary.size(), binary.data());
-    if (auto itr = binaryOffsets.find(binHash); itr != binaryOffsets.end()) {
-        shaderData.stages[variantId].stageOffsets[stage] = itr->second.first;
-        shaderData.stages[variantId].stageCodeSizes[stage] = itr->second.second;
-        codeOffsets[codeHash] = itr->second;
-        return true;
-    }
-    size_t offset = shaderData.codes.size();
-    size_t codeSize = binary.size();
-    codeOffsets[codeHash] = std::make_pair(offset, codeSize);
-    binaryOffsets[binHash] = std::make_pair(offset, codeSize);
-    std::copy(binary.begin(), binary.end(),
-              std::inserter(shaderData.codes, shaderData.codes.end()));
-    shaderData.stages[variantId].stageOffsets[stage] = offset;
-    shaderData.stages[variantId].stageCodeSizes[stage] = codeSize;
-    return true;
 }
 
 static std::unordered_map<std::string, std::string> read_values(const std::string& s) {
@@ -789,21 +393,499 @@ static ShaderBin::StageConfig read_stage_configs(
     return ret;
 }
 
-static ResourceObject generate_resource_object(const Resources& resources,
-                                               const PipelineResourceUsage& usages) {
-    ResourceObject ret;
-    for (const auto& itr : resources.variables) {
-        const std::string& name = itr.first;
-        if (usages.csUsage.usedVars.count(name))
-            ret.packs[ResourceObject::CS].shaderVars.insert(name);
-        if (usages.vsUsage.usedVars.count(name))
-            ret.packs[ResourceObject::VS].shaderVars.insert(name);
-        if (usages.psUsage.usedVars.count(name))
-            ret.packs[ResourceObject::PS].shaderVars.insert(name);
+static bool read_gen_input(const std::string& filename, const BlockFile& shaderFile,
+                           ShaderGenerationInput& genInput) {
+    if (!collect_shader_cfg(shaderFile, genInput.statesCfg, "states")) {
+        std::cerr << "Could not collect shader stages/states content in: " << filename << std::endl;
+        return false;
     }
-    // TODO push constant ranges could be combined
-    // overlaps should also be supported
-    return ret;
+    if (!collect_shader(shaderFile, genInput.vs, genInput.vsCfg, "vs")) {
+        std::cerr << "Could not collect vs shader content in: " << filename << std::endl;
+        return false;
+    }
+    if (!collect_shader(shaderFile, genInput.ps, genInput.psCfg, "ps")) {
+        std::cerr << "Could not collect ps shader content in: " << filename << std::endl;
+        return false;
+    }
+    if (!collect_shader(shaderFile, genInput.cs, genInput.csCfg, "cs")) {
+        std::cerr << "Could not collect cs shader content in: " << filename << std::endl;
+        return false;
+    }
+    if (
+      !collect_shader_f(
+        shaderFile, "attachments", [&](size_t, const BlockFile*, size_t, const BlockFile* node) {
+            if (node->hasNodes()) {
+                for (size_t i = 0; i < node->getBlockCount(); ++i) {
+                    const BlockFile* attachment = node->getNode(i);
+                    if (attachment->hasNodes()) {
+                        std::cerr
+                          << "Attachment infos inside the attachments block must not contain other blocks: "
+                          << filename << std::endl;
+                        return false;
+                    }
+                    if (attachment->hasContent())
+                        genInput.attachments[node->getBlockName(i)] << *attachment->getContent();
+                    else
+                        genInput.attachments[node->getBlockName(i)] << "";
+                }
+            }
+            else if (node->hasContent()) {
+                std::cerr
+                  << "The attachments block in shader stage infos must contain a block for each used attachment, not raw content: "
+                  << filename << std::endl;
+                return false;
+            }
+            return true;
+        })) {
+        std::cerr << "Could not collect attachments in: " << filename << std::endl;
+        return false;
+    }
+    return true;
+}
+
+bool generate_header(CompilerData& compileData, const std::string shaderFile) {
+    if (!fs::exists(fs::path(compileData.outputFolder))
+        && !fs::create_directories(fs::path(compileData.outputFolder))) {
+        std::cerr << "Could not create directory for shader headers: " << compileData.outputFolder
+                  << std::endl;
+        return false;
+    }
+
+    IncludeData incData;
+    incData.shaderFileName = fs::path{shaderFile};
+    std::ifstream shaderInput(shaderFile);
+    if (!shaderInput.is_open()) {
+        std::cerr << "Could not open file: " << shaderFile << std::endl;
+        return false;
+    }
+    BlockFile b(shaderInput);
+    shaderInput.close();
+    if (b.hasContent()) {
+        std::cerr << "Shader file has content on the root level (no blocks present): " << shaderFile
+                  << std::endl;
+        return false;
+    }
+    if (!b.hasNodes())
+        return true;
+    size_t descriptorCount = b.getBlockCount("descriptor");
+    if (descriptorCount == 0)
+        return true;
+    if (descriptorCount > 1) {
+        std::cerr << "A shader file may only contain one 'descriptor' block: " << shaderFile
+                  << std::endl;
+        return false;
+    }
+    const BlockFile* descBlock = b.getNode("descriptor");
+    if (descBlock->hasContent()) {
+        std::cerr << "The descriptor block must not have direct content." << std::endl;
+        return false;
+    }
+    size_t variantsBlockCount = descBlock->hasNodes() ? descBlock->getBlockCount("variants") : 0;
+    size_t resourcesBlockCount = descBlock->hasNodes() ? descBlock->getBlockCount("resources") : 0;
+    if (variantsBlockCount > 1 || resourcesBlockCount > 1) {
+        std::cerr << "The descriptor block can only have up to one variants and resources blocks"
+                  << std::endl;
+        return false;
+    }
+    std::string name = fs::path(shaderFile).stem().string();
+    for (char& c : name)
+        c = static_cast<char>(tolower(c));
+    std::stringstream header;
+    std::stringstream cxx;
+    if (variantsBlockCount == 1) {
+        const BlockFile* variantBlock = descBlock->getNode("variants");
+        if (!read_variants(variantBlock, incData.variants)) {
+            std::cerr << "Could not read variants: " << shaderFile << std::endl;
+            return false;
+        }
+    }
+    Resources resources;
+    if (resourcesBlockCount == 1) {
+        const BlockFile* resourcesBlock = descBlock->getNode("resources");
+        if (!read_resources(resourcesBlock, resources)) {
+            std::cerr << "Could not read resources: " << shaderFile << std::endl;
+            return false;
+        }
+    }
+    const std::string className = "shader_" + name + "_descriptor";
+    const std::string registryClassName = "shader_" + name + "_registry";
+    fs::path headerFileName = fs::path("shader_header_" + name + ".h");
+    fs::path cxxFileName = fs::path("shader_header_" + name + ".cpp");
+    incData.desriptorClassName = className;
+    incData.desriptorRegistryClassName = registryClassName;
+    incData.name = name;
+    header << "#pragma once\n\n";
+    header << "#include <memory>\n\n";
+    header << "#include <shaderdescriptor.h>\n";
+    header << "#include <shadertypes.h>\n";
+    header << "#include <drvshader.h>\n\n";
+
+    cxx << "#include \"" << headerFileName.string() << "\"\n\n";
+    cxx << "#include <drv.h>\n\n";
+
+    uint32_t variantMul = 1;
+    for (const auto& [variantName, values] : incData.variants.values) {
+        if (variantName.length() == 0 || values.size() == 0)
+            continue;
+        incData.variantMultiplier[variantName] = variantMul;
+        variantMul *= values.size();
+    }
+    incData.totalVarintMultiplier = variantMul;
+
+    ShaderGenerationInput genInput;
+    if (!read_gen_input(shaderFile, b, genInput))
+        return false;
+
+    incData.varintToResourceUsage.resize(incData.totalVarintMultiplier);
+    for (uint32_t i = 0; i < incData.totalVarintMultiplier; ++i) {
+        PipelineResourceUsage resourceUsage;
+        ShaderBin::StageConfig cfg = read_stage_configs(
+          resources, i, {incData.variants}, incData.variantMultiplier, genInput, resourceUsage);
+        if (incData.resourceObjects.find(resourceUsage) == incData.resourceObjects.end())
+            incData.resourceObjects[resourceUsage] =
+              generate_resource_object(resources, resourceUsage);
+        const ResourceObject& resourceObj = incData.resourceObjects[resourceUsage];
+        incData.varintToResourceUsage[i] = resourceUsage;
+    }
+
+    uint32_t structId = 0;
+    for (const auto& itr : incData.resourceObjects) {
+        for (const auto& [stages, pack] : itr.second.packs) {
+            if (incData.exportedPacks.find(pack) != incData.exportedPacks.end())
+                continue;
+            std::string structName =
+              "PushConstants_header_" + name + "_" + std::to_string(structId++);
+            incData.exportedPacks[pack] = pack.generateCXX(structName, resources, cxx);
+        }
+    }
+
+    header << "class " << registryClassName << " final : public ShaderDescriptorReg {\n";
+    header << "  public:\n";
+    header << "    " << registryClassName << "(drv::LogicalDevicePtr device);\n";
+    cxx << registryClassName << "::" << registryClassName << "(drv::LogicalDevicePtr device)\n";
+    cxx << "  : reg(drv::create_shader_header_registry(device))\n";
+    cxx << "{\n";
+    cxx << "}\n\n";
+    header << "    friend class " << className << ";\n";
+    header << "  private:\n";
+    header << "    std::unique_ptr<drv::DrvShaderHeaderRegistry> reg;\n";
+    header << "};\n\n";
+
+    header << "class " << className << " final : public ShaderDescriptor\n";
+    header << "{\n";
+    header << "  public:\n";
+    header << "    ~" << className << "() override {}\n";
+    for (const auto& [variantName, values] : incData.variants.values) {
+        if (variantName.length() == 0 || values.size() == 0)
+            continue;
+        std::string enumName = get_variant_enum_name(variantName);
+        header << "    enum class " << enumName << " {\n";
+        for (size_t i = 0; i < values.size(); ++i) {
+            std::string val = get_variant_enum_value(values[i]);
+            header << "        " << val << " = " << i << ",\n";
+        }
+        header << "    };\n";
+        std::string valName = get_variant_enum_val_name(variantName);
+        header << "    void setVariant_" << variantName << "(" << enumName << " value);\n";
+        cxx << "void " << className << "::setVariant_" << variantName << "(" << enumName
+            << " value) {\n";
+        cxx << "    variantDesc." << valName << " = value;\n";
+        cxx << "}\n";
+    }
+    header << "    struct VariantDesc {\n";
+    for (const auto& [variantName, values] : incData.variants.values) {
+        if (variantName.length() == 0 || values.size() == 0)
+            continue;
+        std::string enumName = get_variant_enum_name(variantName);
+        std::string valName = get_variant_enum_val_name(variantName);
+        header << "        " << enumName << " " << valName << " = " << enumName
+               << "::" << get_variant_enum_value(values[0]) << ";\n";
+    }
+    header << "        uint32_t getLocalVariantId() const;\n";
+    cxx << "uint32_t " << className << "::VariantDesc::getLocalVariantId() const {\n";
+    cxx << "    uint32_t ret = 0;\n";
+    for (const auto& [variantName, values] : incData.variants.values) {
+        if (variantName.length() == 0 || values.size() == 0)
+            continue;
+        std::string valName = get_variant_enum_val_name(variantName);
+        cxx << "    ret += static_cast<uint32_t>(" << valName << ") * "
+            << incData.variantMultiplier[variantName] << ";\n";
+    }
+    cxx << "    return ret;\n";
+    cxx << "}\n";
+    header << "    };\n";
+    for (const auto& [varName, varType] : resources.variables) {
+        header << "    " << varType << " " << varName << " = " << varType << "_default_value;\n";
+        header << "    void set_" << varName << "(const " << varType << " &_" << varName << ");\n";
+        cxx << "void " << className << "::set_" << varName << "(const " << varType << " &_"
+            << varName << ") {\n";
+        cxx << "    if (" << varName << " != _" << varName << ") {\n";
+        cxx << "        " << varName << " = _" << varName << ";\n";
+        // cxx << "        if ()\n"; // TODo
+        cxx << "            invalidatePushConsts();\n";
+        cxx << "    }\n";
+        cxx << "}\n";
+    }
+    header
+      << "    void setVariant(const std::string& variantName, const std::string& value) override;\n";
+    cxx << "void " << className
+        << "::setVariant(const std::string& variantName, const std::string& value) {\n";
+    std::string ifString = "if";
+    for (const auto& [variantName, values] : incData.variants.values) {
+        if (variantName.length() == 0 || values.size() == 0)
+            continue;
+        std::string enumName = get_variant_enum_name(variantName);
+        std::string valName = get_variant_enum_val_name(variantName);
+        cxx << "    " << ifString << " (variantName == \"" << variantName << "\") {\n";
+        std::string ifString2 = "if";
+        for (const std::string& variantVal : values) {
+            const std::string val = get_variant_enum_value(variantVal);
+            cxx << "        " << ifString2 << " (value == \"" << variantVal << "\")\n";
+            cxx << "            variantDesc." << valName << " = " << enumName << "::" << val
+                << ";\n";
+            ifString2 = "else if";
+        }
+        if (ifString2 != "if")
+            cxx << "        else\n    ";
+        cxx
+          << "        throw std::runtime_error(\"Unknown value (\" + value + \") for shader variant param: "
+          << variantName << "\");\n";
+        cxx << "    }";
+        ifString = " else if";
+    }
+    if (ifString != "if")
+        cxx << " else\n    ";
+    else
+        cxx << "\n";
+    cxx << "    throw std::runtime_error(\"Unknown variant param: \" + variantName);\n";
+    cxx << "}\n";
+    header << "    void setVariant(const std::string& variantName, int value) override;\n";
+    cxx << "void " << className << "::setVariant(const std::string& variantName, int value) {\n";
+    ifString = "if";
+    for (const auto& [variantName, values] : incData.variants.values) {
+        if (variantName.length() == 0 || values.size() == 0)
+            continue;
+        std::string enumName = get_variant_enum_name(variantName);
+        std::string valName = get_variant_enum_val_name(variantName);
+        cxx << "    " << ifString << " (variantName == \"" << variantName << "\")\n";
+        cxx << "        variantDesc." << valName << " = static_cast<" << enumName << ">(value);\n";
+        ifString = "else if";
+    }
+    if (ifString != "if")
+        cxx << "    else\n    ";
+    cxx << "    throw std::runtime_error(\"Unknown variant param: \" + variantName);\n";
+    cxx << "}\n";
+    header << "    std::vector<std::string> getVariantParamNames() const override;\n";
+    cxx << "std::vector<std::string> " << className << "::getVariantParamNames() const {\n";
+    cxx << "    return {\n";
+    for (const auto& [variantName, values] : incData.variants.values) {
+        if (variantName.length() == 0 || values.size() == 0)
+            continue;
+        cxx << "        \"" << variantName << "\",\n";
+    }
+    cxx << "    };\n";
+    cxx << "}\n";
+    header << "    const VariantDesc &getVariantDesc() const { return variantDesc; }\n";
+    header << "    uint32_t getLocalVariantId() const override;\n";
+    cxx << "uint32_t " << className << "::getLocalVariantId() const {\n";
+    cxx << "    return variantDesc.getLocalVariantId();\n";
+    cxx << "}\n";
+    header << "    " << className << "(drv::LogicalDevicePtr device, const " << registryClassName
+           << " *_reg);\n";
+    cxx << className << "::" << className << "(drv::LogicalDevicePtr device, const "
+        << registryClassName << " *_reg)\n";
+    cxx << "  : ShaderDescriptor(\"" << name << "\")\n";
+    cxx << "  , reg(_reg)\n";
+    cxx << "  , header(drv::create_shader_header(device, reg->reg.get()))\n";
+    cxx << "{\n";
+    cxx << "}\n";
+    header << "    const ShaderDescriptorReg* getReg() const override { return reg; }\n";
+    header << "  private:\n";
+    header << "    VariantDesc variantDesc;\n";
+    header << "    const " << registryClassName << " *reg;\n";
+    header << "    std::unique_ptr<drv::DrvShaderHeader> header;\n";
+    header << "};\n";
+
+    compileData.registry.headersStart << "    " << registryClassName << " " << name << ";\n";
+    compileData.registry.headersCtor << "      " << (compileData.registry.firstHeader ? ':' : ',')
+                                     << " " << name << "(device)\n";
+    compileData.registry.firstHeader = false;
+
+    fs::path headerFilePath = fs::path(compileData.outputFolder) / headerFileName;
+    fs::path cxxFilePath = fs::path(compileData.outputFolder) / cxxFileName;
+    compileData.registry.includes << "#include <" << headerFileName.string() << ">\n";
+    incData.headerFileName = fs::path{headerFileName};
+    const std::string h = hash_string(header.str() + cxx.str());
+    if (auto itr = compileData.cache.headerHashes.find(name);
+        itr == compileData.cache.headerHashes.end() || itr->second != h) {
+        std::ofstream outHeaderFile(headerFilePath.string());
+        if (!outHeaderFile.is_open()) {
+            std::cerr << "Could not open output file: " << headerFileName.string() << std::endl;
+            return false;
+        }
+        outHeaderFile << header.str();
+        outHeaderFile.close();
+        std::ofstream outCxxFile(cxxFilePath.string());
+        if (!outCxxFile.is_open()) {
+            std::cerr << "Could not open output file: " << cxxFileName.string() << std::endl;
+            return false;
+        }
+        outCxxFile << cxx.str();
+        compileData.cache.headerHashes[name] = h;
+    }
+    compileData.includeData[name] = std::move(incData);
+
+    return true;
+}
+
+bool read_variants(const BlockFile* blockFile, Variants& variants) {
+    variants = {};
+    if (blockFile->hasNodes()) {
+        std::cerr << "variants block cannot contain nested blocks" << std::endl;
+        return false;
+    }
+    if (!blockFile->hasContent())
+        return true;
+    const std::string* variantContent = blockFile->getContent();
+    std::regex paramReg{"(\\w+)\\s*:((\\s*\\w+\\s*,)+\\s*\\w+\\s*);"};
+    std::regex valueReg{"\\s*(\\w+)\\s*(,)?"};
+    auto variantsBegin =
+      std::sregex_iterator(variantContent->begin(), variantContent->end(), paramReg);
+    auto variantsEnd = std::sregex_iterator();
+    for (std::sregex_iterator regI = variantsBegin; regI != variantsEnd; ++regI) {
+        std::string paramName = (*regI)[1];
+        std::string values = (*regI)[2];
+        auto& vec = variants.values[paramName] = {};
+        auto valuesBegin = std::sregex_iterator(values.begin(), values.end(), valueReg);
+        auto valuesEnd = std::sregex_iterator();
+        for (std::sregex_iterator regJ = valuesBegin; regJ != valuesEnd; ++regJ) {
+            std::string value = (*regJ)[1];
+            vec.push_back(value);
+        }
+    }
+    return true;
+}
+
+bool read_resources(const BlockFile* blockFile, Resources& resources) {
+    if (blockFile->hasNodes()) {
+        std::cerr << "resources block cannot contain nested blocks" << std::endl;
+        return false;
+    }
+    if (!blockFile->hasContent())
+        return true;
+    const std::string* resourcesContent = blockFile->getContent();
+    std::regex varReg{
+      "(uint|uint2|uint3|uint4|int|int2|int3|int4|float|vec2|vec3|vec4|mat44)\\s+(\\w+)\\s*;"};
+    auto resourcesBegin =
+      std::sregex_iterator(resourcesContent->begin(), resourcesContent->end(), varReg);
+    auto resourcesEnd = std::sregex_iterator();
+    for (std::sregex_iterator regI = resourcesBegin; regI != resourcesEnd; ++regI) {
+        std::string varType = (*regI)[1];
+        std::string varName = (*regI)[2];
+        if (resources.variables.find(varName) != resources.variables.end()) {
+            std::cerr << "A variable already exists with this name: " << varName << std::endl;
+            return false;
+        }
+        resources.variables[varName] = varType;
+    }
+    return true;
+}
+
+static void generate_shader_code(std::ostream& out /* resources */) {
+    out << "#version 450\n";
+    out << "#extension GL_ARB_separate_shader_objects : enable\n";
+    if constexpr (featureconfig::params.shaderPrint) {
+        out << "#extension GL_EXT_debug_printf : enable\n";
+    }
+    out << "\n";
+}
+
+static void generate_shader_attachments(const ShaderBin::StageConfig& configs,
+                                        std::stringstream& code) {
+    for (const auto& attachment : configs.attachments) {
+        code << "layout(location = " << static_cast<uint32_t>(attachment.location) << ") ";
+        if (attachment.info & ShaderBin::AttachmentInfo::WRITE)
+            code << "out ";
+        else
+            throw std::runtime_error("Implement input attachments as well");
+        // TODO handle depth attachment
+        code << "vec4 " << attachment.name << ";\n";
+    }
+    code << "\n";
+}
+
+static std::vector<uint32_t> compile_shader_binary(const fs::path& debugPath,
+                                                   const Compiler* compiler, ShaderBin::Stage stage,
+                                                   size_t len, const char* code) {
+    UNUSED(len);
+    try {
+        return compiler->GLSLtoSPV(stage, code);
+    }
+    catch (...) {
+        fs::path debugFile = debugPath / fs::path{"error_compiled_shader.glsl"};
+        std::ofstream debugOut(debugFile.c_str());
+        debugOut << code;
+        throw;
+    }
+}
+
+static bool generate_binary(
+  const fs::path& debugPath, const Compiler* compiler, ShaderBin::ShaderData& shaderData,
+  const ResourceObject& resourceObj, uint32_t variantId, const std::vector<Variants>& variants,
+  const std::stringstream& shader,
+  std::unordered_map<ShaderHash, std::pair<size_t, size_t>>& codeOffsets,
+  std::unordered_map<ShaderHash, std::pair<size_t, size_t>>& binaryOffsets, ShaderBin::Stage stage,
+  const std::unordered_map<std::string, uint32_t>& variantParamMultiplier, std::ostream* genOut) {
+    // TODO add resources to shader code
+    std::stringstream shaderCodeSS;
+    generate_shader_code(shaderCodeSS);
+    if (stage == ShaderBin::PS)
+        generate_shader_attachments(shaderData.stages[variantId].configs, shaderCodeSS);
+    std::string shaderCode =
+      shaderCodeSS.str() + format_variant(variantId, variants, shader, variantParamMultiplier);
+    if (genOut) {
+        *genOut << "// Stage: ";
+        switch (stage) {
+            case ShaderBin::PS:
+                *genOut << "PS";
+                break;
+            case ShaderBin::VS:
+                *genOut << "VS";
+                break;
+            case ShaderBin::CS:
+                *genOut << "CS";
+                break;
+            case ShaderBin::NUM_STAGES:
+                break;
+        }
+        *genOut << "\n\n";
+        *genOut << shaderCode << std::endl;
+    }
+
+    ShaderHash codeHash = hash_code(shaderCode);
+    if (auto itr = codeOffsets.find(codeHash); itr != codeOffsets.end()) {
+        shaderData.stages[variantId].stageOffsets[stage] = itr->second.first;
+        shaderData.stages[variantId].stageCodeSizes[stage] = itr->second.second;
+        return true;
+    }
+    std::vector<uint32_t> binary =
+      compile_shader_binary(debugPath, compiler, stage, shaderCode.length(), shaderCode.c_str());
+    ShaderHash binHash = hash_binary(binary.size(), binary.data());
+    if (auto itr = binaryOffsets.find(binHash); itr != binaryOffsets.end()) {
+        shaderData.stages[variantId].stageOffsets[stage] = itr->second.first;
+        shaderData.stages[variantId].stageCodeSizes[stage] = itr->second.second;
+        codeOffsets[codeHash] = itr->second;
+        return true;
+    }
+    size_t offset = shaderData.codes.size();
+    size_t codeSize = binary.size();
+    codeOffsets[codeHash] = std::make_pair(offset, codeSize);
+    binaryOffsets[binHash] = std::make_pair(offset, codeSize);
+    std::copy(binary.begin(), binary.end(),
+              std::inserter(shaderData.codes, shaderData.codes.end()));
+    shaderData.stages[variantId].stageOffsets[stage] = offset;
+    shaderData.stages[variantId].stageCodeSizes[stage] = codeSize;
+    return true;
 }
 
 static bool generate_binary(const fs::path& debugPath, const Compiler* compiler,
@@ -972,8 +1054,10 @@ static TypeInfo get_type_info(const std::string& type) {
     throw std::runtime_error("Unkown type: " + type);
 }
 
-void ResourcePack::generateCXX(const std::string& structName, const Resources& resources,
-                               std::ostream& out) const {
+PushConstObjData ResourcePack::generateCXX(const std::string& structName,
+                                           const Resources& resources, std::ostream& out) const {
+    PushConstObjData ret;
+    ret.name = structName;
     std::vector<std::string> initOrder;
     initOrder.reserve(shaderVars.size());
     std::map<std::string, TypeInfo> vars;
@@ -1010,7 +1094,7 @@ void ResourcePack::generateCXX(const std::string& structName, const Resources& r
         initOrder.push_back(var);
         sizeOrder.erase(itr);
     };
-    constexpr size_t structAlignas = 16;
+    constexpr size_t structAlignas = 4;
     out << "struct alignas(" << structAlignas << ") " << structName << " {\n";
     while (sizeOrder.size() > 0) {
         size_t requiredOffset = vars[sizeOrder[0]].align;
@@ -1028,6 +1112,7 @@ void ResourcePack::generateCXX(const std::string& structName, const Resources& r
     }
     out << "    // size without padding at the end\n";
     out << "    static constexpr size_t CONTENT_SIZE = " << predictedSize << ";\n";
+    ret.effectiveSize = predictedSize;
     gen_separator(structAlignas);
     out << "    " << structName << "(";
     bool first = true;
@@ -1074,6 +1159,8 @@ void ResourcePack::generateCXX(const std::string& structName, const Resources& r
             << ");\n";
     }
     out << "static_assert(sizeof(" << structName << ") == " << predictedSize << ");\n\n";
+    ret.structSize = predictedSize;
+    return ret;
 }
 
 bool compile_shader(CompilerData& compileData, const std::string shaderFile) {
@@ -1106,53 +1193,8 @@ bool compile_shader(CompilerData& compileData, const std::string shaderFile) {
         return false;
     }
     ShaderGenerationInput genInput;
-
-    if (!collect_shader_cfg(cuBlocks, genInput.statesCfg, "states")) {
-        std::cerr << "Could not collect shader stages/states content in: " << shaderFile
-                  << std::endl;
+    if (!read_gen_input(shaderFile, cuBlocks, genInput))
         return false;
-    }
-    if (!collect_shader(cuBlocks, genInput.vs, genInput.vsCfg, "vs")) {
-        std::cerr << "Could not collect vs shader content in: " << shaderFile << std::endl;
-        return false;
-    }
-    if (!collect_shader(cuBlocks, genInput.ps, genInput.psCfg, "ps")) {
-        std::cerr << "Could not collect ps shader content in: " << shaderFile << std::endl;
-        return false;
-    }
-    if (!collect_shader(cuBlocks, genInput.cs, genInput.csCfg, "cs")) {
-        std::cerr << "Could not collect cs shader content in: " << shaderFile << std::endl;
-        return false;
-    }
-    if (
-      !collect_shader_f(
-        cuBlocks, "attachments", [&](size_t, const BlockFile*, size_t, const BlockFile* node) {
-            if (node->hasNodes()) {
-                for (size_t i = 0; i < node->getBlockCount(); ++i) {
-                    const BlockFile* attachment = node->getNode(i);
-                    if (attachment->hasNodes()) {
-                        std::cerr
-                          << "Attachment infos inside the attachments block must not contain other blocks: "
-                          << shaderFile << std::endl;
-                        return false;
-                    }
-                    if (attachment->hasContent())
-                        genInput.attachments[node->getBlockName(i)] << *attachment->getContent();
-                    else
-                        genInput.attachments[node->getBlockName(i)] << "";
-                }
-            }
-            else if (node->hasContent()) {
-                std::cerr
-                  << "The attachments block in shader stage infos must contain a block for each used attachment, not raw content: "
-                  << shaderFile << std::endl;
-                return false;
-            }
-            return true;
-        })) {
-        std::cerr << "Could not collect attachments in: " << shaderFile << std::endl;
-        return false;
-    }
 
     directIncludes.push_back(shaderName);  // include it's own header as well
     std::vector<std::string> allIncludes;
