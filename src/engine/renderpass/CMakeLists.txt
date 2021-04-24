@@ -7,9 +7,6 @@ set_target_properties(  EngineRenderPass
                         COMPILE_FLAGS ${TARGETCOMPILEFLAGS}
                         LINK_OPTIONS "${TARGET_LINK_FLAGS}")
 target_include_directories(EngineRenderPass PUBLIC . ${CMAKE_CURRENT_BINARY_DIR})
-target_link_libraries(EngineRenderPass PRIVATE
-    json_external
-)
 target_link_libraries(EngineRenderPass PUBLIC
     AnimationsDrv
     AnimationsShaderManager

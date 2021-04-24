@@ -102,7 +102,9 @@ void CmdRenderPass::clearColorAttachment(AttachmentId attachment, ClearColorValu
 }
 
 void CmdRenderPass::bindGraphicsPipeline(const GraphicsPipelineBindInfo& info) {
-    TODO;  // only bind if changed
+    if (currentPipeline == info)
+        return;
+    currentPipeline = info;
     renderPass->bindGraphicsPipeline(cmdBuffer, tracker, info);
 }
 

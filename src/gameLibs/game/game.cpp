@@ -192,9 +192,9 @@ void Game::record(FrameGraph& frameGraph, FrameId frameId) {
         drv::Rect2D renderArea;
         renderArea.extent = swapChainData.extent;
         renderArea.offset = {0, 0};
-        EngineRenderPass testPass(&testRenderPass, recorder.getResourceTracker(),
-                                  recorder.getCommandBuffer(),
-                                  frameBuffers[swapChainData.imageIndex], renderArea, clearValues);
+        EngineRenderPass testPass(testRenderPass.get(), recorder.getResourceTracker(),
+                                  recorder.getCommandBuffer(), renderArea,
+                                  frameBuffers[swapChainData.imageIndex], clearValues);
         testPass.beginSubpass(testSubpass);
         drv::ClearRect clearRect;
         clearRect.rect.offset = {100, 100};
@@ -204,8 +204,7 @@ void Game::record(FrameGraph& frameGraph, FrameId frameId) {
         clearRect.layerCount = 1;
         testPass.clearColorAttachment(testColorAttachment,
                                       drv::ClearColorValue(0.f, 0.7f, 0.7f, 1.f), 1, &clearRect);
-        testPass.bindGraphicsShader(ShaderObject::NORMAL_USAGE,
-                                    get_dynamic_states(swapChainData.extent), {}, testShader,
+        testPass.bindGraphicsShader(get_dynamic_states(swapChainData.extent), {}, testShader,
                                     &shaderGlobalDesc, &shaderTestDesc);
         // testShader.bindGraphicsInfo(ShaderObject::NORMAL_USAGE, testPass,
         //                             get_dynamic_states(swapChainData.extent), &shaderGlobalDesc,

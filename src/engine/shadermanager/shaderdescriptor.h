@@ -7,7 +7,7 @@ class ShaderDescriptorReg
 {
  public:
  protected:
-    ~ShaderDescriptorReg();
+    ~ShaderDescriptorReg() {}
 };
 class ShaderDescriptor
 {
@@ -30,11 +30,11 @@ class ShaderDescriptor
 
     const std::string& getName() const { return name; }
 
-    virtual const ShaderDescriptorReg* getReg() const;
+    virtual const ShaderDescriptorReg* getReg() const = 0;
 
  protected:
-    TODO;  // don't invalidate when a param is changed, that's not used in the variant???
-    TODO;  // invalidate when variant is changed and the used params struct changes
+    //  TODO;  // don't invalidate when a param is changed, that's not used in the variant???
+    //  TODO;  // invalidate when variant is changed and the used params struct changes
     void invalidatePushConsts() { pushConstVersionNumber++; }
 
  private:

@@ -45,9 +45,11 @@ struct SubpassInfo
 
 struct GraphicsPipelineBindInfo
 {
-    const DrvShader* shader;
+    const DrvShader* shader = nullptr;
     uint32_t pipelineId;
-    // TODO shader headers...
+    bool operator==(const GraphicsPipelineBindInfo& other) const {
+        return shader == other.shader && pipelineId == other.pipelineId;
+    }
 };
 
 struct ShaderHeaderInfo
@@ -79,9 +81,10 @@ class CmdRenderPass
     const RenderPass* getRenderPass() const { return renderPass; }
     SubpassId getSubpass() const { return currentPass; }
 
+    void bindGraphicsPipeline(const GraphicsPipelineBindInfo& info);
+
  protected:
     ~CmdRenderPass();
-    void bindGraphicsPipeline(const GraphicsPipelineBindInfo& info);
 
  private:
     ResourceTracker* tracker = nullptr;
@@ -95,6 +98,7 @@ class CmdRenderPass
     ClearRect fullRect;
 
     SubpassId currentPass = INVALID_SUBPASS;
+    GraphicsPipelineBindInfo currentPipeline;
     bool ended = false;
     void close();
     uint32_t getSubpassAttachmentId(AttachmentId id) const;

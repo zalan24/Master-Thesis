@@ -340,9 +340,10 @@ bool generate_header(Cache& cache, ShaderRegistryOutput& registry, const std::st
         header << "    void set_" << varName << "(const " << varType << " &_" << varName << ");\n";
         cxx << "void " << className << "::set_" << varName << "(const " << varType << " &_"
             << varName << ") {\n";
-        cxx << "    if (varName != _varName) {\n";
+        cxx << "    if (" << varName << " != _" << varName << ") {\n";
         cxx << "        " << varName << " = _" << varName << ";\n";
-        cxx << "        invalidatePushConsts();\n";
+        // cxx << "        if ()\n"; // TODo
+        cxx << "            invalidatePushConsts();\n";
         cxx << "    }\n";
         cxx << "}\n";
     }
@@ -415,7 +416,8 @@ bool generate_header(Cache& cache, ShaderRegistryOutput& registry, const std::st
            << " *_reg);\n";
     cxx << className << "::" << className << "(drv::LogicalDevicePtr device, const "
         << registryClassName << " *_reg)\n";
-    cxx << "  : reg(_reg)\n";
+    cxx << "  : ShaderDescriptor(\"" << name << "\")\n";
+    cxx << "  , reg(_reg)\n";
     cxx << "  , header(drv::create_shader_header(device, reg->reg.get()))\n";
     cxx << "{\n";
     cxx << "}\n";
@@ -1353,6 +1355,7 @@ bool compile_shader(const fs::path& debugPath, const Compiler* compiler, ShaderB
 
     header << "class " << className << " final : public ShaderObject {\n";
     header << "  public:\n";
+    header << "    using Registry = " << registryClassName << ";\n";
     header << "    " << className << "(drv::LogicalDevicePtr device, const " << registryClassName
            << " *reg, drv::DrvShader::DynamicStates dynamicStates);\n";
     cxx << className << "::" << className << "(drv::LogicalDevicePtr _device, const "
@@ -1392,17 +1395,29 @@ bool compile_shader(const fs::path& debugPath, const Compiler* compiler, ShaderB
         << "*>(reg)->get_config_id(desc.variantId);\n";
     cxx << "    desc.states = overrideStates;\n";
     cxx << "    desc.dynamicStates = dynamicStates;\n";
-    cxx << "    return getGraphicsPipeline(createMode, desc);\n";
+    cxx << "    return getGraphicsPipeline(desc);\n";
     cxx << "}\n";
     for (const std::string& inc : allIncludes) {
         auto itr = includeData.find(inc);
         assert(itr != includeData.end());
         header
           << "    static size_t getPushConstOffset(ShaderObjectRegistry::VariantId variantId, const "
-          << itr->second.desriptorClassName << " *" << itr->second.name << ");";
+          << itr->second.desriptorClassName << " *" << itr->second.name << ");\n";
+        cxx << "size_t " << className
+            << "::getPushConstOffset(ShaderObjectRegistry::VariantId variantId, const "
+            << itr->second.desriptorClassName << " *" << itr->second.name << ") {\n";
+        cxx << "    // TODO\n";
+        cxx << "    return 0;\n";
+        cxx << "}\n";
         header
           << "    static size_t getPushConstSize(ShaderObjectRegistry::VariantId variantId, const "
-          << itr->second.desriptorClassName << " *" << itr->second.name << ");";
+          << itr->second.desriptorClassName << " *" << itr->second.name << ");\n";
+        cxx << "size_t " << className
+            << "::getPushConstSize(ShaderObjectRegistry::VariantId variantId, const "
+            << itr->second.desriptorClassName << " *" << itr->second.name << ") {\n";
+        cxx << "    // TODO\n";
+        cxx << "    return 0;\n";
+        cxx << "}\n";
     }
     header
       << "    void bindGraphicsInfo(drv::CmdRenderPass &renderPass, const DynamicState &dynamicStates";
@@ -1420,7 +1435,7 @@ bool compile_shader(const fs::path& debugPath, const Compiler* compiler, ShaderB
     cxx << ", const GraphicsPipelineStates &overrideStates) {\n";
     cxx
       << "    uint32_t pipelineId = prepareGraphicalPipeline(renderPass.getRenderPass(), renderPass.getSubpass(), dynamicStates,\n"
-      << pipelineInput.str() << "        overrideStates, createMode);\n";
+      << pipelineInput.str() << "        overrideStates);\n";
     cxx << "    drv::GraphicsPipelineBindInfo info;\n";
     cxx << "    info.shader = getShader();\n";
     cxx << "    info.pipelineId = pipelineId;\n";

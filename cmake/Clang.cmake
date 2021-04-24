@@ -3,6 +3,7 @@ set(WARNINGFLAGS "${WARNINGFLAGS}   -Weverything \
                                     -Werror-parentheses \
                                     -Werror-defaulted-function-deleted \
                                     -Werror-uninitialized \
+                                    -Werror-undef \
                                     -Wno-c++98-compat \
                                     -Wno-c++98-c++11-compat-binary-literal \
                                     -Wno-c++98-compat-pedantic \

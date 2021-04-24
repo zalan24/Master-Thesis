@@ -3,6 +3,7 @@
 #include <drvrenderpass.h>
 
 #include <shaderdescriptor.h>
+#include <shaderobject.h>
 
 class EngineRenderPass final : public drv::CmdRenderPass
 {
@@ -27,12 +28,14 @@ class EngineRenderPass final : public drv::CmdRenderPass
 
  public:
     template <typename S, typename... Args>
-    void bindGraphicsShader(const DynamicState& dynamicStates,
-                            const GraphicsPipelineStates& overrideStates, const S& shader,
+    void bindGraphicsShader(const ShaderObject::DynamicState& dynamicStates,
+                            const ShaderObject::GraphicsPipelineStates& overrideStates, S& shader,
                             const Args*... args) {
         // RUNTIME_STAT_RECORD_SHADER_USAGE();
-        shader.bindGraphicsInfo(createMode, *this, dynamicStates, args..., overrideStates);
-        (bind(shader, args), ...);
+        const ShaderObjectRegistry::VariantId variantId =
+          S::Registry::get_variant_id((args->getVariantDesc())...);
+        shader.bindGraphicsInfo(*this, dynamicStates, args..., overrideStates);
+        (bind(shader, variantId, args), ...);
         // PipelineCreateMode createMode, drv::CmdRenderPass &renderPass, const DynamicState &dynamicStates, const shader_global_descriptor *global, const shader_test_descriptor *test, const GraphicsPipelineStates &overrideStates = {}
         //  testShader.bindGraphicsInfo(ShaderObject::CREATE_WARNING, testPass,
         //                                 get_dynamic_states(swapChainData.extent), &shaderGlobalDesc,
@@ -46,7 +49,10 @@ class EngineRenderPass final : public drv::CmdRenderPass
         return slots[id].pushConstSize == 0;  // TODO add descriptors here too
     }
 
-    bool overlapPushConst(SlotId id, size_t offset, size_t size) const;
+    bool overlapPushConst(SlotId id, size_t offset, size_t size) const {
+        return std::max(offset, slots[id].pushConstOffset)
+               < std::min(offset + size, slots[id].pushConstOffset + slots[id].pushConstSize);
+    }
 
     SlotId betterChoiceForOverride(SlotId id1, SlotId id2) const {
         // TODO handle descriptors here
@@ -58,9 +64,9 @@ class EngineRenderPass final : public drv::CmdRenderPass
     }
 
     template <typename S, typename H>
-    void bind(const S& shader, const H* header) {
-        size_t requiredOffset = shader.getPushConstOffset(, header);
-        size_t requiredSize = shader.getPushConstSize(, header);
+    void bind(const S& shader, ShaderObjectRegistry::VariantId variantId, const H* header) {
+        size_t requiredOffset = shader.getPushConstOffset(variantId, header);
+        size_t requiredSize = shader.getPushConstSize(variantId, header);
         ShaderDescriptor::DataVersionNumber pushConstVersion = header->getPushConstsVersionNumber();
 
         SlotId ownSlot = 0;
