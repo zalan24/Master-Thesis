@@ -74,8 +74,19 @@ void ShaderBin::read(std::istream& in) {
     read_data(in, header);
     if (header != FILE_HEADER)
         throw std::runtime_error("Invalid file header: " + std::to_string(header));
+    uint64_t hash;
+    read_data(in, hash);
+    // TODO
+    // if (hash !=)
+    //     throw std::runtime_error("Incompatible shader binary");
     uint32_t shaderCount = 0;
     read_data(in, shaderCount);
+    std::string limitsStr;
+    read_string(in, limitsStr);
+    {
+        std::stringstream ss(limitsStr);
+        limits.read(ss);
+    }
     for (size_t i = 0; i < shaderCount; ++i) {
         std::string name;
         read_string(in, name);
@@ -92,12 +103,6 @@ void ShaderBin::read(std::istream& in) {
         read_vector(in, data.codes);
         shaders[name] = std::move(data);
     }
-    std::string limitsStr;
-    read_string(in, limitsStr);
-    {
-        std::stringstream ss(limitsStr);
-        limits.read(ss);
-    }
     uint32_t ending;
     read_data(in, ending);
     if (ending != FILE_END)
@@ -108,8 +113,14 @@ void ShaderBin::write(std::ostream& out) const {
     if (!out.binary)
         throw std::runtime_error("Binary file expected for shaderBin output");
     write_data(out, FILE_HEADER);
+    write_data(out, shaderHeadersHash);
     uint32_t shaderCount = static_cast<uint32_t>(shaders.size());
     write_data(out, shaderCount);
+    {
+        std::stringstream ss;
+        limits.write(ss);
+        write_string(out, ss.str());
+    }
     for (const auto& [name, data] : shaders) {
         write_string(out, name);
         write_data(out, data.totalVariantCount);
@@ -122,11 +133,6 @@ void ShaderBin::write(std::ostream& out) const {
             write_configs(out, data.stages[i].configs);
         }
         write_vector(out, data.codes);
-    }
-    {
-        std::stringstream ss;
-        limits.write(ss);
-        write_string(out, ss.str());
     }
     write_data(out, FILE_END);
 }

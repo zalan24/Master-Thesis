@@ -172,7 +172,9 @@ struct ShaderRegistryOutput
 class Cache final : public ISerializable
 {
  public:
-    std::unordered_map<std::string, std::string> headerHashes;
+    std::map<std::string, std::string> headerHashes;
+
+    uint64_t getHeaderHash() const;
 
     void writeJson(json& out) const override;
     void readJson(const json& in) override;

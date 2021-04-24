@@ -19,6 +19,9 @@ add_custom_target(ShaderCodes ALL DEPENDS ${SHADERBIN})
 
 set(HARDWARE_LIMITS ${CMAKE_SOURCE_DIR}/data/compile/deviceLimits.json)
 set(SHADER_COMPILE_OPTIONS ${CMAKE_SOURCE_DIR}/data/compile/shaderCompileOptions.json)
+# set(HASH_FILE ${})
+
+# TODO create shader header hash and compare when loading
 
 add_custom_command(
     OUTPUT   ${SHADERBIN} ${GENERATED_FILES}

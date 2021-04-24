@@ -40,6 +40,8 @@ int main(int argc, char* argv[]) {
     app.add_option("--hardware", hardwareReq, "Hardware requirements config");
     std::string compileOptionsFile = "";
     app.add_option("--options", compileOptionsFile, "Compile options config");
+    // std::string hashFile = "";
+    // app.add_option("--hash", hashFile, "File path to hash output file (.h)");
 
     CLI11_PARSE(app, argc, argv)
 
@@ -103,6 +105,7 @@ int main(int argc, char* argv[]) {
                 ISerializable::serialize(cacheJson, compileData.cache);
             }
         }
+        uint64_t shaderHash = compileData.cache.getHeaderHash();  // initial state
 
         CompileOptions compileOptions;
         if (compileOptionsFile != "") {
@@ -155,6 +158,10 @@ int main(int argc, char* argv[]) {
             std::cerr << "Could not open output file: " << output << std::endl;
             return 1;
         }
+        if (shaderHash != compileData.cache.getHeaderHash()) {
+            // TODO
+        }
+        shaderBin.setHash(compileData.cache.getHeaderHash());
         shaderBin.write(binOut);
         binOut.close();
     }

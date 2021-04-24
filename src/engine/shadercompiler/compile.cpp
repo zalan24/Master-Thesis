@@ -1542,3 +1542,12 @@ void finish_registry(ShaderRegistryOutput& registry) {
     registry.objectsCtor << "    {\n    }\n";
     registry.headersCtor << "    {\n    }\n";
 }
+
+uint64_t Cache::getHeaderHash() const {
+    uint64_t ret = 0;
+    uint32_t ind = 0;
+    for (const auto& itr : headerHashes)
+        for (const char& c : itr.second)
+            reinterpret_cast<char*>(&ret)[(ind++) % sizeof(ret)] ^= c;
+    return ret;
+}

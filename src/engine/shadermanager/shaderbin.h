@@ -86,7 +86,11 @@ class ShaderBin
 
     const drv::DeviceLimits& getLimits() const { return limits; }
 
+    void addHash(uint64_t h) { shaderHeadersHash ^= h; }
+    void setHash(uint64_t h) { shaderHeadersHash = h; }
+
  private:
-    std::unordered_map<std::string, ShaderData> shaders;
+    uint64_t shaderHeadersHash = 0;  // compatibility with c++ code
     drv::DeviceLimits limits;
+    std::unordered_map<std::string, ShaderData> shaders;
 };
