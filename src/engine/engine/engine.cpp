@@ -98,7 +98,8 @@ static drv::Driver get_driver(const std::string& name) {
 }
 
 drv::PhysicalDevice::SelectionInfo Engine::get_device_selection_info(
-  drv::InstancePtr instance, const drv::DeviceExtensions& deviceExtensions) {
+  drv::InstancePtr instance, const drv::DeviceExtensions& deviceExtensions,
+  const ShaderBin& shaderBin) {
     drv::PhysicalDevice::SelectionInfo selectInfo;
     selectInfo.instance = instance;
     selectInfo.requirePresent = true;
@@ -106,6 +107,7 @@ drv::PhysicalDevice::SelectionInfo Engine::get_device_selection_info(
     selectInfo.compare = drv::PhysicalDevice::pick_discere_card;
     selectInfo.commandMasks = {drv::CMD_TYPE_TRANSFER, drv::CMD_TYPE_COMPUTE,
                                drv::CMD_TYPE_GRAPHICS};
+    selectInfo.limits = shaderBin.getLimits();
     return selectInfo;
 }
 
@@ -169,6 +171,7 @@ Engine::Engine(int argc, char* argv[], const Config& cfg, const std::string& sha
   : config(cfg),
     logger(argc, argv, config.logs),
     coreContext({safe_cast<size_t>(config.stackMemorySizeKb << 10)}),
+    shaderBin(shaderbinFile),
     input(safe_cast<size_t>(config.inputBufferSize)),
     driver({get_driver(cfg.driver)}),
     window(&input, &inputManager,
@@ -178,7 +181,7 @@ Engine::Engine(int argc, char* argv[], const Config& cfg, const std::string& sha
                                         args.gfxCaptureEnabled, args.apiDumpEnabled}),
     windowIniter(window, drvInstance),
     deviceExtensions(true),
-    physicalDevice(get_device_selection_info(drvInstance, deviceExtensions), window),
+    physicalDevice(get_device_selection_info(drvInstance, deviceExtensions, shaderBin), window),
     commandLaneMgr(physicalDevice, window,
                    {{"main",
                      {{"render", 0.5, drv::CMD_TYPE_GRAPHICS, drv::CMD_TYPE_ALL, false, false},
@@ -200,7 +203,6 @@ Engine::Engine(int argc, char* argv[], const Config& cfg, const std::string& sha
               get_swapchain_create_info(config, presentQueue.queue, renderQueue.queue)),
     eventPool(device),
     syncBlock(device, safe_cast<uint32_t>(config.maxFramesInFlight)),
-    shaderBin(shaderbinFile),
     resourceMgr(std::move(resource_infos)),
     garbageSystem(safe_cast<size_t>(config.frameMemorySizeKb)),
     frameGraph(physicalDevice, device, &garbageSystem, &eventPool, config.trackerConfig),

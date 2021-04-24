@@ -106,9 +106,9 @@ bool drv::delete_instance(InstancePtr ptr) {
     return current_driver_interface->delete_instance(ptr);
 }
 
-bool drv::get_physical_devices(unsigned int* count, PhysicalDeviceInfo* infos,
-                               InstancePtr instance) {
-    return current_driver_interface->get_physical_devices(instance, count, infos);
+bool drv::get_physical_devices(unsigned int* count, const drv::DeviceLimits& limits,
+                               PhysicalDeviceInfo* infos, InstancePtr instance) {
+    return current_driver_interface->get_physical_devices(instance, limits, count, infos);
 }
 
 bool drv::get_physical_device_queue_families(PhysicalDevicePtr physicalDevice, unsigned int* count,

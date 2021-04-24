@@ -55,8 +55,8 @@ class DrvVulkan final : public drv::IDriver
     std::unique_ptr<drv::DrvShader> create_shader(drv::LogicalDevicePtr device,
                                                   const drv::DrvShaderObjectRegistry* reg) override;
     bool delete_instance(drv::InstancePtr ptr) override;
-    bool get_physical_devices(drv::InstancePtr instance, unsigned int* count,
-                              drv::PhysicalDeviceInfo* infos) override;
+    bool get_physical_devices(drv::InstancePtr instance, const drv::DeviceLimits& limits,
+                              unsigned int* count, drv::PhysicalDeviceInfo* infos) override;
     bool get_physical_device_queue_families(drv::PhysicalDevicePtr physicalDevice,
                                             unsigned int* count,
                                             drv::QueueFamily* queueFamilies) override;

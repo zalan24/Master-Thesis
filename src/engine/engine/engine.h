@@ -208,6 +208,7 @@ class Engine
     Logger logger;
     ErrorCallback callback;
     CoreContext coreContext;
+    ShaderBin shaderBin;
     Input input;
     InputManager inputManager;
     drv::DriverWrapper driver;
@@ -229,7 +230,6 @@ class Engine
     drv::Swapchain swapchain;
     EventPool eventPool;
     SyncBlock syncBlock;
-    ShaderBin shaderBin;
     ResourceManager resourceMgr;
     // EntityManager entityManager;
     GarbageSystem garbageSystem;
@@ -265,7 +265,8 @@ class Engine
     bool sampleInput(FrameId frameId);
 
     static drv::PhysicalDevice::SelectionInfo get_device_selection_info(
-      drv::InstancePtr instance, const drv::DeviceExtensions& deviceExtensions);
+      drv::InstancePtr instance, const drv::DeviceExtensions& deviceExtensions,
+      const ShaderBin& shaderBin);
     static drv::Swapchain::CreateInfo get_swapchain_create_info(const Config& config,
                                                                 drv::QueuePtr present_queue,
                                                                 drv::QueuePtr render_queue);

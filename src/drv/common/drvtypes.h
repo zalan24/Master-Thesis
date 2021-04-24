@@ -15,7 +15,6 @@
 
 namespace drv
 {
-
 struct InstanceCreateInfo
 {
     const char* appname;
@@ -51,6 +50,7 @@ struct PhysicalDeviceInfo
         CPU = 4,
     } type;
     PhysicalDevicePtr handle;
+    bool acceptable = false;
 };
 
 struct DeviceExtensions

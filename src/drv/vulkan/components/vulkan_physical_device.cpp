@@ -19,8 +19,8 @@ static unsigned long int min(unsigned long int a, unsigned long int b) {
     return a < b ? a : b;
 }
 
-bool DrvVulkan::get_physical_devices(drv::InstancePtr _instance, unsigned int* count,
-                                     drv::PhysicalDeviceInfo* infos) {
+bool DrvVulkan::get_physical_devices(drv::InstancePtr _instance, const drv::DeviceLimits& limits,
+                                     unsigned int* count, drv::PhysicalDeviceInfo* infos) {
     Instance* instance = drv::resolve_ptr<Instance*>(_instance);
     vkEnumeratePhysicalDevices(instance->instance, count, nullptr);
     if (infos == nullptr)
@@ -28,6 +28,7 @@ bool DrvVulkan::get_physical_devices(drv::InstancePtr _instance, unsigned int* c
     std::vector<VkPhysicalDevice> devices(*count);
     vkEnumeratePhysicalDevices(instance->instance, count, devices.data());
     for (unsigned int i = 0; i < *count; ++i) {
+        infos[i].acceptable = true;
         VkPhysicalDeviceProperties deviceProperties;
         VkPhysicalDeviceFeatures deviceFeatures;
         vkGetPhysicalDeviceProperties(devices[i], &deviceProperties);
@@ -37,6 +38,12 @@ bool DrvVulkan::get_physical_devices(drv::InstancePtr _instance, unsigned int* c
 
         LOG_DRIVER_API("Device found <%p>: %s", static_cast<const void*>(devices[i]),
                        deviceProperties.deviceName);
+
+        LOG_DRIVER_API(" maxPushConstantsSize: %d bytes (required: %d)",
+                       deviceProperties.limits.maxPushConstantsSize, limits.maxPushConstantsSize);
+
+        if (deviceProperties.limits.maxPushConstantsSize < limits.maxPushConstantsSize)
+            infos[i].acceptable = false;
 
         switch (deviceProperties.deviceType) {
             case VK_PHYSICAL_DEVICE_TYPE_OTHER:

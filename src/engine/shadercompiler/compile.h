@@ -11,8 +11,12 @@
 #include <unordered_set>
 #include <vector>
 
+#include <hardwareconfig.h>
 #include <serializable.h>
 #include <shaderbin.h>
+
+#include "compileconfig.h"
+#include "shaderstats.h"
 
 namespace fs = std::filesystem;
 
@@ -166,15 +170,24 @@ class Cache final : public ISerializable
 bool read_variants(const BlockFile* blockFile, Variants& variants);
 bool read_resources(const BlockFile* blockFile, Resources& resources);
 
-bool compile_shader(const fs::path& debugPath, const Compiler* compiler, ShaderBin& shaderBin,
-                    Cache& cache, ShaderRegistryOutput& registry, const std::string& shaderFile,
-                    const std::string& outputFolder,
-                    std::unordered_map<std::string, IncludeData>& includeData,
-                    const std::string& genFolder);
+struct CompilerData
+{
+    Cache cache;
+    ShaderRegistryOutput registry;
+    std::string outputFolder;
+    fs::path debugPath;
+    std::unordered_map<std::string, IncludeData> includeData;
+    const Compiler* compiler;
+    ShaderBin* shaderBin = nullptr;
+    std::string genFolder;
+    drv::DeviceLimits limits;
+    CompileOptions options;
+    ShaderCompilerStats stats;
+};
 
-bool generate_header(Cache& cache, ShaderRegistryOutput& registry, const std::string& shaderFile,
-                     const std::string& outputFolder,
-                     std::unordered_map<std::string, IncludeData>& includeData);
+bool compile_shader(CompilerData& compileData, const std::string shaderFile);
+
+bool generate_header(CompilerData& compileData, const std::string shaderFile);
 
 void init_registry(ShaderRegistryOutput& registry);
 void finish_registry(ShaderRegistryOutput& registry);

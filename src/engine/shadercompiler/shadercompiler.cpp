@@ -12,6 +12,7 @@
 #include <shaderbin.h>
 
 #include "compile.h"
+#include "compileconfig.h"
 #include "spirvcompiler.h"
 
 using namespace std;
@@ -35,14 +36,19 @@ int main(int argc, char* argv[]) {
     app.add_option("-c,--cache", cacheF, "Cache folder");
     std::string generated = "";
     app.add_option("-g,--generated", generated, "Folder to export generated shaders");
+    std::string hardwareReq = "";
+    app.add_option("--hardware", hardwareReq, "Hardware requirements config");
+    std::string compileOptionsFile = "";
+    app.add_option("--options", compileOptionsFile, "Compile options config");
 
     CLI11_PARSE(app, argc, argv)
 
     std::unordered_map<std::string, fs::path> headerPaths;
 
-    if (root == "" || output == "" || headers == "" || debugOut == "") {
+    if (root == "" || output == "" || headers == "" || debugOut == "" || hardwareReq == ""
+        || compileOptionsFile == "") {
         std::cerr
-          << "Please provide a source root folder, a debug output dir, a header output dir and an output bin file"
+          << "Please provide a source root folder, a debug output dir, a header output dir, an output bin file, hardware requirements file and a compile options file."
           << std::endl;
         return 1;
     }
@@ -57,34 +63,58 @@ int main(int argc, char* argv[]) {
     std::regex headerRegex("(.*)\\.sh");
     std::regex shaderRegex("(.*)\\.sd");
 
-    ShaderBin shaderBin;
+    drv::DeviceLimits limits;
+    if (hardwareReq != "") {
+        std::ifstream limitsIn(hardwareReq.c_str());
+        if (!limitsIn.is_open()) {
+            std::cerr << "Could not open file: " << hardwareReq << std::endl;
+            return 1;
+        }
+        limits.read(limitsIn);
+    }
+
     Compiler compiler;
-    Cache cache;
-    std::unordered_map<std::string, IncludeData> includeData;
+    ShaderBin shaderBin(limits);
+    CompilerData compileData;
+    compileData.outputFolder = headers;
+    compileData.debugPath = debugPath;
+    compileData.genFolder = generated;
+    compileData.compiler = &compiler;
+    compileData.shaderBin = &shaderBin;
+    // TODO compilerData.stats
 
     fs::path cacheFolder = fs::path{cacheF};
     fs::path cacheFile = cacheFolder / fs::path{"cache.json"};
     fs::path registryFile = headers / fs::path{"shaderregistry.h"};
 
-    if (generated != "") {
-        fs::path genFolder = fs::path{generated};
-        if (fs::exists(genFolder))
-            fs::remove_all(genFolder);
-        fs::create_directories(genFolder);
-    }
-
-    {
-        std::ifstream cacheIn(cacheFile.string());
-        if (cacheIn.is_open()) {
-            json cacheJson;
-            cacheIn >> cacheJson;
-            ISerializable::serialize(cacheJson, cache);
-        }
-    }
-
     try {
-        ShaderRegistryOutput registryData;
-        init_registry(registryData);
+        if (generated != "") {
+            fs::path genFolder = fs::path{generated};
+            if (fs::exists(genFolder))
+                fs::remove_all(genFolder);
+            fs::create_directories(genFolder);
+        }
+
+        {
+            std::ifstream cacheIn(cacheFile.string());
+            if (cacheIn.is_open()) {
+                json cacheJson;
+                cacheIn >> cacheJson;
+                ISerializable::serialize(cacheJson, compileData.cache);
+            }
+        }
+
+        CompileOptions compileOptions;
+        if (compileOptionsFile != "") {
+            std::ifstream optionsIn(hardwareReq.c_str());
+            if (!optionsIn.is_open()) {
+                std::cerr << "Could not open file: " << compileOptionsFile << std::endl;
+                return 1;
+            }
+            compileOptions.read(optionsIn);
+        }
+
+        init_registry(compileData.registry);
 
         for (const std::string& f : files) {
             std::smatch m;
@@ -94,7 +124,7 @@ int main(int argc, char* argv[]) {
                   << std::endl;
                 return 1;
             }
-            if (!::generate_header(cache, registryData, f, headers, includeData)) {
+            if (!::generate_header(compileData, f)) {
                 std::cerr << "Could not generate header for: " << f << std::endl;
                 return 1;
             }
@@ -104,19 +134,21 @@ int main(int argc, char* argv[]) {
             if (!std::regex_match(f, m, shaderRegex))
                 continue;
             std::cout << "Compiling: " << f << std::endl;
-            if (!compile_shader(debugPath, &compiler, shaderBin, cache, registryData, f, headers,
-                                includeData, generated)) {
+            if (!compile_shader(compileData, f)) {
                 std::cerr << "Failed to compile a shader: " << f << std::endl;
                 return 1;
             }
         }
-        finish_registry(registryData);
+        finish_registry(compileData.registry);
         {
             std::ofstream registry(registryFile.c_str());
-            registry << registryData.includes.str() << registryData.headersStart.str()
-                     << registryData.headersCtor.str() << registryData.headersEnd.str()
-                     << registryData.objectsStart.str() << registryData.objectsCtor.str()
-                     << registryData.objectsEnd.str();
+            registry << compileData.registry.includes.str()
+                     << compileData.registry.headersStart.str()
+                     << compileData.registry.headersCtor.str()
+                     << compileData.registry.headersEnd.str()
+                     << compileData.registry.objectsStart.str()
+                     << compileData.registry.objectsCtor.str()
+                     << compileData.registry.objectsEnd.str();
         }
         std::ofstream binOut(output, std::ios::binary | std::ios::out);
         if (!binOut.is_open()) {
@@ -146,7 +178,7 @@ int main(int argc, char* argv[]) {
             std::cerr << "Could not save cache" << std::endl;
             return 1;
         }
-        json cacheJson = ISerializable::serialize(cache);
+        json cacheJson = ISerializable::serialize(compileData.cache);
         cacheOut << cacheJson;
     }
     return 0;

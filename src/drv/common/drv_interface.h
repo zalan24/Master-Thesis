@@ -2,6 +2,7 @@
 
 #include "drvshader.h"
 #include "drvtypes.h"
+#include "hardwareconfig.h"
 
 #include <mutex>
 
@@ -29,8 +30,8 @@ class IDriver
     virtual std::unique_ptr<DrvShader> create_shader(LogicalDevicePtr device,
                                                      const DrvShaderObjectRegistry* reg) = 0;
     virtual bool delete_instance(InstancePtr ptr) = 0;
-    virtual bool get_physical_devices(InstancePtr instance, unsigned int* count,
-                                      PhysicalDeviceInfo* infos) = 0;
+    virtual bool get_physical_devices(InstancePtr instance, const drv::DeviceLimits& limits,
+                                      unsigned int* count, PhysicalDeviceInfo* infos) = 0;
     virtual bool get_physical_device_queue_families(PhysicalDevicePtr physicalDevice,
                                                     unsigned int* count,
                                                     QueueFamily* queueFamilies) = 0;

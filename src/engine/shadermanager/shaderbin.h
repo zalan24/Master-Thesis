@@ -8,6 +8,7 @@
 #include <vector>
 
 #include <drvtypes.h>
+#include <hardwareconfig.h>
 
 class ShaderBin
 {
@@ -71,7 +72,7 @@ class ShaderBin
         std::vector<uint32_t> codes;
     };
 
-    ShaderBin() = default;
+    ShaderBin(drv::DeviceLimits limits);
     ShaderBin(const std::string& binfile);
 
     void read(std::istream& in);
@@ -83,6 +84,9 @@ class ShaderBin
 
     const ShaderData* getShader(const std::string& name) const;
 
+    const drv::DeviceLimits& getLimits() const { return limits; }
+
  private:
     std::unordered_map<std::string, ShaderData> shaders;
+    drv::DeviceLimits limits;
 };

@@ -5,6 +5,7 @@
 #include <vector>
 
 #include <corecontext.h>
+#include <logger.h>
 
 #include <drverror.h>
 #include <drvwindow.h>
@@ -113,10 +114,10 @@ bool PhysicalDevice::pick_discere_card(PhysicalDeviceInfo* lhs, PhysicalDeviceIn
 
 PhysicalDevice::PhysicalDevice(const SelectionInfo& info, IWindow* window) {
     unsigned int count = 0;
-    if (!get_physical_devices(&count, nullptr, info.instance))
+    if (!get_physical_devices(&count, info.limits, nullptr, info.instance))
         return;
     std::vector<PhysicalDeviceInfo> infos(count);
-    if (!get_physical_devices(&count, infos.data(), info.instance))
+    if (!get_physical_devices(&count, info.limits, infos.data(), info.instance))
         return;
     PhysicalDeviceInfo* best = nullptr;
     for (unsigned int i = 0; i < count; ++i) {
@@ -141,15 +142,26 @@ PhysicalDevice::PhysicalDevice(const SelectionInfo& info, IWindow* window) {
             presentOk = drv::can_present(infos[i].handle, window, queueFamilies[k].handle);
         if (!ok || !presentOk)
             continue;
-        if (info.compare == nullptr) {
+        if (info.compare == nullptr && infos[i].acceptable) {
             best = &infos[i];
             break;
         }
-        if (best == nullptr || info.compare(best, &infos[i]))
+        if (best == nullptr) {
             best = &infos[i];
+        }
+        else if (infos[i].acceptable && !best->acceptable) {
+            best = &infos[i];
+        }
+        else if ((infos[i].acceptable || !best->acceptable) && info.compare(best, &infos[i])) {
+            best = &infos[i];
+        }
     }
-    if (best != nullptr)
+    if (best != nullptr) {
         ptr = best->handle;
+        drv::drv_assert(
+          best->acceptable,
+          "Selected device is not acceptable based on handware requirements, but no other device was acceptable");
+    }
 }
 
 PhysicalDevice::operator PhysicalDevicePtr() const {

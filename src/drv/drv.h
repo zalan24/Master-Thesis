@@ -3,6 +3,7 @@
 #include <drv_resource_tracker.h>
 #include <drvshader.h>
 #include <drvtypes.h>
+#include <hardwareconfig.h>
 
 #include <memory>
 #include <mutex>
@@ -48,7 +49,8 @@ std::unique_ptr<DrvShader> create_shader(LogicalDevicePtr device,
 InstancePtr create_instance(const InstanceCreateInfo* info);
 bool delete_instance(InstancePtr ptr);
 
-bool get_physical_devices(unsigned int* count, PhysicalDeviceInfo* infos, InstancePtr instance);
+bool get_physical_devices(unsigned int* count, const drv::DeviceLimits& limits,
+                          PhysicalDeviceInfo* infos, InstancePtr instance);
 bool get_physical_device_queue_families(PhysicalDevicePtr physicalDevice, unsigned int* count,
                                         QueueFamily* queueFamilies);
 

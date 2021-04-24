@@ -2,9 +2,13 @@
 
 #include <cassert>
 #include <fstream>
+#include <sstream>
 #include <stdexcept>
 
 #include <binary_io.h>
+
+ShaderBin::ShaderBin(drv::DeviceLimits _limits) : limits(_limits) {
+}
 
 ShaderBin::ShaderBin(const std::string& binfile) {
     std::ifstream in(binfile, std::ios::in | std::ios::binary);
@@ -88,6 +92,12 @@ void ShaderBin::read(std::istream& in) {
         read_vector(in, data.codes);
         shaders[name] = std::move(data);
     }
+    std::string limitsStr;
+    read_string(in, limitsStr);
+    {
+        std::stringstream ss(limitsStr);
+        limits.read(ss);
+    }
     uint32_t ending;
     read_data(in, ending);
     if (ending != FILE_END)
@@ -112,6 +122,11 @@ void ShaderBin::write(std::ostream& out) const {
             write_configs(out, data.stages[i].configs);
         }
         write_vector(out, data.codes);
+    }
+    {
+        std::stringstream ss;
+        limits.write(ss);
+        write_string(out, ss.str());
     }
     write_data(out, FILE_END);
 }

@@ -97,6 +97,7 @@ class PhysicalDevice
 
     struct SelectionInfo
     {
+        drv::DeviceLimits limits;
         bool requirePresent;
         drv::DeviceExtensions extensions;
         std::vector<CommandTypeMask> commandMasks;

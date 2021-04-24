@@ -197,11 +197,11 @@ static std::string get_variant_enum_value(std::string value) {
     return value;
 }
 
-bool generate_header(Cache& cache, ShaderRegistryOutput& registry, const std::string& shaderFile,
-                     const std::string& outputFolder,
-                     std::unordered_map<std::string, IncludeData>& includeData) {
-    if (!fs::exists(fs::path(outputFolder)) && !fs::create_directories(fs::path(outputFolder))) {
-        std::cerr << "Could not create directory for shader headers: " << outputFolder << std::endl;
+bool generate_header(CompilerData& compileData, const std::string shaderFile) {
+    if (!fs::exists(fs::path(compileData.outputFolder))
+        && !fs::create_directories(fs::path(compileData.outputFolder))) {
+        std::cerr << "Could not create directory for shader headers: " << compileData.outputFolder
+                  << std::endl;
         return false;
     }
     IncludeData incData;
@@ -428,18 +428,18 @@ bool generate_header(Cache& cache, ShaderRegistryOutput& registry, const std::st
     header << "    std::unique_ptr<drv::DrvShaderHeader> header;\n";
     header << "};\n";
 
-    registry.headersStart << "    " << registryClassName << " " << name << ";\n";
-    registry.headersCtor << "      " << (registry.firstHeader ? ':' : ',') << " " << name
-                         << "(device)\n";
-    registry.firstHeader = false;
+    compileData.registry.headersStart << "    " << registryClassName << " " << name << ";\n";
+    compileData.registry.headersCtor << "      " << (compileData.registry.firstHeader ? ':' : ',')
+                                     << " " << name << "(device)\n";
+    compileData.registry.firstHeader = false;
 
-    fs::path headerFilePath = fs::path(outputFolder) / headerFileName;
-    fs::path cxxFilePath = fs::path(outputFolder) / cxxFileName;
-    registry.includes << "#include <" << headerFileName.string() << ">\n";
+    fs::path headerFilePath = fs::path(compileData.outputFolder) / headerFileName;
+    fs::path cxxFilePath = fs::path(compileData.outputFolder) / cxxFileName;
+    compileData.registry.includes << "#include <" << headerFileName.string() << ">\n";
     incData.headerFileName = fs::path{headerFileName};
     const std::string h = hash_string(header.str() + cxx.str());
-    if (auto itr = cache.headerHashes.find(name);
-        itr == cache.headerHashes.end() || itr->second != h) {
+    if (auto itr = compileData.cache.headerHashes.find(name);
+        itr == compileData.cache.headerHashes.end() || itr->second != h) {
         std::ofstream outHeaderFile(headerFilePath.string());
         if (!outHeaderFile.is_open()) {
             std::cerr << "Could not open output file: " << headerFileName.string() << std::endl;
@@ -453,9 +453,9 @@ bool generate_header(Cache& cache, ShaderRegistryOutput& registry, const std::st
             return false;
         }
         outCxxFile << cxx.str();
-        cache.headerHashes[name] = h;
+        compileData.cache.headerHashes[name] = h;
     }
-    includeData[name] = std::move(incData);
+    compileData.includeData[name] = std::move(incData);
 
     return true;
 }
@@ -1076,11 +1076,7 @@ void ResourcePack::generateCXX(const std::string& structName, const Resources& r
     out << "static_assert(sizeof(" << structName << ") == " << predictedSize << ");\n\n";
 }
 
-bool compile_shader(const fs::path& debugPath, const Compiler* compiler, ShaderBin& shaderBin,
-                    Cache& cache, ShaderRegistryOutput& registry, const std::string& shaderFile,
-                    const std::string& outputFolder,
-                    std::unordered_map<std::string, IncludeData>& includeData,
-                    const std::string& genFolder) {
+bool compile_shader(CompilerData& compileData, const std::string shaderFile) {
     std::stringstream cu;
     std::stringstream header;
     std::stringstream cxx;
@@ -1099,7 +1095,8 @@ bool compile_shader(const fs::path& debugPath, const Compiler* compiler, ShaderB
     std::set<std::string> includes;
     std::set<std::string> progress;
     std::vector<std::string> directIncludes;
-    if (!include_headers(shaderFile, cu, includes, progress, includeData, directIncludes)) {
+    if (!include_headers(shaderFile, cu, includes, progress, compileData.includeData,
+                         directIncludes)) {
         std::cerr << "Could not collect headers for shader: " << shaderFile << std::endl;
         return false;
     }
@@ -1162,8 +1159,8 @@ bool compile_shader(const fs::path& debugPath, const Compiler* compiler, ShaderB
     std::unordered_map<std::string, std::string> variantParamToDescriptor;
     std::unordered_map<std::string, uint32_t> variantIdMultiplier;
     uint32_t variantIdMul = 1;
-    include_all(header, fs::path{outputFolder}, includeData, directIncludes, allIncludes,
-                variantIdMultiplier, variantParamToDescriptor, variantIdMul);
+    include_all(header, fs::path{compileData.outputFolder}, compileData.includeData, directIncludes,
+                allIncludes, variantIdMultiplier, variantParamToDescriptor, variantIdMul);
 
     std::vector<Variants> variants;
     size_t descriptorCount = cuBlocks.getBlockCount("descriptor");
@@ -1179,8 +1176,8 @@ bool compile_shader(const fs::path& debugPath, const Compiler* compiler, ShaderB
                 assert(desc != variantParamToDescriptor.end());
                 auto descMulItr = variantIdMultiplier.find(desc->second);
                 assert(descMulItr != variantIdMultiplier.end());
-                auto inc = includeData.find(desc->second);
-                assert(inc != includeData.end());
+                auto inc = compileData.includeData.find(desc->second);
+                assert(inc != compileData.includeData.end());
                 auto variantMul = inc->second.variantMultiplier.find(name);
                 assert(variantMul != inc->second.variantMultiplier.end());
                 variantParamMultiplier[name] =
@@ -1200,29 +1197,30 @@ bool compile_shader(const fs::path& debugPath, const Compiler* compiler, ShaderB
     std::map<PipelineResourceUsage, ResourceObject> resourceObjects;
     std::vector<PipelineResourceUsage> varintToResourceUsage;
     std::string genFile = "";
-    if (genFolder != "")
-        genFile = (fs::path{genFolder} / fs::path{shaderName + ".glsl"}).string();
-    if (!generate_binary(debugPath, compiler, resources, shaderData, variants, std::move(genInput),
-                         variantParamMultiplier, resourceObjects, varintToResourceUsage, genFile)) {
+    if (compileData.genFolder != "")
+        genFile = (fs::path{compileData.genFolder} / fs::path{shaderName + ".glsl"}).string();
+    if (!generate_binary(compileData.debugPath, compileData.compiler, resources, shaderData,
+                         variants, std::move(genInput), variantParamMultiplier, resourceObjects,
+                         varintToResourceUsage, genFile)) {
         std::cerr << "Could not generate binary: " << shaderFile << std::endl;
         return false;
     }
 
-    shaderBin.addShader(shaderName, std::move(shaderData));
+    compileData.shaderBin->addShader(shaderName, std::move(shaderData));
 
     const std::string className = "shader_" + shaderName;
     const std::string registryClassName = "shader_obj_registry_" + shaderName;
 
-    registry.objectsStart << "    " << registryClassName << " " << shaderName << ";\n";
-    registry.objectsCtor << "      " << (registry.firstObj ? ':' : ',') << " " << shaderName
-                         << "(device, shaderBin";
+    compileData.registry.objectsStart << "    " << registryClassName << " " << shaderName << ";\n";
+    compileData.registry.objectsCtor << "      " << (compileData.registry.firstObj ? ':' : ',')
+                                     << " " << shaderName << "(device, shaderBin";
     for (const std::string& inc : allIncludes) {
-        auto itr = includeData.find(inc);
-        assert(itr != includeData.end());
-        registry.objectsCtor << ", &headers." << itr->second.name;
+        auto itr = compileData.includeData.find(inc);
+        assert(itr != compileData.includeData.end());
+        compileData.registry.objectsCtor << ", &headers." << itr->second.name;
     }
-    registry.objectsCtor << ")\n";
-    registry.firstObj = false;
+    compileData.registry.objectsCtor << ")\n";
+    compileData.registry.firstObj = false;
 
     header << "\n";
 
@@ -1246,8 +1244,8 @@ bool compile_shader(const fs::path& debugPath, const Compiler* compiler, ShaderB
     cxx << registryClassName << "::" << registryClassName
         << "(drv::LogicalDevicePtr device, const ShaderBin &shaderBin";
     for (const std::string& inc : allIncludes) {
-        auto itr = includeData.find(inc);
-        assert(itr != includeData.end());
+        auto itr = compileData.includeData.find(inc);
+        assert(itr != compileData.includeData.end());
         header << ", const " << itr->second.desriptorRegistryClassName << " *reg_"
                << itr->second.name;
         cxx << ", const " << itr->second.desriptorRegistryClassName << " *reg_" << itr->second.name;
@@ -1314,8 +1312,8 @@ bool compile_shader(const fs::path& debugPath, const Compiler* compiler, ShaderB
     cxx << "ShaderObjectRegistry::VariantId " << registryClassName << "::get_variant_id(";
     bool first = true;
     for (const std::string& inc : allIncludes) {
-        auto itr = includeData.find(inc);
-        assert(itr != includeData.end());
+        auto itr = compileData.includeData.find(inc);
+        assert(itr != compileData.includeData.end());
         if (!first) {
             header << ", ";
             cxx << ", ";
@@ -1330,8 +1328,8 @@ bool compile_shader(const fs::path& debugPath, const Compiler* compiler, ShaderB
     cxx << ") {\n";
     cxx << "    uint32_t ret = 0;\n";
     for (const std::string& inc : allIncludes) {
-        auto itr = includeData.find(inc);
-        assert(itr != includeData.end());
+        auto itr = compileData.includeData.find(inc);
+        assert(itr != compileData.includeData.end());
         auto mulItr = variantIdMultiplier.find(inc);
         assert(mulItr != variantIdMultiplier.end());
         cxx << "    ret += " << itr->second.name << ".getLocalVariantId() * " << mulItr->second
@@ -1372,8 +1370,8 @@ bool compile_shader(const fs::path& debugPath, const Compiler* compiler, ShaderB
     std::stringstream varintIdInput;
     first = true;
     for (const std::string& inc : allIncludes) {
-        auto itr = includeData.find(inc);
-        assert(itr != includeData.end());
+        auto itr = compileData.includeData.find(inc);
+        assert(itr != compileData.includeData.end());
         header << ", const " << itr->second.desriptorClassName << "::VariantDesc &"
                << itr->second.name;
         cxx << ", const " << itr->second.desriptorClassName << "::VariantDesc &"
@@ -1398,8 +1396,8 @@ bool compile_shader(const fs::path& debugPath, const Compiler* compiler, ShaderB
     cxx << "    return getGraphicsPipeline(desc);\n";
     cxx << "}\n";
     for (const std::string& inc : allIncludes) {
-        auto itr = includeData.find(inc);
-        assert(itr != includeData.end());
+        auto itr = compileData.includeData.find(inc);
+        assert(itr != compileData.includeData.end());
         header
           << "    static size_t getPushConstOffset(ShaderObjectRegistry::VariantId variantId, const "
           << itr->second.desriptorClassName << " *" << itr->second.name << ");\n";
@@ -1425,8 +1423,8 @@ bool compile_shader(const fs::path& debugPath, const Compiler* compiler, ShaderB
         << "::bindGraphicsInfo(drv::CmdRenderPass &renderPass, const DynamicState &dynamicStates";
     std::stringstream pipelineInput;
     for (const std::string& inc : allIncludes) {
-        auto itr = includeData.find(inc);
-        assert(itr != includeData.end());
+        auto itr = compileData.includeData.find(inc);
+        assert(itr != compileData.includeData.end());
         header << ", const " << itr->second.desriptorClassName << " *" << itr->second.name;
         cxx << ", const " << itr->second.desriptorClassName << " *" << itr->second.name;
         pipelineInput << "        " << itr->second.name << "->getVariantDesc(),\n";
@@ -1443,14 +1441,14 @@ bool compile_shader(const fs::path& debugPath, const Compiler* compiler, ShaderB
     cxx << "}\n";
     header << "};\n";
 
-    registry.includes << "#include <" << headerFileName.string() << ">\n";
+    compileData.registry.includes << "#include <" << headerFileName.string() << ">\n";
 
     const std::string h = hash_string(header.str() + cxx.str());
     const std::string cacheEntry = shaderName + "_obj";
-    if (auto itr = cache.headerHashes.find(cacheEntry);
-        itr == cache.headerHashes.end() || itr->second != h) {
-        fs::path headerFilePath = fs::path(outputFolder) / headerFileName;
-        fs::path cxxFilePath = fs::path(outputFolder) / cxxFileName;
+    if (auto itr = compileData.cache.headerHashes.find(cacheEntry);
+        itr == compileData.cache.headerHashes.end() || itr->second != h) {
+        fs::path headerFilePath = fs::path(compileData.outputFolder) / headerFileName;
+        fs::path cxxFilePath = fs::path(compileData.outputFolder) / cxxFileName;
         std::ofstream headerFile(headerFilePath.string());
         if (!headerFile.is_open()) {
             std::cerr << "Could not open output file: " << headerFilePath.string() << std::endl;
@@ -1464,7 +1462,7 @@ bool compile_shader(const fs::path& debugPath, const Compiler* compiler, ShaderB
             return false;
         }
         cxxFile << cxx.str();
-        cache.headerHashes[cacheEntry] = h;
+        compileData.cache.headerHashes[cacheEntry] = h;
     }
 
     return true;
