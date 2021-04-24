@@ -18,13 +18,6 @@ class ShaderObject
     virtual ~ShaderObject() {}
 
     void clear(Garbage* trashBin);
-
-    enum PipelineCreateMode
-    {
-        CREATE_SILENT,
-        CREATE_WARNING
-    };
-
     struct DynamicState
     {
         drv::DrvShader::Viewport viewport;
@@ -86,8 +79,7 @@ class ShaderObject
         }
     };
 
-    uint32_t getGraphicsPipeline(PipelineCreateMode createMode,
-                                 const GraphicsPipelineDescriptor& desc);
+    uint32_t getGraphicsPipeline(const GraphicsPipelineDescriptor& desc);
 
  private:
     std::string name;

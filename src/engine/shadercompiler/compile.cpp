@@ -277,7 +277,7 @@ bool generate_header(Cache& cache, ShaderRegistryOutput& registry, const std::st
     cxx << "#include \"" << headerFileName.string() << "\"\n\n";
     cxx << "#include <drv.h>\n\n";
 
-    header << "class " << registryClassName << " {\n";
+    header << "class " << registryClassName << " final : public ShaderDescriptorReg {\n";
     header << "  public:\n";
     header << "    " << registryClassName << "(drv::LogicalDevicePtr device);\n";
     cxx << registryClassName << "::" << registryClassName << "(drv::LogicalDevicePtr device)\n";
@@ -340,7 +340,10 @@ bool generate_header(Cache& cache, ShaderRegistryOutput& registry, const std::st
         header << "    void set_" << varName << "(const " << varType << " &_" << varName << ");\n";
         cxx << "void " << className << "::set_" << varName << "(const " << varType << " &_"
             << varName << ") {\n";
-        cxx << "    " << varName << " = _" << varName << ";\n";
+        cxx << "    if (varName != _varName) {\n";
+        cxx << "        " << varName << " = _" << varName << ";\n";
+        cxx << "        invalidatePushConsts();\n";
+        cxx << "    }\n";
         cxx << "}\n";
     }
     incData.totalVarintMultiplier = variantMul;
@@ -416,6 +419,7 @@ bool generate_header(Cache& cache, ShaderRegistryOutput& registry, const std::st
     cxx << "  , header(drv::create_shader_header(device, reg->reg.get()))\n";
     cxx << "{\n";
     cxx << "}\n";
+    header << "    const ShaderDescriptorReg* getReg() const override { return reg; }\n";
     header << "  private:\n";
     header << "    VariantDesc variantDesc;\n";
     header << "    const " << registryClassName << " *reg;\n";
@@ -1333,8 +1337,9 @@ bool compile_shader(const fs::path& debugPath, const Compiler* compiler, ShaderB
     }
     cxx << "    return ret;\n";
     cxx << "}\n";
-    header << "    static uint32_t get_config_id(uint32_t variantId);\n";
-    cxx << "uint32_t " << registryClassName << "::get_config_id(uint32_t variantId) {\n";
+    header << "    static uint32_t get_config_id(ShaderObjectRegistry::VariantId variantId);\n";
+    cxx << "uint32_t " << registryClassName
+        << "::get_config_id(ShaderObjectRegistry::VariantId variantId) {\n";
     cxx << "    return CONFIG_INDEX[variantId];\n";
     cxx << "}\n";
     header << "    friend class " << className << ";\n";
@@ -1376,9 +1381,8 @@ bool compile_shader(const fs::path& debugPath, const Compiler* compiler, ShaderB
             first = false;
         varintIdInput << itr->second.name;
     }
-    header
-      << ", const GraphicsPipelineStates &overrideStates = {}, PipelineCreateMode createMode = ShaderObject::CREATE_SILENT);\n";
-    cxx << ", const GraphicsPipelineStates &overrideStates, PipelineCreateMode createMode) {\n";
+    header << ", const GraphicsPipelineStates &overrideStates = {});\n";
+    cxx << ", const GraphicsPipelineStates &overrideStates) {\n";
     cxx << "    GraphicsPipelineDescriptor desc;\n";
     cxx << "    desc.renderPass = renderPass;\n";
     cxx << "    desc.subpass = subpass;\n";
@@ -1390,11 +1394,20 @@ bool compile_shader(const fs::path& debugPath, const Compiler* compiler, ShaderB
     cxx << "    desc.dynamicStates = dynamicStates;\n";
     cxx << "    return getGraphicsPipeline(createMode, desc);\n";
     cxx << "}\n";
+    for (const std::string& inc : allIncludes) {
+        auto itr = includeData.find(inc);
+        assert(itr != includeData.end());
+        header
+          << "    static size_t getPushConstOffset(ShaderObjectRegistry::VariantId variantId, const "
+          << itr->second.desriptorClassName << " *" << itr->second.name << ");";
+        header
+          << "    static size_t getPushConstSize(ShaderObjectRegistry::VariantId variantId, const "
+          << itr->second.desriptorClassName << " *" << itr->second.name << ");";
+    }
     header
-      << "    void bindGraphicsInfo(PipelineCreateMode createMode, drv::CmdRenderPass &renderPass, const DynamicState &dynamicStates";
-    cxx
-      << "void " << className
-      << "::bindGraphicsInfo(PipelineCreateMode createMode, drv::CmdRenderPass &renderPass, const DynamicState &dynamicStates";
+      << "    void bindGraphicsInfo(drv::CmdRenderPass &renderPass, const DynamicState &dynamicStates";
+    cxx << "void " << className
+        << "::bindGraphicsInfo(drv::CmdRenderPass &renderPass, const DynamicState &dynamicStates";
     std::stringstream pipelineInput;
     for (const std::string& inc : allIncludes) {
         auto itr = includeData.find(inc);

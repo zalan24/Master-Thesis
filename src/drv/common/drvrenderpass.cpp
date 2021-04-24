@@ -20,21 +20,25 @@ SubpassId RenderPass::createSubpass(SubpassInfo info) {
     return ret;
 }
 
-CmdRenderPass::CmdRenderPass(ResourceTracker* _tracker, CommandBufferPtr _cmdBuffer,
-                             RenderPass* _renderPass, Rect2D _renderArea,
-                             FramebufferPtr _frameBuffer, SubpassId _subpassCount,
-                             const SubpassInfo* _subpassInfos, uint32_t _layerCount)
+CmdRenderPass::CmdRenderPass(RenderPass* _renderPass, ResourceTracker* _tracker,
+                             CommandBufferPtr _cmdBuffer, Rect2D _renderArea,
+                             FramebufferPtr _frameBuffer, const drv::ClearValue* clearValues)
   : tracker(_tracker),
     cmdBuffer(_cmdBuffer),
     renderPass(_renderPass),
     renderArea(_renderArea),
-    frameBuffer(_frameBuffer),
-    subpassCount(_subpassCount),
-    subpassInfos(_subpassInfos),
-    layerCount(_layerCount) {
+    frameBuffer(_frameBuffer)
+// subpassCount(_subpassCount),
+// subpassInfos(_subpassInfos),
+// layerCount(_layerCount)
+{
     fullRect.baseLayer = 0;
     fullRect.layerCount = layerCount;
     fullRect.rect = renderArea;
+    RenderPass::PassBeginData data = renderPass->begin(clearValues);
+    layerCount = data.numLayers;
+    subpassCount = data.subpassCount;
+    subpassInfos = data.subpassInfos;
 }
 
 void CmdRenderPass::beginSubpass(SubpassId id) {
@@ -98,6 +102,7 @@ void CmdRenderPass::clearColorAttachment(AttachmentId attachment, ClearColorValu
 }
 
 void CmdRenderPass::bindGraphicsPipeline(const GraphicsPipelineBindInfo& info) {
+    TODO;  // only bind if changed
     renderPass->bindGraphicsPipeline(cmdBuffer, tracker, info);
 }
 

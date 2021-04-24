@@ -25,9 +25,6 @@ class VulkanRenderPass final : public drv::RenderPass
     bool needRecreation(const AttachmentData* attachments) override;
     void recreate(const AttachmentData* attachments) override;
     drv::FramebufferPtr createFramebuffer(const AttachmentData* attachments) const override;
-    drv::CmdRenderPass begin(drv::ResourceTracker* tracker, drv::CommandBufferPtr cmdBuffer,
-                             drv::FramebufferPtr frameBuffer, const drv::Rect2D& renderArea,
-                             const drv::ClearValue* clearValues) override;
 
  protected:
     void beginRenderPass(drv::FramebufferPtr frameBuffer, const drv::Rect2D& renderArea,
@@ -47,6 +44,8 @@ class VulkanRenderPass final : public drv::RenderPass
 
     void draw(drv::CommandBufferPtr cmdBuffer, drv::ResourceTracker* tracker, uint32_t vertexCount,
               uint32_t instanceCount, uint32_t firstVertex, uint32_t firstInstance) const override;
+
+    PassBeginData begin(const drv::ClearValue* clearValues) override;
 
  private:
     VkRenderPass renderPass = VK_NULL_HANDLE;

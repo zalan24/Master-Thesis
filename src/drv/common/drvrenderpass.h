@@ -53,17 +53,16 @@ struct GraphicsPipelineBindInfo
 struct ShaderHeaderInfo
 {};
 
-class CmdRenderPass final
+class CmdRenderPass
 {
  public:
-    CmdRenderPass(ResourceTracker* _tracker, CommandBufferPtr _cmdBuffer, RenderPass* _renderPass,
-                  Rect2D _renderArea, FramebufferPtr _frameBuffer, SubpassId _subpassCount,
-                  const SubpassInfo* _subpassInfos, uint32_t _layerCount);
+    CmdRenderPass(RenderPass* _renderPass, ResourceTracker* _tracker, CommandBufferPtr _cmdBuffer,
+                  Rect2D _renderArea, FramebufferPtr _frameBuffer,
+                  const drv::ClearValue* clearValues);
     CmdRenderPass(const CmdRenderPass&) = delete;
     CmdRenderPass& operator=(const CmdRenderPass&) = delete;
     CmdRenderPass(CmdRenderPass&& other);
     CmdRenderPass& operator=(CmdRenderPass&& other);
-    ~CmdRenderPass();
 
     void beginSubpass(SubpassId id);
     void end();
@@ -77,10 +76,12 @@ class CmdRenderPass final
     void draw(uint32_t vertexCount, uint32_t instanceCount, uint32_t firstVertex,
               uint32_t firstInstance);
 
-    void bindGraphicsPipeline(const GraphicsPipelineBindInfo& info);
-
     const RenderPass* getRenderPass() const { return renderPass; }
     SubpassId getSubpass() const { return currentPass; }
+
+ protected:
+    ~CmdRenderPass();
+    void bindGraphicsPipeline(const GraphicsPipelineBindInfo& info);
 
  private:
     ResourceTracker* tracker = nullptr;
@@ -137,9 +138,6 @@ class RenderPass
     virtual bool needRecreation(const AttachmentData* attachments) = 0;
     virtual void recreate(const AttachmentData* attachments) = 0;
     virtual FramebufferPtr createFramebuffer(const AttachmentData* attachments) const = 0;
-    virtual CmdRenderPass begin(ResourceTracker* tracker, CommandBufferPtr cmdBuffer,
-                                FramebufferPtr frameBuffer, const drv::Rect2D& renderArea,
-                                const ClearValue* clearValues) = 0;
 
  protected:
     LogicalDevicePtr device;
@@ -163,6 +161,15 @@ class RenderPass
     virtual void draw(CommandBufferPtr cmdBuffer, ResourceTracker* tracker, uint32_t vertexCount,
                       uint32_t instanceCount, uint32_t firstVertex,
                       uint32_t firstInstance) const = 0;
+
+    struct PassBeginData
+    {
+        uint32_t numLayers;
+        SubpassId subpassCount;
+        const SubpassInfo* subpassInfos;
+    };
+
+    virtual PassBeginData begin(const ClearValue* clearValues) = 0;
 };
 
 }  // namespace drv

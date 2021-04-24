@@ -82,8 +82,7 @@ drv::DrvShader::GraphicalPipelineCreateInfo ShaderObject::getGraphicsPipelineCre
     return ret;
 }
 
-uint32_t ShaderObject::getGraphicsPipeline(PipelineCreateMode createMode,
-                                           const GraphicsPipelineDescriptor& desc) {
+uint32_t ShaderObject::getGraphicsPipeline(const GraphicsPipelineDescriptor& desc) {
     GraphicsPipelineDescriptor key = desc;
     if (!dynamicStates.scissor)
         key.dynamicStates.scissor = {{0, 0}, {0, 0}};
@@ -93,14 +92,6 @@ uint32_t ShaderObject::getGraphicsPipeline(PipelineCreateMode createMode,
     auto itr = pipelines.find(key);
     if (itr != pipelines.end())
         return itr->second;
-    switch (createMode) {
-        case CREATE_SILENT:
-            break;
-        case CREATE_WARNING:
-            BREAK_POINT;
-            LOG_F(WARNING, "A pipeline has not been prepared before usage for shader <%s>",
-                  name.c_str());
-    }
     std::vector<drv::DrvShader::AttachmentState> attachmentStates;
     drv::DrvShader::GraphicalPipelineCreateInfo createInfo =
       getGraphicsPipelineCreateInfo(desc, attachmentStates);

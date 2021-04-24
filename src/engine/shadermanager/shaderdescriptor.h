@@ -3,10 +3,17 @@
 #include <string>
 #include <vector>
 
+class ShaderDescriptorReg
+{
+ public:
+ protected:
+    ~ShaderDescriptorReg();
+};
 class ShaderDescriptor
 {
  public:
-    ShaderDescriptor();
+    using DataVersionNumber = uint64_t;
+    explicit ShaderDescriptor(std::string name);
     virtual ~ShaderDescriptor();
 
     ShaderDescriptor(const ShaderDescriptor&) = default;
@@ -19,5 +26,18 @@ class ShaderDescriptor
     virtual std::vector<std::string> getVariantParamNames() const = 0;
     virtual uint32_t getLocalVariantId() const = 0;
 
+    DataVersionNumber getPushConstsVersionNumber() const { return pushConstVersionNumber; }
+
+    const std::string& getName() const { return name; }
+
+    virtual const ShaderDescriptorReg* getReg() const;
+
+ protected:
+    TODO;  // don't invalidate when a param is changed, that's not used in the variant???
+    TODO;  // invalidate when variant is changed and the used params struct changes
+    void invalidatePushConsts() { pushConstVersionNumber++; }
+
  private:
+    std::string name;
+    DataVersionNumber pushConstVersionNumber = 0;
 };

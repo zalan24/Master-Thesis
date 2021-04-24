@@ -12,19 +12,26 @@ class RuntimeStatNode
  public:
     struct ShaderUsageInfo
     {
-        std::unordered_map<std::vector<std::string>, uint64_t> count;
+        //   std::unordered_map<std::vector<std::string>, uint64_t> preActiveHeaderCounts;
+        // variant ids of its own headers
+        //   std::unordered_map<std::vector<ShaderObject::VariantId>, uint64_t> varIdCounts;
+        std::unordered_map<std::vector<uint32_t>, uint64_t> preHeaderOffsetCounts;
     };
     struct ShaderHeaderUsageInfo
     {
         uint64_t usageCount = 0;
-        uint64_t activisionCount = 0;
-        uint64_t changeVarIdCount = 0;
-        uint64_t changePushConstCount = 0;
+        //   uint64_t activisionCount = 0;
+        //   uint64_t changeObjectCount = 0;  // same header type, different header ojbect
+        //   uint64_t changeSlotCount = 0;
+        //   uint64_t changeVarIdCount = 0;
+        //   uint64_t changePushConstCount = 0;
     };
 
  private:
     std::string name;
     std::vector<std::unique_ptr<RuntimeStatNode>> children;
+    // This is used to merge incompatible versions of the same shader over multiple builds and runs
+    std::unordered_map<std::string, std::vector<std::string>> shaderToHeaders;
     std::unordered_map<std::string, ShaderUsageInfo> shaderInfos;
     std::unordered_map<std::string, ShaderHeaderUsageInfo> shaderHeaderInfos;
     mutable std::mutex mutex;
@@ -69,17 +76,22 @@ class RuntimeStatisticsScope
 
 #if ENABLE_RUNTIME_STATS_GENERATION
 #    define RUNTIME_STAT_SCOPE(name) RuntimeStatisticsScope __runtime_stat_##name##__LINE__(name)
-#    define RUNTIME_STAT_RECORD_SHADER_USAGE(renderPass, subpass, shaderName, activeHeaders) TODO
-#    define RUNTIME_STAT_CHANGE_HEADER_VARIANT(renderPass, subpass, headerName) TODO
-#    define RUNTIME_STAT_CHANGE_HEADER_PUSH_CONST(renderPass, subpass, headerName) TODO
-#    define RUNTIME_STAT_ACTIVATE_HEADER(renderPass, subpass, headerName) TODO
+// #    define RUNTIME_STAT_RECORD_SHADER_USAGE(renderPass, subpass, shaderName, activeHeaders) TODO
+// #    define RUNTIME_STAT_CHANGE_HEADER_OBJECT(renderPass, subpass, headerName) TODO
+// #    define RUNTIME_STAT_CHANGE_HEADER_SLOT(renderPass, subpass, headerName) TODO
+// #    define RUNTIME_STAT_CHANGE_HEADER_VARIANT(renderPass, subpass, headerName) TODO
+// #    define RUNTIME_STAT_CHANGE_HEADER_PUSH_CONST(renderPass, subpass, headerName) TODO
+// // only report headers that were actually in use, not just left in their slots for optimization
+// #    define RUNTIME_STAT_ACTIVATE_HEADER(renderPass, subpass, headerName) TODO
 #else
 #    define RUNTIME_STAT_SCOPE(name) static_cast<void*>(0)
-#    define RUNTIME_STAT_RECORD_SHADER_USAGE(renderPass, subpass, shaderName, activeHeaders) \
-        static_cast<void*>(0)
-#    define RUNTIME_STAT_CHANGE_HEADER_VARIANT(renderPass, subpass, headerName) \
-        static_cast<void*>(0)
-#    define RUNTIME_STAT_CHANGE_HEADER_PUSH_CONST(renderPass, subpass, headerName) \
-        static_cast<void*>(0)
-#    define RUNTIME_STAT_ACTIVATE_HEADER(renderPass, subpass, headerName) static_cast<void*>(0)
+// #    define RUNTIME_STAT_RECORD_SHADER_USAGE(renderPass, subpass, shaderName, activeHeaders) \
+//         static_cast<void*>(0)
+// #    define RUNTIME_STAT_CHANGE_HEADER_OBJECT(renderPass, subpass, headerName) static_cast<void*>(0)
+// #    define RUNTIME_STAT_CHANGE_HEADER_SLOT(renderPass, subpass, headerName) static_cast<void*>(0)
+// #    define RUNTIME_STAT_CHANGE_HEADER_VARIANT(renderPass, subpass, headerName) \
+//         static_cast<void*>(0)
+// #    define RUNTIME_STAT_CHANGE_HEADER_PUSH_CONST(renderPass, subpass, headerName) \
+//         static_cast<void*>(0)
+// #    define RUNTIME_STAT_ACTIVATE_HEADER(renderPass, subpass, headerName) static_cast<void*>(0)
 #endif

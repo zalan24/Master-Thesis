@@ -287,11 +287,7 @@ drv::FramebufferPtr VulkanRenderPass::createFramebuffer(const AttachmentData* im
     return drv::store_ptr<drv::FramebufferPtr>(ret);
 }
 
-drv::CmdRenderPass VulkanRenderPass::begin(drv::ResourceTracker* tracker,
-                                           drv::CommandBufferPtr cmdBuffer,
-                                           drv::FramebufferPtr frameBuffer,
-                                           const drv::Rect2D& renderArea,
-                                           const drv::ClearValue* _clearValues) {
+PassBeginData VulkanRenderPass::begin(const drv::ClearValue* _clearValues) {
     drv::drv_assert(
       state == OK,
       "Use the needRecreation() (and recreate() if needed) functions before beginning the render pass");
@@ -299,8 +295,10 @@ drv::CmdRenderPass VulkanRenderPass::begin(drv::ResourceTracker* tracker,
         clearValues[i] = convertClearValue(_clearValues[i]);
     state = UNCHECKED;
     uint32_t numLayers = attachments.size() > 0 ? attachmentImages[0].subresource.layerCount : 0;
-    return drv::CmdRenderPass(tracker, cmdBuffer, this, renderArea, frameBuffer,
-                              uint32_t(subpasses.size()), subpasses.data(), numLayers);
+    PassBeginData ret;
+    ret.numLayers = numLayers;
+    ret.subpassCount = uint32_t(subpasses.size());
+    ret.subpassInfos = subpasses.data();
 }
 
 void VulkanRenderPass::clear() {
