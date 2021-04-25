@@ -9,7 +9,7 @@ set_target_properties(  AnimationsRenderer
 target_include_directories(AnimationsRenderer PUBLIC . ${CMAKE_CURRENT_BINARY_DIR})
 target_link_libraries(AnimationsRenderer PRIVATE GLAD_LIB glm_external)
 target_link_libraries(AnimationsRenderer PUBLIC
-    AnimationsShaderManager
+    ShaderManager
     AnimationsEntities
     AnimationsData
     AnimationsBuffer

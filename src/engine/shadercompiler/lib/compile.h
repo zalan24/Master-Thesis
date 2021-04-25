@@ -180,6 +180,12 @@ class Cache final : public ISerializable
     void readJson(const json& in) override;
 };
 
+class CompilerPreprocessor
+{
+ public:
+ private:
+};
+
 bool read_variants(const BlockFile* blockFile, Variants& variants);
 bool read_resources(const BlockFile* blockFile, Resources& resources);
 

@@ -19,7 +19,7 @@ target_link_libraries(AnimationsEngine PUBLIC
     AnimationsISimulation
     AnimationsResources
     AnimationsInput
-    AnimationsShaderManager
+    ShaderManager
     AnimationsFramegraph
     AnimationsEventPool
     RuntimeStats

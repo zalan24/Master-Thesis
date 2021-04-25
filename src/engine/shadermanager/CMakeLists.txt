@@ -1,11 +1,11 @@
 file(GLOB SHADER_MANAGER_SOURCES *.cpp *.h *.hpp)
 
-add_library(AnimationsShaderManager STATIC ${SHADER_MANAGER_SOURCES})
+add_library(ShaderManager STATIC ${SHADER_MANAGER_SOURCES})
 
-set_target_properties(  AnimationsShaderManager
+set_target_properties(  ShaderManager
                         PROPERTIES
                         COMPILE_FLAGS ${TARGETCOMPILEFLAGS}
                         LINK_OPTIONS "${TARGET_LINK_FLAGS}")
-target_include_directories(AnimationsShaderManager PUBLIC . ${CMAKE_CURRENT_BINARY_DIR})
-target_link_libraries(AnimationsShaderManager PRIVATE AnimationsSerializable AnimationsFramegraph)
-target_link_libraries(AnimationsShaderManager PUBLIC AnimationsDrv glm_external)
+target_include_directories(ShaderManager PUBLIC . ${CMAKE_CURRENT_BINARY_DIR})
+target_link_libraries(ShaderManager PRIVATE AnimationsSerializable AnimationsFramegraph)
+target_link_libraries(ShaderManager PUBLIC ShaderBin AnimationsDrv glm_external)

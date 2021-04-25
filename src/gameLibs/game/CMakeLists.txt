@@ -10,7 +10,7 @@ target_include_directories(AnimationsGame PUBLIC . ${CMAKE_CURRENT_BINARY_DIR})
 target_link_libraries(AnimationsGame PUBLIC
     AnimationsIRenderer
     AnimationsISimulation
-    AnimationsShaderManager
+    ShaderManager
     AnimationShaders
     AnimationsEngine
     EngineRenderPass

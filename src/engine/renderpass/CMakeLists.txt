@@ -9,6 +9,6 @@ set_target_properties(  EngineRenderPass
 target_include_directories(EngineRenderPass PUBLIC . ${CMAKE_CURRENT_BINARY_DIR})
 target_link_libraries(EngineRenderPass PUBLIC
     AnimationsDrv
-    AnimationsShaderManager
+    ShaderManager
     RuntimeStats
 )

@@ -1,4 +1,5 @@
 add_subdirectory(profiler)
+add_subdirectory(configs)
 add_subdirectory(common)
 
 option(BUILD_DRV_VULKAN "Build driver for vulkan" ON)
