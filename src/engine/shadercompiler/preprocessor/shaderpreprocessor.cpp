@@ -89,15 +89,16 @@ int main(int argc, char* argv[]) {
         {
             std::ifstream preprocessorIn(target.c_str());
             if (preprocessorIn.is_open()) {
-                preprocessor.read(preprocessorIn);
+                preprocessor.load(preprocessorIn);
             }
         }
 
         for (const auto& header : headers)
-            preprocessor.processHeader(fs::path{header});
+            preprocessor.processHeader(fs::path{header}, fs::path{outputDir});
         for (const auto& source : sources)  // sources have implicit headers
-            preprocessor.processHeader(fs::path{source});
+            preprocessor.processHeader(fs::path{source}, fs::path{outputDir});
 
+        preprocessor.generateRegistryFile(fs::path{outputDir} / fs::path{"shaderregistry.h"});
         preprocessor.cleanUp();
 
         // Compiler compiler;
@@ -193,7 +194,7 @@ int main(int argc, char* argv[]) {
             std::ofstream preprocessorOut(target);
             if (!preprocessorOut.is_open())
                 throw std::runtime_error("Could not open file: " + target);
-            preprocessor.write(preprocessorOut);
+            preprocessor.exportData(preprocessorOut);
         }
     }
     catch (const std::exception& e) {

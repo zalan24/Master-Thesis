@@ -18,12 +18,14 @@ class ISerializable
 {
  protected:
     // This is required by the vector and map serialization
-    static auto serialize(int value) { return value; }
+    static auto serialize(int32_t value) { return value; }
+    static auto serialize(uint32_t value) { return value; }
     static auto serialize(float value) { return value; }
     static auto serialize(const std::string& value) { return value; }
     static auto serialize(bool value) { return value; }
 
-    static void serialize(const json& in, int& value) { value = in; }
+    static void serialize(const json& in, int32_t& value) { value = in; }
+    static void serialize(const json& in, uint32_t& value) { value = in; }
     static void serialize(const json& in, float& value) { value = in; }
     static void serialize(const json& in, std::string& value) { value = in; }
     static void serialize(const json& in, bool& value) { value = in; }

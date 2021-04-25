@@ -7,13 +7,14 @@
 #include <set>
 
 #include <HashLib4CPP.h>
-// #include <simplecpp.h>
+#include <simplecpp.h>
 
-// #include <blockfile.h>
+#include <blockfile.h>
 // #include <features.h>
 // #include <shadertypes.h>
 // #include <uncomment.h>
-// #include <util.hpp>
+#include <shaderbin.h>
+#include <util.hpp>
 
 // #include "spirvcompiler.h"
 
@@ -41,23 +42,369 @@ void ShaderHeaderData::writeJson(json& out) const {
     WRITE_OBJECT(name, out);
     WRITE_OBJECT(fileHash, out);
     WRITE_OBJECT(filePath, out);
+    WRITE_OBJECT(headerHash, out);
+    WRITE_OBJECT(cxxHash, out);
+    WRITE_OBJECT(variants, out);
+    WRITE_OBJECT(resources, out);
+    WRITE_OBJECT(desriptorClassName, out);
+    WRITE_OBJECT(desriptorRegistryClassName, out);
+    WRITE_OBJECT(totalVarintMultiplier, out);
+    WRITE_OBJECT(variantMultiplier, out);
+    WRITE_OBJECT(varintToResourceUsage, out);
+    WRITE_OBJECT(headerFileName, out);
 }
 
 void ShaderHeaderData::readJson(const json& in) {
     READ_OBJECT(name, in);
     READ_OBJECT(fileHash, in);
     READ_OBJECT(filePath, in);
+    READ_OBJECT(headerHash, in);
+    READ_OBJECT(cxxHash, in);
+    READ_OBJECT(variants, in);
+    READ_OBJECT(resources, in);
+    READ_OBJECT(desriptorClassName, in);
+    READ_OBJECT(desriptorRegistryClassName, in);
+    READ_OBJECT(totalVarintMultiplier, in);
+    READ_OBJECT(variantMultiplier, in);
+    READ_OBJECT(varintToResourceUsage, in);
+    READ_OBJECT(headerFileName, in);
 }
 
-void Preprocessor::writeJson(json& out) const {
+void PreprocessorData::writeJson(json& out) const {
     WRITE_OBJECT(headers, out);
 }
 
-void Preprocessor::readJson(const json& in) {
+void PreprocessorData::readJson(const json& in) {
     // TODO CHECK VERSION!!!
 }
 
-void Preprocessor::processHeader(const fs::path& file) {
+static void read_variants(const BlockFile* blockFile, Variants& variants) {
+    variants = {};
+    if (blockFile->hasNodes())
+        throw std::runtime_error("variants block cannot contain nested blocks");
+    if (!blockFile->hasContent())
+        return;
+    const std::string* variantContent = blockFile->getContent();
+    std::regex paramReg{"(\\w+)\\s*:((\\s*\\w+\\s*,)+\\s*\\w+\\s*);"};
+    std::regex valueReg{"\\s*(\\w+)\\s*(,)?"};
+    auto variantsBegin =
+      std::sregex_iterator(variantContent->begin(), variantContent->end(), paramReg);
+    auto variantsEnd = std::sregex_iterator();
+    for (std::sregex_iterator regI = variantsBegin; regI != variantsEnd; ++regI) {
+        std::string paramName = (*regI)[1];
+        std::string values = (*regI)[2];
+        auto& vec = variants.values[paramName] = {};
+        auto valuesBegin = std::sregex_iterator(values.begin(), values.end(), valueReg);
+        auto valuesEnd = std::sregex_iterator();
+        for (std::sregex_iterator regJ = valuesBegin; regJ != valuesEnd; ++regJ) {
+            std::string value = (*regJ)[1];
+            vec.push_back(value);
+        }
+    }
+}
+
+static void read_resources(const BlockFile* blockFile, Resources& resources) {
+    if (blockFile->hasNodes())
+        throw std::runtime_error("resources block cannot contain nested blocks");
+    if (!blockFile->hasContent())
+        return;
+    const std::string* resourcesContent = blockFile->getContent();
+    std::regex varReg{
+      "(uint|uint2|uint3|uint4|int|int2|int3|int4|float|vec2|vec3|vec4|mat44)\\s+(\\w+)\\s*;"};
+    auto resourcesBegin =
+      std::sregex_iterator(resourcesContent->begin(), resourcesContent->end(), varReg);
+    auto resourcesEnd = std::sregex_iterator();
+    for (std::sregex_iterator regI = resourcesBegin; regI != resourcesEnd; ++regI) {
+        std::string varType = (*regI)[1];
+        std::string varName = (*regI)[2];
+        if (resources.variables.find(varName) != resources.variables.end())
+            throw std::runtime_error("A variable already exists with this name: " + varName);
+        resources.variables[varName] = varType;
+    }
+}
+
+template <typename F>
+static void collect_shader_f(const BlockFile& blockFile, const std::string& type, F&& f) {
+    for (size_t i = 0; i < blockFile.getBlockCount("stages"); ++i) {
+        const BlockFile* b = blockFile.getNode("stages", i);
+        if (b->hasNodes()) {
+            for (size_t j = 0; j < b->getBlockCount(type); ++j) {
+                const BlockFile* b2 = b->getNode(type, j);
+                f(i, b, j, b2);
+            }
+        }
+        else if (b->hasContent())
+            // completely empty block is allowed
+            throw std::runtime_error(
+              "A shader block (stages) contains direct content instead of separate blocks for stages");
+    }
+}
+
+static void collect_shader_cfg(const BlockFile& blockFile, std::ostream& stagesOut,
+                               const std::string& type) {
+    collect_shader_f(blockFile, type, [&](size_t, const BlockFile*, size_t, const BlockFile* node) {
+        if (node->hasContent()) {
+            stagesOut << *node->getContent();
+        }
+        else if (node->hasNodes())
+            // completely empty block is allowed
+            throw std::runtime_error("A shader block (stages/" + type
+                                     + ") contains nested blocks instead of content");
+    });
+}
+
+static void collect_shader(const BlockFile& blockFile, std::ostream& out, std::ostream& cfgOut,
+                           const std::string& type) {
+    collect_shader_cfg(blockFile, cfgOut, type);
+    for (size_t i = 0; i < blockFile.getBlockCount("global"); ++i) {
+        const BlockFile* b = blockFile.getNode("global", i);
+        if (b->hasContent()) {
+            out << *b->getContent();
+        }
+        else if (b->hasNodes()) {
+            // completely empty block is allowed
+            throw std::runtime_error(
+              "A shader block (global) contains nested blocks instead of content");
+        }
+    }
+    for (size_t i = 0; i < blockFile.getBlockCount(type); ++i) {
+        const BlockFile* b = blockFile.getNode(type, i);
+        if (b->hasContent()) {
+            out << *b->getContent();
+        }
+        else if (b->hasNodes()) {
+            // completely empty block is allowed
+            throw std::runtime_error("A shader block (" + type
+                                     + ") contains nested blocks instead of content.");
+        }
+    }
+}
+
+static void read_gen_input(const BlockFile& shaderFile, ShaderGenerationInput& genInput) {
+    collect_shader_cfg(shaderFile, genInput.statesCfg, "states");
+    collect_shader(shaderFile, genInput.vs, genInput.vsCfg, "vs");
+    collect_shader(shaderFile, genInput.ps, genInput.psCfg, "ps");
+    collect_shader(shaderFile, genInput.cs, genInput.csCfg, "cs");
+    collect_shader_f(
+      shaderFile, "attachments", [&](size_t, const BlockFile*, size_t, const BlockFile* node) {
+          if (node->hasNodes()) {
+              for (size_t i = 0; i < node->getBlockCount(); ++i) {
+                  const BlockFile* attachment = node->getNode(i);
+                  if (attachment->hasNodes())
+                      throw std::runtime_error(
+                        "Attachment infos inside the attachments block must not contain other blocks");
+                  if (attachment->hasContent())
+                      genInput.attachments[node->getBlockName(i)] << *attachment->getContent();
+                  else
+                      genInput.attachments[node->getBlockName(i)] << "";
+              }
+          }
+          else if (node->hasContent())
+              throw std::runtime_error(
+                "The attachments block in shader stage infos must contain a block for each used attachment, not raw content");
+          return true;
+      });
+}
+
+static std::string get_variant_enum_name(std::string name) {
+    for (char& c : name)
+        c = static_cast<char>(tolower(c));
+    name[0] = static_cast<char>(toupper(name[0]));
+    return name;
+}
+
+static std::string get_variant_enum_val_name(std::string name) {
+    for (char& c : name)
+        c = static_cast<char>(tolower(c));
+    return name;
+}
+
+static std::string get_variant_enum_value(std::string value) {
+    for (char& c : value)
+        c = static_cast<char>(toupper(c));
+    return value;
+}
+
+static VariantConfig get_variant_config(
+  uint32_t variantId, const std::vector<Variants>& variants,
+  const std::map<std::string, uint32_t>& variantParamMultiplier) {
+    VariantConfig ret;
+    for (const Variants& v : variants) {
+        for (const auto& [name, values] : v.values) {
+            auto itr = variantParamMultiplier.find(name);
+            assert(itr != variantParamMultiplier.end());
+            size_t valueId = (variantId / itr->second) % values.size();
+            ret.variantValues[name] = valueId;
+        }
+    }
+    return ret;
+}
+
+static std::string format_variant(uint32_t variantId, const std::vector<Variants>& variants,
+                                  const std::stringstream& text,
+                                  const std::map<std::string, uint32_t>& variantParamMultiplier) {
+    VariantConfig config = get_variant_config(variantId, variants, variantParamMultiplier);
+    simplecpp::DUI dui;
+    for (const Variants& v : variants)
+        for (const auto& [key, values] : v.values)
+            for (size_t ind = 0; ind < values.size(); ++ind)
+                dui.defines.push_back(values[ind] + "=" + std::to_string(ind));
+    for (const auto& [key, value] : config.variantValues)
+        dui.defines.push_back(key + "=" + std::to_string(value));
+    std::stringstream shaderCopy(text.str());
+    std::vector<std::string> files;
+    simplecpp::TokenList rawtokens(shaderCopy, files);
+    std::map<std::string, simplecpp::TokenList*> included = simplecpp::load(rawtokens, files, dui);
+    simplecpp::TokenList outputTokens(files);
+    simplecpp::preprocess(outputTokens, rawtokens, files, included, dui);
+    return outputTokens.stringify();
+}
+
+template <typename T>
+static const T& translate_input(const std::string& str, const std::map<std::string, T>& values) {
+    auto itr = values.find(str);
+    if (itr != values.end())
+        return itr->second;
+    std::stringstream message;
+    message << "Invalid value: <" << str << ">. Valid values are {";
+    for (const auto& value : values)
+        message << " " << value.first;
+    message << " }";
+    throw std::runtime_error(message.str());
+}
+
+static std::unordered_map<std::string, std::string> read_values(const std::string& s) {
+    std::regex valueReg{"\\s*(\\w+)\\s*=\\s*(\\w+)\\s*(;|\\Z)"};
+    std::unordered_map<std::string, std::string> ret;
+    auto begin = std::sregex_iterator(s.begin(), s.end(), valueReg);
+    auto end = std::sregex_iterator();
+    for (std::sregex_iterator regI = begin; regI != end; ++regI)
+        ret[(*regI)[1]] = (*regI)[2];
+    return ret;
+}
+
+static ResourceUsage read_used_resources(const std::string& s, const Resources& resources) {
+    std::regex resourceReg{"\\s*use\\s+(\\w+)\\s*;"};
+    ResourceUsage ret;
+    auto begin = std::sregex_iterator(s.begin(), s.end(), resourceReg);
+    auto end = std::sregex_iterator();
+    for (std::sregex_iterator regI = begin; regI != end; ++regI) {
+        std::string name = (*regI)[1];
+        if (resources.variables.find(name) != resources.variables.end())
+            ret.usedVars.insert(name);
+        else
+            throw std::runtime_error("Unknown resource: " + name);
+    }
+    return ret;
+}
+
+static ShaderBin::StageConfig read_stage_configs(
+  const Resources& resources, uint32_t variantId, const std::vector<Variants>& variants,
+  const std::map<std::string, uint32_t>& variantParamMultiplier, const ShaderGenerationInput& input,
+  PipelineResourceUsage& resourceUsage) {
+    // TODO report an error for unknown values
+    std::string statesInfo =
+      format_variant(variantId, variants, input.statesCfg, variantParamMultiplier);
+    std::string vsInfo = format_variant(variantId, variants, input.vsCfg, variantParamMultiplier);
+    std::string psInfo = format_variant(variantId, variants, input.psCfg, variantParamMultiplier);
+    std::string csInfo = format_variant(variantId, variants, input.csCfg, variantParamMultiplier);
+    std::unordered_map<std::string, std::string> statesValues = read_values(statesInfo);
+    std::unordered_map<std::string, std::string> vsValues = read_values(vsInfo);
+    std::unordered_map<std::string, std::string> psValues = read_values(psInfo);
+    std::unordered_map<std::string, std::string> csValues = read_values(csInfo);
+    resourceUsage.vsUsage = read_used_resources(vsInfo, resources);
+    resourceUsage.psUsage = read_used_resources(psInfo, resources);
+    resourceUsage.csUsage = read_used_resources(csInfo, resources);
+    ShaderBin::StageConfig ret;
+    if (vsValues.count("entry") > 1 || psValues.count("entry") > 1 || csValues.count("entry") > 1
+        || statesValues.count("polygonMode") > 1 || statesValues.count("cull") > 1
+        || statesValues.count("depthCompare") > 1 || statesValues.count("useDepthClamp") > 1
+        || statesValues.count("depthBiasEnable") > 1 || statesValues.count("depthTest") > 1
+        || statesValues.count("depthWrite") > 1 || statesValues.count("stencilTest") > 1)
+        throw std::runtime_error("Shater state overwrites are currently not supported");
+
+    if (auto itr = vsValues.find("entry"); itr != vsValues.end())
+        ret.vsEntryPoint = itr->second;
+    if (auto itr = psValues.find("entry"); itr != psValues.end())
+        ret.psEntryPoint = itr->second;
+    if (auto itr = csValues.find("entry"); itr != csValues.end())
+        ret.csEntryPoint = itr->second;
+    if (auto itr = statesValues.find("polygonMode"); itr != statesValues.end())
+        ret.polygonMode =
+          translate_input<drv::PolygonMode>(itr->second, {{"fill", drv::PolygonMode::FILL},
+                                                          {"line", drv::PolygonMode::LINE},
+                                                          {"point", drv::PolygonMode::POINT}});
+    if (auto itr = statesValues.find("cull"); itr != statesValues.end())
+        ret.cullMode =
+          translate_input<drv::CullMode>(itr->second, {{"none", drv::CullMode::NONE},
+                                                       {"front", drv::CullMode::FRONT_BIT},
+                                                       {"back", drv::CullMode::BACK_BIT},
+                                                       {"all", drv::CullMode::FRONT_AND_BACK}});
+    if (auto itr = statesValues.find("depthCompare"); itr != statesValues.end())
+        ret.depthCompare = translate_input<drv::CompareOp>(
+          itr->second, {{"never", drv::CompareOp::NEVER},
+                        {"less", drv::CompareOp::LESS},
+                        {"equal", drv::CompareOp::EQUAL},
+                        {"less_or_equal", drv::CompareOp::LESS_OR_EQUAL},
+                        {"greater", drv::CompareOp::GREATER},
+                        {"not_equal", drv::CompareOp::NOT_EQUAL},
+                        {"greater_or_equal", drv::CompareOp::GREATER_OR_EQUAL},
+                        {"always", drv::CompareOp::ALWAYS}});
+    if (auto itr = statesValues.find("useDepthClamp"); itr != statesValues.end())
+        ret.useDepthClamp = translate_input<bool>(itr->second, {{"true", true}, {"false", false}});
+    if (auto itr = statesValues.find("depthBiasEnable"); itr != statesValues.end())
+        ret.depthBiasEnable =
+          translate_input<bool>(itr->second, {{"true", true}, {"false", false}});
+    if (auto itr = statesValues.find("depthTest"); itr != statesValues.end())
+        ret.depthTest = translate_input<bool>(itr->second, {{"true", true}, {"false", false}});
+    if (auto itr = statesValues.find("depthWrite"); itr != statesValues.end())
+        ret.depthWrite = translate_input<bool>(itr->second, {{"true", true}, {"false", false}});
+    if (auto itr = statesValues.find("stencilTest"); itr != statesValues.end())
+        ret.stencilTest = translate_input<bool>(itr->second, {{"true", true}, {"false", false}});
+    for (const auto& [name, cfg] : input.attachments) {
+        std::string attachments = format_variant(variantId, variants, cfg, variantParamMultiplier);
+        std::unordered_map<std::string, std::string> values = read_values(attachments);
+        ShaderBin::AttachmentInfo attachmentInfo;
+        if (auto itr = values.find("location"); itr != values.end()) {
+            int loc = std::atoi(itr->second.c_str());
+            if (loc < 0)
+                continue;
+            attachmentInfo.location = safe_cast<uint8_t>(loc);
+        }
+        else
+            throw std::runtime_error(
+              "An attachment description must contain a 'location' parameter: " + name);
+        attachmentInfo.name = name;
+        attachmentInfo.info = 0;
+        if (auto itr = values.find("channels"); itr != values.end()) {
+            if (itr->second.find('a') != std::string::npos)
+                attachmentInfo.info |= ShaderBin::AttachmentInfo::USE_ALPHA;
+            if (itr->second.find('r') != std::string::npos)
+                attachmentInfo.info |= ShaderBin::AttachmentInfo::USE_RED;
+            if (itr->second.find('g') != std::string::npos)
+                attachmentInfo.info |= ShaderBin::AttachmentInfo::USE_GREEN;
+            if (itr->second.find('b') != std::string::npos)
+                attachmentInfo.info |= ShaderBin::AttachmentInfo::USE_BLUE;
+            if (attachmentInfo.info == 0)
+                throw std::runtime_error("No channels are used by an attachment: " + name);
+        }
+        else
+            throw std::runtime_error("Missing 'channels' parameter from attachment description: "
+                                     + name);
+        if (auto itr = values.find("type"); itr != values.end()) {
+            // TODO depth stencil
+            if (itr->second == "output")
+                attachmentInfo.info |= ShaderBin::AttachmentInfo::WRITE;
+            else if (itr->second != "input")
+                throw std::runtime_error("Unknown attachment type: " + itr->second + "  (" + name
+                                         + ")");
+        }
+        ret.attachments.push_back(std::move(attachmentInfo));
+    }
+    return ret;
+}
+
+void Preprocessor::processHeader(const fs::path& file, const fs::path& outdir) {
     std::string name = file.stem().string();
     for (char& c : name)
         c = static_cast<char>(tolower(c));
@@ -69,28 +416,327 @@ void Preprocessor::processHeader(const fs::path& file) {
     std::string hash = hash_string(content);
     content = "";
     in.seekg(0, ios::beg);
-    ShaderHeaderData& data = headers[name];
-    data.filePath = fs::absolute(file).string();
-    if (data.fileHash == hash)
-        return;
+    std::string headerHash = "";
+    std::string cxxHash = "";
+    if (auto itr = data.headers.find(name); itr != data.headers.end()) {
+        if (itr->second.fileHash == hash) {
+            itr->second.filePath = fs::absolute(file).string();
+            return;
+        }
+        headerHash = itr->second.headerHash;
+        cxxHash = itr->second.cxxHash;
+    }
     std::cout << "Preprocessing shader header '" << name << "' (" << file.string() << ")\n";
-    data.fileHash = hash;
-    data.name = name;
+    ShaderHeaderData incData;
+    incData.name = name;
+    incData.filePath = fs::absolute(file).string();
+    incData.fileHash = hash;
+    incData.headerHash = headerHash;
+    incData.cxxHash = cxxHash;
+
+    BlockFile b(in);
+    in.close();
+    if (b.hasContent())
+        throw std::runtime_error("Shader file has content on the root level (no blocks present)");
+    size_t descriptorCount = b.getBlockCount("descriptor");
+    if (descriptorCount > 1)
+        throw std::runtime_error("A shader file may only contain one 'descriptor' block");
+    const BlockFile* descBlock = b.getNode("descriptor");
+    if (descBlock->hasContent())
+        throw std::runtime_error("The descriptor block must not have direct content");
+    size_t variantsBlockCount = descBlock->hasNodes() ? descBlock->getBlockCount("variants") : 0;
+    size_t resourcesBlockCount = descBlock->hasNodes() ? descBlock->getBlockCount("resources") : 0;
+    if (variantsBlockCount > 1 || resourcesBlockCount > 1)
+        throw std::runtime_error(
+          "The descriptor block can only have up to one variants and resources blocks");
+    std::stringstream header;
+    std::stringstream cxx;
+    if (variantsBlockCount == 1) {
+        const BlockFile* variantBlock = descBlock->getNode("variants");
+        read_variants(variantBlock, incData.variants);
+    }
+    Resources resources;
+    if (resourcesBlockCount == 1) {
+        const BlockFile* resourcesBlock = descBlock->getNode("resources");
+        read_resources(resourcesBlock, resources);
+    }
+    const std::string className = "shader_" + name + "_descriptor";
+    const std::string registryClassName = "shader_" + name + "_registry";
+    fs::path headerFileName = fs::path("shader_header_" + name + ".h");
+    fs::path cxxFileName = fs::path("shader_header_" + name + ".cpp");
+    incData.desriptorClassName = className;
+    incData.desriptorRegistryClassName = registryClassName;
+    incData.name = name;
+    header << "#pragma once\n\n";
+    header << "#include <memory>\n\n";
+    header << "#include <shaderdescriptor.h>\n";
+    header << "#include <shadertypes.h>\n";
+    header << "#include <drvshader.h>\n\n";
+
+    cxx << "#include \"" << headerFileName.string() << "\"\n\n";
+    cxx << "#include <drv.h>\n\n";
+
+    uint32_t variantMul = 1;
+    for (const auto& [variantName, values] : incData.variants.values) {
+        if (variantName.length() == 0 || values.size() == 0)
+            continue;
+        incData.variantMultiplier[variantName] = variantMul;
+        variantMul *= values.size();
+    }
+    incData.totalVarintMultiplier = variantMul;
+
+    ShaderGenerationInput genInput;
+    read_gen_input(b, genInput);
+
+    incData.varintToResourceUsage.resize(incData.totalVarintMultiplier);
+    for (uint32_t i = 0; i < incData.totalVarintMultiplier; ++i) {
+        PipelineResourceUsage resourceUsage;
+        ShaderBin::StageConfig cfg = read_stage_configs(
+          resources, i, {incData.variants}, incData.variantMultiplier, genInput, resourceUsage);
+        // if (incData.resourceObjects.find(resourceUsage) == incData.resourceObjects.end())
+        //     incData.resourceObjects[resourceUsage] =
+        //       generate_resource_object(resources, resourceUsage);
+        // const ResourceObject& resourceObj = incData.resourceObjects[resourceUsage];
+        incData.varintToResourceUsage[i] = resourceUsage;
+    }
+
+    // uint32_t structId = 0;
+    // for (const auto& itr : incData.resourceObjects) {
+    //     for (const auto& [stages, pack] : itr.second.packs) {
+    //         if (incData.exportedPacks.find(pack) != incData.exportedPacks.end())
+    //             continue;
+    //         std::string structName =
+    //           "PushConstants_header_" + name + "_" + std::to_string(structId++);
+    //         incData.exportedPacks[pack] = pack.generateCXX(structName, resources, cxx);
+    //     }
+    // }
+
+    header << "class " << registryClassName << " final : public ShaderDescriptorReg {\n";
+    header << "  public:\n";
+    header << "    " << registryClassName << "(drv::LogicalDevicePtr device);\n";
+    cxx << registryClassName << "::" << registryClassName << "(drv::LogicalDevicePtr device)\n";
+    cxx << "  : reg(drv::create_shader_header_registry(device))\n";
+    cxx << "{\n";
+    cxx << "}\n\n";
+    header << "    friend class " << className << ";\n";
+    header << "  private:\n";
+    header << "    std::unique_ptr<drv::DrvShaderHeaderRegistry> reg;\n";
+    header << "};\n\n";
+
+    header << "class " << className << " final : public ShaderDescriptor\n";
+    header << "{\n";
+    header << "  public:\n";
+    header << "    ~" << className << "() override {}\n";
+    for (const auto& [variantName, values] : incData.variants.values) {
+        if (variantName.length() == 0 || values.size() == 0)
+            continue;
+        std::string enumName = get_variant_enum_name(variantName);
+        header << "    enum class " << enumName << " {\n";
+        for (size_t i = 0; i < values.size(); ++i) {
+            std::string val = get_variant_enum_value(values[i]);
+            header << "        " << val << " = " << i << ",\n";
+        }
+        header << "    };\n";
+        std::string valName = get_variant_enum_val_name(variantName);
+        header << "    void setVariant_" << variantName << "(" << enumName << " value);\n";
+        cxx << "void " << className << "::setVariant_" << variantName << "(" << enumName
+            << " value) {\n";
+        cxx << "    variantDesc." << valName << " = value;\n";
+        cxx << "}\n";
+    }
+    header << "    struct VariantDesc {\n";
+    for (const auto& [variantName, values] : incData.variants.values) {
+        if (variantName.length() == 0 || values.size() == 0)
+            continue;
+        std::string enumName = get_variant_enum_name(variantName);
+        std::string valName = get_variant_enum_val_name(variantName);
+        header << "        " << enumName << " " << valName << " = " << enumName
+               << "::" << get_variant_enum_value(values[0]) << ";\n";
+    }
+    header << "        uint32_t getLocalVariantId() const;\n";
+    cxx << "uint32_t " << className << "::VariantDesc::getLocalVariantId() const {\n";
+    cxx << "    uint32_t ret = 0;\n";
+    for (const auto& [variantName, values] : incData.variants.values) {
+        if (variantName.length() == 0 || values.size() == 0)
+            continue;
+        std::string valName = get_variant_enum_val_name(variantName);
+        cxx << "    ret += static_cast<uint32_t>(" << valName << ") * "
+            << incData.variantMultiplier[variantName] << ";\n";
+    }
+    cxx << "    return ret;\n";
+    cxx << "}\n";
+    header << "    };\n";
+    for (const auto& [varName, varType] : resources.variables) {
+        header << "    " << varType << " " << varName << " = " << varType << "_default_value;\n";
+        header << "    void set_" << varName << "(const " << varType << " &_" << varName << ");\n";
+        cxx << "void " << className << "::set_" << varName << "(const " << varType << " &_"
+            << varName << ") {\n";
+        cxx << "    if (" << varName << " != _" << varName << ") {\n";
+        cxx << "        " << varName << " = _" << varName << ";\n";
+        // cxx << "        if ()\n"; // TODo
+        cxx << "            invalidatePushConsts();\n";
+        cxx << "    }\n";
+        cxx << "}\n";
+    }
+    header
+      << "    void setVariant(const std::string& variantName, const std::string& value) override;\n";
+    cxx << "void " << className
+        << "::setVariant(const std::string& variantName, const std::string& value) {\n";
+    std::string ifString = "if";
+    for (const auto& [variantName, values] : incData.variants.values) {
+        if (variantName.length() == 0 || values.size() == 0)
+            continue;
+        std::string enumName = get_variant_enum_name(variantName);
+        std::string valName = get_variant_enum_val_name(variantName);
+        cxx << "    " << ifString << " (variantName == \"" << variantName << "\") {\n";
+        std::string ifString2 = "if";
+        for (const std::string& variantVal : values) {
+            const std::string val = get_variant_enum_value(variantVal);
+            cxx << "        " << ifString2 << " (value == \"" << variantVal << "\")\n";
+            cxx << "            variantDesc." << valName << " = " << enumName << "::" << val
+                << ";\n";
+            ifString2 = "else if";
+        }
+        if (ifString2 != "if")
+            cxx << "        else\n    ";
+        cxx
+          << "        throw std::runtime_error(\"Unknown value (\" + value + \") for shader variant param: "
+          << variantName << "\");\n";
+        cxx << "    }";
+        ifString = " else if";
+    }
+    if (ifString != "if")
+        cxx << " else\n    ";
+    else
+        cxx << "\n";
+    cxx << "    throw std::runtime_error(\"Unknown variant param: \" + variantName);\n";
+    cxx << "}\n";
+    header << "    void setVariant(const std::string& variantName, int value) override;\n";
+    cxx << "void " << className << "::setVariant(const std::string& variantName, int value) {\n";
+    ifString = "if";
+    for (const auto& [variantName, values] : incData.variants.values) {
+        if (variantName.length() == 0 || values.size() == 0)
+            continue;
+        std::string enumName = get_variant_enum_name(variantName);
+        std::string valName = get_variant_enum_val_name(variantName);
+        cxx << "    " << ifString << " (variantName == \"" << variantName << "\")\n";
+        cxx << "        variantDesc." << valName << " = static_cast<" << enumName << ">(value);\n";
+        ifString = "else if";
+    }
+    if (ifString != "if")
+        cxx << "    else\n    ";
+    cxx << "    throw std::runtime_error(\"Unknown variant param: \" + variantName);\n";
+    cxx << "}\n";
+    header << "    std::vector<std::string> getVariantParamNames() const override;\n";
+    cxx << "std::vector<std::string> " << className << "::getVariantParamNames() const {\n";
+    cxx << "    return {\n";
+    for (const auto& [variantName, values] : incData.variants.values) {
+        if (variantName.length() == 0 || values.size() == 0)
+            continue;
+        cxx << "        \"" << variantName << "\",\n";
+    }
+    cxx << "    };\n";
+    cxx << "}\n";
+    header << "    const VariantDesc &getVariantDesc() const { return variantDesc; }\n";
+    header << "    uint32_t getLocalVariantId() const override;\n";
+    cxx << "uint32_t " << className << "::getLocalVariantId() const {\n";
+    cxx << "    return variantDesc.getLocalVariantId();\n";
+    cxx << "}\n";
+    header << "    " << className << "(drv::LogicalDevicePtr device, const " << registryClassName
+           << " *_reg);\n";
+    cxx << className << "::" << className << "(drv::LogicalDevicePtr device, const "
+        << registryClassName << " *_reg)\n";
+    cxx << "  : ShaderDescriptor(\"" << name << "\")\n";
+    cxx << "  , reg(_reg)\n";
+    cxx << "  , header(drv::create_shader_header(device, reg->reg.get()))\n";
+    cxx << "{\n";
+    cxx << "}\n";
+    header << "    const ShaderDescriptorReg* getReg() const override { return reg; }\n";
+    header << "  private:\n";
+    header << "    VariantDesc variantDesc;\n";
+    header << "    const " << registryClassName << " *reg;\n";
+    header << "    std::unique_ptr<drv::DrvShaderHeader> header;\n";
+    header << "};\n";
+
+    incData.headerFileName = headerFileName.string();
+    const std::string h = hash_string(header.str());
+    if (headerHash != h) {
+        fs::path headerFilePath = outdir / headerFileName;
+        std::cout << "Generating " << headerFilePath << std::endl;
+        std::ofstream outHeaderFile(headerFilePath.string());
+        if (!outHeaderFile.is_open())
+            throw std::runtime_error("Could not open output file: " + headerFileName.string());
+        incData.headerHash = h;
+        changedAnyCppHeader = true;
+        outHeaderFile << header.str();
+    }
+    const std::string ch = hash_string(cxx.str());
+    if (cxxHash != ch) {
+        fs::path cxxFilePath = outdir / cxxFileName;
+        std::cout << "Generating " << cxxFilePath << std::endl;
+        std::ofstream outCxxFile(cxxFilePath.string());
+        if (!outCxxFile.is_open())
+            throw std::runtime_error("Could not open output file: " + cxxFileName.string());
+        outCxxFile << cxx.str();
+        incData.cxxHash = ch;
+    }
+    data.headers[name] = std::move(incData);
 }
 
-void Preprocessor::processSource(const fs::path& file) {
+void Preprocessor::processSource(const fs::path& file, const fs::path& outdir) {
     // TODO insert name to usedShaders
+}
+
+void Preprocessor::generateRegistryFile(const fs::path& file) const {
+    if (!changedAnyCppHeader && fs::exists(file))
+        return;
+    std::cout << "Generating " << file.string() << std::endl;
+    if (!fs::exists(file))
+        fs::create_directories(file.parent_path());
+    std::ofstream reg(file.c_str());
+    if (!reg.is_open())
+        throw std::runtime_error("Could not open file: " + file.string());
+
+    reg << "#pragma once\n\n";
+    reg << "#include <drvtypes.h>\n";
+    reg << "#include <shaderbin.h>\n";
+    for (const auto& itr : data.headers)
+        reg << "#include <" << itr.second.headerFileName << ">\n";
+    reg << "\n";
+    reg << "struct ShaderHeaderRegistry {\n";
+    reg << "    ShaderHeaderRegistry(const ShaderHeaderRegistry&) = delete;\n";
+    reg << "    ShaderHeaderRegistry& operator=(const ShaderHeaderRegistry&) = delete;\n";
+    for (const auto& itr : data.headers)
+        reg << "    " << itr.second.desriptorRegistryClassName << " " << itr.second.name << ";\n";
+    reg << "    ShaderHeaderRegistry(drv::LogicalDevicePtr device)\n";
+    bool firstHeader = true;
+    for (const auto& itr : data.headers) {
+        reg << "      " << (firstHeader ? ':' : ',') << " " << itr.second.name << "(device)\n";
+        firstHeader = false;
+    }
+    reg << "    {\n    }\n";
+    reg << "};\n\n";
+    reg << "struct ShaderObjRegistry {\n";
+    reg << "    ShaderObjRegistry(const ShaderObjRegistry&) = delete;\n";
+    reg << "    ShaderObjRegistry& operator=(const ShaderObjRegistry&) = delete;\n";
+    // TODO objects start for shader object compiler
+
+    reg
+      << "    ShaderObjRegistry(drv::LogicalDevicePtr device, const ShaderBin &shaderBin, const ShaderHeaderRegistry& headers)\n";
+    // TODO shader objects ctor from shader object compiler
+    reg << "    {\n    }\n";
+    reg << "};\n";
 }
 
 void Preprocessor::cleanUp() {
     std::unordered_set<std::string> unusedHeaders;
     std::unordered_set<std::string> unusedShaders;
-    for (const auto& itr : headers)
+    for (const auto& itr : data.headers)
         if (usedHeaders.count(itr.second.name) == 0)
             unusedHeaders.insert(itr.first);
 
     for (const auto& itr : unusedHeaders)
-        headers.erase(headers.find(itr));
+        data.headers.erase(data.headers.find(itr));
 }
 
 // static bool include_headers(const std::string& filename, std::ostream& out,
@@ -164,110 +810,6 @@ void Preprocessor::cleanUp() {
 //     return ret;
 // }
 
-// template <typename F>
-// static bool collect_shader_f(const BlockFile& blockFile, const std::string& type, F&& f) {
-//     for (size_t i = 0; i < blockFile.getBlockCount("stages"); ++i) {
-//         const BlockFile* b = blockFile.getNode("stages", i);
-//         if (b->hasNodes()) {
-//             for (size_t j = 0; j < b->getBlockCount(type); ++j) {
-//                 const BlockFile* b2 = b->getNode(type, j);
-//                 if (!f(i, b, j, b2))
-//                     return false;
-//             }
-//         }
-//         else if (b->hasContent()) {
-//             // completely empty block is allowed
-//             std::cerr
-//               << "A shader block (stages) contains direct content instead of separate blocks for stages."
-//               << std::endl;
-//             return false;
-//         }
-//     }
-//     return true;
-// }
-
-// static bool collect_shader_cfg(const BlockFile& blockFile, std::ostream& stagesOut,
-//                                const std::string& type) {
-//     return collect_shader_f(
-//       blockFile, type, [&](size_t, const BlockFile*, size_t, const BlockFile* node) {
-//           if (node->hasContent()) {
-//               stagesOut << *node->getContent();
-//           }
-//           else if (node->hasNodes()) {
-//               // completely empty block is allowed
-//               std::cerr << "A shader block (stages/" << type
-//                         << ") contains nested blocks instead of content." << std::endl;
-//               return false;
-//           }
-//           return true;
-//       });
-// }
-
-// static bool collect_shader(const BlockFile& blockFile, std::ostream& out, std::ostream& cfgOut,
-//                            const std::string& type) {
-//     if (!collect_shader_cfg(blockFile, cfgOut, type))
-//         return false;
-//     for (size_t i = 0; i < blockFile.getBlockCount("global"); ++i) {
-//         const BlockFile* b = blockFile.getNode("global", i);
-//         if (b->hasContent()) {
-//             out << *b->getContent();
-//         }
-//         else if (b->hasNodes()) {
-//             // completely empty block is allowed
-//             std::cerr << "A shader block (global) contains nested blocks instead of content."
-//                       << std::endl;
-//             return false;
-//         }
-//     }
-//     for (size_t i = 0; i < blockFile.getBlockCount(type); ++i) {
-//         const BlockFile* b = blockFile.getNode(type, i);
-//         if (b->hasContent()) {
-//             out << *b->getContent();
-//         }
-//         else if (b->hasNodes()) {
-//             // completely empty block is allowed
-//             std::cerr << "A shader block (" << type
-//                       << ") contains nested blocks instead of content." << std::endl;
-//             return false;
-//         }
-//     }
-//     return true;
-// }
-
-// static std::string get_variant_enum_name(std::string name) {
-//     for (char& c : name)
-//         c = static_cast<char>(tolower(c));
-//     name[0] = static_cast<char>(toupper(name[0]));
-//     return name;
-// }
-
-// static std::string get_variant_enum_val_name(std::string name) {
-//     for (char& c : name)
-//         c = static_cast<char>(tolower(c));
-//     return name;
-// }
-
-// static std::string get_variant_enum_value(std::string value) {
-//     for (char& c : value)
-//         c = static_cast<char>(toupper(c));
-//     return value;
-// }
-
-// static VariantConfig get_variant_config(
-//   uint32_t variantId, const std::vector<Variants>& variants,
-//   const std::unordered_map<std::string, uint32_t>& variantParamMultiplier) {
-//     VariantConfig ret;
-//     for (const Variants& v : variants) {
-//         for (const auto& [name, values] : v.values) {
-//             auto itr = variantParamMultiplier.find(name);
-//             assert(itr != variantParamMultiplier.end());
-//             size_t valueId = (variantId / itr->second) % values.size();
-//             ret.variantValues[name] = valueId;
-//         }
-//     }
-//     return ret;
-// }
-
 // static ResourceObject generate_resource_object(const Resources& resources,
 //                                                const PipelineResourceUsage& usages) {
 //     ResourceObject ret;
@@ -283,220 +825,6 @@ void Preprocessor::cleanUp() {
 //     // TODO push constant ranges could be combined
 //     // overlaps should also be supported
 //     return ret;
-// }
-
-// static std::string format_variant(
-//   uint32_t variantId, const std::vector<Variants>& variants, const std::stringstream& text,
-//   const std::unordered_map<std::string, uint32_t>& variantParamMultiplier) {
-//     VariantConfig config = get_variant_config(variantId, variants, variantParamMultiplier);
-//     simplecpp::DUI dui;
-//     for (const Variants& v : variants)
-//         for (const auto& [key, values] : v.values)
-//             for (size_t ind = 0; ind < values.size(); ++ind)
-//                 dui.defines.push_back(values[ind] + "=" + std::to_string(ind));
-//     for (const auto& [key, value] : config.variantValues)
-//         dui.defines.push_back(key + "=" + std::to_string(value));
-//     std::stringstream shaderCopy(text.str());
-//     std::vector<std::string> files;
-//     simplecpp::TokenList rawtokens(shaderCopy, files);
-//     std::map<std::string, simplecpp::TokenList*> included = simplecpp::load(rawtokens, files, dui);
-//     simplecpp::TokenList outputTokens(files);
-//     simplecpp::preprocess(outputTokens, rawtokens, files, included, dui);
-//     return outputTokens.stringify();
-// }
-
-// static std::unordered_map<std::string, std::string> read_values(const std::string& s) {
-//     std::regex valueReg{"\\s*(\\w+)\\s*=\\s*(\\w+)\\s*(;|\\Z)"};
-//     std::unordered_map<std::string, std::string> ret;
-//     auto begin = std::sregex_iterator(s.begin(), s.end(), valueReg);
-//     auto end = std::sregex_iterator();
-//     for (std::sregex_iterator regI = begin; regI != end; ++regI)
-//         ret[(*regI)[1]] = (*regI)[2];
-//     return ret;
-// }
-
-// static ResourceUsage read_used_resources(const std::string& s, const Resources& resources) {
-//     std::regex resourceReg{"\\s*use\\s+(\\w+)\\s*;"};
-//     ResourceUsage ret;
-//     auto begin = std::sregex_iterator(s.begin(), s.end(), resourceReg);
-//     auto end = std::sregex_iterator();
-//     for (std::sregex_iterator regI = begin; regI != end; ++regI) {
-//         std::string name = (*regI)[1];
-//         if (resources.variables.find(name) != resources.variables.end())
-//             ret.usedVars.insert(name);
-//         else
-//             throw std::runtime_error("Unknown resource: " + name);
-//     }
-//     return ret;
-// }
-
-// template <typename T>
-// static const T& translate_input(const std::string& str, const std::map<std::string, T>& values) {
-//     auto itr = values.find(str);
-//     if (itr != values.end())
-//         return itr->second;
-//     std::stringstream message;
-//     message << "Invalid value: <" << str << ">. Valid values are {";
-//     for (const auto& value : values)
-//         message << " " << value.first;
-//     message << " }";
-//     throw std::runtime_error(message.str());
-// }
-
-// static ShaderBin::StageConfig read_stage_configs(
-//   const Resources& resources, uint32_t variantId, const std::vector<Variants>& variants,
-//   const std::unordered_map<std::string, uint32_t>& variantParamMultiplier,
-//   const ShaderGenerationInput& input, PipelineResourceUsage& resourceUsage) {
-//     // TODO report an error for unknown values
-//     std::string statesInfo =
-//       format_variant(variantId, variants, input.statesCfg, variantParamMultiplier);
-//     std::string vsInfo = format_variant(variantId, variants, input.vsCfg, variantParamMultiplier);
-//     std::string psInfo = format_variant(variantId, variants, input.psCfg, variantParamMultiplier);
-//     std::string csInfo = format_variant(variantId, variants, input.csCfg, variantParamMultiplier);
-//     std::unordered_map<std::string, std::string> statesValues = read_values(statesInfo);
-//     std::unordered_map<std::string, std::string> vsValues = read_values(vsInfo);
-//     std::unordered_map<std::string, std::string> psValues = read_values(psInfo);
-//     std::unordered_map<std::string, std::string> csValues = read_values(csInfo);
-//     resourceUsage.vsUsage = read_used_resources(vsInfo, resources);
-//     resourceUsage.psUsage = read_used_resources(psInfo, resources);
-//     resourceUsage.csUsage = read_used_resources(csInfo, resources);
-//     ShaderBin::StageConfig ret;
-//     if (vsValues.count("entry") > 1 || psValues.count("entry") > 1 || csValues.count("entry") > 1
-//         || statesValues.count("polygonMode") > 1 || statesValues.count("cull") > 1
-//         || statesValues.count("depthCompare") > 1 || statesValues.count("useDepthClamp") > 1
-//         || statesValues.count("depthBiasEnable") > 1 || statesValues.count("depthTest") > 1
-//         || statesValues.count("depthWrite") > 1 || statesValues.count("stencilTest") > 1)
-//         throw std::runtime_error("Shater state overwrites are currently not supported");
-
-//     if (auto itr = vsValues.find("entry"); itr != vsValues.end())
-//         ret.vsEntryPoint = itr->second;
-//     if (auto itr = psValues.find("entry"); itr != psValues.end())
-//         ret.psEntryPoint = itr->second;
-//     if (auto itr = csValues.find("entry"); itr != csValues.end())
-//         ret.csEntryPoint = itr->second;
-//     if (auto itr = statesValues.find("polygonMode"); itr != statesValues.end())
-//         ret.polygonMode =
-//           translate_input<drv::PolygonMode>(itr->second, {{"fill", drv::PolygonMode::FILL},
-//                                                           {"line", drv::PolygonMode::LINE},
-//                                                           {"point", drv::PolygonMode::POINT}});
-//     if (auto itr = statesValues.find("cull"); itr != statesValues.end())
-//         ret.cullMode =
-//           translate_input<drv::CullMode>(itr->second, {{"none", drv::CullMode::NONE},
-//                                                        {"front", drv::CullMode::FRONT_BIT},
-//                                                        {"back", drv::CullMode::BACK_BIT},
-//                                                        {"all", drv::CullMode::FRONT_AND_BACK}});
-//     if (auto itr = statesValues.find("depthCompare"); itr != statesValues.end())
-//         ret.depthCompare = translate_input<drv::CompareOp>(
-//           itr->second, {{"never", drv::CompareOp::NEVER},
-//                         {"less", drv::CompareOp::LESS},
-//                         {"equal", drv::CompareOp::EQUAL},
-//                         {"less_or_equal", drv::CompareOp::LESS_OR_EQUAL},
-//                         {"greater", drv::CompareOp::GREATER},
-//                         {"not_equal", drv::CompareOp::NOT_EQUAL},
-//                         {"greater_or_equal", drv::CompareOp::GREATER_OR_EQUAL},
-//                         {"always", drv::CompareOp::ALWAYS}});
-//     if (auto itr = statesValues.find("useDepthClamp"); itr != statesValues.end())
-//         ret.useDepthClamp = translate_input<bool>(itr->second, {{"true", true}, {"false", false}});
-//     if (auto itr = statesValues.find("depthBiasEnable"); itr != statesValues.end())
-//         ret.depthBiasEnable =
-//           translate_input<bool>(itr->second, {{"true", true}, {"false", false}});
-//     if (auto itr = statesValues.find("depthTest"); itr != statesValues.end())
-//         ret.depthTest = translate_input<bool>(itr->second, {{"true", true}, {"false", false}});
-//     if (auto itr = statesValues.find("depthWrite"); itr != statesValues.end())
-//         ret.depthWrite = translate_input<bool>(itr->second, {{"true", true}, {"false", false}});
-//     if (auto itr = statesValues.find("stencilTest"); itr != statesValues.end())
-//         ret.stencilTest = translate_input<bool>(itr->second, {{"true", true}, {"false", false}});
-//     for (const auto& [name, cfg] : input.attachments) {
-//         std::string attachments = format_variant(variantId, variants, cfg, variantParamMultiplier);
-//         std::unordered_map<std::string, std::string> values = read_values(attachments);
-//         ShaderBin::AttachmentInfo attachmentInfo;
-//         if (auto itr = values.find("location"); itr != values.end()) {
-//             int loc = std::atoi(itr->second.c_str());
-//             if (loc < 0)
-//                 continue;
-//             attachmentInfo.location = safe_cast<uint8_t>(loc);
-//         }
-//         else
-//             throw std::runtime_error(
-//               "An attachment description must contain a 'location' parameter: " + name);
-//         attachmentInfo.name = name;
-//         attachmentInfo.info = 0;
-//         if (auto itr = values.find("channels"); itr != values.end()) {
-//             if (itr->second.find('a') != std::string::npos)
-//                 attachmentInfo.info |= ShaderBin::AttachmentInfo::USE_ALPHA;
-//             if (itr->second.find('r') != std::string::npos)
-//                 attachmentInfo.info |= ShaderBin::AttachmentInfo::USE_RED;
-//             if (itr->second.find('g') != std::string::npos)
-//                 attachmentInfo.info |= ShaderBin::AttachmentInfo::USE_GREEN;
-//             if (itr->second.find('b') != std::string::npos)
-//                 attachmentInfo.info |= ShaderBin::AttachmentInfo::USE_BLUE;
-//             if (attachmentInfo.info == 0)
-//                 throw std::runtime_error("No channels are used by an attachment: " + name);
-//         }
-//         else
-//             throw std::runtime_error("Missing 'channels' parameter from attachment description: "
-//                                      + name);
-//         if (auto itr = values.find("type"); itr != values.end()) {
-//             // TODO depth stencil
-//             if (itr->second == "output")
-//                 attachmentInfo.info |= ShaderBin::AttachmentInfo::WRITE;
-//             else if (itr->second != "input")
-//                 throw std::runtime_error("Unknown attachment type: " + itr->second + "  (" + name
-//                                          + ")");
-//         }
-//         ret.attachments.push_back(std::move(attachmentInfo));
-//     }
-//     return ret;
-// }
-
-// static bool read_gen_input(const std::string& filename, const BlockFile& shaderFile,
-//                            ShaderGenerationInput& genInput) {
-//     if (!collect_shader_cfg(shaderFile, genInput.statesCfg, "states")) {
-//         std::cerr << "Could not collect shader stages/states content in: " << filename << std::endl;
-//         return false;
-//     }
-//     if (!collect_shader(shaderFile, genInput.vs, genInput.vsCfg, "vs")) {
-//         std::cerr << "Could not collect vs shader content in: " << filename << std::endl;
-//         return false;
-//     }
-//     if (!collect_shader(shaderFile, genInput.ps, genInput.psCfg, "ps")) {
-//         std::cerr << "Could not collect ps shader content in: " << filename << std::endl;
-//         return false;
-//     }
-//     if (!collect_shader(shaderFile, genInput.cs, genInput.csCfg, "cs")) {
-//         std::cerr << "Could not collect cs shader content in: " << filename << std::endl;
-//         return false;
-//     }
-//     if (
-//       !collect_shader_f(
-//         shaderFile, "attachments", [&](size_t, const BlockFile*, size_t, const BlockFile* node) {
-//             if (node->hasNodes()) {
-//                 for (size_t i = 0; i < node->getBlockCount(); ++i) {
-//                     const BlockFile* attachment = node->getNode(i);
-//                     if (attachment->hasNodes()) {
-//                         std::cerr
-//                           << "Attachment infos inside the attachments block must not contain other blocks: "
-//                           << filename << std::endl;
-//                         return false;
-//                     }
-//                     if (attachment->hasContent())
-//                         genInput.attachments[node->getBlockName(i)] << *attachment->getContent();
-//                     else
-//                         genInput.attachments[node->getBlockName(i)] << "";
-//                 }
-//             }
-//             else if (node->hasContent()) {
-//                 std::cerr
-//                   << "The attachments block in shader stage infos must contain a block for each used attachment, not raw content: "
-//                   << filename << std::endl;
-//                 return false;
-//             }
-//             return true;
-//         })) {
-//         std::cerr << "Could not collect attachments in: " << filename << std::endl;
-//         return false;
-//     }
-//     return true;
 // }
 
 // bool generate_header(CompilerData& compileData, const std::string shaderFile) {
@@ -792,59 +1120,6 @@ void Preprocessor::cleanUp() {
 //     }
 //     compileData.includeData[name] = std::move(incData);
 
-//     return true;
-// }
-
-// bool read_variants(const BlockFile* blockFile, Variants& variants) {
-//     variants = {};
-//     if (blockFile->hasNodes()) {
-//         std::cerr << "variants block cannot contain nested blocks" << std::endl;
-//         return false;
-//     }
-//     if (!blockFile->hasContent())
-//         return true;
-//     const std::string* variantContent = blockFile->getContent();
-//     std::regex paramReg{"(\\w+)\\s*:((\\s*\\w+\\s*,)+\\s*\\w+\\s*);"};
-//     std::regex valueReg{"\\s*(\\w+)\\s*(,)?"};
-//     auto variantsBegin =
-//       std::sregex_iterator(variantContent->begin(), variantContent->end(), paramReg);
-//     auto variantsEnd = std::sregex_iterator();
-//     for (std::sregex_iterator regI = variantsBegin; regI != variantsEnd; ++regI) {
-//         std::string paramName = (*regI)[1];
-//         std::string values = (*regI)[2];
-//         auto& vec = variants.values[paramName] = {};
-//         auto valuesBegin = std::sregex_iterator(values.begin(), values.end(), valueReg);
-//         auto valuesEnd = std::sregex_iterator();
-//         for (std::sregex_iterator regJ = valuesBegin; regJ != valuesEnd; ++regJ) {
-//             std::string value = (*regJ)[1];
-//             vec.push_back(value);
-//         }
-//     }
-//     return true;
-// }
-
-// bool read_resources(const BlockFile* blockFile, Resources& resources) {
-//     if (blockFile->hasNodes()) {
-//         std::cerr << "resources block cannot contain nested blocks" << std::endl;
-//         return false;
-//     }
-//     if (!blockFile->hasContent())
-//         return true;
-//     const std::string* resourcesContent = blockFile->getContent();
-//     std::regex varReg{
-//       "(uint|uint2|uint3|uint4|int|int2|int3|int4|float|vec2|vec3|vec4|mat44)\\s+(\\w+)\\s*;"};
-//     auto resourcesBegin =
-//       std::sregex_iterator(resourcesContent->begin(), resourcesContent->end(), varReg);
-//     auto resourcesEnd = std::sregex_iterator();
-//     for (std::sregex_iterator regI = resourcesBegin; regI != resourcesEnd; ++regI) {
-//         std::string varType = (*regI)[1];
-//         std::string varName = (*regI)[2];
-//         if (resources.variables.find(varName) != resources.variables.end()) {
-//             std::cerr << "A variable already exists with this name: " << varName << std::endl;
-//             return false;
-//         }
-//         resources.variables[varName] = varType;
-//     }
 //     return true;
 // }
 
