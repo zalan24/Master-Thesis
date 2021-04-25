@@ -723,6 +723,7 @@ bool generate_header(CompilerData& compileData, const std::string shaderFile) {
             std::cerr << "Could not open output file: " << headerFileName.string() << std::endl;
             return false;
         }
+        TODO;  // export hash here
         outHeaderFile << header.str();
         outHeaderFile.close();
         std::ofstream outCxxFile(cxxFilePath.string());
@@ -1496,6 +1497,7 @@ bool compile_shader(CompilerData& compileData, const std::string shaderFile) {
             std::cerr << "Could not open output file: " << headerFilePath.string() << std::endl;
             return false;
         }
+        TODO;  // export hash here
         headerFile << header.str();
         headerFile.close();
         std::ofstream cxxFile(cxxFilePath.string());

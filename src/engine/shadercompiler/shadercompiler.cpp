@@ -132,6 +132,7 @@ int main(int argc, char* argv[]) {
                 return 1;
             }
         }
+        TODO;  // analyze incData + stats here
         for (const std::string& f : files) {
             std::smatch m;
             if (!std::regex_match(f, m, shaderRegex))

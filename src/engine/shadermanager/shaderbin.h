@@ -56,6 +56,9 @@ class ShaderBin
         std::vector<AttachmentInfo> attachments;
     };
 
+    struct PushConstBindData
+    {};
+
     struct ShaderData
     {
         static constexpr uint64_t INVALID_SHADER = std::numeric_limits<uint64_t>::max();
@@ -64,6 +67,7 @@ class ShaderBin
             std::array<uint64_t, NUM_STAGES> stageOffsets = {INVALID_SHADER};
             std::array<uint64_t, NUM_STAGES> stageCodeSizes = {INVALID_SHADER};
             StageConfig configs;
+            PushConstBindData pushConstBindInfo;
         };
         uint32_t totalVariantCount;
         uint32_t variantParamNum;

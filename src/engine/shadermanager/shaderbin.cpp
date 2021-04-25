@@ -99,6 +99,7 @@ void ShaderBin::read(std::istream& in) {
             read_data(in, data.stages[j].stageOffsets);
             read_data(in, data.stages[j].stageCodeSizes);
             read_configs(in, data.stages[j].configs);
+            // TODO;
         }
         read_vector(in, data.codes);
         shaders[name] = std::move(data);
@@ -131,6 +132,7 @@ void ShaderBin::write(std::ostream& out) const {
             write_data(out, data.stages[i].stageOffsets);
             write_data(out, data.stages[i].stageCodeSizes);
             write_configs(out, data.stages[i].configs);
+            // TODO;
         }
         write_vector(out, data.codes);
     }
