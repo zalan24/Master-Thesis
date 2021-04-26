@@ -6,3 +6,4 @@ target_link_libraries(Playground PRIVATE
     AnimationsGame
     cli11_external
 )
+add_dependencies(Playground ShaderBinary)

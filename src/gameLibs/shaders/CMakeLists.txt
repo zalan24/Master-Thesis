@@ -1,6 +1,6 @@
 file(GLOB SHADERS_HEADERS *.sh)
 file(GLOB SHADERS_SOURCES *.sd)
-# set(SHADERBIN "${CMAKE_BINARY_DIR}/shaders/shaders.bin")
+set(SHADERBIN "${CMAKE_BINARY_DIR}/shaders/shaders.bin")
 # set(SHADER_DEBUG "${CMAKE_BINARY_DIR}/shaders/debug/")
 
 # set(GENERATED_FILES "${CMAKE_CURRENT_BINARY_DIR}/shaderregistry.h")
@@ -17,8 +17,8 @@ file(GLOB SHADERS_SOURCES *.sd)
 
 # add_custom_target(ShaderCodes ALL DEPENDS ${SHADERBIN})
 
-# set(HARDWARE_LIMITS ${CMAKE_SOURCE_DIR}/data/compile/deviceLimits.json)
-# set(SHADER_COMPILE_OPTIONS ${CMAKE_SOURCE_DIR}/data/compile/shaderCompileOptions.json)
+set(HARDWARE_LIMITS ${CMAKE_SOURCE_DIR}/data/compile/deviceLimits.json)
+set(SHADER_COMPILE_OPTIONS ${CMAKE_SOURCE_DIR}/data/compile/shaderCompileOptions.json)
 # # set(HASH_FILE ${})
 
 # # TODO create shader header hash and compare when loading
@@ -50,4 +50,15 @@ preprocess_shaders(
     TARGET testShaders
     OUT_DIR ${PROJECT_BINARY_DIR}/shaders/preprocessors
     HEADERS ${SHADERS_HEADERS}
-    SOURCES ${SHADERS_SOURCES})
+    SOURCES ${SHADERS_SOURCES}
+)
+
+compile_shaders(
+    TARGET_NAME ShaderBinary
+    TARGETS testShaders
+    OUTPUT  ${SHADERBIN}
+    DATA_DIR ${PROJECT_BINARY_DIR}/shaders/preprocessors
+    DRIVER_REQUIREMENTS ${HARDWARE_LIMITS}
+    COMPILE_OPTIONS ${SHADER_COMPILE_OPTIONS}
+    # SHADER_STATS "----"
+)

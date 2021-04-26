@@ -43,3 +43,35 @@ function(preprocess_shaders)
     target_include_directories(${SHADERS_TARGET} PUBLIC ${CMAKE_CURRENT_BINARY_DIR} ${SHADERS_OUT_DIR})
     target_link_libraries(${SHADERS_TARGET} PUBLIC ShaderManager)
 endfunction()
+
+function(compile_shaders)
+    set(options)
+    set(oneValueArgs TARGET_NAME DATA_DIR DRIVER_REQUIREMENTS SHADER_STATS COMPILE_OPTIONS OUTPUT)
+    set(multiValueArgs TARGETS)
+    cmake_parse_arguments(COMPILER "${options}" "${oneValueArgs}"
+                                        "${multiValueArgs}" ${ARGN} )
+
+    set(targetFiles)
+    foreach(T IN ITEMS ${COMPILER_TARGETS})
+        list(APPEND targetFiles "${COMPILER_DATA_DIR}/${T}.json")
+    endforeach()
+
+
+    add_custom_command(
+        OUTPUT   ${COMPILER_OUTPUT} # ${GENERATED_FILES}
+        COMMAND  ShaderCompiler
+            # -r${CMAKE_CURRENT_SOURCE_DIR}
+            # -c${CMAKE_CURRENT_BINARY_DIR}/shadercache
+            # --headers ${CMAKE_CURRENT_BINARY_DIR}
+            -o${COMPILER_OUTPUT}
+            # -d${SHADER_DEBUG}
+            # -g${GENERATED_SHADERS}
+            --hardware ${COMPILER_DRIVER_REQUIREMENTS}
+            --options ${COMPILER_COMPILE_OPTIONS}
+            # ${SHADERS_HEADERS} ${SHADERS_SOURCES}
+            ${targetFiles}
+        DEPENDS  ${targetFiles} ${COMPILER_DRIVER_REQUIREMENTS} ${COMPILER_COMPILE_OPTIONS} ShaderCompiler
+    )
+
+    add_custom_target(${COMPILER_TARGET_NAME} ALL DEPENDS ${COMPILER_OUTPUT})
+endfunction()

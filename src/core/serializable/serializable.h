@@ -329,3 +329,5 @@ class IVirtualSerializable : public ISerializable
         serializeEnum(json[#name], name, names); \
     else                                         \
         name = def
+#define WRITE_TIMESTAMP(json) json["timeStamp"] = serialize(std::string{__TIMESTAMP__})
+#define CHECK_TIMESTAMP(json) (json["timeStamp"] == std::string{__TIMESTAMP__})

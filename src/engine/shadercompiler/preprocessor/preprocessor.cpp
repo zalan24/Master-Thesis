@@ -135,19 +135,16 @@ void ShaderObjectData::readJson(const json& in) {
 }
 
 void PreprocessorData::writeJson(json& out) const {
-    std::string timeStamp = __TIMESTAMP__;
-    WRITE_OBJECT(timeStamp, out);
+    WRITE_TIMESTAMP(out);
     WRITE_OBJECT(headers, out);
     WRITE_OBJECT(sources, out);
 }
 
 void PreprocessorData::readJson(const json& in) {
-    std::string timeStamp;
-    READ_OBJECT(timeStamp, in);
-    if (timeStamp != __TIMESTAMP__)
-        return;
-    READ_OBJECT(headers, in);
-    READ_OBJECT(sources, in);
+    if (CHECK_TIMESTAMP(in)) {
+        READ_OBJECT(headers, in);
+        READ_OBJECT(sources, in);
+    }
 }
 
 static void read_variants(const BlockFile* blockFile, Variants& variants) {
@@ -1040,9 +1037,17 @@ void Preprocessor::processSource(const fs::path& file, const fs::path& outdir) {
     //     cxx << "    }\n";
     //     resourceUsageToConfigId[usage] = configId++;
     // }
+    cxx << "    {\n";
+    cxx << "        drv::DrvShaderObjectRegistry::ConfigInfo config;\n";
+    cxx << "        config.numRanges = 0;\n";
+    cxx << "        config.ranges = nullptr;\n";
+    cxx << "        reg->addConfig(config);\n";
+    cxx << "    }\n";
     cxx << "}\n\n";
 
     cxx << "static uint32_t CONFIG_INDEX[] = {";
+    for (uint32_t i = 0; i < objData.variantCount; ++i)
+        cxx << "0, ";
     // for (uint32_t i = 0; i < variantToResourceUsage.size(); ++i) {
     //     if (i > 0)
     //         cxx << ", ";
