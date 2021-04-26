@@ -500,8 +500,8 @@ ShaderHash Preprocessor::collectIncludes(const std::string& header,
         throw std::runtime_error("Unkown header: " + header);
     std::string ret = itr->second.fileHash;
     includes.push_back(header);
-    for (const auto& itr : itr->second.includes)
-        ret += collectIncludes(itr, includes);
+    for (const auto& h : itr->second.includes)
+        ret += collectIncludes(h, includes);
     return hash_string(ret);
 }
 
@@ -876,6 +876,11 @@ void Preprocessor::processSource(const fs::path& file, const fs::path& outdir) {
     cxx << "#include \"" << headerFileName.string() << "\"\n\n";
     cxx << "#include <drv.h>\n";
     includeHeaders(cu, objData.allIncludes);
+    for (const auto& h : objData.allIncludes) {
+        auto itr = data.headers.find(h);
+        assert(itr != data.headers.end());
+        header << "#include \"" << itr->second.headerFileName << "\"\n";
+    }
     BlockFile cuBlocks(cu, false);
     if (!cuBlocks.hasNodes())
         throw std::runtime_error("Compilation unit doesn't have any blocks");
@@ -887,11 +892,11 @@ void Preprocessor::processSource(const fs::path& file, const fs::path& outdir) {
     // std::unordered_map<std::string, std::string> variantParamToDescriptor;
     uint32_t variantIdMul = 1;
     std::vector<Variants> variants;
-    for (const auto& header : objData.allIncludes) {
-        auto itr = data.headers.find(header);
+    for (const auto& h : objData.allIncludes) {
+        auto itr = data.headers.find(h);
         if (itr == data.headers.end())
-            throw std::runtime_error("Unknown shader header: " + header);
-        objData.headerVariantIdMultiplier[header] = variantIdMul;
+            throw std::runtime_error("Unknown shader header: " + h);
+        objData.headerVariantIdMultiplier[h] = variantIdMul;
         variantIdMul *= itr->second.totalVariantMultiplier;
         variants.push_back(itr->second.variants);
         // for (const auto& itr2 : itr->second.variantMultiplier) {
@@ -993,7 +998,7 @@ void Preprocessor::processSource(const fs::path& file, const fs::path& outdir) {
     cxx << "    loadShader(*shader);\n";
 
     std::map<PipelineResourceUsage, uint32_t> resourceUsageToConfigId;
-    uint32_t configId = 0;
+    // uint32_t configId = 0;
     // for (const auto& usage : variantToResourceUsage) {
     //     if (resourceUsageToConfigId.find(usage) != resourceUsageToConfigId.end())
     //         continue;

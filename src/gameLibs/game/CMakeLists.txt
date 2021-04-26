@@ -11,7 +11,7 @@ target_link_libraries(AnimationsGame PUBLIC
     AnimationsIRenderer
     AnimationsISimulation
     ShaderManager
-    AnimationShaders
+    testShaders
     AnimationsEngine
     EngineRenderPass
 )

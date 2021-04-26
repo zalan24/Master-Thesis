@@ -5,7 +5,7 @@ function(preprocess_shaders)
     cmake_parse_arguments(SHADERS "${options}" "${oneValueArgs}"
                                         "${multiValueArgs}" ${ARGN} )
 
-    set(OUTPUT_DIR "${CMAKE_CURRENT_BINARY_DIR}")
+    set(OUTPUT_DIR "${SHADERS_OUT_DIR}")
 
     set(GENERATED_FILES "${OUTPUT_DIR}/shaderregistry.h")
 
@@ -32,6 +32,6 @@ function(preprocess_shaders)
     add_library(${SHADERS_TARGET} STATIC ${GENERATED_FILES})
     # add_dependencies(${SHADERS_TARGET} ShaderCodes)
 
-    target_include_directories(${SHADERS_TARGET} PUBLIC ${CMAKE_CURRENT_BINARY_DIR})
+    target_include_directories(${SHADERS_TARGET} PUBLIC ${CMAKE_CURRENT_BINARY_DIR} ${SHADERS_OUT_DIR})
     target_link_libraries(${SHADERS_TARGET} PUBLIC ShaderManager)
 endfunction()
