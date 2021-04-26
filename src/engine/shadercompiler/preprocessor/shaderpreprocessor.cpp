@@ -97,6 +97,8 @@ int main(int argc, char* argv[]) {
             preprocessor.processHeader(fs::path{header}, fs::path{outputDir});
         for (const auto& source : sources)  // sources have implicit headers
             preprocessor.processHeader(fs::path{source}, fs::path{outputDir});
+        for (const auto& source : sources)
+            preprocessor.processSource(fs::path{source}, fs::path{outputDir});
 
         preprocessor.generateRegistryFile(fs::path{outputDir} / fs::path{"shaderregistry.h"});
         preprocessor.cleanUp();
@@ -220,6 +222,5 @@ int main(int argc, char* argv[]) {
     //     json cacheJson = ISerializable::serialize(compileData.cache);
     //     cacheOut << cacheJson;
     // }
-    std::cerr << "Unimplemented\n";
-    return 1;
+    return 0;
 }

@@ -12,15 +12,13 @@
 #include <blockfile.h>
 // #include <features.h>
 // #include <shadertypes.h>
-// #include <uncomment.h>
 #include <shaderbin.h>
+#include <uncomment.h>
 #include <util.hpp>
 
 // #include "spirvcompiler.h"
 
 namespace fs = std::filesystem;
-
-using ShaderHash = std::string;
 
 static ShaderHash hash_string(const std::string& data) {
     IHash hash = HashLib4CPP::Hash128::CreateMurmurHash3_x64_128();
@@ -38,6 +36,42 @@ static ShaderHash hash_string(const std::string& data) {
 //     return res->ToString();
 // }
 
+void Variants::writeJson(json& out) const {
+    WRITE_OBJECT(values, out);
+}
+
+void Variants::readJson(const json& in) {
+    READ_OBJECT(values, in);
+}
+
+void Resources::writeJson(json& out) const {
+    WRITE_OBJECT(variables, out);
+}
+
+void Resources::readJson(const json& in) {
+    READ_OBJECT(variables, in);
+}
+
+void ResourceUsage::writeJson(json& out) const {
+    WRITE_OBJECT(usedVars, out);
+}
+
+void ResourceUsage::readJson(const json& in) {
+    READ_OBJECT(usedVars, in);
+}
+
+void PipelineResourceUsage::writeJson(json& out) const {
+    WRITE_OBJECT(vsUsage, out);
+    WRITE_OBJECT(psUsage, out);
+    WRITE_OBJECT(csUsage, out);
+}
+
+void PipelineResourceUsage::readJson(const json& in) {
+    READ_OBJECT(vsUsage, in);
+    READ_OBJECT(psUsage, in);
+    READ_OBJECT(csUsage, in);
+}
+
 void ShaderHeaderData::writeJson(json& out) const {
     WRITE_OBJECT(name, out);
     WRITE_OBJECT(fileHash, out);
@@ -46,12 +80,13 @@ void ShaderHeaderData::writeJson(json& out) const {
     WRITE_OBJECT(cxxHash, out);
     WRITE_OBJECT(variants, out);
     WRITE_OBJECT(resources, out);
-    WRITE_OBJECT(desriptorClassName, out);
-    WRITE_OBJECT(desriptorRegistryClassName, out);
-    WRITE_OBJECT(totalVarintMultiplier, out);
+    WRITE_OBJECT(descriptorClassName, out);
+    WRITE_OBJECT(descriptorRegistryClassName, out);
+    WRITE_OBJECT(totalVariantMultiplier, out);
     WRITE_OBJECT(variantMultiplier, out);
-    WRITE_OBJECT(varintToResourceUsage, out);
+    WRITE_OBJECT(variantToResourceUsage, out);
     WRITE_OBJECT(headerFileName, out);
+    WRITE_OBJECT(includes, out);
 }
 
 void ShaderHeaderData::readJson(const json& in) {
@@ -62,16 +97,48 @@ void ShaderHeaderData::readJson(const json& in) {
     READ_OBJECT(cxxHash, in);
     READ_OBJECT(variants, in);
     READ_OBJECT(resources, in);
-    READ_OBJECT(desriptorClassName, in);
-    READ_OBJECT(desriptorRegistryClassName, in);
-    READ_OBJECT(totalVarintMultiplier, in);
+    READ_OBJECT(descriptorClassName, in);
+    READ_OBJECT(descriptorRegistryClassName, in);
+    READ_OBJECT(totalVariantMultiplier, in);
     READ_OBJECT(variantMultiplier, in);
-    READ_OBJECT(varintToResourceUsage, in);
+    READ_OBJECT(variantToResourceUsage, in);
     READ_OBJECT(headerFileName, in);
+    READ_OBJECT(includes, in);
+}
+
+void ShaderObjectData::writeJson(json& out) const {
+    WRITE_OBJECT(name, out);
+    WRITE_OBJECT(fileHash, out);
+    WRITE_OBJECT(headersHash, out);
+    WRITE_OBJECT(filePath, out);
+    WRITE_OBJECT(headerHash, out);
+    WRITE_OBJECT(cxxHash, out);
+    WRITE_OBJECT(className, out);
+    WRITE_OBJECT(registryClassName, out);
+    WRITE_OBJECT(headerFileName, out);
+    WRITE_OBJECT(variantCount, out);
+    WRITE_OBJECT(headerVariantIdMultiplier, out);
+    WRITE_OBJECT(allIncludes, out);
+}
+
+void ShaderObjectData::readJson(const json& in) {
+    READ_OBJECT(name, in);
+    READ_OBJECT(fileHash, in);
+    READ_OBJECT(headersHash, in);
+    READ_OBJECT(filePath, in);
+    READ_OBJECT(headerHash, in);
+    READ_OBJECT(cxxHash, in);
+    READ_OBJECT(className, in);
+    READ_OBJECT(registryClassName, in);
+    READ_OBJECT(headerFileName, in);
+    READ_OBJECT(variantCount, in);
+    READ_OBJECT(headerVariantIdMultiplier, in);
+    READ_OBJECT(allIncludes, in);
 }
 
 void PreprocessorData::writeJson(json& out) const {
     WRITE_OBJECT(headers, out);
+    WRITE_OBJECT(sources, out);
 }
 
 void PreprocessorData::readJson(const json& in) {
@@ -404,6 +471,40 @@ static ShaderBin::StageConfig read_stage_configs(
     return ret;
 }
 
+void Preprocessor::readIncludes(const BlockFile& b, std::set<std::string>& directIncludes) const {
+    std::regex headerReg{"((\\w+\\/)*(\\w+))"};
+    for (size_t i = 0; i < b.getBlockCount("include"); ++i) {
+        const BlockFile* inc = b.getNode("include", i);
+        if (!inc->hasContent())
+            throw std::runtime_error("Invalid include block");
+        const std::string* headerContent = inc->getContent();
+        auto headersBegin =
+          std::sregex_iterator(headerContent->begin(), headerContent->end(), headerReg);
+        auto headersEnd = std::sregex_iterator();
+        for (std::sregex_iterator regI = headersBegin; regI != headersEnd; ++regI) {
+            std::string headerId = (*regI)[0];
+            auto itr = data.headers.find(headerId);
+            if (itr == data.headers.end())
+                throw std::runtime_error("Could not find header: " + headerId);
+            directIncludes.insert(headerId);
+        }
+    }
+}
+
+ShaderHash Preprocessor::collectIncludes(const std::string& header,
+                                         std::vector<std::string>& includes) const {
+    if (std::find(includes.begin(), includes.end(), header) != includes.end())
+        return "";
+    auto itr = data.headers.find(header);
+    if (itr == data.headers.end())
+        throw std::runtime_error("Unkown header: " + header);
+    std::string ret = itr->second.fileHash;
+    includes.push_back(header);
+    for (const auto& itr : itr->second.includes)
+        ret += collectIncludes(itr, includes);
+    return hash_string(ret);
+}
+
 void Preprocessor::processHeader(const fs::path& file, const fs::path& outdir) {
     std::string name = file.stem().string();
     for (char& c : name)
@@ -460,12 +561,15 @@ void Preprocessor::processHeader(const fs::path& file, const fs::path& outdir) {
         const BlockFile* resourcesBlock = descBlock->getNode("resources");
         read_resources(resourcesBlock, resources);
     }
+
+    readIncludes(b, incData.includes);
+
     const std::string className = "shader_" + name + "_descriptor";
     const std::string registryClassName = "shader_" + name + "_registry";
     fs::path headerFileName = fs::path("shader_header_" + name + ".h");
     fs::path cxxFileName = fs::path("shader_header_" + name + ".cpp");
-    incData.desriptorClassName = className;
-    incData.desriptorRegistryClassName = registryClassName;
+    incData.descriptorClassName = className;
+    incData.descriptorRegistryClassName = registryClassName;
     incData.name = name;
     header << "#pragma once\n\n";
     header << "#include <memory>\n\n";
@@ -483,13 +587,13 @@ void Preprocessor::processHeader(const fs::path& file, const fs::path& outdir) {
         incData.variantMultiplier[variantName] = variantMul;
         variantMul *= values.size();
     }
-    incData.totalVarintMultiplier = variantMul;
+    incData.totalVariantMultiplier = variantMul;
 
     ShaderGenerationInput genInput;
     read_gen_input(b, genInput);
 
-    incData.varintToResourceUsage.resize(incData.totalVarintMultiplier);
-    for (uint32_t i = 0; i < incData.totalVarintMultiplier; ++i) {
+    incData.variantToResourceUsage.resize(incData.totalVariantMultiplier);
+    for (uint32_t i = 0; i < incData.totalVariantMultiplier; ++i) {
         PipelineResourceUsage resourceUsage;
         ShaderBin::StageConfig cfg = read_stage_configs(
           resources, i, {incData.variants}, incData.variantMultiplier, genInput, resourceUsage);
@@ -497,7 +601,7 @@ void Preprocessor::processHeader(const fs::path& file, const fs::path& outdir) {
         //     incData.resourceObjects[resourceUsage] =
         //       generate_resource_object(resources, resourceUsage);
         // const ResourceObject& resourceObj = incData.resourceObjects[resourceUsage];
-        incData.varintToResourceUsage[i] = resourceUsage;
+        incData.variantToResourceUsage[i] = resourceUsage;
     }
 
     // uint32_t structId = 0;
@@ -683,8 +787,417 @@ void Preprocessor::processHeader(const fs::path& file, const fs::path& outdir) {
     data.headers[name] = std::move(incData);
 }
 
+void Preprocessor::includeHeaders(std::ostream& out,
+                                  const std::vector<std::string>& includes) const {
+    for (const auto& header : includes) {
+        auto itr = data.headers.find(header);
+        if (itr == data.headers.end())
+            throw std::runtime_error("Unknown shader header: " + header);
+        const std::string& filename = itr->second.filePath;
+        std::ifstream in(filename.c_str());
+        if (!in.is_open())
+            throw std::runtime_error("Could not open included file: " + filename);
+        uncomment(in, out);
+    }
+}
+
+std::map<std::string, uint32_t> Preprocessor::getHeaderLocalVariants(
+  uint32_t variantId, const ShaderObjectData& objData) const {
+    std::map<std::string, uint32_t> ret;
+    for (const auto& header : objData.allIncludes)
+        ret[header] = (variantId / objData.headerVariantIdMultiplier.find(header)->second)
+                      % data.headers.find(header)->second.totalVariantMultiplier;
+    return ret;
+}
+
+// std::vector<PipelineResourceUsage> Preprocessor::generateShaderVariantToResourceUsages(
+//   const ShaderObjectData& objData) const {
+//     std::vector<PipelineResourceUsage> ret;
+//     ret.reserve(objData.variantCount);
+//     for (uint32_t i = 0; i < objData.variantCount; ++i) {
+//         TODO;
+//     }
+//     return ret;
+// }
+
 void Preprocessor::processSource(const fs::path& file, const fs::path& outdir) {
-    // TODO insert name to usedShaders
+    std::string name = file.stem().string();
+    for (char& c : name)
+        c = static_cast<char>(tolower(c));
+    usedShaders.insert(name);
+    std::ifstream in(file.c_str());
+    if (!in.is_open())
+        throw std::runtime_error("Could not open shader file: " + file.string());
+    std::string content((std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>());
+    std::string hash = hash_string(content);
+    content = "";
+    in.seekg(0, ios::beg);
+    std::string headerHash = "";
+    std::string cxxHash = "";
+    if (auto itr = data.sources.find(name); itr != data.sources.end()) {
+        if (itr->second.fileHash == hash) {
+            std::vector<std::string> includes;
+            if (collectIncludes(name, includes) == itr->second.headersHash) {
+                itr->second.filePath = fs::absolute(file).string();
+                return;
+            }
+        }
+        headerHash = itr->second.headerHash;
+        cxxHash = itr->second.cxxHash;
+    }
+    std::cout << "Preprocessing shader '" << name << "' (" << file.string() << ")\n";
+    ShaderObjectData objData;
+    objData.name = name;
+    objData.filePath = fs::absolute(file).string();
+    objData.fileHash = hash;
+    objData.headerHash = headerHash;
+    objData.cxxHash = cxxHash;
+    objData.headersHash = collectIncludes(name, objData.allIncludes);
+    std::reverse(objData.allIncludes.begin(), objData.allIncludes.end());
+
+    BlockFile b(in);
+    in.close();
+    if (b.hasContent())
+        throw std::runtime_error("Shader file has content on the root level (no blocks present)");
+
+    std::stringstream cu;
+    std::stringstream header;
+    std::stringstream cxx;
+    fs::path headerFileName = fs::path("shader_" + name + ".h");
+    fs::path cxxFileName = fs::path("shader_" + name + ".cpp");
+    objData.headerFileName = headerFileName.string();
+    header << "#pragma once\n\n";
+    header << "#include <cstddef>\n";
+    header << "#include <drvshader.h>\n";
+    header << "#include <shaderbin.h>\n";
+    header << "#include <shaderobject.h>\n";
+    header << "#include <drvrenderpass.h>\n";
+    header << "#include <shaderobjectregistry.h>\n\n";
+    cxx << "#include \"" << headerFileName.string() << "\"\n\n";
+    cxx << "#include <drv.h>\n";
+    includeHeaders(cu, objData.allIncludes);
+    BlockFile cuBlocks(cu, false);
+    if (!cuBlocks.hasNodes())
+        throw std::runtime_error("Compilation unit doesn't have any blocks");
+    ShaderGenerationInput genInput;
+    read_gen_input(cuBlocks, genInput);
+
+    //     directIncludes.push_back(shaderName);  // include it's own header as well
+    //     std::vector<std::string> allIncludes;
+    // std::unordered_map<std::string, std::string> variantParamToDescriptor;
+    uint32_t variantIdMul = 1;
+    std::vector<Variants> variants;
+    for (const auto& header : objData.allIncludes) {
+        auto itr = data.headers.find(header);
+        if (itr == data.headers.end())
+            throw std::runtime_error("Unknown shader header: " + header);
+        objData.headerVariantIdMultiplier[header] = variantIdMul;
+        variantIdMul *= itr->second.totalVariantMultiplier;
+        variants.push_back(itr->second.variants);
+        // for (const auto& itr2 : itr->second.variantMultiplier) {
+        //     if (variantParamToDescriptor.find(itr2.first) != variantParamToDescriptor.end())
+        //         throw std::runtime_error("Variant param names must be unique");
+        //     variantParamToDescriptor[itr2.first] = inc;
+        // }
+    }
+    objData.variantCount = variantIdMul;
+
+    //     std::vector<Variants> variants;
+    //     size_t descriptorCount = cuBlocks.getBlockCount("descriptor");
+    //     Resources resources;
+    //     std::unordered_map<std::string, uint32_t> variantParamMultiplier;
+    //     for (size_t i = 0; i < descriptorCount; ++i) {
+    //         const BlockFile* descriptor = cuBlocks.getNode("descriptor", i);
+    //         if (descriptor->getBlockCount("variants") == 1) {
+    //             Variants v;
+    //             read_variants(descriptor->getNode("variants"), v);
+    //             for (const auto& [name, values] : v.values) {
+    //                 auto desc = variantParamToDescriptor.find(name);
+    //                 assert(desc != variantParamToDescriptor.end());
+    //                 auto descMulItr = variantIdMultiplier.find(desc->second);
+    //                 assert(descMulItr != variantIdMultiplier.end());
+    //                 auto inc = compileData.includeData.find(desc->second);
+    //                 assert(inc != compileData.includeData.end());
+    //                 auto variantMul = inc->second.variantMultiplier.find(name);
+    //                 assert(variantMul != inc->second.variantMultiplier.end());
+    //                 variantParamMultiplier[name] =
+    //                   safe_cast<uint32_t>(descMulItr->second * variantMul->second);
+    //             }
+    //             variants.push_back(std::move(v));
+    //         }
+    //         if (descriptor->getBlockCount("resources") == 1) {
+    //             const BlockFile* resourcesBlock = descriptor->getNode("resources");
+    //             if (!read_resources(resourcesBlock, resources)) {
+    //                 std::cerr << "Could not read resources: " << shaderFile << std::endl;
+    //                 return false;
+    //             }
+    //         }
+    //     }
+    //     ShaderBin::ShaderData shaderData;
+    //     std::map<PipelineResourceUsage, ResourceObject> resourceObjects;
+    // std::vector<PipelineResourceUsage> variantToResourceUsage =
+    //   generateShaderVariantToResourceUsages(objData);
+    //     std::string genFile = "";
+    //     if (compileData.genFolder != "")
+    //         genFile = (fs::path{compileData.genFolder} / fs::path{shaderName + ".glsl"}).string();
+    //     if (!generate_binary(compileData.debugPath, compileData.compiler, resources, shaderData,
+    //                          variants, std::move(genInput), variantParamMultiplier, resourceObjects,
+    //                          variantToResourceUsage, genFile)) {
+    //         std::cerr << "Could not generate binary: " << shaderFile << std::endl;
+    //         return false;
+    //     }
+
+    //     compileData.shaderBin->addShader(shaderName, std::move(shaderData));
+
+    const std::string className = "shader_" + name;
+    const std::string registryClassName = "shader_obj_registry_" + name;
+    objData.className = className;
+    objData.registryClassName = registryClassName;
+
+    header << "\n";
+
+    //     uint32_t structId = 0;
+    //     std::map<ResourcePack, std::string> exportedPacks;
+    //     for (const auto& itr : resourceObjects) {
+    //         for (const auto& [stages, pack] : itr.second.packs) {
+    //             if (exportedPacks.find(pack) != exportedPacks.end())
+    //                 continue;
+    //             std::string structName =
+    //               "PushConstants_" + shaderName + "_" + std::to_string(structId++);
+    //             exportedPacks[pack] = structName;
+    //             pack.generateCXX(structName, resources, cxx);
+    //         }
+    //     }
+
+    header << "class " << registryClassName << " final : public ShaderObjectRegistry {\n";
+    header << "  public:\n";
+    header << "    " << registryClassName
+           << "(drv::LogicalDevicePtr device, const ShaderBin &shaderBin";
+    cxx << registryClassName << "::" << registryClassName
+        << "(drv::LogicalDevicePtr device, const ShaderBin &shaderBin";
+    for (const std::string& inc : objData.allIncludes) {
+        auto itr = data.headers.find(inc);
+        assert(itr != data.headers.end());
+        header << ", const " << itr->second.descriptorRegistryClassName << " *reg_"
+               << itr->second.name;
+        cxx << ", const " << itr->second.descriptorRegistryClassName << " *reg_"
+            << itr->second.name;
+    }
+    header << ");\n";
+    cxx << ")\n";
+    cxx << "  : ShaderObjectRegistry(device)\n";
+    cxx << "{\n";
+    cxx << "    const ShaderBin::ShaderData *shader = shaderBin.getShader(\"" << name << "\");\n";
+    cxx << "    if (shader == nullptr)\n";
+    cxx << "        throw std::runtime_error(\"Shader not found: " << name << "\");\n";
+    cxx << "    loadShader(*shader);\n";
+
+    std::map<PipelineResourceUsage, uint32_t> resourceUsageToConfigId;
+    uint32_t configId = 0;
+    // for (const auto& usage : variantToResourceUsage) {
+    //     if (resourceUsageToConfigId.find(usage) != resourceUsageToConfigId.end())
+    //         continue;
+    //     cxx << "    {\n";
+    // cxx << "        drv::DrvShaderObjectRegistry::PushConstantRange ranges["
+    //     << object.packs.size() << "];\n";
+    // uint32_t rangeId = 0;
+    // for (const auto& [stages, pack] : object.packs) {
+    //     if (!pack.shaderVars.empty()) {
+    //         cxx << "        ranges[" << rangeId << "].stages = 0";
+    //         if (stages & ResourceObject::VS)
+    //             cxx << " | drv::ShaderStage::VERTEX_BIT";
+    //         if (stages & ResourceObject::PS)
+    //             cxx << " | drv::ShaderStage::FRAGMENT_BIT";
+    //         if (stages & ResourceObject::CS)
+    //             cxx << " | drv::ShaderStage::COMPUTE_BIT";
+    //         cxx << ";\n";
+    //         cxx << "        ranges[" << rangeId << "].offset = ";
+    //         if (rangeId == 0)
+    //             cxx << "0";
+    //         else
+    //             cxx << "ranges[" << rangeId - 1 << "].offset + ranges[" << rangeId - 1
+    //                 << "].size";
+    //         cxx << ";\n";
+    //         cxx << "        ranges[" << rangeId << "].size = sizeof("
+    //             << exportedPacks.find(pack)->second << ");\n";
+    //         rangeId++;
+    //     }
+    // }
+    //     cxx << "        drv::DrvShaderObjectRegistry::ConfigInfo config;\n";
+    //     cxx << "        config.numRanges = ;\n";  // << rangeId << ";\n";
+    //     cxx << "        config.ranges = ;\n";     //"ranges;\n";
+    //     cxx << "        reg->addConfig(config);\n";
+    //     cxx << "    }\n";
+    //     resourceUsageToConfigId[usage] = configId++;
+    // }
+    cxx << "}\n\n";
+
+    cxx << "static uint32_t CONFIG_INDEX[] = {";
+    // for (uint32_t i = 0; i < variantToResourceUsage.size(); ++i) {
+    //     if (i > 0)
+    //         cxx << ", ";
+    //     auto itr = resourceUsageToConfigId.find(variantToResourceUsage[i]);
+    //     assert(itr != resourceUsageToConfigId.end());
+    //     cxx << itr->second;
+    // }
+    cxx << "};\n\n";
+
+    header << "    static VariantId get_variant_id(";
+    cxx << "ShaderObjectRegistry::VariantId " << registryClassName << "::get_variant_id(";
+    bool first = true;
+    for (const std::string& inc : objData.allIncludes) {
+        auto itr = data.headers.find(inc);
+        assert(itr != data.headers.end());
+        if (!first) {
+            header << ", ";
+            cxx << ", ";
+        }
+        else
+            first = false;
+        header << "const " << itr->second.descriptorClassName << "::VariantDesc &"
+               << itr->second.name;
+        cxx << "const " << itr->second.descriptorClassName << "::VariantDesc &" << itr->second.name;
+    }
+    header << ");\n";
+    cxx << ") {\n";
+    cxx << "    uint32_t ret = 0;\n";
+    for (const std::string& inc : objData.allIncludes) {
+        auto itr = data.headers.find(inc);
+        assert(itr != data.headers.end());
+        auto mulItr = objData.headerVariantIdMultiplier.find(inc);
+        assert(mulItr != objData.headerVariantIdMultiplier.end());
+        cxx << "    ret += " << itr->second.name << ".getLocalVariantId() * " << mulItr->second
+            << ";\n";
+    }
+    cxx << "    return ret;\n";
+    cxx << "}\n";
+    header << "    static uint32_t get_config_id(ShaderObjectRegistry::VariantId variantId);\n";
+    cxx << "uint32_t " << registryClassName
+        << "::get_config_id(ShaderObjectRegistry::VariantId variantId) {\n";
+    cxx << "    return CONFIG_INDEX[variantId];\n";
+    cxx << "}\n";
+    header << "    friend class " << className << ";\n";
+    header << "  protected:\n";
+    // shaderObj
+    //   << "    VariantId getShaderVariant(const ShaderDescriptorCollection* descriptors) const override {\n";
+    // shaderObj
+    //   << "        return static_cast<const Descriptor*>(descriptors)->getLocalVariantId();\n";
+    // shaderObj << "    }\n";
+    header << "};\n\n";
+
+    header << "class " << className << " final : public ShaderObject {\n";
+    header << "  public:\n";
+    header << "    using Registry = " << registryClassName << ";\n";
+    header << "    " << className << "(drv::LogicalDevicePtr device, const " << registryClassName
+           << " *reg, drv::DrvShader::DynamicStates dynamicStates);\n";
+    cxx << className << "::" << className << "(drv::LogicalDevicePtr _device, const "
+        << registryClassName << " *_reg, drv::DrvShader::DynamicStates dynamicStates)\n";
+    cxx << "  : ShaderObject(_device, _reg, \"" << name << "\", std::move(dynamicStates))\n";
+    cxx << "{\n";
+    cxx << "}\n\n";
+    header << "    ~" << className << "() override {}\n";
+    header
+      << "    uint32_t prepareGraphicalPipeline(const drv::RenderPass *renderPass, drv::SubpassId subpass, const DynamicState &dynamicStates";
+    cxx
+      << "uint32_t " << className
+      << "::prepareGraphicalPipeline(const drv::RenderPass *renderPass, drv::SubpassId subpass, const DynamicState &dynamicStates";
+    std::stringstream variantIdInput;
+    first = true;
+    for (const std::string& inc : objData.allIncludes) {
+        auto itr = data.headers.find(inc);
+        assert(itr != data.headers.end());
+        header << ", const " << itr->second.descriptorClassName << "::VariantDesc &"
+               << itr->second.name;
+        cxx << ", const " << itr->second.descriptorClassName << "::VariantDesc &"
+            << itr->second.name;
+        if (!first)
+            variantIdInput << ", ";
+        else
+            first = false;
+        variantIdInput << itr->second.name;
+    }
+    header << ", const GraphicsPipelineStates &overrideStates = {});\n";
+    cxx << ", const GraphicsPipelineStates &overrideStates) {\n";
+    cxx << "    GraphicsPipelineDescriptor desc;\n";
+    cxx << "    desc.renderPass = renderPass;\n";
+    cxx << "    desc.subpass = subpass;\n";
+    cxx << "    desc.variantId = static_cast<const " << registryClassName
+        << "*>(reg)->get_variant_id(" << variantIdInput.str() << ");\n";
+    cxx << "    desc.configIndex = static_cast<const " << registryClassName
+        << "*>(reg)->get_config_id(desc.variantId);\n";
+    cxx << "    desc.states = overrideStates;\n";
+    cxx << "    desc.dynamicStates = dynamicStates;\n";
+    cxx << "    return getGraphicsPipeline(desc);\n";
+    cxx << "}\n";
+    for (const std::string& inc : objData.allIncludes) {
+        auto itr = data.headers.find(inc);
+        assert(itr != data.headers.end());
+        header
+          << "    static size_t getPushConstOffset(ShaderObjectRegistry::VariantId variantId, const "
+          << itr->second.descriptorClassName << " *" << itr->second.name << ");\n";
+        cxx << "size_t " << className
+            << "::getPushConstOffset(ShaderObjectRegistry::VariantId variantId, const "
+            << itr->second.descriptorClassName << " *" << itr->second.name << ") {\n";
+        cxx << "    // TODO\n";
+        cxx << "    return 0;\n";
+        cxx << "}\n";
+        header
+          << "    static size_t getPushConstSize(ShaderObjectRegistry::VariantId variantId, const "
+          << itr->second.descriptorClassName << " *" << itr->second.name << ");\n";
+        cxx << "size_t " << className
+            << "::getPushConstSize(ShaderObjectRegistry::VariantId variantId, const "
+            << itr->second.descriptorClassName << " *" << itr->second.name << ") {\n";
+        cxx << "    // TODO\n";
+        cxx << "    return 0;\n";
+        cxx << "}\n";
+    }
+    header
+      << "    void bindGraphicsInfo(drv::CmdRenderPass &renderPass, const DynamicState &dynamicStates";
+    cxx << "void " << className
+        << "::bindGraphicsInfo(drv::CmdRenderPass &renderPass, const DynamicState &dynamicStates";
+    std::stringstream pipelineInput;
+    for (const std::string& inc : objData.allIncludes) {
+        auto itr = data.headers.find(inc);
+        assert(itr != data.headers.end());
+        header << ", const " << itr->second.descriptorClassName << " *" << itr->second.name;
+        cxx << ", const " << itr->second.descriptorClassName << " *" << itr->second.name;
+        pipelineInput << "        " << itr->second.name << "->getVariantDesc(),\n";
+    }
+    header << ", const GraphicsPipelineStates &overrideStates = {});\n";
+    cxx << ", const GraphicsPipelineStates &overrideStates) {\n";
+    cxx
+      << "    uint32_t pipelineId = prepareGraphicalPipeline(renderPass.getRenderPass(), renderPass.getSubpass(), dynamicStates,\n"
+      << pipelineInput.str() << "        overrideStates);\n";
+    cxx << "    drv::GraphicsPipelineBindInfo info;\n";
+    cxx << "    info.shader = getShader();\n";
+    cxx << "    info.pipelineId = pipelineId;\n";
+    cxx << "    renderPass.bindGraphicsPipeline(info);\n";
+    cxx << "}\n";
+    header << "};\n";
+
+    objData.headerFileName = headerFileName.string();
+    const std::string h = hash_string(header.str());
+    if (headerHash != h) {
+        fs::path headerFilePath = outdir / headerFileName;
+        std::cout << "Generating " << headerFilePath << std::endl;
+        std::ofstream outHeaderFile(headerFilePath.string());
+        if (!outHeaderFile.is_open())
+            throw std::runtime_error("Could not open output file: " + headerFileName.string());
+        objData.headerHash = h;
+        changedAnyCppHeader = true;
+        outHeaderFile << header.str();
+    }
+    const std::string ch = hash_string(cxx.str());
+    if (cxxHash != ch) {
+        fs::path cxxFilePath = outdir / cxxFileName;
+        std::cout << "Generating " << cxxFilePath << std::endl;
+        std::ofstream outCxxFile(cxxFilePath.string());
+        if (!outCxxFile.is_open())
+            throw std::runtime_error("Could not open output file: " + cxxFileName.string());
+        outCxxFile << cxx.str();
+        objData.cxxHash = ch;
+    }
+    data.sources[name] = std::move(objData);
 }
 
 void Preprocessor::generateRegistryFile(const fs::path& file) const {
@@ -702,12 +1215,14 @@ void Preprocessor::generateRegistryFile(const fs::path& file) const {
     reg << "#include <shaderbin.h>\n";
     for (const auto& itr : data.headers)
         reg << "#include <" << itr.second.headerFileName << ">\n";
+    for (const auto& itr : data.sources)
+        reg << "#include <" << itr.second.headerFileName << ">\n";
     reg << "\n";
     reg << "struct ShaderHeaderRegistry {\n";
     reg << "    ShaderHeaderRegistry(const ShaderHeaderRegistry&) = delete;\n";
     reg << "    ShaderHeaderRegistry& operator=(const ShaderHeaderRegistry&) = delete;\n";
     for (const auto& itr : data.headers)
-        reg << "    " << itr.second.desriptorRegistryClassName << " " << itr.second.name << ";\n";
+        reg << "    " << itr.second.descriptorRegistryClassName << " " << itr.second.name << ";\n";
     reg << "    ShaderHeaderRegistry(drv::LogicalDevicePtr device)\n";
     bool firstHeader = true;
     for (const auto& itr : data.headers) {
@@ -719,11 +1234,23 @@ void Preprocessor::generateRegistryFile(const fs::path& file) const {
     reg << "struct ShaderObjRegistry {\n";
     reg << "    ShaderObjRegistry(const ShaderObjRegistry&) = delete;\n";
     reg << "    ShaderObjRegistry& operator=(const ShaderObjRegistry&) = delete;\n";
-    // TODO objects start for shader object compiler
+    for (const auto& itr : data.sources)
+        reg << "    " << itr.second.registryClassName << " " << itr.second.name << ";\n";
 
     reg
       << "    ShaderObjRegistry(drv::LogicalDevicePtr device, const ShaderBin &shaderBin, const ShaderHeaderRegistry& headers)\n";
-    // TODO shader objects ctor from shader object compiler
+    bool firstSource = true;
+    for (const auto& itr : data.sources) {
+        reg << "      " << (firstSource ? ':' : ',') << " " << itr.second.name
+            << "(device, shaderBin";
+        for (const std::string& inc : itr.second.allIncludes) {
+            auto header = data.headers.find(inc);
+            assert(header != data.headers.end());
+            reg << ", &headers." << header->second.name;
+        }
+        reg << ")\n";
+        firstSource = false;
+    }
     reg << "    {\n    }\n";
     reg << "};\n";
 }
@@ -734,81 +1261,15 @@ void Preprocessor::cleanUp() {
     for (const auto& itr : data.headers)
         if (usedHeaders.count(itr.second.name) == 0)
             unusedHeaders.insert(itr.first);
+    for (const auto& itr : data.sources)
+        if (usedShaders.count(itr.second.name) == 0)
+            unusedShaders.insert(itr.first);
 
     for (const auto& itr : unusedHeaders)
         data.headers.erase(data.headers.find(itr));
+    for (const auto& itr : unusedShaders)
+        data.sources.erase(data.sources.find(itr));
 }
-
-// static bool include_headers(const std::string& filename, std::ostream& out,
-//                             std::set<std::string>& includes, std::set<std::string>& filesInProgress,
-//                             std::unordered_map<std::string, IncludeData>& includeData,
-//                             std::vector<std::string>& directIncludes) {
-//     if (filesInProgress.count(filename) != 0) {
-//         std::cerr << "File recursively included: " << filename << std::endl;
-//         return false;
-//     }
-//     if (includes.count(filename) > 0)
-//         return true;
-//     // directIncludes.clear();
-//     includes.insert(filename);
-//     std::ifstream in(filename.c_str());
-//     if (!in.is_open()) {
-//         std::cerr << "Could not open file: " << filename << std::endl;
-//         return false;
-//     }
-//     std::stringstream content;
-//     uncomment(in, content);
-//     std::string contentStr = content.str();
-//     filesInProgress.insert(filename);
-//     bool ret = true;
-//     std::regex headerReg{"((\\w+\\/)*(\\w+))"};
-//     try {
-//         BlockFile blocks(content);
-//         if (!blocks.hasNodes()) {
-//             std::cerr << "Shader must only contian blocks" << std::endl;
-//             ret = false;
-//         }
-//         else {
-//             for (size_t i = 0; i < blocks.getBlockCount("include") && ret; ++i) {
-//                 const BlockFile* inc = blocks.getNode("include", i);
-//                 if (!inc->hasContent()) {
-//                     std::cerr << "Invalid include block in file: " << filename << std::endl;
-//                     ret = false;
-//                     break;
-//                 }
-//                 const std::string* headerContent = inc->getContent();
-//                 auto headersBegin =
-//                   std::sregex_iterator(headerContent->begin(), headerContent->end(), headerReg);
-//                 auto headersEnd = std::sregex_iterator();
-//                 for (std::sregex_iterator regI = headersBegin; regI != headersEnd; ++regI) {
-//                     std::string headerId = (*regI)[0];
-//                     auto itr = includeData.find(headerId);
-//                     if (itr == includeData.end()) {
-//                         std::cerr << "Could not find header: " << headerId << std::endl;
-//                         ret = false;
-//                         break;
-//                     }
-//                     directIncludes.push_back(headerId);
-//                     if (!include_headers(itr->second.shaderFileName.string(), out, includes,
-//                                          filesInProgress, includeData, itr->second.included)) {
-//                         std::cerr << "Error in header " << headerId << " ("
-//                                   << itr->second.shaderFileName.string() << "), included from "
-//                                   << filename << std::endl;
-//                         ret = false;
-//                         break;
-//                     }
-//                 }
-//             }
-//         }
-//     }
-//     catch (...) {
-//         filesInProgress.erase(filename);
-//         throw;
-//     }
-//     filesInProgress.erase(filename);
-//     out << contentStr;
-//     return ret;
-// }
 
 // static ResourceObject generate_resource_object(const Resources& resources,
 //                                                const PipelineResourceUsage& usages) {
@@ -895,8 +1356,8 @@ void Preprocessor::cleanUp() {
 //     const std::string registryClassName = "shader_" + name + "_registry";
 //     fs::path headerFileName = fs::path("shader_header_" + name + ".h");
 //     fs::path cxxFileName = fs::path("shader_header_" + name + ".cpp");
-//     incData.desriptorClassName = className;
-//     incData.desriptorRegistryClassName = registryClassName;
+//     incData.descriptorClassName = className;
+//     incData.descriptorRegistryClassName = registryClassName;
 //     incData.name = name;
 //     header << "#pragma once\n\n";
 //     header << "#include <memory>\n\n";
@@ -914,14 +1375,14 @@ void Preprocessor::cleanUp() {
 //         incData.variantMultiplier[variantName] = variantMul;
 //         variantMul *= values.size();
 //     }
-//     incData.totalVarintMultiplier = variantMul;
+//     incData.totalVariantMultiplier = variantMul;
 
 //     ShaderGenerationInput genInput;
 //     if (!read_gen_input(shaderFile, b, genInput))
 //         return false;
 
-//     incData.varintToResourceUsage.resize(incData.totalVarintMultiplier);
-//     for (uint32_t i = 0; i < incData.totalVarintMultiplier; ++i) {
+//     incData.variantToResourceUsage.resize(incData.totalVariantMultiplier);
+//     for (uint32_t i = 0; i < incData.totalVariantMultiplier; ++i) {
 //         PipelineResourceUsage resourceUsage;
 //         ShaderBin::StageConfig cfg = read_stage_configs(
 //           resources, i, {incData.variants}, incData.variantMultiplier, genInput, resourceUsage);
@@ -929,7 +1390,7 @@ void Preprocessor::cleanUp() {
 //             incData.resourceObjects[resourceUsage] =
 //               generate_resource_object(resources, resourceUsage);
 //         const ResourceObject& resourceObj = incData.resourceObjects[resourceUsage];
-//         incData.varintToResourceUsage[i] = resourceUsage;
+//         incData.variantToResourceUsage[i] = resourceUsage;
 //     }
 
 //     uint32_t structId = 0;
@@ -1225,7 +1686,7 @@ void Preprocessor::cleanUp() {
 //                             const std::vector<Variants>& variants, ShaderGenerationInput&& input,
 //                             const std::unordered_map<std::string, uint32_t>& variantParamMultiplier,
 //                             std::map<PipelineResourceUsage, ResourceObject>& resourceObjects,
-//                             std::vector<PipelineResourceUsage>& varintToResourceUsage,
+//                             std::vector<PipelineResourceUsage>& variantToResourceUsage,
 //                             const std::string& genFile) {
 //     std::set<std::string> variantParams;
 //     size_t count = 1;
@@ -1264,7 +1725,7 @@ void Preprocessor::cleanUp() {
 //     shaderData.stages.resize(shaderData.totalVariantCount);
 //     std::unordered_map<ShaderHash, std::pair<size_t, size_t>> codeOffsets;
 //     std::unordered_map<ShaderHash, std::pair<size_t, size_t>> binaryOffsets;
-//     varintToResourceUsage.resize(shaderData.totalVariantCount);
+//     variantToResourceUsage.resize(shaderData.totalVariantCount);
 //     std::ostream* genOut = nullptr;
 //     std::ofstream genOutF;
 //     if (genFile != "") {
@@ -1279,7 +1740,7 @@ void Preprocessor::cleanUp() {
 //         if (resourceObjects.find(resourceUsage) == resourceObjects.end())
 //             resourceObjects[resourceUsage] = generate_resource_object(resources, resourceUsage);
 //         const ResourceObject& resourceObj = resourceObjects[resourceUsage];
-//         varintToResourceUsage[variantId] = resourceUsage;
+//         variantToResourceUsage[variantId] = resourceUsage;
 //         // TODO add resource packs to shader codes
 //         shaderData.stages[variantId].configs = cfg;
 //         if (genOut) {
@@ -1319,31 +1780,6 @@ void Preprocessor::cleanUp() {
 //         }
 //     }
 //     return true;
-// }
-
-// static void include_all(std::ostream& out, const fs::path& root,
-//                         const std::unordered_map<std::string, IncludeData>& includeData,
-//                         const std::vector<std::string>& directIncludes,
-//                         std::vector<std::string>& allIncludes,
-//                         std::unordered_map<std::string, uint32_t>& variantIdMultiplier,
-//                         std::unordered_map<std::string, std::string>& variantParamToDescriptor,
-//                         uint32_t& variantIdMul) {
-//     for (const std::string& inc : directIncludes) {
-//         auto itr = includeData.find(inc);
-//         if (itr == includeData.end())
-//             throw std::runtime_error("Could not find include file for: " + inc);
-//         out << "#include \"" << fs::relative(itr->second.headerFileName, root).string() << "\"\n";
-//         allIncludes.push_back(inc);
-//         for (const auto& itr2 : itr->second.variantMultiplier) {
-//             if (variantParamToDescriptor.find(itr2.first) != variantParamToDescriptor.end())
-//                 throw std::runtime_error("Variant param names must be unique");
-//             variantParamToDescriptor[itr2.first] = inc;
-//         }
-//         include_all(out, root, includeData, itr->second.included, allIncludes, variantIdMultiplier,
-//                     variantParamToDescriptor, variantIdMul);
-//         variantIdMultiplier[inc] = variantIdMul;
-//         variantIdMul *= itr->second.totalVarintMultiplier;
-//     }
 // }
 
 // struct TypeInfo
@@ -1569,13 +2005,13 @@ void Preprocessor::cleanUp() {
 //     }
 //     ShaderBin::ShaderData shaderData;
 //     std::map<PipelineResourceUsage, ResourceObject> resourceObjects;
-//     std::vector<PipelineResourceUsage> varintToResourceUsage;
+//     std::vector<PipelineResourceUsage> variantToResourceUsage;
 //     std::string genFile = "";
 //     if (compileData.genFolder != "")
 //         genFile = (fs::path{compileData.genFolder} / fs::path{shaderName + ".glsl"}).string();
 //     if (!generate_binary(compileData.debugPath, compileData.compiler, resources, shaderData,
 //                          variants, std::move(genInput), variantParamMultiplier, resourceObjects,
-//                          varintToResourceUsage, genFile)) {
+//                          variantToResourceUsage, genFile)) {
 //         std::cerr << "Could not generate binary: " << shaderFile << std::endl;
 //         return false;
 //     }
@@ -1620,9 +2056,9 @@ void Preprocessor::cleanUp() {
 //     for (const std::string& inc : allIncludes) {
 //         auto itr = compileData.includeData.find(inc);
 //         assert(itr != compileData.includeData.end());
-//         header << ", const " << itr->second.desriptorRegistryClassName << " *reg_"
+//         header << ", const " << itr->second.descriptorRegistryClassName << " *reg_"
 //                << itr->second.name;
-//         cxx << ", const " << itr->second.desriptorRegistryClassName << " *reg_" << itr->second.name;
+//         cxx << ", const " << itr->second.descriptorRegistryClassName << " *reg_" << itr->second.name;
 //     }
 //     header << ");\n";
 //     cxx << ")\n";
@@ -1673,10 +2109,10 @@ void Preprocessor::cleanUp() {
 //     cxx << "}\n\n";
 
 //     cxx << "static uint32_t CONFIG_INDEX[] = {";
-//     for (uint32_t i = 0; i < varintToResourceUsage.size(); ++i) {
+//     for (uint32_t i = 0; i < variantToResourceUsage.size(); ++i) {
 //         if (i > 0)
 //             cxx << ", ";
-//         auto itr = resourceUsageToConfigId.find(varintToResourceUsage[i]);
+//         auto itr = resourceUsageToConfigId.find(variantToResourceUsage[i]);
 //         assert(itr != resourceUsageToConfigId.end());
 //         cxx << itr->second;
 //     }
@@ -1694,9 +2130,9 @@ void Preprocessor::cleanUp() {
 //         }
 //         else
 //             first = false;
-//         header << "const " << itr->second.desriptorClassName << "::VariantDesc &"
+//         header << "const " << itr->second.descriptorClassName << "::VariantDesc &"
 //                << itr->second.name;
-//         cxx << "const " << itr->second.desriptorClassName << "::VariantDesc &" << itr->second.name;
+//         cxx << "const " << itr->second.descriptorClassName << "::VariantDesc &" << itr->second.name;
 //     }
 //     header << ");\n";
 //     cxx << ") {\n";
@@ -1741,20 +2177,20 @@ void Preprocessor::cleanUp() {
 //     cxx
 //       << "uint32_t " << className
 //       << "::prepareGraphicalPipeline(const drv::RenderPass *renderPass, drv::SubpassId subpass, const DynamicState &dynamicStates";
-//     std::stringstream varintIdInput;
+//     std::stringstream variantIdInput;
 //     first = true;
 //     for (const std::string& inc : allIncludes) {
 //         auto itr = compileData.includeData.find(inc);
 //         assert(itr != compileData.includeData.end());
-//         header << ", const " << itr->second.desriptorClassName << "::VariantDesc &"
+//         header << ", const " << itr->second.descriptorClassName << "::VariantDesc &"
 //                << itr->second.name;
-//         cxx << ", const " << itr->second.desriptorClassName << "::VariantDesc &"
+//         cxx << ", const " << itr->second.descriptorClassName << "::VariantDesc &"
 //             << itr->second.name;
 //         if (!first)
-//             varintIdInput << ", ";
+//             variantIdInput << ", ";
 //         else
 //             first = false;
-//         varintIdInput << itr->second.name;
+//         variantIdInput << itr->second.name;
 //     }
 //     header << ", const GraphicsPipelineStates &overrideStates = {});\n";
 //     cxx << ", const GraphicsPipelineStates &overrideStates) {\n";
@@ -1762,7 +2198,7 @@ void Preprocessor::cleanUp() {
 //     cxx << "    desc.renderPass = renderPass;\n";
 //     cxx << "    desc.subpass = subpass;\n";
 //     cxx << "    desc.variantId = static_cast<const " << registryClassName
-//         << "*>(reg)->get_variant_id(" << varintIdInput.str() << ");\n";
+//         << "*>(reg)->get_variant_id(" << variantIdInput.str() << ");\n";
 //     cxx << "    desc.configIndex = static_cast<const " << registryClassName
 //         << "*>(reg)->get_config_id(desc.variantId);\n";
 //     cxx << "    desc.states = overrideStates;\n";
@@ -1774,19 +2210,19 @@ void Preprocessor::cleanUp() {
 //         assert(itr != compileData.includeData.end());
 //         header
 //           << "    static size_t getPushConstOffset(ShaderObjectRegistry::VariantId variantId, const "
-//           << itr->second.desriptorClassName << " *" << itr->second.name << ");\n";
+//           << itr->second.descriptorClassName << " *" << itr->second.name << ");\n";
 //         cxx << "size_t " << className
 //             << "::getPushConstOffset(ShaderObjectRegistry::VariantId variantId, const "
-//             << itr->second.desriptorClassName << " *" << itr->second.name << ") {\n";
+//             << itr->second.descriptorClassName << " *" << itr->second.name << ") {\n";
 //         cxx << "    // TODO\n";
 //         cxx << "    return 0;\n";
 //         cxx << "}\n";
 //         header
 //           << "    static size_t getPushConstSize(ShaderObjectRegistry::VariantId variantId, const "
-//           << itr->second.desriptorClassName << " *" << itr->second.name << ");\n";
+//           << itr->second.descriptorClassName << " *" << itr->second.name << ");\n";
 //         cxx << "size_t " << className
 //             << "::getPushConstSize(ShaderObjectRegistry::VariantId variantId, const "
-//             << itr->second.desriptorClassName << " *" << itr->second.name << ") {\n";
+//             << itr->second.descriptorClassName << " *" << itr->second.name << ") {\n";
 //         cxx << "    // TODO\n";
 //         cxx << "    return 0;\n";
 //         cxx << "}\n";
@@ -1799,8 +2235,8 @@ void Preprocessor::cleanUp() {
 //     for (const std::string& inc : allIncludes) {
 //         auto itr = compileData.includeData.find(inc);
 //         assert(itr != compileData.includeData.end());
-//         header << ", const " << itr->second.desriptorClassName << " *" << itr->second.name;
-//         cxx << ", const " << itr->second.desriptorClassName << " *" << itr->second.name;
+//         header << ", const " << itr->second.descriptorClassName << " *" << itr->second.name;
+//         cxx << ", const " << itr->second.descriptorClassName << " *" << itr->second.name;
 //         pipelineInput << "        " << itr->second.name << "->getVariantDesc(),\n";
 //     }
 //     header << ", const GraphicsPipelineStates &overrideStates = {});\n";

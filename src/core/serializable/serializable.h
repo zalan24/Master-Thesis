@@ -157,7 +157,7 @@ class ISerializable
             throw std::runtime_error("Input json is not an array: " + in.dump());
         data.resize(in.size());
         for (size_t i = 0; i < in.size(); ++i)
-            data[i] = in[i];
+            serialize(in[i], data[i]);
     }
 
     template <typename T>

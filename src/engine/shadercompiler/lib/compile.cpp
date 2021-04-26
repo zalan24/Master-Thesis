@@ -511,8 +511,8 @@ bool generate_header(CompilerData& compileData, const std::string shaderFile) {
     const std::string registryClassName = "shader_" + name + "_registry";
     fs::path headerFileName = fs::path("shader_header_" + name + ".h");
     fs::path cxxFileName = fs::path("shader_header_" + name + ".cpp");
-    incData.desriptorClassName = className;
-    incData.desriptorRegistryClassName = registryClassName;
+    incData.descriptorClassName = className;
+    incData.descriptorRegistryClassName = registryClassName;
     incData.name = name;
     header << "#pragma once\n\n";
     header << "#include <memory>\n\n";
@@ -530,14 +530,14 @@ bool generate_header(CompilerData& compileData, const std::string shaderFile) {
         incData.variantMultiplier[variantName] = variantMul;
         variantMul *= values.size();
     }
-    incData.totalVarintMultiplier = variantMul;
+    incData.totalVariantMultiplier = variantMul;
 
     ShaderGenerationInput genInput;
     if (!read_gen_input(shaderFile, b, genInput))
         return false;
 
-    incData.varintToResourceUsage.resize(incData.totalVarintMultiplier);
-    for (uint32_t i = 0; i < incData.totalVarintMultiplier; ++i) {
+    incData.variantToResourceUsage.resize(incData.totalVariantMultiplier);
+    for (uint32_t i = 0; i < incData.totalVariantMultiplier; ++i) {
         PipelineResourceUsage resourceUsage;
         ShaderBin::StageConfig cfg = read_stage_configs(
           resources, i, {incData.variants}, incData.variantMultiplier, genInput, resourceUsage);
@@ -545,7 +545,7 @@ bool generate_header(CompilerData& compileData, const std::string shaderFile) {
             incData.resourceObjects[resourceUsage] =
               generate_resource_object(resources, resourceUsage);
         const ResourceObject& resourceObj = incData.resourceObjects[resourceUsage];
-        incData.varintToResourceUsage[i] = resourceUsage;
+        incData.variantToResourceUsage[i] = resourceUsage;
     }
 
     uint32_t structId = 0;
@@ -894,7 +894,7 @@ static bool generate_binary(const fs::path& debugPath, const Compiler* compiler,
                             const std::vector<Variants>& variants, ShaderGenerationInput&& input,
                             const std::unordered_map<std::string, uint32_t>& variantParamMultiplier,
                             std::map<PipelineResourceUsage, ResourceObject>& resourceObjects,
-                            std::vector<PipelineResourceUsage>& varintToResourceUsage,
+                            std::vector<PipelineResourceUsage>& variantToResourceUsage,
                             const std::string& genFile) {
     std::set<std::string> variantParams;
     size_t count = 1;
@@ -933,7 +933,7 @@ static bool generate_binary(const fs::path& debugPath, const Compiler* compiler,
     shaderData.stages.resize(shaderData.totalVariantCount);
     std::unordered_map<ShaderHash, std::pair<size_t, size_t>> codeOffsets;
     std::unordered_map<ShaderHash, std::pair<size_t, size_t>> binaryOffsets;
-    varintToResourceUsage.resize(shaderData.totalVariantCount);
+    variantToResourceUsage.resize(shaderData.totalVariantCount);
     std::ostream* genOut = nullptr;
     std::ofstream genOutF;
     if (genFile != "") {
@@ -948,7 +948,7 @@ static bool generate_binary(const fs::path& debugPath, const Compiler* compiler,
         if (resourceObjects.find(resourceUsage) == resourceObjects.end())
             resourceObjects[resourceUsage] = generate_resource_object(resources, resourceUsage);
         const ResourceObject& resourceObj = resourceObjects[resourceUsage];
-        varintToResourceUsage[variantId] = resourceUsage;
+        variantToResourceUsage[variantId] = resourceUsage;
         // TODO add resource packs to shader codes
         shaderData.stages[variantId].configs = cfg;
         if (genOut) {
@@ -1011,7 +1011,7 @@ static void include_all(std::ostream& out, const fs::path& root,
         include_all(out, root, includeData, itr->second.included, allIncludes, variantIdMultiplier,
                     variantParamToDescriptor, variantIdMul);
         variantIdMultiplier[inc] = variantIdMul;
-        variantIdMul *= itr->second.totalVarintMultiplier;
+        variantIdMul *= itr->second.totalVariantMultiplier;
     }
 }
 
@@ -1238,13 +1238,13 @@ bool compile_shader(CompilerData& compileData, const std::string shaderFile) {
     }
     ShaderBin::ShaderData shaderData;
     std::map<PipelineResourceUsage, ResourceObject> resourceObjects;
-    std::vector<PipelineResourceUsage> varintToResourceUsage;
+    std::vector<PipelineResourceUsage> variantToResourceUsage;
     std::string genFile = "";
     if (compileData.genFolder != "")
         genFile = (fs::path{compileData.genFolder} / fs::path{shaderName + ".glsl"}).string();
     if (!generate_binary(compileData.debugPath, compileData.compiler, resources, shaderData,
                          variants, std::move(genInput), variantParamMultiplier, resourceObjects,
-                         varintToResourceUsage, genFile)) {
+                         variantToResourceUsage, genFile)) {
         std::cerr << "Could not generate binary: " << shaderFile << std::endl;
         return false;
     }
@@ -1289,9 +1289,9 @@ bool compile_shader(CompilerData& compileData, const std::string shaderFile) {
     for (const std::string& inc : allIncludes) {
         auto itr = compileData.includeData.find(inc);
         assert(itr != compileData.includeData.end());
-        header << ", const " << itr->second.desriptorRegistryClassName << " *reg_"
+        header << ", const " << itr->second.descriptorRegistryClassName << " *reg_"
                << itr->second.name;
-        cxx << ", const " << itr->second.desriptorRegistryClassName << " *reg_" << itr->second.name;
+        cxx << ", const " << itr->second.descriptorRegistryClassName << " *reg_" << itr->second.name;
     }
     header << ");\n";
     cxx << ")\n";
@@ -1342,10 +1342,10 @@ bool compile_shader(CompilerData& compileData, const std::string shaderFile) {
     cxx << "}\n\n";
 
     cxx << "static uint32_t CONFIG_INDEX[] = {";
-    for (uint32_t i = 0; i < varintToResourceUsage.size(); ++i) {
+    for (uint32_t i = 0; i < variantToResourceUsage.size(); ++i) {
         if (i > 0)
             cxx << ", ";
-        auto itr = resourceUsageToConfigId.find(varintToResourceUsage[i]);
+        auto itr = resourceUsageToConfigId.find(variantToResourceUsage[i]);
         assert(itr != resourceUsageToConfigId.end());
         cxx << itr->second;
     }
@@ -1363,9 +1363,9 @@ bool compile_shader(CompilerData& compileData, const std::string shaderFile) {
         }
         else
             first = false;
-        header << "const " << itr->second.desriptorClassName << "::VariantDesc &"
+        header << "const " << itr->second.descriptorClassName << "::VariantDesc &"
                << itr->second.name;
-        cxx << "const " << itr->second.desriptorClassName << "::VariantDesc &" << itr->second.name;
+        cxx << "const " << itr->second.descriptorClassName << "::VariantDesc &" << itr->second.name;
     }
     header << ");\n";
     cxx << ") {\n";
@@ -1410,20 +1410,20 @@ bool compile_shader(CompilerData& compileData, const std::string shaderFile) {
     cxx
       << "uint32_t " << className
       << "::prepareGraphicalPipeline(const drv::RenderPass *renderPass, drv::SubpassId subpass, const DynamicState &dynamicStates";
-    std::stringstream varintIdInput;
+    std::stringstream variantIdInput;
     first = true;
     for (const std::string& inc : allIncludes) {
         auto itr = compileData.includeData.find(inc);
         assert(itr != compileData.includeData.end());
-        header << ", const " << itr->second.desriptorClassName << "::VariantDesc &"
+        header << ", const " << itr->second.descriptorClassName << "::VariantDesc &"
                << itr->second.name;
-        cxx << ", const " << itr->second.desriptorClassName << "::VariantDesc &"
+        cxx << ", const " << itr->second.descriptorClassName << "::VariantDesc &"
             << itr->second.name;
         if (!first)
-            varintIdInput << ", ";
+            variantIdInput << ", ";
         else
             first = false;
-        varintIdInput << itr->second.name;
+        variantIdInput << itr->second.name;
     }
     header << ", const GraphicsPipelineStates &overrideStates = {});\n";
     cxx << ", const GraphicsPipelineStates &overrideStates) {\n";
@@ -1431,7 +1431,7 @@ bool compile_shader(CompilerData& compileData, const std::string shaderFile) {
     cxx << "    desc.renderPass = renderPass;\n";
     cxx << "    desc.subpass = subpass;\n";
     cxx << "    desc.variantId = static_cast<const " << registryClassName
-        << "*>(reg)->get_variant_id(" << varintIdInput.str() << ");\n";
+        << "*>(reg)->get_variant_id(" << variantIdInput.str() << ");\n";
     cxx << "    desc.configIndex = static_cast<const " << registryClassName
         << "*>(reg)->get_config_id(desc.variantId);\n";
     cxx << "    desc.states = overrideStates;\n";
@@ -1443,19 +1443,19 @@ bool compile_shader(CompilerData& compileData, const std::string shaderFile) {
         assert(itr != compileData.includeData.end());
         header
           << "    static size_t getPushConstOffset(ShaderObjectRegistry::VariantId variantId, const "
-          << itr->second.desriptorClassName << " *" << itr->second.name << ");\n";
+          << itr->second.descriptorClassName << " *" << itr->second.name << ");\n";
         cxx << "size_t " << className
             << "::getPushConstOffset(ShaderObjectRegistry::VariantId variantId, const "
-            << itr->second.desriptorClassName << " *" << itr->second.name << ") {\n";
+            << itr->second.descriptorClassName << " *" << itr->second.name << ") {\n";
         cxx << "    // TODO\n";
         cxx << "    return 0;\n";
         cxx << "}\n";
         header
           << "    static size_t getPushConstSize(ShaderObjectRegistry::VariantId variantId, const "
-          << itr->second.desriptorClassName << " *" << itr->second.name << ");\n";
+          << itr->second.descriptorClassName << " *" << itr->second.name << ");\n";
         cxx << "size_t " << className
             << "::getPushConstSize(ShaderObjectRegistry::VariantId variantId, const "
-            << itr->second.desriptorClassName << " *" << itr->second.name << ") {\n";
+            << itr->second.descriptorClassName << " *" << itr->second.name << ") {\n";
         cxx << "    // TODO\n";
         cxx << "    return 0;\n";
         cxx << "}\n";
@@ -1468,8 +1468,8 @@ bool compile_shader(CompilerData& compileData, const std::string shaderFile) {
     for (const std::string& inc : allIncludes) {
         auto itr = compileData.includeData.find(inc);
         assert(itr != compileData.includeData.end());
-        header << ", const " << itr->second.desriptorClassName << " *" << itr->second.name;
-        cxx << ", const " << itr->second.desriptorClassName << " *" << itr->second.name;
+        header << ", const " << itr->second.descriptorClassName << " *" << itr->second.name;
+        cxx << ", const " << itr->second.descriptorClassName << " *" << itr->second.name;
         pipelineInput << "        " << itr->second.name << "->getVariantDesc(),\n";
     }
     header << ", const GraphicsPipelineStates &overrideStates = {});\n";

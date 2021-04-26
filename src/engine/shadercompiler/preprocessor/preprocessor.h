@@ -20,6 +20,10 @@
 
 namespace fs = std::filesystem;
 
+using ShaderHash = std::string;
+
+class BlockFile;
+
 struct VariantConfig
 {
     std::map<std::string, size_t> variantValues;
@@ -114,23 +118,41 @@ struct ShaderHeaderData final : public ISerializable
     std::string cxxHash;
     Variants variants;
     Resources resources;
-    std::string desriptorClassName;
-    std::string desriptorRegistryClassName;
-    uint32_t totalVarintMultiplier;
+    std::string descriptorClassName;
+    std::string descriptorRegistryClassName;
+    uint32_t totalVariantMultiplier;
     std::map<std::string, uint32_t> variantMultiplier;
-    std::vector<PipelineResourceUsage> varintToResourceUsage;
+    std::vector<PipelineResourceUsage> variantToResourceUsage;
     std::string headerFileName;
+    std::set<std::string> includes;
 
     void writeJson(json& out) const override;
     void readJson(const json& in) override;
 };
 
-// struct ShaderObjectData
-// {};
+struct ShaderObjectData final : public ISerializable
+{
+    std::string name;
+    std::string fileHash;
+    std::string headersHash;
+    std::string filePath;
+    std::string headerHash;
+    std::string cxxHash;
+    std::string className;
+    std::string registryClassName;
+    std::string headerFileName;
+    uint32_t variantCount;
+    std::unordered_map<std::string, uint32_t> headerVariantIdMultiplier;
+    std::vector<std::string> allIncludes;
+
+    void writeJson(json& out) const override;
+    void readJson(const json& in) override;
+};
 
 struct PreprocessorData final : public ISerializable
 {
     std::map<std::string, ShaderHeaderData> headers;
+    std::map<std::string, ShaderObjectData> sources;
 
     void writeJson(json& out) const override;
     void readJson(const json& in) override;
@@ -154,10 +176,19 @@ class Preprocessor
     bool changedAnyCppHeader = false;
 
     PreprocessorData data;
+
+    void readIncludes(const BlockFile& b, std::set<std::string>& directIncludes) const;
+    ShaderHash collectIncludes(const std::string& header, std::vector<std::string>& includes) const;
+
+    void includeHeaders(std::ostream& out, const std::vector<std::string>& includes) const;
+
+    // std::vector<PipelineResourceUsage> generateShaderVariantToResourceUsages(
+    //   const ShaderObjectData& objData) const;
+    std::map<std::string, uint32_t> getHeaderLocalVariants(uint32_t variantId,
+                                                           const ShaderObjectData& objData) const;
 };
 
 // class Compiler;
-// class BlockFile;
 
 // struct PushConstObjData
 // {
@@ -209,14 +240,14 @@ class Preprocessor
 //     std::string name;
 //     std::filesystem::path shaderFileName;
 //     std::filesystem::path headerFileName;
-//     std::string desriptorClassName;
-//     std::string desriptorRegistryClassName;
+//     std::string descriptorClassName;
+//     std::string descriptorRegistryClassName;
 //     std::vector<std::string> included;
-//     uint32_t totalVarintMultiplier;
+//     uint32_t totalVariantMultiplier;
 //     Variants variants;
 //     std::unordered_map<std::string, uint32_t> variantMultiplier;
 //     std::map<PipelineResourceUsage, ResourceObject> resourceObjects;
-//     std::vector<PipelineResourceUsage> varintToResourceUsage;
+//     std::vector<PipelineResourceUsage> variantToResourceUsage;
 //     std::map<ResourcePack, PushConstObjData> exportedPacks;
 // };
 

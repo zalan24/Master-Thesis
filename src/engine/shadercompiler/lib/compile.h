@@ -134,14 +134,14 @@ struct IncludeData
     std::string name;
     std::filesystem::path shaderFileName;
     std::filesystem::path headerFileName;
-    std::string desriptorClassName;
-    std::string desriptorRegistryClassName;
+    std::string descriptorClassName;
+    std::string descriptorRegistryClassName;
     std::vector<std::string> included;
-    uint32_t totalVarintMultiplier;
+    uint32_t totalVariantMultiplier;
     Variants variants;
     std::unordered_map<std::string, uint32_t> variantMultiplier;
     std::map<PipelineResourceUsage, ResourceObject> resourceObjects;
-    std::vector<PipelineResourceUsage> varintToResourceUsage;
+    std::vector<PipelineResourceUsage> variantToResourceUsage;
     std::map<ResourcePack, PushConstObjData> exportedPacks;
 };
 struct ShaderGenerationInput
