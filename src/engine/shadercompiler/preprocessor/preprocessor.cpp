@@ -16,8 +16,6 @@
 #include <uncomment.h>
 #include <util.hpp>
 
-// #include "spirvcompiler.h"
-
 namespace fs = std::filesystem;
 
 static ShaderHash hash_string(const std::string& data) {
@@ -137,12 +135,19 @@ void ShaderObjectData::readJson(const json& in) {
 }
 
 void PreprocessorData::writeJson(json& out) const {
+    std::string timeStamp = __TIMESTAMP__;
+    WRITE_OBJECT(timeStamp, out);
     WRITE_OBJECT(headers, out);
     WRITE_OBJECT(sources, out);
 }
 
 void PreprocessorData::readJson(const json& in) {
-    // TODO CHECK VERSION!!!
+    std::string timeStamp;
+    READ_OBJECT(timeStamp, in);
+    if (timeStamp != __TIMESTAMP__)
+        return;
+    READ_OBJECT(headers, in);
+    READ_OBJECT(sources, in);
 }
 
 static void read_variants(const BlockFile* blockFile, Variants& variants) {

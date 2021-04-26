@@ -6,8 +6,8 @@ function(preprocess_shaders)
                                         "${multiValueArgs}" ${ARGN} )
 
     set(OUTPUT_DIR "${SHADERS_OUT_DIR}")
-
-    set(GENERATED_FILES "${OUTPUT_DIR}/shaderregistry.h")
+    set(REGISTRY_FILE "${OUTPUT_DIR}/shaderregistry.h")
+    set(GENERATED_FILES "${REGISTRY_FILE}")
 
     foreach(H IN LISTS SHADERS_HEADERS SHADERS_SOURCES)
         get_filename_component(NAME ${H} NAME_WE)
@@ -17,6 +17,14 @@ function(preprocess_shaders)
         get_filename_component(NAME ${S} NAME_WE)
         list(APPEND GENERATED_FILES "${OUTPUT_DIR}/shader_${NAME}.h" "${OUTPUT_DIR}/shader_${NAME}.cpp")
     endforeach()
+
+    # set(ClearTarget "Clear_${SHADERS_TARGET}")
+    # add_custom_target(
+    #     ${ClearTarget}
+    #     COMMAND  ${CMAKE_COMMAND} -E remove "${REGISTRY_FILE}"
+    #     DEPENDS  ShaderPreprocessor
+    #     COMMENT "Removing shader cache: ${REGISTRY_FILE}"
+    # )
 
     add_custom_command(
         OUTPUT   ${GENERATED_FILES}

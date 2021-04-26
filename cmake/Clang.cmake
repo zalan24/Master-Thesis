@@ -10,6 +10,7 @@ set(WARNINGFLAGS "${WARNINGFLAGS}   -Weverything \
                                     -Wno-float-equal \
                                     -Wno-reserved-id-macro \
                                     -Wno-unused-macros \
+                                    -Wno-date-time \
                                     -Wno-padded")
 set(TEST_WARNINGFLAGS "${TEST_WARNINGFLAGS} -Werror-return-type \
                                             -Werror-defaulted-function-deleted \
