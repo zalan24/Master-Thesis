@@ -18,6 +18,84 @@
 
 namespace fs = std::filesystem;
 
+void HeaderCache::writeJson(json& out) const {
+    WRITE_OBJECT(headerHash, out);
+}
+
+void HeaderCache::readJson(const json& in) {
+    READ_OBJECT(headerHash, in);
+}
+
+void ShaderCache::writeJson(json& out) const {
+    WRITE_OBJECT(shaderHash, out);
+    WRITE_OBJECT(includesHash, out);
+    WRITE_OBJECT(glslHash, out);
+}
+
+void ShaderCache::readJson(const json& in) {
+    READ_OBJECT(shaderHash, in);
+    READ_OBJECT(includesHash, in);
+    READ_OBJECT(glslHash, in);
+}
+
+void CompilerCache::writeJson(json& out) const {
+    WRITE_TIMESTAMP(out);
+    WRITE_OBJECT(headers, out);
+    WRITE_OBJECT(shaders, out);
+}
+
+void CompilerCache::readJson(const json& in) {
+    if (CHECK_TIMESTAMP(in)) {
+        READ_OBJECT(headers, in);
+        READ_OBJECT(shaders, in);
+    }
+}
+
+void Compiler::loadCache(std::istream& in) {
+    cache.read(in);
+}
+
+void Compiler::exportCache(std::ostream& out) const {
+    cache.write(out);
+}
+
+void Compiler::addShaders(PreprocessorData&& data) {
+    for (const auto& header : data.headers)
+        if (headerToCollection.find(header.second.name) != headerToCollection.end())
+            throw std::runtime_error("Two headers exist with the same name: " + header.second.name);
+    for (const auto& shader : data.sources)
+        if (shaderToCollection.find(shader.second.name) != shaderToCollection.end())
+            throw std::runtime_error("Two shaders exists with the same name: "
+                                     + shader.second.name);
+    size_t id = collections.size();
+    for (const auto& header : data.headers)
+        headerToCollection[header.second.name] = id;
+    for (const auto& shader : data.sources)
+        shaderToCollection[shader.second.name] = id;
+    collections.push_back(std::move(data));
+}
+
+void Compiler::generateShaders(const fs::path& dir, const std::vector<std::string>& shaderNames) {
+    std::set<std::string> compiledShaders;
+    for (const auto& shader : shaderNames)
+        compiledShaders.insert(shader);
+    if (fs::exists(dir)) {
+        for (const auto& p : fs::directory_iterator(dir)) {
+            const std::string name = p.path().stem().string();
+            if (shaderToCollection.find(name) == shaderToCollection.end())
+                std::cout << "Removing unused shader dir: " << name << " (" << p.path() << ")\n";
+        }
+    }
+    else
+        fs::create_directories(dir);
+    for (const auto& [name, id] : shaderToCollection) {
+        if (compiledShaders.size() > 0 && compiledShaders.count(name) == 0)
+            continue;
+        // fs::path shaderDir = dir / fs::path{name};
+        // fs::create_directories(shaderDir);
+    }
+}
+
 // // static ShaderHash hash_string(const std::string& data) {
 // //     IHash hash = HashLib4CPP::Hash128::CreateMurmurHash3_x64_128();
 // //     IHashResult res = hash->ComputeString(data);

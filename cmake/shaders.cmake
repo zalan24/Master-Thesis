@@ -1,6 +1,6 @@
 function(preprocess_shaders)
     set(options)
-    set(oneValueArgs TARGET OUT_DIR)
+    set(oneValueArgs TARGET OUT_DIR TARGETS_DIR)
     set(multiValueArgs SOURCES HEADERS)
     cmake_parse_arguments(SHADERS "${options}" "${oneValueArgs}"
                                         "${multiValueArgs}" ${ARGN} )
@@ -18,19 +18,13 @@ function(preprocess_shaders)
         list(APPEND GENERATED_FILES "${OUTPUT_DIR}/shader_${NAME}.h" "${OUTPUT_DIR}/shader_${NAME}.cpp")
     endforeach()
 
-    # set(ClearTarget "Clear_${SHADERS_TARGET}")
-    # add_custom_target(
-    #     ${ClearTarget}
-    #     COMMAND  ${CMAKE_COMMAND} -E remove "${REGISTRY_FILE}"
-    #     DEPENDS  ShaderPreprocessor
-    #     COMMENT "Removing shader cache: ${REGISTRY_FILE}"
-    # )
+    set(targetFile "${SHADERS_TARGETS_DIR}/${SHADERS_TARGET}.json")
 
     add_custom_command(
-        OUTPUT   ${GENERATED_FILES}
+        OUTPUT   ${GENERATED_FILES} ${targetFile}
         COMMAND  ShaderPreprocessor
             --output ${SHADERS_OUT_DIR}
-            --target "${SHADERS_OUT_DIR}/${SHADERS_TARGET}.json"
+            --target ${targetFile}
             --headers ${SHADERS_HEADERS}
             --sources ${SHADERS_SOURCES}
         DEPENDS  ${SHADERS_HEADERS} ${SHADERS_SOURCES} ShaderPreprocessor
@@ -38,7 +32,6 @@ function(preprocess_shaders)
 
 
     add_library(${SHADERS_TARGET} STATIC ${GENERATED_FILES})
-    # add_dependencies(${SHADERS_TARGET} ShaderCodes)
 
     target_include_directories(${SHADERS_TARGET} PUBLIC ${CMAKE_CURRENT_BINARY_DIR} ${SHADERS_OUT_DIR})
     target_link_libraries(${SHADERS_TARGET} PUBLIC ShaderManager)
@@ -46,7 +39,7 @@ endfunction()
 
 function(compile_shaders)
     set(options)
-    set(oneValueArgs TARGET_NAME DATA_DIR DRIVER_REQUIREMENTS SHADER_STATS COMPILE_OPTIONS OUTPUT)
+    set(oneValueArgs TARGET_NAME DATA_DIR DRIVER_REQUIREMENTS SHADER_STATS COMPILE_OPTIONS OUTPUT CACHE_DIR)
     set(multiValueArgs TARGETS)
     cmake_parse_arguments(COMPILER "${options}" "${oneValueArgs}"
                                         "${multiValueArgs}" ${ARGN} )
@@ -61,7 +54,7 @@ function(compile_shaders)
         OUTPUT   ${COMPILER_OUTPUT} # ${GENERATED_FILES}
         COMMAND  ShaderCompiler
             # -r${CMAKE_CURRENT_SOURCE_DIR}
-            # -c${CMAKE_CURRENT_BINARY_DIR}/shadercache
+            -c${COMPILER_CACHE_DIR}
             # --headers ${CMAKE_CURRENT_BINARY_DIR}
             -o${COMPILER_OUTPUT}
             # -d${SHADER_DEBUG}

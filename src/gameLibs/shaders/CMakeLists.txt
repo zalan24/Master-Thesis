@@ -48,7 +48,8 @@ include(shaders)
 
 preprocess_shaders(
     TARGET testShaders
-    OUT_DIR ${PROJECT_BINARY_DIR}/shaders/preprocessors
+    TARGETS_DIR ${PROJECT_BINARY_DIR}/shaders/preprocessors
+    OUT_DIR ${PROJECT_BINARY_DIR}/shaders/cpp
     HEADERS ${SHADERS_HEADERS}
     SOURCES ${SHADERS_SOURCES}
 )
@@ -57,6 +58,7 @@ compile_shaders(
     TARGET_NAME ShaderBinary
     TARGETS testShaders
     OUTPUT  ${SHADERBIN}
+    CACHE_DIR ${PROJECT_BINARY_DIR}/shaders/cache
     DATA_DIR ${PROJECT_BINARY_DIR}/shaders/preprocessors
     DRIVER_REQUIREMENTS ${HARDWARE_LIMITS}
     COMPILE_OPTIONS ${SHADER_COMPILE_OPTIONS}

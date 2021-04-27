@@ -13,12 +13,12 @@
 
 #include <preprocessor.h>
 
-// #include <hardwareconfig.h>
+#include <hardwareconfig.h>
 #include <serializable.h>
-// #include <shaderbin.h>
+#include <shaderbin.h>
+// #include <shaderstats.h>
 
-// #include "compileconfig.h"
-// #include "shaderstats.h"
+#include "compileconfig.h"
 
 namespace fs = std::filesystem;
 
@@ -45,7 +45,6 @@ struct CompilerCache final : public ISerializable
     std::map<std::string, HeaderCache> headers;
     std::map<std::string, HeaderCache> shaders;
 
-    // TODO use timestamp
     void writeJson(json& out) const override;
     void readJson(const json& in) override;
 };
@@ -53,8 +52,17 @@ struct CompilerCache final : public ISerializable
 class Compiler
 {
  public:
+    void loadCache(std::istream& in);
+    void exportCache(std::ostream& out) const;
+
+    void addShaders(PreprocessorData&& data);
+    void generateShaders(const fs::path& dir, const std::vector<std::string>& shaderNames = {});
+
  private:
     CompilerCache cache;
+    std::vector<PreprocessorData> collections;
+    std::map<std::string, size_t> headerToCollection;
+    std::map<std::string, size_t> shaderToCollection;
 };
 
 // using ShaderHash = std::string;

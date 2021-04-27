@@ -44,8 +44,8 @@ int main(int argc, char* argv[]) {
         // app.add_option("-o,--output", output, "Output binary file");
         // std::string debugOut = "";
         // app.add_option("-d,--debug", debugOut, "Debug output folder");
-        // std::string cacheF = "";
-        // app.add_option("-c,--cache", cacheF, "Cache folder");
+        std::string cacheF = "";
+        app.add_option("-c,--cache", cacheF, "Cache folder");
         // std::string generated = "";
         // app.add_option("-g,--generated", generated, "Folder to export generated shaders");
         std::string hardwareReq = "";
@@ -59,9 +59,9 @@ int main(int argc, char* argv[]) {
 
         // std::unordered_map<std::string, fs::path> headerPaths;
 
-        if (binFile == "" || hardwareReq == "" || compileOptionsFile == "") {
+        if (binFile == "" || hardwareReq == "" || compileOptionsFile == "" || cacheF == "") {
             std::cerr
-              << "Please provide an output binary, hardware requirements and compile options files."
+              << "Please provide an output binary, hardware requirements, compile options files and a cache folder."
               << std::endl;
             return 1;
         }
@@ -69,36 +69,61 @@ int main(int argc, char* argv[]) {
             std::cout << "No files given" << std::endl;
             return 0;
         }
+
+        fs::path cacheFolder = fs::path{cacheF};
+        fs::path cacheFile = cacheFolder / fs::path{"compilerCache.json"};
         // fs::path rootPath = root;
         // fs::path debugPath = debugOut;
 
-        // if (!fs::exists(debugPath))
-        //     fs::create_directories(debugPath);
+        if (!fs::exists(cacheFolder))
+            fs::create_directories(cacheFolder);
+        if (!fs::exists(fs::path{binFile}.parent_path()))
+            fs::create_directories(fs::path{binFile}.parent_path());
 
-        // std::regex headerRegex("(.*)\\.sh");
-        // std::regex shaderRegex("(.*)\\.sd");
+        drv::DeviceLimits limits;
+        if (hardwareReq != "") {
+            std::ifstream limitsIn(hardwareReq.c_str());
+            if (!limitsIn.is_open()) {
+                std::cerr << "Could not open file: " << hardwareReq << std::endl;
+                return 1;
+            }
+            limits.read(limitsIn);
+        }
 
-        // drv::DeviceLimits limits;
-        // if (hardwareReq != "") {
-        //     std::ifstream limitsIn(hardwareReq.c_str());
-        //     if (!limitsIn.is_open()) {
-        //         std::cerr << "Could not open file: " << hardwareReq << std::endl;
-        //         return 1;
-        //     }
-        //     limits.read(limitsIn);
-        // }
+        CompileOptions compileOptions;
+        if (compileOptionsFile != "") {
+            std::ifstream optionsIn(compileOptionsFile.c_str());
+            if (!optionsIn.is_open()) {
+                std::cerr << "Could not open file: " << compileOptionsFile << std::endl;
+                return 1;
+            }
+            compileOptions.read(optionsIn);
+        }
 
         // if (!fs::exists(fs::path{target}))
         //     fs::create_directories(fs::path{target}.parent_path());
 
-        // Preprocessor preprocessor;
+        Compiler compiler;
 
-        // {
-        //     std::ifstream preprocessorIn(target.c_str());
-        //     if (preprocessorIn.is_open()) {
-        //         preprocessor.load(preprocessorIn);
-        //     }
-        // }
+        {
+            std::ifstream compilerIn(cacheFile);
+            if (compilerIn.is_open()) {
+                compiler.loadCache(compilerIn);
+            }
+        }
+
+        for (const auto& file : files) {
+            std::ifstream in(file.c_str());
+            if (!in.is_open()) {
+                std::cerr << "Could not open file: " << file << std::endl;
+                return 1;
+            }
+            PreprocessorData data;
+            data.read(in);
+            compiler.addShaders(std::move(data));
+        }
+
+        compiler.generateShaders(cacheFolder / fs::path{"glsl"}, compiledShaders);
 
         // for (const auto& header : headers)
         //     preprocessor.processHeader(fs::path{header}, fs::path{outputDir});
@@ -120,8 +145,6 @@ int main(int argc, char* argv[]) {
         // compileData.shaderBin = &shaderBin;
         // // TODO compilerData.stats
 
-        // fs::path cacheFolder = fs::path{cacheF};
-        // fs::path cacheFile = cacheFolder / fs::path{"cache.json"};
         // fs::path registryFile = headers / fs::path{"shaderregistry.h"};
 
         //     if (generated != "") {
@@ -140,16 +163,6 @@ int main(int argc, char* argv[]) {
         //         }
         //     }
         //     uint64_t shaderHash = compileData.cache.getHeaderHash();  // initial state
-
-        //     CompileOptions compileOptions;
-        //     if (compileOptionsFile != "") {
-        //         std::ifstream optionsIn(hardwareReq.c_str());
-        //         if (!optionsIn.is_open()) {
-        //             std::cerr << "Could not open file: " << compileOptionsFile << std::endl;
-        //             return 1;
-        //         }
-        //         compileOptions.read(optionsIn);
-        //     }
 
         //     init_registry(compileData.registry);
 
@@ -200,10 +213,10 @@ int main(int argc, char* argv[]) {
         //     shaderBin.write(binOut);
         //     binOut.close();
         {
-            // std::ofstream preprocessorOut(target);
-            // if (!preprocessorOut.is_open())
-            //     throw std::runtime_error("Could not open file: " + target);
-            // preprocessor.exportData(preprocessorOut);
+            std::ofstream compilerOut(cacheFile);
+            if (!compilerOut.is_open())
+                throw std::runtime_error("Could not open file: " + cacheFile.string());
+            compiler.exportCache(compilerOut);
         }
     }
     catch (const std::exception& e) {
