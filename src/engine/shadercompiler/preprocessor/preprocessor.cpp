@@ -106,7 +106,12 @@ void ShaderObjectData::writeJson(json& out) const {
     WRITE_OBJECT(headerFileName, out);
     WRITE_OBJECT(variantCount, out);
     WRITE_OBJECT(headerVariantIdMultiplier, out);
+    WRITE_OBJECT(variantIdMultiplier, out);
     WRITE_OBJECT(allIncludes, out);
+    WRITE_OBJECT(variants, out);
+    WRITE_OBJECT(headerLocations, out);
+    WRITE_OBJECT(resources, out);
+    // WRITE_OBJECT(stageConfigs, out);
 }
 
 void ShaderObjectData::readJson(const json& in) {
@@ -121,7 +126,12 @@ void ShaderObjectData::readJson(const json& in) {
     READ_OBJECT(headerFileName, in);
     READ_OBJECT(variantCount, in);
     READ_OBJECT(headerVariantIdMultiplier, in);
+    READ_OBJECT(variantIdMultiplier, in);
     READ_OBJECT(allIncludes, in);
+    READ_OBJECT(variants, in);
+    READ_OBJECT(headerLocations, in);
+    READ_OBJECT(resources, in);
+    // READ_OBJECT(stageConfigs, in);
 }
 
 void PreprocessorData::writeJson(json& out) const {
@@ -135,6 +145,15 @@ void PreprocessorData::readJson(const json& in) {
         READ_OBJECT(headers, in);
         READ_OBJECT(sources, in);
     }
+}
+
+Resources& Resources::operator+=(const Resources& rhs) {
+    for (const auto& [name, type] : rhs.variables) {
+        if (variables.find(name) != variables.end())
+            throw std::runtime_error("Variable already exists in this resources object");
+        variables[name] = type;
+    }
+    return *this;
 }
 
 static void read_variants(const BlockFile* blockFile, Variants& variants) {
@@ -274,6 +293,37 @@ static void read_gen_input(const BlockFile& shaderFile, ShaderGenerationInput& g
       });
 }
 
+ShaderObjectData::ComputeUnit ShaderObjectData::readComputeUnite(
+  ShaderGenerationInput* outCfg) const {
+    std::stringstream cu;
+    includeHeaders(cu);
+    BlockFile cuBlocks(cu, false);
+    std::string blockNames[ShaderBin::NUM_STAGES];
+    blockNames[ShaderBin::VS] = "vs";
+    blockNames[ShaderBin::PS] = "ps";
+    blockNames[ShaderBin::CS] = "cs";
+    static_assert(ShaderBin::NUM_STAGES == 3, "Update this code as well");
+    if (outCfg)
+        read_gen_input(cuBlocks, *outCfg);
+    ComputeUnit ret;
+    for (uint32_t i = 0; i < ShaderBin::NUM_STAGES; ++i)
+        collect_shader(cuBlocks, &ret.stages[i], nullptr, blockNames[i]);
+    return ret;
+}
+
+void ShaderObjectData::includeHeaders(std::ostream& out) const {
+    for (const auto& header : allIncludes) {
+        auto itr = headerLocations.find(header);
+        if (itr == headerLocations.end())
+            throw std::runtime_error("Unknown shader header: " + header);
+        const std::string& filename = itr->second;
+        std::ifstream in(filename.c_str());
+        if (!in.is_open())
+            throw std::runtime_error("Could not open included file: " + filename);
+        uncomment(in, out);
+    }
+}
+
 static std::string get_variant_enum_name(std::string name) {
     for (char& c : name)
         c = static_cast<char>(tolower(c));
@@ -308,9 +358,9 @@ static VariantConfig get_variant_config(
     return ret;
 }
 
-static std::string format_variant(uint32_t variantId, const std::vector<Variants>& variants,
-                                  const std::stringstream& text,
-                                  const std::map<std::string, uint32_t>& variantParamMultiplier) {
+std::string format_variant(uint32_t variantId, const std::vector<Variants>& variants,
+                           const std::stringstream& text,
+                           const std::map<std::string, uint32_t>& variantParamMultiplier) {
     VariantConfig config = get_variant_config(variantId, variants, variantParamMultiplier);
     simplecpp::DUI dui;
     for (const Variants& v : variants)
@@ -366,7 +416,7 @@ static ResourceUsage read_used_resources(const std::string& s, const Resources& 
     return ret;
 }
 
-static ShaderBin::StageConfig read_stage_configs(
+ShaderBin::StageConfig read_stage_configs(
   const Resources& resources, uint32_t variantId, const std::vector<Variants>& variants,
   const std::map<std::string, uint32_t>& variantParamMultiplier, const ShaderGenerationInput& input,
   PipelineResourceUsage& resourceUsage) {
@@ -563,10 +613,9 @@ void Preprocessor::processHeader(const fs::path& file, const fs::path& outdir) {
         const BlockFile* variantBlock = descBlock->getNode("variants");
         read_variants(variantBlock, incData.variants);
     }
-    Resources resources;
     if (resourcesBlockCount == 1) {
         const BlockFile* resourcesBlock = descBlock->getNode("resources");
-        read_resources(resourcesBlock, resources);
+        read_resources(resourcesBlock, incData.resources);
     }
 
     readIncludes(b, incData.includes);
@@ -602,8 +651,9 @@ void Preprocessor::processHeader(const fs::path& file, const fs::path& outdir) {
     incData.variantToResourceUsage.resize(incData.totalVariantMultiplier);
     for (uint32_t i = 0; i < incData.totalVariantMultiplier; ++i) {
         PipelineResourceUsage resourceUsage;
-        ShaderBin::StageConfig cfg = read_stage_configs(
-          resources, i, {incData.variants}, incData.variantMultiplier, genInput, resourceUsage);
+        ShaderBin::StageConfig cfg =
+          read_stage_configs(incData.resources, i, {incData.variants}, incData.variantMultiplier,
+                             genInput, resourceUsage);
         // if (incData.resourceObjects.find(resourceUsage) == incData.resourceObjects.end())
         //     incData.resourceObjects[resourceUsage] =
         //       generate_resource_object(resources, resourceUsage);
@@ -677,7 +727,7 @@ void Preprocessor::processHeader(const fs::path& file, const fs::path& outdir) {
     cxx << "    return ret;\n";
     cxx << "}\n";
     header << "    };\n";
-    for (const auto& [varName, varType] : resources.variables) {
+    for (const auto& [varName, varType] : incData.resources.variables) {
         header << "    " << varType << " " << varName << " = " << varType << "_default_value;\n";
         header << "    void set_" << varName << "(const " << varType << " &_" << varName << ");\n";
         cxx << "void " << className << "::set_" << varName << "(const " << varType << " &_"
@@ -794,20 +844,6 @@ void Preprocessor::processHeader(const fs::path& file, const fs::path& outdir) {
     data.headers[name] = std::move(incData);
 }
 
-void Preprocessor::includeHeaders(std::ostream& out,
-                                  const std::vector<std::string>& includes) const {
-    for (const auto& header : includes) {
-        auto itr = data.headers.find(header);
-        if (itr == data.headers.end())
-            throw std::runtime_error("Unknown shader header: " + header);
-        const std::string& filename = itr->second.filePath;
-        std::ifstream in(filename.c_str());
-        if (!in.is_open())
-            throw std::runtime_error("Could not open included file: " + filename);
-        uncomment(in, out);
-    }
-}
-
 std::map<std::string, uint32_t> Preprocessor::getHeaderLocalVariants(
   uint32_t variantId, const ShaderObjectData& objData) const {
     std::map<std::string, uint32_t> ret;
@@ -861,6 +897,9 @@ void Preprocessor::processSource(const fs::path& file, const fs::path& outdir) {
     objData.cxxHash = cxxHash;
     objData.headersHash = collectIncludes(name, objData.allIncludes);
     std::reverse(objData.allIncludes.begin(), objData.allIncludes.end());
+    objData.headerLocations.clear();
+    for (const auto& header : objData.allIncludes)
+        objData.headerLocations[header] = data.headers.find(header)->second.filePath;
 
     BlockFile b(in);
     in.close();
@@ -882,7 +921,7 @@ void Preprocessor::processSource(const fs::path& file, const fs::path& outdir) {
     header << "#include <shaderobjectregistry.h>\n\n";
     cxx << "#include \"" << headerFileName.string() << "\"\n\n";
     cxx << "#include <drv.h>\n";
-    includeHeaders(cu, objData.allIncludes);
+    objData.includeHeaders(cu);
     for (const auto& h : objData.allIncludes) {
         auto itr = data.headers.find(h);
         assert(itr != data.headers.end());
@@ -898,21 +937,27 @@ void Preprocessor::processSource(const fs::path& file, const fs::path& outdir) {
     //     std::vector<std::string> allIncludes;
     // std::unordered_map<std::string, std::string> variantParamToDescriptor;
     uint32_t variantIdMul = 1;
-    std::vector<Variants> variants;
+    objData.variants.clear();
+    objData.resources = {};
     for (const auto& h : objData.allIncludes) {
         auto itr = data.headers.find(h);
         if (itr == data.headers.end())
             throw std::runtime_error("Unknown shader header: " + h);
         objData.headerVariantIdMultiplier[h] = variantIdMul;
+        for (const auto& [name, value] : itr->second.variantMultiplier)
+            objData.variantIdMultiplier[name] = value * objData.headerVariantIdMultiplier[h];
         variantIdMul *= itr->second.totalVariantMultiplier;
-        variants.push_back(itr->second.variants);
+        objData.variants.push_back(itr->second.variants);
         // for (const auto& itr2 : itr->second.variantMultiplier) {
         //     if (variantParamToDescriptor.find(itr2.first) != variantParamToDescriptor.end())
         //         throw std::runtime_error("Variant param names must be unique");
         //     variantParamToDescriptor[itr2.first] = inc;
         // }
+        objData.resources += itr->second.resources;
     }
     objData.variantCount = variantIdMul;
+    // objData.stageConfigs = ShaderBin::StageConfig cfg = read_stage_configs(
+    //   resources, i, {incData.variants}, incData.variantMultiplier, genInput, resourceUsage);
 
     //     std::vector<Variants> variants;
     //     size_t descriptorCount = cuBlocks.getBlockCount("descriptor");

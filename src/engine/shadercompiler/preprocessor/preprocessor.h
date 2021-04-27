@@ -40,6 +40,13 @@ struct Resources final : public ISerializable
     // name -> type
     std::map<std::string, std::string> variables;
 
+    Resources& operator+=(const Resources& rhs);
+    Resources operator+(const Resources& rhs) const {
+        Resources ret = *this;
+        ret += rhs;
+        return ret;
+    }
+
     void writeJson(json& out) const override;
     void readJson(const json& in) override;
 };
@@ -48,11 +55,12 @@ struct ShaderGenerationInput
 {
     std::stringstream statesCfg;
     std::stringstream stageConfigs[ShaderBin::NUM_STAGES];
-    // std::stringstream vs;
-    // std::stringstream ps;
-    // std::stringstream cs;
     std::map<std::string, std::stringstream> attachments;
 };
+
+std::string format_variant(uint32_t variantId, const std::vector<Variants>& variants,
+                           const std::stringstream& text,
+                           const std::map<std::string, uint32_t>& variantParamMultiplier);
 
 struct ResourceUsage final : public ISerializable
 {
@@ -130,8 +138,21 @@ struct ShaderObjectData final : public ISerializable
     std::string registryClassName;
     std::string headerFileName;
     uint32_t variantCount;
-    std::unordered_map<std::string, uint32_t> headerVariantIdMultiplier;
+    std::map<std::string, uint32_t> headerVariantIdMultiplier;
+    std::map<std::string, uint32_t> variantIdMultiplier;
     std::vector<std::string> allIncludes;
+    std::vector<Variants> variants;
+    std::map<std::string, std::string> headerLocations;
+    Resources resources;
+    // ShaderBin::StageConfig stageConfigs;
+
+    struct ComputeUnit
+    {
+        std::stringstream stages[ShaderBin::NUM_STAGES];
+    };
+
+    void includeHeaders(std::ostream& out) const;
+    ComputeUnit readComputeUnite(ShaderGenerationInput* outCfg = nullptr) const;
 
     void writeJson(json& out) const override;
     void readJson(const json& in) override;
@@ -145,6 +166,11 @@ struct PreprocessorData final : public ISerializable
     void writeJson(json& out) const override;
     void readJson(const json& in) override;
 };
+
+ShaderBin::StageConfig read_stage_configs(
+  const Resources& resources, uint32_t variantId, const std::vector<Variants>& variants,
+  const std::map<std::string, uint32_t>& variantParamMultiplier, const ShaderGenerationInput& input,
+  PipelineResourceUsage& resourceUsage);
 
 class Preprocessor
 {
@@ -168,8 +194,6 @@ class Preprocessor
     void readIncludes(const BlockFile& b, std::set<std::string>& directIncludes) const;
     std::string collectIncludes(const std::string& header,
                                 std::vector<std::string>& includes) const;
-
-    void includeHeaders(std::ostream& out, const std::vector<std::string>& includes) const;
 
     // std::vector<PipelineResourceUsage> generateShaderVariantToResourceUsages(
     //   const ShaderObjectData& objData) const;

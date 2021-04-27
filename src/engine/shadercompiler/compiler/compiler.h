@@ -77,8 +77,10 @@ class Compiler
     std::map<std::string, size_t> headerToCollection;
     std::map<std::string, size_t> shaderToCollection;
 
-    void generateShaderCode(const ShaderObjectData& objData, uint32_t variantId, ShaderBin::Stage stage,
-                            std::ostream& out) const;
+    bool generateShaderCode(const ShaderObjectData& objData,
+                            const ShaderObjectData::ComputeUnit& cu,
+                            const ShaderGenerationInput& genInput, uint32_t variantId,
+                            ShaderBin::Stage stage, std::ostream& out) const;
 };
 
 // using ShaderHash = std::string;

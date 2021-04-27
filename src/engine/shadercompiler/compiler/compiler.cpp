@@ -135,9 +135,13 @@ void Compiler::generateShaders(const GenerateOptions& options, const fs::path& d
         if (!fs::exists(genFolder))
             fs::create_directories(genFolder);
         for (uint32_t i = 0; i < objData.variantCount; ++i) {
+            ShaderGenerationInput genInput;
+            const ShaderObjectData::ComputeUnit cu = objData.readComputeUnite(&genInput);
             for (uint32_t j = 0; j < ShaderBin::NUM_STAGES; ++j) {
                 std::stringstream code;
-                generateShaderCode(objData, i, static_cast<ShaderBin::Stage>(j), code);
+                if (!generateShaderCode(objData, cu, genInput, i, static_cast<ShaderBin::Stage>(j),
+                                        code))
+                    continue;
                 const std::string codeHash = hash_string(code.str());
                 const std::string stageName =
                   ShaderBin::get_stage_name(static_cast<ShaderBin::Stage>(j));
@@ -156,67 +160,78 @@ void Compiler::generateShaders(const GenerateOptions& options, const fs::path& d
     }
 }
 
-// static bool generate_binary(
-//   const fs::path& debugPath, const Compiler* compiler, ShaderBin::ShaderData& shaderData,
-//   const ResourceObject& resourceObj, uint32_t variantId, const std::vector<Variants>& variants,
-//   const std::stringstream& shader,
-//   std::unordered_map<ShaderHash, std::pair<size_t, size_t>>& codeOffsets,
-//   std::unordered_map<ShaderHash, std::pair<size_t, size_t>>& binaryOffsets, ShaderBin::Stage stage,
-//   const std::unordered_map<std::string, uint32_t>& variantParamMultiplier, std::ostream* genOut) {
-//     // TODO add resources to shader code
-//     std::stringstream shaderCodeSS;
-//     generate_shader_code(shaderCodeSS);
-//     if (stage == ShaderBin::PS)
-//         generate_shader_attachments(shaderData.stages[variantId].configs, shaderCodeSS);
-//     std::string shaderCode =
-//       shaderCodeSS.str() + format_variant(variantId, variants, shader, variantParamMultiplier);
-//     if (genOut) {
-//         *genOut << "// Stage: ";
-//         switch (stage) {
-//             case ShaderBin::PS:
-//                 *genOut << "PS";
-//                 break;
-//             case ShaderBin::VS:
-//                 *genOut << "VS";
-//                 break;
-//             case ShaderBin::CS:
-//                 *genOut << "CS";
-//                 break;
-//             case ShaderBin::NUM_STAGES:
-//                 break;
-//         }
-//         *genOut << "\n\n";
-//         *genOut << shaderCode << std::endl;
-//     }
+static void generate_shader_code(std::ostream& out /* resources */) {
+    out << "#version 450\n";
+    out << "#extension GL_ARB_separate_shader_objects : enable\n";
+    if constexpr (featureconfig::params.shaderPrint)
+        out << "#extension GL_EXT_debug_printf : enable\n";
+    out << "\n";
+}
 
-//     ShaderHash codeHash = hash_code(shaderCode);
-//     if (auto itr = codeOffsets.find(codeHash); itr != codeOffsets.end()) {
-//         shaderData.stages[variantId].stageOffsets[stage] = itr->second.first;
-//         shaderData.stages[variantId].stageCodeSizes[stage] = itr->second.second;
-//         return true;
-//     }
-//     std::vector<uint32_t> binary =
-//       compile_shader_binary(debugPath, compiler, stage, shaderCode.length(), shaderCode.c_str());
-//     ShaderHash binHash = hash_binary(binary.size(), binary.data());
-//     if (auto itr = binaryOffsets.find(binHash); itr != binaryOffsets.end()) {
-//         shaderData.stages[variantId].stageOffsets[stage] = itr->second.first;
-//         shaderData.stages[variantId].stageCodeSizes[stage] = itr->second.second;
-//         codeOffsets[codeHash] = itr->second;
-//         return true;
-//     }
-//     size_t offset = shaderData.codes.size();
-//     size_t codeSize = binary.size();
-//     codeOffsets[codeHash] = std::make_pair(offset, codeSize);
-//     binaryOffsets[binHash] = std::make_pair(offset, codeSize);
-//     std::copy(binary.begin(), binary.end(),
-//               std::inserter(shaderData.codes, shaderData.codes.end()));
-//     shaderData.stages[variantId].stageOffsets[stage] = offset;
-//     shaderData.stages[variantId].stageCodeSizes[stage] = codeSize;
-//     return true;
+static void generate_shader_attachments(const ShaderBin::StageConfig& configs, std::ostream& code) {
+    for (const auto& attachment : configs.attachments) {
+        code << "layout(location = " << static_cast<uint32_t>(attachment.location) << ") ";
+        if (attachment.info & ShaderBin::AttachmentInfo::WRITE)
+            code << "out ";
+        else
+            throw std::runtime_error("Implement input attachments as well");
+        // TODO handle depth attachment
+        code << "vec4 " << attachment.name << ";\n";
+    }
+    code << "\n";
+}
+
+// static bool generate_code(const std::stringstream& shader, ShaderBin::Stage stage,
+//                           uint32_t variantId, const std::vector<Variants>& variants,
+//                           const std::map<std::string, uint32_t>& variantParamMultiplier,
+//                           std::ostream& genOut) {
+//     // TODO add resources to shader code
+//     generate_shader_code(genOut);
+//     if (stage == ShaderBin::PS)
+//         generate_shader_attachments(shaderData.stages[variantId].configs, genOut);
+//     genOut << format_variant(variantId, variants, shader, variantParamMultiplier);
+
+//     // ShaderHash codeHash = hash_code(shaderCode);
+//     // if (auto itr = codeOffsets.find(codeHash); itr != codeOffsets.end()) {
+//     //     shaderData.stages[variantId].stageOffsets[stage] = itr->second.first;
+//     //     shaderData.stages[variantId].stageCodeSizes[stage] = itr->second.second;
+//     //     return true;
+//     // }
+//     // std::vector<uint32_t> binary =
+//     //   compile_shader_binary(debugPath, compiler, stage, shaderCode.length(), shaderCode.c_str());
+//     // ShaderHash binHash = hash_binary(binary.size(), binary.data());
+//     // if (auto itr = binaryOffsets.find(binHash); itr != binaryOffsets.end()) {
+//     //     shaderData.stages[variantId].stageOffsets[stage] = itr->second.first;
+//     //     shaderData.stages[variantId].stageCodeSizes[stage] = itr->second.second;
+//     //     codeOffsets[codeHash] = itr->second;
+//     //     return true;
+//     // }
+//     // size_t offset = shaderData.codes.size();
+//     // size_t codeSize = binary.size();
+//     // codeOffsets[codeHash] = std::make_pair(offset, codeSize);
+//     // binaryOffsets[binHash] = std::make_pair(offset, codeSize);
+//     // std::copy(binary.begin(), binary.end(),
+//     //           std::inserter(shaderData.codes, shaderData.codes.end()));
+//     // shaderData.stages[variantId].stageOffsets[stage] = offset;
+//     // shaderData.stages[variantId].stageCodeSizes[stage] = codeSize;
+//     // return true;
 // }
 
-void Compiler::generateShaderCode(const ShaderObjectData& objData, uint32_t variantId,
+bool Compiler::generateShaderCode(const ShaderObjectData& objData,
+                                  const ShaderObjectData::ComputeUnit& cu,
+                                  const ShaderGenerationInput& genInput, uint32_t variantId,
                                   ShaderBin::Stage stage, std::ostream& out) const {
+    generate_shader_code(out);
+    PipelineResourceUsage resourceUsage;
+    ShaderBin::StageConfig cfg =
+      read_stage_configs(objData.resources, variantId, objData.variants,
+                         objData.variantIdMultiplier, genInput, resourceUsage);
+    if (cfg.entryPoints[stage] == "")
+        return false;
+    if (stage == ShaderBin::PS)
+        generate_shader_attachments(cfg, out);
+    out << format_variant(variantId, objData.variants, cu.stages[stage],
+                          objData.variantIdMultiplier);
     // std::set<std::string> variantParams;
     // size_t count = 1;
     // shaderData.variantParamNum = 0;
@@ -309,7 +324,7 @@ void Compiler::generateShaderCode(const ShaderObjectData& objData, uint32_t vari
     // }
     // -------------
     // }
-    // return true;
+    return true;
 }
 
 // // static ShaderHash hash_string(const std::string& data) {

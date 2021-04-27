@@ -17,50 +17,56 @@ ShaderBin::ShaderBin(const std::string& binfile) {
     read(in);
 }
 
-static void write_configs(std::ostream& out, const ShaderBin::StageConfig& configs) {
+// void ShaderBin::StageConfig::writeJson(json& out) const {
+// }
+
+// void ShaderBin::StageConfig::readJson(const json& in) {
+// }
+
+void ShaderBin::StageConfig::write(std::ostream& out) const {
     for (uint32_t i = 0; i < ShaderBin::NUM_STAGES; ++i)
-        write_string(out, configs.entryPoints[i]);
+        write_string(out, entryPoints[i]);
 
-    write_data(out, configs.polygonMode);
-    write_data(out, configs.cullMode);
-    write_data(out, configs.depthCompare);
+    write_data(out, polygonMode);
+    write_data(out, cullMode);
+    write_data(out, depthCompare);
 
-    write_data(out, configs.useDepthClamp);
-    write_data(out, configs.depthBiasEnable);
-    write_data(out, configs.depthTest);
-    write_data(out, configs.depthWrite);
-    write_data(out, configs.stencilTest);
+    write_data(out, useDepthClamp);
+    write_data(out, depthBiasEnable);
+    write_data(out, depthTest);
+    write_data(out, depthWrite);
+    write_data(out, stencilTest);
 
-    uint32_t count = static_cast<uint32_t>(configs.attachments.size());
+    uint32_t count = static_cast<uint32_t>(attachments.size());
     write_data(out, count);
     for (uint32_t i = 0; i < count; ++i) {
-        write_string(out, configs.attachments[i].name);
-        write_data(out, configs.attachments[i].info);
-        write_data(out, configs.attachments[i].location);
+        write_string(out, attachments[i].name);
+        write_data(out, attachments[i].info);
+        write_data(out, attachments[i].location);
     }
 }
 
-static void read_configs(std::istream& in, ShaderBin::StageConfig& configs) {
+void ShaderBin::StageConfig::read(std::istream& in) {
     for (uint32_t i = 0; i < ShaderBin::NUM_STAGES; ++i)
-        read_string(in, configs.entryPoints[i]);
+        read_string(in, entryPoints[i]);
 
-    read_data(in, configs.polygonMode);
-    read_data(in, configs.cullMode);
-    read_data(in, configs.depthCompare);
+    read_data(in, polygonMode);
+    read_data(in, cullMode);
+    read_data(in, depthCompare);
 
-    read_data(in, configs.useDepthClamp);
-    read_data(in, configs.depthBiasEnable);
-    read_data(in, configs.depthTest);
-    read_data(in, configs.depthWrite);
-    read_data(in, configs.stencilTest);
+    read_data(in, useDepthClamp);
+    read_data(in, depthBiasEnable);
+    read_data(in, depthTest);
+    read_data(in, depthWrite);
+    read_data(in, stencilTest);
 
     uint32_t count = 0;
     read_data(in, count);
-    configs.attachments.resize(count);
+    attachments.resize(count);
     for (uint32_t i = 0; i < count; ++i) {
-        read_string(in, configs.attachments[i].name);
-        read_data(in, configs.attachments[i].info);
-        read_data(in, configs.attachments[i].location);
+        read_string(in, attachments[i].name);
+        read_data(in, attachments[i].info);
+        read_data(in, attachments[i].location);
     }
 }
 
@@ -101,7 +107,7 @@ void ShaderBin::read(std::istream& in) {
         for (uint32_t j = 0; j < data.totalVariantCount; ++j) {
             read_data(in, data.stages[j].stageOffsets);
             read_data(in, data.stages[j].stageCodeSizes);
-            read_configs(in, data.stages[j].configs);
+            data.stages[j].configs.read(in);
             // TODO;
         }
         read_vector(in, data.codes);
@@ -135,7 +141,7 @@ void ShaderBin::write(std::ostream& out) const {
         for (uint32_t i = 0; i < data.totalVariantCount; ++i) {
             write_data(out, data.stages[i].stageOffsets);
             write_data(out, data.stages[i].stageCodeSizes);
-            write_configs(out, data.stages[i].configs);
+            data.stages[i].configs.write(out);
             // TODO;
         }
         write_vector(out, data.codes);

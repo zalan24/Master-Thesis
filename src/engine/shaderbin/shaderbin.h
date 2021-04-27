@@ -9,6 +9,7 @@
 
 #include <drvtypes.h>
 #include <hardwareconfig.h>
+#include <serializable.h>
 
 class ShaderBin
 {
@@ -53,9 +54,9 @@ class ShaderBin
         uint8_t location = 0;
     };
 
-    struct StageConfig
+    struct StageConfig  // final : public ISerializable
     {
-        std::string entryPoints[NUM_STAGES];
+        std::array<std::string, NUM_STAGES> entryPoints;
         drv::PolygonMode polygonMode = drv::PolygonMode::FILL;
         drv::CullMode cullMode = drv::CullMode::NONE;
         drv::CompareOp depthCompare = drv::CompareOp::GREATER_OR_EQUAL;
@@ -65,6 +66,12 @@ class ShaderBin
         bool depthWrite = false;
         bool stencilTest = false;
         std::vector<AttachmentInfo> attachments;
+
+        // void writeJson(json& out) const override;
+        // void readJson(const json& in) override;
+
+        void write(std::ostream& out) const;
+        void read(std::istream& in);
     };
 
     struct PushConstBindData
