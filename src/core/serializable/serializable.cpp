@@ -1,5 +1,19 @@
 #include "serializable.h"
 
+#include <HashLib4CPP.h>
+
+std::string hash_string(const std::string& data) {
+    IHash hash = HashLib4CPP::Hash128::CreateMurmurHash3_x64_128();
+    IHashResult res = hash->ComputeString(data);
+    return res->ToString();
+}
+
+std::string ISerializable::hash() const {
+    std::stringstream ss;
+    write(ss);
+    return hash_string(ss.str());
+}
+
 void ISerializable::write(std::ostream& out) const {
     json j;
     writeJson(j);

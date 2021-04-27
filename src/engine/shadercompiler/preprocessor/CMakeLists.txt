@@ -7,7 +7,7 @@ set_target_properties(  ShaderPreprocessorLib
                         COMPILE_FLAGS ${TARGETCOMPILEFLAGS}
                         LINK_OPTIONS "${TARGET_LINK_FLAGS}")
 target_include_directories(ShaderPreprocessorLib PUBLIC . ${CMAKE_CURRENT_BINARY_DIR})
-target_link_libraries(ShaderPreprocessorLib PRIVATE hashlib4cpp_external simple_cpp_external)
+target_link_libraries(ShaderPreprocessorLib PRIVATE simple_cpp_external)
 target_link_libraries(ShaderPreprocessorLib PUBLIC
     AnimationsIO
     AnimationsSerializable

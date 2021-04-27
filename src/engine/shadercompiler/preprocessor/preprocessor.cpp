@@ -3,10 +3,10 @@
 #include <cassert>
 #include <cctype>
 #include <fstream>
+#include <iostream>
 #include <iterator>
 #include <set>
 
-#include <HashLib4CPP.h>
 #include <simplecpp.h>
 
 #include <blockfile.h>
@@ -17,12 +17,6 @@
 #include <util.hpp>
 
 namespace fs = std::filesystem;
-
-static ShaderHash hash_string(const std::string& data) {
-    IHash hash = HashLib4CPP::Hash128::CreateMurmurHash3_x64_128();
-    IHashResult res = hash->ComputeString(data);
-    return res->ToString();
-}
 
 // static ShaderHash hash_code(const std::string& data) {
 //     return hash_string(data);
@@ -493,8 +487,8 @@ void Preprocessor::readIncludes(const BlockFile& b, std::set<std::string>& direc
     }
 }
 
-ShaderHash Preprocessor::collectIncludes(const std::string& header,
-                                         std::vector<std::string>& includes) const {
+std::string Preprocessor::collectIncludes(const std::string& header,
+                                          std::vector<std::string>& includes) const {
     if (std::find(includes.begin(), includes.end(), header) != includes.end())
         return "";
     auto itr = data.headers.find(header);
@@ -518,7 +512,7 @@ void Preprocessor::processHeader(const fs::path& file, const fs::path& outdir) {
     std::string content((std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>());
     std::string hash = hash_string(content);
     content = "";
-    in.seekg(0, ios::beg);
+    in.seekg(0, std::ios::beg);
     std::string headerHash = "";
     std::string cxxHash = "";
     if (auto itr = data.headers.find(name); itr != data.headers.end()) {
@@ -833,7 +827,7 @@ void Preprocessor::processSource(const fs::path& file, const fs::path& outdir) {
     std::string content((std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>());
     std::string hash = hash_string(content);
     content = "";
-    in.seekg(0, ios::beg);
+    in.seekg(0, std::ios::beg);
     std::string headerHash = "";
     std::string cxxHash = "";
     if (auto itr = data.sources.find(name); itr != data.sources.end()) {

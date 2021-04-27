@@ -20,8 +20,6 @@
 
 namespace fs = std::filesystem;
 
-using ShaderHash = std::string;
-
 class BlockFile;
 
 struct VariantConfig
@@ -178,7 +176,7 @@ class Preprocessor
     PreprocessorData data;
 
     void readIncludes(const BlockFile& b, std::set<std::string>& directIncludes) const;
-    ShaderHash collectIncludes(const std::string& header, std::vector<std::string>& includes) const;
+    std::string collectIncludes(const std::string& header, std::vector<std::string>& includes) const;
 
     void includeHeaders(std::ostream& out, const std::vector<std::string>& includes) const;
 

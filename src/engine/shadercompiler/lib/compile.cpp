@@ -19,8 +19,6 @@
 
 namespace fs = std::filesystem;
 
-using ShaderHash = std::string;
-
 static ShaderHash hash_string(const std::string& data) {
     IHash hash = HashLib4CPP::Hash128::CreateMurmurHash3_x64_128();
     IHashResult res = hash->ComputeString(data);
@@ -1291,7 +1289,8 @@ bool compile_shader(CompilerData& compileData, const std::string shaderFile) {
         assert(itr != compileData.includeData.end());
         header << ", const " << itr->second.descriptorRegistryClassName << " *reg_"
                << itr->second.name;
-        cxx << ", const " << itr->second.descriptorRegistryClassName << " *reg_" << itr->second.name;
+        cxx << ", const " << itr->second.descriptorRegistryClassName << " *reg_"
+            << itr->second.name;
     }
     header << ");\n";
     cxx << ")\n";

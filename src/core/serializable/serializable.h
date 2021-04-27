@@ -14,6 +14,8 @@
 
 using json = nlohmann::json;
 
+std::string hash_string(const std::string& data);
+
 class ISerializable
 {
  protected:
@@ -36,6 +38,8 @@ class ISerializable
 
     virtual void writeJson(json& out) const = 0;
     virtual void readJson(const json& in) = 0;
+
+    std::string hash() const;
 
     template <typename T>
     static json serialize(const std::vector<T>& data) {
