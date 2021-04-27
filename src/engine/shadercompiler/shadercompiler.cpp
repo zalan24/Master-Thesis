@@ -80,25 +80,27 @@ int main(int argc, char* argv[]) {
         if (!fs::exists(fs::path{binFile}.parent_path()))
             fs::create_directories(fs::path{binFile}.parent_path());
 
-        drv::DeviceLimits limits;
+        GenerateOptions options;
+
         if (hardwareReq != "") {
             std::ifstream limitsIn(hardwareReq.c_str());
             if (!limitsIn.is_open()) {
                 std::cerr << "Could not open file: " << hardwareReq << std::endl;
                 return 1;
             }
-            limits.read(limitsIn);
+            options.limits.read(limitsIn);
         }
 
-        CompileOptions compileOptions;
         if (compileOptionsFile != "") {
             std::ifstream optionsIn(compileOptionsFile.c_str());
             if (!optionsIn.is_open()) {
                 std::cerr << "Could not open file: " << compileOptionsFile << std::endl;
                 return 1;
             }
-            compileOptions.read(optionsIn);
+            options.compileOptions.read(optionsIn);
         }
+
+        // TODO runtime stats
 
         // if (!fs::exists(fs::path{target}))
         //     fs::create_directories(fs::path{target}.parent_path());
@@ -123,7 +125,7 @@ int main(int argc, char* argv[]) {
             compiler.addShaders(std::move(data));
         }
 
-        compiler.generateShaders(cacheFolder / fs::path{"glsl"}, compiledShaders);
+        compiler.generateShaders(options, cacheFolder / fs::path{"glsl"}, compiledShaders);
 
         // for (const auto& header : headers)
         //     preprocessor.processHeader(fs::path{header}, fs::path{outputDir});

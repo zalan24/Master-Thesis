@@ -3,6 +3,8 @@
 #include <HashLib4CPP.h>
 
 std::string hash_string(const std::string& data) {
+    if (data == "")
+        return "-";
     IHash hash = HashLib4CPP::Hash128::CreateMurmurHash3_x64_128();
     IHashResult res = hash->ComputeString(data);
     return res->ToString();

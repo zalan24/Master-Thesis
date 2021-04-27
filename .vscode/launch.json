@@ -57,8 +57,7 @@
         "--options", "${workspaceFolder}/data/compile/shaderCompileOptions.json",
         "-o${workspaceFolder}/build/shaders/shaders.bin",
         "-c${workspaceFolder}/build/shaders/cache",
-        "--output", "${workspaceFolder}/build/shaders/cpp",
-        "${workspaceFolder}/build/shaders/preprocessors/testShaders.json"
+        "--files", "${workspaceFolder}/build/shaders/preprocessors/testShaders.json"
       ],
       "stopAtEntry": false,
       "cwd": "${workspaceFolder}/build/src/gameLibs/shaders",

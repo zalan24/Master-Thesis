@@ -16,7 +16,7 @@
 #include <hardwareconfig.h>
 #include <serializable.h>
 #include <shaderbin.h>
-// #include <shaderstats.h>
+#include <shaderstats.h>
 
 #include "compileconfig.h"
 
@@ -34,7 +34,17 @@ struct ShaderCache final : public ISerializable
 {
     std::string shaderHash;
     std::string includesHash;
-    std::string glslHash;
+    std::map<std::string, std::string> codeHashes;
+
+    void writeJson(json& out) const override;
+    void readJson(const json& in) override;
+};
+
+struct GenerateOptions final : public ISerializable
+{
+    drv::DeviceLimits limits;
+    CompileOptions compileOptions;
+    // ShaderCompilerStats runtimeStats;
 
     void writeJson(json& out) const override;
     void readJson(const json& in) override;
@@ -42,8 +52,9 @@ struct ShaderCache final : public ISerializable
 
 struct CompilerCache final : public ISerializable
 {
+    GenerateOptions options;
     std::map<std::string, HeaderCache> headers;
-    std::map<std::string, HeaderCache> shaders;
+    std::map<std::string, ShaderCache> shaders;
 
     void writeJson(json& out) const override;
     void readJson(const json& in) override;
@@ -56,13 +67,18 @@ class Compiler
     void exportCache(std::ostream& out) const;
 
     void addShaders(PreprocessorData&& data);
-    void generateShaders(const fs::path& dir, const std::vector<std::string>& shaderNames = {});
+
+    void generateShaders(const GenerateOptions& options, const fs::path& dir,
+                         const std::vector<std::string>& shaderNames = {});
 
  private:
     CompilerCache cache;
     std::vector<PreprocessorData> collections;
     std::map<std::string, size_t> headerToCollection;
     std::map<std::string, size_t> shaderToCollection;
+
+    void generateShaderCode(const ShaderObjectData& objData, uint32_t variantId, ShaderBin::Stage stage,
+                            std::ostream& out) const;
 };
 
 // using ShaderHash = std::string;

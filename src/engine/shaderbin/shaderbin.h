@@ -25,6 +25,19 @@ class ShaderBin
         NUM_STAGES
     };
 
+    static std::string get_stage_name(Stage stage) {
+        switch (stage) {
+            case PS:
+                return "frag";
+            case VS:
+                return "vert";
+            case CS:
+                return "comp";
+            case NUM_STAGES:
+                return "";
+        }
+    }
+
     struct AttachmentInfo
     {
         std::string name;  // only for debugging
@@ -42,9 +55,7 @@ class ShaderBin
 
     struct StageConfig
     {
-        std::string psEntryPoint = "";
-        std::string vsEntryPoint = "";
-        std::string csEntryPoint = "";
+        std::string entryPoints[NUM_STAGES];
         drv::PolygonMode polygonMode = drv::PolygonMode::FILL;
         drv::CullMode cullMode = drv::CullMode::NONE;
         drv::CompareOp depthCompare = drv::CompareOp::GREATER_OR_EQUAL;

@@ -62,7 +62,7 @@ function(compile_shaders)
             --hardware ${COMPILER_DRIVER_REQUIREMENTS}
             --options ${COMPILER_COMPILE_OPTIONS}
             # ${SHADERS_HEADERS} ${SHADERS_SOURCES}
-            ${targetFiles}
+            --files ${targetFiles}
         DEPENDS  ${targetFiles} ${COMPILER_DRIVER_REQUIREMENTS} ${COMPILER_COMPILE_OPTIONS} ShaderCompiler
     )
 

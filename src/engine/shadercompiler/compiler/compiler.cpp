@@ -29,23 +29,37 @@ void HeaderCache::readJson(const json& in) {
 void ShaderCache::writeJson(json& out) const {
     WRITE_OBJECT(shaderHash, out);
     WRITE_OBJECT(includesHash, out);
-    WRITE_OBJECT(glslHash, out);
+    WRITE_OBJECT(codeHashes, out);
 }
 
 void ShaderCache::readJson(const json& in) {
     READ_OBJECT(shaderHash, in);
     READ_OBJECT(includesHash, in);
-    READ_OBJECT(glslHash, in);
+    READ_OBJECT(codeHashes, in);
+}
+
+void GenerateOptions::writeJson(json& out) const {
+    WRITE_OBJECT(limits, out);
+    WRITE_OBJECT(compileOptions, out);
+    // WRITE_OBJECT(runtimeStats, out);
+}
+
+void GenerateOptions::readJson(const json& in) {
+    READ_OBJECT(limits, in);
+    READ_OBJECT(compileOptions, in);
+    // READ_OBJECT(runtimeStats, in);
 }
 
 void CompilerCache::writeJson(json& out) const {
     WRITE_TIMESTAMP(out);
+    WRITE_OBJECT(options, out);
     WRITE_OBJECT(headers, out);
     WRITE_OBJECT(shaders, out);
 }
 
 void CompilerCache::readJson(const json& in) {
     if (CHECK_TIMESTAMP(in)) {
+        READ_OBJECT(options, in);
         READ_OBJECT(headers, in);
         READ_OBJECT(shaders, in);
     }
@@ -61,21 +75,21 @@ void Compiler::exportCache(std::ostream& out) const {
 
 void Compiler::addShaders(PreprocessorData&& data) {
     for (const auto& header : data.headers)
-        if (headerToCollection.find(header.second.name) != headerToCollection.end())
-            throw std::runtime_error("Two headers exist with the same name: " + header.second.name);
+        if (headerToCollection.find(header.first) != headerToCollection.end())
+            throw std::runtime_error("Two headers exist with the same name: " + header.first);
     for (const auto& shader : data.sources)
-        if (shaderToCollection.find(shader.second.name) != shaderToCollection.end())
-            throw std::runtime_error("Two shaders exists with the same name: "
-                                     + shader.second.name);
+        if (shaderToCollection.find(shader.first) != shaderToCollection.end())
+            throw std::runtime_error("Two shaders exists with the same name: " + shader.first);
     size_t id = collections.size();
     for (const auto& header : data.headers)
-        headerToCollection[header.second.name] = id;
+        headerToCollection[header.first] = id;
     for (const auto& shader : data.sources)
-        shaderToCollection[shader.second.name] = id;
+        shaderToCollection[shader.first] = id;
     collections.push_back(std::move(data));
 }
 
-void Compiler::generateShaders(const fs::path& dir, const std::vector<std::string>& shaderNames) {
+void Compiler::generateShaders(const GenerateOptions& options, const fs::path& dir,
+                               const std::vector<std::string>& shaderNames) {
     std::set<std::string> compiledShaders;
     for (const auto& shader : shaderNames)
         compiledShaders.insert(shader);
@@ -88,12 +102,214 @@ void Compiler::generateShaders(const fs::path& dir, const std::vector<std::strin
     }
     else
         fs::create_directories(dir);
+    const std::string optionsHash = options.hash();
+    bool recompileAll = false;
+    if (cache.options.hash() != optionsHash) {
+        recompileAll = true;
+        cache.options = options;
+    }
     for (const auto& [name, id] : shaderToCollection) {
         if (compiledShaders.size() > 0 && compiledShaders.count(name) == 0)
             continue;
-        // fs::path shaderDir = dir / fs::path{name};
-        // fs::create_directories(shaderDir);
+        const fs::path genFolder = dir / fs::path{name};
+        const size_t collectionId = shaderToCollection.find(name)->second;
+        const PreprocessorData& prepData = collections[collectionId];
+        const ShaderObjectData& objData = prepData.sources.find(name)->second;
+        const std::string shaderHash = objData.hash();
+        std::string includesHash = "";
+        for (const auto& h : objData.allIncludes)
+            includesHash +=
+              collections[headerToCollection.find(h)->second].headers.find(h)->second.hash();
+        includesHash = hash_string(includesHash);
+        if (!recompileAll && fs::exists(genFolder)) {
+            if (auto itr = cache.shaders.find(name); itr != cache.shaders.end()) {
+                if (itr->second.includesHash == includesHash
+                    && itr->second.shaderHash == shaderHash)
+                    continue;
+            }
+        }
+        ShaderCache& shaderCache = cache.shaders[name];
+        shaderCache.shaderHash = shaderHash;
+        shaderCache.includesHash = includesHash;
+        std::cout << "Generating shader: " << name << std::endl;
+        if (!fs::exists(genFolder))
+            fs::create_directories(genFolder);
+        for (uint32_t i = 0; i < objData.variantCount; ++i) {
+            for (uint32_t j = 0; j < ShaderBin::NUM_STAGES; ++j) {
+                std::stringstream code;
+                generateShaderCode(objData, i, static_cast<ShaderBin::Stage>(j), code);
+                const std::string codeHash = hash_string(code.str());
+                const std::string stageName =
+                  ShaderBin::get_stage_name(static_cast<ShaderBin::Stage>(j));
+                const fs::path shaderPath =
+                  genFolder / fs::path{name + std::to_string(i) + "." + stageName};
+                if (codeHash != shaderCache.codeHashes[stageName] || !fs::exists(shaderPath)) {
+                    shaderCache.codeHashes[stageName] = codeHash;
+                    std::ofstream out(shaderPath.c_str());
+                    if (!out.is_open())
+                        throw std::runtime_error("Could not open file: " + shaderPath.string());
+                    out << code.str();
+                    // TODO compile shader
+                }
+            }
+        }
     }
+}
+
+// static bool generate_binary(
+//   const fs::path& debugPath, const Compiler* compiler, ShaderBin::ShaderData& shaderData,
+//   const ResourceObject& resourceObj, uint32_t variantId, const std::vector<Variants>& variants,
+//   const std::stringstream& shader,
+//   std::unordered_map<ShaderHash, std::pair<size_t, size_t>>& codeOffsets,
+//   std::unordered_map<ShaderHash, std::pair<size_t, size_t>>& binaryOffsets, ShaderBin::Stage stage,
+//   const std::unordered_map<std::string, uint32_t>& variantParamMultiplier, std::ostream* genOut) {
+//     // TODO add resources to shader code
+//     std::stringstream shaderCodeSS;
+//     generate_shader_code(shaderCodeSS);
+//     if (stage == ShaderBin::PS)
+//         generate_shader_attachments(shaderData.stages[variantId].configs, shaderCodeSS);
+//     std::string shaderCode =
+//       shaderCodeSS.str() + format_variant(variantId, variants, shader, variantParamMultiplier);
+//     if (genOut) {
+//         *genOut << "// Stage: ";
+//         switch (stage) {
+//             case ShaderBin::PS:
+//                 *genOut << "PS";
+//                 break;
+//             case ShaderBin::VS:
+//                 *genOut << "VS";
+//                 break;
+//             case ShaderBin::CS:
+//                 *genOut << "CS";
+//                 break;
+//             case ShaderBin::NUM_STAGES:
+//                 break;
+//         }
+//         *genOut << "\n\n";
+//         *genOut << shaderCode << std::endl;
+//     }
+
+//     ShaderHash codeHash = hash_code(shaderCode);
+//     if (auto itr = codeOffsets.find(codeHash); itr != codeOffsets.end()) {
+//         shaderData.stages[variantId].stageOffsets[stage] = itr->second.first;
+//         shaderData.stages[variantId].stageCodeSizes[stage] = itr->second.second;
+//         return true;
+//     }
+//     std::vector<uint32_t> binary =
+//       compile_shader_binary(debugPath, compiler, stage, shaderCode.length(), shaderCode.c_str());
+//     ShaderHash binHash = hash_binary(binary.size(), binary.data());
+//     if (auto itr = binaryOffsets.find(binHash); itr != binaryOffsets.end()) {
+//         shaderData.stages[variantId].stageOffsets[stage] = itr->second.first;
+//         shaderData.stages[variantId].stageCodeSizes[stage] = itr->second.second;
+//         codeOffsets[codeHash] = itr->second;
+//         return true;
+//     }
+//     size_t offset = shaderData.codes.size();
+//     size_t codeSize = binary.size();
+//     codeOffsets[codeHash] = std::make_pair(offset, codeSize);
+//     binaryOffsets[binHash] = std::make_pair(offset, codeSize);
+//     std::copy(binary.begin(), binary.end(),
+//               std::inserter(shaderData.codes, shaderData.codes.end()));
+//     shaderData.stages[variantId].stageOffsets[stage] = offset;
+//     shaderData.stages[variantId].stageCodeSizes[stage] = codeSize;
+//     return true;
+// }
+
+void Compiler::generateShaderCode(const ShaderObjectData& objData, uint32_t variantId,
+                                  ShaderBin::Stage stage, std::ostream& out) const {
+    // std::set<std::string> variantParams;
+    // size_t count = 1;
+    // shaderData.variantParamNum = 0;
+    // for (const Variants& v : variants) {
+    //     for (const auto& [name, values] : v.values) {
+    //         for (const std::string& value : values) {
+    //             // try to find value name in registered param names
+    //             auto itr = variantParamMultiplier.find(value);
+    //             if (itr != variantParamMultiplier.end()) {
+    //                 std::cerr << "Name collision of variant param name (" << value
+    //                           << ") and variant param: " << name << " / " << value << std::endl;
+    //                 return false;
+    //             }
+    //         }
+    //         if (shaderData.variantParamNum >= ShaderBin::MAX_VARIANT_PARAM_COUNT) {
+    //             std::cerr
+    //               << "A shader has exceeded the current limit for max shader variant parameters ("
+    //               << ShaderBin::MAX_VARIANT_PARAM_COUNT << ")" << std::endl;
+    //             return false;
+    //         }
+    //         shaderData.variantValues[shaderData.variantParamNum] =
+    //           safe_cast<std::decay_t<decltype(shaderData.variantValues[0])>>(values.size());
+    //         shaderData.variantParamNum++;
+    //         if (variantParams.count(name) > 0) {
+    //             std::cerr << "A shader variant param name is used multiple times: " << name
+    //                       << std::endl;
+    //             return false;
+    //         }
+    //         count *= values.size();
+    //         variantParams.insert(name);
+    //     }
+    // }
+    // shaderData.totalVariantCount = safe_cast<uint32_t>(count);
+    // shaderData.stages.clear();
+    // shaderData.stages.resize(shaderData.totalVariantCount);
+    // std::unordered_map<ShaderHash, std::pair<size_t, size_t>> codeOffsets;
+    // std::unordered_map<ShaderHash, std::pair<size_t, size_t>> binaryOffsets;
+    // variantToResourceUsage.resize(shaderData.totalVariantCount);
+    // std::ostream* genOut = nullptr;
+    // std::ofstream genOutF;
+    // if (genFile != "") {
+    //     genOutF.open(genFile.c_str());
+    //     if (genOutF.is_open())
+    //         genOut = &genOutF;
+    // }
+    // for (uint32_t variantId = 0; variantId < shaderData.totalVariantCount; ++variantId) {
+    // -------------
+    // PipelineResourceUsage resourceUsage;
+    // ShaderBin::StageConfig cfg = read_stage_configs(resources, variantId, variants,
+    //                                                 variantParamMultiplier, input, resourceUsage);
+    // if (resourceObjects.find(resourceUsage) == resourceObjects.end())
+    //     resourceObjects[resourceUsage] = generate_resource_object(resources, resourceUsage);
+    // const ResourceObject& resourceObj = resourceObjects[resourceUsage];
+    // variantToResourceUsage[variantId] = resourceUsage;
+    // // TODO add resource packs to shader codes
+    // shaderData.stages[variantId].configs = cfg;
+    // if (genOut) {
+    //     *genOut << "// ---------------------- Variant " << variantId << " ----------------------\n";
+    //     const VariantConfig config =
+    //       get_variant_config(variantId, variants, variantParamMultiplier);
+    //     for (const Variants& v : variants) {
+    //         for (const auto& [name, values] : v.values) {
+    //             auto itr = config.variantValues.find(name);
+    //             assert(itr != config.variantValues.end());
+    //             *genOut << "// " << name << " = " << values[itr->second] << ";\n";
+    //         }
+    //     }
+    //     *genOut << " ---\n";
+    // }
+    // if (cfg.vsEntryPoint != ""
+    //     && !generate_binary(debugPath, compiler, shaderData, resourceObj, variantId, variants,
+    //                         input.ps, codeOffsets, binaryOffsets, ShaderBin::PS,
+    //                         variantParamMultiplier, genOut)) {
+    //     std::cerr << "Could not generate PS binary." << std::endl;
+    //     return false;
+    // }
+    // if (cfg.psEntryPoint != ""
+    //     && !generate_binary(debugPath, compiler, shaderData, resourceObj, variantId, variants,
+    //                         input.vs, codeOffsets, binaryOffsets, ShaderBin::VS,
+    //                         variantParamMultiplier, genOut)) {
+    //     std::cerr << "Could not generate VS binary." << std::endl;
+    //     return false;
+    // }
+    // if (cfg.csEntryPoint != ""
+    //     && !generate_binary(debugPath, compiler, shaderData, resourceObj, variantId, variants,
+    //                         input.cs, codeOffsets, binaryOffsets, ShaderBin::CS,
+    //                         variantParamMultiplier, genOut)) {
+    //     std::cerr << "Could not generate CS binary." << std::endl;
+    //     return false;
+    // }
+    // -------------
+    // }
+    // return true;
 }
 
 // // static ShaderHash hash_string(const std::string& data) {

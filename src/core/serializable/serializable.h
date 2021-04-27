@@ -49,6 +49,14 @@ class ISerializable
         return out;
     }
 
+    template <typename T, size_t N>
+    static json serialize(const std::array<T, N>& data) {
+        json out = json::array();
+        for (const T& v : data)
+            out.push_back(serialize(v));
+        return out;
+    }
+
     template <typename T>
     static json serialize(const std::set<T>& data) {
         json out = json::array();
@@ -161,6 +169,16 @@ class ISerializable
             throw std::runtime_error("Input json is not an array: " + in.dump());
         data.resize(in.size());
         for (size_t i = 0; i < in.size(); ++i)
+            serialize(in[i], data[i]);
+    }
+
+    template <typename T, size_t N>
+    static void serialize(const json& in, std::array<T, N>& data) {
+        if (!in.is_array())
+            throw std::runtime_error("Input json is not an array: " + in.dump());
+        if (in.size() != N)
+            throw std::runtime_error("Wrong input size: " + in.dump());
+        for (size_t i = 0; i < N; ++i)
             serialize(in[i], data[i]);
     }
 

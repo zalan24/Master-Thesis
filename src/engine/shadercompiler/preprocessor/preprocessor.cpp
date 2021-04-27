@@ -53,15 +53,11 @@ void ResourceUsage::readJson(const json& in) {
 }
 
 void PipelineResourceUsage::writeJson(json& out) const {
-    WRITE_OBJECT(vsUsage, out);
-    WRITE_OBJECT(psUsage, out);
-    WRITE_OBJECT(csUsage, out);
+    WRITE_OBJECT(usages, out);
 }
 
 void PipelineResourceUsage::readJson(const json& in) {
-    READ_OBJECT(vsUsage, in);
-    READ_OBJECT(psUsage, in);
-    READ_OBJECT(csUsage, in);
+    READ_OBJECT(usages, in);
 }
 
 void ShaderHeaderData::writeJson(json& out) const {
@@ -216,38 +212,47 @@ static void collect_shader_cfg(const BlockFile& blockFile, std::ostream& stagesO
     });
 }
 
-static void collect_shader(const BlockFile& blockFile, std::ostream& out, std::ostream& cfgOut,
-                           const std::string& type) {
-    collect_shader_cfg(blockFile, cfgOut, type);
-    for (size_t i = 0; i < blockFile.getBlockCount("global"); ++i) {
-        const BlockFile* b = blockFile.getNode("global", i);
-        if (b->hasContent()) {
-            out << *b->getContent();
+static void collect_shader(const BlockFile& blockFile, std::ostream* shaderOut,
+                           std::ostream* cfgOut, const std::string& type) {
+    if (cfgOut)
+        collect_shader_cfg(blockFile, *cfgOut, type);
+    if (shaderOut) {
+        for (size_t i = 0; i < blockFile.getBlockCount("global"); ++i) {
+            const BlockFile* b = blockFile.getNode("global", i);
+            if (b->hasContent()) {
+                *shaderOut << *b->getContent();
+            }
+            else if (b->hasNodes()) {
+                // completely empty block is allowed
+                throw std::runtime_error(
+                  "A shader block (global) contains nested blocks instead of content");
+            }
         }
-        else if (b->hasNodes()) {
-            // completely empty block is allowed
-            throw std::runtime_error(
-              "A shader block (global) contains nested blocks instead of content");
-        }
-    }
-    for (size_t i = 0; i < blockFile.getBlockCount(type); ++i) {
-        const BlockFile* b = blockFile.getNode(type, i);
-        if (b->hasContent()) {
-            out << *b->getContent();
-        }
-        else if (b->hasNodes()) {
-            // completely empty block is allowed
-            throw std::runtime_error("A shader block (" + type
-                                     + ") contains nested blocks instead of content.");
+        for (size_t i = 0; i < blockFile.getBlockCount(type); ++i) {
+            const BlockFile* b = blockFile.getNode(type, i);
+            if (b->hasContent()) {
+                *shaderOut << *b->getContent();
+            }
+            else if (b->hasNodes()) {
+                // completely empty block is allowed
+                throw std::runtime_error("A shader block (" + type
+                                         + ") contains nested blocks instead of content.");
+            }
         }
     }
 }
 
 static void read_gen_input(const BlockFile& shaderFile, ShaderGenerationInput& genInput) {
     collect_shader_cfg(shaderFile, genInput.statesCfg, "states");
-    collect_shader(shaderFile, genInput.vs, genInput.vsCfg, "vs");
-    collect_shader(shaderFile, genInput.ps, genInput.psCfg, "ps");
-    collect_shader(shaderFile, genInput.cs, genInput.csCfg, "cs");
+    std::string blockNames[ShaderBin::NUM_STAGES];
+    blockNames[ShaderBin::VS] = "vs";
+    blockNames[ShaderBin::PS] = "ps";
+    blockNames[ShaderBin::CS] = "cs";
+    static_assert(ShaderBin::NUM_STAGES == 3, "Update this code as well");
+    for (uint32_t i = 0; i < ShaderBin::NUM_STAGES; ++i)
+        collect_shader(shaderFile, nullptr, &genInput.stageConfigs[i], blockNames[i]);
+    // collect_shader(shaderFile, genInput.ps, genInput.psCfg, "ps");
+    // collect_shader(shaderFile, genInput.cs, genInput.csCfg, "cs");
     collect_shader_f(
       shaderFile, "attachments", [&](size_t, const BlockFile*, size_t, const BlockFile* node) {
           if (node->hasNodes()) {
@@ -365,65 +370,64 @@ static ShaderBin::StageConfig read_stage_configs(
   const Resources& resources, uint32_t variantId, const std::vector<Variants>& variants,
   const std::map<std::string, uint32_t>& variantParamMultiplier, const ShaderGenerationInput& input,
   PipelineResourceUsage& resourceUsage) {
-    // TODO report an error for unknown values
     std::string statesInfo =
       format_variant(variantId, variants, input.statesCfg, variantParamMultiplier);
-    std::string vsInfo = format_variant(variantId, variants, input.vsCfg, variantParamMultiplier);
-    std::string psInfo = format_variant(variantId, variants, input.psCfg, variantParamMultiplier);
-    std::string csInfo = format_variant(variantId, variants, input.csCfg, variantParamMultiplier);
+    std::string stageInfos[ShaderBin::NUM_STAGES];
+    std::unordered_map<std::string, std::string> stageValues[ShaderBin::NUM_STAGES];
     std::unordered_map<std::string, std::string> statesValues = read_values(statesInfo);
-    std::unordered_map<std::string, std::string> vsValues = read_values(vsInfo);
-    std::unordered_map<std::string, std::string> psValues = read_values(psInfo);
-    std::unordered_map<std::string, std::string> csValues = read_values(csInfo);
-    resourceUsage.vsUsage = read_used_resources(vsInfo, resources);
-    resourceUsage.psUsage = read_used_resources(psInfo, resources);
-    resourceUsage.csUsage = read_used_resources(csInfo, resources);
+    std::unordered_set<std::string> usedValue;
+    for (uint32_t i = 0; i < ShaderBin::NUM_STAGES; ++i) {
+        stageInfos[i] =
+          format_variant(variantId, variants, input.stageConfigs[i], variantParamMultiplier);
+        stageValues[i] = read_values(stageInfos[i]);
+        resourceUsage.usages[i] = read_used_resources(stageInfos[i], resources);
+    }
+    auto read_value = [&](std::unordered_map<std::string, std::string>& values,
+                          const std::string& name) -> const std::string* {
+        usedValue.insert(name);
+        if (values.count(name) > 1)
+            throw std::runtime_error("Shater state overwrites are currently not supported");
+        auto itr = values.find(name);
+        if (itr != values.end())
+            return &itr->second;
+        return nullptr;
+    };
     ShaderBin::StageConfig ret;
-    if (vsValues.count("entry") > 1 || psValues.count("entry") > 1 || csValues.count("entry") > 1
-        || statesValues.count("polygonMode") > 1 || statesValues.count("cull") > 1
-        || statesValues.count("depthCompare") > 1 || statesValues.count("useDepthClamp") > 1
-        || statesValues.count("depthBiasEnable") > 1 || statesValues.count("depthTest") > 1
-        || statesValues.count("depthWrite") > 1 || statesValues.count("stencilTest") > 1)
-        throw std::runtime_error("Shater state overwrites are currently not supported");
 
-    if (auto itr = vsValues.find("entry"); itr != vsValues.end())
-        ret.vsEntryPoint = itr->second;
-    if (auto itr = psValues.find("entry"); itr != psValues.end())
-        ret.psEntryPoint = itr->second;
-    if (auto itr = csValues.find("entry"); itr != csValues.end())
-        ret.csEntryPoint = itr->second;
-    if (auto itr = statesValues.find("polygonMode"); itr != statesValues.end())
+    for (uint32_t i = 0; i < ShaderBin::NUM_STAGES; ++i)
+        if (auto value = read_value(stageValues[i], "entry"))
+            ret.entryPoints[i] = *value;
+    if (auto value = read_value(statesValues, "polygonMode"))
         ret.polygonMode =
-          translate_input<drv::PolygonMode>(itr->second, {{"fill", drv::PolygonMode::FILL},
-                                                          {"line", drv::PolygonMode::LINE},
-                                                          {"point", drv::PolygonMode::POINT}});
-    if (auto itr = statesValues.find("cull"); itr != statesValues.end())
+          translate_input<drv::PolygonMode>(*value, {{"fill", drv::PolygonMode::FILL},
+                                                     {"line", drv::PolygonMode::LINE},
+                                                     {"point", drv::PolygonMode::POINT}});
+    if (auto value = read_value(statesValues, "cull"))
         ret.cullMode =
-          translate_input<drv::CullMode>(itr->second, {{"none", drv::CullMode::NONE},
-                                                       {"front", drv::CullMode::FRONT_BIT},
-                                                       {"back", drv::CullMode::BACK_BIT},
-                                                       {"all", drv::CullMode::FRONT_AND_BACK}});
-    if (auto itr = statesValues.find("depthCompare"); itr != statesValues.end())
+          translate_input<drv::CullMode>(*value, {{"none", drv::CullMode::NONE},
+                                                  {"front", drv::CullMode::FRONT_BIT},
+                                                  {"back", drv::CullMode::BACK_BIT},
+                                                  {"all", drv::CullMode::FRONT_AND_BACK}});
+    if (auto value = read_value(statesValues, "depthCompare"))
         ret.depthCompare = translate_input<drv::CompareOp>(
-          itr->second, {{"never", drv::CompareOp::NEVER},
-                        {"less", drv::CompareOp::LESS},
-                        {"equal", drv::CompareOp::EQUAL},
-                        {"less_or_equal", drv::CompareOp::LESS_OR_EQUAL},
-                        {"greater", drv::CompareOp::GREATER},
-                        {"not_equal", drv::CompareOp::NOT_EQUAL},
-                        {"greater_or_equal", drv::CompareOp::GREATER_OR_EQUAL},
-                        {"always", drv::CompareOp::ALWAYS}});
-    if (auto itr = statesValues.find("useDepthClamp"); itr != statesValues.end())
-        ret.useDepthClamp = translate_input<bool>(itr->second, {{"true", true}, {"false", false}});
-    if (auto itr = statesValues.find("depthBiasEnable"); itr != statesValues.end())
-        ret.depthBiasEnable =
-          translate_input<bool>(itr->second, {{"true", true}, {"false", false}});
-    if (auto itr = statesValues.find("depthTest"); itr != statesValues.end())
-        ret.depthTest = translate_input<bool>(itr->second, {{"true", true}, {"false", false}});
-    if (auto itr = statesValues.find("depthWrite"); itr != statesValues.end())
-        ret.depthWrite = translate_input<bool>(itr->second, {{"true", true}, {"false", false}});
-    if (auto itr = statesValues.find("stencilTest"); itr != statesValues.end())
-        ret.stencilTest = translate_input<bool>(itr->second, {{"true", true}, {"false", false}});
+          *value, {{"never", drv::CompareOp::NEVER},
+                   {"less", drv::CompareOp::LESS},
+                   {"equal", drv::CompareOp::EQUAL},
+                   {"less_or_equal", drv::CompareOp::LESS_OR_EQUAL},
+                   {"greater", drv::CompareOp::GREATER},
+                   {"not_equal", drv::CompareOp::NOT_EQUAL},
+                   {"greater_or_equal", drv::CompareOp::GREATER_OR_EQUAL},
+                   {"always", drv::CompareOp::ALWAYS}});
+    if (auto value = read_value(statesValues, "useDepthClamp"))
+        ret.useDepthClamp = translate_input<bool>(*value, {{"true", true}, {"false", false}});
+    if (auto value = read_value(statesValues, "depthBiasEnable"))
+        ret.depthBiasEnable = translate_input<bool>(*value, {{"true", true}, {"false", false}});
+    if (auto value = read_value(statesValues, "depthTest"))
+        ret.depthTest = translate_input<bool>(*value, {{"true", true}, {"false", false}});
+    if (auto value = read_value(statesValues, "depthWrite"))
+        ret.depthWrite = translate_input<bool>(*value, {{"true", true}, {"false", false}});
+    if (auto value = read_value(statesValues, "stencilTest"))
+        ret.stencilTest = translate_input<bool>(*value, {{"true", true}, {"false", false}});
     for (const auto& [name, cfg] : input.attachments) {
         std::string attachments = format_variant(variantId, variants, cfg, variantParamMultiplier);
         std::unordered_map<std::string, std::string> values = read_values(attachments);
@@ -464,6 +468,13 @@ static ShaderBin::StageConfig read_stage_configs(
         }
         ret.attachments.push_back(std::move(attachmentInfo));
     }
+    for (const auto& itr : statesValues)
+        if (usedValue.count(itr.first) == 0)
+            throw std::runtime_error("Unknown value in shader config: " + itr.first);
+    for (uint32_t i = 0; i < ShaderBin::NUM_STAGES; ++i)
+        for (const auto& itr : stageValues[i])
+            if (usedValue.count(itr.first) == 0)
+                throw std::runtime_error("Unknown value in shader config: " + itr.first);
     return ret;
 }
 

@@ -13,7 +13,7 @@
 
 // #include <hardwareconfig.h>
 #include <serializable.h>
-// #include <shaderbin.h>
+#include <shaderbin.h>
 
 // #include "compileconfig.h"
 // #include "shaderstats.h"
@@ -47,12 +47,10 @@ struct Resources final : public ISerializable
 struct ShaderGenerationInput
 {
     std::stringstream statesCfg;
-    std::stringstream vs;
-    std::stringstream vsCfg;
-    std::stringstream ps;
-    std::stringstream psCfg;
-    std::stringstream cs;
-    std::stringstream csCfg;
+    std::stringstream stageConfigs[ShaderBin::NUM_STAGES];
+    // std::stringstream vs;
+    // std::stringstream ps;
+    // std::stringstream cs;
     std::map<std::string, std::stringstream> attachments;
 };
 
@@ -84,22 +82,14 @@ struct ResourceUsage final : public ISerializable
 
 struct PipelineResourceUsage final : public ISerializable
 {
-    ResourceUsage psUsage;
-    ResourceUsage vsUsage;
-    ResourceUsage csUsage;
+    std::array<ResourceUsage, ShaderBin::NUM_STAGES> usages;
     bool operator<(const PipelineResourceUsage& other) const {
-        if (psUsage < other.psUsage)
-            return true;
-        if (other.psUsage < psUsage)
-            return false;
-        if (vsUsage < other.vsUsage)
-            return true;
-        if (other.vsUsage < vsUsage)
-            return false;
-        if (csUsage < other.csUsage)
-            return true;
-        if (other.csUsage < csUsage)
-            return false;
+        for (uint32_t i = 0; i < ShaderBin::NUM_STAGES; ++i) {
+            if (usages[i] < other.usages[i])
+                return true;
+            if (other.usages[i] < usages[i])
+                return false;
+        }
         return false;
     }
 
@@ -176,7 +166,8 @@ class Preprocessor
     PreprocessorData data;
 
     void readIncludes(const BlockFile& b, std::set<std::string>& directIncludes) const;
-    std::string collectIncludes(const std::string& header, std::vector<std::string>& includes) const;
+    std::string collectIncludes(const std::string& header,
+                                std::vector<std::string>& includes) const;
 
     void includeHeaders(std::ostream& out, const std::vector<std::string>& includes) const;
 

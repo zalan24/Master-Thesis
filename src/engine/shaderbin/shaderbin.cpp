@@ -18,9 +18,8 @@ ShaderBin::ShaderBin(const std::string& binfile) {
 }
 
 static void write_configs(std::ostream& out, const ShaderBin::StageConfig& configs) {
-    write_string(out, configs.vsEntryPoint);
-    write_string(out, configs.psEntryPoint);
-    write_string(out, configs.csEntryPoint);
+    for (uint32_t i = 0; i < ShaderBin::NUM_STAGES; ++i)
+        write_string(out, configs.entryPoints[i]);
 
     write_data(out, configs.polygonMode);
     write_data(out, configs.cullMode);
@@ -42,9 +41,8 @@ static void write_configs(std::ostream& out, const ShaderBin::StageConfig& confi
 }
 
 static void read_configs(std::istream& in, ShaderBin::StageConfig& configs) {
-    read_string(in, configs.vsEntryPoint);
-    read_string(in, configs.psEntryPoint);
-    read_string(in, configs.csEntryPoint);
+    for (uint32_t i = 0; i < ShaderBin::NUM_STAGES; ++i)
+        read_string(in, configs.entryPoints[i]);
 
     read_data(in, configs.polygonMode);
     read_data(in, configs.cullMode);
@@ -74,6 +72,11 @@ void ShaderBin::read(std::istream& in) {
     read_data(in, header);
     if (header != FILE_HEADER)
         throw std::runtime_error("Invalid file header: " + std::to_string(header));
+    std::string stamp;
+    read_string(in, stamp);
+    if (stamp != __TIMESTAMP__)
+        throw std::runtime_error("Mismatching timestamps for shader binary: " + stamp
+                                 + " (shader)   !=   " + std::string(__TIMESTAMP__) + " (current)");
     uint64_t hash;
     read_data(in, hash);
     // TODO
@@ -114,6 +117,7 @@ void ShaderBin::write(std::ostream& out) const {
     if (!out.binary)
         throw std::runtime_error("Binary file expected for shaderBin output");
     write_data(out, FILE_HEADER);
+    write_string(out, __TIMESTAMP__);
     write_data(out, shaderHeadersHash);
     uint32_t shaderCount = static_cast<uint32_t>(shaders.size());
     write_data(out, shaderCount);
