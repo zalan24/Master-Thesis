@@ -22,19 +22,20 @@
 
 namespace fs = std::filesystem;
 
-struct HeaderCache final : public ISerializable
-{
-    std::string headerHash;
+// struct HeaderCache final : public ISerializable
+// {
+//     std::string headerHash;
 
-    void writeJson(json& out) const override;
-    void readJson(const json& in) override;
-};
+//     void writeJson(json& out) const override;
+//     void readJson(const json& in) override;
+// };
 
 struct ShaderCache final : public ISerializable
 {
     std::string shaderHash;
     std::string includesHash;
     std::map<std::string, std::string> codeHashes;
+    std::map<std::string, std::string> binaryConfigHashes;
 
     void writeJson(json& out) const override;
     void readJson(const json& in) override;
@@ -53,7 +54,7 @@ struct GenerateOptions final : public ISerializable
 struct CompilerCache final : public ISerializable
 {
     GenerateOptions options;
-    std::map<std::string, HeaderCache> headers;
+    // std::map<std::string, HeaderCache> headers;
     std::map<std::string, ShaderCache> shaders;
 
     void writeJson(json& out) const override;
@@ -63,6 +64,11 @@ struct CompilerCache final : public ISerializable
 class Compiler
 {
  public:
+    Compiler();
+    ~Compiler();
+    Compiler(const Compiler&) = delete;
+    Compiler& operator=(const Compiler&) = delete;
+
     void loadCache(std::istream& in);
     void exportCache(std::ostream& out) const;
 
@@ -70,6 +76,10 @@ class Compiler
 
     void generateShaders(const GenerateOptions& options, const fs::path& dir,
                          const std::vector<std::string>& shaderNames = {});
+
+    static void compile_shader(const CompileOptions& compileOptions,
+                               const drv::DeviceLimits& limits, ShaderBin::Stage stage,
+                               const fs::path& glsl, const fs::path& spv);
 
  private:
     CompilerCache cache;

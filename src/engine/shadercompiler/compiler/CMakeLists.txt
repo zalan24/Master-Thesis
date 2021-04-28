@@ -7,7 +7,7 @@ set_target_properties(  ShaderCompilerLib
                         COMPILE_FLAGS ${TARGETCOMPILEFLAGS}
                         LINK_OPTIONS "${TARGET_LINK_FLAGS}")
 target_include_directories(ShaderCompilerLib PUBLIC . ${CMAKE_CURRENT_BINARY_DIR})
-# target_link_libraries(ShaderCompilerLib PRIVATE simple_cpp_external)
+target_link_libraries(ShaderCompilerLib PRIVATE glslang_external spirv_tools_external)
 target_link_libraries(ShaderCompilerLib PUBLIC
     AnimationsIO
     AnimationsSerializable

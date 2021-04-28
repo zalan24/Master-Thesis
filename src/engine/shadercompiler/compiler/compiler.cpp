@@ -15,27 +15,53 @@
 // #include <shaderbin.h>
 // #include <uncomment.h>
 // #include <util.hpp>
+#include <binary_io.h>
+
+#include <glslang/SPIRV/GlslangToSpv.h>
+#include <spirv-tools/libspirv.hpp>
+#include <spirv-tools/optimizer.hpp>
 
 namespace fs = std::filesystem;
 
-void HeaderCache::writeJson(json& out) const {
-    WRITE_OBJECT(headerHash, out);
+static EShLanguage find_language(const ShaderBin::Stage stage) {
+    switch (stage) {
+        case ShaderBin::Stage::VS:
+            return EShLangVertex;
+        // case  ShaderBin::Stage::TS:
+        //     return EShLangTessControl;
+        // case  ShaderBin::Stage::TE:
+        //     return EShLangTessEvaluation;
+        // case  ShaderBin::Stage::GS:
+        //     return EShLangGeometry;
+        case ShaderBin::Stage::PS:
+            return EShLangFragment;
+        case ShaderBin::Stage::CS:
+            return EShLangCompute;
+        case ShaderBin::Stage::NUM_STAGES:
+            throw std::runtime_error("Unhandled shader stage");
+    }
 }
 
-void HeaderCache::readJson(const json& in) {
-    READ_OBJECT(headerHash, in);
+Compiler::Compiler() {
+    glslang::InitializeProcess();
+}
+
+Compiler::~Compiler() {
+    glslang::FinalizeProcess();
 }
 
 void ShaderCache::writeJson(json& out) const {
     WRITE_OBJECT(shaderHash, out);
     WRITE_OBJECT(includesHash, out);
     WRITE_OBJECT(codeHashes, out);
+    WRITE_OBJECT(binaryConfigHashes, out);
 }
 
 void ShaderCache::readJson(const json& in) {
     READ_OBJECT(shaderHash, in);
     READ_OBJECT(includesHash, in);
     READ_OBJECT(codeHashes, in);
+    READ_OBJECT(binaryConfigHashes, in);
 }
 
 void GenerateOptions::writeJson(json& out) const {
@@ -53,14 +79,14 @@ void GenerateOptions::readJson(const json& in) {
 void CompilerCache::writeJson(json& out) const {
     WRITE_TIMESTAMP(out);
     WRITE_OBJECT(options, out);
-    WRITE_OBJECT(headers, out);
+    // WRITE_OBJECT(headers, out);
     WRITE_OBJECT(shaders, out);
 }
 
 void CompilerCache::readJson(const json& in) {
     if (CHECK_TIMESTAMP(in)) {
         READ_OBJECT(options, in);
-        READ_OBJECT(headers, in);
+        // READ_OBJECT(headers, in);
         READ_OBJECT(shaders, in);
     }
 }
@@ -108,6 +134,7 @@ void Compiler::generateShaders(const GenerateOptions& options, const fs::path& d
         recompileAll = true;
         cache.options = options;
     }
+    std::map<std::string, fs::path> hashToFile[ShaderBin::NUM_STAGES];
     for (const auto& [name, id] : shaderToCollection) {
         if (compiledShaders.size() > 0 && compiledShaders.count(name) == 0)
             continue;
@@ -134,9 +161,12 @@ void Compiler::generateShaders(const GenerateOptions& options, const fs::path& d
         std::cout << "Generating shader: " << name << std::endl;
         if (!fs::exists(genFolder))
             fs::create_directories(genFolder);
+        std::vector<std::vector<fs::path>> codePath;
+        codePath.resize(objData.variantCount);
         for (uint32_t i = 0; i < objData.variantCount; ++i) {
             ShaderGenerationInput genInput;
             const ShaderObjectData::ComputeUnit cu = objData.readComputeUnite(&genInput);
+            codePath[i].resize(ShaderBin::NUM_STAGES);
             for (uint32_t j = 0; j < ShaderBin::NUM_STAGES; ++j) {
                 std::stringstream code;
                 if (!generateShaderCode(objData, cu, genInput, i, static_cast<ShaderBin::Stage>(j),
@@ -147,14 +177,40 @@ void Compiler::generateShaders(const GenerateOptions& options, const fs::path& d
                   ShaderBin::get_stage_name(static_cast<ShaderBin::Stage>(j));
                 const fs::path shaderPath =
                   genFolder / fs::path{name + std::to_string(i) + "." + stageName};
+                codePath[i][j] = shaderPath;
                 if (codeHash != shaderCache.codeHashes[stageName] || !fs::exists(shaderPath)) {
-                    shaderCache.codeHashes[stageName] = codeHash;
                     std::ofstream out(shaderPath.c_str());
                     if (!out.is_open())
                         throw std::runtime_error("Could not open file: " + shaderPath.string());
                     out << code.str();
-                    // TODO compile shader
+                    shaderCache.codeHashes[stageName] = codeHash;
                 }
+            }
+        }
+        std::cout << "Compiling shader: " << name << std::endl;
+        for (uint32_t i = 0; i < objData.variantCount; ++i) {
+            for (uint32_t j = 0; j < ShaderBin::NUM_STAGES; ++j) {
+                if (codePath[i][j].empty())
+                    continue;
+                ShaderBin::Stage stage = static_cast<ShaderBin::Stage>(j);
+                const std::string stageName = ShaderBin::get_stage_name(stage);
+                std::string binaryHash =
+                  hash_string(shaderCache.codeHashes[stageName] + ";;"
+                              + options.compileOptions.hash() + ";;" + options.limits.hash());
+                fs::path spvPath = codePath[i][j];
+                spvPath += fs::path{".spv"};
+                if (shaderCache.binaryConfigHashes[stageName] == binaryHash && fs::exists(spvPath))
+                    continue;
+                if (auto itr = hashToFile[stage].find(binaryHash); itr != hashToFile[stage].end()) {
+                    if (fs::exists(spvPath))
+                        fs::remove(spvPath);
+                    fs::copy_file(itr->second, spvPath);
+                    continue;
+                }
+                compile_shader(options.compileOptions, options.limits, stage, codePath[i][j],
+                               spvPath);
+                hashToFile[stage][binaryHash] = spvPath;
+                shaderCache.binaryConfigHashes[stageName] = binaryHash;
             }
         }
     }
@@ -179,6 +235,166 @@ static void generate_shader_attachments(const ShaderBin::StageConfig& configs, s
         code << "vec4 " << attachment.name << ";\n";
     }
     code << "\n";
+}
+
+static TBuiltInResource reade_resources(const ShaderBuiltInResource& resources) {
+    TBuiltInResource ret;
+    ret.maxLights = resources.maxLights;
+    ret.maxClipPlanes = resources.maxClipPlanes;
+    ret.maxTextureUnits = resources.maxTextureUnits;
+    ret.maxTextureCoords = resources.maxTextureCoords;
+    ret.maxVertexAttribs = resources.maxVertexAttribs;
+    ret.maxVertexUniformComponents = resources.maxVertexUniformComponents;
+    ret.maxVaryingFloats = resources.maxVaryingFloats;
+    ret.maxVertexTextureImageUnits = resources.maxVertexTextureImageUnits;
+    ret.maxCombinedTextureImageUnits = resources.maxCombinedTextureImageUnits;
+    ret.maxTextureImageUnits = resources.maxTextureImageUnits;
+    ret.maxFragmentUniformComponents = resources.maxFragmentUniformComponents;
+    ret.maxDrawBuffers = resources.maxDrawBuffers;
+    ret.maxVertexUniformVectors = resources.maxVertexUniformVectors;
+    ret.maxVaryingVectors = resources.maxVaryingVectors;
+    ret.maxFragmentUniformVectors = resources.maxFragmentUniformVectors;
+    ret.maxVertexOutputVectors = resources.maxVertexOutputVectors;
+    ret.maxFragmentInputVectors = resources.maxFragmentInputVectors;
+    ret.minProgramTexelOffset = resources.minProgramTexelOffset;
+    ret.maxProgramTexelOffset = resources.maxProgramTexelOffset;
+    ret.maxClipDistances = resources.maxClipDistances;
+    ret.maxComputeWorkGroupCountX = resources.maxComputeWorkGroupCountX;
+    ret.maxComputeWorkGroupCountY = resources.maxComputeWorkGroupCountY;
+    ret.maxComputeWorkGroupCountZ = resources.maxComputeWorkGroupCountZ;
+    ret.maxComputeWorkGroupSizeX = resources.maxComputeWorkGroupSizeX;
+    ret.maxComputeWorkGroupSizeY = resources.maxComputeWorkGroupSizeY;
+    ret.maxComputeWorkGroupSizeZ = resources.maxComputeWorkGroupSizeZ;
+    ret.maxComputeUniformComponents = resources.maxComputeUniformComponents;
+    ret.maxComputeTextureImageUnits = resources.maxComputeTextureImageUnits;
+    ret.maxComputeImageUniforms = resources.maxComputeImageUniforms;
+    ret.maxComputeAtomicCounters = resources.maxComputeAtomicCounters;
+    ret.maxComputeAtomicCounterBuffers = resources.maxComputeAtomicCounterBuffers;
+    ret.maxVaryingComponents = resources.maxVaryingComponents;
+    ret.maxVertexOutputComponents = resources.maxVertexOutputComponents;
+    ret.maxGeometryInputComponents = resources.maxGeometryInputComponents;
+    ret.maxGeometryOutputComponents = resources.maxGeometryOutputComponents;
+    ret.maxFragmentInputComponents = resources.maxFragmentInputComponents;
+    ret.maxImageUnits = resources.maxImageUnits;
+    ret.maxCombinedImageUnitsAndFragmentOutputs = resources.maxCombinedImageUnitsAndFragmentOutputs;
+    ret.maxCombinedShaderOutputResources = resources.maxCombinedShaderOutputResources;
+    ret.maxImageSamples = resources.maxImageSamples;
+    ret.maxVertexImageUniforms = resources.maxVertexImageUniforms;
+    ret.maxTessControlImageUniforms = resources.maxTessControlImageUniforms;
+    ret.maxTessEvaluationImageUniforms = resources.maxTessEvaluationImageUniforms;
+    ret.maxGeometryImageUniforms = resources.maxGeometryImageUniforms;
+    ret.maxFragmentImageUniforms = resources.maxFragmentImageUniforms;
+    ret.maxCombinedImageUniforms = resources.maxCombinedImageUniforms;
+    ret.maxGeometryTextureImageUnits = resources.maxGeometryTextureImageUnits;
+    ret.maxGeometryOutputVertices = resources.maxGeometryOutputVertices;
+    ret.maxGeometryTotalOutputComponents = resources.maxGeometryTotalOutputComponents;
+    ret.maxGeometryUniformComponents = resources.maxGeometryUniformComponents;
+    ret.maxGeometryVaryingComponents = resources.maxGeometryVaryingComponents;
+    ret.maxTessControlInputComponents = resources.maxTessControlInputComponents;
+    ret.maxTessControlOutputComponents = resources.maxTessControlOutputComponents;
+    ret.maxTessControlTextureImageUnits = resources.maxTessControlTextureImageUnits;
+    ret.maxTessControlUniformComponents = resources.maxTessControlUniformComponents;
+    ret.maxTessControlTotalOutputComponents = resources.maxTessControlTotalOutputComponents;
+    ret.maxTessEvaluationInputComponents = resources.maxTessEvaluationInputComponents;
+    ret.maxTessEvaluationOutputComponents = resources.maxTessEvaluationOutputComponents;
+    ret.maxTessEvaluationTextureImageUnits = resources.maxTessEvaluationTextureImageUnits;
+    ret.maxTessEvaluationUniformComponents = resources.maxTessEvaluationUniformComponents;
+    ret.maxTessPatchComponents = resources.maxTessPatchComponents;
+    ret.maxPatchVertices = resources.maxPatchVertices;
+    ret.maxTessGenLevel = resources.maxTessGenLevel;
+    ret.maxViewports = resources.maxViewports;
+    ret.maxVertexAtomicCounters = resources.maxVertexAtomicCounters;
+    ret.maxTessControlAtomicCounters = resources.maxTessControlAtomicCounters;
+    ret.maxTessEvaluationAtomicCounters = resources.maxTessEvaluationAtomicCounters;
+    ret.maxGeometryAtomicCounters = resources.maxGeometryAtomicCounters;
+    ret.maxFragmentAtomicCounters = resources.maxFragmentAtomicCounters;
+    ret.maxCombinedAtomicCounters = resources.maxCombinedAtomicCounters;
+    ret.maxAtomicCounterBindings = resources.maxAtomicCounterBindings;
+    ret.maxVertexAtomicCounterBuffers = resources.maxVertexAtomicCounterBuffers;
+    ret.maxTessControlAtomicCounterBuffers = resources.maxTessControlAtomicCounterBuffers;
+    ret.maxTessEvaluationAtomicCounterBuffers = resources.maxTessEvaluationAtomicCounterBuffers;
+    ret.maxGeometryAtomicCounterBuffers = resources.maxGeometryAtomicCounterBuffers;
+    ret.maxFragmentAtomicCounterBuffers = resources.maxFragmentAtomicCounterBuffers;
+    ret.maxCombinedAtomicCounterBuffers = resources.maxCombinedAtomicCounterBuffers;
+    ret.maxAtomicCounterBufferSize = resources.maxAtomicCounterBufferSize;
+    ret.maxTransformFeedbackBuffers = resources.maxTransformFeedbackBuffers;
+    ret.maxTransformFeedbackInterleavedComponents =
+      resources.maxTransformFeedbackInterleavedComponents;
+    ret.maxCullDistances = resources.maxCullDistances;
+    ret.maxCombinedClipAndCullDistances = resources.maxCombinedClipAndCullDistances;
+    ret.maxSamples = resources.maxSamples;
+    ret.maxMeshOutputVerticesNV = resources.maxMeshOutputVerticesNV;
+    ret.maxMeshOutputPrimitivesNV = resources.maxMeshOutputPrimitivesNV;
+    ret.maxMeshWorkGroupSizeX_NV = resources.maxMeshWorkGroupSizeX_NV;
+    ret.maxMeshWorkGroupSizeY_NV = resources.maxMeshWorkGroupSizeY_NV;
+    ret.maxMeshWorkGroupSizeZ_NV = resources.maxMeshWorkGroupSizeZ_NV;
+    ret.maxTaskWorkGroupSizeX_NV = resources.maxTaskWorkGroupSizeX_NV;
+    ret.maxTaskWorkGroupSizeY_NV = resources.maxTaskWorkGroupSizeY_NV;
+    ret.maxTaskWorkGroupSizeZ_NV = resources.maxTaskWorkGroupSizeZ_NV;
+    ret.maxMeshViewCountNV = resources.maxMeshViewCountNV;
+    // ret.maxDualSourceDrawBuffersEXT = resources.maxDualSourceDrawBuffersEXT;
+
+    ret.limits.nonInductiveForLoops = resources.limits.nonInductiveForLoops;
+    ret.limits.whileLoops = resources.limits.whileLoops;
+    ret.limits.doWhileLoops = resources.limits.doWhileLoops;
+    ret.limits.generalUniformIndexing = resources.limits.generalUniformIndexing;
+    ret.limits.generalAttributeMatrixVectorIndexing =
+      resources.limits.generalAttributeMatrixVectorIndexing;
+    ret.limits.generalVaryingIndexing = resources.limits.generalVaryingIndexing;
+    ret.limits.generalSamplerIndexing = resources.limits.generalSamplerIndexing;
+    ret.limits.generalVariableIndexing = resources.limits.generalVariableIndexing;
+    ret.limits.generalConstantMatrixVectorIndexing =
+      resources.limits.generalConstantMatrixVectorIndexing;
+    return ret;
+}
+
+void Compiler::compile_shader(const CompileOptions& compileOptions, const drv::DeviceLimits& limits,
+                              ShaderBin::Stage stage, const fs::path& glsl, const fs::path& spv) {
+    EShLanguage lang = find_language(stage);
+    glslang::TShader shader(lang);
+    glslang::TProgram program;
+    const char* shaderStrings[1];
+    TBuiltInResource resources = reade_resources(compileOptions.shaderResources);
+
+    // Enable SPIR-V and Vulkan rules when parsing GLSL
+    EShMessages messages = static_cast<EShMessages>(EShMsgSpvRules | EShMsgVulkanRules);
+
+    std::ifstream shaderIn(glsl.c_str());
+    if (!shaderIn.is_open())
+        throw std::runtime_error("Could not open own file for reading: " + glsl.string());
+    std::string pShader((std::istreambuf_iterator<char>(shaderIn)),
+                        std::istreambuf_iterator<char>());
+    shaderIn.close();
+
+    shaderStrings[0] = pShader.c_str();
+    shader.setStrings(shaderStrings, 1);
+
+    if (!shader.parse(&resources, 100, false, messages)) {
+        std::cerr << "Shader info log:" << std::endl << shader.getInfoLog() << std::endl;
+        std::cerr << "Shader info debug log:" << std::endl << shader.getInfoDebugLog() << std::endl;
+        throw std::runtime_error("Could not compile shader: " + glsl.string());
+    }
+
+    program.addShader(&shader);
+
+    //
+    // Program-level processing...
+    //
+
+    if (!program.link(messages)) {
+        std::cerr << "Shader info log:" << std::endl << shader.getInfoLog() << std::endl;
+        std::cerr << "Shader info debug log:" << std::endl << shader.getInfoDebugLog() << std::endl;
+        throw std::runtime_error("Could not link shader: " + glsl.string());
+    }
+
+    std::vector<uint32_t> spirv;
+    glslang::GlslangToSpv(*program.getIntermediate(lang), spirv);
+    // TODO optimization
+
+    std::ofstream out(spv.c_str());
+    if (!out.is_open())
+        throw std::runtime_error("Could not open file: " + spv.string());
+    write_vector(out, spirv);
 }
 
 // static bool generate_code(const std::stringstream& shader, ShaderBin::Stage stage,
@@ -747,7 +963,7 @@ bool Compiler::generateShaderCode(const ShaderObjectData& objData,
 //         std::unordered_map<std::string, std::string> values = read_values(attachments);
 //         ShaderBin::AttachmentInfo attachmentInfo;
 //         if (auto itr = values.find("location"); itr != values.end()) {
-//             int loc = std::atoi(itr->second.c_str());
+//             ret.loc = resources.loc = std::atoi(itr->second.c_str());
 //             if (loc < 0)
 //                 continue;
 //             attachmentInfo.location = safe_cast<uint8_t>(loc);

@@ -243,6 +243,7 @@
         "swapchain",
         "symengine",
         "texcoord",
+        "texel",
         "thirdparty",
         "vindoz",
         "vulkan"
