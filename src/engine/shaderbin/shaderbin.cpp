@@ -101,8 +101,8 @@ void ShaderBin::read(std::istream& in) {
         read_string(in, name);
         ShaderData data;
         read_data(in, data.totalVariantCount);
-        read_data(in, data.variantParamNum);
-        read_data(in, data.variantValues);
+        // read_data(in, data.variantParamNum);
+        // read_data(in, data.variantValues);
         data.stages.resize(data.totalVariantCount);
         for (uint32_t j = 0; j < data.totalVariantCount; ++j) {
             read_data(in, data.stages[j].stageOffsets);
@@ -110,9 +110,13 @@ void ShaderBin::read(std::istream& in) {
             data.stages[j].configs.read(in);
             // TODO;
         }
-        read_vector(in, data.codes);
         shaders[name] = std::move(data);
     }
+    uint64_t size;
+    read_data(in, size);
+    codeBlocks.resize(size);
+    for (uint64_t i = 0; i < size; ++i)
+        read_vector(in, codeBlocks[i]);
     uint32_t ending;
     read_data(in, ending);
     if (ending != FILE_END)
@@ -135,8 +139,8 @@ void ShaderBin::write(std::ostream& out) const {
     for (const auto& [name, data] : shaders) {
         write_string(out, name);
         write_data(out, data.totalVariantCount);
-        write_data(out, data.variantParamNum);
-        write_data(out, data.variantValues);
+        // write_data(out, data.variantParamNum);
+        // write_data(out, data.variantValues);
         assert(data.stages.size() == data.totalVariantCount);
         for (uint32_t i = 0; i < data.totalVariantCount; ++i) {
             write_data(out, data.stages[i].stageOffsets);
@@ -144,8 +148,10 @@ void ShaderBin::write(std::ostream& out) const {
             data.stages[i].configs.write(out);
             // TODO;
         }
-        write_vector(out, data.codes);
     }
+    write_data(out, uint64_t(codeBlocks.size()));
+    for (const auto& block : codeBlocks)
+        write_vector(out, block);
     write_data(out, FILE_END);
 }
 
@@ -164,4 +170,26 @@ const ShaderBin::ShaderData* ShaderBin::getShader(const std::string& name) const
     if (itr == shaders.end())
         return nullptr;
     return &itr->second;
+}
+
+uint32_t* ShaderBin::getCode(uint64_t ind) {
+    return &codeBlocks[high_index(ind)][low_index(ind)];
+}
+
+const uint32_t* ShaderBin::getCode(uint64_t ind) const {
+    return &codeBlocks[high_index(ind)][low_index(ind)];
+}
+
+uint64_t ShaderBin::addShaderCode(size_t len, const uint32_t* code) {
+    if (len > CODE_BLOCK_LOW_FILETR)
+        throw std::runtime_error("Shader code doesn't fit in a code block");
+    if (low_index(codeLen) + len >= CODE_BLOCK_SIZE || high_index(codeLen) >= codeBlocks.size()) {
+        codeLen = codeBlocks.size() << CODE_BLOCK_BITS;
+        codeBlocks.resize(codeBlocks.size() + 1);
+        codeBlocks.back().resize(CODE_BLOCK_SIZE);
+    }
+    uint64_t ret = codeLen;
+    std::copy(code, code + len, getCode(ret));
+    codeLen += len;
+    return ret;
 }

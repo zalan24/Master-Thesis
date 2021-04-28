@@ -17,6 +17,16 @@ class ShaderBin
     static constexpr size_t MAX_VARIANT_PARAM_COUNT = 8;
     static constexpr uint32_t FILE_HEADER = 0x12345678;
     static constexpr uint32_t FILE_END = 0xEDCBA987;
+    static constexpr uint32_t CODE_BLOCK_BITS = 20;
+    static constexpr uint32_t CODE_BLOCK_SIZE = 1 << CODE_BLOCK_BITS;
+    static constexpr uint64_t CODE_BLOCK_LOW_FILETR = CODE_BLOCK_SIZE - 1;
+    static constexpr uint64_t CODE_BLOCK_HIGH_FILETR = (~uint64_t(0)) << CODE_BLOCK_BITS;
+    static_assert((CODE_BLOCK_LOW_FILETR | CODE_BLOCK_HIGH_FILETR) == (~uint64_t(0)));
+
+    static uint64_t high_index(uint64_t ind) {
+        return (ind & CODE_BLOCK_HIGH_FILETR) >> CODE_BLOCK_BITS;
+    }
+    static uint64_t low_index(uint64_t ind) { return ind & CODE_BLOCK_LOW_FILETR; }
 
     enum Stage
     {
@@ -74,8 +84,8 @@ class ShaderBin
         void read(std::istream& in);
     };
 
-    struct PushConstBindData
-    {};
+    // struct PushConstBindData
+    // {};
 
     struct ShaderData
     {
@@ -85,13 +95,12 @@ class ShaderBin
             std::array<uint64_t, NUM_STAGES> stageOffsets = {INVALID_SHADER};
             std::array<uint64_t, NUM_STAGES> stageCodeSizes = {INVALID_SHADER};
             StageConfig configs;
-            PushConstBindData pushConstBindInfo;
+            // PushConstBindData pushConstBindInfo;
         };
         uint32_t totalVariantCount;
-        uint32_t variantParamNum;
-        std::array<uint16_t, MAX_VARIANT_PARAM_COUNT> variantValues;
+        // uint32_t variantParamNum;
+        // std::array<uint16_t, MAX_VARIANT_PARAM_COUNT> variantValues;
         std::vector<StageData> stages;
-        std::vector<uint32_t> codes;
     };
 
     ShaderBin(drv::DeviceLimits limits);
@@ -102,6 +111,7 @@ class ShaderBin
 
     void clear();
 
+    uint64_t addShaderCode(size_t len, const uint32_t* code);
     void addShader(const std::string& name, ShaderData&& shader);
 
     const ShaderData* getShader(const std::string& name) const;
@@ -111,8 +121,13 @@ class ShaderBin
     void addHash(uint64_t h) { shaderHeadersHash ^= h; }
     void setHash(uint64_t h) { shaderHeadersHash = h; }
 
+    uint32_t* getCode(uint64_t ind);
+    const uint32_t* getCode(uint64_t ind) const;
+
  private:
     uint64_t shaderHeadersHash = 0;  // compatibility with c++ code
     drv::DeviceLimits limits;
     std::unordered_map<std::string, ShaderData> shaders;
+    size_t codeLen = 0;
+    std::vector<std::vector<uint32_t>> codeBlocks;
 };

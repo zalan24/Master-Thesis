@@ -68,9 +68,9 @@ drv::DrvShader::GraphicalPipelineCreateInfo ShaderObject::getGraphicsPipelineCre
     ret.topology = drv::PrimitiveTopology::TRIANGLE_LIST;  // TODO
     ret.frontFace = drv::FrontFace::CLOCKWISE;             // TODO
 
-    ret.vs = getShaderStage(reg->variants[desc.variantId].vsOffset,
+    ret.vs = getShaderStage(reg->variants[desc.variantId].offsets[ShaderBin::VS],
                             config.entryPoints[ShaderBin::VS].c_str());
-    ret.ps = getShaderStage(reg->variants[desc.variantId].psOffset,
+    ret.ps = getShaderStage(reg->variants[desc.variantId].offsets[ShaderBin::PS],
                             config.entryPoints[ShaderBin::PS].c_str());
     ret.cs = {};
     ret.useDepthClamp = config.useDepthClamp;

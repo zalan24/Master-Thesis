@@ -52,7 +52,8 @@ ShaderObjectRegistry& ShaderObjectRegistry::operator=(ShaderObjectRegistry&& oth
     return *this;
 }
 
-void ShaderObjectRegistry::loadShader(const ShaderBin::ShaderData& data) {
+void ShaderObjectRegistry::loadShader(const ShaderBin& shaderBin,
+                                      const ShaderBin::ShaderData& data) {
     std::unordered_map<uint64_t, uint32_t> offsetToModule;
     variants.clear();
     variants.resize(data.totalVariantCount);
@@ -61,41 +62,19 @@ void ShaderObjectRegistry::loadShader(const ShaderBin::ShaderData& data) {
     stageConfigs.reserve(data.totalVariantCount);
     for (uint32_t i = 0; i < data.totalVariantCount; ++i) {
         stageConfigs.push_back(data.stages[i].configs);
-        uint64_t vsOffset = data.stages[i].stageOffsets[ShaderBin::VS];
-        uint64_t psOffset = data.stages[i].stageOffsets[ShaderBin::PS];
-        uint64_t csOffset = data.stages[i].stageOffsets[ShaderBin::CS];
-        if (auto itr = offsetToModule.find(vsOffset); itr != offsetToModule.end())
-            variants[i].vsOffset = itr->second;
-        else {
-            drv::ShaderCreateInfo info;
-            info.codeSize = data.stages[i].stageCodeSizes[ShaderBin::VS] * sizeof(data.codes[0]);
-            info.code = &data.codes[vsOffset];
-            size_t offset = shaders.size();
-            shaders.push_back(drv::create_shader_module(device, &info));
-            variants[i].vsOffset = safe_cast<VariantId>(offset);
-            offsetToModule[vsOffset] = safe_cast<VariantId>(offset);
-        }
-        if (auto itr = offsetToModule.find(psOffset); itr != offsetToModule.end())
-            variants[i].psOffset = itr->second;
-        else {
-            drv::ShaderCreateInfo info;
-            info.codeSize = data.stages[i].stageCodeSizes[ShaderBin::PS] * sizeof(data.codes[0]);
-            info.code = &data.codes[psOffset];
-            size_t offset = shaders.size();
-            shaders.push_back(drv::create_shader_module(device, &info));
-            variants[i].psOffset = safe_cast<VariantId>(offset);
-            offsetToModule[psOffset] = safe_cast<VariantId>(offset);
-        }
-        if (auto itr = offsetToModule.find(csOffset); itr != offsetToModule.end())
-            variants[i].csOffset = itr->second;
-        else {
-            drv::ShaderCreateInfo info;
-            info.codeSize = data.stages[i].stageCodeSizes[ShaderBin::CS] * sizeof(data.codes[0]);
-            info.code = &data.codes[csOffset];
-            size_t offset = shaders.size();
-            shaders.push_back(drv::create_shader_module(device, &info));
-            variants[i].csOffset = safe_cast<VariantId>(offset);
-            offsetToModule[csOffset] = safe_cast<VariantId>(offset);
+        for (uint32_t j = 0; j < ShaderBin::NUM_STAGES; ++j) {
+            uint64_t codeOffset = data.stages[i].stageOffsets[j];
+            if (auto itr = offsetToModule.find(codeOffset); itr != offsetToModule.end())
+                variants[i].offsets[j] = itr->second;
+            else {
+                drv::ShaderCreateInfo info;
+                info.code = shaderBin.getCode(codeOffset);
+                info.codeSize = data.stages[i].stageCodeSizes[j] * sizeof(info.code[0]);
+                size_t offset = shaders.size();
+                shaders.push_back(drv::create_shader_module(device, &info));
+                variants[i].offsets[j] = safe_cast<VariantId>(offset);
+                offsetToModule[codeOffset] = safe_cast<VariantId>(offset);
+            }
         }
     }
 }

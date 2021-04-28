@@ -138,7 +138,7 @@ void Compiler::generateShaders(const GenerateOptions& options, const fs::path& d
     for (const auto& [name, id] : shaderToCollection) {
         if (compiledShaders.size() > 0 && compiledShaders.count(name) == 0)
             continue;
-        const fs::path genFolder = dir / fs::path{name};
+        const fs::path genFolder = getGenFolder(dir, name);
         const size_t collectionId = shaderToCollection.find(name)->second;
         const PreprocessorData& prepData = collections[collectionId];
         const ShaderObjectData& objData = prepData.sources.find(name)->second;
@@ -176,7 +176,7 @@ void Compiler::generateShaders(const GenerateOptions& options, const fs::path& d
                 const std::string stageName =
                   ShaderBin::get_stage_name(static_cast<ShaderBin::Stage>(j));
                 const fs::path shaderPath =
-                  genFolder / fs::path{name + std::to_string(i) + "." + stageName};
+                  getGlslPath(dir, name, i, static_cast<ShaderBin::Stage>(j));
                 codePath[i][j] = shaderPath;
                 if (codeHash != shaderCache.codeHashes[stageName] || !fs::exists(shaderPath)) {
                     std::ofstream out(shaderPath.c_str());
@@ -190,15 +190,17 @@ void Compiler::generateShaders(const GenerateOptions& options, const fs::path& d
         std::cout << "Compiling shader: " << name << std::endl;
         for (uint32_t i = 0; i < objData.variantCount; ++i) {
             for (uint32_t j = 0; j < ShaderBin::NUM_STAGES; ++j) {
-                if (codePath[i][j].empty())
-                    continue;
                 ShaderBin::Stage stage = static_cast<ShaderBin::Stage>(j);
+                fs::path spvPath = getSpvPath(dir, name, i, stage);
+                if (codePath[i][j].empty()) {
+                    if (fs::exists(spvPath))
+                        fs::remove(spvPath);
+                    continue;
+                }
                 const std::string stageName = ShaderBin::get_stage_name(stage);
                 std::string binaryHash =
                   hash_string(shaderCache.codeHashes[stageName] + ";;"
                               + options.compileOptions.hash() + ";;" + options.limits.hash());
-                fs::path spvPath = codePath[i][j];
-                spvPath += fs::path{".spv"};
                 if (shaderCache.binaryConfigHashes[stageName] == binaryHash && fs::exists(spvPath))
                     continue;
                 if (auto itr = hashToFile[stage].find(binaryHash); itr != hashToFile[stage].end()) {
@@ -541,6 +543,70 @@ bool Compiler::generateShaderCode(const ShaderObjectData& objData,
     // -------------
     // }
     return true;
+}
+
+ShaderBin Compiler::link(const fs::path& shaderDir, const drv::DeviceLimits& limits) const {
+    std::cout << "Linking shader binary..." << std::endl;
+    ShaderBin ret(limits);
+    std::unordered_map<std::string, size_t> spvHashToOffset;
+    for (const auto& collection : collections) {
+        for (const auto& [name, objData] : collection.sources) {
+            const ShaderGenerationInput genInput = objData.readGenInput();
+            ShaderBin::ShaderData shaderData;
+            shaderData.totalVariantCount = objData.variantCount;
+            shaderData.stages.reserve(shaderData.totalVariantCount);
+            for (uint32_t i = 0; i < shaderData.totalVariantCount; ++i) {
+                PipelineResourceUsage resourceUsage;
+                ShaderBin::ShaderData::StageData stageData;
+                stageData.configs =
+                  read_stage_configs(objData.resources, i, objData.variants,
+                                     objData.variantIdMultiplier, genInput, resourceUsage);
+                for (uint32_t j = 0; j < ShaderBin::NUM_STAGES; ++j) {
+                    if (stageData.configs.entryPoints[j] == "")
+                        continue;
+                    const fs::path spvPath =
+                      getSpvPath(shaderDir, name, i, static_cast<ShaderBin::Stage>(j));
+                    std::ifstream in(spvPath.c_str());
+                    if (!in.is_open())
+                        throw std::runtime_error("Could not open spv file: " + spvPath.string());
+
+                    std::vector<uint32_t> spirv;
+                    read_vector(in, spirv);
+                    std::string hash = hash_binary(spirv.size() * sizeof(spirv[0]), spirv.data());
+                    if (auto itr = spvHashToOffset.find(hash); itr != spvHashToOffset.end()) {
+                        stageData.stageOffsets[j] = itr->second;
+                        stageData.stageCodeSizes[j] = spirv.size();
+                    }
+                    else {
+                        uint64_t offset = ret.addShaderCode(spirv.size(), spirv.data());
+                        stageData.stageOffsets[j] = offset;
+                        stageData.stageCodeSizes[j] = spirv.size();
+                        spvHashToOffset[hash] = offset;
+                    }
+                }
+                shaderData.stages.push_back(std::move(stageData));
+            }
+            ret.addShader(name, std::move(shaderData));
+        }
+    }
+    return ret;
+}
+
+fs::path Compiler::getGenFolder(const fs::path& parentDir, const std::string& name) const {
+    return parentDir / fs::path{name};
+}
+
+fs::path Compiler::getGlslPath(const fs::path& parentDir, const std::string& name,
+                               uint32_t variantId, ShaderBin::Stage stage) const {
+    const std::string stageName = ShaderBin::get_stage_name(stage);
+    return getGenFolder(parentDir, name)
+           / fs::path{name + std::to_string(variantId) + "." + stageName};
+}
+fs::path Compiler::getSpvPath(const fs::path& parentDir, const std::string& name,
+                              uint32_t variantId, ShaderBin::Stage stage) const {
+    fs::path ret = getGlslPath(parentDir, name, variantId, stage);
+    ret += ".spv";
+    return ret;
 }
 
 // // static ShaderHash hash_string(const std::string& data) {

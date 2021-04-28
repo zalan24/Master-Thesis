@@ -125,7 +125,16 @@ int main(int argc, char* argv[]) {
             compiler.addShaders(std::move(data));
         }
 
-        compiler.generateShaders(options, cacheFolder / fs::path{"glsl"}, compiledShaders);
+        fs::path shaderDir = cacheFolder / fs::path{"glsl"};
+        compiler.generateShaders(options, shaderDir, compiledShaders);
+        ShaderBin bin = compiler.link(shaderDir, options.limits);
+
+        {
+            std::ofstream binOut(binFile.c_str());
+            if (!binOut.is_open())
+                throw std::runtime_error("Could not open bin file: " + binFile);
+            bin.write(binOut);
+        }
 
         // for (const auto& header : headers)
         //     preprocessor.processHeader(fs::path{header}, fs::path{outputDir});
@@ -244,6 +253,5 @@ int main(int argc, char* argv[]) {
     //     json cacheJson = ISerializable::serialize(compileData.cache);
     //     cacheOut << cacheJson;
     // }
-    std::cerr << "Unimplemented" << std::endl;
-    return 1;
+    return 0;
 }

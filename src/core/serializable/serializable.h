@@ -15,6 +15,7 @@
 using json = nlohmann::json;
 
 std::string hash_string(const std::string& data);
+std::string hash_binary(size_t size, const void* data);
 
 class ISerializable
 {

@@ -20,7 +20,7 @@ class ShaderObjectRegistry
     ShaderObjectRegistry(ShaderObjectRegistry&& other);
     ShaderObjectRegistry& operator=(ShaderObjectRegistry&& other);
 
-    void loadShader(const ShaderBin::ShaderData& data);
+    void loadShader(const ShaderBin& shaderBin, const ShaderBin::ShaderData& data);
 
     const ShaderBin::StageConfig& getStageConfig(VariantId variantId) const;
 
@@ -32,9 +32,7 @@ class ShaderObjectRegistry
  private:
     struct VariantInfo
     {
-        VariantId psOffset = INVALID_SHADER;
-        VariantId vsOffset = INVALID_SHADER;
-        VariantId csOffset = INVALID_SHADER;
+        VariantId offsets[ShaderBin::NUM_STAGES] = {INVALID_SHADER};
     };
     drv::LogicalDevicePtr device;
     std::vector<VariantInfo> variants;

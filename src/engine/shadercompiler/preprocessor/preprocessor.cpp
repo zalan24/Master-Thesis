@@ -261,15 +261,19 @@ static void collect_shader(const BlockFile& blockFile, std::ostream* shaderOut,
     }
 }
 
-static void read_gen_input(const BlockFile& shaderFile, ShaderGenerationInput& genInput) {
-    collect_shader_cfg(shaderFile, genInput.statesCfg, "states");
-    std::string blockNames[ShaderBin::NUM_STAGES];
+static std::array<std::string, ShaderBin::NUM_STAGES> getBlockNames() {
+    std::array<std::string, ShaderBin::NUM_STAGES> blockNames;
     blockNames[ShaderBin::VS] = "vs";
     blockNames[ShaderBin::PS] = "ps";
     blockNames[ShaderBin::CS] = "cs";
     static_assert(ShaderBin::NUM_STAGES == 3, "Update this code as well");
+    return blockNames;
+}
+
+static void read_gen_input(const BlockFile& shaderFile, ShaderGenerationInput& genInput) {
+    collect_shader_cfg(shaderFile, genInput.statesCfg, "states");
     for (uint32_t i = 0; i < ShaderBin::NUM_STAGES; ++i)
-        collect_shader(shaderFile, nullptr, &genInput.stageConfigs[i], blockNames[i]);
+        collect_shader(shaderFile, nullptr, &genInput.stageConfigs[i], getBlockNames()[i]);
     // collect_shader(shaderFile, genInput.ps, genInput.psCfg, "ps");
     // collect_shader(shaderFile, genInput.cs, genInput.csCfg, "cs");
     collect_shader_f(
@@ -293,21 +297,26 @@ static void read_gen_input(const BlockFile& shaderFile, ShaderGenerationInput& g
       });
 }
 
+ShaderGenerationInput ShaderObjectData::readGenInput() const {
+    std::stringstream cu;
+    includeHeaders(cu);
+    BlockFile cuBlocks(cu, false);
+
+    ShaderGenerationInput ret;
+    read_gen_input(cuBlocks, ret);
+    return ret;
+}
+
 ShaderObjectData::ComputeUnit ShaderObjectData::readComputeUnite(
   ShaderGenerationInput* outCfg) const {
     std::stringstream cu;
     includeHeaders(cu);
     BlockFile cuBlocks(cu, false);
-    std::string blockNames[ShaderBin::NUM_STAGES];
-    blockNames[ShaderBin::VS] = "vs";
-    blockNames[ShaderBin::PS] = "ps";
-    blockNames[ShaderBin::CS] = "cs";
-    static_assert(ShaderBin::NUM_STAGES == 3, "Update this code as well");
     if (outCfg)
         read_gen_input(cuBlocks, *outCfg);
     ComputeUnit ret;
     for (uint32_t i = 0; i < ShaderBin::NUM_STAGES; ++i)
-        collect_shader(cuBlocks, &ret.stages[i], nullptr, blockNames[i]);
+        collect_shader(cuBlocks, &ret.stages[i], nullptr, getBlockNames()[i]);
     return ret;
 }
 
@@ -1047,7 +1056,7 @@ void Preprocessor::processSource(const fs::path& file, const fs::path& outdir) {
     cxx << "    const ShaderBin::ShaderData *shader = shaderBin.getShader(\"" << name << "\");\n";
     cxx << "    if (shader == nullptr)\n";
     cxx << "        throw std::runtime_error(\"Shader not found: " << name << "\");\n";
-    cxx << "    loadShader(*shader);\n";
+    cxx << "    loadShader(shaderBin, *shader);\n";
 
     std::map<PipelineResourceUsage, uint32_t> resourceUsageToConfigId;
     // uint32_t configId = 0;

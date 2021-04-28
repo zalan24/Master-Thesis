@@ -74,12 +74,20 @@ class Compiler
 
     void addShaders(PreprocessorData&& data);
 
-    void generateShaders(const GenerateOptions& options, const fs::path& dir,
+    void generateShaders(const GenerateOptions& options, const fs::path& shaderDir,
                          const std::vector<std::string>& shaderNames = {});
 
     static void compile_shader(const CompileOptions& compileOptions,
                                const drv::DeviceLimits& limits, ShaderBin::Stage stage,
                                const fs::path& glsl, const fs::path& spv);
+
+    ShaderBin link(const fs::path& shaderDir, const drv::DeviceLimits& limits) const;
+
+    fs::path getGenFolder(const fs::path& parentDir, const std::string& name) const;
+    fs::path getGlslPath(const fs::path& parentDir, const std::string& name, uint32_t variantId,
+                         ShaderBin::Stage stage) const;
+    fs::path getSpvPath(const fs::path& parentDir, const std::string& name, uint32_t variantId,
+                        ShaderBin::Stage stage) const;
 
  private:
     CompilerCache cache;

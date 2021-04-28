@@ -153,6 +153,7 @@ struct ShaderObjectData final : public ISerializable
 
     void includeHeaders(std::ostream& out) const;
     ComputeUnit readComputeUnite(ShaderGenerationInput* outCfg = nullptr) const;
+    ShaderGenerationInput readGenInput() const;
 
     void writeJson(json& out) const override;
     void readJson(const json& in) override;
