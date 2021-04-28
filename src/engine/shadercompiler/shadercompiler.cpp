@@ -130,7 +130,7 @@ int main(int argc, char* argv[]) {
         ShaderBin bin = compiler.link(shaderDir, options.limits);
 
         {
-            std::ofstream binOut(binFile.c_str());
+            std::ofstream binOut(binFile.c_str(), std::ios::binary | std::ios::out);
             if (!binOut.is_open())
                 throw std::runtime_error("Could not open bin file: " + binFile);
             bin.write(binOut);

@@ -64,6 +64,10 @@ void ShaderObjectRegistry::loadShader(const ShaderBin& shaderBin,
         stageConfigs.push_back(data.stages[i].configs);
         for (uint32_t j = 0; j < ShaderBin::NUM_STAGES; ++j) {
             uint64_t codeOffset = data.stages[i].stageOffsets[j];
+            if (codeOffset == ShaderBin::ShaderData::INVALID_SHADER) {
+                variants[i].offsets[j] = INVALID_SHADER;
+                continue;
+            }
             if (auto itr = offsetToModule.find(codeOffset); itr != offsetToModule.end())
                 variants[i].offsets[j] = itr->second;
             else {

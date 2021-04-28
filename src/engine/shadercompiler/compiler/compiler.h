@@ -34,8 +34,8 @@ struct ShaderCache final : public ISerializable
 {
     std::string shaderHash;
     std::string includesHash;
-    std::map<std::string, std::string> codeHashes;
-    std::map<std::string, std::string> binaryConfigHashes;
+    std::vector<std::map<std::string, std::string>> codeHashes;
+    std::vector<std::map<std::string, std::string>> binaryConfigHashes;
 
     void writeJson(json& out) const override;
     void readJson(const json& in) override;

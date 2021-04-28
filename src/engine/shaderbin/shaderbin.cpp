@@ -112,15 +112,30 @@ void ShaderBin::read(std::istream& in) {
         }
         shaders[name] = std::move(data);
     }
+    uint32_t codesStart;
+    read_data(in, codesStart);
+    if (codesStart != FILE_CODES_START)
+        throw std::runtime_error("Invalid code block start marker: " + std::to_string(codesStart));
     uint64_t size;
     read_data(in, size);
     codeBlocks.resize(size);
-    for (uint64_t i = 0; i < size; ++i)
+    for (uint64_t i = 0; i < size; ++i) {
+        uint32_t blockStart;
+        read_data(in, blockStart);
+        if (blockStart != FILE_BLOCK_START)
+            throw std::runtime_error("Invalid block start: " + std::to_string(blockStart));
         read_vector(in, codeBlocks[i]);
+        uint32_t blockEnd;
+        read_data(in, blockEnd);
+        if (blockEnd != FILE_BLOCK_END)
+            throw std::runtime_error("Invalid block ending: " + std::to_string(blockEnd));
+    }
     uint32_t ending;
     read_data(in, ending);
     if (ending != FILE_END)
         throw std::runtime_error("Invalid file ending: " + std::to_string(ending));
+    if (in.fail())
+        throw std::runtime_error("Could not read shader binary from input stream");
 }
 
 void ShaderBin::write(std::ostream& out) const {
@@ -149,10 +164,17 @@ void ShaderBin::write(std::ostream& out) const {
             // TODO;
         }
     }
-    write_data(out, uint64_t(codeBlocks.size()));
-    for (const auto& block : codeBlocks)
-        write_vector(out, block);
+    write_data(out, FILE_CODES_START);
+    uint64_t codeBlocksSize = codeBlocks.size();
+    write_data(out, codeBlocksSize);
+    for (size_t i = 0; i < codeBlocks.size(); ++i) {
+        write_data(out, FILE_BLOCK_START);
+        write_vector(out, codeBlocks[i]);
+        write_data(out, FILE_BLOCK_END);
+    }
     write_data(out, FILE_END);
+    if (out.fail())
+        throw std::runtime_error("Could not write shader binary to output stream");
 }
 
 void ShaderBin::addShader(const std::string& name, ShaderData&& shader) {

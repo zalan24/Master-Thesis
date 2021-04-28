@@ -16,6 +16,9 @@ class ShaderBin
  public:
     static constexpr size_t MAX_VARIANT_PARAM_COUNT = 8;
     static constexpr uint32_t FILE_HEADER = 0x12345678;
+    static constexpr uint32_t FILE_CODES_START = 0xAABBCCDD;
+    static constexpr uint32_t FILE_BLOCK_START = 0xCF8778EF;
+    static constexpr uint32_t FILE_BLOCK_END = 0xDF8778EF;
     static constexpr uint32_t FILE_END = 0xEDCBA987;
     static constexpr uint32_t CODE_BLOCK_BITS = 20;
     static constexpr uint32_t CODE_BLOCK_SIZE = 1 << CODE_BLOCK_BITS;
