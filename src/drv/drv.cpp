@@ -408,8 +408,13 @@ bool drv::destroy_image_view(drv::LogicalDevicePtr device, drv::ImageViewPtr vie
     return current_driver_interface->destroy_image_view(device, view);
 }
 
-std::unique_lock<std::mutex> drv::lock_queue(LogicalDevicePtr device, QueuePtr queue) {
-    return current_driver_interface->lock_queue(device, queue);
+// std::unique_lock<std::mutex> drv::lock_queue(LogicalDevicePtr device, QueuePtr queue) {
+//     return current_driver_interface->lock_queue(device, queue);
+// }
+
+std::unique_lock<std::mutex> drv::lock_queue_family(LogicalDevicePtr device,
+                                                    QueueFamilyPtr family) {
+    return current_driver_interface->lock_queue_family(device, family);
 }
 
 drv::QueueFamilyPtr drv::get_queue_family(LogicalDevicePtr device, QueuePtr queue) {

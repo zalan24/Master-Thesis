@@ -30,6 +30,8 @@
 #include <resourcemanager.h>
 #include <serializable.h>
 
+#include <cmdBuffer.h>
+#include <oneTimeCmdBuffer.h>
 #include <runtimestats.h>
 #include <shaderbin.h>
 
@@ -117,71 +119,8 @@ class Engine
     };
     const QueueInfo& getQueues() const;
 
-    class CommandBufferRecorder
-    {
-     public:
-        friend class Engine;
-
-        CommandBufferRecorder(const CommandBufferRecorder&) = delete;
-        CommandBufferRecorder& operator=(const CommandBufferRecorder&) = delete;
-        CommandBufferRecorder(CommandBufferRecorder&& other);
-        CommandBufferRecorder& operator=(CommandBufferRecorder&& other);
-
-        ~CommandBufferRecorder();
-
-        void cmdWaitSemaphore(drv::SemaphorePtr semaphore, drv::ImageResourceUsageFlag imageUsages);
-        void cmdWaitTimelineSemaphore(drv::TimelineSemaphorePtr semaphore, uint64_t waitValue,
-                                      drv::ImageResourceUsageFlag imageUsages);
-        void cmdSignalSemaphore(drv::SemaphorePtr semaphore);
-        void cmdSignalTimelineSemaphore(drv::TimelineSemaphorePtr semaphore, uint64_t signalValue);
-        void cmdImageBarrier(const drv::ImageMemoryBarrier& barrier);
-        void cmdClearImage(drv::ImagePtr image, const drv::ClearColorValue* clearColors,
-                           uint32_t ranges = 0,
-                           const drv::ImageSubresourceRange* subresourceRanges = nullptr);
-        // These functions the same way as cmdImageBarrier, but it uses an event for sync
-        // it could be a better option if the resource is needed a lot later
-        void cmdEventBarrier(const drv::ImageMemoryBarrier& barrier);
-        void cmdEventBarrier(uint32_t imageBarrierCount, const drv::ImageMemoryBarrier* barriers);
-
-        void cmdWaitHostEvent(drv::EventPtr event, const drv::ImageMemoryBarrier& barrier);
-        void cmdWaitHostEvent(drv::EventPtr event, uint32_t imageBarrierCount,
-                              const drv::ImageMemoryBarrier* barriers);
-
-        // allows nodes, that depend on the current node's gpu work (on current queue) to run after this submission completion
-        void finishQueueWork();
-
-        drv::ResourceTracker* getResourceTracker() const;
-
-        drv::CommandBufferPtr getCommandBuffer() const { return cmdBuffer.commandBufferPtr; }
-
-     private:
-        CommandBufferRecorder(std::unique_lock<std::mutex>&& queueLock, drv::QueuePtr queue,
-                              FrameGraph::QueueId queueId, FrameGraph* frameGraph, Engine* engine,
-                              FrameGraph::NodeHandle* nodeHandle, FrameId frameId,
-                              drv::CommandBufferCirculator::CommandBufferHandle&& cmdBuffer);
-
-        std::unique_lock<std::mutex> queueLock;
-        drv::QueuePtr queue;
-        FrameGraph::QueueId queueId;
-        FrameGraph* frameGraph;
-        Engine* engine;
-        FrameGraph::NodeHandle* nodeHandle;
-        FrameId frameId;
-        drv::CommandBufferCirculator::CommandBufferHandle cmdBuffer;
-        drv::ResourceTracker* resourceTracker;
-
-        GarbageVector<ExecutionPackage::CommandBufferPackage::SemaphoreSignalInfo> signalSemaphores;
-        GarbageVector<ExecutionPackage::CommandBufferPackage::TimelineSemaphoreSignalInfo>
-          signalTimelineSemaphores;
-        GarbageVector<ExecutionPackage::CommandBufferPackage::SemaphoreWaitInfo> waitSemaphores;
-        GarbageVector<ExecutionPackage::CommandBufferPackage::TimelineSemaphoreWaitInfo>
-          waitTimelineSemaphores;
-
-        void close();
-    };
-
-    CommandBufferRecorder acquireCommandRecorder(FrameGraph::NodeHandle& acquiringNodeHandle,
-                                                 FrameId frameId, FrameGraph::QueueId queueId);
+    OneTimeCmdBuffer acquireCommandRecorder(FrameGraph::NodeHandle& acquiringNodeHandle,
+                                            FrameId frameId, FrameGraph::QueueId queueId);
 
     GarbageSystem* getGarbageSystem() { return &garbageSystem; }
 

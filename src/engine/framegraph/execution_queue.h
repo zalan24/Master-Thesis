@@ -38,19 +38,18 @@ struct ExecutionPackage
             uint64_t signalValue;
         };
         drv::QueuePtr queue;
-        drv::CommandBufferCirculator::CommandBufferHandle bufferHandle;
+        drv::CommandBufferPtr cmdBufferPtr;
         GarbageVector<SemaphoreSignalInfo> signalSemaphores;
         GarbageVector<TimelineSemaphoreSignalInfo> signalTimelineSemaphores;
         GarbageVector<SemaphoreWaitInfo> waitSemaphores;
         GarbageVector<TimelineSemaphoreWaitInfo> waitTimelineSemaphores;
-        CommandBufferPackage(drv::QueuePtr _queue,
-                             drv::CommandBufferCirculator::CommandBufferHandle _bufferHandle,
+        CommandBufferPackage(drv::QueuePtr _queue, drv::CommandBufferPtr _cmdBufferPtr,
                              GarbageVector<SemaphoreSignalInfo> _signalSemaphores,
                              GarbageVector<TimelineSemaphoreSignalInfo> _signalTimelineSemaphores,
                              GarbageVector<SemaphoreWaitInfo> _waitSemaphores,
                              GarbageVector<TimelineSemaphoreWaitInfo> _waitTimelineSemaphores)
           : queue(_queue),
-            bufferHandle(std::move(_bufferHandle)),
+            cmdBufferPtr(std::move(_cmdBufferPtr)),
             signalSemaphores(std::move(_signalSemaphores)),
             signalTimelineSemaphores(std::move(_signalTimelineSemaphores)),
             waitSemaphores(std::move(_waitSemaphores)),

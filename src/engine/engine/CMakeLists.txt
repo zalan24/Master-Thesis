@@ -19,8 +19,10 @@ target_link_libraries(AnimationsEngine PUBLIC
     AnimationsISimulation
     AnimationsResources
     AnimationsInput
+    EngineCmdBuffer
+    EngineOneTimeCmdBuffer
     ShaderManager
-    AnimationsFramegraph
+    EngineFramegraph
     AnimationsEventPool
     RuntimeStats
     concurrent_queue_external

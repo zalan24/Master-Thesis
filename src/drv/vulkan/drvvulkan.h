@@ -179,8 +179,10 @@ class DrvVulkan final : public drv::IDriver
     drv::ImageViewPtr create_image_view(drv::LogicalDevicePtr device,
                                         const drv::ImageViewCreateInfo* info) override;
     bool destroy_image_view(drv::LogicalDevicePtr device, drv::ImageViewPtr view) override;
-    std::unique_lock<std::mutex> lock_queue(drv::LogicalDevicePtr device,
-                                            drv::QueuePtr queue) override;
+    // std::unique_lock<std::mutex> lock_queue(drv::LogicalDevicePtr device,
+    //                                         drv::QueuePtr queue) override;
+    std::unique_lock<std::mutex> lock_queue_family(drv::LogicalDevicePtr device,
+                                                   drv::QueueFamilyPtr family) override;
     drv::QueueFamilyPtr get_queue_family(drv::LogicalDevicePtr device,
                                          drv::QueuePtr queue) override;
     bool device_wait_idle(drv::LogicalDevicePtr device) override;

@@ -164,7 +164,8 @@ bool get_image_memory_requirements(LogicalDevicePtr device, ImagePtr image,
                                    MemoryRequirements& memoryRequirements);
 ImageViewPtr create_image_view(LogicalDevicePtr device, const ImageViewCreateInfo* info);
 bool destroy_image_view(LogicalDevicePtr device, ImageViewPtr view);
-std::unique_lock<std::mutex> lock_queue(LogicalDevicePtr device, QueuePtr queue);
+// std::unique_lock<std::mutex> lock_queue(LogicalDevicePtr device, QueuePtr queue);
+std::unique_lock<std::mutex> lock_queue_family(LogicalDevicePtr device, QueueFamilyPtr family);
 QueueFamilyPtr get_queue_family(LogicalDevicePtr device, QueuePtr queue);
 bool device_wait_idle(LogicalDevicePtr device);
 TextureInfo get_texture_info(drv::ImagePtr image);

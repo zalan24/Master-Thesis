@@ -39,6 +39,8 @@ struct Resources final : public ISerializable
 {
     // name -> type
     std::map<std::string, std::string> variables;
+    // std::map<std::string, std::string> staticVariables;
+    // std::map<std::string, std::string> dynamicVariables;
 
     Resources& operator+=(const Resources& rhs);
     Resources operator+(const Resources& rhs) const {

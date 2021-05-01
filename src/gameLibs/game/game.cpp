@@ -126,6 +126,91 @@ void Game::initShader(drv::Extent2D extent) {
                                         redVariant);
 }
 
+static void record_cmd_buffer(const RecordData& data, const drv::DrvCmdBufferRecorder* recorder) {
+    recorder.cmdWaitSemaphore(
+      swapChainData.imageAvailableSemaphore,
+      drv::IMAGE_USAGE_COLOR_OUTPUT_WRITE | drv::IMAGE_USAGE_TRANSFER_DESTINATION);
+
+    recorder.cmdImageBarrier(
+      {swapChainData.image, drv::IMAGE_USAGE_TRANSFER_DESTINATION,
+       drv::ImageMemoryBarrier::AUTO_TRANSITION, true,
+       drv::get_queue_family(engine->getDevice(), queues.renderQueue.handle)});
+    drv::ClearColorValue clearValue(1.f, 1.f, 0.f, 1.f);
+    if ((frameId / 100) % 2 == 0) {
+        clearValue = drv::ClearColorValue(1.f, 1.f, 0.f, 1.f);
+        shaderTestDesc.setVariant_Color(shader_test_descriptor::Color::BLUE);
+    }
+    else {
+        clearValue = drv::ClearColorValue(0.f, 1.f, 1.f, 1.f);
+        shaderTestDesc.setVariant_Color(shader_test_descriptor::Color::RED);
+    }
+    recorder.cmdClearImage(swapChainData.image, &clearValue);
+
+    recorder.cmdImageBarrier(
+      {swapChainData.image, drv::IMAGE_USAGE_COLOR_OUTPUT_WRITE,
+       drv::ImageLayout::COLOR_ATTACHMENT_OPTIMAL, false,
+       drv::get_queue_family(engine->getDevice(), queues.renderQueue.handle)});
+    drv::RenderPass::AttachmentData testImageInfo[1];
+    testImageInfo[testColorAttachment].image = swapChainData.image;
+    testImageInfo[testColorAttachment].view = imageViews[swapChainData.imageIndex];
+    if (testRenderPass->needRecreation(testImageInfo)) {
+        for (auto& framebuffer : frameBuffers)
+            framebuffer.reset();
+        testRenderPass->recreate(testImageInfo);
+        initShader(swapChainData.extent);
+    }
+    if (!frameBuffers[swapChainData.imageIndex])
+        frameBuffers[swapChainData.imageIndex].set(
+          testRenderPass->createFramebuffer(testImageInfo));
+    drv::ClearValue clearValues[1];
+    clearValues[testColorAttachment].type = drv::ClearValue::COLOR;
+    if ((frameId / 100) % 2 == 0)
+        clearValues[testColorAttachment].value.color = drv::ClearColorValue(0.1f, 0.8f, 0.1f, 1.f);
+    else
+        clearValues[testColorAttachment].value.color = drv::ClearColorValue(0.8f, 0.1f, 0.1f, 1.f);
+    // clearValues[testColorAttachment].value.color = drv::ClearColorValue(255, 255, 255, 255);
+    drv::Rect2D renderArea;
+    renderArea.extent = swapChainData.extent;
+    renderArea.offset = {0, 0};
+    EngineRenderPass testPass(testRenderPass.get(), recorder.getResourceTracker(),
+                              recorder.getCommandBuffer(), renderArea,
+                              frameBuffers[swapChainData.imageIndex], clearValues);
+    testPass.beginSubpass(testSubpass);
+    drv::ClearRect clearRect;
+    clearRect.rect.offset = {100, 100};
+    clearRect.rect.extent = {swapChainData.extent.width - 200, swapChainData.extent.height - 200};
+    clearRect.baseLayer = 0;
+    clearRect.layerCount = 1;
+    testPass.clearColorAttachment(testColorAttachment, drv::ClearColorValue(0.f, 0.7f, 0.7f, 1.f),
+                                  1, &clearRect);
+    testPass.bindGraphicsShader(get_dynamic_states(swapChainData.extent), {}, testShader,
+                                &shaderGlobalDesc, &shaderTestDesc);
+    // testShader.bindGraphicsInfo(ShaderObject::NORMAL_USAGE, testPass,
+    //                             get_dynamic_states(swapChainData.extent), &shaderGlobalDesc,
+    //                             &shaderTestDesc);
+    testPass.draw(3, 1, 0, 0);
+    testPass.end();
+
+    // /// --- oroginal clear ---
+    // recorder.cmdImageBarrier(
+    //   {swapChainData.image, drv::IMAGE_USAGE_TRANSFER_DESTINATION,
+    //    drv::ImageMemoryBarrier::AUTO_TRANSITION, true,
+    //    drv::get_queue_family(engine->getDevice(), queues.renderQueue.handle)});
+    // drv::ClearColorValue clearValue(1.f, 1.f, 0.f, 1.f);
+    // recorder.cmdClearImage(swapChainData.image, &clearValue);
+    // /// --- clear ---
+
+    recorder.cmdImageBarrier(
+      {swapChainData.image, drv::IMAGE_USAGE_PRESENT, drv::ImageMemoryBarrier::AUTO_TRANSITION,
+       false, drv::get_queue_family(engine->getDevice(), queues.presentQueue.handle)});
+    // TODO according to vulkan spec https://khronos.org/registry/vulkan/specs/1.2-extensions/man/html/vkQueuePresentKHR.html
+    // memory is made visible to all read operations (add this to tracker?) -- only available memory
+    recorder.cmdSignalSemaphore(swapChainData.renderFinishedSemaphore);
+    recorder.finishQueueWork();
+    // if (frameId > 3)
+    //     recorder.getResourceTracker()->disableCommandLog();
+}
+
 void Game::record(FrameGraph& frameGraph, FrameId frameId) {
     // std::cout << "Record: " << frameId << std::endl;
     RUNTIME_STAT_SCOPE(gameRecord);
@@ -141,95 +226,13 @@ void Game::record(FrameGraph& frameGraph, FrameId frameId) {
         }
         // LOG_F(INFO, "Frame %lld  Swapchain image: %d Image: %p", frameId, swapChainData.imageIndex,
         //       static_cast<const void*>(swapChainData.image));
-        Engine::CommandBufferRecorder recorder =
-          engine->acquireCommandRecorder(testDrawHandle, frameId, queues.renderQueue.id);
+        OneTimeCmdBuffer<RecordData> cmdBuffer(queues.renderQueue.handle,
+                                               engine->getGarbageSystem(), , record_cmd_buffer);
+        TODO;  // submit to execution queue somehow
+        cmdBuffer.use(...);
+        //   engine->acquireCommandRecorder(testDrawHandle, frameId, queues.renderQueue.id);
         // if (frameId < 3)
         //     recorder.getResourceTracker()->enableCommandLog();
-        recorder.cmdWaitSemaphore(
-          swapChainData.imageAvailableSemaphore,
-          drv::IMAGE_USAGE_COLOR_OUTPUT_WRITE | drv::IMAGE_USAGE_TRANSFER_DESTINATION);
-
-        recorder.cmdImageBarrier(
-          {swapChainData.image, drv::IMAGE_USAGE_TRANSFER_DESTINATION,
-           drv::ImageMemoryBarrier::AUTO_TRANSITION, true,
-           drv::get_queue_family(engine->getDevice(), queues.renderQueue.handle)});
-        drv::ClearColorValue clearValue(1.f, 1.f, 0.f, 1.f);
-        if ((frameId / 100) % 2 == 0) {
-            clearValue = drv::ClearColorValue(1.f, 1.f, 0.f, 1.f);
-            shaderTestDesc.setVariant_Color(shader_test_descriptor::Color::BLUE);
-        }
-        else {
-            clearValue = drv::ClearColorValue(0.f, 1.f, 1.f, 1.f);
-            shaderTestDesc.setVariant_Color(shader_test_descriptor::Color::RED);
-        }
-        recorder.cmdClearImage(swapChainData.image, &clearValue);
-
-        recorder.cmdImageBarrier(
-          {swapChainData.image, drv::IMAGE_USAGE_COLOR_OUTPUT_WRITE,
-           drv::ImageLayout::COLOR_ATTACHMENT_OPTIMAL, false,
-           drv::get_queue_family(engine->getDevice(), queues.renderQueue.handle)});
-        drv::RenderPass::AttachmentData testImageInfo[1];
-        testImageInfo[testColorAttachment].image = swapChainData.image;
-        testImageInfo[testColorAttachment].view = imageViews[swapChainData.imageIndex];
-        if (testRenderPass->needRecreation(testImageInfo)) {
-            for (auto& framebuffer : frameBuffers)
-                framebuffer.reset();
-            testRenderPass->recreate(testImageInfo);
-            initShader(swapChainData.extent);
-        }
-        if (!frameBuffers[swapChainData.imageIndex])
-            frameBuffers[swapChainData.imageIndex].set(
-              testRenderPass->createFramebuffer(testImageInfo));
-        drv::ClearValue clearValues[1];
-        clearValues[testColorAttachment].type = drv::ClearValue::COLOR;
-        if ((frameId / 100) % 2 == 0)
-            clearValues[testColorAttachment].value.color =
-              drv::ClearColorValue(0.1f, 0.8f, 0.1f, 1.f);
-        else
-            clearValues[testColorAttachment].value.color =
-              drv::ClearColorValue(0.8f, 0.1f, 0.1f, 1.f);
-        // clearValues[testColorAttachment].value.color = drv::ClearColorValue(255, 255, 255, 255);
-        drv::Rect2D renderArea;
-        renderArea.extent = swapChainData.extent;
-        renderArea.offset = {0, 0};
-        EngineRenderPass testPass(testRenderPass.get(), recorder.getResourceTracker(),
-                                  recorder.getCommandBuffer(), renderArea,
-                                  frameBuffers[swapChainData.imageIndex], clearValues);
-        testPass.beginSubpass(testSubpass);
-        drv::ClearRect clearRect;
-        clearRect.rect.offset = {100, 100};
-        clearRect.rect.extent = {swapChainData.extent.width - 200,
-                                 swapChainData.extent.height - 200};
-        clearRect.baseLayer = 0;
-        clearRect.layerCount = 1;
-        testPass.clearColorAttachment(testColorAttachment,
-                                      drv::ClearColorValue(0.f, 0.7f, 0.7f, 1.f), 1, &clearRect);
-        testPass.bindGraphicsShader(get_dynamic_states(swapChainData.extent), {}, testShader,
-                                    &shaderGlobalDesc, &shaderTestDesc);
-        // testShader.bindGraphicsInfo(ShaderObject::NORMAL_USAGE, testPass,
-        //                             get_dynamic_states(swapChainData.extent), &shaderGlobalDesc,
-        //                             &shaderTestDesc);
-        testPass.draw(3, 1, 0, 0);
-        testPass.end();
-
-        // /// --- oroginal clear ---
-        // recorder.cmdImageBarrier(
-        //   {swapChainData.image, drv::IMAGE_USAGE_TRANSFER_DESTINATION,
-        //    drv::ImageMemoryBarrier::AUTO_TRANSITION, true,
-        //    drv::get_queue_family(engine->getDevice(), queues.renderQueue.handle)});
-        // drv::ClearColorValue clearValue(1.f, 1.f, 0.f, 1.f);
-        // recorder.cmdClearImage(swapChainData.image, &clearValue);
-        // /// --- clear ---
-
-        recorder.cmdImageBarrier(
-          {swapChainData.image, drv::IMAGE_USAGE_PRESENT, drv::ImageMemoryBarrier::AUTO_TRANSITION,
-           false, drv::get_queue_family(engine->getDevice(), queues.presentQueue.handle)});
-        // TODO according to vulkan spec https://khronos.org/registry/vulkan/specs/1.2-extensions/man/html/vkQueuePresentKHR.html
-        // memory is made visible to all read operations (add this to tracker?) -- only available memory
-        recorder.cmdSignalSemaphore(swapChainData.renderFinishedSemaphore);
-        recorder.finishQueueWork();
-        // if (frameId > 3)
-        //     recorder.getResourceTracker()->disableCommandLog();
     }
     else
         assert(frameGraph.isStopped());

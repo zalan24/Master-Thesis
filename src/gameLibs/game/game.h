@@ -45,6 +45,9 @@ class Game final
     std::vector<drv::Framebuffer> frameBuffers;
     Engine::SwapchaingVersion swapchainVersion = Engine::INVALID_SWAPCHAIN;
 
+    struct RecordData
+    {};
+
     void recreateViews(uint32_t imageCount, const drv::ImagePtr* images);
     void initShader(drv::Extent2D extent);
 };

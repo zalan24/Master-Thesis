@@ -306,6 +306,21 @@ Get a triangle on screen:
         ☐ Inside the scope of this system, these positions would be reserved for all shaders even if they don't use a header
     ☐ Check how command pool usages / family queue usages are synced. Maybe not necessary?
     ☐ Conditional rendering: https://www.khronos.org/news/permalink/tutorial-vulkan-conditional-rendering
+    ☐ Sync
+        ☐ Add command buffer recorder interface to api
+        ☐ Separate tracking state from image (tracker should support decoupled tracking stats)
+        ☐ Command buffers should have a garantee for each resource they are using and an auto calculated end result
+        ☐ Submitting a command buffer will validate the garantees and apply the end states
+        ☐ Images should have a single tracking state
+        ☐ Remove tracking slots
+        ☐ Execution queue should manage resource states (it should apply extra sync operations, if garantees are not met)
+    ☐ Shaders
+        ☐ Var types:
+            ☐ Command buffer fix: values only defined within a command buffer, like grid cell transformation for grid rendering
+            ☐ Material parameters: values set for a material, but not changed at runtime (usually, maybe for editing)
+            ☐ Dynamic global variables: camera matrix for eg.
+            ☐ Material resources (textures and buffers)
+            ☐ Global resources
 
 Cleanup & other:
     ☐ Remove useless common driver stuff (drv/common)

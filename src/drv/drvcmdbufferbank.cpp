@@ -46,7 +46,7 @@ CommandBufferCirculator::CommandBufferHandle CommandBufferCirculator::acquire() 
     {
         std::unique_lock<std::shared_mutex> lock(mutex);
         ret.bufferIndex = commandBuffers.size();
-        commandBuffers.emplace_back(std::move(commandBuffer), commandBuffer, RECORDING);
+        commandBuffers.emplace_back(std::move(commandBuffer), commandBuffer, PENDING);
     }
     acquiredStates.fetch_add(1);
     return ret;
@@ -57,7 +57,7 @@ bool CommandBufferCirculator::tryAcquire(CommandBufferHandle& handle) {
     for (size_t index = 0; index < commandBuffers.size(); ++index) {
         CommandBufferState expected = CommandBufferState::READY;
         if (commandBuffers[index].state.compare_exchange_weak(expected,
-                                                              CommandBufferState::RECORDING)) {
+                                                              CommandBufferState::PENDING)) {
             handle.bufferIndex = index;
             handle.circulator = this;
             handle.commandBufferPtr = commandBuffers[index].commandBufferPtr;
@@ -91,26 +91,26 @@ void CommandBufferCirculator::finished(CommandBufferHandle&& handle) {
     acquiredStates.fetch_sub(1);
 }
 
-void CommandBufferCirculator::startExecution(CommandBufferHandle& handle) {
-    std::shared_lock<std::shared_mutex> lock(mutex);
-    drv::drv_assert(handle.bufferIndex < commandBuffers.size()
-                    && commandBuffers[handle.bufferIndex].commandBufferPtr
-                         == handle.commandBufferPtr);
-    // if (handle.bufferIndex < commandBuffers.size()
-    //     && commandBuffers[handle.bufferIndex].commandBufferPtr == handle.commandBufferPtr)
-    commandBuffers[handle.bufferIndex].state = CommandBufferState::PENDING;
-    // else {
-    //     auto itr = std::find_if(commandBuffers.begin(), commandBuffers.end(),
-    //                             [&handle](const CommandBufferData& data) {
-    //                                 return data.commandBufferPtr == handle.commandBufferPtr;
-    //                             });
-    //     drv::drv_assert(itr != commandBuffers.end(),
-    //                     "A command buffer was lost before it was released");
-    //     CommandBufferState expected = CommandBufferState::RECORDING;
-    //     drv::drv_assert(itr->state.compare_exchange_strong(expected, CommandBufferState::PENDING),
-    //                     "Released command buffer was in the wrong state");
-    // }
-}
+// void CommandBufferCirculator::startExecution(CommandBufferHandle& handle) {
+//     std::shared_lock<std::shared_mutex> lock(mutex);
+//     drv::drv_assert(handle.bufferIndex < commandBuffers.size()
+//                     && commandBuffers[handle.bufferIndex].commandBufferPtr
+//                          == handle.commandBufferPtr);
+//     // if (handle.bufferIndex < commandBuffers.size()
+//     //     && commandBuffers[handle.bufferIndex].commandBufferPtr == handle.commandBufferPtr)
+//     commandBuffers[handle.bufferIndex].state = CommandBufferState::PENDING;
+//     // else {
+//     //     auto itr = std::find_if(commandBuffers.begin(), commandBuffers.end(),
+//     //                             [&handle](const CommandBufferData& data) {
+//     //                                 return data.commandBufferPtr == handle.commandBufferPtr;
+//     //                             });
+//     //     drv::drv_assert(itr != commandBuffers.end(),
+//     //                     "A command buffer was lost before it was released");
+//     //     CommandBufferState expected = CommandBufferState::RECORDING;
+//     //     drv::drv_assert(itr->state.compare_exchange_strong(expected, CommandBufferState::PENDING),
+//     //                     "Released command buffer was in the wrong state");
+//     // }
+// }
 
 CommandBufferBank::CommandBufferBank(LogicalDevicePtr _device) : device(_device) {
 }

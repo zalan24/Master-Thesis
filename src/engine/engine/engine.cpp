@@ -415,16 +415,6 @@ Engine::AcquiredImageData Engine::acquiredSwapchainImage(
     return ret;
 }
 
-Engine::CommandBufferRecorder Engine::acquireCommandRecorder(
-  FrameGraph::NodeHandle& acquiringNodeHandle, FrameId frameId, FrameGraph::QueueId queueId) {
-    drv::QueuePtr queue = frameGraph.getQueue(queueId);
-    drv::CommandBufferBankGroupInfo acquireInfo(drv::get_queue_family(device, queue), false,
-                                                drv::CommandBufferType::PRIMARY);
-    std::unique_lock<std::mutex> lock = drv::lock_queue(device, queue);
-    return CommandBufferRecorder(std::move(lock), queue, queueId, &frameGraph, this,
-                                 &acquiringNodeHandle, frameId, cmdBufferBank.acquire(acquireInfo));
-}
-
 void Engine::recordCommandsLoop(const volatile std::atomic<FrameId>* stopFrame) {
     RUNTIME_STAT_SCOPE(recordLoop);
     loguru::set_thread_name("record");
@@ -561,9 +551,9 @@ bool Engine::execute(FrameId& executionFrame, ExecutionPackage&& package) {
           static_cast<unsigned int>(cmdBuffer.waitSemaphores.size());
         executionInfo.waitSemaphores = waitSemaphores;
         executionInfo.waitStages = waitSemaphoresStages;
-        if (!drv::is_null_ptr(cmdBuffer.bufferHandle.commandBufferPtr)) {
+        if (!drv::is_null_ptr(cmdBuffer.cmdBufferPtr)) {
             executionInfo.numCommandBuffers = 1;
-            executionInfo.commandBuffers = &cmdBuffer.bufferHandle.commandBufferPtr;
+            executionInfo.commandBuffers = &cmdBuffer.cmdBufferPtr;
         }
         else {
             executionInfo.numCommandBuffers = 0;
@@ -582,12 +572,6 @@ bool Engine::execute(FrameId& executionFrame, ExecutionPackage&& package) {
         executionInfo.signalTimelineSemaphores = signalTimelineSemaphores;
         executionInfo.timelineSignalValues = signalTimelineSemaphoreValues;
         drv::execute(cmdBuffer.queue, 1, &executionInfo);
-        if (cmdBuffer.bufferHandle) {
-            cmdBuffer.bufferHandle.circulator->startExecution(cmdBuffer.bufferHandle);
-            garbageSystem.useGarbage([&](Garbage* trashBin) {
-                trashBin->resetCommandBuffer(std::move(cmdBuffer.bufferHandle));
-            });
-        }
     }
     else if (std::holds_alternative<ExecutionPackage::RecursiveQueue>(package.package)) {
         ExecutionPackage::RecursiveQueue& queue =
@@ -703,86 +687,4 @@ void Engine::gameLoop() {
         cleanUpThread.join();
         throw;
     }
-}
-
-drv::ResourceTracker* Engine::CommandBufferRecorder::getResourceTracker() const {
-    return resourceTracker;
-}
-
-Engine::CommandBufferRecorder::CommandBufferRecorder(
-  std::unique_lock<std::mutex>&& _queueLock, drv::QueuePtr _queue, FrameGraph::QueueId _queueId,
-  FrameGraph* _frameGraph, Engine* _engine, FrameGraph::NodeHandle* _nodeHandle, FrameId _frameId,
-  drv::CommandBufferCirculator::CommandBufferHandle&& _cmdBuffer)
-  : queueLock(std::move(_queueLock)),
-    queue(_queue),
-    queueId(_queueId),
-    frameGraph(_frameGraph),
-    engine(_engine),
-    nodeHandle(_nodeHandle),
-    frameId(_frameId),
-    cmdBuffer(std::move(_cmdBuffer)),
-    resourceTracker(nodeHandle->getNode().getResourceTracker(queueId)),
-    signalSemaphores(engine->garbageSystem.getAllocator<decltype(signalSemaphores)::value_type>()),
-    signalTimelineSemaphores(
-      engine->garbageSystem.getAllocator<decltype(signalTimelineSemaphores)::value_type>()),
-    waitSemaphores(engine->garbageSystem.getAllocator<decltype(waitSemaphores)::value_type>()),
-    waitTimelineSemaphores(
-      engine->garbageSystem.getAllocator<decltype(waitTimelineSemaphores)::value_type>()) {
-    assert(cmdBuffer);
-    assert(
-      getResourceTracker()->begin_primary_command_buffer(cmdBuffer.commandBufferPtr, true, false));
-    nodeHandle->useQueue(queueId);
-}
-
-Engine::CommandBufferRecorder::CommandBufferRecorder(CommandBufferRecorder&& other)
-  : queueLock(std::move(other.queueLock)),
-    queue(other.queue),
-    queueId(other.queueId),
-    frameGraph(other.frameGraph),
-    engine(other.engine),
-    nodeHandle(other.nodeHandle),
-    frameId(other.frameId),
-    cmdBuffer(std::move(other.cmdBuffer)),
-    resourceTracker(other.resourceTracker),
-    signalSemaphores(std::move(other.signalSemaphores)),
-    signalTimelineSemaphores(std::move(other.signalTimelineSemaphores)),
-    waitSemaphores(std::move(other.waitSemaphores)),
-    waitTimelineSemaphores(std::move(other.waitTimelineSemaphores)) {
-    other.engine = nullptr;
-}
-
-Engine::CommandBufferRecorder& Engine::CommandBufferRecorder::operator=(
-  CommandBufferRecorder&& other) {
-    if (&other == this)
-        return *this;
-    close();
-    queueLock = std::move(other.queueLock);
-    queue = other.queue;
-    queueId = other.queueId;
-    frameGraph = other.frameGraph;
-    engine = other.engine;
-    nodeHandle = other.nodeHandle;
-    frameId = other.frameId;
-    cmdBuffer = std::move(other.cmdBuffer);
-    resourceTracker = other.resourceTracker;
-    signalSemaphores = std::move(other.signalSemaphores);
-    signalTimelineSemaphores = std::move(other.signalTimelineSemaphores);
-    waitSemaphores = std::move(other.waitSemaphores);
-    waitTimelineSemaphores = std::move(other.waitTimelineSemaphores);
-    other.engine = nullptr;
-    return *this;
-}
-
-Engine::CommandBufferRecorder::~CommandBufferRecorder() {
-    close();
-}
-
-void Engine::CommandBufferRecorder::close() {
-    if (engine == nullptr)
-        return;
-    assert(getResourceTracker()->end_primary_command_buffer(cmdBuffer.commandBufferPtr));
-    ExecutionQueue* q = frameGraph->getExecutionQueue(*nodeHandle);
-    q->push(ExecutionPackage(ExecutionPackage::CommandBufferPackage{
-      queue, std::move(cmdBuffer), std::move(signalSemaphores), std::move(signalTimelineSemaphores),
-      std::move(waitSemaphores), std::move(waitTimelineSemaphores)}));
 }

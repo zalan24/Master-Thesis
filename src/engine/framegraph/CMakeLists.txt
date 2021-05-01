@@ -1,13 +1,13 @@
 file(GLOB ENGINE_SOURCES *.cpp *.h *.hpp)
 
-add_library(AnimationsFramegraph STATIC ${ENGINE_SOURCES})
+add_library(EngineFramegraph STATIC ${ENGINE_SOURCES})
 
-set_target_properties(  AnimationsFramegraph
+set_target_properties(  EngineFramegraph
                         PROPERTIES
                         COMPILE_FLAGS ${TARGETCOMPILEFLAGS}
                         LINK_OPTIONS "${TARGET_LINK_FLAGS}")
-target_include_directories(AnimationsFramegraph PUBLIC . ${CMAKE_CURRENT_BINARY_DIR})
-target_link_libraries(AnimationsFramegraph PUBLIC
+target_include_directories(EngineFramegraph PUBLIC . ${CMAKE_CURRENT_BINARY_DIR})
+target_link_libraries(EngineFramegraph PUBLIC
     concurrent_queue_external
     AnimationsDrv
     AnimationsEventPool

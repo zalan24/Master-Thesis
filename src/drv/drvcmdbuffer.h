@@ -1,0 +1,104 @@
+#pragma once
+
+#include <memory>
+
+#include <drvbarrier.h>
+#include <drvtypes.h>
+#include <drvtypes/drvresourceptrs.hpp>
+
+#include "drv_resource_tracker.h"
+
+namespace drv
+{
+class DrvCmdBufferRecorder
+{
+ public:
+    DrvCmdBufferRecorder(std::unique_lock<std::mutex>&& queueFamilyLock,
+                         CommandBufferPtr cmdBufferPtr, drv::ResourceTracker* resourceTracker);
+
+    void cmdImageBarrier(const ImageMemoryBarrier& barrier) const;
+    void cmdClearImage(ImagePtr image, const ClearColorValue* clearColors, uint32_t ranges = 0,
+                       const ImageSubresourceRange* subresourceRanges = nullptr) const;
+
+ private:
+    std::unique_lock<std::mutex> queueFamilyLock;
+    CommandBufferPtr cmdBufferPtr;
+    drv::ResourceTracker* resourceTracker;
+};
+
+template <typename D>
+class DrvCmdBuffer
+{
+ public:
+    using DrvRecordCallback = void(const D&, const DrvCmdBufferRecorder*);
+
+    explicit DrvCmdBuffer(LogicalDevicePtr device, QueueFamilyPtr queueFamily,
+                          DrvRecordCallback recordCallback, drv::ResourceTracker* resourceTracker);
+
+    DrvCmdBuffer(const DrvCmdBuffer&) = delete;
+    DrvCmdBuffer& operator=(const DrvCmdBuffer&) = delete;
+
+    // ResourceTracker* getResourceTracker() const;
+
+    void prepare(D&& d) {
+        if (currentData != d || is_null_ptr(cmdBufferPtr)) {
+            if (!is_null_ptr(cmdBufferPtr)) {
+                releaseCommandBuffer(cmdBufferPtr);
+                reset_ptr(cmdBufferPtr);
+            }
+            cmdBufferPtr = acquireCommandBuffer();
+            currentData = std::move(d);
+            DrvCmdBufferRecorder recorder(drv::lock_queue_family(device, queueFamily), cmdBufferPtr,
+                                          resourceTracker);
+            recordCallback(currentData, recorder);
+        }
+        needToPrepare = false;
+    }
+
+    CommandBufferPtr use(D&& d) {
+        if (needToPrepare)
+            prepare(std::move(d));
+        needToPrepare = true;
+        return cmdBufferPtr;
+    }
+
+ protected:
+    ~DrvCmdBuffer() {
+        if (!is_null_ptr(cmdBufferPtr)) {
+            releaseCommandBuffer(cmdBufferPtr);
+            reset_ptr(cmdBufferPtr);
+        }
+    }
+
+    virtual CommandBufferPtr acquireCommandBuffer() = 0;
+    virtual void releaseCommandBuffer(CommandBufferPtr cmdBuffer) = 0;
+
+    LogicalDevicePtr getDevice() const { return device; }
+
+ private:
+    D currentData;
+    LogicalDevicePtr device;
+    QueueFamilyPtr queueFamily;
+    DrvRecordCallback recordCallback;
+    drv::ResourceTracker* resourceTracker;
+    CommandBufferPtr cmdBufferPtr = get_null_ptr<CommandBufferPtr>();
+
+    bool needToPrepare = true;
+};
+
+// template <typename D, typename R>
+// class DrvFunctorRecordCallback
+// {
+//  public:
+//     DrvFunctorRecordCallback(D data, R recordF)
+//       : currentData(std::move(data)), recordFunctor(std::move(recordF)) {}
+//     ~DrvFunctorRecordCallback() override {}
+//     bool needRecord() const override { return currentData == ; }
+//     void record() override { recordFunctor(const_cast<const D&>(currentData)); }
+
+//  private:
+//     D currentData;
+//     R recordFunctor;
+// };
+
+}  // namespace drv

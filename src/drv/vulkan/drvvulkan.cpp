@@ -22,21 +22,29 @@ std::unique_ptr<drv::RenderPass> DrvVulkan::create_render_pass(drv::LogicalDevic
     return std::make_unique<VulkanRenderPass>(device, std::move(name));
 }
 
-std::unique_lock<std::mutex> DrvVulkan::lock_queue(drv::LogicalDevicePtr device,
-                                                   drv::QueuePtr queue) {
+std::unique_lock<std::mutex> DrvVulkan::lock_queue_family(drv::LogicalDevicePtr device,
+                                                          drv::QueueFamilyPtr family) {
     std::mutex* mutex = nullptr;
     {
         std::unique_lock<std::mutex> lock(devicesDataMutex);
         auto itr = devicesData.find(device);
         drv::drv_assert(itr != devicesData.end());
-        auto familyItr = itr->second.queueToFamily.find(queue);
-        drv::drv_assert(familyItr != itr->second.queueToFamily.end());
-        auto mutexItr = itr->second.queueFamilyMutexes.find(familyItr->second);
+        auto mutexItr = itr->second.queueFamilyMutexes.find(family);
         drv::drv_assert(mutexItr != itr->second.queueFamilyMutexes.end());
         mutex = &mutexItr->second;
     }
     return std::unique_lock<std::mutex>(*mutex);
 }
+
+// std::unique_lock<std::mutex> DrvVulkan::lock_queue(drv::LogicalDevicePtr device,
+//                                                    drv::QueuePtr queue) {
+//     std::unique_lock<std::mutex> lock(devicesDataMutex);
+//     auto itr = devicesData.find(device);
+//     drv::drv_assert(itr != devicesData.end());
+//     auto familyItr = itr->second.queueToFamily.find(queue);
+//     drv::drv_assert(familyItr != itr->second.queueToFamily.end());
+//     return lock_queue_family(device, familyItr->second);
+// }
 
 drv::QueueFamilyPtr DrvVulkan::get_queue_family(drv::LogicalDevicePtr device, drv::QueuePtr queue) {
     std::unique_lock<std::mutex> lock(devicesDataMutex);
