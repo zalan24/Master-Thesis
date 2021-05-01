@@ -3,18 +3,15 @@
 function(prep_thirdparty directory out_dir)
     if (NOT EXISTS ${out_dir})
         message("Hacking 3rd party: ${directory}")
-        file(REAL_PATH "${directory}/../" BASE_PATH)
-        file(REMOVE_RECURSE "${BASE_PATH}/temp")
-        file(RELATIVE_PATH FOLDER_PATH ${BASE_PATH} ${directory})
-        file(COPY ${directory} DESTINATION "${BASE_PATH}/temp")
-        file(RENAME "${BASE_PATH}/temp/${FOLDER_PATH}" ${out_dir})
-        file(REMOVE_RECURSE "${BASE_PATH}/temp")
-        file(GLOB_RECURSE HEADERS "${out_dir}/*.hpp" "${out_dir}/*.h")
-        file(GLOB_RECURSE SOURCES "${out_dir}/*.c" "${out_dir}/*.cpp" "${out_dir}/*.cxx")
+        execute_process(COMMAND ${CMAKE_COMMAND} -E copy_directory ${directory} ${out_dir} COMMAND_ERROR_IS_FATAL ANY)
+        file(GLOB_RECURSE HEADERS ${out_dir}/*.hpp ${out_dir}/*.h)
+        file(GLOB_RECURSE SOURCES ${out_dir}/*.c ${out_dir}/*.cpp ${out_dir}/*.cxx)
         foreach(F ${HEADERS})
             file(STRINGS ${F} CONTENT NEWLINE_CONSUME)
             string(PREPEND CONTENT
-                "#pragma clang system_header\n"
+                "#ifdef __clang__\n"
+                "#  pragma clang system_header\n"
+                "#endif\n"
             )
             file(WRITE ${F} ${CONTENT})
         endforeach()
