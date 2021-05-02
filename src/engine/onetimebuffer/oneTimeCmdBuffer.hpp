@@ -1,8 +1,8 @@
 #pragma once
 
-#include <cmdBuffer.h>
 #include <drvcmdbufferbank.h>
 #include <garbagesystem.h>
+#include <cmdBuffer.hpp>
 
 template <typename T>
 class OneTimeCmdBuffer final : public EngineCmdBuffer<T>
@@ -27,19 +27,19 @@ class OneTimeCmdBuffer final : public EngineCmdBuffer<T>
     //  void finishQueueWork();
 
     //  drv::CommandBufferPtr getCommandBuffer() const { return cmdBuffer.commandBufferPtr; }
-    OneTimeCmdBuffer(drv::QueuePtr _queue,
-                     drv::CmdBufferBank* _bufferBank GarbageSystem* _garbageSystem,
+    OneTimeCmdBuffer(drv::LogicalDevicePtr _device, drv::QueuePtr _queue,
+                     drv::CommandBufferBank* _bufferBank, GarbageSystem* _garbageSystem,
                      drv::ResourceTracker* _resourceTracker,
-                     drv::DrvCmdBuffer<T>::DrvRecordCallback&& _callback)
-      : EngineCmdBuffer(drv::get_queue_family(getDevice(), _queue), std::move(_callback),
-                        _resourceTracker),
+                     typename drv::DrvCmdBuffer<T>::DrvRecordCallback&& _callback)
+      : EngineCmdBuffer<T>(_device, drv::get_queue_family(this->getDevice(), _queue),
+                           std::move(_callback), _resourceTracker),
         queue(_queue),
-        _bufferBank(_bufferBank),
+        bufferBank(_bufferBank),
         garbageSystem(_garbageSystem) {}
 
  protected:
     drv::CommandBufferPtr acquireCommandBuffer() override {
-        drv::CommandBufferBankGroupInfo acquireInfo(drv::get_queue_family(getDevice(), queue),
+        drv::CommandBufferBankGroupInfo acquireInfo(drv::get_queue_family(this->getDevice(), queue),
                                                     false, drv::CommandBufferType::PRIMARY);
         drv::drv_assert(!cmdBuffer);
         cmdBuffer = bufferBank->acquire(acquireInfo);
@@ -49,12 +49,16 @@ class OneTimeCmdBuffer final : public EngineCmdBuffer<T>
     void releaseCommandBuffer(drv::CommandBufferPtr cmdBufferPtr) override {
         drv::drv_assert(cmdBuffer.commandBufferPtr == cmdBufferPtr);
         garbageSystem->useGarbage(
-          [this](Garbage* trashBin) { trashBin->resetCommandBuffer(std::move(cmdBufferPtr)); });
+          [this](Garbage* trashBin) { trashBin->resetCommandBuffer(std::move(cmdBuffer)); });
     }
+
+    bool isSingleTimeBuffer() const override { return true; }
+
+    bool isSimultaneous() const override { return false; }
 
  private:
     drv::QueuePtr queue;
-    drv::CmdBufferBank* bufferBank;
+    drv::CommandBufferBank* bufferBank;
     GarbageSystem* garbageSystem;
     drv::CommandBufferCirculator::CommandBufferHandle cmdBuffer;
 

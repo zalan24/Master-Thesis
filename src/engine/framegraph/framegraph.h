@@ -194,6 +194,8 @@ class FrameGraph
         SignalInfo signalSemaphore(drv::QueuePtr queue);
         // SignalInfo signalSemaphoreCpu();
 
+        void submit(QueueId queueId, ExecutionPackage::CommandBufferPackage&& submission);
+
      private:
         NodeHandle();
         NodeHandle(FrameGraph* frameGraph, FrameGraph::NodeId node, FrameId frameId);

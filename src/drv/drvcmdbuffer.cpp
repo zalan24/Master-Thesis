@@ -1,5 +1,7 @@
 #include "drvcmdbuffer.h"
 
+#include <drverror.h>
+
 using namespace drv;
 
 // void DrvCmdBuffer::cmdEventBarrier(const drv::ImageMemoryBarrier& barrier) {
@@ -24,12 +26,44 @@ using namespace drv;
 //     getResourceTracker()->cmd_wait_host_events(cmdBuffer, event, imageBarrierCount, barriers);
 // }
 
+DrvCmdBufferRecorder::DrvCmdBufferRecorder(DrvCmdBufferRecorder&& other)
+  : queueFamilyLock(std::move(other.queueFamilyLock)),
+    cmdBufferPtr(other.cmdBufferPtr),
+    resourceTracker(other.resourceTracker) {
+    reset_ptr(other.cmdBufferPtr);
+}
+
+DrvCmdBufferRecorder& DrvCmdBufferRecorder::operator=(DrvCmdBufferRecorder&& other) {
+    if (this == &other)
+        return *this;
+    queueFamilyLock = std::move(other.queueFamilyLock);
+    cmdBufferPtr = other.cmdBufferPtr;
+    resourceTracker = other.resourceTracker;
+    reset_ptr(other.cmdBufferPtr);
+    return *this;
+}
+
+DrvCmdBufferRecorder::~DrvCmdBufferRecorder() {
+    close();
+}
+
+void DrvCmdBufferRecorder::close() {
+    if (!is_null_ptr(cmdBufferPtr)) {
+        drv::drv_assert(resourceTracker->end_primary_command_buffer(cmdBufferPtr));
+        reset_ptr(cmdBufferPtr);
+        queueFamilyLock = {};
+    }
+}
+
 DrvCmdBufferRecorder::DrvCmdBufferRecorder(std::unique_lock<std::mutex>&& _queueFamilyLock,
                                            CommandBufferPtr _cmdBufferPtr,
-                                           drv::ResourceTracker* _resourceTracker)
+                                           drv::ResourceTracker* _resourceTracker, bool singleTime,
+                                           bool simultaneousUse)
   : queueFamilyLock(std::move(_queueFamilyLock)),
     cmdBufferPtr(_cmdBufferPtr),
     resourceTracker(_resourceTracker) {
+    drv::drv_assert(
+      resourceTracker->begin_primary_command_buffer(cmdBufferPtr, singleTime, simultaneousUse));
 }
 
 void DrvCmdBufferRecorder::cmdImageBarrier(const drv::ImageMemoryBarrier& barrier) const {

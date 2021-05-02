@@ -46,7 +46,36 @@ class Game final
     Engine::SwapchaingVersion swapchainVersion = Engine::INVALID_SWAPCHAIN;
 
     struct RecordData
-    {};
+    {
+        drv::LogicalDevicePtr device;
+        drv::ImagePtr targetImage;
+        drv::ImageViewPtr targetView;
+        drv::AttachmentId testColorAttachment;
+        uint32_t variant;
+        drv::Extent2D extent;
+        drv::QueuePtr renderQueue;
+        drv::QueuePtr presentQueue;
+        drv::FramebufferPtr frameBuffer;
+        drv::RenderPass* renderPass;
+        drv::SubpassId testSubpass;
+        shader_test* testShader;
+        shader_test_descriptor* shaderTestDesc;
+        shader_global_descriptor* shaderGlobalDesc;
+        bool operator==(const RecordData& rhs) const {
+            return device == rhs.device && targetImage == rhs.targetImage
+                   && targetView == rhs.targetView && testColorAttachment == rhs.testColorAttachment
+                   && variant == rhs.variant && extent == rhs.extent
+                   && renderQueue == rhs.renderQueue && presentQueue == rhs.presentQueue
+                   && frameBuffer == rhs.frameBuffer && renderPass == rhs.renderPass
+                   && testSubpass == rhs.testSubpass && testShader == rhs.testShader
+                   && shaderTestDesc == rhs.shaderTestDesc
+                   && shaderGlobalDesc == rhs.shaderGlobalDesc;
+        }
+        bool operator!=(const RecordData& rhs) const { return !(*this == rhs); }
+    };
+
+    static void record_cmd_buffer(const RecordData& data,
+                                  const drv::DrvCmdBufferRecorder* recorder);
 
     void recreateViews(uint32_t imageCount, const drv::ImagePtr* images);
     void initShader(drv::Extent2D extent);

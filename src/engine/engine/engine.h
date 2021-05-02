@@ -30,10 +30,10 @@
 #include <resourcemanager.h>
 #include <serializable.h>
 
-#include <cmdBuffer.h>
-#include <oneTimeCmdBuffer.h>
 #include <runtimestats.h>
 #include <shaderbin.h>
+#include <cmdBuffer.hpp>
+#include <oneTimeCmdBuffer.hpp>
 
 struct ExecutionPackage;
 class ISimulation;
@@ -119,10 +119,11 @@ class Engine
     };
     const QueueInfo& getQueues() const;
 
-    OneTimeCmdBuffer acquireCommandRecorder(FrameGraph::NodeHandle& acquiringNodeHandle,
-                                            FrameId frameId, FrameGraph::QueueId queueId);
+    // OneTimeCmdBuffer acquireCommandRecorder(FrameGraph::NodeHandle& acquiringNodeHandle,
+    //                                         FrameId frameId, FrameGraph::QueueId queueId);
 
     GarbageSystem* getGarbageSystem() { return &garbageSystem; }
+    drv::CommandBufferBank* getCommandBufferBank() { return &cmdBufferBank; }
 
  private:
     struct ErrorCallback

@@ -390,6 +390,17 @@ FrameGraph::NodeHandle::operator bool() const {
     return frameGraph != nullptr;
 }
 
+void FrameGraph::NodeHandle::submit(QueueId queueId,
+                                    ExecutionPackage::CommandBufferPackage&& submission) {
+    drv::drv_assert(frameGraph->getQueue(queueId) == submission.queue);
+    useQueue(queueId);
+
+    // TODO apply auto semaphores here
+
+    ExecutionQueue* q = frameGraph->getExecutionQueue(*this);
+    q->push(std::move(submission));
+}
+
 FrameGraph::NodeHandle FrameGraph::acquireNode(NodeId nodeId, FrameId frame) {
     if (isStopped())
         return NodeHandle();

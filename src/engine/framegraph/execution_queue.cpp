@@ -22,3 +22,20 @@ void ExecutionQueue::waitForPackage() {
         return;
     cv.wait(lk);
 }
+
+ExecutionPackage::CommandBufferPackage make_submission_package(drv::QueuePtr queue,
+                                                               drv::CommandBufferPtr cmdBufferPtr,
+                                                               GarbageSystem* garbageSystem) {
+    return ExecutionPackage::CommandBufferPackage(
+      queue, cmdBufferPtr,
+      GarbageVector<ExecutionPackage::CommandBufferPackage::SemaphoreSignalInfo>(
+        garbageSystem->getAllocator<ExecutionPackage::CommandBufferPackage::SemaphoreSignalInfo>()),
+      GarbageVector<ExecutionPackage::CommandBufferPackage::TimelineSemaphoreSignalInfo>(
+        garbageSystem
+          ->getAllocator<ExecutionPackage::CommandBufferPackage::TimelineSemaphoreSignalInfo>()),
+      GarbageVector<ExecutionPackage::CommandBufferPackage::SemaphoreWaitInfo>(
+        garbageSystem->getAllocator<ExecutionPackage::CommandBufferPackage::SemaphoreWaitInfo>()),
+      GarbageVector<ExecutionPackage::CommandBufferPackage::TimelineSemaphoreWaitInfo>(
+        garbageSystem
+          ->getAllocator<ExecutionPackage::CommandBufferPackage::TimelineSemaphoreWaitInfo>()));
+}

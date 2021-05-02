@@ -101,6 +101,10 @@ struct ExecutionPackage
     ExecutionPackage(std::unique_ptr<CustomFunctor>&& f) : package(std::move(f)) {}
 };
 
+ExecutionPackage::CommandBufferPackage make_submission_package(drv::QueuePtr queue,
+                                                               drv::CommandBufferPtr cmdBufferPtr,
+                                                               GarbageSystem* garbageSystem);
+
 class ExecutionQueue
 {
  public:
