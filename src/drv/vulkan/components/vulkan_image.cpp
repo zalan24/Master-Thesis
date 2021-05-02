@@ -10,7 +10,6 @@
 #include "vulkan_conversions.h"
 #include "vulkan_enum_compare.h"
 #include "vulkan_image.h"
-#include "vulkan_resource_track_data.h"
 
 using namespace drv_vulkan;
 
@@ -132,7 +131,7 @@ void DrvVulkanResourceTracker::validate_memory_access(
   bool changeLayout, drv::PipelineStages& barrierSrcStage, drv::PipelineStages& barrierDstStage,
   ImageSingleSubresourceMemoryBarrier& barrier) {
     drv_vulkan::Image* image = convertImage(_image);
-    drv_vulkan::Image::SubresourceTrackData& subresourceData =
+    drv::ImageSubresourceTrackData& subresourceData =
       image->trackingStates[trackingSlot]
         .subresourceTrackInfo[arrayIndex][mipLevel][drv::get_aspect_id(aspect)];
     validate_memory_access(image->trackingStates[trackingSlot].trackData, subresourceData, read,
@@ -173,7 +172,7 @@ void DrvVulkanResourceTracker::add_memory_access_validate(
                   drv::get_null_ptr<drv::EventPtr>());
 
     drv_vulkan::Image* image = convertImage(_image);
-    drv_vulkan::Image::SubresourceTrackData& subresourceData =
+    drv::ImageSubresourceTrackData& subresourceData =
       image->trackingStates[trackingSlot]
         .subresourceTrackInfo[arrayIndex][mipLevel][drv::get_aspect_id(aspect)];
 
@@ -207,7 +206,7 @@ void DrvVulkanResourceTracker::add_memory_access(
                   add_memory_access_validate(cmdBuffer, _image, mip, layer, aspect, read, write,
                                              stages, accessMask, requiredLayoutMask, changeLayout,
                                              resultLayout);
-                  const drv_vulkan::Image::SubresourceTrackData& subresourceData =
+                  const drv::ImageSubresourceTrackData& subresourceData =
                     image->trackingStates[trackingSlot]
                       .subresourceTrackInfo[layer][mip][drv::get_aspect_id(aspect)];
                   if (currentLayout)
@@ -225,7 +224,7 @@ void DrvVulkanResourceTracker::add_memory_access(
                     add_memory_access_validate(
                       cmdBuffer, _image, mip, layer, drv::get_aspect_by_id(aspectId), read, write,
                       stages, accessMask, requiredLayoutMask, changeLayout, resultLayout);
-                    const drv_vulkan::Image::SubresourceTrackData& subresourceData =
+                    const drv::ImageSubresourceTrackData& subresourceData =
                       image->trackingStates[trackingSlot]
                         .subresourceTrackInfo[layer][mip][aspectId];
                     if (currentLayout)
@@ -248,7 +247,7 @@ drv::PipelineStages DrvVulkanResourceTracker::add_memory_sync(
   drv::ImageLayout resultLayout, drv::EventPtr event) {
     drv_vulkan::Image* image = convertImage(_image);
     const drv::PipelineStages::FlagType stages = dstStages.resolve(queueSupport);
-    drv_vulkan::Image::SubresourceTrackData& subresourceData =
+    drv::ImageSubresourceTrackData& subresourceData =
       image->trackingStates[trackingSlot]
         .subresourceTrackInfo[arrayIndex][mipLevel][drv::get_aspect_id(aspect)];
     // 'subresourceData.layout != resultLayout' excluded for consistent behaviour

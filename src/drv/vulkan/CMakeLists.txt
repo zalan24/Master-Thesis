@@ -20,7 +20,7 @@ if (Vulkan_FOUND)
         AnimationsInput
         AnimationsTools
         AnimationsDataStructures
-        AnimationFeatures
+        FeaturesLib
     )
     target_link_libraries(AnimationsDrvVulkan PRIVATE
         ${Vulkan_LIBRARIES}

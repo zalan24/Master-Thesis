@@ -1,9 +1,9 @@
 #pragma once
 
 #include "drvvulkan.h"
-#include "vulkan_resource_track_data.h"
 
 #include <vulkan/vulkan.h>
+#include <drvtypes/drvtracking.hpp>
 
 namespace drv_vulkan
 {
@@ -21,20 +21,8 @@ struct Image
     drv::DeviceMemoryPtr memoryPtr = nullptr;
     drv::DeviceSize offset = 0;
 
-    struct SubresourceTrackData : PerSubresourceRangeTrackData
-    {
-        drv::ImageLayout layout = drv::ImageLayout::UNDEFINED;
-    };
-
-    struct TrackingState
-    {
-        PerResourceTrackData trackData;
-        SubresourceTrackData subresourceTrackInfo[drv::ImageSubresourceSet::MAX_ARRAY_SIZE]
-                                                 [drv::ImageSubresourceSet::MAX_MIP_LEVELS]
-                                                 [drv::ASPECTS_COUNT];
-    };
-
-    TrackingState trackingStates[MAX_NUM_TRACKING_SLOTS];
+    // TODO remove
+    drv::ImageTrackingState trackingStates[MAX_NUM_TRACKING_SLOTS];
 };
 
 struct ImageView

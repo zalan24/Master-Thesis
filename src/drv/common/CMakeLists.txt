@@ -14,5 +14,5 @@ target_link_libraries(AnimationsDrvCommon PUBLIC
     AnimationsDrvProfiler
     AnimationsTools
     AnimationsSerializable
-    AnimationFeatures
+    FeaturesLib
 )

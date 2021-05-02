@@ -1,7 +1,6 @@
 #pragma once
 
 #include "drvvulkan.h"
-#include "vulkan_resource_track_data.h"
 
 #include <vulkan/vulkan.h>
 

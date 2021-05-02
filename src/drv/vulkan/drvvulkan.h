@@ -28,11 +28,11 @@
 class Input;
 class InputManager;
 
-namespace drv_vulkan
+namespace drv
 {
 struct PerSubresourceRangeTrackData;
 struct PerResourceTrackData;
-}  // namespace drv_vulkan
+}  // namespace drv
 
 class DrvVulkan final : public drv::IDriver
 {
@@ -339,9 +339,9 @@ class DrvVulkanResourceTracker final : public drv::ResourceTracker
     };
     void invalidate(InvalidationLevel level, const char* message) const;
 
-    void validate_memory_access(drv_vulkan::PerResourceTrackData& resourceData,
-                                drv_vulkan::PerSubresourceRangeTrackData& subresourceData,
-                                bool read, bool write, bool sharedRes, drv::PipelineStages stages,
+    void validate_memory_access(drv::PerResourceTrackData& resourceData,
+                                drv::PerSubresourceRangeTrackData& subresourceData, bool read,
+                                bool write, bool sharedRes, drv::PipelineStages stages,
                                 drv::MemoryBarrier::AccessFlagBitType accessMask,
                                 drv::PipelineStages& barrierSrcStage,
                                 drv::PipelineStages& barrierDstStage, ResourceBarrier& barrier);
@@ -354,8 +354,8 @@ class DrvVulkanResourceTracker final : public drv::ResourceTracker
                                 drv::PipelineStages& barrierDstStage,
                                 ImageSingleSubresourceMemoryBarrier& barrier);
 
-    void add_memory_access(drv_vulkan::PerResourceTrackData& resourceData,
-                           drv_vulkan::PerSubresourceRangeTrackData& subresourceData, bool read,
+    void add_memory_access(drv::PerResourceTrackData& resourceData,
+                           drv::PerSubresourceRangeTrackData& subresourceData, bool read,
                            bool write, drv::PipelineStages stages,
                            drv::MemoryBarrier::AccessFlagBitType accessMask);
     void add_memory_access_validate(drv::CommandBufferPtr cmdBuffer, drv::ImagePtr image,
@@ -366,8 +366,8 @@ class DrvVulkanResourceTracker final : public drv::ResourceTracker
                                     uint32_t requiredLayoutMask, bool changeLayout,
                                     drv::ImageLayout resultLayout);
 
-    void add_memory_sync(drv_vulkan::PerResourceTrackData& resourceData,
-                         drv_vulkan::PerSubresourceRangeTrackData& subresourceData, bool flush,
+    void add_memory_sync(drv::PerResourceTrackData& resourceData,
+                         drv::PerSubresourceRangeTrackData& subresourceData, bool flush,
                          drv::PipelineStages dstStages,
                          drv::MemoryBarrier::AccessFlagBitType accessMask, bool transferOwnership,
                          drv::QueueFamilyPtr newOwner, drv::PipelineStages& barrierSrcStage,

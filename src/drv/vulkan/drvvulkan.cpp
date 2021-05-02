@@ -13,7 +13,6 @@
 
 #include "components/vulkan_conversions.h"
 #include "components/vulkan_render_pass.h"
-#include "components/vulkan_resource_track_data.h"
 
 using namespace drv_vulkan;
 
@@ -102,8 +101,8 @@ DrvVulkan::~DrvVulkan() {
 }
 
 void DrvVulkanResourceTracker::validate_memory_access(
-  PerResourceTrackData& resourceData, PerSubresourceRangeTrackData& subresourceData, bool read,
-  bool write, bool sharedRes, drv::PipelineStages stages,
+  drv::PerResourceTrackData& resourceData, drv::PerSubresourceRangeTrackData& subresourceData,
+  bool read, bool write, bool sharedRes, drv::PipelineStages stages,
   drv::MemoryBarrier::AccessFlagBitType accessMask, drv::PipelineStages& barrierSrcStage,
   drv::PipelineStages& barrierDstStage, ResourceBarrier& barrier) {
     accessMask = drv::MemoryBarrier::resolve(accessMask);
@@ -152,8 +151,8 @@ void DrvVulkanResourceTracker::validate_memory_access(
                         barrierDstStage, barrier);
 }
 
-void DrvVulkanResourceTracker::add_memory_access(PerResourceTrackData& resourceData,
-                                                 PerSubresourceRangeTrackData& subresourceData,
+void DrvVulkanResourceTracker::add_memory_access(drv::PerResourceTrackData& resourceData,
+                                                 drv::PerSubresourceRangeTrackData& subresourceData,
                                                  bool read, bool write, drv::PipelineStages stages,
                                                  drv::MemoryBarrier::AccessFlagBitType accessMask) {
     accessMask = drv::MemoryBarrier::resolve(accessMask);
@@ -175,9 +174,8 @@ void DrvVulkanResourceTracker::add_memory_access(PerResourceTrackData& resourceD
 }
 
 void DrvVulkanResourceTracker::add_memory_sync(
-  drv_vulkan::PerResourceTrackData& resourceData,
-  drv_vulkan::PerSubresourceRangeTrackData& subresourceData, bool flush,
-  drv::PipelineStages dstStages, drv::MemoryBarrier::AccessFlagBitType accessMask,
+  drv::PerResourceTrackData& resourceData, drv::PerSubresourceRangeTrackData& subresourceData,
+  bool flush, drv::PipelineStages dstStages, drv::MemoryBarrier::AccessFlagBitType accessMask,
   bool transferOwnership, drv::QueueFamilyPtr newOwner, drv::PipelineStages& barrierSrcStage,
   drv::PipelineStages& barrierDstStage, ResourceBarrier& barrier) {
     const drv::PipelineStages::FlagType stages = dstStages.resolve(queueSupport);

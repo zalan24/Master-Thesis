@@ -11,7 +11,7 @@ target_link_libraries(AnimationsShaderCompiler PRIVATE cli11_external glslang_ex
 target_link_libraries(AnimationsShaderCompiler PUBLIC
     AnimationsIO
     ShaderManager
-    AnimationFeatures
+    FeaturesLib
     AnimationsSerializable
     RuntimeStats
 )

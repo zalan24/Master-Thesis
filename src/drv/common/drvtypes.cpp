@@ -131,20 +131,6 @@ ImageLayoutMask drv::get_accepted_image_layouts(ImageResourceUsageFlag usages) {
     return ret;
 }
 
-ImageLayoutMask drv::get_all_layouts_mask() {
-    return static_cast<ImageLayoutMask>(drv::ImageLayout::UNDEFINED)
-           | static_cast<ImageLayoutMask>(drv::ImageLayout::GENERAL)
-           | static_cast<ImageLayoutMask>(drv::ImageLayout::COLOR_ATTACHMENT_OPTIMAL)
-           | static_cast<ImageLayoutMask>(drv::ImageLayout::DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
-           | static_cast<ImageLayoutMask>(drv::ImageLayout::DEPTH_STENCIL_READ_ONLY_OPTIMAL)
-           | static_cast<ImageLayoutMask>(drv::ImageLayout::SHADER_READ_ONLY_OPTIMAL)
-           | static_cast<ImageLayoutMask>(drv::ImageLayout::TRANSFER_SRC_OPTIMAL)
-           | static_cast<ImageLayoutMask>(drv::ImageLayout::TRANSFER_DST_OPTIMAL)
-           | static_cast<ImageLayoutMask>(drv::ImageLayout::PREINITIALIZED)
-           | static_cast<ImageLayoutMask>(drv::ImageLayout::PRESENT_SRC_KHR)
-           | static_cast<ImageLayoutMask>(drv::ImageLayout::SHARED_PRESENT_KHR);
-}
-
 ImageAspectBitType drv::get_format_aspects(ImageFormat format) {
     switch (format) {
         case ImageFormat::UNDEFINED:

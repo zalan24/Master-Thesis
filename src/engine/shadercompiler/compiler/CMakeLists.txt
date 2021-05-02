@@ -16,6 +16,6 @@ target_link_libraries(ShaderCompilerLib PUBLIC
     ShaderPreprocessorLib
     # ShaderCompilerLib
     # ShaderManager
-    # AnimationFeatures
+    # FeaturesLib
     # RuntimeStats
 )

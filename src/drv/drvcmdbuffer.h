@@ -6,6 +6,7 @@
 #include <drvtypes.h>
 #include <drvtypes/drvresourceptrs.hpp>
 
+#include <drvtypes/drvtracking.hpp>
 #include "drv_resource_tracker.h"
 
 namespace drv
@@ -88,6 +89,13 @@ class DrvCmdBuffer
     LogicalDevicePtr getDevice() const { return device; }
 
  private:
+    struct ImageTrackInfo
+    {
+        ImageTrackingState guarantee;
+        ImageTrackingState result;
+        ImageSubresourceSet usageMask;
+    };
+
     D currentData;
     LogicalDevicePtr device;
     QueueFamilyPtr queueFamily;
