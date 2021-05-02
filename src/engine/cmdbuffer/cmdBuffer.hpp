@@ -15,7 +15,7 @@ class EngineCmdBuffer : public drv::DrvCmdBuffer<T>
     explicit EngineCmdBuffer(drv::LogicalDevicePtr _device, drv::QueueFamilyPtr _queueFamily,
                              typename drv::DrvCmdBuffer<T>::DrvRecordCallback&& _callback,
                              drv::ResourceTracker* _resourceTracker)
-      : DrvCmdBuffer<T>(_device, _queueFamily, std::move(_callback), _resourceTracker) {}
+      : drv::DrvCmdBuffer<T>(_device, _queueFamily, std::move(_callback), _resourceTracker) {}
 
     // EngineCmdBuffer(const EngineCmdBuffer&) = delete;
     // EngineCmdBuffer& operator=(const EngineCmdBuffer&) = delete;

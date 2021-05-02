@@ -31,11 +31,34 @@ class OneTimeCmdBuffer final : public EngineCmdBuffer<T>
                      drv::CommandBufferBank* _bufferBank, GarbageSystem* _garbageSystem,
                      drv::ResourceTracker* _resourceTracker,
                      typename drv::DrvCmdBuffer<T>::DrvRecordCallback&& _callback)
-      : EngineCmdBuffer<T>(_device, drv::get_queue_family(this->getDevice(), _queue),
-                           std::move(_callback), _resourceTracker),
+      : EngineCmdBuffer<T>(_device, drv::get_queue_family(_device, _queue), std::move(_callback),
+                           _resourceTracker),
         queue(_queue),
         bufferBank(_bufferBank),
         garbageSystem(_garbageSystem) {}
+
+    OneTimeCmdBuffer(const OneTimeCmdBuffer&) = delete;
+    OneTimeCmdBuffer& operator=(const OneTimeCmdBuffer&) = delete;
+
+    OneTimeCmdBuffer(OneTimeCmdBuffer&& other)
+      : queue(other.queue),
+        bufferBank(other.bufferBank),
+        garbageSystem(other.garbageSystem),
+        cmdBuffer(std::move(other.cmdBuffer)) {
+        reset_ptr(other.queue);
+    }
+
+    OneTimeCmdBuffer& operator=(OneTimeCmdBuffer&& other) {
+        if (this == &other)
+            return *this;
+        queue = other.queue;
+        bufferBank = other.bufferBank;
+        garbageSystem = other.garbageSystem;
+        cmdBuffer = std::move(other.cmdBuffer);
+        reset_ptr(other.queue);
+        return *this;
+    }
+    ~OneTimeCmdBuffer() { close(); }
 
  protected:
     drv::CommandBufferPtr acquireCommandBuffer() override {
@@ -69,5 +92,10 @@ class OneTimeCmdBuffer final : public EngineCmdBuffer<T>
     //  GarbageVector<ExecutionPackage::CommandBufferPackage::TimelineSemaphoreWaitInfo>
     //    waitTimelineSemaphores;
 
-    void close();
+    void close() {
+        if (is_null_ptr(queue))
+            return;
+        releaseCommandBuffer(cmdBuffer.commandBufferPtr);
+        reset_ptr(queue);
+    }
 };

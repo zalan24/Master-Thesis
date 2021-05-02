@@ -41,7 +41,7 @@ template <typename D>
 class DrvCmdBuffer
 {
  public:
-    using DrvRecordCallback = void(const D&, const DrvCmdBufferRecorder*);
+    using DrvRecordCallback = void (*)(const D&, const DrvCmdBufferRecorder*);
 
     explicit DrvCmdBuffer(LogicalDevicePtr _device, QueueFamilyPtr _queueFamily,
                           DrvRecordCallback _recordCallback, drv::ResourceTracker* _resourceTracker)
@@ -65,7 +65,7 @@ class DrvCmdBuffer
             currentData = std::move(d);
             DrvCmdBufferRecorder recorder(drv::lock_queue_family(device, queueFamily), cmdBufferPtr,
                                           resourceTracker, isSingleTimeBuffer(), isSimultaneous());
-            recordCallback(currentData, recorder);
+            recordCallback(currentData, &recorder);
         }
         needToPrepare = false;
     }
@@ -78,12 +78,7 @@ class DrvCmdBuffer
     }
 
  protected:
-    ~DrvCmdBuffer() {
-        if (!is_null_ptr(cmdBufferPtr)) {
-            releaseCommandBuffer(cmdBufferPtr);
-            reset_ptr(cmdBufferPtr);
-        }
-    }
+    ~DrvCmdBuffer() {}
 
     virtual CommandBufferPtr acquireCommandBuffer() = 0;
     virtual void releaseCommandBuffer(CommandBufferPtr cmdBuffer) = 0;
