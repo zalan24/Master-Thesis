@@ -35,4 +35,10 @@ struct ImageTrackingState
                                                   [drv::ImageSubresourceSet::MAX_MIP_LEVELS]
                                                   [drv::ASPECTS_COUNT];
 };
+
+struct CmdImageTrackingState
+{
+    ImageTrackingState state;
+    ImageSubresourceSet usageMask;
+};
 };  // namespace drv

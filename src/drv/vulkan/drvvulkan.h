@@ -196,6 +196,14 @@ class DrvVulkan final : public drv::IDriver
     void release_tracking_slot(uint32_t id);
     uint32_t get_num_trackers() override;
 
+    drv::PipelineStages cmd_image_barrier(drv::CmdImageTrackingState& state,
+                                          drv::CommandBufferPtr cmdBuffer,
+                                          const drv::ImageMemoryBarrier& barrier) override;
+    void cmd_clear_image(drv::CmdImageTrackingState& state, drv::CommandBufferPtr cmdBuffer,
+                         drv::ImagePtr image, const drv::ClearColorValue* clearColors,
+                         uint32_t ranges,
+                         const drv::ImageSubresourceRange* subresourceRanges) override;
+
  private:
     struct LogicalDeviceData
     {

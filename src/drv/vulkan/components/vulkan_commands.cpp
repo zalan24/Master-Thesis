@@ -99,3 +99,14 @@ void DrvVulkanResourceTracker::cmd_flush_waits_on(drv::CommandBufferPtr cmdBuffe
         if (barriers[i] && barriers[i].event == event)
             flushBarrier(cmdBuffer, barriers[i]);
 }
+
+drv::PipelineStages DrvVulkan::cmd_image_barrier(drv::CmdImageTrackingState& state,
+                                                 drv::CommandBufferPtr cmdBuffer,
+                                                 const drv::ImageMemoryBarrier& barrier) {
+}
+
+void DrvVulkan::cmd_clear_image(drv::CmdImageTrackingState& state, drv::CommandBufferPtr cmdBuffer,
+                                drv::ImagePtr image, const drv::ClearColorValue* clearColors,
+                                uint32_t ranges,
+                                const drv::ImageSubresourceRange* subresourceRanges) {
+}

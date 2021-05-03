@@ -436,3 +436,15 @@ drv::TextureInfo drv::get_texture_info(drv::ImagePtr image) {
 bool drv::destroy_framebuffer(LogicalDevicePtr device, FramebufferPtr frameBuffer) {
     return current_driver_interface->destroy_framebuffer(device, frameBuffer);
 }
+
+drv::PipelineStages drv::cmd_image_barrier(CmdImageTrackingState& state, CommandBufferPtr cmdBuffer,
+                                           const ImageMemoryBarrier& barrier) {
+    current_driver_interface->cmd_image_barrier(state, cmdBuffer, barrier);
+}
+
+void drv::cmd_clear_image(CmdImageTrackingState& state, CommandBufferPtr cmdBuffer, ImagePtr image,
+                          const ClearColorValue* clearColors, uint32_t ranges,
+                          const ImageSubresourceRange* subresourceRanges) {
+    current_driver_interface->cmd_clear_image(state, cmdBuffer, image, clearColors, ranges,
+                                              subresourceRanges);
+}

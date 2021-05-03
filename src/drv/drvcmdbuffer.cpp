@@ -1,5 +1,8 @@
 #include "drvcmdbuffer.h"
 
+#include <logger.h>
+
+#include <drv.h>
 #include <drverror.h>
 
 using namespace drv;
@@ -57,17 +60,20 @@ void DrvCmdBufferRecorder::close() {
 
 DrvCmdBufferRecorder::DrvCmdBufferRecorder(std::unique_lock<std::mutex>&& _queueFamilyLock,
                                            CommandBufferPtr _cmdBufferPtr,
-                                           drv::ResourceTracker* _resourceTracker, bool singleTime,
+                                           drv::ResourceTracker* _resourceTracker,
+                                           ImageStates* _imageStates, bool singleTime,
                                            bool simultaneousUse)
   : queueFamilyLock(std::move(_queueFamilyLock)),
     cmdBufferPtr(_cmdBufferPtr),
-    resourceTracker(_resourceTracker) {
+    resourceTracker(_resourceTracker),
+    imageStates(_imageStates) {
     drv::drv_assert(
       resourceTracker->begin_primary_command_buffer(cmdBufferPtr, singleTime, simultaneousUse));
 }
 
 void DrvCmdBufferRecorder::cmdImageBarrier(const drv::ImageMemoryBarrier& barrier) const {
     resourceTracker->cmd_image_barrier(cmdBufferPtr, barrier);
+    cmd_image_barrier(getImageState(barrier.image).cmdState, cmdBufferPtr, barrier);
 }
 
 void DrvCmdBufferRecorder::cmdClearImage(
@@ -84,4 +90,19 @@ void DrvCmdBufferRecorder::cmdClearImage(
         subresourceRanges = &defVal;
     }
     resourceTracker->cmd_clear_image(cmdBufferPtr, image, clearColors, ranges, subresourceRanges);
+    cmd_clear_image(getImageState(image).cmdState, cmdBufferPtr, image, clearColors, ranges,
+                    subresourceRanges);
+}
+
+DrvCmdBufferRecorder::ImageTrackInfo& DrvCmdBufferRecorder::getImageState(
+  drv::ImagePtr image) const {
+    for (uint32_t i = 0; i < imageStates->size(); ++i)
+        if ((*imageStates)[i].first == image)
+            return (*imageStates)[i].second;
+    LOG_F(ERROR, "Command buffer uses an image without previous registration");
+    // undefined, unknown queue family
+    // let's hope, it works out
+    ImageTrackInfo state;
+    imageStates->emplace_back(image, std::move(state));
+    return imageStates->back().second;
 }

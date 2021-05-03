@@ -4,6 +4,7 @@
 #include <drvshader.h>
 #include <drvtypes.h>
 #include <hardwareconfig.h>
+#include <drvtypes/drvtracking.hpp>
 
 #include <memory>
 #include <mutex>
@@ -180,5 +181,11 @@ uint32_t get_num_trackers();
 
 ShaderModulePtr create_shader_module(LogicalDevicePtr device, const ShaderCreateInfo* info);
 bool destroy_shader_module(LogicalDevicePtr device, ShaderModulePtr module);
+
+PipelineStages cmd_image_barrier(CmdImageTrackingState& state, CommandBufferPtr cmdBuffer,
+                                 const ImageMemoryBarrier& barrier);
+void cmd_clear_image(CmdImageTrackingState& state, CommandBufferPtr cmdBuffer, ImagePtr image,
+                     const ClearColorValue* clearColors, uint32_t ranges,
+                     const ImageSubresourceRange* subresourceRanges);
 
 };  // namespace drv
