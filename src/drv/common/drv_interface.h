@@ -154,10 +154,13 @@ class IDriver
 
     virtual uint32_t get_num_trackers() = 0;
 
-    virtual PipelineStages cmd_image_barrier(CmdImageTrackingState& state,
+    virtual std::unique_ptr<CmdTrackingRecordState> create_tracking_record_state() = 0;
+    virtual PipelineStages cmd_image_barrier(drv::CmdTrackingRecordState* recordState,
+                                             CmdImageTrackingState& state,
                                              CommandBufferPtr cmdBuffer,
                                              const ImageMemoryBarrier& barrier) = 0;
-    virtual void cmd_clear_image(CmdImageTrackingState& state, CommandBufferPtr cmdBuffer,
+    virtual void cmd_clear_image(drv::CmdTrackingRecordState* recordState,
+                                 CmdImageTrackingState& state, CommandBufferPtr cmdBuffer,
                                  ImagePtr image, const ClearColorValue* clearColors,
                                  uint32_t ranges,
                                  const ImageSubresourceRange* subresourceRanges) = 0;

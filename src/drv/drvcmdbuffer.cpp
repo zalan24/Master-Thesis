@@ -32,7 +32,8 @@ using namespace drv;
 DrvCmdBufferRecorder::DrvCmdBufferRecorder(DrvCmdBufferRecorder&& other)
   : queueFamilyLock(std::move(other.queueFamilyLock)),
     cmdBufferPtr(other.cmdBufferPtr),
-    resourceTracker(other.resourceTracker) {
+    resourceTracker(other.resourceTracker),
+    recordState(std::move(other.recordState)) {
     reset_ptr(other.cmdBufferPtr);
 }
 
@@ -42,6 +43,7 @@ DrvCmdBufferRecorder& DrvCmdBufferRecorder::operator=(DrvCmdBufferRecorder&& oth
     queueFamilyLock = std::move(other.queueFamilyLock);
     cmdBufferPtr = other.cmdBufferPtr;
     resourceTracker = other.resourceTracker;
+    recordState = std::move(other.recordState);
     reset_ptr(other.cmdBufferPtr);
     return *this;
 }
@@ -53,6 +55,7 @@ DrvCmdBufferRecorder::~DrvCmdBufferRecorder() {
 void DrvCmdBufferRecorder::close() {
     if (!is_null_ptr(cmdBufferPtr)) {
         drv::drv_assert(resourceTracker->end_primary_command_buffer(cmdBufferPtr));
+        recordState.reset();
         reset_ptr(cmdBufferPtr);
         queueFamilyLock = {};
     }
@@ -66,14 +69,16 @@ DrvCmdBufferRecorder::DrvCmdBufferRecorder(std::unique_lock<std::mutex>&& _queue
   : queueFamilyLock(std::move(_queueFamilyLock)),
     cmdBufferPtr(_cmdBufferPtr),
     resourceTracker(_resourceTracker),
-    imageStates(_imageStates) {
+    imageStates(_imageStates),
+    recordState(drv::create_tracking_record_state()) {
     drv::drv_assert(
       resourceTracker->begin_primary_command_buffer(cmdBufferPtr, singleTime, simultaneousUse));
 }
 
 void DrvCmdBufferRecorder::cmdImageBarrier(const drv::ImageMemoryBarrier& barrier) const {
     resourceTracker->cmd_image_barrier(cmdBufferPtr, barrier);
-    cmd_image_barrier(getImageState(barrier.image).cmdState, cmdBufferPtr, barrier);
+    cmd_image_barrier(recordState.get(), getImageState(barrier.image).cmdState, cmdBufferPtr,
+                      barrier);
 }
 
 void DrvCmdBufferRecorder::cmdClearImage(
@@ -90,8 +95,8 @@ void DrvCmdBufferRecorder::cmdClearImage(
         subresourceRanges = &defVal;
     }
     resourceTracker->cmd_clear_image(cmdBufferPtr, image, clearColors, ranges, subresourceRanges);
-    cmd_clear_image(getImageState(image).cmdState, cmdBufferPtr, image, clearColors, ranges,
-                    subresourceRanges);
+    cmd_clear_image(recordState.get(), getImageState(image).cmdState, cmdBufferPtr, image,
+                    clearColors, ranges, subresourceRanges);
 }
 
 DrvCmdBufferRecorder::ImageTrackInfo& DrvCmdBufferRecorder::getImageState(

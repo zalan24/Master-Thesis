@@ -182,9 +182,10 @@ uint32_t get_num_trackers();
 ShaderModulePtr create_shader_module(LogicalDevicePtr device, const ShaderCreateInfo* info);
 bool destroy_shader_module(LogicalDevicePtr device, ShaderModulePtr module);
 
-PipelineStages cmd_image_barrier(CmdImageTrackingState& state, CommandBufferPtr cmdBuffer,
+std::unique_ptr<CmdTrackingRecordState> create_tracking_record_state();
+PipelineStages cmd_image_barrier(drv::CmdTrackingRecordState *recordState, CmdImageTrackingState& state, CommandBufferPtr cmdBuffer,
                                  const ImageMemoryBarrier& barrier);
-void cmd_clear_image(CmdImageTrackingState& state, CommandBufferPtr cmdBuffer, ImagePtr image,
+void cmd_clear_image(drv::CmdTrackingRecordState *recordState, CmdImageTrackingState& state, CommandBufferPtr cmdBuffer, ImagePtr image,
                      const ClearColorValue* clearColors, uint32_t ranges,
                      const ImageSubresourceRange* subresourceRanges);
 

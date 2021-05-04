@@ -68,6 +68,7 @@ class DrvCmdBufferRecorder
     CommandBufferPtr cmdBufferPtr;
     drv::ResourceTracker* resourceTracker;
     ImageStates* imageStates;
+    std::unique_ptr<drv::CmdTrackingRecordState> recordState;
 
     void close();
 

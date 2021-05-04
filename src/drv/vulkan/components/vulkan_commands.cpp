@@ -100,15 +100,53 @@ void DrvVulkanResourceTracker::cmd_flush_waits_on(drv::CommandBufferPtr cmdBuffe
             flushBarrier(cmdBuffer, barriers[i]);
 }
 
-drv::PipelineStages DrvVulkan::cmd_image_barrier(drv::CmdImageTrackingState& state,
+drv::PipelineStages DrvVulkan::cmd_image_barrier(drv::CmdTrackingRecordState* recordState,
+                                                 drv::CmdImageTrackingState& state,
                                                  drv::CommandBufferPtr cmdBuffer,
                                                  const drv::ImageMemoryBarrier& barrier) {
-    drv::PipelineStages ret;
-    return ret;
+    drv::PipelineStages dstStages = drv::get_image_usage_stages(barrier.usages);
+    drv::MemoryBarrier::AccessFlagBitType accessMask =
+      drv::get_image_usage_accesses(barrier.usages);
+    bool flush = !barrier.discardCurrentContent;
+    // extra sync is only placed, if it has dirty cache
+    return add_memory_sync(recordState, state, cmdBuffer, barrier.image,
+                           barrier.numSubresourceRanges, barrier.getRanges(), flush, dstStages,
+                           accessMask,
+                           !convertImage(barrier.image)->sharedResource
+                             && barrier.requestedOwnership != drv::IGNORE_FAMILY,
+                           barrier.requestedOwnership, barrier.transitionLayout,
+                           barrier.discardCurrentContent, barrier.resultLayout);
 }
 
-void DrvVulkan::cmd_clear_image(drv::CmdImageTrackingState& state, drv::CommandBufferPtr cmdBuffer,
+void DrvVulkan::cmd_clear_image(drv::CmdTrackingRecordState* recordState,
+                                drv::CmdImageTrackingState& state, drv::CommandBufferPtr cmdBuffer,
                                 drv::ImagePtr image, const drv::ClearColorValue* clearColors,
                                 uint32_t ranges,
                                 const drv::ImageSubresourceRange* subresourceRanges) {
+    StackMemory::MemoryHandle<VkImageSubresourceRange> vkRanges(ranges, TEMPMEM);
+    StackMemory::MemoryHandle<VkClearColorValue> vkValues(ranges, TEMPMEM);
+
+    drv::ImageLayoutMask requiredLayoutMask =
+      static_cast<drv::ImageLayoutMask>(drv::ImageLayout::TRANSFER_DST_OPTIMAL)
+      | static_cast<drv::ImageLayoutMask>(drv::ImageLayout::GENERAL)
+      | static_cast<drv::ImageLayoutMask>(drv::ImageLayout::SHARED_PRESENT_KHR);
+
+    drv::ImageLayout currentLayout = drv::ImageLayout::UNDEFINED;
+    add_memory_access(recordState, state, cmdBuffer, image, ranges, subresourceRanges, false, true,
+                      drv::PipelineStages::TRANSFER_BIT,
+                      drv::MemoryBarrier::AccessFlagBits::TRANSFER_WRITE_BIT, requiredLayoutMask,
+                      true, &currentLayout, false, drv::ImageLayout::TRANSFER_DST_OPTIMAL);
+
+    for (uint32_t i = 0; i < ranges; ++i) {
+        vkRanges[i] = convertSubresourceRange(subresourceRanges[i]);
+        vkValues[i] = convertClearColor(clearColors[i]);
+    }
+
+    // TODO
+    // vkCmdClearColorImage(convertCommandBuffer(cmdBuffer), convertImage(image)->image,
+    //                      convertImageLayout(currentLayout), vkValues, ranges, vkRanges);
+}
+
+std::unique_ptr<drv::CmdTrackingRecordState> DrvVulkan::create_tracking_record_state() {
+    return std::make_unique<VulkanTrackingRecordState>();
 }

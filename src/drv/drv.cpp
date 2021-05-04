@@ -437,14 +437,20 @@ bool drv::destroy_framebuffer(LogicalDevicePtr device, FramebufferPtr frameBuffe
     return current_driver_interface->destroy_framebuffer(device, frameBuffer);
 }
 
-drv::PipelineStages drv::cmd_image_barrier(CmdImageTrackingState& state, CommandBufferPtr cmdBuffer,
-                                           const ImageMemoryBarrier& barrier) {
-    return current_driver_interface->cmd_image_barrier(state, cmdBuffer, barrier);
+std::unique_ptr<drv::CmdTrackingRecordState> drv::create_tracking_record_state() {
+    return current_driver_interface->create_tracking_record_state();
 }
 
-void drv::cmd_clear_image(CmdImageTrackingState& state, CommandBufferPtr cmdBuffer, ImagePtr image,
+drv::PipelineStages drv::cmd_image_barrier(drv::CmdTrackingRecordState* recordState,
+                                           CmdImageTrackingState& state, CommandBufferPtr cmdBuffer,
+                                           const ImageMemoryBarrier& barrier) {
+    return current_driver_interface->cmd_image_barrier(recordState, state, cmdBuffer, barrier);
+}
+
+void drv::cmd_clear_image(drv::CmdTrackingRecordState* recordState, CmdImageTrackingState& state,
+                          CommandBufferPtr cmdBuffer, ImagePtr image,
                           const ClearColorValue* clearColors, uint32_t ranges,
                           const ImageSubresourceRange* subresourceRanges) {
-    return current_driver_interface->cmd_clear_image(state, cmdBuffer, image, clearColors, ranges,
-                                                     subresourceRanges);
+    return current_driver_interface->cmd_clear_image(recordState, state, cmdBuffer, image,
+                                                     clearColors, ranges, subresourceRanges);
 }

@@ -368,3 +368,92 @@ drv::TextureInfo DrvVulkan::get_texture_info(drv::ImagePtr _image) {
     // ret.aspects = image->aspects;
     return ret;
 }
+
+void DrvVulkan::add_memory_access_validate(
+  drv::CmdTrackingRecordState* recordState, drv::CmdImageTrackingState& state,
+  drv::CommandBufferPtr cmdBuffer, drv::ImagePtr _image, uint32_t mipLevel, uint32_t arrayIndex,
+  drv::AspectFlagBits aspect, bool read, bool write, drv::PipelineStages stages,
+  drv::MemoryBarrier::AccessFlagBitType accessMask, drv::ImageLayoutMask requiredLayoutMask,
+  bool changeLayout, drv::ImageLayout resultLayout) {
+    drv::PipelineStages barrierSrcStages;
+    drv::PipelineStages barrierDstStages;
+    VulkanTrackingRecordState::ImageSingleSubresourceMemoryBarrier barrier;
+    barrier.image = _image;
+    barrier.layer = arrayIndex;
+    barrier.mipLevel = mipLevel;
+    barrier.aspect = aspect;
+
+    validate_memory_access(_image, mipLevel, arrayIndex, aspect, read, write, stages, accessMask,
+                           requiredLayoutMask, changeLayout, barrierSrcStages, barrierDstStages,
+                           barrier);
+
+    appendBarrier(cmdBuffer, barrierSrcStages, barrierDstStages, std::move(barrier),
+                  drv::get_null_ptr<drv::EventPtr>());
+
+    drv_vulkan::Image* image = convertImage(_image);
+    drv::ImageSubresourceTrackData& subresourceData =
+      state.state.subresourceTrackInfo[arrayIndex][mipLevel][drv::get_aspect_id(aspect)];
+
+    add_memory_access(state.state.trackData, subresourceData, read, write, stages, accessMask);
+    drv::drv_assert(static_cast<drv::ImageLayoutMask>(subresourceData.layout) & requiredLayoutMask);
+    if (changeLayout) {
+        drv::drv_assert(write);
+        subresourceData.layout = resultLayout;
+    }
+}
+
+void DrvVulkan::add_memory_access(
+  drv::CmdTrackingRecordState* recordState, drv::CmdImageTrackingState& state,
+  drv::CommandBufferPtr cmdBuffer, drv::ImagePtr _image, uint32_t numSubresourceRanges,
+  const drv::ImageSubresourceRange* subresourceRanges, bool read, bool write,
+  drv::PipelineStages stages, drv::MemoryBarrier::AccessFlagBitType accessMask,
+  drv::ImageLayoutMask requiredLayoutMask, bool requireSameLayout, drv::ImageLayout* currentLayout,
+  bool changeLayout, drv::ImageLayout resultLayout) {
+    drv::drv_assert(numSubresourceRanges > 0, "No subresource ranges given for add_memory_access");
+    drv_vulkan::Image* image = convertImage(_image);
+    flushBarriersFor(cmdBuffer, _image, numSubresourceRanges, subresourceRanges);
+    if (numSubresourceRanges) {
+        drv::ImageSubresourceSet subresourcesHandled;
+        for (uint32_t i = 0; i < numSubresourceRanges; ++i) {
+            subresourceRanges[i].traverse(
+              image->arraySize, image->numMipLevels,
+              [&, this](uint32_t layer, uint32_t mip, drv::AspectFlagBits aspect) {
+                  if (subresourcesHandled.has(layer, mip, aspect))
+                      return;
+                  subresourcesHandled.add(layer, mip, aspect);
+                  add_memory_access_validate(recordState, state, cmdBuffer, _image, mip, layer,
+                                             aspect, read, write, stages, accessMask,
+                                             requiredLayoutMask, changeLayout, resultLayout);
+                  const drv::ImageSubresourceTrackData& subresourceData =
+                    state.state.subresourceTrackInfo[layer][mip][drv::get_aspect_id(aspect)];
+                  if (currentLayout)
+                      *currentLayout = subresourceData.layout;
+                  if (requireSameLayout)
+                      requiredLayoutMask ^=
+                        static_cast<drv::ImageLayoutMask>(subresourceData.layout);
+              });
+        }
+        state.usageMask.merge(subresourcesHandled);
+    }
+    else {
+        for (uint32_t layer = 0; layer < image->arraySize; ++layer) {
+            for (uint32_t mip = 0; mip < image->numMipLevels; ++mip) {
+                for (uint32_t aspectId = 0; aspectId < drv::ASPECTS_COUNT; ++aspectId) {
+                    state.usageMask.add(layer, mip, drv::get_aspect_by_id(aspectId));
+                    add_memory_access_validate(recordState, state, cmdBuffer, _image, mip, layer,
+                                               drv::get_aspect_by_id(aspectId), read, write, stages,
+                                               accessMask, requiredLayoutMask, changeLayout,
+                                               resultLayout);
+                    const drv::ImageSubresourceTrackData& subresourceData =
+                      state.state.subresourceTrackInfo[layer][mip][aspectId];
+                    if (currentLayout)
+                        *currentLayout = subresourceData.layout;
+                    if (requireSameLayout)
+                        requiredLayoutMask ^=
+                          static_cast<drv::ImageLayoutMask>(subresourceData.layout);
+                }
+            }
+        }
+    }
+    flushBarriersFor(cmdBuffer, _image, numSubresourceRanges, subresourceRanges);
+}
