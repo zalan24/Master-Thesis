@@ -15,7 +15,7 @@ namespace drv
 {
 class DrvCmdBufferRecorder
 {
- private:
+ public:
     static constexpr uint32_t NUM_CACHED_IMAGE_STATES = 8;
     struct ImageTrackInfo
     {
@@ -29,8 +29,6 @@ class DrvCmdBufferRecorder
     DrvCmdBufferRecorder(std::unique_lock<std::mutex>&& queueFamilyLock,
                          CommandBufferPtr cmdBufferPtr, drv::ResourceTracker* resourceTracker,
                          ImageStates* imageStates, bool singleTime, bool simultaneousUse);
-
- public:
     DrvCmdBufferRecorder(const DrvCmdBufferRecorder&) = delete;
     DrvCmdBufferRecorder& operator=(const DrvCmdBufferRecorder&) = delete;
     DrvCmdBufferRecorder(DrvCmdBufferRecorder&&);
@@ -59,6 +57,8 @@ template <typename D>
 class DrvCmdBuffer
 {
  public:
+    friend class DrvCmdBufferRecorder;
+
     using DrvRecordCallback = void (*)(const D&, const DrvCmdBufferRecorder*);
 
     explicit DrvCmdBuffer(LogicalDevicePtr _device, QueueFamilyPtr _queueFamily,
@@ -104,8 +104,6 @@ class DrvCmdBuffer
                              (*buffer.getImageStates())[i].second);
     }
 
-    friend class DrvCmdBufferRecorder;
-
     const DrvCmdBufferRecorder::ImageStates* getImageStates() { return &imageStates; }
 
  protected:
@@ -129,7 +127,7 @@ class DrvCmdBuffer
 
     bool needToPrepare = true;
 
-    void updateImageState(drv::ImagePtr image, const ImageTrackInfo& state) {
+    void updateImageState(drv::ImagePtr image, const DrvCmdBufferRecorder::ImageTrackInfo& state) {
         for (uint32_t i = 0; i < imageStates.size(); ++i) {
             if (imageStates[i].first == image) {
                 imageStates[i].second.cmdState.state.trackData = state.cmdState.state.trackData;

@@ -15,6 +15,7 @@ class InputManager;
 namespace drv
 {
 class RenderPass;
+class ImageMemoryBarrier;
 
 class IDriver
 {

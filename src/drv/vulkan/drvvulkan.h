@@ -12,9 +12,6 @@
 #include <drv_interface.h>
 #include <drv_resource_tracker.h>
 
-#include <drvbarrier.h>
-#include <drvtypes.h>
-
 // Limit for independent linear tracking states
 #ifndef MAX_NUM_TRACKING_SLOTS
 #    define MAX_NUM_TRACKING_SLOTS 32

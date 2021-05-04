@@ -103,6 +103,8 @@ void DrvVulkanResourceTracker::cmd_flush_waits_on(drv::CommandBufferPtr cmdBuffe
 drv::PipelineStages DrvVulkan::cmd_image_barrier(drv::CmdImageTrackingState& state,
                                                  drv::CommandBufferPtr cmdBuffer,
                                                  const drv::ImageMemoryBarrier& barrier) {
+    drv::PipelineStages ret;
+    return ret;
 }
 
 void DrvVulkan::cmd_clear_image(drv::CmdImageTrackingState& state, drv::CommandBufferPtr cmdBuffer,
