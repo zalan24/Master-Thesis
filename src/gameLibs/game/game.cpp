@@ -139,6 +139,7 @@ void Game::record_cmd_buffer(const RecordData& data, const drv::DrvCmdBufferReco
         clearValue = drv::ClearColorValue(0.f, 1.f, 1.f, 1.f);
         data.shaderTestDesc->setVariant_Color(shader_test_descriptor::Color::RED);
     }
+    recorder->registerUndefinedImage(data.targetImage);
     recorder->cmdClearImage(data.targetImage, &clearValue);
 
     recorder->cmdImageBarrier({data.targetImage, drv::IMAGE_USAGE_COLOR_OUTPUT_WRITE,

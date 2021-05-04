@@ -13,6 +13,9 @@
 
 namespace drv
 {
+template <typename D>
+class DrvCmdBuffer;
+
 class DrvCmdBufferRecorder
 {
  public:
@@ -41,6 +44,24 @@ class DrvCmdBufferRecorder
 
     CommandBufferPtr getCommandBuffer() const { return cmdBufferPtr; }
     drv::ResourceTracker* getResourceTracker() const { return resourceTracker; }
+
+    // should be called on command buffer(s) in order of intended submission, that preceed this buffer
+    // resource states are imported from them
+    template <typename D>
+    void follow(const DrvCmdBuffer<D>& buffer) const {
+        for (uint32_t i = 0; i < buffer.getImageStates()->size(); ++i)
+            updateImageState((*buffer.getImageStates())[i].first,
+                             (*buffer.getImageStates())[i].second);
+    }
+    using ImageStartingState = decltype(ImageTrackingState::subresourceTrackInfo);
+    void registerImage(ImagePtr image, const ImageStartingState& state,
+                       QueueFamilyPtr ownerShip = IGNORE_FAMILY) const;
+    void registerImage(ImagePtr image, ImageLayout layout,
+                       QueueFamilyPtr ownerShip = IGNORE_FAMILY) const;
+    void registerUndefinedImage(ImagePtr image, QueueFamilyPtr ownerShip = IGNORE_FAMILY) const;
+
+    void updateImageState(drv::ImagePtr image,
+                          const DrvCmdBufferRecorder::ImageTrackInfo& state) const;
 
  private:
     std::unique_lock<std::mutex> queueFamilyLock;
@@ -95,15 +116,6 @@ class DrvCmdBuffer
         return cmdBufferPtr;
     }
 
-    // should be called on command buffer(s) in order of intended submission, that preceed this buffer
-    // resource states are imported from them
-    template <typename D2>
-    void follow(const DrvCmdBuffer<D2>& buffer) {
-        for (uint32_t i = 0; i < buffer.getImageStates()->size(); ++i)
-            updateImageState((*buffer.getImageStates())[i].first,
-                             (*buffer.getImageStates())[i].second);
-    }
-
     const DrvCmdBufferRecorder::ImageStates* getImageStates() { return &imageStates; }
 
  protected:
@@ -126,25 +138,6 @@ class DrvCmdBuffer
     DrvCmdBufferRecorder::ImageStates imageStates;
 
     bool needToPrepare = true;
-
-    void updateImageState(drv::ImagePtr image, const DrvCmdBufferRecorder::ImageTrackInfo& state) {
-        for (uint32_t i = 0; i < imageStates.size(); ++i) {
-            if (imageStates[i].first == image) {
-                imageStates[i].second.cmdState.state.trackData = state.cmdState.state.trackData;
-                state.cmdState.usageMask.traverse(
-                  [&, this](uint32_t layer, uint32_t mip, AspectFlagBits aspect) {
-                      imageStates[i].second.cmdState.usageMask.add(layer, mip, aspect);
-                      imageStates[i]
-                        .second.cmdState.state
-                        .subresourceTrackInfo[layer][mip][drv::get_aspect_id(aspect)] =
-                        state.cmdState.state
-                          .subresourceTrackInfo[layer][mip][drv::get_aspect_id(aspect)];
-                  });
-                return;
-            }
-        }
-        imageStates.emplace_back(image, state);
-    }
 };
 
 }  // namespace drv
