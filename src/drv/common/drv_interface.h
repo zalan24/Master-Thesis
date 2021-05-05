@@ -1,11 +1,13 @@
 #pragma once
 
+#include <mutex>
+
+#include <serializable.h>
+
 #include "drvshader.h"
 #include "drvtypes.h"
 #include "drvtypes/drvtracking.hpp"
 #include "hardwareconfig.h"
-
-#include <mutex>
 
 class IWindow;
 
@@ -16,6 +18,30 @@ namespace drv
 {
 class RenderPass;
 class ImageMemoryBarrier;
+
+struct StateTrackingConfig final : public ISerializable
+{
+    enum Verbosity
+    {
+        SILENT_FIXES,
+        DEBUG_ERRORS,
+        ALL_ERRORS
+    };
+#ifdef DEBUG
+    Verbosity verbosity = DEBUG_ERRORS;
+#else
+    Verbosity verbosity = SILENT_FIXES;
+#endif
+    bool immediateBarriers = false;
+    // bool immediateEventBarriers = false;
+    bool forceAllDstStages = false;
+    bool forceAllSrcStages = false;
+    bool forceFlush = false;
+    bool forceInvalidateAll = false;
+    bool syncAllOperations = false;
+    void writeJson(json& out) const override final;
+    void readJson(const json& in) override final;
+};
 
 class IDriver
 {
