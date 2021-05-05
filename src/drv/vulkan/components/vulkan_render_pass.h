@@ -28,22 +28,18 @@ class VulkanRenderPass final : public drv::RenderPass
 
  protected:
     void beginRenderPass(drv::FramebufferPtr frameBuffer, const drv::Rect2D& renderArea,
-                         drv::CommandBufferPtr cmdBuffer,
-                         drv::ResourceTracker* tracker) const override;
-    void endRenderPass(drv::CommandBufferPtr cmdBuffer,
-                       drv::ResourceTracker* tracker) const override;
-    void startNextSubpass(drv::CommandBufferPtr cmdBuffer, drv::ResourceTracker* tracker,
-                          drv::SubpassId id) const override;
-    void clearAttachments(drv::CommandBufferPtr cmdBuffer, drv::ResourceTracker* tracker,
-                          uint32_t attachmentCount, const uint32_t* attachmentId,
-                          const drv::ClearValue* clearValues,
+                         drv::DrvCmdBufferRecorder* cmdBuffer) const override;
+    void endRenderPass(drv::DrvCmdBufferRecorder* cmdBuffer) const override;
+    void startNextSubpass(drv::DrvCmdBufferRecorder* cmdBuffer, drv::SubpassId id) const override;
+    void clearAttachments(drv::DrvCmdBufferRecorder* cmdBuffer, uint32_t attachmentCount,
+                          const uint32_t* attachmentId, const drv::ClearValue* clearValues,
                           const drv::ImageAspectBitType* aspects, uint32_t rectCount,
                           const drv::ClearRect* rects) const override;
-    void bindGraphicsPipeline(drv::CommandBufferPtr cmdBuffer, drv::ResourceTracker* tracker,
+    void bindGraphicsPipeline(drv::DrvCmdBufferRecorder* cmdBuffer,
                               const drv::GraphicsPipelineBindInfo& info) const override;
 
-    void draw(drv::CommandBufferPtr cmdBuffer, drv::ResourceTracker* tracker, uint32_t vertexCount,
-              uint32_t instanceCount, uint32_t firstVertex, uint32_t firstInstance) const override;
+    void draw(drv::DrvCmdBufferRecorder* cmdBuffer, uint32_t vertexCount, uint32_t instanceCount,
+              uint32_t firstVertex, uint32_t firstInstance) const override;
 
     PassBeginData begin(const drv::ClearValue* clearValues) override;
 

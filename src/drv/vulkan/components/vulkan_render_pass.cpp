@@ -311,8 +311,7 @@ void VulkanRenderPass::clear() {
 
 void VulkanRenderPass::beginRenderPass(drv::FramebufferPtr frameBuffer,
                                        const drv::Rect2D& renderArea,
-                                       drv::CommandBufferPtr cmdBuffer,
-                                       drv::ResourceTracker* _tracker) const {
+                                       drv::DrvCmdBufferRecorder* cmdBuffer) const {
     DrvVulkanResourceTracker* tracker = static_cast<DrvVulkanResourceTracker*>(_tracker);
     for (uint32_t i = 0; i < attachments.size(); ++i) {
         // TODO;  // apply starting auto external barriers
@@ -331,6 +330,8 @@ void VulkanRenderPass::beginRenderPass(drv::FramebufferPtr frameBuffer,
           drv::MemoryBarrier::get_write_bits(accessMask) != 0 || transitionLayout, stages,
           accessMask, requiredLayoutMask, true, nullptr, transitionLayout,
           attachments[i].finalLayout);
+        // cmdBuffer->
+        TODO;  // Apply access to new tracker
 
         // TODO;  // apply finishing auto external barriers
     }
@@ -347,12 +348,12 @@ void VulkanRenderPass::beginRenderPass(drv::FramebufferPtr frameBuffer,
     vkCmdBeginRenderPass(convertCommandBuffer(cmdBuffer), &beginInfo, contents);
 }
 
-void VulkanRenderPass::endRenderPass(drv::CommandBufferPtr cmdBuffer, drv::ResourceTracker*) const {
+void VulkanRenderPass::endRenderPass(drv::DrvCmdBufferRecorder* cmdBuffer) const {
     vkCmdEndRenderPass(convertCommandBuffer(cmdBuffer));
 }
 
-void VulkanRenderPass::startNextSubpass(drv::CommandBufferPtr cmdBuffer,
-                                        drv::ResourceTracker* tracker, drv::SubpassId id) const {
+void VulkanRenderPass::startNextSubpass(drv::DrvCmdBufferRecorder* cmdBuffer,
+                                        drv::SubpassId id) const {
     applySync(tracker, id);
     VkSubpassContents contents = VK_SUBPASS_CONTENTS_INLINE;  // TODO
     vkCmdNextSubpass(convertCommandBuffer(cmdBuffer), contents);
@@ -372,7 +373,7 @@ bool DrvVulkan::destroy_framebuffer(drv::LogicalDevicePtr device, drv::Framebuff
     return true;
 }
 
-void VulkanRenderPass::clearAttachments(drv::CommandBufferPtr cmdBuffer, drv::ResourceTracker*,
+void VulkanRenderPass::clearAttachments(drv::DrvCmdBufferRecorder* cmdBuffer,
                                         uint32_t attachmentCount, const uint32_t* attachmentId,
                                         const drv::ClearValue* _clearValues,
                                         const drv::ImageAspectBitType* aspects, uint32_t rectCount,

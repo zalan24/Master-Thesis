@@ -20,11 +20,10 @@ SubpassId RenderPass::createSubpass(SubpassInfo info) {
     return ret;
 }
 
-CmdRenderPass::CmdRenderPass(RenderPass* _renderPass, ResourceTracker* _tracker,
-                             CommandBufferPtr _cmdBuffer, Rect2D _renderArea,
-                             FramebufferPtr _frameBuffer, const drv::ClearValue* clearValues)
-  : tracker(_tracker),
-    cmdBuffer(_cmdBuffer),
+CmdRenderPass::CmdRenderPass(RenderPass* _renderPass, DrvCmdBufferRecorder* _cmdBuffer,
+                             Rect2D _renderArea, FramebufferPtr _frameBuffer,
+                             const drv::ClearValue* clearValues)
+  : cmdBuffer(_cmdBuffer),
     renderPass(_renderPass),
     renderArea(_renderArea),
     frameBuffer(_frameBuffer)

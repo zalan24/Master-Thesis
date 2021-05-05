@@ -4,6 +4,7 @@
 #include <string>
 #include <vector>
 
+#include "drvcmdbuffer.h"
 #include "drvtypes.h"
 
 namespace drv
@@ -58,9 +59,8 @@ struct ShaderHeaderInfo
 class CmdRenderPass
 {
  public:
-    CmdRenderPass(RenderPass* _renderPass, ResourceTracker* _tracker, CommandBufferPtr _cmdBuffer,
-                  Rect2D _renderArea, FramebufferPtr _frameBuffer,
-                  const drv::ClearValue* clearValues);
+    CmdRenderPass(RenderPass* _renderPass, DrvCmdBufferRecorder* cmdBuffer, Rect2D _renderArea,
+                  FramebufferPtr _frameBuffer, const drv::ClearValue* clearValues);
     CmdRenderPass(const CmdRenderPass&) = delete;
     CmdRenderPass& operator=(const CmdRenderPass&) = delete;
     CmdRenderPass(CmdRenderPass&& other);
@@ -87,8 +87,7 @@ class CmdRenderPass
     ~CmdRenderPass();
 
  private:
-    ResourceTracker* tracker = nullptr;
-    CommandBufferPtr cmdBuffer = get_null_ptr<CommandBufferPtr>();
+    DrvCmdBufferRecorder* cmdBuffer = nullptr;
     RenderPass* renderPass = nullptr;
     Rect2D renderArea;
     FramebufferPtr frameBuffer = get_null_ptr<FramebufferPtr>();
@@ -151,18 +150,18 @@ class RenderPass
     std::vector<SubpassInfo> subpasses;
 
     virtual void beginRenderPass(FramebufferPtr frameBuffer, const drv::Rect2D& renderArea,
-                                 CommandBufferPtr cmdBuffer, ResourceTracker* tracker) const = 0;
-    virtual void endRenderPass(CommandBufferPtr cmdBuffer, ResourceTracker* tracker) const = 0;
-    virtual void startNextSubpass(CommandBufferPtr cmdBuffer, ResourceTracker* tracker,
+                                 drv::DrvCmdBufferRecorder* cmdBuffer) const = 0;
+    virtual void endRenderPass(drv::DrvCmdBufferRecorder* cmdBuffer) const = 0;
+    virtual void startNextSubpass(drv::DrvCmdBufferRecorder* cmdBuffer,
                                   drv::SubpassId id) const = 0;
-    virtual void clearAttachments(CommandBufferPtr cmdBuffer, ResourceTracker* tracker,
-                                  uint32_t attachmentCount, const uint32_t* attachmentId,
-                                  const ClearValue* clearValues, const ImageAspectBitType* aspects,
-                                  uint32_t rectCount, const drv::ClearRect* rects) const = 0;
-    virtual void bindGraphicsPipeline(CommandBufferPtr cmdBuffer, ResourceTracker* tracker,
+    virtual void clearAttachments(drv::DrvCmdBufferRecorder* cmdBuffer, uint32_t attachmentCount,
+                                  const uint32_t* attachmentId, const ClearValue* clearValues,
+                                  const ImageAspectBitType* aspects, uint32_t rectCount,
+                                  const drv::ClearRect* rects) const = 0;
+    virtual void bindGraphicsPipeline(drv::DrvCmdBufferRecorder* cmdBuffer,
                                       const GraphicsPipelineBindInfo& info) const = 0;
 
-    virtual void draw(CommandBufferPtr cmdBuffer, ResourceTracker* tracker, uint32_t vertexCount,
+    virtual void draw(drv::DrvCmdBufferRecorder* cmdBuffer, uint32_t vertexCount,
                       uint32_t instanceCount, uint32_t firstVertex,
                       uint32_t firstInstance) const = 0;
 

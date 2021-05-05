@@ -4,12 +4,12 @@
 
 #include <flexiblearray.hpp>
 
-#include <drvbarrier.h>
-#include <drvtypes.h>
-#include <drvtypes/drvresourceptrs.hpp>
-
-#include <drvtypes/drvtracking.hpp>
+#include "drv_interface.h"
 #include "drv_resource_tracker.h"
+#include "drvbarrier.h"
+#include "drvtypes.h"
+#include "drvtypes/drvresourceptrs.hpp"
+#include "drvtypes/drvtracking.hpp"
 
 namespace drv
 {
@@ -29,7 +29,7 @@ class DrvCmdBufferRecorder
     using ImageStates =
       FlexibleArray<std::pair<drv::ImagePtr, ImageTrackInfo>, NUM_CACHED_IMAGE_STATES>;
 
-    DrvCmdBufferRecorder(std::unique_lock<std::mutex>&& queueFamilyLock,
+    DrvCmdBufferRecorder(IDriver* driver, std::unique_lock<std::mutex>&& queueFamilyLock,
                          CommandBufferPtr cmdBufferPtr, drv::ResourceTracker* resourceTracker,
                          ImageStates* imageStates, bool singleTime, bool simultaneousUse);
     DrvCmdBufferRecorder(const DrvCmdBufferRecorder&) = delete;
@@ -64,6 +64,7 @@ class DrvCmdBufferRecorder
                           const DrvCmdBufferRecorder::ImageTrackInfo& state) const;
 
  private:
+    IDriver* driver;
     std::unique_lock<std::mutex> queueFamilyLock;
     CommandBufferPtr cmdBufferPtr;
     drv::ResourceTracker* resourceTracker;

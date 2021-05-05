@@ -2,8 +2,7 @@
 
 #include <logger.h>
 
-#include <drv.h>
-#include <drverror.h>
+#include "drverror.h"
 
 using namespace drv;
 
@@ -30,7 +29,8 @@ using namespace drv;
 // }
 
 DrvCmdBufferRecorder::DrvCmdBufferRecorder(DrvCmdBufferRecorder&& other)
-  : queueFamilyLock(std::move(other.queueFamilyLock)),
+  : driver(other.driver),
+    queueFamilyLock(std::move(other.queueFamilyLock)),
     cmdBufferPtr(other.cmdBufferPtr),
     resourceTracker(other.resourceTracker),
     recordState(std::move(other.recordState)) {
@@ -40,6 +40,7 @@ DrvCmdBufferRecorder::DrvCmdBufferRecorder(DrvCmdBufferRecorder&& other)
 DrvCmdBufferRecorder& DrvCmdBufferRecorder::operator=(DrvCmdBufferRecorder&& other) {
     if (this == &other)
         return *this;
+    driver = other.driver;
     queueFamilyLock = std::move(other.queueFamilyLock);
     cmdBufferPtr = other.cmdBufferPtr;
     resourceTracker = other.resourceTracker;
@@ -61,24 +62,26 @@ void DrvCmdBufferRecorder::close() {
     }
 }
 
-DrvCmdBufferRecorder::DrvCmdBufferRecorder(std::unique_lock<std::mutex>&& _queueFamilyLock,
+DrvCmdBufferRecorder::DrvCmdBufferRecorder(IDriver* _driver,
+                                           std::unique_lock<std::mutex>&& _queueFamilyLock,
                                            CommandBufferPtr _cmdBufferPtr,
                                            drv::ResourceTracker* _resourceTracker,
                                            ImageStates* _imageStates, bool singleTime,
                                            bool simultaneousUse)
-  : queueFamilyLock(std::move(_queueFamilyLock)),
+  : driver(_driver),
+    queueFamilyLock(std::move(_queueFamilyLock)),
     cmdBufferPtr(_cmdBufferPtr),
     resourceTracker(_resourceTracker),
     imageStates(_imageStates),
-    recordState(drv::create_tracking_record_state()) {
+    recordState(driver->create_tracking_record_state()) {
     drv::drv_assert(
       resourceTracker->begin_primary_command_buffer(cmdBufferPtr, singleTime, simultaneousUse));
 }
 
 void DrvCmdBufferRecorder::cmdImageBarrier(const drv::ImageMemoryBarrier& barrier) const {
     resourceTracker->cmd_image_barrier(cmdBufferPtr, barrier);
-    cmd_image_barrier(recordState.get(), getImageState(barrier.image).cmdState, cmdBufferPtr,
-                      barrier);
+    driver->cmd_image_barrier(recordState.get(), getImageState(barrier.image).cmdState,
+                              cmdBufferPtr, barrier);
 }
 
 void DrvCmdBufferRecorder::cmdClearImage(
@@ -95,8 +98,8 @@ void DrvCmdBufferRecorder::cmdClearImage(
         subresourceRanges = &defVal;
     }
     resourceTracker->cmd_clear_image(cmdBufferPtr, image, clearColors, ranges, subresourceRanges);
-    cmd_clear_image(recordState.get(), getImageState(image).cmdState, cmdBufferPtr, image,
-                    clearColors, ranges, subresourceRanges);
+    driver->cmd_clear_image(recordState.get(), getImageState(image).cmdState, cmdBufferPtr, image,
+                            clearColors, ranges, subresourceRanges);
 }
 
 DrvCmdBufferRecorder::ImageTrackInfo& DrvCmdBufferRecorder::getImageState(
