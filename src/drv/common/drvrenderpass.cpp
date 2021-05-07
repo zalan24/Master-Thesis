@@ -44,12 +44,12 @@ void CmdRenderPass::beginSubpass(SubpassId id) {
     if (id == 0) {
         drv::drv_assert(currentPass == INVALID_SUBPASS,
                         "Subpasses need to be executed in order of declaration");
-        renderPass->beginRenderPass(frameBuffer, renderArea, cmdBuffer, tracker);
+        renderPass->beginRenderPass(frameBuffer, renderArea, cmdBuffer);
     }
     else {
         drv::drv_assert(currentPass + 1 == id,
                         "Subpasses need to be executed in order of declaration");
-        renderPass->startNextSubpass(cmdBuffer, tracker, id);
+        renderPass->startNextSubpass(cmdBuffer, id);
     }
     currentPass = id;
 }
@@ -58,7 +58,7 @@ void CmdRenderPass::end() {
     if (!ended) {
         ended = true;
         drv::drv_assert(currentPass + 1 == subpassCount, "Not all subpasses were executed");
-        renderPass->endRenderPass(cmdBuffer, tracker);
+        renderPass->endRenderPass(cmdBuffer);
     }
 }
 
@@ -96,18 +96,17 @@ void CmdRenderPass::clearColorAttachment(AttachmentId attachment, ClearColorValu
     ClearValue clearValue;
     clearValue.type = clearValue.COLOR;
     clearValue.value.color = value;
-    renderPass->clearAttachments(cmdBuffer, tracker, 1, &id, &clearValue, &aspect, rectCount,
-                                 rects);
+    renderPass->clearAttachments(cmdBuffer, 1, &id, &clearValue, &aspect, rectCount, rects);
 }
 
 void CmdRenderPass::bindGraphicsPipeline(const GraphicsPipelineBindInfo& info) {
     if (currentPipeline == info)
         return;
     currentPipeline = info;
-    renderPass->bindGraphicsPipeline(cmdBuffer, tracker, info);
+    renderPass->bindGraphicsPipeline(cmdBuffer, info);
 }
 
 void CmdRenderPass::draw(uint32_t vertexCount, uint32_t instanceCount, uint32_t firstVertex,
                          uint32_t firstInstance) {
-    renderPass->draw(cmdBuffer, tracker, vertexCount, instanceCount, firstVertex, firstInstance);
+    renderPass->draw(cmdBuffer, vertexCount, instanceCount, firstVertex, firstInstance);
 }

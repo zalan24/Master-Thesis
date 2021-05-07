@@ -31,7 +31,8 @@ enum class Driver : DriverIndex
 class RenderPass;
 
 // Registers the first available driver on the list
-bool init(const Driver* drivers, unsigned int count);
+bool init(const drv::StateTrackingConfig& trackingConfig, const Driver* drivers,
+          unsigned int count);
 bool close();
 
 std::unique_ptr<ResourceTracker> create_resource_tracker(QueuePtr queue,
@@ -182,11 +183,13 @@ uint32_t get_num_trackers();
 ShaderModulePtr create_shader_module(LogicalDevicePtr device, const ShaderCreateInfo* info);
 bool destroy_shader_module(LogicalDevicePtr device, ShaderModulePtr module);
 
-std::unique_ptr<CmdTrackingRecordState> create_tracking_record_state();
-PipelineStages cmd_image_barrier(drv::CmdTrackingRecordState *recordState, CmdImageTrackingState& state, CommandBufferPtr cmdBuffer,
-                                 const ImageMemoryBarrier& barrier);
-void cmd_clear_image(drv::CmdTrackingRecordState *recordState, CmdImageTrackingState& state, CommandBufferPtr cmdBuffer, ImagePtr image,
-                     const ClearColorValue* clearColors, uint32_t ranges,
-                     const ImageSubresourceRange* subresourceRanges);
+// std::unique_ptr<CmdTrackingRecordState> create_tracking_record_state();
+// PipelineStages cmd_image_barrier(drv::CmdTrackingRecordState *recordState, CmdImageTrackingState& state, CommandBufferPtr cmdBuffer,
+//                                  const ImageMemoryBarrier& barrier);
+// void cmd_clear_image(drv::CmdTrackingRecordState *recordState, CmdImageTrackingState& state, CommandBufferPtr cmdBuffer, ImagePtr image,
+//                      const ClearColorValue* clearColors, uint32_t ranges,
+//                      const ImageSubresourceRange* subresourceRanges);
+std::unique_ptr<DrvCmdBufferRecorder> create_cmd_buffer_recorder(LogicalDevicePtr device,
+                                                                 CommandBufferPtr cmdBufferPtr);
 
 };  // namespace drv

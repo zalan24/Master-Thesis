@@ -312,7 +312,8 @@ void VulkanRenderPass::clear() {
 void VulkanRenderPass::beginRenderPass(drv::FramebufferPtr frameBuffer,
                                        const drv::Rect2D& renderArea,
                                        drv::DrvCmdBufferRecorder* cmdBuffer) const {
-    DrvVulkanResourceTracker* tracker = static_cast<DrvVulkanResourceTracker*>(_tracker);
+    DrvVulkanResourceTracker* tracker =
+      static_cast<DrvVulkanResourceTracker*>(cmdBuffer->getResourceTracker());
     for (uint32_t i = 0; i < attachments.size(); ++i) {
         // TODO;  // apply starting auto external barriers
 
@@ -325,13 +326,14 @@ void VulkanRenderPass::beginRenderPass(drv::FramebufferPtr frameBuffer,
             ? drv::get_all_layouts_mask()
             : static_cast<drv::ImageLayoutMask>(attachments[i].initialLayout);
         tracker->add_memory_access(
-          cmdBuffer, attachmentImages[i].image, 1, &attachmentImages[i].subresource,
-          drv::MemoryBarrier::get_read_bits(accessMask) != 0,
+          cmdBuffer->getCommandBuffer(), attachmentImages[i].image, 1,
+          &attachmentImages[i].subresource, drv::MemoryBarrier::get_read_bits(accessMask) != 0,
           drv::MemoryBarrier::get_write_bits(accessMask) != 0 || transitionLayout, stages,
           accessMask, requiredLayoutMask, true, nullptr, transitionLayout,
           attachments[i].finalLayout);
-        // cmdBuffer->
-        TODO;  // Apply access to new tracker
+        static_cast<VulkanCmdBufferRecorder*>(cmdBuffer)->cmdUseAsAttachment(
+          attachmentImages[i].image, attachmentImages[i].subresource, globalAttachmentUsages[i],
+          attachments[i].initialLayout, attachments[i].finalLayout);
 
         // TODO;  // apply finishing auto external barriers
     }
@@ -345,18 +347,18 @@ void VulkanRenderPass::beginRenderPass(drv::FramebufferPtr frameBuffer,
     beginInfo.clearValueCount = uint32_t(clearValues.size());
     beginInfo.pClearValues = clearValues.data();
     VkSubpassContents contents = VK_SUBPASS_CONTENTS_INLINE;  // TODO
-    vkCmdBeginRenderPass(convertCommandBuffer(cmdBuffer), &beginInfo, contents);
+    vkCmdBeginRenderPass(convertCommandBuffer(cmdBuffer->getCommandBuffer()), &beginInfo, contents);
 }
 
 void VulkanRenderPass::endRenderPass(drv::DrvCmdBufferRecorder* cmdBuffer) const {
-    vkCmdEndRenderPass(convertCommandBuffer(cmdBuffer));
+    vkCmdEndRenderPass(convertCommandBuffer(cmdBuffer->getCommandBuffer()));
 }
 
 void VulkanRenderPass::startNextSubpass(drv::DrvCmdBufferRecorder* cmdBuffer,
                                         drv::SubpassId id) const {
-    applySync(tracker, id);
+    applySync(cmdBuffer->getResourceTracker(), id);
     VkSubpassContents contents = VK_SUBPASS_CONTENTS_INLINE;  // TODO
-    vkCmdNextSubpass(convertCommandBuffer(cmdBuffer), contents);
+    vkCmdNextSubpass(convertCommandBuffer(cmdBuffer->getCommandBuffer()), contents);
 }
 
 void VulkanRenderPass::applySync(drv::ResourceTracker* tracker, drv::SubpassId id) const {
@@ -387,20 +389,21 @@ void VulkanRenderPass::clearAttachments(drv::DrvCmdBufferRecorder* cmdBuffer,
     }
     for (uint32_t i = 0; i < rectCount; ++i)
         vkRects[i] = convertClearRect(rects[i]);
-    vkCmdClearAttachments(convertCommandBuffer(cmdBuffer), attachmentCount, vkAttachments,
-                          rectCount, vkRects);
+    vkCmdClearAttachments(convertCommandBuffer(cmdBuffer->getCommandBuffer()), attachmentCount,
+                          vkAttachments, rectCount, vkRects);
 }
 
-void VulkanRenderPass::bindGraphicsPipeline(drv::CommandBufferPtr cmdBuffer, drv::ResourceTracker*,
+void VulkanRenderPass::bindGraphicsPipeline(drv::DrvCmdBufferRecorder* cmdBuffer,
                                             const drv::GraphicsPipelineBindInfo& info) const {
     const VulkanShader* shader = static_cast<const VulkanShader*>(info.shader);
-    vkCmdBindPipeline(convertCommandBuffer(cmdBuffer), VK_PIPELINE_BIND_POINT_GRAPHICS,
+    vkCmdBindPipeline(convertCommandBuffer(cmdBuffer->getCommandBuffer()),
+                      VK_PIPELINE_BIND_POINT_GRAPHICS,
                       shader->getGraphicsPipeline(info.pipelineId));
 }
 
-void VulkanRenderPass::draw(drv::CommandBufferPtr cmdBuffer, drv::ResourceTracker*,
-                            uint32_t vertexCount, uint32_t instanceCount, uint32_t firstVertex,
+void VulkanRenderPass::draw(drv::DrvCmdBufferRecorder* cmdBuffer, uint32_t vertexCount,
+                            uint32_t instanceCount, uint32_t firstVertex,
                             uint32_t firstInstance) const {
-    vkCmdDraw(convertCommandBuffer(cmdBuffer), vertexCount, instanceCount, firstVertex,
-              firstInstance);
+    vkCmdDraw(convertCommandBuffer(cmdBuffer->getCommandBuffer()), vertexCount, instanceCount,
+              firstVertex, firstInstance);
 }

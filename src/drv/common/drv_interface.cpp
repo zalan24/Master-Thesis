@@ -1,5 +1,7 @@
 #include "drv_interface.h"
 
+#include <utility>
+
 using namespace drv;
 
 const static std::pair<StateTrackingConfig::Verbosity, const char*> verbosityNames[] = {
@@ -18,7 +20,7 @@ void StateTrackingConfig::writeJson(json& out) const {
 }
 
 void StateTrackingConfig::readJson(const json& in) {
-    Config defaultConfig;
+    StateTrackingConfig defaultConfig;
     READ_ENUM_OPT(verbosity, in, defaultConfig.verbosity, verbosityNames);
     READ_OBJECT_OPT(immediateBarriers, in, defaultConfig.immediateBarriers);
     // READ_OBJECT_OPT(immediateEventBarriers, in, defaultConfig.immediateEventBarriers);

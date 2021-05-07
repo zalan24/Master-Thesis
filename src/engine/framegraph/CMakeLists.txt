@@ -11,6 +11,6 @@ target_link_libraries(EngineFramegraph PUBLIC
     concurrent_queue_external
     AnimationsDrv
     AnimationsEventPool
-    AnimationsDataStructures
+    CoreDataStructures
     boost_align_external
 )

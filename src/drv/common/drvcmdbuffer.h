@@ -4,7 +4,6 @@
 
 #include <flexiblearray.hpp>
 
-#include "drv_interface.h"
 #include "drv_resource_tracker.h"
 #include "drvbarrier.h"
 #include "drvtypes.h"
@@ -15,6 +14,8 @@ namespace drv
 {
 template <typename D>
 class DrvCmdBuffer;
+
+class IDriver;
 
 class DrvCmdBufferRecorder
 {
@@ -29,21 +30,21 @@ class DrvCmdBufferRecorder
     using ImageStates =
       FlexibleArray<std::pair<drv::ImagePtr, ImageTrackInfo>, NUM_CACHED_IMAGE_STATES>;
 
-    DrvCmdBufferRecorder(IDriver* driver, std::unique_lock<std::mutex>&& queueFamilyLock,
+    DrvCmdBufferRecorder(IDriver* driver, LogicalDevicePtr device, drv::QueueFamilyPtr family,
                          CommandBufferPtr cmdBufferPtr, drv::ResourceTracker* resourceTracker,
                          ImageStates* imageStates, bool singleTime, bool simultaneousUse);
     DrvCmdBufferRecorder(const DrvCmdBufferRecorder&) = delete;
     DrvCmdBufferRecorder& operator=(const DrvCmdBufferRecorder&) = delete;
-    DrvCmdBufferRecorder(DrvCmdBufferRecorder&&);
-    DrvCmdBufferRecorder& operator=(DrvCmdBufferRecorder&&);
-    ~DrvCmdBufferRecorder();
+    virtual ~DrvCmdBufferRecorder();
 
-    void cmdImageBarrier(const ImageMemoryBarrier& barrier) const;
-    void cmdClearImage(ImagePtr image, const ClearColorValue* clearColors, uint32_t ranges = 0,
-                       const ImageSubresourceRange* subresourceRanges = nullptr) const;
+    virtual void cmdImageBarrier(const ImageMemoryBarrier& barrier) = 0;
+    virtual void cmdClearImage(ImagePtr image, const ClearColorValue* clearColors,
+                               uint32_t ranges = 0,
+                               const ImageSubresourceRange* subresourceRanges = nullptr) = 0;
 
     CommandBufferPtr getCommandBuffer() const { return cmdBufferPtr; }
     drv::ResourceTracker* getResourceTracker() const { return resourceTracker; }
+    drv::QueueFamilyPtr getFamily() const { return family; }
 
     // should be called on command buffer(s) in order of intended submission, that preceed this buffer
     // resource states are imported from them
@@ -63,17 +64,17 @@ class DrvCmdBufferRecorder
     void updateImageState(drv::ImagePtr image,
                           const DrvCmdBufferRecorder::ImageTrackInfo& state) const;
 
- private:
+ protected:
+    ImageTrackInfo& getImageState(drv::ImagePtr image) const;
+
     IDriver* driver;
+
+ private:
+    drv::QueueFamilyPtr family;
     std::unique_lock<std::mutex> queueFamilyLock;
     CommandBufferPtr cmdBufferPtr;
     drv::ResourceTracker* resourceTracker;
     ImageStates* imageStates;
-    std::unique_ptr<drv::CmdTrackingRecordState> recordState;
-
-    void close();
-
-    ImageTrackInfo& getImageState(drv::ImagePtr image) const;
 };
 
 template <typename D>
@@ -103,10 +104,13 @@ class DrvCmdBuffer
             imageStates.resize(0);
             cmdBufferPtr = acquireCommandBuffer();
             currentData = std::move(d);
-            DrvCmdBufferRecorder recorder(drv::lock_queue_family(device, queueFamily), cmdBufferPtr,
-                                          resourceTracker, &imageStates, isSingleTimeBuffer(),
-                                          isSimultaneous());
-            recordCallback(currentData, &recorder);
+            // TODO use allocator?
+            // StackMemory::MemoryHandle<VkImageMemoryBarrier> vkImageBarriers(maxImageSubresCount, TEMPMEM);
+            std::unique_ptr<DrvCmdBufferRecorder> = create_cmd_buffer_recorder();
+            // DrvCmdBufferRecorder recorder(drv::lock_queue_family(device, queueFamily), cmdBufferPtr,
+            //                               resourceTracker, &imageStates, isSingleTimeBuffer(),
+            //                               isSimultaneous());
+            recordCallback(currentData, recorder.get());
         }
         needToPrepare = false;
     }

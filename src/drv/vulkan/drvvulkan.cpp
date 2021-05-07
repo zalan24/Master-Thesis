@@ -738,17 +738,8 @@ void DrvVulkanResourceTracker::invalidate(InvalidationLevel level, const char* m
     }
 }
 
-VulkanTrackingRecordState::VulkanTrackingRecordState(
-  DrvVulkan* _driver, drv::PhysicalDevicePtr physicalDevice,
-  const drv::StateTrackingConfig* _trackingConfig, drv::QueueFamilyPtr family)
-  : driver(_driver),
-    queueFamily(family),
-    trackingConfig(_trackingConfig),
-    queueSupport(driver->get_command_type_mask(physicalDevice, family)) {
-}
-
-bool VulkanTrackingRecordState::matches(const BarrierInfo& barrier0,
-                                        const BarrierInfo& barrier1) const {
+bool VulkanCmdBufferRecorder::matches(const BarrierInfo& barrier0,
+                                      const BarrierInfo& barrier1) const {
     const drv::PipelineStages::FlagType src0 = barrier0.srcStages.resolve(queueSupport);
     const drv::PipelineStages::FlagType src1 = barrier1.srcStages.resolve(queueSupport);
     const drv::PipelineStages::FlagType dst0 = barrier0.dstStages.resolve(queueSupport);
@@ -756,8 +747,8 @@ bool VulkanTrackingRecordState::matches(const BarrierInfo& barrier0,
     return src0 == src1 && dst0 == dst1;  // && barrier0.event == barrier1.event;
 }
 
-bool VulkanTrackingRecordState::swappable(const BarrierInfo& barrier0,
-                                          const BarrierInfo& barrier1) const {
+bool VulkanCmdBufferRecorder::swappable(const BarrierInfo& barrier0,
+                                        const BarrierInfo& barrier1) const {
     // if (!drv::is_null_ptr(barrier0.event) && !drv::is_null_ptr(barrier1.event))
     //     return true;
     // if (!drv::is_null_ptr(barrier1.event))
@@ -772,8 +763,8 @@ bool VulkanTrackingRecordState::swappable(const BarrierInfo& barrier0,
                 == 0;
 }
 
-bool VulkanTrackingRecordState::requireFlush(const BarrierInfo& barrier0,
-                                             const BarrierInfo& barrier1) const {
+bool VulkanCmdBufferRecorder::requireFlush(const BarrierInfo& barrier0,
+                                           const BarrierInfo& barrier1) const {
     if (swappable(barrier0, barrier1))
         return false;
     uint32_t i = 0;
@@ -792,7 +783,7 @@ bool VulkanTrackingRecordState::requireFlush(const BarrierInfo& barrier0,
     return false;
 }
 
-bool VulkanTrackingRecordState::merge(BarrierInfo& barrier0, BarrierInfo& barrier) const {
+bool VulkanCmdBufferRecorder::merge(BarrierInfo& barrier0, BarrierInfo& barrier) const {
     if (!matches(barrier0, barrier))
         return false;
     if ((barrier0.dstStages.resolve(queueSupport) & barrier.srcStages.resolve(queueSupport)) == 0)
@@ -871,8 +862,7 @@ bool VulkanTrackingRecordState::merge(BarrierInfo& barrier0, BarrierInfo& barrie
     return true;
 }
 
-void VulkanTrackingRecordState::flushBarrier(drv::CommandBufferPtr cmdBuffer,
-                                             BarrierInfo& barrier) {
+void VulkanCmdBufferRecorder::flushBarrier(BarrierInfo& barrier) {
     if (barrier.dstStages.stageFlags == 0)
         return;
     if (barrier.srcStages.stageFlags == 0)
@@ -1054,9 +1044,8 @@ void VulkanTrackingRecordState::flushBarrier(drv::CommandBufferPtr cmdBuffer,
     barrier.numImageRanges = 0;
 }
 
-void VulkanTrackingRecordState::flushBarriersFor(
-  drv::CommandBufferPtr cmdBuffer, drv::ImagePtr _image, uint32_t numSubresourceRanges,
-  const drv::ImageSubresourceRange* subresourceRange) {
+void VulkanCmdBufferRecorder::flushBarriersFor(drv::ImagePtr _image, uint32_t numSubresourceRanges,
+                                               const drv::ImageSubresourceRange* subresourceRange) {
     drv_vulkan::Image* image = convertImage(_image);
     drv::ImageSubresourceSet subresources;
     for (uint32_t i = 0; i < numSubresourceRanges; ++i)
@@ -1066,17 +1055,16 @@ void VulkanTrackingRecordState::flushBarriersFor(
             continue;
         for (uint32_t j = 0; j < barriers[i].numImageRanges; ++j) {
             if (barriers[i].imageBarriers[i].subresourceSet.overlap(subresources)) {
-                flushBarrier(cmdBuffer, barriers[i]);
+                flushBarrier(barriers[i]);
                 break;
             }
         }
     }
 }
 
-void VulkanTrackingRecordState::appendBarrier(drv::CommandBufferPtr cmdBuffer,
-                                              drv::PipelineStages srcStage,
-                                              drv::PipelineStages dstStage,
-                                              ImageSingleSubresourceMemoryBarrier&& imageBarrier) {
+void VulkanCmdBufferRecorder::appendBarrier(drv::PipelineStages srcStage,
+                                            drv::PipelineStages dstStage,
+                                            ImageSingleSubresourceMemoryBarrier&& imageBarrier) {
     if (!(srcStage.resolve(queueSupport) & (~drv::PipelineStages::TOP_OF_PIPE_BIT))
         && dstStage.stageFlags == 0) {
         drv::drv_assert(imageBarrier.dstAccessFlags == 0
@@ -1091,13 +1079,12 @@ void VulkanTrackingRecordState::appendBarrier(drv::CommandBufferPtr cmdBuffer,
     barrier.subresourceSet.add(imageBarrier.layer, imageBarrier.mipLevel, imageBarrier.aspect);
     barrier.oldLayout = imageBarrier.oldLayout;
     barrier.newLayout = imageBarrier.newLayout;
-    appendBarrier(cmdBuffer, srcStage, dstStage, std::move(barrier));
+    appendBarrier(srcStage, dstStage, std::move(barrier));
 }
 
-void VulkanTrackingRecordState::appendBarrier(drv::CommandBufferPtr cmdBuffer,
-                                              drv::PipelineStages srcStage,
-                                              drv::PipelineStages dstStage,
-                                              ImageMemoryBarrier&& imageBarrier) {
+void VulkanCmdBufferRecorder::appendBarrier(drv::PipelineStages srcStage,
+                                            drv::PipelineStages dstStage,
+                                            ImageMemoryBarrier&& imageBarrier) {
     if (!(srcStage.resolve(queueSupport) & (~drv::PipelineStages::TOP_OF_PIPE_BIT))
         && dstStage.stageFlags == 0) {
         drv::drv_assert(imageBarrier.dstAccessFlags == 0
@@ -1143,14 +1130,14 @@ void VulkanTrackingRecordState::appendBarrier(drv::CommandBufferPtr cmdBuffer,
                 // if no event is in original barrier, better keep the order
                 // otherwise manually placed barriers could lose effectivity
                 freeSpot = i;
-                flushBarrier(cmdBuffer, barriers[i]);
+                flushBarrier(barriers[i]);
             }
         }
         if (!placed) {
             // Currently only the fixed portion of barriers is used
             if (freeSpot >= barriers.size() && barriers.size() >= barriers.fixedSize()) {
                 freeSpot = 0;
-                flushBarrier(cmdBuffer, barriers[0]);
+                flushBarrier(barriers[0]);
             }
             if (freeSpot < barriers.size()) {
                 barriers[freeSpot] = std::move(barrier);
@@ -1171,21 +1158,21 @@ void VulkanTrackingRecordState::appendBarrier(drv::CommandBufferPtr cmdBuffer,
           barriers[lastBarrier].srcStages.resolve(queueSupport) == srcStage.resolve(queueSupport)
           && barriers[lastBarrier].dstStages.resolve(queueSupport) == dstStage.resolve(queueSupport)
           /*&& barriers[lastBarrier].event == event*/);
-        flushBarrier(cmdBuffer, barriers[lastBarrier]);
+        flushBarrier(barriers[lastBarrier]);
     }
 }
 
-void DrvVulkan::invalidate(InvalidationLevel level, const char* message) const {
+void VulkanCmdBufferRecorder::invalidate(InvalidationLevel level, const char* message) const {
     switch (level) {
         case SUBOPTIMAL:
-            if (trackingConfig.verbosity == drv::StateTrackingConfig::DEBUG_ERRORS) {
+            if (trackingConfig->verbosity == drv::StateTrackingConfig::DEBUG_ERRORS) {
                 LOG_F(WARNING, "Suboptimal barrier usage: %s", message);
             }
-            else if (trackingConfig.verbosity == drv::StateTrackingConfig::ALL_ERRORS)
+            else if (trackingConfig->verbosity == drv::StateTrackingConfig::ALL_ERRORS)
                 drv::drv_assert(false, message);
             break;
         case BAD_USAGE:
-            if (trackingConfig.verbosity == drv::StateTrackingConfig::SILENT_FIXES) {
+            if (trackingConfig->verbosity == drv::StateTrackingConfig::SILENT_FIXES) {
                 LOG_F(WARNING, "Bad barrier usage: %s", message);
             }
             else
@@ -1197,12 +1184,11 @@ void DrvVulkan::invalidate(InvalidationLevel level, const char* message) const {
     }
 }
 
-void DrvVulkan::validate_memory_access(
-  drv::CmdTrackingRecordState* recordState, drv::PerResourceTrackData& resourceData,
-  drv::PerSubresourceRangeTrackData& subresourceData, bool read, bool write, bool sharedRes,
-  drv::PipelineStages stages, drv::MemoryBarrier::AccessFlagBitType accessMask,
-  drv::PipelineStages& barrierSrcStage, drv::PipelineStages& barrierDstStage,
-  VulkanTrackingRecordState::ResourceBarrier& barrier) {
+void VulkanCmdBufferRecorder::validate_memory_access(
+  drv::PerResourceTrackData& resourceData, drv::PerSubresourceRangeTrackData& subresourceData,
+  bool read, bool write, bool sharedRes, drv::PipelineStages stages,
+  drv::MemoryBarrier::AccessFlagBitType accessMask, drv::PipelineStages& barrierSrcStage,
+  drv::PipelineStages& barrierDstStage, VulkanCmdBufferRecorder::ResourceBarrier& barrier) {
     accessMask = drv::MemoryBarrier::resolve(accessMask);
 
     drv::QueueFamilyPtr transferOwnership = drv::IGNORE_FAMILY;
@@ -1210,16 +1196,14 @@ void DrvVulkan::validate_memory_access(
     bool flush = false;
     bool needWait = 0;
 
-    drv::QueueFamilyPtr currentFamily =
-      static_cast<VulkanTrackingRecordState*>(recordState)->getFamily();
+    drv::QueueFamilyPtr currentFamily = getFamily();
     if (!sharedRes && resourceData.ownership != currentFamily
         && resourceData.ownership != drv::IGNORE_FAMILY) {
         invalidate(SUBOPTIMAL,
                    "Resource has exclusive usage and it's owned by a different queue family");
         transferOwnership = currentFamily;
     }
-    drv::PipelineStages::FlagType currentStages =
-      stages.resolve(static_cast<VulkanTrackingRecordState*>(recordState)->getQueueSupport());
+    drv::PipelineStages::FlagType currentStages = stages.resolve(getQueueSupport());
     if (subresourceData.ongoingWrites != 0) {
         invalidate(SUBOPTIMAL, "Earlier writes need to be synced with a new access");
         needWait = true;
@@ -1246,21 +1230,18 @@ void DrvVulkan::validate_memory_access(
         needWait = true;
     }
     if (invalidateMask != 0 || transferOwnership != drv::IGNORE_FAMILY || needWait)
-        add_memory_sync(recordState, resourceData, subresourceData, flush, stages, accessMask,
+        add_memory_sync(resourceData, subresourceData, flush, stages, accessMask,
                         transferOwnership != drv::IGNORE_FAMILY, transferOwnership, barrierSrcStage,
                         barrierDstStage, barrier);
 }
 
-void DrvVulkan::add_memory_access(drv::CmdTrackingRecordState* recordState,
-                                  drv::PerResourceTrackData& resourceData,
-                                  drv::PerSubresourceRangeTrackData& subresourceData, bool read,
-                                  bool write, drv::PipelineStages stages,
-                                  drv::MemoryBarrier::AccessFlagBitType accessMask) {
+void VulkanCmdBufferRecorder::add_memory_access(drv::PerResourceTrackData& resourceData,
+                                                drv::PerSubresourceRangeTrackData& subresourceData,
+                                                bool read, bool write, drv::PipelineStages stages,
+                                                drv::MemoryBarrier::AccessFlagBitType accessMask) {
     accessMask = drv::MemoryBarrier::resolve(accessMask);
-    drv::QueueFamilyPtr currentFamily =
-      static_cast<VulkanTrackingRecordState*>(recordState)->getFamily();
-    drv::PipelineStages::FlagType currentStages =
-      stages.resolve(static_cast<VulkanTrackingRecordState*>(recordState)->getQueueSupport());
+    drv::QueueFamilyPtr currentFamily = getFamily();
+    drv::PipelineStages::FlagType currentStages = stages.resolve(getQueueSupport());
     const drv::PipelineStages::FlagType requiredAndUsable =
       subresourceData.usableStages & currentStages;
     drv::drv_assert(requiredAndUsable == currentStages);
@@ -1276,17 +1257,15 @@ void DrvVulkan::add_memory_access(drv::CmdTrackingRecordState* recordState,
     resourceData.ownership = currentFamily;
 }
 
-void DrvVulkan::add_memory_sync(
-  drv::CmdTrackingRecordState* recordState, drv::PerResourceTrackData& resourceData,
-  drv::PerSubresourceRangeTrackData& subresourceData, bool flush, drv::PipelineStages dstStages,
-  drv::MemoryBarrier::AccessFlagBitType accessMask, bool transferOwnership,
-  drv::QueueFamilyPtr newOwner, drv::PipelineStages& barrierSrcStage,
-  drv::PipelineStages& barrierDstStage, VulkanTrackingRecordState::ResourceBarrier& barrier) {
-    const drv::PipelineStages::FlagType stages =
-      dstStages.resolve(static_cast<VulkanTrackingRecordState*>(recordState)->getQueueSupport());
-    if (trackingConfig.forceInvalidateAll)
+void VulkanCmdBufferRecorder::add_memory_sync(
+  drv::PerResourceTrackData& resourceData, drv::PerSubresourceRangeTrackData& subresourceData,
+  bool flush, drv::PipelineStages dstStages, drv::MemoryBarrier::AccessFlagBitType accessMask,
+  bool transferOwnership, drv::QueueFamilyPtr newOwner, drv::PipelineStages& barrierSrcStage,
+  drv::PipelineStages& barrierDstStage, VulkanCmdBufferRecorder::ResourceBarrier& barrier) {
+    const drv::PipelineStages::FlagType stages = dstStages.resolve(getQueueSupport());
+    if (trackingConfig->forceInvalidateAll)
         accessMask = drv::MemoryBarrier::get_all_read_bits();
-    if (trackingConfig.syncAllOperations) {
+    if (trackingConfig->syncAllOperations) {
         barrierDstStage.add(drv::PipelineStages::ALL_COMMANDS_BIT);
         barrierSrcStage.add(drv::PipelineStages::ALL_COMMANDS_BIT);
     }
@@ -1300,7 +1279,7 @@ void DrvVulkan::add_memory_sync(
         }
         resourceData.ownership = newOwner;
     }
-    if ((trackingConfig.forceFlush || flush) && subresourceData.dirtyMask != 0) {
+    if ((trackingConfig->forceFlush || flush) && subresourceData.dirtyMask != 0) {
         barrierDstStage.add(dstStages);
         barrierSrcStage.add(subresourceData.ongoingWrites | subresourceData.ongoingReads
                             | drv::PipelineStages::TOP_OF_PIPE_BIT);
@@ -1317,10 +1296,8 @@ void DrvVulkan::add_memory_sync(
         if (subresourceData.ongoingWrites | subresourceData.ongoingReads)
             barrierSrcStage.add(subresourceData.ongoingWrites | subresourceData.ongoingReads);
         else
-            barrierSrcStage.add(
-              drv::PipelineStages(subresourceData.usableStages)
-                .getEarliestStage(
-                  static_cast<VulkanTrackingRecordState*>(recordState)->getQueueSupport()));
+            barrierSrcStage.add(drv::PipelineStages(subresourceData.usableStages)
+                                  .getEarliestStage(getQueueSupport()));
         barrierDstStage.add(dstStages);
         barrier.dstAccessFlags |= missingVisibility;
         subresourceData.usableStages = stages;
@@ -1332,10 +1309,8 @@ void DrvVulkan::add_memory_sync(
         if (subresourceData.ongoingWrites | subresourceData.ongoingReads)
             barrierSrcStage.add(subresourceData.ongoingWrites | subresourceData.ongoingReads);
         else
-            barrierSrcStage.add(
-              drv::PipelineStages(subresourceData.usableStages)
-                .getEarliestStage(
-                  static_cast<VulkanTrackingRecordState*>(recordState)->getQueueSupport()));
+            barrierSrcStage.add(drv::PipelineStages(subresourceData.usableStages)
+                                  .getEarliestStage(getQueueSupport()));
         barrierDstStage.add(missingUsability);
         subresourceData.usableStages |= missingUsability;
     }

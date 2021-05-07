@@ -30,14 +30,15 @@ static drv::IDriver* current_driver_interface = nullptr;
 //     shaderLoaders = _shaderLoaders;
 // }
 
-bool drv::init(const Driver* drivers, unsigned int count) {
+bool drv::init(const drv::StateTrackingConfig& trackingConfig, const Driver* drivers,
+               unsigned int count) {
     assert(current_driver_interface == nullptr);
     for (unsigned int i = 0; i < count; ++i) {
         current_driver = drivers[i];
         switch (drivers[i]) {
             case Driver::VULKAN:
 #ifdef DRIVER_VULKAN
-                current_driver_interface = new DrvVulkan();
+                current_driver_interface = new DrvVulkan(trackingConfig);
 #endif
                 break;
             case Driver::NUM_PLATFORMS:
@@ -435,22 +436,4 @@ drv::TextureInfo drv::get_texture_info(drv::ImagePtr image) {
 
 bool drv::destroy_framebuffer(LogicalDevicePtr device, FramebufferPtr frameBuffer) {
     return current_driver_interface->destroy_framebuffer(device, frameBuffer);
-}
-
-std::unique_ptr<drv::CmdTrackingRecordState> drv::create_tracking_record_state() {
-    return current_driver_interface->create_tracking_record_state();
-}
-
-drv::PipelineStages drv::cmd_image_barrier(drv::CmdTrackingRecordState* recordState,
-                                           CmdImageTrackingState& state, CommandBufferPtr cmdBuffer,
-                                           const ImageMemoryBarrier& barrier) {
-    return current_driver_interface->cmd_image_barrier(recordState, state, cmdBuffer, barrier);
-}
-
-void drv::cmd_clear_image(drv::CmdTrackingRecordState* recordState, CmdImageTrackingState& state,
-                          CommandBufferPtr cmdBuffer, ImagePtr image,
-                          const ClearColorValue* clearColors, uint32_t ranges,
-                          const ImageSubresourceRange* subresourceRanges) {
-    return current_driver_interface->cmd_clear_image(recordState, state, cmdBuffer, image,
-                                                     clearColors, ranges, subresourceRanges);
 }

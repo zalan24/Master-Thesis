@@ -41,9 +41,4 @@ struct CmdImageTrackingState
     ImageTrackingState state;
     ImageSubresourceSet usageMask;
 };
-class CmdTrackingRecordState
-{
- public:
-    virtual ~CmdTrackingRecordState() {}
-};
 };  // namespace drv

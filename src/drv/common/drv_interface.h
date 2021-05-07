@@ -4,7 +4,6 @@
 
 #include <serializable.h>
 
-#include "drvshader.h"
 #include "drvtypes.h"
 #include "drvtypes/drvtracking.hpp"
 #include "hardwareconfig.h"
@@ -18,6 +17,10 @@ namespace drv
 {
 class RenderPass;
 class ImageMemoryBarrier;
+class DrvShaderHeaderRegistry;
+class DrvShaderHeader;
+class DrvShaderObjectRegistry;
+class DrvShader;
 
 struct StateTrackingConfig final : public ISerializable
 {
@@ -179,17 +182,6 @@ class IDriver
     virtual bool destroy_framebuffer(LogicalDevicePtr device, FramebufferPtr frameBuffer) = 0;
 
     virtual uint32_t get_num_trackers() = 0;
-
-    virtual std::unique_ptr<CmdTrackingRecordState> create_tracking_record_state() = 0;
-    virtual PipelineStages cmd_image_barrier(drv::CmdTrackingRecordState* recordState,
-                                             CmdImageTrackingState& state,
-                                             CommandBufferPtr cmdBuffer,
-                                             const ImageMemoryBarrier& barrier) = 0;
-    virtual void cmd_clear_image(drv::CmdTrackingRecordState* recordState,
-                                 CmdImageTrackingState& state, CommandBufferPtr cmdBuffer,
-                                 ImagePtr image, const ClearColorValue* clearColors,
-                                 uint32_t ranges,
-                                 const ImageSubresourceRange* subresourceRanges) = 0;
 
     // virtual void cmd_flush_waits_on(CommandBufferPtr cmdBuffer, EventPtr event) = 0;
 };

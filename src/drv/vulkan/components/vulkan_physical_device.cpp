@@ -7,6 +7,7 @@
 #include <vulkan/vulkan.h>
 
 #include <logger.h>
+#include <util.hpp>
 
 #include <drverror.h>
 

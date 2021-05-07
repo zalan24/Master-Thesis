@@ -19,7 +19,7 @@ if (Vulkan_FOUND)
         AnimationsDrvCommon
         AnimationsInput
         AnimationsTools
-        AnimationsDataStructures
+        CoreDataStructures
         FeaturesLib
     )
     target_link_libraries(AnimationsDrvVulkan PRIVATE

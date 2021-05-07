@@ -11,6 +11,7 @@
 
 #include <drv_interface.h>
 #include <drv_resource_tracker.h>
+#include <drvcmdbuffer.h>
 
 #include "components/vulkan_consts.h"
 
@@ -35,13 +36,16 @@ struct PerResourceTrackData;
 
 class DrvVulkan;
 
-class VulkanTrackingRecordState final : public drv::CmdTrackingRecordState
+class VulkanCmdBufferRecorder final : public drv::DrvCmdBufferRecorder
 {
  public:
-    VulkanTrackingRecordState(DrvVulkan* driver, drv::PhysicalDevicePtr physicalDevice,
-                              const drv::StateTrackingConfig* _trackingConfig,
-                              drv::QueueFamilyPtr family);
-    ~VulkanTrackingRecordState() override {}
+    VulkanCmdBufferRecorder(DrvVulkan* driver, drv::PhysicalDevicePtr physicalDevice,
+                            drv::LogicalDevicePtr device,
+                            const drv::StateTrackingConfig* _trackingConfig,
+                            drv::QueueFamilyPtr family, drv::CommandBufferPtr cmdBufferPtr,
+                            drv::ResourceTracker* resourceTracker, ImageStates* imageStates,
+                            bool singleTime, bool simultaneousUse);
+    ~VulkanCmdBufferRecorder() override;
 
     struct ResourceBarrier
     {
@@ -98,32 +102,111 @@ class VulkanTrackingRecordState final : public drv::CmdTrackingRecordState
         operator bool() const { return srcStages.stageFlags != 0 || dstStages.stageFlags != 0; }
     };
 
-    void appendBarrier(drv::CommandBufferPtr cmdBuffer, drv::PipelineStages srcStage,
-                       drv::PipelineStages dstStage,
+    void appendBarrier(drv::PipelineStages srcStage, drv::PipelineStages dstStage,
                        ImageSingleSubresourceMemoryBarrier&& imageBarrier);
-    void appendBarrier(drv::CommandBufferPtr cmdBuffer, drv::PipelineStages srcStage,
-                       drv::PipelineStages dstStage, ImageMemoryBarrier&& imageBarrier);
-    void flushBarriersFor(drv::CommandBufferPtr cmdBuffer, drv::ImagePtr image,
-                          uint32_t numSubresourceRanges,
+    void appendBarrier(drv::PipelineStages srcStage, drv::PipelineStages dstStage,
+                       ImageMemoryBarrier&& imageBarrier);
+    void flushBarriersFor(drv::ImagePtr image, uint32_t numSubresourceRanges,
                           const drv::ImageSubresourceRange* subresourceRange);
 
-    drv::QueueFamilyPtr getFamily() const { return queueFamily; }
+    void cmdUseAsAttachment(drv::ImagePtr image, const drv::ImageSubresourceRange& subresourceRange,
+                            drv::ImageResourceUsageFlag usages, drv::ImageLayout initialLayout,
+                            drv::ImageLayout resultLayout);
+    void cmdImageBarrier(const drv::ImageMemoryBarrier& barrier) override;
+    void cmdClearImage(drv::ImagePtr image, const drv::ClearColorValue* clearColors,
+                       uint32_t ranges = 0,
+                       const drv::ImageSubresourceRange* subresourceRanges = nullptr) override;
+
+    drv::PipelineStages cmd_image_barrier(drv::CmdImageTrackingState& state,
+                                          const drv::ImageMemoryBarrier& barrier);
+    void cmd_clear_image(drv::CmdImageTrackingState& state, drv::ImagePtr image,
+                         const drv::ClearColorValue* clearColors, uint32_t ranges,
+                         const drv::ImageSubresourceRange* subresourceRanges);
+
     drv::CommandTypeMask getQueueSupport() const { return queueSupport; }
 
  private:
-    DrvVulkan* driver;
-    drv::QueueFamilyPtr queueFamily;
-    uint32_t lastBarrier = 0;
     FlexibleArray<BarrierInfo, drv_vulkan::MAX_NUM_PARALLEL_BARRIERS_IN_CMD_STATE> barriers;
     const drv::StateTrackingConfig* trackingConfig;
     drv::CommandTypeMask queueSupport;
+    uint32_t lastBarrier = 0;
 
-    void flushBarrier(drv::CommandBufferPtr cmdBuffer, BarrierInfo& barrier);
+    void flushBarrier(BarrierInfo& barrier);
     bool swappable(const BarrierInfo& barrier0, const BarrierInfo& barrier1) const;
     bool matches(const BarrierInfo& barrier0, const BarrierInfo& barrier1) const;
     bool requireFlush(const BarrierInfo& barrier0, const BarrierInfo& barrier1) const;
     // if mergable => barrier0 := {}, barrier := barrier0 + barrier
     bool merge(BarrierInfo& barrier0, BarrierInfo& barrier) const;
+
+    drv::PipelineStages add_memory_sync(drv::CmdImageTrackingState& state, drv::ImagePtr image,
+                                        uint32_t numSubresourceRanges,
+                                        const drv::ImageSubresourceRange* subresourceRanges,
+                                        bool flush, drv::PipelineStages dstStages,
+                                        drv::MemoryBarrier::AccessFlagBitType accessMask,
+                                        bool transferOwnership, drv::QueueFamilyPtr newOwner,
+                                        bool transitionLayout, bool discardContent,
+                                        drv::ImageLayout resultLayout);
+
+    // if requireSameLayout is used and currentLayout is specified
+    // currentLayout := common layout
+    void add_memory_access(drv::CmdImageTrackingState& state, drv::ImagePtr image,
+                           uint32_t numSubresourceRanges,
+                           const drv::ImageSubresourceRange* subresourceRanges, bool read,
+                           bool write, drv::PipelineStages stages,
+                           drv::MemoryBarrier::AccessFlagBitType accessMask,
+                           uint32_t requiredLayoutMask, bool requireSameLayout,
+                           drv::ImageLayout* currentLayout, bool changeLayout,
+                           drv::ImageLayout resultLayout);
+
+    enum InvalidationLevel
+    {
+        SUBOPTIMAL,
+        BAD_USAGE,  // but not dangerous
+        INVALID
+    };
+    void invalidate(InvalidationLevel level, const char* message) const;
+
+    void validate_memory_access(drv::PerResourceTrackData& resourceData,
+                                drv::PerSubresourceRangeTrackData& subresourceData, bool read,
+                                bool write, bool sharedRes, drv::PipelineStages stages,
+                                drv::MemoryBarrier::AccessFlagBitType accessMask,
+                                drv::PipelineStages& barrierSrcStage,
+                                drv::PipelineStages& barrierDstStage, ResourceBarrier& barrier);
+    void validate_memory_access(drv::CmdImageTrackingState& state, drv::ImagePtr image,
+                                uint32_t mipLevel, uint32_t arrayIndex, drv::AspectFlagBits aspect,
+                                bool read, bool write, drv::PipelineStages stages,
+                                drv::MemoryBarrier::AccessFlagBitType accessMask,
+                                uint32_t requiredLayoutMask, bool changeLayout,
+                                drv::PipelineStages& barrierSrcStage,
+                                drv::PipelineStages& barrierDstStage,
+                                ImageSingleSubresourceMemoryBarrier& barrier);
+
+    void add_memory_access(drv::PerResourceTrackData& resourceData,
+                           drv::PerSubresourceRangeTrackData& subresourceData, bool read,
+                           bool write, drv::PipelineStages stages,
+                           drv::MemoryBarrier::AccessFlagBitType accessMask);
+    void add_memory_access_validate(drv::CmdImageTrackingState& state, drv::ImagePtr image,
+                                    uint32_t mipLevel, uint32_t arrayIndex,
+                                    drv::AspectFlagBits aspect, bool read, bool write,
+                                    drv::PipelineStages stages,
+                                    drv::MemoryBarrier::AccessFlagBitType accessMask,
+                                    uint32_t requiredLayoutMask, bool changeLayout,
+                                    drv::ImageLayout resultLayout);
+
+    void add_memory_sync(drv::PerResourceTrackData& resourceData,
+                         drv::PerSubresourceRangeTrackData& subresourceData, bool flush,
+                         drv::PipelineStages dstStages,
+                         drv::MemoryBarrier::AccessFlagBitType accessMask, bool transferOwnership,
+                         drv::QueueFamilyPtr newOwner, drv::PipelineStages& barrierSrcStage,
+                         drv::PipelineStages& barrierDstStage, ResourceBarrier& barrier);
+    drv::PipelineStages add_memory_sync(drv::CmdImageTrackingState& state, drv::ImagePtr image,
+                                        uint32_t mipLevel, uint32_t arrayIndex,
+                                        drv::AspectFlagBits aspect, bool flush,
+                                        drv::PipelineStages dstStages,
+                                        drv::MemoryBarrier::AccessFlagBitType accessMask,
+                                        bool transferOwnership, drv::QueueFamilyPtr newOwner,
+                                        bool transitionLayout, bool discardContent,
+                                        drv::ImageLayout resultLayout);
 };
 
 class DrvVulkan final : public drv::IDriver
@@ -288,17 +371,6 @@ class DrvVulkan final : public drv::IDriver
     void release_tracking_slot(uint32_t id);
     uint32_t get_num_trackers() override;
 
-    std::unique_ptr<drv::CmdTrackingRecordState> create_tracking_record_state() override;
-    drv::PipelineStages cmd_image_barrier(drv::CmdTrackingRecordState* recordState,
-                                          drv::CmdImageTrackingState& state,
-                                          drv::CommandBufferPtr cmdBuffer,
-                                          const drv::ImageMemoryBarrier& barrier) override;
-    void cmd_clear_image(drv::CmdTrackingRecordState* recordState,
-                         drv::CmdImageTrackingState& state, drv::CommandBufferPtr cmdBuffer,
-                         drv::ImagePtr image, const drv::ClearColorValue* clearColors,
-                         uint32_t ranges,
-                         const drv::ImageSubresourceRange* subresourceRanges) override;
-
  private:
     struct LogicalDeviceData
     {
@@ -310,86 +382,6 @@ class DrvVulkan final : public drv::IDriver
     drv::StateTrackingConfig trackingConfig;
 
     std::atomic<bool> freeTrackingSlot[MAX_NUM_TRACKING_SLOTS];
-
-    drv::PipelineStages add_memory_sync(
-      drv::CmdTrackingRecordState* recordState, drv::CmdImageTrackingState& state,
-      drv::CommandBufferPtr cmdBuffer, drv::ImagePtr image, uint32_t numSubresourceRanges,
-      const drv::ImageSubresourceRange* subresourceRanges, bool flush,
-      drv::PipelineStages dstStages, drv::MemoryBarrier::AccessFlagBitType accessMask,
-      bool transferOwnership, drv::QueueFamilyPtr newOwner, bool transitionLayout,
-      bool discardContent, drv::ImageLayout resultLayout);
-
-    // // if requireSameLayout is used and currentLayout is specified
-    // // currentLayout := common layout
-    // void add_memory_access(drv::CommandBufferPtr cmdBuffer, drv::ImagePtr image,
-    //                        uint32_t numSubresourceRanges,
-    //                        const drv::ImageSubresourceRange* subresourceRanges, bool read,
-    //                        bool write, drv::PipelineStages stages,
-    //                        drv::MemoryBarrier::AccessFlagBitType accessMask,
-    //                        uint32_t requiredLayoutMask, bool requireSameLayout,
-    //                        drv::ImageLayout* currentLayout, bool changeLayout,
-    //                        drv::ImageLayout resultLayout);
-
-    enum InvalidationLevel
-    {
-        SUBOPTIMAL,
-        BAD_USAGE,  // but not dangerous
-        INVALID
-    };
-    void invalidate(InvalidationLevel level, const char* message) const;
-
-    void validate_memory_access(drv::CmdTrackingRecordState* recordState,
-                                drv::PerResourceTrackData& resourceData,
-                                drv::PerSubresourceRangeTrackData& subresourceData, bool read,
-                                bool write, bool sharedRes, drv::PipelineStages stages,
-                                drv::MemoryBarrier::AccessFlagBitType accessMask,
-                                drv::PipelineStages& barrierSrcStage,
-                                drv::PipelineStages& barrierDstStage,
-                                VulkanTrackingRecordState::ResourceBarrier& barrier);
-    void validate_memory_access(
-      drv::CmdTrackingRecordState* recordState, drv::CmdImageTrackingState& state,
-      drv::ImagePtr image, uint32_t mipLevel, uint32_t arrayIndex, drv::AspectFlagBits aspect,
-      bool read, bool write, drv::PipelineStages stages,
-      drv::MemoryBarrier::AccessFlagBitType accessMask, uint32_t requiredLayoutMask,
-      bool changeLayout, drv::PipelineStages& barrierSrcStage, drv::PipelineStages& barrierDstStage,
-      VulkanTrackingRecordState::ImageSingleSubresourceMemoryBarrier& barrier);
-
-    void add_memory_access(drv::CmdTrackingRecordState* recordState,
-                           drv::CmdImageTrackingState& state, drv::CommandBufferPtr cmdBuffer,
-                           drv::ImagePtr image, uint32_t numSubresourceRanges,
-                           const drv::ImageSubresourceRange* subresourceRanges, bool read,
-                           bool write, drv::PipelineStages stages,
-                           drv::MemoryBarrier::AccessFlagBitType accessMask,
-                           uint32_t requiredLayoutMask, bool requireSameLayout,
-                           drv::ImageLayout* currentLayout, bool changeLayout,
-                           drv::ImageLayout resultLayout);
-    void add_memory_access(drv::CmdTrackingRecordState* recordState,
-                           drv::PerResourceTrackData& resourceData,
-                           drv::PerSubresourceRangeTrackData& subresourceData, bool read,
-                           bool write, drv::PipelineStages stages,
-                           drv::MemoryBarrier::AccessFlagBitType accessMask);
-    void add_memory_access_validate(
-      drv::CmdTrackingRecordState* recordState, drv::CmdImageTrackingState& state,
-      drv::CommandBufferPtr cmdBuffer, drv::ImagePtr image, uint32_t mipLevel, uint32_t arrayIndex,
-      drv::AspectFlagBits aspect, bool read, bool write, drv::PipelineStages stages,
-      drv::MemoryBarrier::AccessFlagBitType accessMask, uint32_t requiredLayoutMask,
-      bool changeLayout, drv::ImageLayout resultLayout);
-
-    void add_memory_sync(drv::CmdTrackingRecordState* recordState,
-                         drv::PerResourceTrackData& resourceData,
-                         drv::PerSubresourceRangeTrackData& subresourceData, bool flush,
-                         drv::PipelineStages dstStages,
-                         drv::MemoryBarrier::AccessFlagBitType accessMask, bool transferOwnership,
-                         drv::QueueFamilyPtr newOwner, drv::PipelineStages& barrierSrcStage,
-                         drv::PipelineStages& barrierDstStage,
-                         VulkanTrackingRecordState::ResourceBarrier& barrier);
-    drv::PipelineStages add_memory_sync(
-      drv::CmdTrackingRecordState* recordState, drv::CmdImageTrackingState& state,
-      drv::CommandBufferPtr cmdBuffer, drv::ImagePtr image, uint32_t mipLevel, uint32_t arrayIndex,
-      drv::AspectFlagBits aspect, bool flush, drv::PipelineStages dstStages,
-      drv::MemoryBarrier::AccessFlagBitType accessMask, bool transferOwnership,
-      drv::QueueFamilyPtr newOwner, bool transitionLayout, bool discardContent,
-      drv::ImageLayout resultLayout);
 };
 
 class DrvVulkanResourceTracker final : public drv::ResourceTracker

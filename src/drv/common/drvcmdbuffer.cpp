@@ -28,79 +28,53 @@ using namespace drv;
 //     getResourceTracker()->cmd_wait_host_events(cmdBuffer, event, imageBarrierCount, barriers);
 // }
 
-DrvCmdBufferRecorder::DrvCmdBufferRecorder(DrvCmdBufferRecorder&& other)
-  : driver(other.driver),
-    queueFamilyLock(std::move(other.queueFamilyLock)),
-    cmdBufferPtr(other.cmdBufferPtr),
-    resourceTracker(other.resourceTracker),
-    recordState(std::move(other.recordState)) {
-    reset_ptr(other.cmdBufferPtr);
-}
-
-DrvCmdBufferRecorder& DrvCmdBufferRecorder::operator=(DrvCmdBufferRecorder&& other) {
-    if (this == &other)
-        return *this;
-    driver = other.driver;
-    queueFamilyLock = std::move(other.queueFamilyLock);
-    cmdBufferPtr = other.cmdBufferPtr;
-    resourceTracker = other.resourceTracker;
-    recordState = std::move(other.recordState);
-    reset_ptr(other.cmdBufferPtr);
-    return *this;
-}
-
 DrvCmdBufferRecorder::~DrvCmdBufferRecorder() {
-    close();
-}
-
-void DrvCmdBufferRecorder::close() {
     if (!is_null_ptr(cmdBufferPtr)) {
         drv::drv_assert(resourceTracker->end_primary_command_buffer(cmdBufferPtr));
-        recordState.reset();
         reset_ptr(cmdBufferPtr);
         queueFamilyLock = {};
     }
 }
 
-DrvCmdBufferRecorder::DrvCmdBufferRecorder(IDriver* _driver,
-                                           std::unique_lock<std::mutex>&& _queueFamilyLock,
+DrvCmdBufferRecorder::DrvCmdBufferRecorder(IDriver* _driver, LogicalDevicePtr device,
+                                           drv::QueueFamilyPtr _family,
                                            CommandBufferPtr _cmdBufferPtr,
                                            drv::ResourceTracker* _resourceTracker,
                                            ImageStates* _imageStates, bool singleTime,
                                            bool simultaneousUse)
   : driver(_driver),
-    queueFamilyLock(std::move(_queueFamilyLock)),
+    family(_family),
+    queueFamilyLock(driver->lock_queue_family(device, family)),
     cmdBufferPtr(_cmdBufferPtr),
     resourceTracker(_resourceTracker),
-    imageStates(_imageStates),
-    recordState(driver->create_tracking_record_state()) {
+    imageStates(_imageStates) {
     drv::drv_assert(
       resourceTracker->begin_primary_command_buffer(cmdBufferPtr, singleTime, simultaneousUse));
 }
 
-void DrvCmdBufferRecorder::cmdImageBarrier(const drv::ImageMemoryBarrier& barrier) const {
-    resourceTracker->cmd_image_barrier(cmdBufferPtr, barrier);
-    driver->cmd_image_barrier(recordState.get(), getImageState(barrier.image).cmdState,
-                              cmdBufferPtr, barrier);
-}
+// void DrvCmdBufferRecorder::cmdImageBarrier(const drv::ImageMemoryBarrier& barrier) const {
+//     resourceTracker->cmd_image_barrier(cmdBufferPtr, barrier);
+//     driver->cmd_image_barrier(recordState.get(), getImageState(barrier.image).cmdState,
+//                               cmdBufferPtr, barrier);
+// }
 
-void DrvCmdBufferRecorder::cmdClearImage(
-  drv::ImagePtr image, const drv::ClearColorValue* clearColors, uint32_t ranges,
-  const drv::ImageSubresourceRange* subresourceRanges) const {
-    drv::ImageSubresourceRange defVal;
-    if (ranges == 0) {
-        ranges = 1;
-        defVal.baseArrayLayer = 0;
-        defVal.baseMipLevel = 0;
-        defVal.layerCount = defVal.REMAINING_ARRAY_LAYERS;
-        defVal.levelCount = defVal.REMAINING_MIP_LEVELS;
-        defVal.aspectMask = drv::COLOR_BIT;
-        subresourceRanges = &defVal;
-    }
-    resourceTracker->cmd_clear_image(cmdBufferPtr, image, clearColors, ranges, subresourceRanges);
-    driver->cmd_clear_image(recordState.get(), getImageState(image).cmdState, cmdBufferPtr, image,
-                            clearColors, ranges, subresourceRanges);
-}
+// void DrvCmdBufferRecorder::cmdClearImage(
+//   drv::ImagePtr image, const drv::ClearColorValue* clearColors, uint32_t ranges,
+//   const drv::ImageSubresourceRange* subresourceRanges) const {
+//     drv::ImageSubresourceRange defVal;
+//     if (ranges == 0) {
+//         ranges = 1;
+//         defVal.baseArrayLayer = 0;
+//         defVal.baseMipLevel = 0;
+//         defVal.layerCount = defVal.REMAINING_ARRAY_LAYERS;
+//         defVal.levelCount = defVal.REMAINING_MIP_LEVELS;
+//         defVal.aspectMask = drv::COLOR_BIT;
+//         subresourceRanges = &defVal;
+//     }
+//     resourceTracker->cmd_clear_image(cmdBufferPtr, image, clearColors, ranges, subresourceRanges);
+//     driver->cmd_clear_image(recordState.get(), getImageState(image).cmdState, cmdBufferPtr, image,
+//                             clearColors, ranges, subresourceRanges);
+// }
 
 DrvCmdBufferRecorder::ImageTrackInfo& DrvCmdBufferRecorder::getImageState(
   drv::ImagePtr image) const {
