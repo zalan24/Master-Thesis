@@ -74,8 +74,7 @@ class Game final
         bool operator!=(const RecordData& rhs) const { return !(*this == rhs); }
     };
 
-    static void record_cmd_buffer(const RecordData& data,
-                                  const drv::DrvCmdBufferRecorder* recorder);
+    static void record_cmd_buffer(const RecordData& data, drv::DrvCmdBufferRecorder* recorder);
 
     void recreateViews(uint32_t imageCount, const drv::ImagePtr* images);
     void initShader(drv::Extent2D extent);

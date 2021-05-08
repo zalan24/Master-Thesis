@@ -417,7 +417,7 @@ void VulkanCmdBufferRecorder::add_memory_access_validate(
 
     appendBarrier(barrierSrcStages, barrierDstStages, std::move(barrier));
 
-    drv_vulkan::Image* image = convertImage(_image);
+    // drv_vulkan::Image* image = convertImage(_image);
     drv::ImageSubresourceTrackData& subresourceData =
       state.state.subresourceTrackInfo[arrayIndex][mipLevel][drv::get_aspect_id(aspect)];
 
@@ -530,7 +530,7 @@ drv::PipelineStages VulkanCmdBufferRecorder::add_memory_sync(
   drv::QueueFamilyPtr newOwner, bool transitionLayout, bool discardContent,
   drv::ImageLayout resultLayout) {
     state.usageMask.add(arrayIndex, mipLevel, aspect);
-    drv_vulkan::Image* image = convertImage(_image);
+    // drv_vulkan::Image* image = convertImage(_image);
     const drv::PipelineStages::FlagType stages = dstStages.resolve(getQueueSupport());
     drv::ImageSubresourceTrackData& subresourceData =
       state.state.subresourceTrackInfo[arrayIndex][mipLevel][drv::get_aspect_id(aspect)];

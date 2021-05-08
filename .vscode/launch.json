@@ -89,6 +89,7 @@
       "internalConsoleOptions": "openOnSessionStart",
       "args": [
         "-c../data/configs/playground_default.json",
+        "-t../data/configs/trackingConfig.json",
         "-m../data/resources/models.json",
         "-d../data/",
         // "--gfx",

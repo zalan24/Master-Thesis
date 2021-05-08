@@ -91,6 +91,16 @@ static Engine::Config get_config(const std::string& file) {
     return config;
 }
 
+static drv::StateTrackingConfig get_tracking_config(const std::string& file) {
+    if (file == "")
+        return {};
+    std::ifstream in(file);
+    assert(in.is_open());
+    drv::StateTrackingConfig config;
+    config.read(in);
+    return config;
+}
+
 static drv::Driver get_driver(const std::string& name) {
     if (name == "Vulkan")
         return drv::Driver::VULKAN;
@@ -124,9 +134,10 @@ Engine::WindowIniter::~WindowIniter() {
 }
 
 Engine::Engine(int argc, char* argv[], const std::string& configFile,
-               const std::string& shaderbinFile, ResourceManager::ResourceInfos resource_infos,
-               const Args& args)
-  : Engine(argc, argv, get_config(configFile), shaderbinFile, std::move(resource_infos), args) {
+               const std::string& trackingConfigFile, const std::string& shaderbinFile,
+               ResourceManager::ResourceInfos resource_infos, const Args& args)
+  : Engine(argc, argv, get_config(configFile), get_tracking_config(trackingConfigFile),
+           shaderbinFile, std::move(resource_infos), args) {
 }
 
 drv::Swapchain::CreateInfo Engine::get_swapchain_create_info(const Config& config,
@@ -166,14 +177,15 @@ static void log_queue(const char* name, const drv::QueueManager::Queue& queue) {
                queue.info.priority, queue.info.queueIndex, queue.info.familyPtr);
 }
 
-Engine::Engine(int argc, char* argv[], const Config& cfg, const std::string& shaderbinFile,
+Engine::Engine(int argc, char* argv[], const Config& cfg,
+               const drv::StateTrackingConfig& trackingConfig, const std::string& shaderbinFile,
                ResourceManager::ResourceInfos resource_infos, const Args& args)
   : config(cfg),
     logger(argc, argv, config.logs),
     coreContext({safe_cast<size_t>(config.stackMemorySizeKb << 10)}),
     shaderBin(shaderbinFile),
     input(safe_cast<size_t>(config.inputBufferSize)),
-    driver({get_driver(cfg.driver)}),
+    driver(trackingConfig, {get_driver(cfg.driver)}),
     window(&input, &inputManager,
            drv::WindowOptions{static_cast<unsigned int>(cfg.screenWidth),
                               static_cast<unsigned int>(cfg.screenHeight), cfg.title.c_str()}),

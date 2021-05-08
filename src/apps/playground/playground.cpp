@@ -68,6 +68,8 @@ int main(int argc, char* argv[]) {
         // app.add_option("-f,--files,files", files, "Files or folders to open");
         std::string config = "";
         app.add_option("-c,--config", config, "Path to the engine config file");
+        std::string trackingConfig = "";
+        app.add_option("-t,--trackingConfig", trackingConfig, "Path to the tracking config file");
         std::string shaderbin = "";
         app.add_option("-s,--shaderbin", shaderbin, "Path to the shader bin file");
         std::string modelResources = "";
@@ -101,7 +103,8 @@ int main(int argc, char* argv[]) {
         ResourceManager::ResourceInfos resourceInfos;
         resourceInfos.resourceFolder = resourceFolder;
         resourceInfos.modelResourcesJson = modelResources;
-        Engine engine(argc, argv, config, shaderbin, std::move(resourceInfos), args);
+        Engine engine(argc, argv, config, trackingConfig, shaderbin, std::move(resourceInfos),
+                      args);
         Game game(&engine);
         engine.initGame(&game, &game);
         // engine.getRenderer()->getCamera().lookAt(glm::vec3{0, 3, -5}, glm::vec3{0, 1, 0},

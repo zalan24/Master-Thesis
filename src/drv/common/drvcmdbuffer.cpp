@@ -39,15 +39,14 @@ DrvCmdBufferRecorder::~DrvCmdBufferRecorder() {
 DrvCmdBufferRecorder::DrvCmdBufferRecorder(IDriver* _driver, LogicalDevicePtr device,
                                            drv::QueueFamilyPtr _family,
                                            CommandBufferPtr _cmdBufferPtr,
-                                           drv::ResourceTracker* _resourceTracker,
-                                           ImageStates* _imageStates, bool singleTime,
+                                           drv::ResourceTracker* _resourceTracker, bool singleTime,
                                            bool simultaneousUse)
   : driver(_driver),
     family(_family),
     queueFamilyLock(driver->lock_queue_family(device, family)),
     cmdBufferPtr(_cmdBufferPtr),
     resourceTracker(_resourceTracker),
-    imageStates(_imageStates) {
+    imageStates(nullptr) {
     drv::drv_assert(
       resourceTracker->begin_primary_command_buffer(cmdBufferPtr, singleTime, simultaneousUse));
 }

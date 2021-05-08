@@ -48,6 +48,10 @@ bool drv::init(const drv::StateTrackingConfig& trackingConfig, const Driver* dri
     return current_driver_interface != nullptr;
 }
 
+drv::IDriver* drv::get_driver_interface() {
+    return current_driver_interface;
+}
+
 std::unique_ptr<drv::ResourceTracker> drv::create_resource_tracker(QueuePtr queue,
                                                                    PhysicalDevicePtr physicalDevice,
                                                                    LogicalDevicePtr device,

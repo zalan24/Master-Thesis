@@ -43,8 +43,8 @@ class VulkanCmdBufferRecorder final : public drv::DrvCmdBufferRecorder
                             drv::LogicalDevicePtr device,
                             const drv::StateTrackingConfig* _trackingConfig,
                             drv::QueueFamilyPtr family, drv::CommandBufferPtr cmdBufferPtr,
-                            drv::ResourceTracker* resourceTracker, ImageStates* imageStates,
-                            bool singleTime, bool simultaneousUse);
+                            drv::ResourceTracker* resourceTracker, bool singleTime,
+                            bool simultaneousUse);
     ~VulkanCmdBufferRecorder() override;
 
     struct ResourceBarrier
@@ -370,6 +370,16 @@ class DrvVulkan final : public drv::IDriver
     uint32_t acquire_tracking_slot();
     void release_tracking_slot(uint32_t id);
     uint32_t get_num_trackers() override;
+
+    size_t get_cmd_buffer_recorder_size() override { return sizeof(VulkanCmdBufferRecorder); }
+    PlacementPtr<drv::DrvCmdBufferRecorder> create_cmd_buffer_recorder(
+      void* targetPtr, drv::PhysicalDevicePtr physicalDevice, drv::LogicalDevicePtr device,
+      drv::QueueFamilyPtr family, drv::CommandBufferPtr cmdBufferPtr,
+      drv::ResourceTracker* resourceTracker, bool singleTime, bool simultaneousUse) override {
+        return PlacementPtr<drv::DrvCmdBufferRecorder>(new (targetPtr) VulkanCmdBufferRecorder(
+          this, physicalDevice, device, &trackingConfig, family, cmdBufferPtr, resourceTracker,
+          singleTime, simultaneousUse));
+    }
 
  private:
     struct LogicalDeviceData

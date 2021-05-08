@@ -126,7 +126,7 @@ void Game::initShader(drv::Extent2D extent) {
                                         redVariant);
 }
 
-void Game::record_cmd_buffer(const RecordData& data, const drv::DrvCmdBufferRecorder* recorder) {
+void Game::record_cmd_buffer(const RecordData& data, drv::DrvCmdBufferRecorder* recorder) {
     recorder->cmdImageBarrier({data.targetImage, drv::IMAGE_USAGE_TRANSFER_DESTINATION,
                                drv::ImageMemoryBarrier::AUTO_TRANSITION, true,
                                drv::get_queue_family(data.device, data.renderQueue)});
@@ -140,6 +140,11 @@ void Game::record_cmd_buffer(const RecordData& data, const drv::DrvCmdBufferReco
         data.shaderTestDesc->setVariant_Color(shader_test_descriptor::Color::RED);
     }
     recorder->registerUndefinedImage(data.targetImage);
+
+    recorder->cmdImageBarrier({data.targetImage, drv::IMAGE_USAGE_TRANSFER_DESTINATION,
+                               drv::ImageLayout::TRANSFER_DST_OPTIMAL, false,
+                               drv::get_queue_family(data.device, data.renderQueue)});
+
     recorder->cmdClearImage(data.targetImage, &clearValue);
 
     recorder->cmdImageBarrier({data.targetImage, drv::IMAGE_USAGE_COLOR_OUTPUT_WRITE,
@@ -157,9 +162,7 @@ void Game::record_cmd_buffer(const RecordData& data, const drv::DrvCmdBufferReco
     drv::Rect2D renderArea;
     renderArea.extent = data.extent;
     renderArea.offset = {0, 0};
-    EngineRenderPass testPass(data.renderPass, recorder->getResourceTracker(),
-                              recorder->getCommandBuffer(), renderArea, data.frameBuffer,
-                              clearValues);
+    EngineRenderPass testPass(data.renderPass, recorder, renderArea, data.frameBuffer, clearValues);
     testPass.beginSubpass(data.testSubpass);
     drv::ClearRect clearRect;
     clearRect.rect.offset = {100, 100};
@@ -225,8 +228,8 @@ void Game::record(FrameGraph& frameGraph, FrameId frameId) {
               testRenderPass->createFramebuffer(testImageInfo));
 
         OneTimeCmdBuffer<RecordData> cmdBuffer(
-          engine->getDevice(), queues.renderQueue.handle, engine->getCommandBufferBank(),
-          engine->getGarbageSystem(),
+          engine->getPhysicalDevice(), engine->getDevice(), queues.renderQueue.handle,
+          engine->getCommandBufferBank(), engine->getGarbageSystem(),
           testDrawHandle.getNode().getResourceTracker(queues.renderQueue.id), record_cmd_buffer);
         RecordData recordData;
         recordData.device = engine->getDevice();

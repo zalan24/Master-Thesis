@@ -68,9 +68,11 @@ class Engine
         std::string runtimeStatsBin;
     };
 
-    Engine(int argc, char* argv[], const Config& config, const std::string& shaderbinFile,
+    Engine(int argc, char* argv[], const Config& config,
+           const drv::StateTrackingConfig& trackingConfig, const std::string& shaderbinFile,
            ResourceManager::ResourceInfos resource_infos, const Args& args);
-    Engine(int argc, char* argv[], const std::string& configFile, const std::string& shaderbinFile,
+    Engine(int argc, char* argv[], const std::string& configFile,
+           const std::string& trackingConfigFile, const std::string& shaderbinFile,
            ResourceManager::ResourceInfos resource_infos, const Args& args);
     ~Engine();
 
@@ -84,6 +86,7 @@ class Engine
     // const EntityManager* getEntityManager() const { return &entityManager; }
 
     drv::LogicalDevicePtr getDevice() const { return device; }
+    drv::PhysicalDevicePtr getPhysicalDevice() const { return physicalDevice; }
     const ShaderBin* getShaderBin() const { return &shaderBin; }
 
     using SwapchaingVersion = uint64_t;

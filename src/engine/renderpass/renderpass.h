@@ -11,9 +11,9 @@ class EngineRenderPass final : public drv::CmdRenderPass
     using SlotId = uint32_t;
     static constexpr SlotId SLOT_COUNT = 8;
 
-    EngineRenderPass(drv::RenderPass* _renderPass, drv::ResourceTracker* _tracker,
-                     drv::CommandBufferPtr _cmdBuffer, drv::Rect2D _renderArea,
-                     drv::FramebufferPtr _frameBuffer, const drv::ClearValue* clearValues);
+    EngineRenderPass(drv::RenderPass* _renderPass, drv::DrvCmdBufferRecorder* cmdBuffer,
+                     drv::Rect2D _renderArea, drv::FramebufferPtr _frameBuffer,
+                     const drv::ClearValue* clearValues);
 
  private:
     struct HeaderSlot

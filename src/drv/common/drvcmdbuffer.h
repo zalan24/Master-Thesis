@@ -2,6 +2,7 @@
 
 #include <memory>
 
+#include <corecontext.h>
 #include <flexiblearray.hpp>
 
 #include "drv_resource_tracker.h"
@@ -32,7 +33,7 @@ class DrvCmdBufferRecorder
 
     DrvCmdBufferRecorder(IDriver* driver, LogicalDevicePtr device, drv::QueueFamilyPtr family,
                          CommandBufferPtr cmdBufferPtr, drv::ResourceTracker* resourceTracker,
-                         ImageStates* imageStates, bool singleTime, bool simultaneousUse);
+                         bool singleTime, bool simultaneousUse);
     DrvCmdBufferRecorder(const DrvCmdBufferRecorder&) = delete;
     DrvCmdBufferRecorder& operator=(const DrvCmdBufferRecorder&) = delete;
     virtual ~DrvCmdBufferRecorder();
@@ -64,6 +65,8 @@ class DrvCmdBufferRecorder
     void updateImageState(drv::ImagePtr image,
                           const DrvCmdBufferRecorder::ImageTrackInfo& state) const;
 
+    void setImageStates(ImageStates* _imageStates) { imageStates = _imageStates; }
+
  protected:
     ImageTrackInfo& getImageState(drv::ImagePtr image) const;
 
@@ -83,11 +86,14 @@ class DrvCmdBuffer
  public:
     friend class DrvCmdBufferRecorder;
 
-    using DrvRecordCallback = void (*)(const D&, const DrvCmdBufferRecorder*);
+    using DrvRecordCallback = void (*)(const D&, DrvCmdBufferRecorder*);
 
-    explicit DrvCmdBuffer(LogicalDevicePtr _device, QueueFamilyPtr _queueFamily,
+    explicit DrvCmdBuffer(IDriver* _driver, PhysicalDevicePtr _physicalDevice,
+                          LogicalDevicePtr _device, QueueFamilyPtr _queueFamily,
                           DrvRecordCallback _recordCallback, drv::ResourceTracker* _resourceTracker)
-      : device(_device),
+      : driver(_driver),
+        physicalDevice(_physicalDevice),
+        device(_device),
         queueFamily(_queueFamily),
         recordCallback(_recordCallback),
         resourceTracker(_resourceTracker) {}
@@ -104,13 +110,16 @@ class DrvCmdBuffer
             imageStates.resize(0);
             cmdBufferPtr = acquireCommandBuffer();
             currentData = std::move(d);
-            // TODO use allocator?
-            // StackMemory::MemoryHandle<VkImageMemoryBarrier> vkImageBarriers(maxImageSubresCount, TEMPMEM);
-            std::unique_ptr<DrvCmdBufferRecorder> = create_cmd_buffer_recorder();
+            StackMemory::MemoryHandle<uint8_t> recorderMem(driver->get_cmd_buffer_recorder_size(),
+                                                           TEMPMEM);
+            PlacementPtr<DrvCmdBufferRecorder> recorder = driver->create_cmd_buffer_recorder(
+              recorderMem, physicalDevice, device, queueFamily, cmdBufferPtr, resourceTracker,
+              isSingleTimeBuffer(), isSimultaneous());
+            recorder->setImageStates(&imageStates);
             // DrvCmdBufferRecorder recorder(drv::lock_queue_family(device, queueFamily), cmdBufferPtr,
             //                               resourceTracker, &imageStates, isSingleTimeBuffer(),
             //                               isSimultaneous());
-            recordCallback(currentData, recorder.get());
+            recordCallback(currentData, recorder);
         }
         needToPrepare = false;
     }
@@ -135,7 +144,9 @@ class DrvCmdBuffer
     LogicalDevicePtr getDevice() const { return device; }
 
  private:
+    IDriver* driver;
     D currentData;
+    PhysicalDevicePtr physicalDevice;
     LogicalDevicePtr device;
     QueueFamilyPtr queueFamily;
     DrvRecordCallback recordCallback;

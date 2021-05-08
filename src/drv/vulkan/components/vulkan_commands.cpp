@@ -127,10 +127,10 @@ void DrvVulkanResourceTracker::cmd_flush_waits_on(drv::CommandBufferPtr cmdBuffe
 VulkanCmdBufferRecorder::VulkanCmdBufferRecorder(
   DrvVulkan* _driver, drv::PhysicalDevicePtr _physicalDevice, drv::LogicalDevicePtr _device,
   const drv::StateTrackingConfig* _trackingConfig, drv::QueueFamilyPtr _family,
-  drv::CommandBufferPtr _cmdBufferPtr, drv::ResourceTracker* _resourceTracker,
-  ImageStates* _imageStates, bool singleTime, bool simultaneousUse)
+  drv::CommandBufferPtr _cmdBufferPtr, drv::ResourceTracker* _resourceTracker, bool singleTime,
+  bool simultaneousUse)
   : drv::DrvCmdBufferRecorder(_driver, _device, _family, _cmdBufferPtr, _resourceTracker,
-                              _imageStates, singleTime, simultaneousUse),
+                              singleTime, simultaneousUse),
     trackingConfig(_trackingConfig),
     queueSupport(_driver->get_command_type_mask(_physicalDevice, _family)) {
     VkCommandBufferBeginInfo info;

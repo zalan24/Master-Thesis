@@ -34,6 +34,7 @@ class RenderPass;
 bool init(const drv::StateTrackingConfig& trackingConfig, const Driver* drivers,
           unsigned int count);
 bool close();
+IDriver* get_driver_interface();
 
 std::unique_ptr<ResourceTracker> create_resource_tracker(QueuePtr queue,
                                                          PhysicalDevicePtr physicalDevice,
@@ -189,7 +190,5 @@ bool destroy_shader_module(LogicalDevicePtr device, ShaderModulePtr module);
 // void cmd_clear_image(drv::CmdTrackingRecordState *recordState, CmdImageTrackingState& state, CommandBufferPtr cmdBuffer, ImagePtr image,
 //                      const ClearColorValue* clearColors, uint32_t ranges,
 //                      const ImageSubresourceRange* subresourceRanges);
-std::unique_ptr<DrvCmdBufferRecorder> create_cmd_buffer_recorder(LogicalDevicePtr device,
-                                                                 CommandBufferPtr cmdBufferPtr);
 
 };  // namespace drv

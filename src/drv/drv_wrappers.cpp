@@ -12,8 +12,9 @@
 
 using namespace drv;
 
-DriverWrapper::DriverWrapper(const Driver* drivers, unsigned int count) {
-    drv_assert(init(drivers, count));
+DriverWrapper::DriverWrapper(const StateTrackingConfig& trackingConfig, const Driver* drivers,
+                             unsigned int count) {
+    drv_assert(init(trackingConfig, drivers, count));
 }
 
 DriverWrapper::~DriverWrapper() {

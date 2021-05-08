@@ -31,9 +31,10 @@ class DriverWrapper
   , private Exclusive
 {
  public:
-    DriverWrapper(const std::vector<Driver>& drivers)
-      : DriverWrapper(drivers.data(), safe_cast<unsigned int>(drivers.size())) {}
-    DriverWrapper(const Driver* drivers, unsigned int count);
+    DriverWrapper(const StateTrackingConfig& trackingConfig, const std::vector<Driver>& drivers)
+      : DriverWrapper(trackingConfig, drivers.data(), safe_cast<unsigned int>(drivers.size())) {}
+    DriverWrapper(const StateTrackingConfig& trackingConfig, const Driver* drivers,
+                  unsigned int count);
     ~DriverWrapper();
 
     DriverWrapper(const DriverWrapper& other) = delete;
