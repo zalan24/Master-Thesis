@@ -55,7 +55,9 @@ class DrvCmdBufferRecorder
             updateImageState((*buffer.getImageStates())[i].first,
                              (*buffer.getImageStates())[i].second);
     }
-    using ImageStartingState = decltype(ImageTrackingState::subresourceTrackInfo);
+    struct ImageStartingState {
+        decltype(ImageTrackingState::subresourceTrackInfo) subresourceTrackInfo;
+    };
     void registerImage(ImagePtr image, const ImageStartingState& state,
                        QueueFamilyPtr ownerShip = IGNORE_FAMILY) const;
     void registerImage(ImagePtr image, ImageLayout layout,
@@ -78,6 +80,18 @@ class DrvCmdBufferRecorder
     CommandBufferPtr cmdBufferPtr;
     drv::ResourceTracker* resourceTracker;
     ImageStates* imageStates;
+};
+
+struct StateTransition
+{
+    const DrvCmdBufferRecorder::ImageStates* imageStates;
+    // TODO buffer states
+};
+
+struct CommandBufferInfo
+{
+    CommandBufferPtr cmdBufferPtr;
+    StateTransition stateTransitions;
 };
 
 template <typename D>
@@ -124,11 +138,11 @@ class DrvCmdBuffer
         needToPrepare = false;
     }
 
-    CommandBufferPtr use(D&& d) {
+    CommandBufferInfo use(D&& d) {
         if (needToPrepare)
             prepare(std::move(d));
         needToPrepare = true;
-        return cmdBufferPtr;
+        return {cmdBufferPtr, {&imageStates}};
     }
 
     const DrvCmdBufferRecorder::ImageStates* getImageStates() { return &imageStates; }

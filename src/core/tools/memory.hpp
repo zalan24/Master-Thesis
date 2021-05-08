@@ -49,8 +49,8 @@ class StackMemory
         T& operator[](size_t ind) { return ptr[ind]; }
         const T& operator[](size_t ind) const { return ptr[ind]; }
 
-        T& operator->() { return *ptr; }
-        const T& operator->() const { return *ptr; }
+        T* operator->() { return ptr; }
+        const T* operator->() const { return ptr; }
 
         T& operator*() { return *ptr; }
         const T& operator*() const { return *ptr; }

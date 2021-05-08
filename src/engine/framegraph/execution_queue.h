@@ -15,6 +15,32 @@
 #include "garbagesystem.h"
 
 class ExecutionQueue;
+
+struct CommandBufferData
+{
+    drv::CommandBufferPtr cmdBufferPtr = drv::get_null_ptr<drv::CommandBufferPtr>();
+    GarbageVector<std::pair<drv::ImagePtr, drv::DrvCmdBufferRecorder::ImageTrackInfo>> imageStates;
+
+    explicit CommandBufferData(GarbageSystem* garbageSystem)
+      : imageStates(
+        garbageSystem
+          ->getAllocator<std::pair<drv::ImagePtr, drv::DrvCmdBufferRecorder::ImageTrackInfo>>()) {}
+
+    CommandBufferData(GarbageSystem* garbageSystem, drv::CommandBufferPtr _cmdBufferPtr,
+                      const drv::DrvCmdBufferRecorder::ImageStates* _imageStates)
+      : cmdBufferPtr(_cmdBufferPtr),
+        imageStates(
+          garbageSystem
+            ->getAllocator<std::pair<drv::ImagePtr, drv::DrvCmdBufferRecorder::ImageTrackInfo>>()) {
+        imageStates.reserve(_imageStates->size());
+        for (size_t i = 0; i < _imageStates->size(); ++i)
+            imageStates.push_back((*_imageStates)[i]);
+    }
+
+    CommandBufferData(GarbageSystem* garbageSystem, const drv::CommandBufferInfo& info)
+      : CommandBufferData(garbageSystem, info.cmdBufferPtr, info.stateTransitions.imageStates) {}
+};
+
 struct ExecutionPackage
 {
     struct CommandBufferPackage
@@ -38,18 +64,18 @@ struct ExecutionPackage
             uint64_t signalValue;
         };
         drv::QueuePtr queue;
-        drv::CommandBufferPtr cmdBufferPtr;
+        CommandBufferData cmdBufferData;
         GarbageVector<SemaphoreSignalInfo> signalSemaphores;
         GarbageVector<TimelineSemaphoreSignalInfo> signalTimelineSemaphores;
         GarbageVector<SemaphoreWaitInfo> waitSemaphores;
         GarbageVector<TimelineSemaphoreWaitInfo> waitTimelineSemaphores;
-        CommandBufferPackage(drv::QueuePtr _queue, drv::CommandBufferPtr _cmdBufferPtr,
+        CommandBufferPackage(drv::QueuePtr _queue, CommandBufferData _cmdBufferData,
                              GarbageVector<SemaphoreSignalInfo> _signalSemaphores,
                              GarbageVector<TimelineSemaphoreSignalInfo> _signalTimelineSemaphores,
                              GarbageVector<SemaphoreWaitInfo> _waitSemaphores,
                              GarbageVector<TimelineSemaphoreWaitInfo> _waitTimelineSemaphores)
           : queue(_queue),
-            cmdBufferPtr(std::move(_cmdBufferPtr)),
+            cmdBufferData(std::move(_cmdBufferData)),
             signalSemaphores(std::move(_signalSemaphores)),
             signalTimelineSemaphores(std::move(_signalTimelineSemaphores)),
             waitSemaphores(std::move(_waitSemaphores)),
@@ -102,7 +128,7 @@ struct ExecutionPackage
 };
 
 ExecutionPackage::CommandBufferPackage make_submission_package(drv::QueuePtr queue,
-                                                               drv::CommandBufferPtr cmdBufferPtr,
+                                                               const drv::CommandBufferInfo& info,
                                                                GarbageSystem* garbageSystem);
 
 class ExecutionQueue

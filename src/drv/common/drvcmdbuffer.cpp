@@ -81,6 +81,7 @@ DrvCmdBufferRecorder::ImageTrackInfo& DrvCmdBufferRecorder::getImageState(
         if ((*imageStates)[i].first == image)
             return (*imageStates)[i].second;
     LOG_F(ERROR, "Command buffer uses an image without previous registration");
+    BREAK_POINT;
     // undefined, unknown queue family
     // let's hope, it works out
     ImageTrackInfo state;
@@ -109,12 +110,13 @@ void DrvCmdBufferRecorder::registerImage(ImagePtr image, const ImageStartingStat
                     && imgState.guarantee.subresourceTrackInfo[i][j][k].layout
                          != ImageLayout::UNDEFINED
                     && imgState.guarantee.subresourceTrackInfo[i][j][k].layout
-                         != state[i][j][k].layout)
+                         != state.subresourceTrackInfo[i][j][k].layout)
                     LOG_F(
                       ERROR,
                       "An image is already tracked with a different layout, than explicitly specified: <%p>",
                       get_ptr(image));
-                imgState.guarantee.subresourceTrackInfo[i][j][k].layout = state[i][j][k].layout;
+                imgState.guarantee.subresourceTrackInfo[i][j][k].layout =
+                  state.subresourceTrackInfo[i][j][k].layout;
             }
         }
     }
@@ -127,12 +129,12 @@ void DrvCmdBufferRecorder::registerImage(ImagePtr image, const ImageStartingStat
 
 void DrvCmdBufferRecorder::registerImage(ImagePtr image, ImageLayout layout,
                                          QueueFamilyPtr ownerShip) const {
-    ImageStartingState state;
+    StackMemory::MemoryHandle<ImageStartingState> state(1, TEMPMEM);
     for (uint32_t i = 0; i < drv::ImageSubresourceSet::MAX_ARRAY_SIZE; ++i)
         for (uint32_t j = 0; j < drv::ImageSubresourceSet::MAX_MIP_LEVELS; ++j)
             for (uint32_t k = 0; k < drv::ASPECTS_COUNT; ++k)
-                state[i][j][k].layout = layout;
-    registerImage(image, state, ownerShip);
+                state->subresourceTrackInfo[i][j][k].layout = layout;
+    registerImage(image, *state, ownerShip);
 }
 
 void DrvCmdBufferRecorder::registerUndefinedImage(ImagePtr image, QueueFamilyPtr ownerShip) const {

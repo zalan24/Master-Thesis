@@ -747,13 +747,10 @@ void FrameGraph::NodeHandle::close() {
                     frameGraph->garbageSystem);
                 signalTimelineSemaphores.push_back(std::move(signal));
                 // TODO wait on semaphores to apply transitive dependencies
-                q->push(ExecutionPackage(
-                  ExecutionPackage::CommandBufferPackage{n.semaphores[i].queue,
-                                                         {},
-                                                         signalSemaphores,
-                                                         std::move(signalTimelineSemaphores),
-                                                         waitSemaphores,
-                                                         waitTimelineSemaphores}));
+                q->push(ExecutionPackage(ExecutionPackage::CommandBufferPackage{
+                  n.semaphores[i].queue, CommandBufferData(frameGraph->garbageSystem),
+                  signalSemaphores, std::move(signalTimelineSemaphores), waitSemaphores,
+                  waitTimelineSemaphores}));
             }
             flag <<= 1;
         }

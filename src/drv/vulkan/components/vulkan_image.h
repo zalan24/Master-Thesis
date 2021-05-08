@@ -21,6 +21,8 @@ struct Image
     drv::DeviceMemoryPtr memoryPtr = nullptr;
     drv::DeviceSize offset = 0;
 
+    // This state is only valid during linear submission, not parallel recording
+    drv::ImageTrackingState linearTrackingState;
     // TODO remove
     drv::ImageTrackingState trackingStates[MAX_NUM_TRACKING_SLOTS];
 };

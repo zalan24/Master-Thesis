@@ -24,10 +24,10 @@ void ExecutionQueue::waitForPackage() {
 }
 
 ExecutionPackage::CommandBufferPackage make_submission_package(drv::QueuePtr queue,
-                                                               drv::CommandBufferPtr cmdBufferPtr,
+                                                               const drv::CommandBufferInfo& info,
                                                                GarbageSystem* garbageSystem) {
     return ExecutionPackage::CommandBufferPackage(
-      queue, cmdBufferPtr,
+      queue, CommandBufferData(garbageSystem, info),
       GarbageVector<ExecutionPackage::CommandBufferPackage::SemaphoreSignalInfo>(
         garbageSystem->getAllocator<ExecutionPackage::CommandBufferPackage::SemaphoreSignalInfo>()),
       GarbageVector<ExecutionPackage::CommandBufferPackage::TimelineSemaphoreSignalInfo>(

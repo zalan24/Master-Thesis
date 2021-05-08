@@ -18,6 +18,7 @@
 
 #include "framegraphDecl.h"
 
+// TODO some to feature config
 #define FRAME_MEM_SANITIZATION_OFF 0
 #define FRAME_MEM_SANITIZATION_BASIC 1
 #define FRAME_MEM_SANITIZATION_FULL 2

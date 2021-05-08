@@ -563,9 +563,9 @@ bool Engine::execute(FrameId& executionFrame, ExecutionPackage&& package) {
           static_cast<unsigned int>(cmdBuffer.waitSemaphores.size());
         executionInfo.waitSemaphores = waitSemaphores;
         executionInfo.waitStages = waitSemaphoresStages;
-        if (!drv::is_null_ptr(cmdBuffer.cmdBufferPtr)) {
+        if (!drv::is_null_ptr(cmdBuffer.cmdBufferData.cmdBufferPtr)) {
             executionInfo.numCommandBuffers = 1;
-            executionInfo.commandBuffers = &cmdBuffer.cmdBufferPtr;
+            executionInfo.commandBuffers = &cmdBuffer.cmdBufferData.cmdBufferPtr;
         }
         else {
             executionInfo.numCommandBuffers = 0;

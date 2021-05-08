@@ -127,6 +127,8 @@ void Game::initShader(drv::Extent2D extent) {
 }
 
 void Game::record_cmd_buffer(const RecordData& data, drv::DrvCmdBufferRecorder* recorder) {
+    recorder->registerUndefinedImage(data.targetImage);
+
     recorder->cmdImageBarrier({data.targetImage, drv::IMAGE_USAGE_TRANSFER_DESTINATION,
                                drv::ImageMemoryBarrier::AUTO_TRANSITION, true,
                                drv::get_queue_family(data.device, data.renderQueue)});
@@ -139,11 +141,6 @@ void Game::record_cmd_buffer(const RecordData& data, drv::DrvCmdBufferRecorder* 
         clearValue = drv::ClearColorValue(0.f, 1.f, 1.f, 1.f);
         data.shaderTestDesc->setVariant_Color(shader_test_descriptor::Color::RED);
     }
-    recorder->registerUndefinedImage(data.targetImage);
-
-    recorder->cmdImageBarrier({data.targetImage, drv::IMAGE_USAGE_TRANSFER_DESTINATION,
-                               drv::ImageLayout::TRANSFER_DST_OPTIMAL, false,
-                               drv::get_queue_family(data.device, data.renderQueue)});
 
     recorder->cmdClearImage(data.targetImage, &clearValue);
 
