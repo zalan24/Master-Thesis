@@ -216,7 +216,7 @@ Engine::Engine(int argc, char* argv[], const Config& cfg,
     eventPool(device),
     syncBlock(device, safe_cast<uint32_t>(config.maxFramesInFlight)),
     resourceMgr(std::move(resource_infos)),
-    garbageSystem(safe_cast<size_t>(config.frameMemorySizeKb)),
+    garbageSystem(safe_cast<size_t>(config.frameMemorySizeKb) << 10),
     frameGraph(physicalDevice, device, &garbageSystem, &eventPool, config.trackerConfig),
     runtimeStats(args.runtimeStatsBin.c_str()) {
     json configJson = ISerializable::serialize(config);

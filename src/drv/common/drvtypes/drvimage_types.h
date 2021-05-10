@@ -385,9 +385,9 @@ struct ImageSubresourceRange
 struct ImageSubresourceSet
 {
     static constexpr uint32_t MAX_MIP_LEVELS = 16;
-    static constexpr uint32_t MAX_ARRAY_SIZE = 32;
+    static constexpr uint32_t MAX_ARRAY_SIZE = 16;
     using MipBit = uint16_t;
-    using UsedLayerMap = uint32_t;
+    using UsedLayerMap = uint16_t;
     using UsedAspectMap = uint8_t;
     UsedLayerMap usedLayers = 0;
     UsedAspectMap usedAspects = 0;

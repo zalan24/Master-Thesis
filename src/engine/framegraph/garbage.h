@@ -11,6 +11,8 @@
 
 #include <boost/align/aligned_alloc.hpp>
 
+#include <logger.h>
+
 #include <drv_wrappers.h>
 #include <drvcmdbufferbank.h>
 
@@ -60,6 +62,9 @@ class Garbage
         AllocatorData(const AllocatorData&) = delete;
         AllocatorData& operator=(const AllocatorData&) = delete;
         ~AllocatorData();
+
+        void clear();
+
 #if FRAME_MEM_SANITIZATION > 0
         struct AllocInfo
         {
@@ -82,6 +87,13 @@ class Garbage
 
         template <typename T>
         T* allocate(size_t n) {
+#ifdef DEBUG
+            if (memory.size() == 0) {
+                LOG_F(ERROR,
+                      "Trying to allocate memory from an uninitialized frame memory allocator");
+                BREAK_POINT;
+            }
+#endif
             if (n == 0)
                 return nullptr;
             std::unique_lock<std::mutex> lock(mutex);
@@ -92,7 +104,7 @@ class Garbage
                     align = alignof(T) - align;
                 size_t requiredAlign = (align + sizeof(Byte) - 1) / sizeof(Byte);
                 size_t requiredBytes = n * sizeof(T) / sizeof(Byte);
-                if (memory.size() - memoryTop <= requiredBytes + requiredAlign) {
+                if (requiredBytes + requiredAlign <= memory.size() - memoryTop) {
                     static_assert(sizeof(Byte) == 1);
                     ret = reinterpret_cast<T*>(reinterpret_cast<Byte*>(memory.data() + memoryTop)
                                                + align);
@@ -226,6 +238,8 @@ class Garbage
     Trash* trash = nullptr;
 
     void close() noexcept;
+    void clear();
+    void checkTrash() const;
 };
 
 template <typename T>

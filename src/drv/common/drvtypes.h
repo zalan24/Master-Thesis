@@ -137,7 +137,7 @@ struct EventCreateInfo
 
 struct PipelineStages
 {
-    using FlagType = unsigned int;
+    using FlagType = uint32_t;
     enum PipelineStageFlagBits : FlagType
     {
         TOP_OF_PIPE_BIT = 0x00000001,
@@ -797,7 +797,7 @@ enum ImageResourceUsage : ImageResourceUsageFlag
 
 PipelineStages get_image_usage_stages(ImageResourceUsageFlag usages);
 MemoryBarrier::AccessFlagBitType get_image_usage_accesses(ImageResourceUsageFlag usages);
-uint32_t get_accepted_image_layouts(ImageResourceUsageFlag usages);
+ImageLayoutMask get_accepted_image_layouts(ImageResourceUsageFlag usages);
 
 ImageAspectBitType get_format_aspects(ImageFormat format);
 

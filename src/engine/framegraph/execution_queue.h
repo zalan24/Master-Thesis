@@ -32,6 +32,7 @@ struct CommandBufferData
         imageStates(
           garbageSystem
             ->getAllocator<std::pair<drv::ImagePtr, drv::DrvCmdBufferRecorder::ImageTrackInfo>>()) {
+        // imageStates.resize(_imageStates->size());
         imageStates.reserve(_imageStates->size());
         for (size_t i = 0; i < _imageStates->size(); ++i)
             imageStates.push_back((*_imageStates)[i]);
