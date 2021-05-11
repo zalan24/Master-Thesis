@@ -3,6 +3,8 @@
 #include <cstdint>
 #include <limits>
 
+#include <fixedarray.hpp>
+
 namespace drv
 {
 enum class ImageFormat
@@ -353,6 +355,13 @@ static constexpr uint32_t get_aspect_id(AspectFlagBits aspect) {
 static constexpr AspectFlagBits get_aspect_by_id(uint32_t id) {
     return static_cast<AspectFlagBits>(1 << id);
 }
+static constexpr uint32_t aspect_count(ImageAspectBitType bits) {
+    uint32_t ret = 0;
+    for (uint32_t i = 1; i <= bits; i <<= 1)
+        if (bits & i)
+            ret++;
+    return ret;
+}
 static_assert(get_aspect_by_id(get_aspect_id(COLOR_BIT)) == COLOR_BIT);
 static_assert(get_aspect_by_id(get_aspect_id(DEPTH_BIT)) == DEPTH_BIT);
 static_assert(get_aspect_by_id(get_aspect_id(STENCIL_BIT)) == STENCIL_BIT);
@@ -385,16 +394,31 @@ struct ImageSubresourceRange
 struct ImageSubresourceSet
 {
     static constexpr uint32_t MAX_MIP_LEVELS = 16;
-    static constexpr uint32_t MAX_ARRAY_SIZE = 16;
+    // static constexpr uint32_t MAX_ARRAY_SIZE = 16;
     using MipBit = uint16_t;
-    using UsedLayerMap = uint16_t;
+    // using UsedLayerMap = uint16_t;
     using UsedAspectMap = uint8_t;
-    UsedLayerMap usedLayers = 0;
+    // UsedLayerMap usedLayers = 0;
     UsedAspectMap usedAspects = 0;
-    MipBit mipBits[MAX_ARRAY_SIZE][ASPECTS_COUNT] = {{0}};
+    struct PerLayerData
+    {
+        MipBit aspects[ASPECTS_COUNT] = {0};
+        MipBit& operator[](size_t i) { return aspects[i]; }
+        const MipBit& operator[](size_t i) const { return aspects[i]; }
+        operator bool() const {
+            for (uint32_t i = 0; i < ASPECTS_COUNT; ++i)
+                if (aspects[i])
+                    return true;
+            return false;
+        }
+    };
+    using MipBits = FixedArray<PerLayerData, 2>;
+    MipBits mipBits;
+    // MipBit mipBits[MAX_ARRAY_SIZE][ASPECTS_COUNT] = {{0}};
     static_assert(MAX_MIP_LEVELS <= sizeof(MipBit) * 8);
-    static_assert(MAX_ARRAY_SIZE <= sizeof(UsedLayerMap) * 8);
+    // static_assert(MAX_ARRAY_SIZE <= sizeof(UsedLayerMap) * 8);
     static_assert(ASPECTS_COUNT <= sizeof(UsedAspectMap) * 8);
+    explicit ImageSubresourceSet(size_t layerCount);
     void set0();
     void set(uint32_t baseLayer, uint32_t numLayers, uint32_t baseMip, uint32_t numMips,
              ImageAspectBitType aspect);
@@ -416,7 +440,7 @@ struct ImageSubresourceSet
     void traverse(F&& f) const {
         if (!usedLayers)
             return;
-        for (uint32_t i = 0; i < MAX_ARRAY_SIZE && (usedLayers >> i); ++i) {
+        for (uint32_t i = 0; i < mipBits.size() && (usedLayers >> i); ++i) {
             if (!(usedLayers & (1 << i)))
                 continue;
             for (uint32_t j = 0; j < ASPECTS_COUNT && (usedAspects >> j); ++j) {

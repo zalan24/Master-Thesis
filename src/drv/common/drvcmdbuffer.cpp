@@ -30,6 +30,10 @@ using namespace drv;
 
 DrvCmdBufferRecorder::~DrvCmdBufferRecorder() {
     if (!is_null_ptr(cmdBufferPtr)) {
+        for (uint32_t i = 0; i < imageStates->size(); ++i) {
+            TODO;  // filter images based on which was actually used
+        }
+
         drv::drv_assert(resourceTracker->end_primary_command_buffer(cmdBufferPtr));
         reset_ptr(cmdBufferPtr);
         queueFamilyLock = {};
@@ -76,7 +80,25 @@ DrvCmdBufferRecorder::DrvCmdBufferRecorder(IDriver* _driver, LogicalDevicePtr de
 // }
 
 DrvCmdBufferRecorder::ImageTrackInfo& DrvCmdBufferRecorder::getImageState(
-  drv::ImagePtr image) const {
+  drv::ImagePtr image, uint32_t ranges, const drv::ImageSubresourceRange* subresourceRanges) const {
+#if VALIDATE_USAGE
+    bool found = false;
+    for (uint32_t i = 0; i < imageRecordStates.size() && !found; ++i) {
+        if (imageRecordStates[i].first == image) {
+            drv::TextureInfo info = driver->get_texture_info(image);
+            for (uint32_t j = 0; j < ranges; ++j)
+                subresourceRanges->traverse(
+                  info.arraySize, info.numMips,
+                  [&, this](uint32_t layer, uint32_t mip, AspectFlagBits aspect) {
+                      drv::drv_assert(
+                        ImageRecordStates[i].second.initMask.has(layer, mip, aspect),
+                        "The used image subresource range was not initialized in command buffer recorder");
+                  });
+            found = true;
+        }
+    }
+    drv::drv_assert(found, "Command buffer uses an image without previous registration");
+#endif
     for (uint32_t i = 0; i < imageStates->size(); ++i)
         if ((*imageStates)[i].first == image)
             return (*imageStates)[i].second;
@@ -90,33 +112,42 @@ DrvCmdBufferRecorder::ImageTrackInfo& DrvCmdBufferRecorder::getImageState(
 }
 
 void DrvCmdBufferRecorder::registerImage(ImagePtr image, const ImageStartingState& state,
-                                         QueueFamilyPtr ownerShip) const {
+                                         const ImageSubresourceSet& initMask) const {
+    TextureInfo texInfo = driver->get_texture_info(image);
+    uint32_t indRec = 0;
+    while (indRec < imageRecordStates.size() && imageRecordStates[indRec].first != image)
+        indRec++;
+    if (indRec == imageRecordStates.size())
+        imageRecordStates.emplace_back(image, {false, ImageSubresourceRange(texInfo.arraySize)});
+    RecordImageInfo& imgRecState = imageRecordStates[ind].second;
+
     uint32_t ind = 0;
     while (ind < imageStates->size() && (*imageStates)[ind].first != image)
         ind++;
     bool knownImage = ind != imageStates->size();
-    DrvCmdBufferRecorder::ImageTrackInfo imgState =
-      knownImage ? (*imageStates)[ind].second : ImageTrackInfo{};
-    if (knownImage && imgState.guarantee.trackData.ownership != ownerShip)
-        LOG_F(
-          ERROR,
-          "An image is already tracked with a different queue family ownership, than explicitly specified: <%p>",
-          get_ptr(image));
-    imgState.guarantee.trackData.ownership = ownerShip;
-    for (uint32_t i = 0; i < drv::ImageSubresourceSet::MAX_ARRAY_SIZE; ++i) {
-        for (uint32_t j = 0; j < drv::ImageSubresourceSet::MAX_MIP_LEVELS; ++j) {
-            for (uint32_t k = 0; k < drv::ASPECTS_COUNT; ++k) {
-                if (knownImage
-                    && imgState.guarantee.subresourceTrackInfo[i][j][k].layout
-                         != ImageLayout::UNDEFINED
-                    && imgState.guarantee.subresourceTrackInfo[i][j][k].layout
-                         != state.subresourceTrackInfo[i][j][k].layout)
-                    LOG_F(
-                      ERROR,
-                      "An image is already tracked with a different layout, than explicitly specified: <%p>",
-                      get_ptr(image));
-                imgState.guarantee.subresourceTrackInfo[i][j][k].layout =
-                  state.subresourceTrackInfo[i][j][k].layout;
+    drv::TextureInfo texInfo = driver->get_texture_info(image);
+    ImageTrackInfo imgState =
+      knownImage ? (*imageStates)[ind].second
+                 : ImageTrackInfo(state.layerCount, state.mipCount, aspect_count(state.aspects));
+
+    // if (knownImage && imgState.guarantee.trackData != state.trackData)
+    //     LOG_F(
+    //       ERROR,
+    //       "An image is already tracked with a different queue family ownership, than explicitly specified: <%p>",
+    //       get_ptr(image));
+    imgState.guarantee.trackData = state.trackData;
+    for (uint32_t layer = 0; layer < texInfo.arraySize; ++layer) {
+        for (uint32_t mip = 0; mip < texInfo.numMips; ++mip) {
+            for (uint32_t aspectId = 0; aspectId < ASPECTS_COUNT; ++aspectId) {
+                AspectFlagBits aspect = get_aspect_by_id(aspectId);
+                // if (knownImage && imgRecState.initMask.has(layer, mip, aspect)
+                //     && imgState.guarantee.get(layer, mip, aspect) != ImageLayout::UNDEFINED
+                //     && imgState.guarantee.get(layer, mip, aspect) != state.get(layer, mip, aspect))
+                //     LOG_F(
+                //       ERROR,
+                //       "An image is already tracked with different values, than explicitly specified: <%p>",
+                //       get_ptr(image));
+                imgState.guarantee.get(layer, mip, aspect) = state.get(layer, mip, aspect);
             }
         }
     }
@@ -125,39 +156,51 @@ void DrvCmdBufferRecorder::registerImage(ImagePtr image, const ImageStartingStat
         imageStates->emplace_back(image, std::move(imgState));
     else
         (*imageStates)[ind].second = std::move(imgState);
+    imgRecState.initMask.merge(initMask);
 }
 
 void DrvCmdBufferRecorder::registerImage(ImagePtr image, ImageLayout layout,
                                          QueueFamilyPtr ownerShip) const {
-    StackMemory::MemoryHandle<ImageStartingState> state(1, TEMPMEM);
-    for (uint32_t i = 0; i < drv::ImageSubresourceSet::MAX_ARRAY_SIZE; ++i)
-        for (uint32_t j = 0; j < drv::ImageSubresourceSet::MAX_MIP_LEVELS; ++j)
-            for (uint32_t k = 0; k < drv::ASPECTS_COUNT; ++k)
-                state->subresourceTrackInfo[i][j][k].layout = layout;
-    registerImage(image, *state, ownerShip);
+    drv::TextureInfo info = driver->get_texture_info(image);
+    StackMemory::MemoryHandle<ImageStartingState> state(TEMPMEM, info.arraySize);
+    ImageSubresourceSet initMask(info.arraySize);
+    initMask.set(0, info.arraySize, 0, info.numMips, info.aspects);
+    state->trackData.ownership = ownerShip;
+    for (uint32_t i = 0; i < state->size(); ++i)
+        (*state)[i].layout = layout;
+    registerImage(image, *state, initMask);
 }
 
 void DrvCmdBufferRecorder::registerUndefinedImage(ImagePtr image, QueueFamilyPtr ownerShip) const {
     registerImage(image, ImageLayout::UNDEFINED, ownerShip);
 }
 
-void DrvCmdBufferRecorder::updateImageState(
-  drv::ImagePtr image, const DrvCmdBufferRecorder::ImageTrackInfo& state) const {
-    for (uint32_t i = 0; i < imageStates->size(); ++i) {
+void DrvCmdBufferRecorder::updateImageState(drv::ImagePtr image,
+                                            const DrvCmdBufferRecorder::ImageTrackInfo& state,
+                                            const ImageSubresourceSet& initMask) {
+    bool found = false;
+    for (uint32_t i = 0; i < imageStates->size() && !found; ++i) {
         if ((*imageStates)[i].first == image) {
-            (*imageStates)[i].second.guarantee = (*imageStates)[i].second.cmdState.state =
-              state.cmdState.state;
-            // state.cmdState.usageMask.traverse(
-            //   [&, this](uint32_t layer, uint32_t mip, AspectFlagBits aspect) {
-            //       imageStates[i].second.cmdState.usageMask.add(layer, mip, aspect);
-            //       imageStates[i]
-            //         .second.cmdState.state
-            //         .subresourceTrackInfo[layer][mip][drv::get_aspect_id(aspect)] =
-            //         state.cmdState.state
-            //           .subresourceTrackInfo[layer][mip][drv::get_aspect_id(aspect)];
-            //   });
-            return;
+            found = true;
+            (*imageStates)[i].second.guarantee.trackData =
+              (*imageStates)[i].second.cmdState.state.trackData = state.cmdState.state.trackData;
+            initMask.traverse([&, this](uint32_t layer, uint32_t mip, AspectFlagBits aspect) {
+                (*imageStates)[i].second.guarantee.get(layer, mip, aspect) =
+                  (*imageStates)[i].second.cmdState.state.get(layer, mip, aspect) =
+                    state.cmdState.state.get(layer, mip, aspect);
+            });
         }
     }
-    imageStates->emplace_back(image, state);
+    if (!found)
+        imageStates->emplace_back(image, state);
+    found = false;
+    for (uint32_t i = 0; i < imageRecordStates.size() && !found; ++i) {
+        if (imageRecordStates[i].first == image) {
+            found = true;
+            imageRecordStates[i].second.initMask.merge(initMask);
+        }
+    }
+    if (!found) {
+        imageRecordStates.emplace_back(image, {false, initMask});
+    }
 }

@@ -247,7 +247,7 @@ void DrvVulkanResourceTracker::appendBarrier(drv::CommandBufferPtr cmdBuffer,
                         && imageBarrier.sourceAccessFlags == 0);
         return;
     }
-    ImageMemoryBarrier barrier;
+    ImageMemoryBarrier barrier(convertImage(imageBarrier.image)->arraySize);
     static_cast<ResourceBarrier&>(barrier) = static_cast<ResourceBarrier&>(imageBarrier);
     barrier.image = imageBarrier.image;
     barrier.subresourceSet.add(imageBarrier.layer, imageBarrier.mipLevel, imageBarrier.aspect);
@@ -1047,7 +1047,7 @@ void VulkanCmdBufferRecorder::flushBarrier(BarrierInfo& barrier) {
 void VulkanCmdBufferRecorder::flushBarriersFor(drv::ImagePtr _image, uint32_t numSubresourceRanges,
                                                const drv::ImageSubresourceRange* subresourceRange) {
     drv_vulkan::Image* image = convertImage(_image);
-    drv::ImageSubresourceSet subresources;
+    drv::ImageSubresourceSet subresources(image->arraySize);
     for (uint32_t i = 0; i < numSubresourceRanges; ++i)
         subresources.set(subresourceRange[i], image->arraySize, image->numMipLevels);
     for (uint32_t i = 0; i < barriers.size(); ++i) {
@@ -1073,7 +1073,7 @@ void VulkanCmdBufferRecorder::appendBarrier(drv::PipelineStages srcStage,
                         && imageBarrier.sourceAccessFlags == 0);
         return;
     }
-    ImageMemoryBarrier barrier;
+    ImageMemoryBarrier barrier(convertImage(imageBarrier.image)->arraySize);
     static_cast<ResourceBarrier&>(barrier) = static_cast<ResourceBarrier&>(imageBarrier);
     barrier.image = imageBarrier.image;
     barrier.subresourceSet.add(imageBarrier.layer, imageBarrier.mipLevel, imageBarrier.aspect);

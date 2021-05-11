@@ -75,6 +75,8 @@ class VulkanCmdBufferRecorder final : public drv::DrvCmdBufferRecorder
 
         drv::ImagePtr image = drv::get_null_ptr<drv::ImagePtr>();
         drv::ImageSubresourceSet subresourceSet;
+        ImageMemoryBarrier() : subresourceSet(0) {}
+        explicit ImageMemoryBarrier(size_t layerCount) : subresourceSet(layerCount) {}
     };
 
     struct BarrierInfo
@@ -486,6 +488,8 @@ class DrvVulkanResourceTracker final : public drv::ResourceTracker
 
         drv::ImagePtr image = drv::get_null_ptr<drv::ImagePtr>();
         drv::ImageSubresourceSet subresourceSet;
+        ImageMemoryBarrier() : subresourceSet(0) {}
+        explicit ImageMemoryBarrier(size_t layerCount) : subresourceSet(layerCount) {}
     };
 
     struct BarrierInfo

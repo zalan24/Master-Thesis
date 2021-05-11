@@ -47,7 +47,8 @@ bool DrvVulkanResourceTracker::end_primary_command_buffer(drv::CommandBufferPtr 
 
 void VulkanCmdBufferRecorder::cmdImageBarrier(const drv::ImageMemoryBarrier& barrier) {
     getResourceTracker()->cmd_image_barrier(getCommandBuffer(), barrier);
-    cmd_image_barrier(getImageState(barrier.image).cmdState, barrier);
+    cmd_image_barrier(
+      getImageState(barrier.image, barrier.numSubresourceRanges, barrier.ranges).cmdState, barrier);
 }
 
 void VulkanCmdBufferRecorder::cmdClearImage(drv::ImagePtr image,
@@ -66,7 +67,8 @@ void VulkanCmdBufferRecorder::cmdClearImage(drv::ImagePtr image,
     }
     getResourceTracker()->cmd_clear_image(getCommandBuffer(), image, clearColors, ranges,
                                           subresourceRanges);
-    cmd_clear_image(getImageState(image).cmdState, image, clearColors, ranges, subresourceRanges);
+    cmd_clear_image(getImageState(image, ranges, subresourceRanges).cmdState, image, clearColors,
+                    ranges, subresourceRanges);
 }
 
 void DrvVulkanResourceTracker::cmd_clear_image(
@@ -208,8 +210,8 @@ void VulkanCmdBufferRecorder::cmdUseAsAttachment(drv::ImagePtr image,
     uint32_t requiredLayoutMask = initialLayout == drv::ImageLayout::UNDEFINED
                                     ? drv::get_all_layouts_mask()
                                     : static_cast<drv::ImageLayoutMask>(initialLayout);
-    add_memory_access(getImageState(image).cmdState, image, 1, &subresourceRange,
-                      drv::MemoryBarrier::get_read_bits(accessMask) != 0,
+    add_memory_access(getImageState(image, 1, &subresourceRange).cmdState, image, 1,
+                      &subresourceRange, drv::MemoryBarrier::get_read_bits(accessMask) != 0,
                       drv::MemoryBarrier::get_write_bits(accessMask) != 0 || transitionLayout,
                       stages, accessMask, requiredLayoutMask, true, nullptr, transitionLayout,
                       resultLayout);

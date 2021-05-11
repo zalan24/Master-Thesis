@@ -4,6 +4,9 @@
 
 using namespace drv;
 
+ImageSubresourceSet::ImageSubresourceSet(size_t layerCount) : mipBits(layerCount) {
+}
+
 ImageLayoutMask drv::get_all_layouts_mask() {
     return static_cast<ImageLayoutMask>(drv::ImageLayout::UNDEFINED)
            | static_cast<ImageLayoutMask>(drv::ImageLayout::GENERAL)
@@ -19,9 +22,11 @@ ImageLayoutMask drv::get_all_layouts_mask() {
 }
 
 void ImageSubresourceSet::set0() {
-    usedLayers = 0;
+    // usedLayers = 0;
     usedAspects = 0;
-    std::memset(&mipBits[0][0], 0, sizeof(MipBit) * MAX_ARRAY_SIZE * ASPECTS_COUNT);
+    for (uint32_t i = 0; i < mipBits.size(); ++i)
+        for (uint32_t j = 0; j < ASPECTS_COUNT; ++j)
+            mipBits[i][j] = 0;
 }
 
 void ImageSubresourceSet::set(uint32_t baseLayer, uint32_t numLayers, uint32_t baseMip,
@@ -37,7 +42,7 @@ void ImageSubresourceSet::set(uint32_t baseLayer, uint32_t numLayers, uint32_t b
         for (uint32_t j = 0; j < ASPECTS_COUNT; ++j) {
             if (aspect & get_aspect_by_id(j)) {
                 mipBits[i + baseLayer][j] = mip;
-                usedLayers |= 1 << (i + baseLayer);
+                // usedLayers |= 1 << (i + baseLayer);
                 usedAspects |= 1 << j;
             }
         }
@@ -56,25 +61,28 @@ void ImageSubresourceSet::set(const ImageSubresourceRange& range, uint32_t image
 }
 
 void ImageSubresourceSet::add(uint32_t layer, uint32_t mip, AspectFlagBits aspect) {
-    usedLayers |= 1 << layer;
+    // usedLayers |= 1 << layer;
     usedAspects |= aspect;
     mipBits[layer][get_aspect_id(aspect)] |= 1 << mip;
 }
 
 bool ImageSubresourceSet::has(uint32_t layer, uint32_t mip, AspectFlagBits aspect) {
-    if (!(usedLayers & (1 << layer)))
+    if (layer > mipBits.size())
         return false;
+    // if (!(usedLayers & (1 << layer)))
+    //     return false;
     return mipBits[layer][get_aspect_id(aspect)] & (1 << mip);
 }
 
 bool ImageSubresourceSet::overlap(const ImageSubresourceSet& b) const {
-    UsedLayerMap commonLayers = usedLayers & b.usedLayers;
+    // UsedLayerMap commonLayers = usedLayers & b.usedLayers;
     UsedAspectMap commonAspects = usedAspects & b.usedAspects;
-    if (!commonLayers || !commonAspects)
+    if (/*!commonLayers || */ !commonAspects)
         return false;
-    for (uint32_t i = 0; i < MAX_ARRAY_SIZE && (commonLayers >> i); ++i) {
-        if (!(commonLayers & (1 << i)))
-            continue;
+    for (uint32_t i = 0; i < mipBits.size() && i < b.mipBits.size() /*&& (commonLayers >> i)*/;
+         ++i) {
+        // if (!(commonLayers & (1 << i)))
+        //     continue;
         for (uint32_t j = 0; j < ASPECTS_COUNT; ++j)
             if (mipBits[i][j] & b.mipBits[i][j])
                 return true;
@@ -87,26 +95,32 @@ bool ImageSubresourceSet::operator==(const ImageSubresourceSet& b) const {
 }
 
 void ImageSubresourceSet::merge(const ImageSubresourceSet& b) {
-    usedLayers |= b.usedLayers;
+    // usedLayers |= b.usedLayers;
     usedAspects |= b.usedAspects;
-    for (uint32_t i = 0; i < MAX_ARRAY_SIZE && (usedLayers >> i); ++i)
+    if (b.mipBits.size() > mipBits.size()) {
+        MipBits temp(b.mipBits.size());
+        for (uint32_t i = 0; i < mipBits.size(); ++i)
+            temp[i] = mipBits[i];
+        mipBits = std::move(temp);
+    }
+    for (uint32_t i = 0; i < b.mipBits.size() /* && (usedLayers >> i)*/; ++i)
         for (uint32_t j = 0; j < ASPECTS_COUNT; ++j)
             mipBits[i][j] |= b.mipBits[i][j];
 }
 
 uint32_t ImageSubresourceSet::getLayerCount() const {
     uint32_t ret = 0;
-    for (UsedLayerMap i = 0; i < MAX_ARRAY_SIZE; ++i)
-        if (usedLayers & (1 << i))
+    for (uint32_t i = 0; i < mipBits.size(); ++i)
+        if (mipBits[i])
             ret++;
     return ret;
 }
 
 ImageSubresourceSet::MipBit ImageSubresourceSet::getMaxMipMask() const {
     MipBit ret = 0;
-    for (UsedLayerMap i = 0; i < MAX_ARRAY_SIZE && (usedLayers >> i); ++i) {
-        if (!(usedLayers & (1 << i)))
-            continue;
+    for (uint32_t i = 0; i < mipBits.size() /* && (usedLayers >> i)*/; ++i) {
+        // if (!(usedLayers & (1 << i)))
+        //     continue;
         for (uint32_t j = 0; j < ASPECTS_COUNT; ++j)
             ret |= mipBits[i][j];
     }
@@ -118,9 +132,9 @@ ImageSubresourceSet::UsedAspectMap ImageSubresourceSet::getUsedAspects() const {
 }
 
 bool ImageSubresourceSet::isAspectMaskConstant() const {
-    for (UsedLayerMap i = 0; i < MAX_ARRAY_SIZE && (usedLayers >> i); ++i) {
-        if (!(usedLayers & (1 << i)))
-            continue;
+    for (uint32_t i = 0; i < mipBits.size() /*&& (usedLayers >> i)*/; ++i) {
+        // if (!(usedLayers & (1 << i)))
+        //     continue;
         for (uint32_t j = 0; j < ASPECTS_COUNT && (usedAspects >> j); ++j) {
             if (!(usedAspects & (1 << j)))
                 continue;
@@ -132,7 +146,7 @@ bool ImageSubresourceSet::isAspectMaskConstant() const {
 }
 
 bool ImageSubresourceSet::isLayerUsed(uint32_t layer) const {
-    return usedLayers & (1 << layer);
+    return mipBits[layer];
 }
 
 ImageSubresourceSet::MipBit ImageSubresourceSet::getMips(uint32_t layer,

@@ -871,7 +871,7 @@ struct TextureInfo
     uint32_t arraySize;
     ImageFormat format;
     SampleCount samples;
-    // ImageAspectBitType aspects;
+    ImageAspectBitType aspects;
 };
 
 struct ClearRect

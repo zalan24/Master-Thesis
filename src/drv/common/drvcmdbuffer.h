@@ -11,6 +11,12 @@
 #include "drvtypes/drvresourceptrs.hpp"
 #include "drvtypes/drvtracking.hpp"
 
+#ifdef DEBUG
+#    define VALIDATE_USAGE 1
+#else
+#    define VALIDATE_USAGE 0
+#endif
+
 namespace drv
 {
 template <typename D>
@@ -26,10 +32,25 @@ class DrvCmdBufferRecorder
     {
         ImageTrackingState guarantee;
         CmdImageTrackingState cmdState;  // usage mask and result state
+        explicit ImageTrackInfo(uint32_t layerCount, uint32_t mipCount,
+                                drv::ImageAspectBitType aspects)
+          : guarantee(layerCount, mipCount, aspects),
+            CmdImageTrackingState(layerCount, mipCount, aspects) {}
+    };
+
+    struct RecordImageInfo
+    {
+        TODO;  // mark used when the image is used in any sync, or access
+        bool used = false;
+#if VALIDATE_USAGE
+        ImageSubresourceSet initMask;
+#endif
     };
 
     using ImageStates =
       FlexibleArray<std::pair<drv::ImagePtr, ImageTrackInfo>, NUM_CACHED_IMAGE_STATES>;
+    using ImageRecordStates =
+      FlexibleArray<std::pair<drv::ImagePtr, RecordImageInfo>, NUM_CACHED_IMAGE_STATES>;
 
     DrvCmdBufferRecorder(IDriver* driver, LogicalDevicePtr device, drv::QueueFamilyPtr family,
                          CommandBufferPtr cmdBufferPtr, drv::ResourceTracker* resourceTracker,
@@ -55,22 +76,21 @@ class DrvCmdBufferRecorder
             updateImageState((*buffer.getImageStates())[i].first,
                              (*buffer.getImageStates())[i].second);
     }
-    struct ImageStartingState {
-        decltype(ImageTrackingState::subresourceTrackInfo) subresourceTrackInfo;
-    };
+    using ImageStartingState = ImageTrackingState;
     void registerImage(ImagePtr image, const ImageStartingState& state,
-                       QueueFamilyPtr ownerShip = IGNORE_FAMILY) const;
+                       const ImageSubresourceSet& initMask) const;
     void registerImage(ImagePtr image, ImageLayout layout,
                        QueueFamilyPtr ownerShip = IGNORE_FAMILY) const;
     void registerUndefinedImage(ImagePtr image, QueueFamilyPtr ownerShip = IGNORE_FAMILY) const;
 
-    void updateImageState(drv::ImagePtr image,
-                          const DrvCmdBufferRecorder::ImageTrackInfo& state) const;
+    void updateImageState(drv::ImagePtr image, const DrvCmdBufferRecorder::ImageTrackInfo& state,
+                          const ImageSubresourceSet& initMask);
 
     void setImageStates(ImageStates* _imageStates) { imageStates = _imageStates; }
 
  protected:
-    ImageTrackInfo& getImageState(drv::ImagePtr image) const;
+    ImageTrackInfo& getImageState(drv::ImagePtr image, uint32_t ranges,
+                                  const drv::ImageSubresourceRange* subresourceRanges) const;
 
     IDriver* driver;
 
@@ -80,6 +100,7 @@ class DrvCmdBufferRecorder
     CommandBufferPtr cmdBufferPtr;
     drv::ResourceTracker* resourceTracker;
     ImageStates* imageStates;
+    ImageRecordStates imageRecordStates;
 };
 
 struct StateTransition
