@@ -127,6 +127,8 @@ class VulkanCmdBufferRecorder final : public drv::DrvCmdBufferRecorder
 
     drv::CommandTypeMask getQueueSupport() const { return queueSupport; }
 
+    void corrigate(const drv::StateCorrectionData& data) override;
+
  private:
     FlexibleArray<BarrierInfo, drv_vulkan::MAX_NUM_PARALLEL_BARRIERS_IN_CMD_STATE> barriers;
     const drv::StateTrackingConfig* trackingConfig;
@@ -382,6 +384,10 @@ class DrvVulkan final : public drv::IDriver
           this, physicalDevice, device, &trackingConfig, family, cmdBufferPtr, resourceTracker,
           singleTime, simultaneousUse));
     }
+
+    bool validate_and_apply_state_transitions(
+      drv::StateCorrectionData& correction, uint32_t imageCount,
+      const std::pair<drv::ImagePtr, drv::ImageTrackInfo>* transitions) override;
 
  private:
     struct LogicalDeviceData

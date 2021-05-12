@@ -526,6 +526,9 @@ bool Engine::execute(FrameId& executionFrame, ExecutionPackage&& package) {
         functor->call();
     }
     else if (std::holds_alternative<ExecutionPackage::CommandBufferPackage>(package.package)) {
+        drv::CommandBufferPtr commandBuffers[2];
+        uint32_t numCommandBuffers = 0;
+
         ExecutionPackage::CommandBufferPackage& cmdBuffer =
           std::get<ExecutionPackage::CommandBufferPackage>(package.package);
         StackMemory::MemoryHandle<drv::TimelineSemaphorePtr> signalTimelineSemaphores(
@@ -564,13 +567,27 @@ bool Engine::execute(FrameId& executionFrame, ExecutionPackage&& package) {
         executionInfo.waitSemaphores = waitSemaphores;
         executionInfo.waitStages = waitSemaphoresStages;
         if (!drv::is_null_ptr(cmdBuffer.cmdBufferData.cmdBufferPtr)) {
-            executionInfo.numCommandBuffers = 1;
-            executionInfo.commandBuffers = &cmdBuffer.cmdBufferData.cmdBufferPtr;
+            drv::StateCorrectionData correctionData;
+            if (!drv::validate_and_apply_state_transitions(
+                  correctionData, cmdBuffer.cmdBufferData.imageStates.size(),
+                  cmdBuffer.cmdBufferData.imageStates.data())) {
+                if () {
+                    LOG_F(ERROR, "Some resources are not in the expected state");
+                    BREAK_POINT;
+                }
+                OneTimeCmdBuffer<drv::StateCorrectionData> cmdBuffer(
+                  physicalDevice, device, cmdBuffer.queue, getCommandBufferBank(),
+                  getGarbageSystem(), nullptr,
+                  [](const drv::StateCorrectionData& data, drv::DrvCmdBufferRecorder* recorder) {
+                      recorder->corrigate(data);
+                  });
+                commandBuffers[numCommandBuffers++] =
+                  cmdBuffer.use(std::move(correctionData)).cmdBufferPtr;
+            }
+            commandBuffers[numCommandBuffers++] = cmdBuffer.cmdBufferData.cmdBufferPtr;
         }
-        else {
-            executionInfo.numCommandBuffers = 0;
-            executionInfo.commandBuffers = nullptr;
-        }
+        executionInfo.numCommandBuffers = numCommandBuffers;
+        executionInfo.commandBuffers = commandBuffers;
         executionInfo.numSignalSemaphores =
           static_cast<unsigned int>(cmdBuffer.signalSemaphores.size());
         executionInfo.signalSemaphores = cmdBuffer.signalSemaphores.data();

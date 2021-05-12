@@ -22,6 +22,7 @@ struct PerSubresourceRangeTrackData
 };
 struct PerResourceTrackData
 {
+    TODO;  // this is also per subresources...
     drv::QueueFamilyPtr ownership = drv::IGNORE_FAMILY;
     bool operator==(const PerResourceTrackData& rhs) const { return ownership == rhs.ownership; }
 };
@@ -33,15 +34,11 @@ struct ImageSubresourceTrackData : PerSubresourceRangeTrackData
 
 struct ImageTrackingState
 {
-    // TODO use a vector here instead of array
     PerResourceTrackData trackData;
     uint32_t layerCount = 0;
     uint32_t mipCount = 0;
     drv::ImageAspectBitType aspects = 0;
     FixedArray<ImageSubresourceTrackData, 16> subresourceTrackInfo;
-    // ImageSubresourceTrackData subresourceTrackInfo[drv::ImageSubresourceSet::MAX_ARRAY_SIZE]
-    //                                               [drv::ImageSubresourceSet::MAX_MIP_LEVELS]
-    //                                               [drv::ASPECTS_COUNT];
     explicit ImageTrackingState(uint32_t _layerCount, uint32_t _mipCount,
                                 ImageAspectBitType _aspects)
       : layerCount(_layerCount),
@@ -72,6 +69,58 @@ struct ImageTrackingState
     }
 };
 
+struct ResourceStateCorrection
+{
+    TODO;  // this is also per subresources...
+    drv::QueueFamilyPtr oldOwnership = drv::IGNORE_FAMILY;
+    drv::QueueFamilyPtr newOwnership = drv::IGNORE_FAMILY;
+};
+
+struct ImageSubresourceStateCorrection
+{
+    drv::ImageLayout oldLayout = drv::ImageLayout::UNDEFINED;
+    drv::ImageLayout newLayout = drv::ImageLayout::UNDEFINED;
+};
+
+struct ImageStateCorrection
+{
+    ResourceStateCorrection trackData;
+    uint32_t layerCount = 0;
+    uint32_t mipCount = 0;
+    drv::ImageAspectBitType aspects = 0;
+    ImageSubresourceSet usageMask;
+    FixedArray<ImageSubresourceStateCorrection, 16> subresources;
+    explicit ImageStateCorrection(uint32_t _layerCount, uint32_t _mipCount,
+                                  ImageAspectBitType _aspects)
+      : layerCount(_layerCount),
+        mipCount(_mipCount),
+        aspects(_aspects),
+        usageMask(layerCount),
+        subresources(layerCount * mipCount * aspect_count(aspects)) {}
+    ImageStateCorrection() : ImageStateCorrection(0, 0, 0) {}
+    uint32_t getAspectId(AspectFlagBits aspect) const {
+        uint32_t ret = 0;
+        while (((1 << ret) & aspect) == 0)
+            ret++;
+        return ret;
+    }
+    uint32_t getIndex(uint32_t layerIndex, uint32_t mipIndex, AspectFlagBits aspect) const {
+        return layerIndex * mipCount * aspect_count(aspects) + getAspectId(aspect) * mipCount
+               + mipIndex;
+    }
+    ImageSubresourceStateCorrection& get(uint32_t layerIndex, uint32_t mipIndex,
+                                         AspectFlagBits aspect) {
+        return subresources[getIndex(layerIndex, mipIndex, aspect)];
+    }
+    const ImageSubresourceStateCorrection& get(uint32_t layerIndex, uint32_t mipIndex,
+                                               AspectFlagBits aspect) const {
+        return subresources[getIndex(layerIndex, mipIndex, aspect)];
+    }
+    uint32_t size() const { return layerCount * aspect_count(aspects) * mipCount; }
+    ImageSubresourceStateCorrection& operator[](uint32_t i) { return subresources[i]; }
+    const ImageSubresourceStateCorrection& operator[](uint32_t i) const { return subresources[i]; }
+};
+
 struct CmdImageTrackingState
 {
     ImageTrackingState state;
@@ -79,5 +128,20 @@ struct CmdImageTrackingState
     explicit CmdImageTrackingState(uint32_t layerCount, uint32_t mipCount,
                                    drv::ImageAspectBitType aspects)
       : state(layerCount, mipCount, aspects), usageMask(layerCount) {}
+};
+
+struct StateCorrectionData
+{
+    FixedArray<std::pair<ImagePtr, ImageStateCorrection>, 1> imageCorrections;
+    StateCorrectionData() : imageCorrections(0) {}
+};
+
+struct ImageTrackInfo
+{
+    ImageTrackingState guarantee;
+    CmdImageTrackingState cmdState;  // usage mask and result state
+    explicit ImageTrackInfo(uint32_t layerCount, uint32_t mipCount, drv::ImageAspectBitType aspects)
+      : guarantee(layerCount, mipCount, aspects), cmdState(layerCount, mipCount, aspects) {}
+    ImageTrackInfo() : ImageTrackInfo(0, 0, 0) {}
 };
 };  // namespace drv

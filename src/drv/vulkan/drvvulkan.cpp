@@ -1315,3 +1315,9 @@ void VulkanCmdBufferRecorder::add_memory_sync(
         subresourceData.usableStages |= missingUsability;
     }
 }
+
+bool DrvVulkan::validate_and_apply_state_transitions(
+  drv::StateCorrectionData& correction, uint32_t imageCount,
+  const std::pair<drv::ImagePtr, drv::ImageTrackInfo>* transitions) {
+    TODO;
+}

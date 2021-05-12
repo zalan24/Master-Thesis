@@ -86,7 +86,7 @@ DrvCmdBufferRecorder::DrvCmdBufferRecorder(IDriver* _driver, LogicalDevicePtr de
 //                             clearColors, ranges, subresourceRanges);
 // }
 
-DrvCmdBufferRecorder::ImageTrackInfo& DrvCmdBufferRecorder::getImageState(
+ImageTrackInfo& DrvCmdBufferRecorder::getImageState(
   drv::ImagePtr image, uint32_t ranges, const drv::ImageSubresourceRange* subresourceRanges) {
     TextureInfo texInfo = driver->get_texture_info(image);
     bool found = false;
@@ -191,8 +191,7 @@ void DrvCmdBufferRecorder::registerUndefinedImage(ImagePtr image, QueueFamilyPtr
     registerImage(image, ImageLayout::UNDEFINED, ownerShip);
 }
 
-void DrvCmdBufferRecorder::updateImageState(drv::ImagePtr image,
-                                            const DrvCmdBufferRecorder::ImageTrackInfo& state,
+void DrvCmdBufferRecorder::updateImageState(drv::ImagePtr image, const ImageTrackInfo& state,
                                             const ImageSubresourceSet& initMask) {
     bool found = false;
     for (uint32_t i = 0; i < imageStates->size() && !found; ++i) {
@@ -219,5 +218,39 @@ void DrvCmdBufferRecorder::updateImageState(drv::ImagePtr image,
     if (!found) {
         RecordImageInfo recInfo{false, initMask};
         imageRecordStates.emplace_back(image, std::move(recInfo));
+    }
+}
+
+void DrvCmdBufferRecorder::corrigate(const StateCorrectionData& data) {
+    for (uint32_t i = 0; i < data.imageCorrections.size(); ++i) {
+        TextureInfo texInfo = driver->get_texture_info(data.imageCorrections[i].first);
+        ImageStartingState state(data.imageCorrections[i].second.layerCount,
+                                 data.imageCorrections[i].second.mipCount,
+                                 data.imageCorrections[i].second.aspects);
+        data.imageCorrections[i].second.usageMask.traverse(
+          [&, this](uint32_t layer, uint32_t mip, AspectFlagBits aspect) {
+              const auto& subres = data.imageCorrections[i].second.get(layer, mip, aspect);
+              state.get(layer, mip, aspect).layout = subres.oldLayout;
+              state.get(layer, mip, aspect).ownership = subres.oldOwnership;
+              state.get(layer, mip, aspect).ongoingReads = PipelineStages::ALL_COMMANDS_BIT;
+              state.get(layer, mip, aspect).ongoingWrites = PipelineStages::ALL_COMMANDS_BIT;
+              state.get(layer, mip, aspect).usableStages = PipelineStages::TOP_OF_PIPE_BIT;
+              state.get(layer, mip, aspect).visible = 0;
+              state.get(layer, mip, aspect).dirtyMask = ALL_ASPECTS;
+          });
+        registerImage(data.imageCorrections[i].first, state,
+                      data.imageCorrections[i].second.usageMask);
+        data.imageCorrections[i].second.usageMask.traverse(
+          [&, this](uint32_t layer, uint32_t mip, AspectFlagBits aspect) {
+              ImageSubresourceRange range;
+              range.aspectMask = aspect;
+              range.baseArrayLayer = layer;
+              range.layerCount = 1;
+              range.baseMipLevel = mip;
+              range.levelCount = 1;
+              const auto& subres = data.imageCorrections[i].second.get(layer, mip, aspect);
+              cmdImageBarrier({data.imageCorrections[i].first, 1, &range, USAGES,
+                               subres.oldLayout == ImageLayout::UNDEFINED, subres.newOwnership});
+          });
     }
 }

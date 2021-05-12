@@ -321,6 +321,19 @@ Get a triangle on screen:
             ☐ Dynamic global variables: camera matrix for eg.
             ☐ Material resources (textures and buffers)
             ☐ Global resources
+    ☐ Stages in framegraph
+        ☐ Each node has a stage mask (simulation, pre-record, record, implicit enqueue, ?implicit execution?, each device queue...)
+        ☐ Each stage has a frame counter (except queue stages)
+        ☐ There is an implicit dependency between each stage of the node's execution
+        ☐ Cpu-cpu dependencies will get a source and destination stage
+        ☐ Command buffers will be recorded in the record stage only
+        ☐ The record stage is meant to be a heavily dependent stage: depending on all previous nodes, that share resources
+            ☐ This needs special validation
+            ☐ Command buffers are recorded and submitted here
+            ☐ It's meant to be a really fast stage, because command buffers rarely need to be re-recorded
+        ☐ Each stage is autamatically synced with the begin stage marker of that stage (like the current start sime / start record markers, just automatic)
+        ☐ The engine will need to trigger the stage markers using the built in stuff instead of custom nodes
+        ☐ The record stage should have a function that initializes a command buffer recorder with all known resources from prev nodes + earlier cmd buffers from the current node
 
 Cleanup & other:
     ☐ Remove useless common driver stuff (drv/common)

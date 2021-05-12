@@ -28,15 +28,6 @@ class DrvCmdBufferRecorder
 {
  public:
     static constexpr uint32_t NUM_CACHED_IMAGE_STATES = 8;
-    struct ImageTrackInfo
-    {
-        ImageTrackingState guarantee;
-        CmdImageTrackingState cmdState;  // usage mask and result state
-        explicit ImageTrackInfo(uint32_t layerCount, uint32_t mipCount,
-                                drv::ImageAspectBitType aspects)
-          : guarantee(layerCount, mipCount, aspects), cmdState(layerCount, mipCount, aspects) {}
-        ImageTrackInfo() : ImageTrackInfo(0, 0, 0) {}
-    };
 
     struct RecordImageInfo
     {
@@ -89,6 +80,8 @@ class DrvCmdBufferRecorder
                           const ImageSubresourceSet& initMask);
 
     void setImageStates(ImageStates* _imageStates) { imageStates = _imageStates; }
+
+    void corrigate(const StateCorrectionData& data);
 
  protected:
     ImageTrackInfo& getImageState(drv::ImagePtr image, uint32_t ranges,

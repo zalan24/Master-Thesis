@@ -192,6 +192,10 @@ class IDriver
       drv::ResourceTracker* resourceTracker, bool singleTime, bool simultaneousUse) = 0;
     virtual size_t get_cmd_buffer_recorder_size() = 0;
 
+    virtual bool validate_and_apply_state_transitions(
+      StateCorrectionData& correction, uint32_t imageCount,
+      const std::pair<drv::ImagePtr, ImageTrackInfo>* transitions) = 0;
+
     // virtual void cmd_flush_waits_on(CommandBufferPtr cmdBuffer, EventPtr event) = 0;
 };
 }  // namespace drv

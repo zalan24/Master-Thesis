@@ -183,6 +183,9 @@ uint32_t get_num_trackers();
 
 ShaderModulePtr create_shader_module(LogicalDevicePtr device, const ShaderCreateInfo* info);
 bool destroy_shader_module(LogicalDevicePtr device, ShaderModulePtr module);
+bool validate_and_apply_state_transitions(
+  StateCorrectionData& correction, uint32_t imageCount,
+  const std::pair<drv::ImagePtr, ImageTrackInfo>* transitions);
 
 // std::unique_ptr<CmdTrackingRecordState> create_tracking_record_state();
 // PipelineStages cmd_image_barrier(drv::CmdTrackingRecordState *recordState, CmdImageTrackingState& state, CommandBufferPtr cmdBuffer,

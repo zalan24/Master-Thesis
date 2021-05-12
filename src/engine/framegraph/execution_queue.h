@@ -19,19 +19,15 @@ class ExecutionQueue;
 struct CommandBufferData
 {
     drv::CommandBufferPtr cmdBufferPtr = drv::get_null_ptr<drv::CommandBufferPtr>();
-    GarbageVector<std::pair<drv::ImagePtr, drv::DrvCmdBufferRecorder::ImageTrackInfo>> imageStates;
+    GarbageVector<std::pair<drv::ImagePtr, drv::ImageTrackInfo>> imageStates;
 
     explicit CommandBufferData(GarbageSystem* garbageSystem)
-      : imageStates(
-        garbageSystem
-          ->getAllocator<std::pair<drv::ImagePtr, drv::DrvCmdBufferRecorder::ImageTrackInfo>>()) {}
+      : imageStates(garbageSystem->getAllocator<std::pair<drv::ImagePtr, drv::ImageTrackInfo>>()) {}
 
     CommandBufferData(GarbageSystem* garbageSystem, drv::CommandBufferPtr _cmdBufferPtr,
                       const drv::DrvCmdBufferRecorder::ImageStates* _imageStates)
       : cmdBufferPtr(_cmdBufferPtr),
-        imageStates(
-          garbageSystem
-            ->getAllocator<std::pair<drv::ImagePtr, drv::DrvCmdBufferRecorder::ImageTrackInfo>>()) {
+        imageStates(garbageSystem->getAllocator<std::pair<drv::ImagePtr, drv::ImageTrackInfo>>()) {
         // imageStates.resize(_imageStates->size());
         imageStates.reserve(_imageStates->size());
         for (size_t i = 0; i < _imageStates->size(); ++i)
