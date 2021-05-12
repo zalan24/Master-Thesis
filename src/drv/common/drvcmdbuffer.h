@@ -34,16 +34,18 @@ class DrvCmdBufferRecorder
         CmdImageTrackingState cmdState;  // usage mask and result state
         explicit ImageTrackInfo(uint32_t layerCount, uint32_t mipCount,
                                 drv::ImageAspectBitType aspects)
-          : guarantee(layerCount, mipCount, aspects),
-            CmdImageTrackingState(layerCount, mipCount, aspects) {}
+          : guarantee(layerCount, mipCount, aspects), cmdState(layerCount, mipCount, aspects) {}
+        ImageTrackInfo() : ImageTrackInfo(0, 0, 0) {}
     };
 
     struct RecordImageInfo
     {
-        TODO;  // mark used when the image is used in any sync, or access
         bool used = false;
 #if VALIDATE_USAGE
         ImageSubresourceSet initMask;
+        RecordImageInfo(bool _used, ImageSubresourceSet _initMask)
+          : used(_used), initMask(std::move(_initMask)) {}
+        RecordImageInfo() : used(false), initMask(0) {}
 #endif
     };
 
@@ -78,19 +80,19 @@ class DrvCmdBufferRecorder
     }
     using ImageStartingState = ImageTrackingState;
     void registerImage(ImagePtr image, const ImageStartingState& state,
-                       const ImageSubresourceSet& initMask) const;
+                       const ImageSubresourceSet& initMask);
     void registerImage(ImagePtr image, ImageLayout layout,
-                       QueueFamilyPtr ownerShip = IGNORE_FAMILY) const;
-    void registerUndefinedImage(ImagePtr image, QueueFamilyPtr ownerShip = IGNORE_FAMILY) const;
+                       QueueFamilyPtr ownerShip = IGNORE_FAMILY);
+    void registerUndefinedImage(ImagePtr image, QueueFamilyPtr ownerShip = IGNORE_FAMILY);
 
-    void updateImageState(drv::ImagePtr image, const DrvCmdBufferRecorder::ImageTrackInfo& state,
+    void updateImageState(drv::ImagePtr image, const ImageTrackInfo& state,
                           const ImageSubresourceSet& initMask);
 
     void setImageStates(ImageStates* _imageStates) { imageStates = _imageStates; }
 
  protected:
     ImageTrackInfo& getImageState(drv::ImagePtr image, uint32_t ranges,
-                                  const drv::ImageSubresourceRange* subresourceRanges) const;
+                                  const drv::ImageSubresourceRange* subresourceRanges);
 
     IDriver* driver;
 

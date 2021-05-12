@@ -9,16 +9,18 @@ class FixedArray
  public:
     explicit FixedArray(size_t _count) : count(_count) {
         if (count <= S)
-            data = LocalData{};
+            values = LocalData{};
         else
-            data = DynamicData(count);
+            values = DynamicData(count);
     }
 
     T& operator[](size_t i) {
-        return count <= S ? std::get<LocalData>(data)[i] : std::get<DynamicData>(data)[i];
+        return count <= S ? std::get<LocalData>(values).values[i]
+                          : std::get<DynamicData>(values)[i];
     }
     const T& operator[](size_t i) const {
-        return count <= S ? std::get<LocalData>(data)[i] : std::get<DynamicData>(data)[i];
+        return count <= S ? std::get<LocalData>(values).values[i]
+                          : std::get<DynamicData>(values)[i];
     }
 
     size_t size() const { return count; }
@@ -32,5 +34,5 @@ class FixedArray
     };
     using DynamicData = std::vector<T>;
     size_t count;
-    std::variant<LocalData, DynamicData> data;
+    std::variant<LocalData, DynamicData> values;
 };

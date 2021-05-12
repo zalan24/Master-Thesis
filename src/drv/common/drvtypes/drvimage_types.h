@@ -438,15 +438,15 @@ struct ImageSubresourceSet
     MipBit getMips(uint32_t layer, AspectFlagBits aspect) const;
     template <typename F>
     void traverse(F&& f) const {
-        if (!usedLayers)
-            return;
-        for (uint32_t i = 0; i < mipBits.size() && (usedLayers >> i); ++i) {
-            if (!(usedLayers & (1 << i)))
-                continue;
+        // if (!usedLayers)
+        //     return;
+        for (uint32_t i = 0; i < mipBits.size() /*&& (usedLayers >> i)*/; ++i) {
+            // if (!(usedLayers & (1 << i)))
+            //     continue;
             for (uint32_t j = 0; j < ASPECTS_COUNT && (usedAspects >> j); ++j) {
                 if (!(usedAspects & (1 << j)))
                     continue;
-                const mipBit& currentMipBits = mipBits[i][j];
+                const MipBit& currentMipBits = mipBits[i][j];
                 for (uint32_t mip = 0; mip < MAX_MIP_LEVELS && (currentMipBits >> mip); ++mip)
                     if ((1 << mip) & currentMipBits)
                         f(i, mip, get_aspect_by_id(j));

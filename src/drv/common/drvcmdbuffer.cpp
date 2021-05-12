@@ -30,8 +30,15 @@ using namespace drv;
 
 DrvCmdBufferRecorder::~DrvCmdBufferRecorder() {
     if (!is_null_ptr(cmdBufferPtr)) {
-        for (uint32_t i = 0; i < imageStates->size(); ++i) {
-            TODO;  // filter images based on which was actually used
+        for (uint32_t i = uint32_t(imageStates->size()); i > 0; --i) {
+            bool used = false;
+            for (uint32_t j = 0; j < imageRecordStates.size() && !used; ++j)
+                if (imageRecordStates[j].first == (*imageStates)[i - 1].first)
+                    used = imageRecordStates[j].second.used;
+            if (!used) {
+                (*imageStates)[i - 1] = std::move((*imageStates)[imageStates->size() - 1]);
+                imageStates->pop_back();
+            }
         }
 
         drv::drv_assert(resourceTracker->end_primary_command_buffer(cmdBufferPtr));
@@ -80,9 +87,10 @@ DrvCmdBufferRecorder::DrvCmdBufferRecorder(IDriver* _driver, LogicalDevicePtr de
 // }
 
 DrvCmdBufferRecorder::ImageTrackInfo& DrvCmdBufferRecorder::getImageState(
-  drv::ImagePtr image, uint32_t ranges, const drv::ImageSubresourceRange* subresourceRanges) const {
-#if VALIDATE_USAGE
+  drv::ImagePtr image, uint32_t ranges, const drv::ImageSubresourceRange* subresourceRanges) {
+    TextureInfo texInfo = driver->get_texture_info(image);
     bool found = false;
+#if VALIDATE_USAGE
     for (uint32_t i = 0; i < imageRecordStates.size() && !found; ++i) {
         if (imageRecordStates[i].first == image) {
             drv::TextureInfo info = driver->get_texture_info(image);
@@ -90,8 +98,10 @@ DrvCmdBufferRecorder::ImageTrackInfo& DrvCmdBufferRecorder::getImageState(
                 subresourceRanges->traverse(
                   info.arraySize, info.numMips,
                   [&, this](uint32_t layer, uint32_t mip, AspectFlagBits aspect) {
+                      if (!(texInfo.aspects & aspect))
+                          return;
                       drv::drv_assert(
-                        ImageRecordStates[i].second.initMask.has(layer, mip, aspect),
+                        imageRecordStates[i].second.initMask.has(layer, mip, aspect),
                         "The used image subresource range was not initialized in command buffer recorder");
                   });
             found = true;
@@ -99,6 +109,10 @@ DrvCmdBufferRecorder::ImageTrackInfo& DrvCmdBufferRecorder::getImageState(
     }
     drv::drv_assert(found, "Command buffer uses an image without previous registration");
 #endif
+    found = false;
+    for (uint32_t i = 0; i < imageRecordStates.size() && !found; ++i)
+        if (imageRecordStates[i].first == image)
+            imageRecordStates[i].second.used = true;
     for (uint32_t i = 0; i < imageStates->size(); ++i)
         if ((*imageStates)[i].first == image)
             return (*imageStates)[i].second;
@@ -106,26 +120,27 @@ DrvCmdBufferRecorder::ImageTrackInfo& DrvCmdBufferRecorder::getImageState(
     BREAK_POINT;
     // undefined, unknown queue family
     // let's hope, it works out
-    ImageTrackInfo state;
+    ImageTrackInfo state(texInfo.arraySize, texInfo.numMips, texInfo.aspects);
     imageStates->emplace_back(image, std::move(state));
     return imageStates->back().second;
 }
 
 void DrvCmdBufferRecorder::registerImage(ImagePtr image, const ImageStartingState& state,
-                                         const ImageSubresourceSet& initMask) const {
+                                         const ImageSubresourceSet& initMask) {
     TextureInfo texInfo = driver->get_texture_info(image);
     uint32_t indRec = 0;
     while (indRec < imageRecordStates.size() && imageRecordStates[indRec].first != image)
         indRec++;
-    if (indRec == imageRecordStates.size())
-        imageRecordStates.emplace_back(image, {false, ImageSubresourceRange(texInfo.arraySize)});
-    RecordImageInfo& imgRecState = imageRecordStates[ind].second;
+    if (indRec == imageRecordStates.size()) {
+        RecordImageInfo recInfo{false, ImageSubresourceSet(texInfo.arraySize)};
+        imageRecordStates.emplace_back(image, std::move(recInfo));
+    }
+    RecordImageInfo& imgRecState = imageRecordStates[indRec].second;
 
     uint32_t ind = 0;
     while (ind < imageStates->size() && (*imageStates)[ind].first != image)
         ind++;
     bool knownImage = ind != imageStates->size();
-    drv::TextureInfo texInfo = driver->get_texture_info(image);
     ImageTrackInfo imgState =
       knownImage ? (*imageStates)[ind].second
                  : ImageTrackInfo(state.layerCount, state.mipCount, aspect_count(state.aspects));
@@ -160,9 +175,10 @@ void DrvCmdBufferRecorder::registerImage(ImagePtr image, const ImageStartingStat
 }
 
 void DrvCmdBufferRecorder::registerImage(ImagePtr image, ImageLayout layout,
-                                         QueueFamilyPtr ownerShip) const {
+                                         QueueFamilyPtr ownerShip) {
     drv::TextureInfo info = driver->get_texture_info(image);
-    StackMemory::MemoryHandle<ImageStartingState> state(TEMPMEM, info.arraySize);
+    StackMemory::MemoryHandle<ImageStartingState> state(TEMPMEM, info.arraySize, info.numMips,
+                                                        info.aspects);
     ImageSubresourceSet initMask(info.arraySize);
     initMask.set(0, info.arraySize, 0, info.numMips, info.aspects);
     state->trackData.ownership = ownerShip;
@@ -171,7 +187,7 @@ void DrvCmdBufferRecorder::registerImage(ImagePtr image, ImageLayout layout,
     registerImage(image, *state, initMask);
 }
 
-void DrvCmdBufferRecorder::registerUndefinedImage(ImagePtr image, QueueFamilyPtr ownerShip) const {
+void DrvCmdBufferRecorder::registerUndefinedImage(ImagePtr image, QueueFamilyPtr ownerShip) {
     registerImage(image, ImageLayout::UNDEFINED, ownerShip);
 }
 
@@ -201,6 +217,7 @@ void DrvCmdBufferRecorder::updateImageState(drv::ImagePtr image,
         }
     }
     if (!found) {
-        imageRecordStates.emplace_back(image, {false, initMask});
+        RecordImageInfo recInfo{false, initMask};
+        imageRecordStates.emplace_back(image, std::move(recInfo));
     }
 }

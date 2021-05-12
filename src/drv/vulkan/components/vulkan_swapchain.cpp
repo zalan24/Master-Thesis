@@ -130,18 +130,13 @@ bool DrvVulkan::get_swapchain_images(drv::LogicalDevicePtr device, drv::Swapchai
         return false;
     if (images) {
         for (uint32_t i = 0; i < *count; ++i) {
-            images[i] = drv::store_ptr<drv::ImagePtr>(new drv_vulkan::Image());
-            convertImage(images[i])->image = vkImages[i];
-            convertImage(images[i])->extent = {convertSwapchain(swapchain)->extent.width,
-                                               convertSwapchain(swapchain)->extent.height, 1};
-            convertImage(images[i])->swapchainImage = true;
-            convertImage(images[i])->numMipLevels = 1;
-            convertImage(images[i])->arraySize = 1;
-            convertImage(images[i])->sampleCount = drv::SampleCount::SAMPLE_COUNT_1;
-            convertImage(images[i])->aspects =
-              drv::get_format_aspects(convertSwapchain(swapchain)->format);
-            convertImage(images[i])->format = convertSwapchain(swapchain)->format;
-            convertImage(images[i])->sharedResource = convertSwapchain(swapchain)->sharedImages;
+            images[i] = drv::store_ptr<drv::ImagePtr>(new drv_vulkan::Image(
+              vkImages[i],
+              {convertSwapchain(swapchain)->extent.width,
+               convertSwapchain(swapchain)->extent.height, 1},
+              1, 1, drv::get_format_aspects(convertSwapchain(swapchain)->format),
+              convertSwapchain(swapchain)->sharedImages, drv::SampleCount::SAMPLE_COUNT_1,
+              convertSwapchain(swapchain)->format, true));
         }
     }
     return true;

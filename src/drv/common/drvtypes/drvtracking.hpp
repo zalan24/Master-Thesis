@@ -50,7 +50,7 @@ struct ImageTrackingState
         subresourceTrackInfo(layerCount * mipCount * aspect_count(aspects)) {}
     uint32_t getAspectId(AspectFlagBits aspect) const {
         uint32_t ret = 0;
-        while ((1 << ret) & aspect == 0)
+        while (((1 << ret) & aspect) == 0)
             ret++;
         return ret;
     }

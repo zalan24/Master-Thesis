@@ -48,7 +48,8 @@ bool DrvVulkanResourceTracker::end_primary_command_buffer(drv::CommandBufferPtr 
 void VulkanCmdBufferRecorder::cmdImageBarrier(const drv::ImageMemoryBarrier& barrier) {
     getResourceTracker()->cmd_image_barrier(getCommandBuffer(), barrier);
     cmd_image_barrier(
-      getImageState(barrier.image, barrier.numSubresourceRanges, barrier.ranges).cmdState, barrier);
+      getImageState(barrier.image, barrier.numSubresourceRanges, barrier.getRanges()).cmdState,
+      barrier);
 }
 
 void VulkanCmdBufferRecorder::cmdClearImage(drv::ImagePtr image,

@@ -32,8 +32,8 @@ class StackMemory
 
         template <typename... Args>
         explicit MemoryHandle(StackMemory* _memory, Args&&... args)
-          : memory(_memory), ptr(memory->template allocate<T>(1, std::forwand<Args>(args)...)) {
-            if (require && !ptr)
+          : memory(_memory), ptr(memory->template allocate<T>(1, std::forward<Args>(args)...)) {
+            if (!ptr)
                 throw std::runtime_error("Could not allocate stack memory");
         }
 

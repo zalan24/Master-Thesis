@@ -83,7 +83,7 @@ class FlexibleArray
     bool empty() const { return count == 0; }
 
     size_t size() const { return count; }
-    size_t fixedSize() const {return S;}
+    size_t fixedSize() const { return S; }
 
  private:
     size_t count = 0;
