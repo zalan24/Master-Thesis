@@ -103,10 +103,10 @@ DrvVulkan::~DrvVulkan() {
 }
 
 void DrvVulkanResourceTracker::validate_memory_access(
-  drv::PerResourceTrackData& resourceData, drv::PerSubresourceRangeTrackData& subresourceData,
-  bool read, bool write, bool sharedRes, drv::PipelineStages stages,
-  drv::MemoryBarrier::AccessFlagBitType accessMask, drv::PipelineStages& barrierSrcStage,
-  drv::PipelineStages& barrierDstStage, ResourceBarrier& barrier) {
+  drv::PerSubresourceRangeTrackData& subresourceData, bool read, bool write, bool sharedRes,
+  drv::PipelineStages stages, drv::MemoryBarrier::AccessFlagBitType accessMask,
+  drv::PipelineStages& barrierSrcStage, drv::PipelineStages& barrierDstStage,
+  ResourceBarrier& barrier) {
     accessMask = drv::MemoryBarrier::resolve(accessMask);
 
     drv::QueueFamilyPtr transferOwnership = drv::IGNORE_FAMILY;
@@ -115,8 +115,8 @@ void DrvVulkanResourceTracker::validate_memory_access(
     bool needWait = 0;
 
     drv::QueueFamilyPtr currentFamily = driver->get_queue_family(device, queue);
-    if (!sharedRes && resourceData.ownership != currentFamily
-        && resourceData.ownership != drv::IGNORE_FAMILY) {
+    if (!sharedRes && subresourceData.ownership != currentFamily
+        && subresourceData.ownership != drv::IGNORE_FAMILY) {
         invalidate(SUBOPTIMAL,
                    "Resource has exclusive usage and it's owned by a different queue family");
         transferOwnership = currentFamily;
@@ -148,13 +148,12 @@ void DrvVulkanResourceTracker::validate_memory_access(
         needWait = true;
     }
     if (invalidateMask != 0 || transferOwnership != drv::IGNORE_FAMILY || needWait)
-        add_memory_sync(resourceData, subresourceData, flush, stages, accessMask,
+        add_memory_sync(subresourceData, flush, stages, accessMask,
                         transferOwnership != drv::IGNORE_FAMILY, transferOwnership, barrierSrcStage,
                         barrierDstStage, barrier);
 }
 
-void DrvVulkanResourceTracker::add_memory_access(drv::PerResourceTrackData& resourceData,
-                                                 drv::PerSubresourceRangeTrackData& subresourceData,
+void DrvVulkanResourceTracker::add_memory_access(drv::PerSubresourceRangeTrackData& subresourceData,
                                                  bool read, bool write, drv::PipelineStages stages,
                                                  drv::MemoryBarrier::AccessFlagBitType accessMask) {
     accessMask = drv::MemoryBarrier::resolve(accessMask);
@@ -172,14 +171,16 @@ void DrvVulkanResourceTracker::add_memory_access(drv::PerResourceTrackData& reso
     }
     subresourceData.ongoingWrites |= write ? currentStages : 0;
     subresourceData.ongoingReads |= read ? currentStages : 0;
-    resourceData.ownership = currentFamily;
+    subresourceData.ownership = currentFamily;
 }
 
-void DrvVulkanResourceTracker::add_memory_sync(
-  drv::PerResourceTrackData& resourceData, drv::PerSubresourceRangeTrackData& subresourceData,
-  bool flush, drv::PipelineStages dstStages, drv::MemoryBarrier::AccessFlagBitType accessMask,
-  bool transferOwnership, drv::QueueFamilyPtr newOwner, drv::PipelineStages& barrierSrcStage,
-  drv::PipelineStages& barrierDstStage, ResourceBarrier& barrier) {
+void DrvVulkanResourceTracker::add_memory_sync(drv::PerSubresourceRangeTrackData& subresourceData,
+                                               bool flush, drv::PipelineStages dstStages,
+                                               drv::MemoryBarrier::AccessFlagBitType accessMask,
+                                               bool transferOwnership, drv::QueueFamilyPtr newOwner,
+                                               drv::PipelineStages& barrierSrcStage,
+                                               drv::PipelineStages& barrierDstStage,
+                                               ResourceBarrier& barrier) {
     const drv::PipelineStages::FlagType stages = dstStages.resolve(queueSupport);
     if (config.forceInvalidateAll)
         accessMask = drv::MemoryBarrier::get_all_read_bits();
@@ -187,15 +188,15 @@ void DrvVulkanResourceTracker::add_memory_sync(
         barrierDstStage.add(drv::PipelineStages::ALL_COMMANDS_BIT);
         barrierSrcStage.add(drv::PipelineStages::ALL_COMMANDS_BIT);
     }
-    if (transferOwnership && resourceData.ownership != newOwner) {
-        if (resourceData.ownership != drv::IGNORE_FAMILY) {
-            barrier.srcFamily = resourceData.ownership;
+    if (transferOwnership && subresourceData.ownership != newOwner) {
+        if (subresourceData.ownership != drv::IGNORE_FAMILY) {
+            barrier.srcFamily = subresourceData.ownership;
             barrier.dstFamily = newOwner;
             barrierDstStage.add(dstStages);
             barrierSrcStage.add(drv::PipelineStages::TOP_OF_PIPE_BIT);
             subresourceData.usableStages = stages;
         }
-        resourceData.ownership = newOwner;
+        subresourceData.ownership = newOwner;
     }
     if ((config.forceFlush || flush) && subresourceData.dirtyMask != 0) {
         barrierDstStage.add(dstStages);
@@ -1185,10 +1186,10 @@ void VulkanCmdBufferRecorder::invalidate(InvalidationLevel level, const char* me
 }
 
 void VulkanCmdBufferRecorder::validate_memory_access(
-  drv::PerResourceTrackData& resourceData, drv::PerSubresourceRangeTrackData& subresourceData,
-  bool read, bool write, bool sharedRes, drv::PipelineStages stages,
-  drv::MemoryBarrier::AccessFlagBitType accessMask, drv::PipelineStages& barrierSrcStage,
-  drv::PipelineStages& barrierDstStage, VulkanCmdBufferRecorder::ResourceBarrier& barrier) {
+  drv::PerSubresourceRangeTrackData& subresourceData, bool read, bool write, bool sharedRes,
+  drv::PipelineStages stages, drv::MemoryBarrier::AccessFlagBitType accessMask,
+  drv::PipelineStages& barrierSrcStage, drv::PipelineStages& barrierDstStage,
+  VulkanCmdBufferRecorder::ResourceBarrier& barrier) {
     accessMask = drv::MemoryBarrier::resolve(accessMask);
 
     drv::QueueFamilyPtr transferOwnership = drv::IGNORE_FAMILY;
@@ -1197,8 +1198,8 @@ void VulkanCmdBufferRecorder::validate_memory_access(
     bool needWait = 0;
 
     drv::QueueFamilyPtr currentFamily = getFamily();
-    if (!sharedRes && resourceData.ownership != currentFamily
-        && resourceData.ownership != drv::IGNORE_FAMILY) {
+    if (!sharedRes && subresourceData.ownership != currentFamily
+        && subresourceData.ownership != drv::IGNORE_FAMILY) {
         invalidate(SUBOPTIMAL,
                    "Resource has exclusive usage and it's owned by a different queue family");
         transferOwnership = currentFamily;
@@ -1230,13 +1231,12 @@ void VulkanCmdBufferRecorder::validate_memory_access(
         needWait = true;
     }
     if (invalidateMask != 0 || transferOwnership != drv::IGNORE_FAMILY || needWait)
-        add_memory_sync(resourceData, subresourceData, flush, stages, accessMask,
+        add_memory_sync(subresourceData, flush, stages, accessMask,
                         transferOwnership != drv::IGNORE_FAMILY, transferOwnership, barrierSrcStage,
                         barrierDstStage, barrier);
 }
 
-void VulkanCmdBufferRecorder::add_memory_access(drv::PerResourceTrackData& resourceData,
-                                                drv::PerSubresourceRangeTrackData& subresourceData,
+void VulkanCmdBufferRecorder::add_memory_access(drv::PerSubresourceRangeTrackData& subresourceData,
                                                 bool read, bool write, drv::PipelineStages stages,
                                                 drv::MemoryBarrier::AccessFlagBitType accessMask) {
     accessMask = drv::MemoryBarrier::resolve(accessMask);
@@ -1254,14 +1254,16 @@ void VulkanCmdBufferRecorder::add_memory_access(drv::PerResourceTrackData& resou
     }
     subresourceData.ongoingWrites |= write ? currentStages : 0;
     subresourceData.ongoingReads |= read ? currentStages : 0;
-    resourceData.ownership = currentFamily;
+    subresourceData.ownership = currentFamily;
 }
 
-void VulkanCmdBufferRecorder::add_memory_sync(
-  drv::PerResourceTrackData& resourceData, drv::PerSubresourceRangeTrackData& subresourceData,
-  bool flush, drv::PipelineStages dstStages, drv::MemoryBarrier::AccessFlagBitType accessMask,
-  bool transferOwnership, drv::QueueFamilyPtr newOwner, drv::PipelineStages& barrierSrcStage,
-  drv::PipelineStages& barrierDstStage, VulkanCmdBufferRecorder::ResourceBarrier& barrier) {
+void VulkanCmdBufferRecorder::add_memory_sync(drv::PerSubresourceRangeTrackData& subresourceData,
+                                              bool flush, drv::PipelineStages dstStages,
+                                              drv::MemoryBarrier::AccessFlagBitType accessMask,
+                                              bool transferOwnership, drv::QueueFamilyPtr newOwner,
+                                              drv::PipelineStages& barrierSrcStage,
+                                              drv::PipelineStages& barrierDstStage,
+                                              VulkanCmdBufferRecorder::ResourceBarrier& barrier) {
     const drv::PipelineStages::FlagType stages = dstStages.resolve(getQueueSupport());
     if (trackingConfig->forceInvalidateAll)
         accessMask = drv::MemoryBarrier::get_all_read_bits();
@@ -1269,15 +1271,15 @@ void VulkanCmdBufferRecorder::add_memory_sync(
         barrierDstStage.add(drv::PipelineStages::ALL_COMMANDS_BIT);
         barrierSrcStage.add(drv::PipelineStages::ALL_COMMANDS_BIT);
     }
-    if (transferOwnership && resourceData.ownership != newOwner) {
-        if (resourceData.ownership != drv::IGNORE_FAMILY) {
-            barrier.srcFamily = resourceData.ownership;
+    if (transferOwnership && subresourceData.ownership != newOwner) {
+        if (subresourceData.ownership != drv::IGNORE_FAMILY) {
+            barrier.srcFamily = subresourceData.ownership;
             barrier.dstFamily = newOwner;
             barrierDstStage.add(dstStages);
             barrierSrcStage.add(drv::PipelineStages::TOP_OF_PIPE_BIT);
             subresourceData.usableStages = stages;
         }
-        resourceData.ownership = newOwner;
+        subresourceData.ownership = newOwner;
     }
     if ((trackingConfig->forceFlush || flush) && subresourceData.dirtyMask != 0) {
         barrierDstStage.add(dstStages);
@@ -1319,5 +1321,66 @@ void VulkanCmdBufferRecorder::add_memory_sync(
 bool DrvVulkan::validate_and_apply_state_transitions(
   drv::StateCorrectionData& correction, uint32_t imageCount,
   const std::pair<drv::ImagePtr, drv::ImageTrackInfo>* transitions) {
-    TODO;
+    uint32_t correctedImageCount = 0;
+    StackMemory::MemoryHandle<std::pair<drv::ImagePtr, drv::ImageStateCorrection>> imageCorrections(
+      imageCount, TEMPMEM);
+    for (uint32_t i = 0; i < imageCount; ++i) {
+        drv_vulkan::Image* image = convertImage(transitions[i].first);
+
+        bool invalid = false;
+        transitions[i].second.cmdState.usageMask.traverse(
+          [&](uint32_t layer, uint32_t mip, drv::AspectFlagBits aspect) {
+              const auto& requirement = transitions[i].second.guarantee.get(layer, mip, aspect);
+              const auto& state = image->linearTrackingState.get(layer, mip, aspect);
+              if (requirement.ownership != state.ownership
+                  && requirement.ownership != drv::IGNORE_FAMILY)
+                  invalid = true;
+              else if (requirement.layout != drv::ImageLayout::UNDEFINED
+                       && requirement.layout != state.layout)
+                  invalid = true;
+              else if ((state.usableStages & requirement.usableStages) != requirement.usableStages)
+                  invalid = true;
+              else if ((state.ongoingWrites & requirement.ongoingWrites) != state.ongoingWrites)
+                  invalid = true;
+              else if ((state.ongoingReads & requirement.ongoingReads) != state.ongoingReads)
+                  invalid = true;
+              else if ((state.dirtyMask & requirement.dirtyMask) != state.dirtyMask)
+                  invalid = true;
+              else if ((state.visible & requirement.visible) != requirement.visible)
+                  invalid = true;
+          });
+        if (invalid) {
+            imageCorrections[correctedImageCount].first = transitions[i].first;
+            imageCorrections[correctedImageCount].second =
+              drv::ImageStateCorrection(image->arraySize, image->numMipLevels, image->aspects);
+            transitions[i].second.cmdState.usageMask.traverse(
+              [&](uint32_t layer, uint32_t mip, drv::AspectFlagBits aspect) {
+                  const auto& requirement = transitions[i].second.guarantee.get(layer, mip, aspect);
+                  const auto& state = image->linearTrackingState.get(layer, mip, aspect);
+                  auto& transition = imageCorrections[i].second.get(layer, mip, aspect);
+                  transition.oldLayout = state.layout;
+                  transition.oldOwnership = state.ownership;
+                  transition.newLayout = requirement.layout != drv::ImageLayout::UNDEFINED
+                                           ? requirement.layout
+                                           : transition.oldLayout;
+                  transition.newOwnership = requirement.ownership != drv::IGNORE_FAMILY
+                                              ? requirement.ownership
+                                              : transition.oldOwnership;
+              });
+            correctedImageCount++;
+        }
+        transitions[i].second.cmdState.usageMask.traverse(
+          [&](uint32_t layer, uint32_t mip, drv::AspectFlagBits aspect) {
+              const auto& result = transitions[i].second.cmdState.state.get(layer, mip, aspect);
+              auto& state = image->linearTrackingState.get(layer, mip, aspect);
+              state = result;
+          });
+    }
+    if (correctedImageCount > 0) {
+        correction.imageCorrections =
+          FixedArray<std::pair<drv::ImagePtr, drv::ImageStateCorrection>, 1>(correctedImageCount);
+        for (uint32_t i = 0; i < correctedImageCount; ++i)
+            correction.imageCorrections[i] = std::move(imageCorrections[i]);
+    }
+    return correctedImageCount == 0;
 }

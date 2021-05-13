@@ -108,6 +108,7 @@ struct CommandBufferInfo
 {
     CommandBufferPtr cmdBufferPtr;
     StateTransition stateTransitions;
+    uint64_t numUsages;
 };
 
 template <typename D>
@@ -150,6 +151,7 @@ class DrvCmdBuffer
             //                               resourceTracker, &imageStates, isSingleTimeBuffer(),
             //                               isSimultaneous());
             recordCallback(currentData, recorder);
+            numSubmissions = 0;
         }
         needToPrepare = false;
     }
@@ -158,7 +160,7 @@ class DrvCmdBuffer
         if (needToPrepare)
             prepare(std::move(d));
         needToPrepare = true;
-        return {cmdBufferPtr, {&imageStates}};
+        return {cmdBufferPtr, {&imageStates}, ++numSubmissions};
     }
 
     const DrvCmdBufferRecorder::ImageStates* getImageStates() { return &imageStates; }
@@ -185,6 +187,7 @@ class DrvCmdBuffer
     DrvCmdBufferRecorder::ImageStates imageStates;
 
     bool needToPrepare = true;
+    uint64_t numSubmissions = 0;
 };
 
 }  // namespace drv

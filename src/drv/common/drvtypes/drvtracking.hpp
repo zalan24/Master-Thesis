@@ -9,6 +9,7 @@ namespace drv
 {
 struct PerSubresourceRangeTrackData
 {
+    drv::QueueFamilyPtr ownership = drv::IGNORE_FAMILY;
     // Sync state is defined for these stages
     drv::PipelineStages::FlagType usableStages =
       drv::PipelineStages::get_all_bits(drv::CMD_TYPE_ALL);
@@ -20,12 +21,11 @@ struct PerSubresourceRangeTrackData
     // which cache sees the data
     drv::MemoryBarrier::AccessFlagBitType visible = drv::MemoryBarrier::get_all_bits();
 };
-struct PerResourceTrackData
-{
-    TODO;  // this is also per subresources...
-    drv::QueueFamilyPtr ownership = drv::IGNORE_FAMILY;
-    bool operator==(const PerResourceTrackData& rhs) const { return ownership == rhs.ownership; }
-};
+// struct PerResourceTrackData
+// {
+//     TODO;  // this is also per subresources...
+//     bool operator==(const PerResourceTrackData& rhs) const { return ownership == rhs.ownership; }
+// };
 
 struct ImageSubresourceTrackData : PerSubresourceRangeTrackData
 {
@@ -34,7 +34,7 @@ struct ImageSubresourceTrackData : PerSubresourceRangeTrackData
 
 struct ImageTrackingState
 {
-    PerResourceTrackData trackData;
+    // PerResourceTrackData trackData;
     uint32_t layerCount = 0;
     uint32_t mipCount = 0;
     drv::ImageAspectBitType aspects = 0;
@@ -69,14 +69,13 @@ struct ImageTrackingState
     }
 };
 
-struct ResourceStateCorrection
+struct SubresourceStateCorrection
 {
-    TODO;  // this is also per subresources...
     drv::QueueFamilyPtr oldOwnership = drv::IGNORE_FAMILY;
     drv::QueueFamilyPtr newOwnership = drv::IGNORE_FAMILY;
 };
 
-struct ImageSubresourceStateCorrection
+struct ImageSubresourceStateCorrection : SubresourceStateCorrection
 {
     drv::ImageLayout oldLayout = drv::ImageLayout::UNDEFINED;
     drv::ImageLayout newLayout = drv::ImageLayout::UNDEFINED;
@@ -84,7 +83,6 @@ struct ImageSubresourceStateCorrection
 
 struct ImageStateCorrection
 {
-    ResourceStateCorrection trackData;
     uint32_t layerCount = 0;
     uint32_t mipCount = 0;
     drv::ImageAspectBitType aspects = 0;

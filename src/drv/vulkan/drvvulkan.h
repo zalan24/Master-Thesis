@@ -31,7 +31,7 @@ class InputManager;
 namespace drv
 {
 struct PerSubresourceRangeTrackData;
-struct PerResourceTrackData;
+// struct PerResourceTrackData;
 }  // namespace drv
 
 class DrvVulkan;
@@ -127,8 +127,6 @@ class VulkanCmdBufferRecorder final : public drv::DrvCmdBufferRecorder
 
     drv::CommandTypeMask getQueueSupport() const { return queueSupport; }
 
-    void corrigate(const drv::StateCorrectionData& data) override;
-
  private:
     FlexibleArray<BarrierInfo, drv_vulkan::MAX_NUM_PARALLEL_BARRIERS_IN_CMD_STATE> barriers;
     const drv::StateTrackingConfig* trackingConfig;
@@ -170,8 +168,7 @@ class VulkanCmdBufferRecorder final : public drv::DrvCmdBufferRecorder
     };
     void invalidate(InvalidationLevel level, const char* message) const;
 
-    void validate_memory_access(drv::PerResourceTrackData& resourceData,
-                                drv::PerSubresourceRangeTrackData& subresourceData, bool read,
+    void validate_memory_access(drv::PerSubresourceRangeTrackData& subresourceData, bool read,
                                 bool write, bool sharedRes, drv::PipelineStages stages,
                                 drv::MemoryBarrier::AccessFlagBitType accessMask,
                                 drv::PipelineStages& barrierSrcStage,
@@ -185,8 +182,7 @@ class VulkanCmdBufferRecorder final : public drv::DrvCmdBufferRecorder
                                 drv::PipelineStages& barrierDstStage,
                                 ImageSingleSubresourceMemoryBarrier& barrier);
 
-    void add_memory_access(drv::PerResourceTrackData& resourceData,
-                           drv::PerSubresourceRangeTrackData& subresourceData, bool read,
+    void add_memory_access(drv::PerSubresourceRangeTrackData& subresourceData, bool read,
                            bool write, drv::PipelineStages stages,
                            drv::MemoryBarrier::AccessFlagBitType accessMask);
     void add_memory_access_validate(drv::CmdImageTrackingState& state, drv::ImagePtr image,
@@ -197,8 +193,7 @@ class VulkanCmdBufferRecorder final : public drv::DrvCmdBufferRecorder
                                     uint32_t requiredLayoutMask, bool changeLayout,
                                     drv::ImageLayout resultLayout);
 
-    void add_memory_sync(drv::PerResourceTrackData& resourceData,
-                         drv::PerSubresourceRangeTrackData& subresourceData, bool flush,
+    void add_memory_sync(drv::PerSubresourceRangeTrackData& subresourceData, bool flush,
                          drv::PipelineStages dstStages,
                          drv::MemoryBarrier::AccessFlagBitType accessMask, bool transferOwnership,
                          drv::QueueFamilyPtr newOwner, drv::PipelineStages& barrierSrcStage,
@@ -535,8 +530,7 @@ class DrvVulkanResourceTracker final : public drv::ResourceTracker
     };
     void invalidate(InvalidationLevel level, const char* message) const;
 
-    void validate_memory_access(drv::PerResourceTrackData& resourceData,
-                                drv::PerSubresourceRangeTrackData& subresourceData, bool read,
+    void validate_memory_access(drv::PerSubresourceRangeTrackData& subresourceData, bool read,
                                 bool write, bool sharedRes, drv::PipelineStages stages,
                                 drv::MemoryBarrier::AccessFlagBitType accessMask,
                                 drv::PipelineStages& barrierSrcStage,
@@ -550,8 +544,7 @@ class DrvVulkanResourceTracker final : public drv::ResourceTracker
                                 drv::PipelineStages& barrierDstStage,
                                 ImageSingleSubresourceMemoryBarrier& barrier);
 
-    void add_memory_access(drv::PerResourceTrackData& resourceData,
-                           drv::PerSubresourceRangeTrackData& subresourceData, bool read,
+    void add_memory_access(drv::PerSubresourceRangeTrackData& subresourceData, bool read,
                            bool write, drv::PipelineStages stages,
                            drv::MemoryBarrier::AccessFlagBitType accessMask);
     void add_memory_access_validate(drv::CommandBufferPtr cmdBuffer, drv::ImagePtr image,
@@ -562,8 +555,7 @@ class DrvVulkanResourceTracker final : public drv::ResourceTracker
                                     uint32_t requiredLayoutMask, bool changeLayout,
                                     drv::ImageLayout resultLayout);
 
-    void add_memory_sync(drv::PerResourceTrackData& resourceData,
-                         drv::PerSubresourceRangeTrackData& subresourceData, bool flush,
+    void add_memory_sync(drv::PerSubresourceRangeTrackData& subresourceData, bool flush,
                          drv::PipelineStages dstStages,
                          drv::MemoryBarrier::AccessFlagBitType accessMask, bool transferOwnership,
                          drv::QueueFamilyPtr newOwner, drv::PipelineStages& barrierSrcStage,

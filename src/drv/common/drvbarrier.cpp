@@ -31,10 +31,12 @@ bool ImageMemoryBarrier::pick_layout(ImageResourceUsageFlag usages, ImageLayout&
     return false;
 }
 
-ImageMemoryBarrier::ImageMemoryBarrier(ImagePtr _image, ImageResourceUsageFlag _usages,
+ImageMemoryBarrier::ImageMemoryBarrier(ImagePtr _image, ImageResourceUsageFlag usages,
                                        TransitionLayoutOption transition,
                                        bool _discardCurrentContent, QueueFamilyPtr targetFamily)
-  : image(_image), usages(_usages) {
+  : image(_image),
+    stages(drv::get_image_usage_stages(usages)),
+    accessMask(drv::get_image_usage_accesses(usages)) {
     switch (transition) {
         case NO_TRANSITION:
             transitionLayout = false;
@@ -54,11 +56,12 @@ ImageMemoryBarrier::ImageMemoryBarrier(ImagePtr _image, ImageResourceUsageFlag _
     ranges.range.levelCount = ranges.range.REMAINING_MIP_LEVELS;
 }
 
-ImageMemoryBarrier::ImageMemoryBarrier(ImagePtr _image, ImageResourceUsageFlag _usages,
+ImageMemoryBarrier::ImageMemoryBarrier(ImagePtr _image, ImageResourceUsageFlag usages,
                                        ImageLayout transition, bool _discardCurrentContent,
                                        QueueFamilyPtr targetFamily)
   : image(_image),
-    usages(_usages),
+    stages(drv::get_image_usage_stages(usages)),
+    accessMask(drv::get_image_usage_accesses(usages)),
     transitionLayout(true),
     discardCurrentContent(_discardCurrentContent),
     resultLayout(transition) {
@@ -76,10 +79,13 @@ ImageMemoryBarrier::ImageMemoryBarrier(ImagePtr _image, ImageResourceUsageFlag _
 
 ImageMemoryBarrier::ImageMemoryBarrier(ImagePtr _image, uint32_t numRanges,
                                        const ImageSubresourceRange* _ranges,
-                                       ImageResourceUsageFlag _usages,
+                                       ImageResourceUsageFlag usages,
                                        TransitionLayoutOption transition,
                                        bool _discardCurrentContent, QueueFamilyPtr targetFamily)
-  : image(_image), numSubresourceRanges(numRanges), usages(_usages) {
+  : image(_image),
+    numSubresourceRanges(numRanges),
+    stages(drv::get_image_usage_stages(usages)),
+    accessMask(drv::get_image_usage_accesses(usages)) {
     switch (transition) {
         case NO_TRANSITION:
             transitionLayout = false;
@@ -99,11 +105,34 @@ ImageMemoryBarrier::ImageMemoryBarrier(ImagePtr _image, uint32_t numRanges,
 
 ImageMemoryBarrier::ImageMemoryBarrier(ImagePtr _image, uint32_t numRanges,
                                        const ImageSubresourceRange* _ranges,
-                                       ImageResourceUsageFlag _usages, ImageLayout transition,
+                                       ImageResourceUsageFlag usages, ImageLayout transition,
                                        bool _discardCurrentContent, QueueFamilyPtr targetFamily)
   : image(_image),
     numSubresourceRanges(numRanges),
-    usages(_usages),
+    stages(drv::get_image_usage_stages(usages)),
+    accessMask(drv::get_image_usage_accesses(usages)),
+    transitionLayout(true),
+    discardCurrentContent(_discardCurrentContent),
+    resultLayout(transition) {
+    // drv_assert(get_accepted_image_layouts(usages) & static_cast<ImageLayoutMask>(transition),
+    //            "Transition target layout is not supported by all specified usages");
+    requestedOwnership = targetFamily;
+    if (numSubresourceRanges == 1)
+        ranges.range = _ranges[0];
+    else
+        ranges.ranges = _ranges;
+}
+
+ImageMemoryBarrier::ImageMemoryBarrier(ImagePtr _image, uint32_t numRanges,
+                                       const ImageSubresourceRange* _ranges,
+                                       const PipelineStages& _stages,
+                                       MemoryBarrier::AccessFlagBitType _accessMask,
+                                       ImageLayout transition, bool _discardCurrentContent,
+                                       QueueFamilyPtr targetFamily)
+  : image(_image),
+    numSubresourceRanges(numRanges),
+    stages(_stages),
+    accessMask(_accessMask),
     transitionLayout(true),
     discardCurrentContent(_discardCurrentContent),
     resultLayout(transition) {

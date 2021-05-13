@@ -566,25 +566,25 @@ bool Engine::execute(FrameId& executionFrame, ExecutionPackage&& package) {
           static_cast<unsigned int>(cmdBuffer.waitSemaphores.size());
         executionInfo.waitSemaphores = waitSemaphores;
         executionInfo.waitStages = waitSemaphoresStages;
-        if (!drv::is_null_ptr(cmdBuffer.cmdBufferData.cmdBufferPtr)) {
+        {
             drv::StateCorrectionData correctionData;
             if (!drv::validate_and_apply_state_transitions(
-                  correctionData, cmdBuffer.cmdBufferData.imageStates.size(),
+                  correctionData, uint32_t(cmdBuffer.cmdBufferData.imageStates.size()),
                   cmdBuffer.cmdBufferData.imageStates.data())) {
-                if () {
+                if (cmdBuffer.cmdBufferData.stateValidation) {
                     LOG_F(ERROR, "Some resources are not in the expected state");
                     BREAK_POINT;
                 }
-                OneTimeCmdBuffer<drv::StateCorrectionData> cmdBuffer(
-                  physicalDevice, device, cmdBuffer.queue, getCommandBufferBank(),
-                  getGarbageSystem(), nullptr,
-                  [](const drv::StateCorrectionData& data, drv::DrvCmdBufferRecorder* recorder) {
-                      recorder->corrigate(data);
-                  });
-                commandBuffers[numCommandBuffers++] =
-                  cmdBuffer.use(std::move(correctionData)).cmdBufferPtr;
+                // OneTimeCmdBuffer<const drv::StateCorrectionData*> correctionCmdBuffer(
+                //   physicalDevice, device, cmdBuffer.queue, getCommandBufferBank(),
+                //   getGarbageSystem(), nullptr,
+                //   [](const drv::StateCorrectionData* const& data,
+                //      drv::DrvCmdBufferRecorder* recorder) { recorder->corrigate(*data); });
+                // commandBuffers[numCommandBuffers++] =
+                //   correctionCmdBuffer.use(&correctionData).cmdBufferPtr;
             }
-            commandBuffers[numCommandBuffers++] = cmdBuffer.cmdBufferData.cmdBufferPtr;
+            if (!drv::is_null_ptr(cmdBuffer.cmdBufferData.cmdBufferPtr))
+                commandBuffers[numCommandBuffers++] = cmdBuffer.cmdBufferData.cmdBufferPtr;
         }
         executionInfo.numCommandBuffers = numCommandBuffers;
         executionInfo.commandBuffers = commandBuffers;

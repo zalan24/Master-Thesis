@@ -107,13 +107,10 @@ void DrvVulkanResourceTracker::cmd_clear_image(
 
 drv::PipelineStages DrvVulkanResourceTracker::cmd_image_barrier(
   drv::CommandBufferPtr cmdBuffer, const drv::ImageMemoryBarrier& barrier, drv::EventPtr event) {
-    drv::PipelineStages dstStages = drv::get_image_usage_stages(barrier.usages);
-    drv::MemoryBarrier::AccessFlagBitType accessMask =
-      drv::get_image_usage_accesses(barrier.usages);
     bool flush = !barrier.discardCurrentContent;
     // extra sync is only placed, if it has dirty cache
     return add_memory_sync(cmdBuffer, barrier.image, barrier.numSubresourceRanges,
-                           barrier.getRanges(), flush, dstStages, accessMask,
+                           barrier.getRanges(), flush, barrier.stages, barrier.accessMask,
                            !convertImage(barrier.image)->sharedResource
                              && barrier.requestedOwnership != drv::IGNORE_FAMILY,
                            barrier.requestedOwnership, barrier.transitionLayout,
@@ -187,13 +184,10 @@ void VulkanCmdBufferRecorder::cmd_clear_image(drv::CmdImageTrackingState& state,
 
 drv::PipelineStages VulkanCmdBufferRecorder::cmd_image_barrier(
   drv::CmdImageTrackingState& state, const drv::ImageMemoryBarrier& barrier) {
-    drv::PipelineStages dstStages = drv::get_image_usage_stages(barrier.usages);
-    drv::MemoryBarrier::AccessFlagBitType accessMask =
-      drv::get_image_usage_accesses(barrier.usages);
     bool flush = !barrier.discardCurrentContent;
     // extra sync is only placed, if it has dirty cache
     return add_memory_sync(state, barrier.image, barrier.numSubresourceRanges, barrier.getRanges(),
-                           flush, dstStages, accessMask,
+                           flush, barrier.stages, barrier.accessMask,
                            !convertImage(barrier.image)->sharedResource
                              && barrier.requestedOwnership != drv::IGNORE_FAMILY,
                            barrier.requestedOwnership, barrier.transitionLayout,

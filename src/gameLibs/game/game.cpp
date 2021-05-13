@@ -243,9 +243,9 @@ void Game::record(FrameGraph& frameGraph, FrameId frameId) {
         recordData.frameBuffer = frameBuffers[swapChainData.imageIndex];
         recordData.testSubpass = testSubpass;
         recordData.shaderGlobalDesc = &shaderGlobalDesc;
-        ExecutionPackage::CommandBufferPackage submission =
-          make_submission_package(queues.renderQueue.handle, cmdBuffer.use(std::move(recordData)),
-                                  engine->getGarbageSystem());
+        ExecutionPackage::CommandBufferPackage submission = make_submission_package(
+          queues.renderQueue.handle, cmdBuffer.use(std::move(recordData)),
+          engine->getGarbageSystem(), ResourceStateValidationMode::IGNORE_FIRST_SUBMISSION);
         submission.signalSemaphores.push_back(swapChainData.renderFinishedSemaphore);
         submission.waitSemaphores.push_back(
           {swapChainData.imageAvailableSemaphore,

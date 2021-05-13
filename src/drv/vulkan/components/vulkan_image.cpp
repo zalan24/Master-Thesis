@@ -128,9 +128,8 @@ void DrvVulkanResourceTracker::validate_memory_access(
     drv_vulkan::Image* image = convertImage(_image);
     drv::ImageSubresourceTrackData& subresourceData =
       image->trackingStates[trackingSlot].get(arrayIndex, mipLevel, aspect);
-    validate_memory_access(image->trackingStates[trackingSlot].trackData, subresourceData, read,
-                           write, image->sharedResource, stages, accessMask, barrierSrcStage,
-                           barrierDstStage, barrier);
+    validate_memory_access(subresourceData, read, write, image->sharedResource, stages, accessMask,
+                           barrierSrcStage, barrierDstStage, barrier);
     if (!(static_cast<drv::ImageLayoutMask>(subresourceData.layout) & requiredLayoutMask)) {
         invalidate(INVALID, "Layout transitions must be placed manually");
         drv::drv_assert(write, "Cannot auto place layout transition for a read only access");
@@ -169,8 +168,7 @@ void DrvVulkanResourceTracker::add_memory_access_validate(
     drv::ImageSubresourceTrackData& subresourceData =
       image->trackingStates[trackingSlot].get(arrayIndex, mipLevel, aspect);
 
-    add_memory_access(image->trackingStates[trackingSlot].trackData, subresourceData, read, write,
-                      stages, accessMask);
+    add_memory_access(subresourceData, read, write, stages, accessMask);
     drv::drv_assert(static_cast<drv::ImageLayoutMask>(subresourceData.layout) & requiredLayoutMask);
     if (changeLayout) {
         drv::drv_assert(write);
@@ -255,9 +253,8 @@ drv::PipelineStages DrvVulkanResourceTracker::add_memory_sync(
     barrier.layer = arrayIndex;
     barrier.mipLevel = mipLevel;
     barrier.aspect = aspect;
-    add_memory_sync(image->trackingStates[trackingSlot].trackData, subresourceData, flush,
-                    dstStages, accessMask, transferOwnership, newOwner, barrierSrcStages,
-                    barrierDstStages, barrier);
+    add_memory_sync(subresourceData, flush, dstStages, accessMask, transferOwnership, newOwner,
+                    barrierSrcStages, barrierDstStages, barrier);
     if (transitionLayout && subresourceData.layout != resultLayout) {
         barrierSrcStages.add(subresourceData.ongoingWrites | subresourceData.ongoingReads
                              | drv::PipelineStages::TOP_OF_PIPE_BIT);
@@ -370,9 +367,8 @@ void VulkanCmdBufferRecorder::validate_memory_access(
   ImageSingleSubresourceMemoryBarrier& barrier) {
     drv_vulkan::Image* image = convertImage(_image);
     drv::ImageSubresourceTrackData& subresourceData = state.state.get(arrayIndex, mipLevel, aspect);
-    validate_memory_access(state.state.trackData, subresourceData, read, write,
-                           image->sharedResource, stages, accessMask, barrierSrcStage,
-                           barrierDstStage, barrier);
+    validate_memory_access(subresourceData, read, write, image->sharedResource, stages, accessMask,
+                           barrierSrcStage, barrierDstStage, barrier);
     if (!(static_cast<drv::ImageLayoutMask>(subresourceData.layout) & requiredLayoutMask)) {
         invalidate(INVALID, "Layout transitions must be placed manually");
         drv::drv_assert(write, "Cannot auto place layout transition for a read only access");
@@ -412,7 +408,7 @@ void VulkanCmdBufferRecorder::add_memory_access_validate(
     // drv_vulkan::Image* image = convertImage(_image);
     drv::ImageSubresourceTrackData& subresourceData = state.state.get(arrayIndex, mipLevel, aspect);
 
-    add_memory_access(state.state.trackData, subresourceData, read, write, stages, accessMask);
+    add_memory_access(subresourceData, read, write, stages, accessMask);
     drv::drv_assert(static_cast<drv::ImageLayoutMask>(subresourceData.layout) & requiredLayoutMask);
     if (changeLayout) {
         drv::drv_assert(write);
@@ -538,8 +534,8 @@ drv::PipelineStages VulkanCmdBufferRecorder::add_memory_sync(
     barrier.layer = arrayIndex;
     barrier.mipLevel = mipLevel;
     barrier.aspect = aspect;
-    add_memory_sync(state.state.trackData, subresourceData, flush, dstStages, accessMask,
-                    transferOwnership, newOwner, barrierSrcStages, barrierDstStages, barrier);
+    add_memory_sync(subresourceData, flush, dstStages, accessMask, transferOwnership, newOwner,
+                    barrierSrcStages, barrierDstStages, barrier);
     if (transitionLayout && subresourceData.layout != resultLayout) {
         barrierSrcStages.add(subresourceData.ongoingWrites | subresourceData.ongoingReads
                              | drv::PipelineStages::TOP_OF_PIPE_BIT);

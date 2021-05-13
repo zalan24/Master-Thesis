@@ -6,6 +6,7 @@ set(WARNINGFLAGS "${WARNINGFLAGS}   -Weverything \
                                     -Werror-undef \
                                     -Werror-call-to-pure-virtual-from-ctor-dtor \
                                     -Werror-reorder-ctor \
+                                    -Werror-shadow \
                                     -Wno-c++98-compat \
                                     -Wno-c++98-c++11-compat-binary-literal \
                                     -Wno-c++98-compat-pedantic \

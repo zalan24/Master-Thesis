@@ -26,6 +26,10 @@ class ImageMemoryBarrier
                        ImageResourceUsageFlag usages, ImageLayout transition,
                        bool discardCurrentContent = false,
                        QueueFamilyPtr targetFamily = IGNORE_FAMILY);
+    ImageMemoryBarrier(ImagePtr image, uint32_t numRanges, const ImageSubresourceRange* ranges,
+                       const PipelineStages& stages, MemoryBarrier::AccessFlagBitType accessMask,
+                       ImageLayout transition, bool discardCurrentContent = false,
+                       QueueFamilyPtr targetFamily = IGNORE_FAMILY);
 
     // ImageMemoryBarrier(ImagePtr _image, ImageResourceUsage usage, TransitionLayoutOption transition,
     //                    QueueFamilyPtr targetFamily = IGNORE_FAMILY)
@@ -57,7 +61,8 @@ class ImageMemoryBarrier
         const ImageSubresourceRange* ranges;
         ImageSubresourceRange range;
     } ranges;
-    ImageResourceUsageFlag usages = 0;
+    PipelineStages stages;
+    MemoryBarrier::AccessFlagBitType accessMask;
     QueueFamilyPtr requestedOwnership = IGNORE_FAMILY;
     bool transitionLayout = false;
     bool discardCurrentContent = false;  // for layout transition

@@ -20,22 +20,28 @@ struct CommandBufferData
 {
     drv::CommandBufferPtr cmdBufferPtr = drv::get_null_ptr<drv::CommandBufferPtr>();
     GarbageVector<std::pair<drv::ImagePtr, drv::ImageTrackInfo>> imageStates;
+    bool stateValidation;
 
     explicit CommandBufferData(GarbageSystem* garbageSystem)
-      : imageStates(garbageSystem->getAllocator<std::pair<drv::ImagePtr, drv::ImageTrackInfo>>()) {}
+      : imageStates(garbageSystem->getAllocator<std::pair<drv::ImagePtr, drv::ImageTrackInfo>>()),
+        stateValidation(false) {}
 
     CommandBufferData(GarbageSystem* garbageSystem, drv::CommandBufferPtr _cmdBufferPtr,
-                      const drv::DrvCmdBufferRecorder::ImageStates* _imageStates)
+                      const drv::DrvCmdBufferRecorder::ImageStates* _imageStates,
+                      bool _stateValidation)
       : cmdBufferPtr(_cmdBufferPtr),
-        imageStates(garbageSystem->getAllocator<std::pair<drv::ImagePtr, drv::ImageTrackInfo>>()) {
+        imageStates(garbageSystem->getAllocator<std::pair<drv::ImagePtr, drv::ImageTrackInfo>>()),
+        stateValidation(_stateValidation) {
         // imageStates.resize(_imageStates->size());
         imageStates.reserve(_imageStates->size());
         for (size_t i = 0; i < _imageStates->size(); ++i)
             imageStates.push_back((*_imageStates)[i]);
     }
 
-    CommandBufferData(GarbageSystem* garbageSystem, const drv::CommandBufferInfo& info)
-      : CommandBufferData(garbageSystem, info.cmdBufferPtr, info.stateTransitions.imageStates) {}
+    CommandBufferData(GarbageSystem* garbageSystem, const drv::CommandBufferInfo& info,
+                      bool _stateValidation)
+      : CommandBufferData(garbageSystem, info.cmdBufferPtr, info.stateTransitions.imageStates,
+                          _stateValidation) {}
 };
 
 struct ExecutionPackage
@@ -124,9 +130,16 @@ struct ExecutionPackage
     ExecutionPackage(std::unique_ptr<CustomFunctor>&& f) : package(std::move(f)) {}
 };
 
-ExecutionPackage::CommandBufferPackage make_submission_package(drv::QueuePtr queue,
-                                                               const drv::CommandBufferInfo& info,
-                                                               GarbageSystem* garbageSystem);
+enum class ResourceStateValidationMode
+{
+    NEVER_VALIDATE,
+    IGNORE_FIRST_SUBMISSION,
+    ALWAYS_VALIDATE
+};
+
+ExecutionPackage::CommandBufferPackage make_submission_package(
+  drv::QueuePtr queue, const drv::CommandBufferInfo& info, GarbageSystem* garbageSystem,
+  ResourceStateValidationMode validationMode);
 
 class ExecutionQueue
 {
