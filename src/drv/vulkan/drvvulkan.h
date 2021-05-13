@@ -409,9 +409,9 @@ class DrvVulkanResourceTracker final : public drv::ResourceTracker
     DrvVulkanResourceTracker(const DrvVulkanResourceTracker&) = delete;
     DrvVulkanResourceTracker& operator=(const DrvVulkanResourceTracker&) = delete;
 
-    bool begin_primary_command_buffer(drv::CommandBufferPtr cmdBuffer, bool singleTime,
-                                      bool simultaneousUse) override;
-    bool end_primary_command_buffer(drv::CommandBufferPtr cmdBuffer) override;
+    // bool begin_primary_command_buffer(drv::CommandBufferPtr cmdBuffer, bool singleTime,
+    //                                   bool simultaneousUse) override;
+    // bool end_primary_command_buffer(drv::CommandBufferPtr cmdBuffer) override;
 
     drv::PipelineStages cmd_image_barrier(
       drv::CommandBufferPtr cmdBuffer, const drv::ImageMemoryBarrier& barrier,

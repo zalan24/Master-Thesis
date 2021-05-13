@@ -11,40 +11,6 @@
 #include "vulkan_conversions.h"
 #include "vulkan_enum_compare.h"
 
-bool DrvVulkanResourceTracker::begin_primary_command_buffer(drv::CommandBufferPtr cmdBuffer,
-                                                            bool singleTime, bool simultaneousUse) {
-    VkCommandBufferBeginInfo info;
-    info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-    info.pNext = nullptr;
-    info.flags = 0;
-    if (singleTime)
-        info.flags |= VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-    if (simultaneousUse)
-        info.flags |= VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
-    info.pInheritanceInfo = nullptr;
-    VkResult result = vkBeginCommandBuffer(convertCommandBuffer(cmdBuffer), &info);
-#ifdef DEBUG
-    if (commandLogEnabled)
-        LOG_COMMAND("Cmd begin command buffer: <%p>",
-                    static_cast<const void*>(convertCommandBuffer(cmdBuffer)));
-#endif
-    return result == VK_SUCCESS;
-}
-
-bool DrvVulkanResourceTracker::end_primary_command_buffer(drv::CommandBufferPtr cmdBuffer) {
-    // TODO handle events with state objects
-    for (uint32_t i = 0; i < barriers.size(); ++i)
-        if (barriers[i] && drv::is_null_ptr(barriers[i].event))
-            flushBarrier(cmdBuffer, barriers[i]);
-    VkResult result = vkEndCommandBuffer(convertCommandBuffer(cmdBuffer));
-#ifdef DEBUG
-    if (commandLogEnabled)
-        LOG_COMMAND("Cmd end command buffer: <%p>",
-                    static_cast<const void*>(convertCommandBuffer(cmdBuffer)));
-#endif
-    return result == VK_SUCCESS;
-}
-
 void VulkanCmdBufferRecorder::cmdImageBarrier(const drv::ImageMemoryBarrier& barrier) {
     getResourceTracker()->cmd_image_barrier(getCommandBuffer(), barrier);
     cmd_image_barrier(
@@ -129,8 +95,7 @@ VulkanCmdBufferRecorder::VulkanCmdBufferRecorder(
   const drv::StateTrackingConfig* _trackingConfig, drv::QueueFamilyPtr _family,
   drv::CommandBufferPtr _cmdBufferPtr, drv::ResourceTracker* _resourceTracker, bool singleTime,
   bool simultaneousUse)
-  : drv::DrvCmdBufferRecorder(_driver, _device, _family, _cmdBufferPtr, _resourceTracker,
-                              singleTime, simultaneousUse),
+  : drv::DrvCmdBufferRecorder(_driver, _device, _family, _cmdBufferPtr, _resourceTracker),
     trackingConfig(_trackingConfig),
     queueSupport(_driver->get_command_type_mask(_physicalDevice, _family)) {
     VkCommandBufferBeginInfo info;
@@ -142,16 +107,16 @@ VulkanCmdBufferRecorder::VulkanCmdBufferRecorder(
     if (simultaneousUse)
         info.flags |= VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
     info.pInheritanceInfo = nullptr;
-    // VkResult result = vkBeginCommandBuffer(convertCommandBuffer(getCommandBuffer()), &info);
-    // drv::drv_assert(result == VK_SUCCESS, "Could not begin recording command buffer");
+    VkResult result = vkBeginCommandBuffer(convertCommandBuffer(getCommandBuffer()), &info);
+    drv::drv_assert(result == VK_SUCCESS, "Could not begin recording command buffer");
 }
 
 VulkanCmdBufferRecorder::~VulkanCmdBufferRecorder() {
     for (uint32_t i = 0; i < barriers.size(); ++i)
         if (barriers[i])
             flushBarrier(barriers[i]);
-    // VkResult result = vkEndCommandBuffer(convertCommandBuffer(getCommandBuffer()));
-    // drv::drv_assert(result == VK_SUCCESS, "Could not finish recording command buffer");
+    VkResult result = vkEndCommandBuffer(convertCommandBuffer(getCommandBuffer()));
+    drv::drv_assert(result == VK_SUCCESS, "Could not finish recording command buffer");
 }
 
 void VulkanCmdBufferRecorder::cmd_clear_image(drv::CmdImageTrackingState& state,

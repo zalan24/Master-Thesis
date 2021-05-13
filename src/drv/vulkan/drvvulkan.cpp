@@ -1366,6 +1366,7 @@ bool DrvVulkan::validate_and_apply_state_transitions(
                   transition.newOwnership = requirement.ownership != drv::IGNORE_FAMILY
                                               ? requirement.ownership
                                               : transition.oldOwnership;
+                  imageCorrections[i].second.usageMask.add(layer, mip, aspect);
               });
             correctedImageCount++;
         }

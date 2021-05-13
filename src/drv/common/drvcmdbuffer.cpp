@@ -41,7 +41,8 @@ DrvCmdBufferRecorder::~DrvCmdBufferRecorder() {
             }
         }
 
-        drv::drv_assert(resourceTracker->end_primary_command_buffer(cmdBufferPtr));
+        // drv::drv_assert(resourceTracker == nullptr
+        //                 || resourceTracker->end_primary_command_buffer(cmdBufferPtr));
         reset_ptr(cmdBufferPtr);
         queueFamilyLock = {};
     }
@@ -50,16 +51,16 @@ DrvCmdBufferRecorder::~DrvCmdBufferRecorder() {
 DrvCmdBufferRecorder::DrvCmdBufferRecorder(IDriver* _driver, LogicalDevicePtr device,
                                            drv::QueueFamilyPtr _family,
                                            CommandBufferPtr _cmdBufferPtr,
-                                           drv::ResourceTracker* _resourceTracker, bool singleTime,
-                                           bool simultaneousUse)
+                                           drv::ResourceTracker* _resourceTracker)
   : driver(_driver),
     family(_family),
     queueFamilyLock(driver->lock_queue_family(device, family)),
     cmdBufferPtr(_cmdBufferPtr),
     resourceTracker(_resourceTracker),
     imageStates(nullptr) {
-    drv::drv_assert(
-      resourceTracker->begin_primary_command_buffer(cmdBufferPtr, singleTime, simultaneousUse));
+    // drv::drv_assert(
+    //   resourceTracker == nullptr
+    //   || resourceTracker->begin_primary_command_buffer(cmdBufferPtr, singleTime, simultaneousUse));
 }
 
 // void DrvCmdBufferRecorder::cmdImageBarrier(const drv::ImageMemoryBarrier& barrier) const {
@@ -223,12 +224,14 @@ void DrvCmdBufferRecorder::updateImageState(drv::ImagePtr image, const ImageTrac
 }
 
 void DrvCmdBufferRecorder::corrigate(const StateCorrectionData& data) {
+    LOG_F(WARNING, "Correction barrier...");
+    return;
     for (uint32_t i = 0; i < data.imageCorrections.size(); ++i) {
         ImageStartingState state(data.imageCorrections[i].second.layerCount,
                                  data.imageCorrections[i].second.mipCount,
                                  data.imageCorrections[i].second.aspects);
         data.imageCorrections[i].second.usageMask.traverse(
-          [&, this](uint32_t layer, uint32_t mip, AspectFlagBits aspect) {
+          [&](uint32_t layer, uint32_t mip, AspectFlagBits aspect) {
               const auto& subres = data.imageCorrections[i].second.get(layer, mip, aspect);
               state.get(layer, mip, aspect).layout = subres.oldLayout;
               state.get(layer, mip, aspect).ownership = subres.oldOwnership;

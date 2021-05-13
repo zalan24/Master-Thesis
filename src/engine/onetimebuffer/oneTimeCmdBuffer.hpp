@@ -71,8 +71,9 @@ class OneTimeCmdBuffer final : public EngineCmdBuffer<T>
 
     void releaseCommandBuffer(drv::CommandBufferPtr cmdBufferPtr) override {
         drv::drv_assert(cmdBuffer.commandBufferPtr == cmdBufferPtr);
-        garbageSystem->useGarbage(
-          [this](Garbage* trashBin) { trashBin->resetCommandBuffer(std::move(cmdBuffer)); });
+        if (cmdBuffer)
+            garbageSystem->useGarbage(
+              [this](Garbage* trashBin) { trashBin->resetCommandBuffer(std::move(cmdBuffer)); });
     }
 
     bool isSingleTimeBuffer() const override { return true; }

@@ -46,8 +46,7 @@ class DrvCmdBufferRecorder
       FlexibleArray<std::pair<drv::ImagePtr, RecordImageInfo>, NUM_CACHED_IMAGE_STATES>;
 
     DrvCmdBufferRecorder(IDriver* driver, LogicalDevicePtr device, drv::QueueFamilyPtr family,
-                         CommandBufferPtr cmdBufferPtr, drv::ResourceTracker* resourceTracker,
-                         bool singleTime, bool simultaneousUse);
+                         CommandBufferPtr cmdBufferPtr, drv::ResourceTracker* resourceTracker);
     DrvCmdBufferRecorder(const DrvCmdBufferRecorder&) = delete;
     DrvCmdBufferRecorder& operator=(const DrvCmdBufferRecorder&) = delete;
     virtual ~DrvCmdBufferRecorder();

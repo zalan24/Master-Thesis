@@ -339,7 +339,8 @@ void DrvVulkanResourceTracker::flushBarriersFor(
         if (!barriers[i])
             continue;
         for (uint32_t j = 0; j < barriers[i].numImageRanges; ++j) {
-            if (barriers[i].imageBarriers[i].subresourceSet.overlap(subresources)) {
+            if (barriers[i].imageBarriers[j].image == _image
+                && barriers[i].imageBarriers[j].subresourceSet.overlap(subresources)) {
                 flushBarrier(cmdBuffer, barriers[i]);
                 break;
             }
