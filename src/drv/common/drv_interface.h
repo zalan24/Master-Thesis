@@ -49,6 +49,18 @@ struct StateTrackingConfig final : public ISerializable
     void readJson(const json& in) override final;
 };
 
+struct DriverSupport
+{
+    uint8_t tessellation : 1;
+    uint8_t geometry : 1;
+    uint8_t meshShaders : 1;
+    uint8_t conditionalRendering : 1;
+    uint8_t fragmentDensityMap : 1;
+    uint8_t taskShaders : 1;
+    uint8_t shadingRate : 1;
+    uint8_t transformFeedback : 1;
+};
+
 class IDriver
 {
  public:
@@ -195,6 +207,8 @@ class IDriver
     virtual bool validate_and_apply_state_transitions(
       StateCorrectionData& correction, uint32_t imageCount,
       const std::pair<drv::ImagePtr, ImageTrackInfo>* transitions) = 0;
+
+    virtual DriverSupport get_support(LogicalDevicePtr device) = 0;
 
     // virtual void cmd_flush_waits_on(CommandBufferPtr cmdBuffer, EventPtr event) = 0;
 };

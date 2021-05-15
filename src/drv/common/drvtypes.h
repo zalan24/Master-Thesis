@@ -158,6 +158,7 @@ struct PipelineStages
         ALL_GRAPHICS_BIT = 0x00008000,
         ALL_COMMANDS_BIT = 0x00010000,
         STAGES_END
+        // TODO adds these, and handle them in get_support / getAvailableStages
         // TRANSFORM_FEEDBACK_BIT_EXT = 0x01000000,
         // CONDITIONAL_RENDERING_BIT_EXT = 0x00040000,
         // COMMAND_PREPROCESS_BIT_NV = 0x00020000,

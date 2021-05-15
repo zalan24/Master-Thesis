@@ -108,3 +108,16 @@ bool DrvVulkan::device_wait_idle(drv::LogicalDevicePtr device) {
     VkResult result = vkDeviceWaitIdle(convertDevice(device));
     return result == VK_SUCCESS;
 }
+
+drv::DriverSupport DrvVulkan::get_support(drv::LogicalDevicePtr device) {
+    drv::DriverSupport ret;
+    ret.conditionalRendering = false;
+    ret.tessellation = false;
+    ret.geometry = false;
+    ret.taskShaders = false;
+    ret.transformFeedback = false;
+    ret.shadingRate = false;
+    ret.meshShaders = false;
+    ret.fragmentDensityMap = false;
+    return ret;
+}

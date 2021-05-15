@@ -237,6 +237,10 @@ bool drv::unmap_memory(LogicalDevicePtr device, DeviceMemoryPtr memory) {
     return current_driver_interface->unmap_memory(device, memory);
 }
 
+drv::DriverSupport drv::get_support(LogicalDevicePtr device) {
+    return current_driver_interface->get_support(device);
+}
+
 // drv::DescriptorSetLayoutPtr drv::create_descriptor_set_layout(
 //   LogicalDevicePtr device, const DescriptorSetLayoutCreateInfo* info) {
 //     return current_driver_interface->create_descriptor_set_layout(device, info);

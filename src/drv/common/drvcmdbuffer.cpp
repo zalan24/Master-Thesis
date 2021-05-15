@@ -27,10 +27,11 @@ DrvCmdBufferRecorder::~DrvCmdBufferRecorder() {
 }
 
 DrvCmdBufferRecorder::DrvCmdBufferRecorder(IDriver* _driver, drv::PhysicalDevicePtr physicalDevice,
-                                           LogicalDevicePtr device, drv::QueueFamilyPtr _family,
+                                           LogicalDevicePtr _device, drv::QueueFamilyPtr _family,
                                            CommandBufferPtr _cmdBufferPtr,
                                            drv::ResourceTracker* _resourceTracker)
   : driver(_driver),
+    device(_device),
     family(_family),
     queueSupport(_driver->get_command_type_mask(physicalDevice, _family)),
     queueFamilyLock(driver->lock_queue_family(device, family)),
@@ -77,6 +78,9 @@ ImageTrackInfo& DrvCmdBufferRecorder::getImageState(
     // undefined, unknown queue family
     // let's hope, it works out
     ImageTrackInfo state(texInfo.arraySize, texInfo.numMips, texInfo.aspects);
+    for (uint32_t i = 0; i < state.guarantee.size(); ++i)
+        state.guarantee[i].usableStages &= getAvailableStages();
+    state.cmdState.state = state.guarantee;
     imageStates->emplace_back(image, std::move(state));
     return imageStates->back().second;
 }
@@ -109,6 +113,9 @@ void DrvCmdBufferRecorder::registerImage(ImagePtr image, const ImageStartingStat
             }
         }
     }
+    if (!knownImage)
+        for (uint32_t i = 0; i < imgState.guarantee.size(); ++i)
+            imgState.guarantee[i].usableStages &= getAvailableStages();
     imgState.cmdState.state = imgState.guarantee;
     if (!knownImage)
         imageStates->emplace_back(image, std::move(imgState));

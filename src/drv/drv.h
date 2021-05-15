@@ -176,6 +176,8 @@ bool destroy_framebuffer(LogicalDevicePtr device, FramebufferPtr frameBuffer);
 
 uint32_t get_num_trackers();
 
+DriverSupport get_support(LogicalDevicePtr device);
+
 // ShaderModulePtr get_shader_module(LogicalDevicePtr device, ShaderIdType shaderId);
 // unsigned int get_num_shader_descriptor_set_layouts(LogicalDevicePtr device, ShaderIdType shaderId);
 // DescriptorSetLayoutPtr* get_shader_descriptor_set_layouts(LogicalDevicePtr device,

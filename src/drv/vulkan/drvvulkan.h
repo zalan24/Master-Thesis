@@ -125,6 +125,7 @@ class VulkanCmdBufferRecorder final : public drv::DrvCmdBufferRecorder
                          uint32_t ranges, const drv::ImageSubresourceRange* subresourceRanges);
 
     void corrigate(const drv::StateCorrectionData& data) override;
+    drv::PipelineStages::FlagType getAvailableStages() const override;
 
  private:
     FlexibleArray<BarrierInfo, drv_vulkan::MAX_NUM_PARALLEL_BARRIERS_IN_CMD_STATE> barriers;
@@ -365,6 +366,8 @@ class DrvVulkan final : public drv::IDriver
 
     bool destroy_framebuffer(drv::LogicalDevicePtr device,
                              drv::FramebufferPtr frameBuffer) override;
+
+    drv::DriverSupport get_support(drv::LogicalDevicePtr device) override;
 
     uint32_t acquire_tracking_slot();
     void release_tracking_slot(uint32_t id);

@@ -1392,3 +1392,15 @@ bool DrvVulkan::validate_and_apply_state_transitions(
     }
     return correctedImageCount == 0;
 }
+
+drv::PipelineStages::FlagType VulkanCmdBufferRecorder::getAvailableStages() const {
+    drv::PipelineStages::FlagType ret = drv::PipelineStages::get_all_bits(getQueueSupport());
+    drv::DriverSupport support = driver->get_support(device);
+    if (!support.tessellation) {
+        ret &= ~drv::PipelineStages::TESSELLATION_CONTROL_SHADER_BIT;
+        ret &= ~drv::PipelineStages::TESSELLATION_EVALUATION_SHADER_BIT;
+    }
+    if (!support.geometry)
+        ret &= ~drv::PipelineStages::GEOMETRY_SHADER_BIT;
+    return ret;
+}

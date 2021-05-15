@@ -103,11 +103,14 @@ class DrvCmdBufferRecorder
 
     drv::CommandTypeMask getQueueSupport() const { return queueSupport; }
 
+    virtual drv::PipelineStages::FlagType getAvailableStages() const = 0;
+
  protected:
     ImageTrackInfo& getImageState(drv::ImagePtr image, uint32_t ranges,
                                   const drv::ImageSubresourceRange* subresourceRanges);
 
     IDriver* driver;
+    LogicalDevicePtr device;
 
  private:
     drv::QueueFamilyPtr family;
