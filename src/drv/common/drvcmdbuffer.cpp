@@ -2,6 +2,7 @@
 
 #include <logger.h>
 
+#include "drv_interface.h"
 #include "drverror.h"
 
 using namespace drv;
@@ -28,15 +29,13 @@ DrvCmdBufferRecorder::~DrvCmdBufferRecorder() {
 
 DrvCmdBufferRecorder::DrvCmdBufferRecorder(IDriver* _driver, drv::PhysicalDevicePtr physicalDevice,
                                            LogicalDevicePtr _device, drv::QueueFamilyPtr _family,
-                                           CommandBufferPtr _cmdBufferPtr,
-                                           drv::ResourceTracker* _resourceTracker)
+                                           CommandBufferPtr _cmdBufferPtr)
   : driver(_driver),
     device(_device),
     family(_family),
     queueSupport(_driver->get_command_type_mask(physicalDevice, _family)),
     queueFamilyLock(driver->lock_queue_family(device, family)),
     cmdBufferPtr(_cmdBufferPtr),
-    resourceTracker(_resourceTracker),
     imageStates(nullptr) {
 }
 

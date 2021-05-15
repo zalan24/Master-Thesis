@@ -70,5 +70,5 @@ class VulkanRenderPass final : public drv::RenderPass
     } state = UNCHECKED;
 
     void clear();
-    void applySync(drv::ResourceTracker* tracker, drv::SubpassId id) const;
+    void applySync(drv::SubpassId id) const;
 };

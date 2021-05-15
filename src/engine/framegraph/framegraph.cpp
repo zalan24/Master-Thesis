@@ -17,7 +17,6 @@ FrameGraph::Node::Node(Node&& other)
   : name(std::move(other.name)),
     ownId(other.ownId),
     frameGraph(other.frameGraph),
-    resourceTrackers(std::move(other.resourceTrackers)),
     cpuDeps(std::move(other.cpuDeps)),
     enqDeps(std::move(other.enqDeps)),
     // cpuQueDeps(std::move(other.cpuQueDeps)),
@@ -25,7 +24,6 @@ FrameGraph::Node::Node(Node&& other)
     // queQueDeps(std::move(other.queQueDeps)),
     localExecutionQueue(std::move(other.localExecutionQueue)),
     enqIndirectChildren(std::move(other.enqIndirectChildren)),
-    eventCallbacks(std::move(other.eventCallbacks)),
     semaphores(std::move(other.semaphores)),
     completedFrame(other.completedFrame.load()),
     enqueuedFrame(other.enqueuedFrame.load()),
@@ -45,7 +43,6 @@ FrameGraph::Node& FrameGraph::Node::operator=(Node&& other) {
     name = std::move(other.name);
     ownId = other.ownId;
     frameGraph = other.frameGraph;
-    resourceTrackers = std::move(other.resourceTrackers);
     cpuDeps = std::move(other.cpuDeps);
     enqDeps = std::move(other.enqDeps);
     // cpuQueDeps = std::move(other.cpuQueDeps);
@@ -53,7 +50,6 @@ FrameGraph::Node& FrameGraph::Node::operator=(Node&& other) {
     // queQueDeps = std::move(other.queQueDeps);
     localExecutionQueue = std::move(other.localExecutionQueue);
     enqIndirectChildren = std::move(other.enqIndirectChildren);
-    eventCallbacks = std::move(other.eventCallbacks);
     semaphores = std::move(other.semaphores);
     completedFrame = other.completedFrame.load();
     enqueuedFrame = other.enqueuedFrame.load();
@@ -80,13 +76,6 @@ void FrameGraph::Node::addDependency(QueueCpuDependency dep) {
 // void FrameGraph::Node::addDependency(QueueQueueDependency dep) {
 //     queQueDeps.push_back(std::move(dep));
 // }
-
-drv::ResourceTracker* FrameGraph::Node::getResourceTracker(QueueId queueId) {
-    drv::ResourceTracker*& ret = resourceTrackers[queueId];
-    if (!ret)
-        ret = frameGraph->getOrCreateResourceTracker(ownId, queueId);
-    return ret;
-}
 
 FrameGraph::NodeId FrameGraph::addNode(Node&& node) {
     node.frameGraph = this;
@@ -272,13 +261,6 @@ void FrameGraph::calcDependencyTable() {
 }
 
 void FrameGraph::build() {
-    // uint32_t numTrackingNodes = 0;
-    // for (const Node& node : nodes)
-    //     if (node.hasExecution())
-    //         numTrackingNodes++;
-    // if (> drv::get_num_trackers()) {
-    // TODO log issue a warning
-    // }
     std::vector<bool> cpuChildrenIndirect(nodes.size(), false);
     for (NodeId i = 0; i < nodes.size(); ++i) {
         bool hasCpuIndirectDep = false;
@@ -593,56 +575,12 @@ ExecutionQueue* FrameGraph::getGlobalExecutionQueue() {
     return &executionQueue;
 }
 
-drv::ResourceTracker* FrameGraph::getOrCreateResourceTracker(NodeId nodeId, QueueId queueId) {
-    std::vector<TrackerData>& trackers = resourceTrackers[queueId];
-    for (TrackerData& tracker : trackers)
-        if (tracker.users.count(nodeId))
-            return tracker.tracker.get();
-    for (TrackerData& tracker : trackers) {
-        bool ok = true;
-        for (const NodeId id : tracker.users) {
-            if (!canReuseTracker(id, nodeId)) {
-                ok = false;
-                break;
-            }
-        }
-        if (ok) {
-            tracker.users.insert(nodeId);
-            return tracker.tracker.get();
-        }
-    }
-    TrackerData t;
-    t.tracker =
-      drv::create_resource_tracker(getQueue(queueId), physicalDevice, device, trackerConfig);
-    t.users.insert(nodeId);
-    drv::ResourceTracker* ret = t.tracker.get();
-    trackers.push_back(std::move(t));
-    return ret;
-}
-
 bool FrameGraph::canReuseTracker(NodeId currentUser, NodeId newNode) {
     const DependenceData& d1 = getDependenceData(currentUser, newNode);
     const DependenceData& d2 = getDependenceData(newNode, currentUser);
 
     return (d1.cpuOffset == 0 && d2.cpuOffset == 1 && d1.enqOffset == 0 && d2.enqOffset == 1)
            || (d2.cpuOffset == 0 && d1.cpuOffset == 1 && d2.enqOffset == 0 && d1.enqOffset == 1);
-}
-
-EventReleaseCallback* FrameGraph::Node::getEventReleaseCallback(EventPool::EventHandle&& event) {
-    static constexpr size_t EVENT_CALLBACK_BLOCK_SIZE = 128;
-    for (auto& block : eventCallbacks) {
-        for (EventReleaseCallback& cb : block) {
-            if (!cb) {
-                cb = EventReleaseCallback(std::move(event), frameGraph->garbageSystem);
-                return &cb;
-            }
-        }
-    }
-    std::vector<EventReleaseCallback> block(EVENT_CALLBACK_BLOCK_SIZE);
-    block[0] = EventReleaseCallback(std::move(event), frameGraph->garbageSystem);
-    EventReleaseCallback* ret = &block[0];
-    eventCallbacks.push_back(std::move(block));
-    return ret;
 }
 
 FrameGraph::QueueId FrameGraph::registerQueue(drv::QueuePtr queue) {

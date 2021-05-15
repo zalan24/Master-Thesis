@@ -312,32 +312,19 @@ void VulkanRenderPass::clear() {
 void VulkanRenderPass::beginRenderPass(drv::FramebufferPtr frameBuffer,
                                        const drv::Rect2D& renderArea,
                                        drv::DrvCmdBufferRecorder* cmdBuffer) const {
-    DrvVulkanResourceTracker* tracker =
-      static_cast<DrvVulkanResourceTracker*>(cmdBuffer->getResourceTracker());
     for (uint32_t i = 0; i < attachments.size(); ++i) {
         // TODO;  // apply starting auto external barriers
 
         drv::PipelineStages stages = drv::get_image_usage_stages(globalAttachmentUsages[i]);
         drv::MemoryBarrier::AccessFlagBitType accessMask =
           drv::get_image_usage_accesses(globalAttachmentUsages[i]);
-        bool transitionLayout = attachments[i].initialLayout != attachments[i].finalLayout;
-        uint32_t requiredLayoutMask =
-          attachments[i].initialLayout == drv::ImageLayout::UNDEFINED
-            ? drv::get_all_layouts_mask()
-            : static_cast<drv::ImageLayoutMask>(attachments[i].initialLayout);
-        tracker->add_memory_access(
-          cmdBuffer->getCommandBuffer(), attachmentImages[i].image, 1,
-          &attachmentImages[i].subresource, drv::MemoryBarrier::get_read_bits(accessMask) != 0,
-          drv::MemoryBarrier::get_write_bits(accessMask) != 0 || transitionLayout, stages,
-          accessMask, requiredLayoutMask, true, nullptr, transitionLayout,
-          attachments[i].finalLayout);
         static_cast<VulkanCmdBufferRecorder*>(cmdBuffer)->cmdUseAsAttachment(
           attachmentImages[i].image, attachmentImages[i].subresource, globalAttachmentUsages[i],
           attachments[i].initialLayout, attachments[i].finalLayout);
 
         // TODO;  // apply finishing auto external barriers
     }
-    applySync(tracker, 0);
+    applySync(0);
     VkRenderPassBeginInfo beginInfo;
     beginInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
     beginInfo.pNext = nullptr;
@@ -356,13 +343,12 @@ void VulkanRenderPass::endRenderPass(drv::DrvCmdBufferRecorder* cmdBuffer) const
 
 void VulkanRenderPass::startNextSubpass(drv::DrvCmdBufferRecorder* cmdBuffer,
                                         drv::SubpassId id) const {
-    applySync(cmdBuffer->getResourceTracker(), id);
+    applySync(id);
     VkSubpassContents contents = VK_SUBPASS_CONTENTS_INLINE;  // TODO
     vkCmdNextSubpass(convertCommandBuffer(cmdBuffer->getCommandBuffer()), contents);
 }
 
-void VulkanRenderPass::applySync(drv::ResourceTracker* tracker, drv::SubpassId id) const {
-    UNUSED(tracker);
+void VulkanRenderPass::applySync(drv::SubpassId id) const {
     UNUSED(id);
     // track only resources, not attachments
     //     TODO;  // apply external incoming dependencies in tracker

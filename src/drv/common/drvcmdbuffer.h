@@ -5,7 +5,6 @@
 #include <corecontext.h>
 #include <flexiblearray.hpp>
 
-#include "drv_resource_tracker.h"
 #include "drvbarrier.h"
 #include "drvtypes.h"
 #include "drvtypes/drvresourceptrs.hpp"
@@ -65,7 +64,7 @@ class DrvCmdBufferRecorder
 
     DrvCmdBufferRecorder(IDriver* driver, drv::PhysicalDevicePtr physicalDevice,
                          LogicalDevicePtr device, drv::QueueFamilyPtr family,
-                         CommandBufferPtr cmdBufferPtr, drv::ResourceTracker* resourceTracker);
+                         CommandBufferPtr cmdBufferPtr);
     DrvCmdBufferRecorder(const DrvCmdBufferRecorder&) = delete;
     DrvCmdBufferRecorder& operator=(const DrvCmdBufferRecorder&) = delete;
     virtual ~DrvCmdBufferRecorder();
@@ -76,7 +75,6 @@ class DrvCmdBufferRecorder
                                const ImageSubresourceRange* subresourceRanges = nullptr) = 0;
 
     CommandBufferPtr getCommandBuffer() const { return cmdBufferPtr; }
-    drv::ResourceTracker* getResourceTracker() const { return resourceTracker; }
     drv::QueueFamilyPtr getFamily() const { return family; }
 
     // should be called on command buffer(s) in order of intended submission, that preceed this buffer
@@ -117,7 +115,6 @@ class DrvCmdBufferRecorder
     drv::CommandTypeMask queueSupport;
     std::unique_lock<std::mutex> queueFamilyLock;
     CommandBufferPtr cmdBufferPtr;
-    drv::ResourceTracker* resourceTracker;
     ImageStates* imageStates;
     ImageRecordStates imageRecordStates;
 };
@@ -145,13 +142,12 @@ class DrvCmdBuffer
 
     explicit DrvCmdBuffer(IDriver* _driver, PhysicalDevicePtr _physicalDevice,
                           LogicalDevicePtr _device, QueueFamilyPtr _queueFamily,
-                          DrvRecordCallback _recordCallback, drv::ResourceTracker* _resourceTracker)
+                          DrvRecordCallback _recordCallback)
       : driver(_driver),
         physicalDevice(_physicalDevice),
         device(_device),
         queueFamily(_queueFamily),
-        recordCallback(_recordCallback),
-        resourceTracker(_resourceTracker) {}
+        recordCallback(_recordCallback) {}
 
     DrvCmdBuffer(const DrvCmdBuffer&) = delete;
     DrvCmdBuffer& operator=(const DrvCmdBuffer&) = delete;
@@ -168,12 +164,9 @@ class DrvCmdBuffer
             StackMemory::MemoryHandle<uint8_t> recorderMem(driver->get_cmd_buffer_recorder_size(),
                                                            TEMPMEM);
             PlacementPtr<DrvCmdBufferRecorder> recorder = driver->create_cmd_buffer_recorder(
-              recorderMem, physicalDevice, device, queueFamily, cmdBufferPtr, resourceTracker,
-              isSingleTimeBuffer(), isSimultaneous());
+              recorderMem, physicalDevice, device, queueFamily, cmdBufferPtr, isSingleTimeBuffer(),
+              isSimultaneous());
             recorder->setImageStates(&imageStates);
-            // DrvCmdBufferRecorder recorder(drv::lock_queue_family(device, queueFamily), cmdBufferPtr,
-            //                               resourceTracker, &imageStates, isSingleTimeBuffer(),
-            //                               isSimultaneous());
             recordCallback(currentData, recorder);
             numSubmissions = 0;
         }
@@ -206,7 +199,6 @@ class DrvCmdBuffer
     LogicalDevicePtr device;
     QueueFamilyPtr queueFamily;
     DrvRecordCallback recordCallback;
-    drv::ResourceTracker* resourceTracker;
     CommandBufferPtr cmdBufferPtr = get_null_ptr<CommandBufferPtr>();
     DrvCmdBufferRecorder::ImageStates imageStates;
 

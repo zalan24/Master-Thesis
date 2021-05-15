@@ -1,6 +1,6 @@
 #pragma once
 
-#include <drv_resource_tracker.h>
+#include <drv_interface.h>
 #include <drvshader.h>
 #include <drvtypes.h>
 #include <hardwareconfig.h>
@@ -35,11 +35,6 @@ bool init(const drv::StateTrackingConfig& trackingConfig, const Driver* drivers,
           unsigned int count);
 bool close();
 IDriver* get_driver_interface();
-
-std::unique_ptr<ResourceTracker> create_resource_tracker(QueuePtr queue,
-                                                         PhysicalDevicePtr physicalDevice,
-                                                         LogicalDevicePtr device,
-                                                         ResourceTracker::Config config);
 
 std::unique_ptr<RenderPass> create_render_pass(LogicalDevicePtr device, std::string name);
 std::unique_ptr<DrvShaderHeaderRegistry> create_shader_header_registry(LogicalDevicePtr device);
@@ -173,8 +168,6 @@ QueueFamilyPtr get_queue_family(LogicalDevicePtr device, QueuePtr queue);
 bool device_wait_idle(LogicalDevicePtr device);
 TextureInfo get_texture_info(drv::ImagePtr image);
 bool destroy_framebuffer(LogicalDevicePtr device, FramebufferPtr frameBuffer);
-
-uint32_t get_num_trackers();
 
 DriverSupport get_support(LogicalDevicePtr device);
 

@@ -10,7 +10,7 @@
 #include <unordered_set>
 #include <vector>
 
-#include <drv_resource_tracker.h>
+#include <drv_interface.h>
 #include <drv_wrappers.h>
 
 #include <eventpool.h>
@@ -18,45 +18,6 @@
 #include "execution_queue.h"
 #include "framegraphDecl.h"
 #include "garbagesystem.h"
-
-class EventReleaseCallback final : public drv::ResourceTracker::FlushEventCallback
-{
- public:
-    EventReleaseCallback() : garbageSystem(nullptr) {}
-    EventReleaseCallback(EventPool::EventHandle&& _event, GarbageSystem* _garbageSystem)
-      : event(std::move(_event)), garbageSystem(_garbageSystem) {}
-    EventReleaseCallback(const EventReleaseCallback&) = delete;
-    EventReleaseCallback& operator=(const EventReleaseCallback&) = delete;
-    void close() {
-        if (garbageSystem) {
-            garbageSystem->useGarbage(
-              [&](Garbage* trashBin) { trashBin->releaseEvent(std::move(event)); });
-            garbageSystem = nullptr;
-        }
-    }
-    EventReleaseCallback(EventReleaseCallback&& other)
-      : event(std::move(other.event)), garbageSystem(other.garbageSystem) {
-        other.garbageSystem = nullptr;
-    }
-    EventReleaseCallback& operator=(EventReleaseCallback&& other) {
-        if (this == &other)
-            return *this;
-        close();
-        event = std::move(other.event);
-        garbageSystem = other.garbageSystem;
-        other.garbageSystem = nullptr;
-        return *this;
-    }
-    ~EventReleaseCallback() { close(); }
-    void operator()() { close(); }
-    operator bool() const { return garbageSystem != nullptr; }
-
-    void release(drv::ResourceTracker::EventFlushMode) override { close(); }
-
- private:
-    EventPool::EventHandle event;
-    GarbageSystem* garbageSystem = nullptr;
-};
 
 class FrameGraph
 {
@@ -120,15 +81,10 @@ class FrameGraph
 
         bool hasExecution() const;
 
-        drv::ResourceTracker* getResourceTracker(QueueId queueId);
-
-        EventReleaseCallback* getEventReleaseCallback(EventPool::EventHandle&& event);
-
      private:
         std::string name;
         NodeId ownId = INVALID_NODE;
         FrameGraph* frameGraph = nullptr;
-        std::unordered_map<QueueId, drv::ResourceTracker*> resourceTrackers;
         std::vector<CpuDependency> cpuDeps;
         std::vector<EnqueueDependency> enqDeps;
         // std::vector<CpuQueueDependency> cpuQueDeps;
@@ -136,7 +92,6 @@ class FrameGraph
         // std::vector<QueueQueueDependency> queQueDeps;
         std::unique_ptr<ExecutionQueue> localExecutionQueue;
         std::vector<NodeId> enqIndirectChildren;
-        std::vector<std::vector<EventReleaseCallback>> eventCallbacks;
 
         struct SyncData
         {
@@ -243,21 +198,14 @@ class FrameGraph
 
     FrameGraph(drv::PhysicalDevice _physicalDevice, drv::LogicalDevicePtr _device,
                GarbageSystem* _garbageSystem, EventPool* _eventPool,
-               drv::ResourceTracker::Config _trackerConfig)
+               drv::StateTrackingConfig _trackerConfig)
       : physicalDevice(_physicalDevice),
         device(_device),
         garbageSystem(_garbageSystem),
         eventPool(_eventPool),
         trackerConfig(_trackerConfig) {}
 
-    drv::ResourceTracker* getOrCreateResourceTracker(NodeId nodeId, QueueId queueId);
-
  private:
-    struct TrackerData
-    {
-        std::unique_ptr<drv::ResourceTracker> tracker;
-        std::unordered_set<NodeId> users;
-    };
     struct DependenceData
     {
         Offset cpuOffset = NO_SYNC;
@@ -271,10 +219,9 @@ class FrameGraph
     drv::LogicalDevicePtr device;
     GarbageSystem* garbageSystem;
     EventPool* eventPool;
-    drv::ResourceTracker::Config trackerConfig;
+    drv::StateTrackingConfig trackerConfig;
     ExecutionQueue executionQueue;
     std::vector<Node> nodes;
-    std::unordered_map<QueueId, std::vector<TrackerData>> resourceTrackers;
     // this doesn't include transitive dependencies through a gpu queue
     // eg node1 <cpu ot render queue=> node2 <render queue to cpu=> node3
     std::vector<DependenceData> dependencyTable;

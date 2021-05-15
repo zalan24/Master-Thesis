@@ -190,9 +190,6 @@ void Game::record_cmd_buffer(const RecordData& data, drv::DrvCmdBufferRecorder* 
                                drv::get_queue_family(data.device, data.presentQueue)});
     // TODO according to vulkan spec https://khronos.org/registry/vulkan/specs/1.2-extensions/man/html/vkQueuePresentKHR.html
     // memory is made visible to all read operations (add this to tracker?) -- only available memory
-    // recorder->finishQueueWork();
-    // if (frameId > 3)
-    //     recorder->getResourceTracker()->disableCommandLog();
 }
 
 void Game::record(FrameGraph& frameGraph, FrameId frameId) {
@@ -226,8 +223,7 @@ void Game::record(FrameGraph& frameGraph, FrameId frameId) {
 
         OneTimeCmdBuffer<RecordData> cmdBuffer(
           engine->getPhysicalDevice(), engine->getDevice(), queues.renderQueue.handle,
-          engine->getCommandBufferBank(), engine->getGarbageSystem(),
-          testDrawHandle.getNode().getResourceTracker(queues.renderQueue.id), record_cmd_buffer);
+          engine->getCommandBufferBank(), engine->getGarbageSystem(), record_cmd_buffer);
         RecordData recordData;
         recordData.device = engine->getDevice();
         recordData.targetImage = swapChainData.image;
@@ -252,8 +248,6 @@ void Game::record(FrameGraph& frameGraph, FrameId frameId) {
            drv::IMAGE_USAGE_COLOR_OUTPUT_WRITE | drv::IMAGE_USAGE_TRANSFER_DESTINATION});
         testDrawHandle.submit(queues.renderQueue.id, std::move(submission));
         //   engine->acquireCommandRecorder(testDrawHandle, frameId, queues.renderQueue.id);
-        // if (frameId < 3)
-        //     recorder->getResourceTracker()->enableCommandLog();
     }
     else
         assert(frameGraph.isStopped());

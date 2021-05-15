@@ -22,7 +22,6 @@ class DrvShaderHeaderRegistry;
 class DrvShaderHeader;
 class DrvShaderObjectRegistry;
 class DrvShader;
-class ResourceTracker;
 class DrvCmdBufferRecorder;
 
 struct StateTrackingConfig final : public ISerializable
@@ -196,12 +195,10 @@ class IDriver
 
     virtual bool destroy_framebuffer(LogicalDevicePtr device, FramebufferPtr frameBuffer) = 0;
 
-    virtual uint32_t get_num_trackers() = 0;
-
     virtual PlacementPtr<drv::DrvCmdBufferRecorder> create_cmd_buffer_recorder(
       void* targetPtr, drv::PhysicalDevicePtr physicalDevice, drv::LogicalDevicePtr device,
-      drv::QueueFamilyPtr family, drv::CommandBufferPtr cmdBufferPtr,
-      drv::ResourceTracker* resourceTracker, bool singleTime, bool simultaneousUse) = 0;
+      drv::QueueFamilyPtr family, drv::CommandBufferPtr cmdBufferPtr, bool singleTime,
+      bool simultaneousUse) = 0;
     virtual size_t get_cmd_buffer_recorder_size() = 0;
 
     virtual bool validate_and_apply_state_transitions(

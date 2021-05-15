@@ -23,8 +23,6 @@ struct Image
 
     // This state is only valid during linear submission, not parallel recording
     drv::ImageTrackingState linearTrackingState;
-    // TODO remove
-    std::vector<drv::ImageTrackingState> trackingStates;
 
     Image(VkImage _image, drv::Extent3D _extent, uint32_t _arraySize, uint32_t _numMipLevels,
           drv::ImageAspectBitType _aspects, bool _sharedResource, drv::SampleCount _sampleCount,
@@ -38,11 +36,7 @@ struct Image
         sampleCount(_sampleCount),
         format(_format),
         swapchainImage(_swapchainImage),
-        linearTrackingState(arraySize, numMipLevels, aspects) {
-        trackingStates.reserve(MAX_NUM_TRACKING_SLOTS);
-        for (uint32_t i = 0; i < MAX_NUM_TRACKING_SLOTS; ++i)
-            trackingStates.emplace_back(arraySize, numMipLevels, aspects);
-    }
+        linearTrackingState(arraySize, numMipLevels, aspects) {}
 };
 
 struct ImageView

@@ -9,7 +9,6 @@
 
 namespace drv
 {
-class ResourceTracker;
 class RenderPass;
 class DrvShader;
 

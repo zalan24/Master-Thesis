@@ -110,6 +110,7 @@ bool DrvVulkan::device_wait_idle(drv::LogicalDevicePtr device) {
 }
 
 drv::DriverSupport DrvVulkan::get_support(drv::LogicalDevicePtr device) {
+    UNUSED(device);
     drv::DriverSupport ret;
     ret.conditionalRendering = false;
     ret.tessellation = false;

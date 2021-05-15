@@ -52,8 +52,6 @@ class ImageMemoryBarrier
 
     const ImageSubresourceRange* getRanges() const;
 
-    friend class ResourceTracker;
-
     ImagePtr image;
     uint32_t numSubresourceRanges = 0;
     union Ranges

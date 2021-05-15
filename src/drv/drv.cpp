@@ -52,26 +52,6 @@ drv::IDriver* drv::get_driver_interface() {
     return current_driver_interface;
 }
 
-std::unique_ptr<drv::ResourceTracker> drv::create_resource_tracker(QueuePtr queue,
-                                                                   PhysicalDevicePtr physicalDevice,
-                                                                   LogicalDevicePtr device,
-                                                                   ResourceTracker::Config config) {
-    assert(current_driver_interface != nullptr);
-    switch (current_driver) {
-        case Driver::VULKAN:
-#ifdef DRIVER_VULKAN
-            return std::make_unique<DrvVulkanResourceTracker>(
-              static_cast<DrvVulkan*>(current_driver_interface), physicalDevice, device, queue,
-              std::move(config));
-#else
-            break;
-#endif
-        case Driver::NUM_PLATFORMS:
-            break;
-    }
-    return nullptr;
-}
-
 std::unique_ptr<drv::RenderPass> drv::create_render_pass(LogicalDevicePtr device,
                                                          std::string name) {
     return current_driver_interface->create_render_pass(device, std::move(name));
@@ -432,10 +412,6 @@ drv::QueueFamilyPtr drv::get_queue_family(LogicalDevicePtr device, QueuePtr queu
 
 bool drv::device_wait_idle(LogicalDevicePtr device) {
     return current_driver_interface->device_wait_idle(device);
-}
-
-uint32_t drv::get_num_trackers() {
-    return current_driver_interface->get_num_trackers();
 }
 
 drv::TextureInfo drv::get_texture_info(drv::ImagePtr image) {
