@@ -369,8 +369,9 @@ void VulkanCmdBufferRecorder::validate_memory_access(
   ImageSingleSubresourceMemoryBarrier& barrier) {
     drv_vulkan::Image* image = convertImage(_image);
     drv::ImageSubresourceTrackData& subresourceData = state.state.get(arrayIndex, mipLevel, aspect);
-    validate_memory_access(subresourceData, read, write, image->sharedResource, stages, accessMask,
-                           barrierSrcStage, barrierDstStage, barrier);
+    auto& usage = state.usage.get(arrayIndex, mipLevel, aspect);
+    validate_memory_access(subresourceData, usage, read, write, image->sharedResource, stages,
+                           accessMask, barrierSrcStage, barrierDstStage, barrier);
     if (!(static_cast<drv::ImageLayoutMask>(subresourceData.layout) & requiredLayoutMask)) {
         invalidate(INVALID, "Layout transitions must be placed manually");
         drv::drv_assert(write, "Cannot auto place layout transition for a read only access");
@@ -524,6 +525,7 @@ drv::PipelineStages VulkanCmdBufferRecorder::add_memory_sync(
     // drv_vulkan::Image* image = convertImage(_image);
     const drv::PipelineStages::FlagType stages = dstStages.resolve(getQueueSupport());
     drv::ImageSubresourceTrackData& subresourceData = state.state.get(arrayIndex, mipLevel, aspect);
+    auto& usage = state.usage.get(arrayIndex, mipLevel, aspect);
     // 'subresourceData.layout != resultLayout' excluded for consistent behaviour
     if (transitionLayout && !discardContent)
         flush = true;
@@ -536,8 +538,8 @@ drv::PipelineStages VulkanCmdBufferRecorder::add_memory_sync(
     barrier.layer = arrayIndex;
     barrier.mipLevel = mipLevel;
     barrier.aspect = aspect;
-    add_memory_sync(subresourceData, flush, dstStages, accessMask, transferOwnership, newOwner,
-                    barrierSrcStages, barrierDstStages, barrier);
+    add_memory_sync(subresourceData, usage, flush, dstStages, accessMask, transferOwnership,
+                    newOwner, barrierSrcStages, barrierDstStages, barrier);
     if (transitionLayout && subresourceData.layout != resultLayout) {
         barrierSrcStages.add(subresourceData.ongoingWrites | subresourceData.ongoingReads
                              | drv::PipelineStages::TOP_OF_PIPE_BIT);
@@ -548,6 +550,7 @@ drv::PipelineStages VulkanCmdBufferRecorder::add_memory_sync(
         subresourceData.dirtyMask = 0;
         subresourceData.visible = accessMask;
         subresourceData.usableStages = stages;
+        usage.preserveUsableStages = 0;
         if (resultLayout != drv::ImageLayout::UNDEFINED) {
             barrier.oldLayout =
               discardContent ? drv::ImageLayout::UNDEFINED : subresourceData.layout;

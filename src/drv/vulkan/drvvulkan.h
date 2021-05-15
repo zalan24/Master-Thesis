@@ -166,8 +166,9 @@ class VulkanCmdBufferRecorder final : public drv::DrvCmdBufferRecorder
     };
     void invalidate(InvalidationLevel level, const char* message) const;
 
-    void validate_memory_access(drv::PerSubresourceRangeTrackData& subresourceData, bool read,
-                                bool write, bool sharedRes, drv::PipelineStages stages,
+    void validate_memory_access(drv::PerSubresourceRangeTrackData& subresourceData,
+                                drv::SubresourceUsageData& subresUsage, bool read, bool write,
+                                bool sharedRes, drv::PipelineStages stages,
                                 drv::MemoryBarrier::AccessFlagBitType accessMask,
                                 drv::PipelineStages& barrierSrcStage,
                                 drv::PipelineStages& barrierDstStage, ResourceBarrier& barrier);
@@ -191,7 +192,8 @@ class VulkanCmdBufferRecorder final : public drv::DrvCmdBufferRecorder
                                     uint32_t requiredLayoutMask, bool changeLayout,
                                     drv::ImageLayout resultLayout);
 
-    void add_memory_sync(drv::PerSubresourceRangeTrackData& subresourceData, bool flush,
+    void add_memory_sync(drv::PerSubresourceRangeTrackData& subresourceData,
+                         drv::SubresourceUsageData& subresUsage, bool flush,
                          drv::PipelineStages dstStages,
                          drv::MemoryBarrier::AccessFlagBitType accessMask, bool transferOwnership,
                          drv::QueueFamilyPtr newOwner, drv::PipelineStages& barrierSrcStage,

@@ -1163,7 +1163,7 @@ void VulkanCmdBufferRecorder::appendBarrier(drv::PipelineStages srcStage,
                           == srcStage.resolve(getQueueSupport())
                         && barriers[lastBarrier].dstStages.resolve(getQueueSupport())
                              == dstStage.resolve(getQueueSupport())
-          /*&& barriers[lastBarrier].event == event*/);
+                        /*&& barriers[lastBarrier].event == event*/);
         flushBarrier(barriers[lastBarrier]);
     }
 }
@@ -1191,10 +1191,10 @@ void VulkanCmdBufferRecorder::invalidate(InvalidationLevel level, const char* me
 }
 
 void VulkanCmdBufferRecorder::validate_memory_access(
-  drv::PerSubresourceRangeTrackData& subresourceData, bool read, bool write, bool sharedRes,
-  drv::PipelineStages stages, drv::MemoryBarrier::AccessFlagBitType accessMask,
-  drv::PipelineStages& barrierSrcStage, drv::PipelineStages& barrierDstStage,
-  VulkanCmdBufferRecorder::ResourceBarrier& barrier) {
+  drv::PerSubresourceRangeTrackData& subresourceData, drv::SubresourceUsageData& subresUsage,
+  bool read, bool write, bool sharedRes, drv::PipelineStages stages,
+  drv::MemoryBarrier::AccessFlagBitType accessMask, drv::PipelineStages& barrierSrcStage,
+  drv::PipelineStages& barrierDstStage, VulkanCmdBufferRecorder::ResourceBarrier& barrier) {
     accessMask = drv::MemoryBarrier::resolve(accessMask);
 
     drv::QueueFamilyPtr transferOwnership = drv::IGNORE_FAMILY;
@@ -1236,7 +1236,7 @@ void VulkanCmdBufferRecorder::validate_memory_access(
         needWait = true;
     }
     if (invalidateMask != 0 || transferOwnership != drv::IGNORE_FAMILY || needWait)
-        add_memory_sync(subresourceData, flush, stages, accessMask,
+        add_memory_sync(subresourceData, subresUsage, flush, stages, accessMask,
                         transferOwnership != drv::IGNORE_FAMILY, transferOwnership, barrierSrcStage,
                         barrierDstStage, barrier);
 }
@@ -1262,13 +1262,11 @@ void VulkanCmdBufferRecorder::add_memory_access(drv::PerSubresourceRangeTrackDat
     subresourceData.ownership = currentFamily;
 }
 
-void VulkanCmdBufferRecorder::add_memory_sync(drv::PerSubresourceRangeTrackData& subresourceData,
-                                              bool flush, drv::PipelineStages dstStages,
-                                              drv::MemoryBarrier::AccessFlagBitType accessMask,
-                                              bool transferOwnership, drv::QueueFamilyPtr newOwner,
-                                              drv::PipelineStages& barrierSrcStage,
-                                              drv::PipelineStages& barrierDstStage,
-                                              VulkanCmdBufferRecorder::ResourceBarrier& barrier) {
+void VulkanCmdBufferRecorder::add_memory_sync(
+  drv::PerSubresourceRangeTrackData& subresourceData, drv::SubresourceUsageData& subresUsage,
+  bool flush, drv::PipelineStages dstStages, drv::MemoryBarrier::AccessFlagBitType accessMask,
+  bool transferOwnership, drv::QueueFamilyPtr newOwner, drv::PipelineStages& barrierSrcStage,
+  drv::PipelineStages& barrierDstStage, VulkanCmdBufferRecorder::ResourceBarrier& barrier) {
     const drv::PipelineStages::FlagType stages = dstStages.resolve(getQueueSupport());
     if (trackingConfig->forceInvalidateAll)
         accessMask = drv::MemoryBarrier::get_all_read_bits();
@@ -1283,6 +1281,7 @@ void VulkanCmdBufferRecorder::add_memory_sync(drv::PerSubresourceRangeTrackData&
             barrierDstStage.add(dstStages);
             barrierSrcStage.add(drv::PipelineStages::TOP_OF_PIPE_BIT);
             subresourceData.usableStages = stages;
+            subresUsage.preserveUsableStages = 0;
         }
         subresourceData.ownership = newOwner;
     }
@@ -1296,6 +1295,7 @@ void VulkanCmdBufferRecorder::add_memory_sync(drv::PerSubresourceRangeTrackData&
         subresourceData.dirtyMask = 0;
         subresourceData.visible = 0;
         subresourceData.usableStages = stages;
+        subresUsage.preserveUsableStages = 0;
     }
     const drv::PipelineStages::FlagType missingVisibility =
       accessMask ^ (accessMask & subresourceData.visible);
@@ -1309,6 +1309,7 @@ void VulkanCmdBufferRecorder::add_memory_sync(drv::PerSubresourceRangeTrackData&
         barrier.dstAccessFlags |= missingVisibility;
         subresourceData.usableStages = stages;
         subresourceData.visible |= missingVisibility;
+        subresUsage.preserveUsableStages = 0;
     }
     const drv::PipelineStages::FlagType missingUsability =
       stages ^ (stages & subresourceData.usableStages);
@@ -1376,7 +1377,11 @@ bool DrvVulkan::validate_and_apply_state_transitions(
           [&](uint32_t layer, uint32_t mip, drv::AspectFlagBits aspect) {
               const auto& result = transitions[i].second.cmdState.state.get(layer, mip, aspect);
               auto& state = image->linearTrackingState.get(layer, mip, aspect);
+              drv::PipelineStages::FlagType preservedStages =
+                state.usableStages
+                & transitions[i].second.cmdState.usage.get(layer, mip, aspect).preserveUsableStages;
               state = result;
+              state.usableStages = state.usableStages | preservedStages;
           });
     }
     if (correctedImageCount > 0) {

@@ -63,6 +63,13 @@ struct ImagePerSubresourceData
 };
 
 using ImageTrackingState = ImagePerSubresourceData<ImageSubresourceTrackData, 16>;
+struct SubresourceUsageData
+{
+    drv::PipelineStages::FlagType preserveUsableStages =
+      drv::PipelineStages::get_all_bits(drv::CMD_TYPE_ALL);
+};
+using ImageUsageData = ImagePerSubresourceData<SubresourceUsageData, 16>;
+
 struct SubresourceStateCorrection
 {
     drv::QueueFamilyPtr oldOwnership = drv::IGNORE_FAMILY;
@@ -77,11 +84,13 @@ struct ImageSubresourceStateCorrection : SubresourceStateCorrection
 
 struct CmdImageTrackingState
 {
+    ImageUsageData usage;
     ImageTrackingState state;
     ImageSubresourceSet usageMask;
     explicit CmdImageTrackingState(uint32_t layerCount, uint32_t mipCount,
                                    drv::ImageAspectBitType aspects)
-      : state(layerCount, mipCount, aspects),
+      : usage(layerCount, mipCount, aspects),
+        state(layerCount, mipCount, aspects),
         usageMask(layerCount) {}
 };
 
