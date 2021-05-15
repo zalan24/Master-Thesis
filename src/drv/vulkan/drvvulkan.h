@@ -121,16 +121,14 @@ class VulkanCmdBufferRecorder final : public drv::DrvCmdBufferRecorder
 
     drv::PipelineStages cmd_image_barrier(drv::CmdImageTrackingState& state,
                                           const drv::ImageMemoryBarrier& barrier);
-    void cmd_clear_image(drv::CmdImageTrackingState& state, drv::ImagePtr image,
-                         const drv::ClearColorValue* clearColors, uint32_t ranges,
-                         const drv::ImageSubresourceRange* subresourceRanges);
+    void cmd_clear_image(drv::ImagePtr image, const drv::ClearColorValue* clearColors,
+                         uint32_t ranges, const drv::ImageSubresourceRange* subresourceRanges);
 
-    drv::CommandTypeMask getQueueSupport() const { return queueSupport; }
+    void corrigate(const drv::StateCorrectionData& data) override;
 
  private:
     FlexibleArray<BarrierInfo, drv_vulkan::MAX_NUM_PARALLEL_BARRIERS_IN_CMD_STATE> barriers;
     const drv::StateTrackingConfig* trackingConfig;
-    drv::CommandTypeMask queueSupport;
     uint32_t lastBarrier = 0;
 
     void flushBarrier(BarrierInfo& barrier);

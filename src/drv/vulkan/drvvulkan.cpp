@@ -742,10 +742,10 @@ void DrvVulkanResourceTracker::invalidate(InvalidationLevel level, const char* m
 
 bool VulkanCmdBufferRecorder::matches(const BarrierInfo& barrier0,
                                       const BarrierInfo& barrier1) const {
-    const drv::PipelineStages::FlagType src0 = barrier0.srcStages.resolve(queueSupport);
-    const drv::PipelineStages::FlagType src1 = barrier1.srcStages.resolve(queueSupport);
-    const drv::PipelineStages::FlagType dst0 = barrier0.dstStages.resolve(queueSupport);
-    const drv::PipelineStages::FlagType dst1 = barrier1.dstStages.resolve(queueSupport);
+    const drv::PipelineStages::FlagType src0 = barrier0.srcStages.resolve(getQueueSupport());
+    const drv::PipelineStages::FlagType src1 = barrier1.srcStages.resolve(getQueueSupport());
+    const drv::PipelineStages::FlagType dst0 = barrier0.dstStages.resolve(getQueueSupport());
+    const drv::PipelineStages::FlagType dst1 = barrier1.dstStages.resolve(getQueueSupport());
     return src0 == src1 && dst0 == dst1;  // && barrier0.event == barrier1.event;
 }
 
@@ -754,14 +754,16 @@ bool VulkanCmdBufferRecorder::swappable(const BarrierInfo& barrier0,
     // if (!drv::is_null_ptr(barrier0.event) && !drv::is_null_ptr(barrier1.event))
     //     return true;
     // if (!drv::is_null_ptr(barrier1.event))
-    //     return (barrier0.srcStages.resolve(queueSupport) & barrier1.dstStages.resolve(queueSupport))
+    //     return (barrier0.srcStages.resolve(getQueueSupport()) & barrier1.dstStages.resolve(getQueueSupport()))
     //            == 0;
     // if (!drv::is_null_ptr(barrier0.event))
-    //     return (barrier0.dstStages.resolve(queueSupport) & barrier1.srcStages.resolve(queueSupport))
+    //     return (barrier0.dstStages.resolve(getQueueSupport()) & barrier1.srcStages.resolve(getQueueSupport()))
     //            == 0;
-    return (barrier0.dstStages.resolve(queueSupport) & barrier1.srcStages.resolve(queueSupport))
+    return (barrier0.dstStages.resolve(getQueueSupport())
+            & barrier1.srcStages.resolve(getQueueSupport()))
              == 0
-           && (barrier0.srcStages.resolve(queueSupport) & barrier1.dstStages.resolve(queueSupport))
+           && (barrier0.srcStages.resolve(getQueueSupport())
+               & barrier1.dstStages.resolve(getQueueSupport()))
                 == 0;
 }
 
@@ -788,7 +790,9 @@ bool VulkanCmdBufferRecorder::requireFlush(const BarrierInfo& barrier0,
 bool VulkanCmdBufferRecorder::merge(BarrierInfo& barrier0, BarrierInfo& barrier) const {
     if (!matches(barrier0, barrier))
         return false;
-    if ((barrier0.dstStages.resolve(queueSupport) & barrier.srcStages.resolve(queueSupport)) == 0)
+    if ((barrier0.dstStages.resolve(getQueueSupport())
+         & barrier.srcStages.resolve(getQueueSupport()))
+        == 0)
         return false;
     // if (barrier0.event != barrier.event)
     //     return false;
@@ -1066,7 +1070,7 @@ void VulkanCmdBufferRecorder::flushBarriersFor(drv::ImagePtr _image, uint32_t nu
 void VulkanCmdBufferRecorder::appendBarrier(drv::PipelineStages srcStage,
                                             drv::PipelineStages dstStage,
                                             ImageSingleSubresourceMemoryBarrier&& imageBarrier) {
-    if (!(srcStage.resolve(queueSupport) & (~drv::PipelineStages::TOP_OF_PIPE_BIT))
+    if (!(srcStage.resolve(getQueueSupport()) & (~drv::PipelineStages::TOP_OF_PIPE_BIT))
         && dstStage.stageFlags == 0) {
         drv::drv_assert(imageBarrier.dstAccessFlags == 0
                         && imageBarrier.dstFamily == imageBarrier.srcFamily
@@ -1086,7 +1090,7 @@ void VulkanCmdBufferRecorder::appendBarrier(drv::PipelineStages srcStage,
 void VulkanCmdBufferRecorder::appendBarrier(drv::PipelineStages srcStage,
                                             drv::PipelineStages dstStage,
                                             ImageMemoryBarrier&& imageBarrier) {
-    if (!(srcStage.resolve(queueSupport) & (~drv::PipelineStages::TOP_OF_PIPE_BIT))
+    if (!(srcStage.resolve(getQueueSupport()) & (~drv::PipelineStages::TOP_OF_PIPE_BIT))
         && dstStage.stageFlags == 0) {
         drv::drv_assert(imageBarrier.dstAccessFlags == 0
                         && imageBarrier.dstFamily == imageBarrier.srcFamily
@@ -1155,9 +1159,10 @@ void VulkanCmdBufferRecorder::appendBarrier(drv::PipelineStages srcStage,
     if (
       (trackingConfig->immediateBarriers /* && drv::is_null_ptr<drv::EventPtr>(event)*/)
       /*|| (trackingConfig->immediateEventBarriers && !drv::is_null_ptr<drv::EventPtr>(event))*/) {
-        drv::drv_assert(
-          barriers[lastBarrier].srcStages.resolve(queueSupport) == srcStage.resolve(queueSupport)
-          && barriers[lastBarrier].dstStages.resolve(queueSupport) == dstStage.resolve(queueSupport)
+        drv::drv_assert(barriers[lastBarrier].srcStages.resolve(getQueueSupport())
+                          == srcStage.resolve(getQueueSupport())
+                        && barriers[lastBarrier].dstStages.resolve(getQueueSupport())
+                             == dstStage.resolve(getQueueSupport())
           /*&& barriers[lastBarrier].event == event*/);
         flushBarrier(barriers[lastBarrier]);
     }
@@ -1357,16 +1362,13 @@ bool DrvVulkan::validate_and_apply_state_transitions(
               [&](uint32_t layer, uint32_t mip, drv::AspectFlagBits aspect) {
                   const auto& requirement = transitions[i].second.guarantee.get(layer, mip, aspect);
                   const auto& state = image->linearTrackingState.get(layer, mip, aspect);
-                  auto& transition = imageCorrections[i].second.get(layer, mip, aspect);
-                  transition.oldLayout = state.layout;
-                  transition.oldOwnership = state.ownership;
-                  transition.newLayout = requirement.layout != drv::ImageLayout::UNDEFINED
-                                           ? requirement.layout
-                                           : transition.oldLayout;
-                  transition.newOwnership = requirement.ownership != drv::IGNORE_FAMILY
-                                              ? requirement.ownership
-                                              : transition.oldOwnership;
-                  imageCorrections[i].second.usageMask.add(layer, mip, aspect);
+                  auto& oldState =
+                    imageCorrections[correctedImageCount].second.oldState.get(layer, mip, aspect);
+                  auto& newState =
+                    imageCorrections[correctedImageCount].second.newState.get(layer, mip, aspect);
+                  imageCorrections[correctedImageCount].second.usageMask.add(layer, mip, aspect);
+                  oldState = state;
+                  newState = requirement;
               });
             correctedImageCount++;
         }

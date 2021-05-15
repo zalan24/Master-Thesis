@@ -32,10 +32,7 @@ void VulkanCmdBufferRecorder::cmdClearImage(drv::ImagePtr image,
         defVal.aspectMask = drv::COLOR_BIT;
         subresourceRanges = &defVal;
     }
-    // getResourceTracker()->cmd_clear_image(getCommandBuffer(), image, clearColors, ranges,
-    //                                       subresourceRanges);
-    cmd_clear_image(getImageState(image, ranges, subresourceRanges).cmdState, image, clearColors,
-                    ranges, subresourceRanges);
+    cmd_clear_image(image, clearColors, ranges, subresourceRanges);
 }
 
 void DrvVulkanResourceTracker::cmd_clear_image(
@@ -95,9 +92,9 @@ VulkanCmdBufferRecorder::VulkanCmdBufferRecorder(
   const drv::StateTrackingConfig* _trackingConfig, drv::QueueFamilyPtr _family,
   drv::CommandBufferPtr _cmdBufferPtr, drv::ResourceTracker* _resourceTracker, bool singleTime,
   bool simultaneousUse)
-  : drv::DrvCmdBufferRecorder(_driver, _device, _family, _cmdBufferPtr, _resourceTracker),
-    trackingConfig(_trackingConfig),
-    queueSupport(_driver->get_command_type_mask(_physicalDevice, _family)) {
+  : drv::DrvCmdBufferRecorder(_driver, _physicalDevice, _device, _family, _cmdBufferPtr,
+                              _resourceTracker),
+    trackingConfig(_trackingConfig) {
     VkCommandBufferBeginInfo info;
     info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
     info.pNext = nullptr;
@@ -119,8 +116,7 @@ VulkanCmdBufferRecorder::~VulkanCmdBufferRecorder() {
     drv::drv_assert(result == VK_SUCCESS, "Could not finish recording command buffer");
 }
 
-void VulkanCmdBufferRecorder::cmd_clear_image(drv::CmdImageTrackingState& state,
-                                              drv::ImagePtr image,
+void VulkanCmdBufferRecorder::cmd_clear_image(drv::ImagePtr image,
                                               const drv::ClearColorValue* clearColors,
                                               uint32_t ranges,
                                               const drv::ImageSubresourceRange* subresourceRanges) {
@@ -133,8 +129,9 @@ void VulkanCmdBufferRecorder::cmd_clear_image(drv::CmdImageTrackingState& state,
       | static_cast<drv::ImageLayoutMask>(drv::ImageLayout::SHARED_PRESENT_KHR);
 
     drv::ImageLayout currentLayout = drv::ImageLayout::UNDEFINED;
-    add_memory_access(state, image, ranges, subresourceRanges, false, true,
-                      drv::PipelineStages::TRANSFER_BIT,
+    drv::PipelineStages stages(drv::PipelineStages::TRANSFER_BIT);
+    add_memory_access(getImageState(image, ranges, subresourceRanges).cmdState, image,
+                      ranges, subresourceRanges, false, true, stages,
                       drv::MemoryBarrier::AccessFlagBits::TRANSFER_WRITE_BIT, requiredLayoutMask,
                       true, &currentLayout, false, drv::ImageLayout::TRANSFER_DST_OPTIMAL);
 
@@ -175,4 +172,36 @@ void VulkanCmdBufferRecorder::cmdUseAsAttachment(drv::ImagePtr image,
                       drv::MemoryBarrier::get_write_bits(accessMask) != 0 || transitionLayout,
                       stages, accessMask, requiredLayoutMask, true, nullptr, transitionLayout,
                       resultLayout);
+}
+
+void VulkanCmdBufferRecorder::corrigate(const drv::StateCorrectionData& data) {
+    for (uint32_t i = 0; i < data.imageCorrections.size(); ++i) {
+        ImageStartingState state(data.imageCorrections[i].second.oldState.layerCount,
+                                 data.imageCorrections[i].second.oldState.mipCount,
+                                 data.imageCorrections[i].second.oldState.aspects);
+        data.imageCorrections[i].second.usageMask.traverse(
+          [&](uint32_t layer, uint32_t mip, drv::AspectFlagBits aspect) {
+              const auto& subres = data.imageCorrections[i].second.oldState.get(layer, mip, aspect);
+              state.get(layer, mip, aspect) = subres;
+          });
+        registerImage(data.imageCorrections[i].first, state,
+                      data.imageCorrections[i].second.usageMask);
+        data.imageCorrections[i].second.usageMask.traverse([&, this](uint32_t layer, uint32_t mip,
+                                                                     drv::AspectFlagBits aspect) {
+            drv::ImageSubresourceRange range;
+            range.aspectMask = aspect;
+            range.baseArrayLayer = layer;
+            range.layerCount = 1;
+            range.baseMipLevel = mip;
+            range.levelCount = 1;
+            const auto& subres = data.imageCorrections[i].second.newState.get(layer, mip, aspect);
+            bool discardContent = subres.layout == drv::ImageLayout::UNDEFINED;
+            add_memory_sync(getImageState(data.imageCorrections[i].first, 1, &range).cmdState,
+                            data.imageCorrections[i].first, mip, layer, aspect, !discardContent,
+                            subres.usableStages, drv::MemoryBarrier::get_all_bits(),
+                            !convertImage(data.imageCorrections[i].first)->sharedResource,
+                            subres.ownership != drv::IGNORE_FAMILY ? subres.ownership : getFamily(),
+                            true, discardContent, subres.layout);
+        });
+    }
 }

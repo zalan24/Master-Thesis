@@ -34,10 +34,28 @@ class DrvCmdBufferRecorder
         bool used = false;
 #if VALIDATE_USAGE
         ImageSubresourceSet initMask;
-        RecordImageInfo(bool _used, ImageSubresourceSet _initMask)
-          : used(_used), initMask(std::move(_initMask)) {}
-        RecordImageInfo() : used(false), initMask(0) {}
 #endif
+        RecordImageInfo(bool _used
+#if VALIDATE_USAGE
+                        ,
+                        ImageSubresourceSet _initMask
+#endif
+                        )
+          : used(_used)
+#if VALIDATE_USAGE
+            ,
+            initMask(std::move(_initMask))
+#endif
+        {
+        }
+        RecordImageInfo()
+          : used(false)
+#if VALIDATE_USAGE
+            ,
+            initMask(0)
+#endif
+        {
+        }
     };
 
     using ImageStates =
@@ -45,7 +63,8 @@ class DrvCmdBufferRecorder
     using ImageRecordStates =
       FlexibleArray<std::pair<drv::ImagePtr, RecordImageInfo>, NUM_CACHED_IMAGE_STATES>;
 
-    DrvCmdBufferRecorder(IDriver* driver, LogicalDevicePtr device, drv::QueueFamilyPtr family,
+    DrvCmdBufferRecorder(IDriver* driver, drv::PhysicalDevicePtr physicalDevice,
+                         LogicalDevicePtr device, drv::QueueFamilyPtr family,
                          CommandBufferPtr cmdBufferPtr, drv::ResourceTracker* resourceTracker);
     DrvCmdBufferRecorder(const DrvCmdBufferRecorder&) = delete;
     DrvCmdBufferRecorder& operator=(const DrvCmdBufferRecorder&) = delete;
@@ -80,7 +99,9 @@ class DrvCmdBufferRecorder
 
     void setImageStates(ImageStates* _imageStates) { imageStates = _imageStates; }
 
-    void corrigate(const StateCorrectionData& data);
+    virtual void corrigate(const StateCorrectionData& data) = 0;
+
+    drv::CommandTypeMask getQueueSupport() const { return queueSupport; }
 
  protected:
     ImageTrackInfo& getImageState(drv::ImagePtr image, uint32_t ranges,
@@ -90,6 +111,7 @@ class DrvCmdBufferRecorder
 
  private:
     drv::QueueFamilyPtr family;
+    drv::CommandTypeMask queueSupport;
     std::unique_lock<std::mutex> queueFamilyLock;
     CommandBufferPtr cmdBufferPtr;
     drv::ResourceTracker* resourceTracker;
