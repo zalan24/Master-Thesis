@@ -224,8 +224,6 @@ void DrvCmdBufferRecorder::updateImageState(drv::ImagePtr image, const ImageTrac
 }
 
 void DrvCmdBufferRecorder::corrigate(const StateCorrectionData& data) {
-    LOG_F(WARNING, "Correction barrier...");
-    return;
     for (uint32_t i = 0; i < data.imageCorrections.size(); ++i) {
         ImageStartingState state(data.imageCorrections[i].second.layerCount,
                                  data.imageCorrections[i].second.mipCount,

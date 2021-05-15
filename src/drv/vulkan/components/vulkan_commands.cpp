@@ -12,7 +12,7 @@
 #include "vulkan_enum_compare.h"
 
 void VulkanCmdBufferRecorder::cmdImageBarrier(const drv::ImageMemoryBarrier& barrier) {
-    getResourceTracker()->cmd_image_barrier(getCommandBuffer(), barrier);
+    // getResourceTracker()->cmd_image_barrier(getCommandBuffer(), barrier);
     cmd_image_barrier(
       getImageState(barrier.image, barrier.numSubresourceRanges, barrier.getRanges()).cmdState,
       barrier);
@@ -32,8 +32,8 @@ void VulkanCmdBufferRecorder::cmdClearImage(drv::ImagePtr image,
         defVal.aspectMask = drv::COLOR_BIT;
         subresourceRanges = &defVal;
     }
-    getResourceTracker()->cmd_clear_image(getCommandBuffer(), image, clearColors, ranges,
-                                          subresourceRanges);
+    // getResourceTracker()->cmd_clear_image(getCommandBuffer(), image, clearColors, ranges,
+    //                                       subresourceRanges);
     cmd_clear_image(getImageState(image, ranges, subresourceRanges).cmdState, image, clearColors,
                     ranges, subresourceRanges);
 }
@@ -67,8 +67,8 @@ void DrvVulkanResourceTracker::cmd_clear_image(
                     static_cast<const void*>(convertImage(image)));
 #endif
 
-    vkCmdClearColorImage(convertCommandBuffer(cmdBuffer), convertImage(image)->image,
-                         convertImageLayout(currentLayout), vkValues, ranges, vkRanges);
+    // vkCmdClearColorImage(convertCommandBuffer(cmdBuffer), convertImage(image)->image,
+    //                      convertImageLayout(currentLayout), vkValues, ranges, vkRanges);
 }
 
 drv::PipelineStages DrvVulkanResourceTracker::cmd_image_barrier(
@@ -143,8 +143,8 @@ void VulkanCmdBufferRecorder::cmd_clear_image(drv::CmdImageTrackingState& state,
         vkValues[i] = convertClearColor(clearColors[i]);
     }
 
-    // vkCmdClearColorImage(convertCommandBuffer(getCommandBuffer()), convertImage(image)->image,
-    //                      convertImageLayout(currentLayout), vkValues, ranges, vkRanges);
+    vkCmdClearColorImage(convertCommandBuffer(getCommandBuffer()), convertImage(image)->image,
+                         convertImageLayout(currentLayout), vkValues, ranges, vkRanges);
 }
 
 drv::PipelineStages VulkanCmdBufferRecorder::cmd_image_barrier(

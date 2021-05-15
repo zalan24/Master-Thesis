@@ -575,13 +575,13 @@ bool Engine::execute(FrameId& executionFrame, ExecutionPackage&& package) {
                     LOG_F(ERROR, "Some resources are not in the expected state");
                     BREAK_POINT;
                 }
-                // OneTimeCmdBuffer<const drv::StateCorrectionData*> correctionCmdBuffer(
-                //   physicalDevice, device, cmdBuffer.queue, getCommandBufferBank(),
-                //   getGarbageSystem(), nullptr,
-                //   [](const drv::StateCorrectionData* const& data,
-                //      drv::DrvCmdBufferRecorder* recorder) { recorder->corrigate(*data); });
-                // commandBuffers[numCommandBuffers++] =
-                // correctionCmdBuffer.use(&correctionData).cmdBufferPtr;
+                OneTimeCmdBuffer<const drv::StateCorrectionData*> correctionCmdBuffer(
+                  physicalDevice, device, cmdBuffer.queue, getCommandBufferBank(),
+                  getGarbageSystem(), nullptr,
+                  [](const drv::StateCorrectionData* const& data,
+                     drv::DrvCmdBufferRecorder* recorder) { recorder->corrigate(*data); });
+                commandBuffers[numCommandBuffers++] =
+                  correctionCmdBuffer.use(&correctionData).cmdBufferPtr;
             }
             if (!drv::is_null_ptr(cmdBuffer.cmdBufferData.cmdBufferPtr))
                 commandBuffers[numCommandBuffers++] = cmdBuffer.cmdBufferData.cmdBufferPtr;

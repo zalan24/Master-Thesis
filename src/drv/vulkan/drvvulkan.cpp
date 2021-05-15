@@ -621,21 +621,21 @@ void DrvVulkanResourceTracker::flushBarrier(drv::CommandBufferPtr cmdBuffer, Bar
     }
 #endif
 
-    if (!drv::is_null_ptr(barrier.event)) {
-        VkEvent vkEvent = convertEvent(barrier.event);
-        vkCmdWaitEvents(
-          convertCommandBuffer(cmdBuffer), 1, &vkEvent, convertPipelineStages(barrier.srcStages),
-          convertPipelineStages(barrier.dstStages), 0, nullptr, 0, nullptr,  // TODO buffers
-          imageRangeCount, vkImageBarriers);
-    }
-    else {
-        vkCmdPipelineBarrier(convertCommandBuffer(cmdBuffer),
-                             convertPipelineStages(barrier.srcStages),
-                             convertPipelineStages(barrier.dstStages), 0,
-                             //  static_cast<VkDependencyFlags>(dependencyFlags),  // TODO
-                             0, nullptr, 0, nullptr,  // TODO add buffers here
-                             imageRangeCount, vkImageBarriers);
-    }
+    // if (!drv::is_null_ptr(barrier.event)) {
+    //     VkEvent vkEvent = convertEvent(barrier.event);
+    //     vkCmdWaitEvents(
+    //       convertCommandBuffer(cmdBuffer), 1, &vkEvent, convertPipelineStages(barrier.srcStages),
+    //       convertPipelineStages(barrier.dstStages), 0, nullptr, 0, nullptr,  // TODO buffers
+    //       imageRangeCount, vkImageBarriers);
+    // }
+    // else {
+    //     vkCmdPipelineBarrier(convertCommandBuffer(cmdBuffer),
+    //                          convertPipelineStages(barrier.srcStages),
+    //                          convertPipelineStages(barrier.dstStages), 0,
+    //                          //  static_cast<VkDependencyFlags>(dependencyFlags),  // TODO
+    //                          0, nullptr, 0, nullptr,  // TODO add buffers here
+    //                          imageRangeCount, vkImageBarriers);
+    // }
 
     if (!drv::is_null_ptr<drv::EventPtr>(barrier.event) && barrier.eventCallback) {
         bool found = false;
@@ -718,6 +718,7 @@ DrvVulkanResourceTracker::~DrvVulkanResourceTracker() {
 }
 
 void DrvVulkanResourceTracker::invalidate(InvalidationLevel level, const char* message) const {
+    return;
     switch (level) {
         case SUBOPTIMAL:
             if (config.verbosity == Config::DEBUG_ERRORS) {
@@ -1015,13 +1016,12 @@ void VulkanCmdBufferRecorder::flushBarrier(BarrierInfo& barrier) {
     //       imageRangeCount, vkImageBarriers);
     // }
     // else {
-    // TODO -----
-    // vkCmdPipelineBarrier(convertCommandBuffer(cmdBuffer), convertPipelineStages(barrier.srcStages),
-    //                      convertPipelineStages(barrier.dstStages), 0,
-    //                      //  static_cast<VkDependencyFlags>(dependencyFlags),  // TODO
-    //                      0, nullptr, 0, nullptr,  // TODO add buffers here
-    //                      imageRangeCount, vkImageBarriers);
-    // TODO -----
+    vkCmdPipelineBarrier(convertCommandBuffer(getCommandBuffer()),
+                         convertPipelineStages(barrier.srcStages),
+                         convertPipelineStages(barrier.dstStages), 0,
+                         //  static_cast<VkDependencyFlags>(dependencyFlags),  // TODO
+                         0, nullptr, 0, nullptr,  // TODO add buffers here
+                         imageRangeCount, vkImageBarriers);
     // }
 
     // if (!drv::is_null_ptr<drv::EventPtr>(barrier.event) && barrier.eventCallback) {

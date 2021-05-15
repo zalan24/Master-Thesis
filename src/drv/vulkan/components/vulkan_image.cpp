@@ -182,6 +182,7 @@ void DrvVulkanResourceTracker::add_memory_access(
   drv::PipelineStages stages, drv::MemoryBarrier::AccessFlagBitType accessMask,
   drv::ImageLayoutMask requiredLayoutMask, bool requireSameLayout, drv::ImageLayout* currentLayout,
   bool changeLayout, drv::ImageLayout resultLayout) {
+    return;
     drv::drv_assert(numSubresourceRanges > 0, "No subresource ranges given for add_memory_access");
     drv_vulkan::Image* image = convertImage(_image);
     flushBarriersFor(cmdBuffer, _image, numSubresourceRanges, subresourceRanges);
