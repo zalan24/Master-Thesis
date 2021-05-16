@@ -187,6 +187,8 @@ class Engine
     FrameGraph::NodeId inputSampleNode;
     FrameGraph::TagNodeId simStartNode;
     FrameGraph::TagNodeId simEndNode;
+    FrameGraph::TagNodeId beforeDrawStartNode;
+    FrameGraph::TagNodeId beforeDrawEndNode;
     FrameGraph::NodeId recordStartNode;
     FrameGraph::NodeId recordEndNode;
     FrameGraph::TagNodeId executeStartNode;
@@ -201,6 +203,7 @@ class Engine
     mutable std::mutex executionMutex;
 
     void simulationLoop();
+    void beforeDrawLoop();
     void recordCommandsLoop();
     void executeCommandsLoop();
     void cleanUpLoop();

@@ -224,6 +224,8 @@ Engine::Engine(int argc, char* argv[], const Config& cfg,
     // These are just marker nodes, no actual work is done in them
     simStartNode = frameGraph.addTagNode("simulation/start");
     simEndNode = frameGraph.addTagNode("simulation/end");
+    beforeDrawStartNode = frameGraph.addTagNode("beforeDraw/start");
+    beforeDrawEndNode = frameGraph.addTagNode("beforeDraw/end");
     recordStartNode =
       frameGraph.addNode(FrameGraph::Node("record/start", FrameGraph::RECORD_STAGE, true));
     recordEndNode =
@@ -249,13 +251,18 @@ Engine::Engine(int argc, char* argv[], const Config& cfg,
     frameGraph.addDependency(
       simStartNode,
       FrameGraph::CpuDependency{simEndNode, FrameGraph::TAG_STAGE, FrameGraph::TAG_STAGE, 1});
+    frameGraph.addDependency(beforeDrawStartNode,
+                             FrameGraph::CpuDependency{beforeDrawEndNode, FrameGraph::TAG_STAGE,
+                                                       FrameGraph::TAG_STAGE, 1});
     frameGraph.addDependency(
       simStartNode,
       FrameGraph::CpuDependency{recordEndNode, FrameGraph::RECORD_STAGE, FrameGraph::TAG_STAGE, 1});
     frameGraph.addDependency(
-      recordStartNode,
-      FrameGraph::CpuDependency{simStartNode, FrameGraph::TAG_STAGE, FrameGraph::RECORD_STAGE, 0});
-    // TODO Do we really need this? Probably not
+      beforeDrawStartNode,
+      FrameGraph::CpuDependency{simStartNode, FrameGraph::TAG_STAGE, FrameGraph::TAG_STAGE, 0});
+    frameGraph.addDependency(recordStartNode,
+                             FrameGraph::CpuDependency{beforeDrawStartNode, FrameGraph::TAG_STAGE,
+                                                       FrameGraph::RECORD_STAGE, 0});
     frameGraph.addDependency(
       recordStartNode, FrameGraph::CpuDependency{executeEndNode, FrameGraph::TAG_STAGE,
                                                  FrameGraph::RECORD_STAGE, executionDepOffset});
@@ -263,6 +270,9 @@ Engine::Engine(int argc, char* argv[], const Config& cfg,
     frameGraph.addDependency(
       simEndNode,
       FrameGraph::CpuDependency{simStartNode, FrameGraph::TAG_STAGE, FrameGraph::TAG_STAGE, 0});
+    frameGraph.addDependency(beforeDrawEndNode,
+                             FrameGraph::CpuDependency{beforeDrawStartNode, FrameGraph::TAG_STAGE,
+                                                       FrameGraph::TAG_STAGE, 0});
     frameGraph.addDependency(
       simEndNode, FrameGraph::CpuDependency{inputSampleNode, FrameGraph::SIMULATION_STAGE,
                                             FrameGraph::TAG_STAGE, 0});
@@ -416,6 +426,22 @@ Engine::AcquiredImageData Engine::acquiredSwapchainImage(
     return ret;
 }
 
+void Engine::beforeDrawLoop() {
+    RUNTIME_STAT_SCOPE(beforeDrawLoop);
+    loguru::set_thread_name("beforeDraw");
+    FrameId beforeDrawFrame = 0;
+    while (!frameGraph.isStopped()) {
+        if (!frameGraph.applyTag(beforeDrawStartNode, beforeDrawFrame))
+            break;
+        beforeDraw(beforeDrawFrame);
+        if (!frameGraph.applyTag(beforeDrawEndNode, beforeDrawFrame)) {
+            assert(frameGraph.isStopped());
+            break;
+        }
+        beforeDrawFrame++;
+    }
+}
+
 void Engine::recordCommandsLoop() {
     RUNTIME_STAT_SCOPE(recordLoop);
     loguru::set_thread_name("record");
@@ -457,8 +483,8 @@ void Engine::recordCommandsLoop() {
               ->push(ExecutionPackage(ExecutionPackage::MessagePackage{
                 ExecutionPackage::Message::RECORD_END, recordFrame, 0, nullptr}));
         }
-            recordFrame++;
-        }
+        recordFrame++;
+    }
     // No node can be waiting for enqueue at this point (or they will never be enqueued)
     frameGraph.getGlobalExecutionQueue()->push(ExecutionPackage(
       ExecutionPackage::MessagePackage{ExecutionPackage::Message::QUIT, 0, 0, nullptr}));
@@ -624,8 +650,8 @@ void Engine::cleanUpLoop() {
         if (!cleanUpHandle)
             break;
         garbageSystem.releaseGarbage(cleanUpFrame);
-            cleanUpFrame++;
-        }
+        cleanUpFrame++;
+    }
     {
         // wait for execution queue to finish
         std::unique_lock<std::mutex> executionLock(executionMutex);
@@ -642,12 +668,14 @@ void Engine::gameLoop() {
     // state.executionQueue = &executionQueue;
 
     std::thread simulationThread(&Engine::simulationLoop, this);
+    std::thread beforeDrawThread(&Engine::beforeDrawLoop, this);
     std::thread recordThread(&Engine::recordCommandsLoop, this);
     std::thread executeThread(&Engine::executeCommandsLoop, this);
     std::thread cleanUpThread(&Engine::cleanUpLoop, this);
 
     try {
         set_thread_name(&simulationThread, "simulation");
+        set_thread_name(&beforeDrawThread, "beforeDraw");
         set_thread_name(&recordThread, "record");
         set_thread_name(&executeThread, "execute");
         set_thread_name(&cleanUpThread, "cleanUp");
@@ -669,6 +697,7 @@ void Engine::gameLoop() {
         // }
         frameGraph.stopExecution(false);
         simulationThread.join();
+        beforeDrawThread.join();
         recordThread.join();
         executeThread.join();
         cleanUpThread.join();
@@ -679,6 +708,7 @@ void Engine::gameLoop() {
         BREAK_POINT;
         frameGraph.stopExecution(true);
         simulationThread.join();
+        beforeDrawThread.join();
         recordThread.join();
         executeThread.join();
         cleanUpThread.join();
@@ -689,6 +719,7 @@ void Engine::gameLoop() {
         BREAK_POINT;
         frameGraph.stopExecution(true);
         simulationThread.join();
+        beforeDrawThread.join();
         recordThread.join();
         executeThread.join();
         cleanUpThread.join();
