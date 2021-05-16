@@ -1,3 +1,2 @@
-add_subdirectory(shaders)
-add_subdirectory(game)
+add_subdirectory(3dgame)
 # add_subdirectory(buffer)

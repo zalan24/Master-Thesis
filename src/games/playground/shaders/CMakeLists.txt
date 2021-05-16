@@ -47,7 +47,7 @@ set(SHADER_COMPILE_OPTIONS ${CMAKE_SOURCE_DIR}/data/compile/shaderCompileOptions
 include(shaders)
 
 preprocess_shaders(
-    TARGET testShaders
+    TARGET playgroundShaders
     TARGETS_DIR ${PROJECT_BINARY_DIR}/shaders/preprocessors
     OUT_DIR ${PROJECT_BINARY_DIR}/shaders/cpp
     HEADERS ${SHADERS_HEADERS}
@@ -55,8 +55,8 @@ preprocess_shaders(
 )
 
 compile_shaders(
-    TARGET_NAME ShaderBinary
-    TARGETS testShaders
+    TARGET_NAME PlaygroundShaderBinary
+    TARGETS playgroundShaders
     OUTPUT  ${SHADERBIN}
     CACHE_DIR ${PROJECT_BINARY_DIR}/shaders/cache
     DATA_DIR ${PROJECT_BINARY_DIR}/shaders/preprocessors
