@@ -92,6 +92,19 @@ int main(int argc, char* argv[]) {
             return 1;
         }
 
+        Engine::Config engineCfg;
+        {
+            std::ifstream in(config);
+            assert(in.is_open());
+            engineCfg.read(in);
+        }
+        drv::StateTrackingConfig trackingCfg;
+        if (trackingConfig != "") {
+            std::ifstream in(trackingConfig);
+            assert(in.is_open());
+            trackingCfg.read(in);
+        }
+
         // json controllers;
         // {
         //     std::ifstream in(resourceFolder + "/scenes/test_controllers.json");
@@ -103,10 +116,8 @@ int main(int argc, char* argv[]) {
         ResourceManager::ResourceInfos resourceInfos;
         resourceInfos.resourceFolder = resourceFolder;
         resourceInfos.modelResourcesJson = modelResources;
-        std::unique_ptr<Engine> engine = std::make_unique<Engine>(
-          argc, argv, config, trackingConfig, shaderbin, std::move(resourceInfos), args);
-        std::unique_ptr<Game> game = std::make_unique<Game>(engine.get());
-        engine->initGame(game.get(), game.get());
+        std::unique_ptr<Game> game = std::make_unique<Game>(
+          argc, argv, engineCfg, trackingCfg, shaderbin, std::move(resourceInfos), args);
         // engine.getRenderer()->getCamera().lookAt(glm::vec3{0, 3, -5}, glm::vec3{0, 1, 0},
         //                                          glm::vec3{0, 1, 0});
 
@@ -134,7 +145,7 @@ int main(int argc, char* argv[]) {
         //   getMat(engine, TextureProvider::ResourceDescriptor(glm::vec4(1, 1, 1, 1))), true);
         // engine.getEntityManager()->addEntity(std::move(ground));
 
-        engine->gameLoop();
+        game->gameLoop();
     }
     catch (const std::exception& e) {
         std::cerr << e.what() << std::endl;

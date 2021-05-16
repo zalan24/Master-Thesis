@@ -14,11 +14,7 @@
 #include <drverror.h>
 #include <drvwindow.h>
 
-#include <irenderer.h>
-#include <isimulation.h>
-
 #include <namethreads.h>
-// #include <rendercontext.h>
 
 #include "execution_queue.h"
 
@@ -83,24 +79,6 @@ void Engine::Config::readJson(const json& in) {
     READ_OBJECT_OPT(trackerConfig, in, {});
 }
 
-static Engine::Config get_config(const std::string& file) {
-    std::ifstream in(file);
-    assert(in.is_open());
-    Engine::Config config;
-    config.read(in);
-    return config;
-}
-
-static drv::StateTrackingConfig get_tracking_config(const std::string& file) {
-    if (file == "")
-        return {};
-    std::ifstream in(file);
-    assert(in.is_open());
-    drv::StateTrackingConfig config;
-    config.read(in);
-    return config;
-}
-
 static drv::Driver get_driver(const std::string& name) {
     if (name == "Vulkan")
         return drv::Driver::VULKAN;
@@ -131,13 +109,6 @@ Engine::WindowIniter::WindowIniter(IWindow* _window, drv::InstancePtr instance) 
 
 Engine::WindowIniter::~WindowIniter() {
     window->close();
-}
-
-Engine::Engine(int argc, char* argv[], const std::string& configFile,
-               const std::string& trackingConfigFile, const std::string& shaderbinFile,
-               ResourceManager::ResourceInfos resource_infos, const Args& args)
-  : Engine(argc, argv, get_config(configFile), get_tracking_config(trackingConfigFile),
-           shaderbinFile, std::move(resource_infos), args) {
 }
 
 drv::Swapchain::CreateInfo Engine::get_swapchain_create_info(const Config& config,
@@ -236,16 +207,6 @@ Engine::Engine(int argc, char* argv[], const Config& cfg,
         LOG_F(
           WARNING,
           "Present is supported on render queue, but a different queue is selected for presentation");
-}
-
-Engine::~Engine() {
-    LOG_ENGINE("Engine closed");
-}
-
-void Engine::initGame(IRenderer* _renderer, ISimulation* _simulation) {
-    RUNTIME_STAT_SCOPE(init);
-    simulation = _simulation;
-    renderer = _renderer;
 
     queueInfos.computeQueue = {computeQueue.queue, frameGraph.registerQueue(computeQueue.queue)};
     queueInfos.DtoHQueue = {DtoHQueue.queue, frameGraph.registerQueue(DtoHQueue.queue)};
@@ -301,30 +262,40 @@ void Engine::initGame(IRenderer* _renderer, ISimulation* _simulation) {
     frameGraph.addDependency(simStartNode,
                              FrameGraph::CpuDependency{cleanUpNode, cleanUpCpuOffset});
 
-    ISimulation::FrameGraphData simData;
-    simData.simStart = simStartNode;
-    simData.sampleInput = inputSampleNode;
-    simData.simEnd = simEndNode;
+    // ISimulation::FrameGraphData simData;
+    // simData.simStart = simStartNode;
+    // simData.sampleInput = inputSampleNode;
+    // simData.simEnd = simEndNode;
 
-    IRenderer::FrameGraphData renderData;
-    renderData.recStart = recordStartNode;
-    renderData.recEnd = recordEndNode;
-    renderData.present = presentFrameNode;
+    // IRenderer::FrameGraphData renderData;
+    // renderData.recStart = recordStartNode;
+    // renderData.recEnd = recordEndNode;
+    // renderData.present = presentFrameNode;
 
-    simulation->initSimulationFrameGraph(frameGraph, simData);
-    FrameGraph::NodeId renderNode = FrameGraph::INVALID_NODE;
-    FrameGraph::QueueId renderQueueId;
-    if (renderer->initRenderFrameGraph(frameGraph, renderData, renderNode, renderQueueId)) {
-        assert(renderNode != FrameGraph::INVALID_NODE);
-        // frameGraph.addDependency(presentFrameNode,
-        //                          FrameGraph::QueueQueueDependency{renderNode, renderQueueId,
-        //                                                           queueInfos.presentQueue.id, 0});
-        frameGraph.addDependency(presentFrameNode, FrameGraph::EnqueueDependency{renderNode, 0});
-        frameGraph.addDependency(cleanUpNode,
-                                 FrameGraph::QueueCpuDependency{renderNode, renderQueueId, 0});
-    }
+    // simulation->initSimulationFrameGraph(frameGraph, simData);
+    // FrameGraph::NodeId renderNode = FrameGraph::INVALID_NODE;
+    // FrameGraph::QueueId renderQueueId;
+    // if (renderer->initRenderFrameGraph(frameGraph, renderData, renderNode, renderQueueId)) {
+    //     assert(renderNode != FrameGraph::INVALID_NODE);
+    //     // frameGraph.addDependency(presentFrameNode,
+    //     //                          FrameGraph::QueueQueueDependency{renderNode, renderQueueId,
+    //     //                                                           queueInfos.presentQueue.id, 0});
+    //     frameGraph.addDependency(presentFrameNode, FrameGraph::EnqueueDependency{renderNode, 0});
+    //     frameGraph.addDependency(cleanUpNode,
+    //                              FrameGraph::QueueCpuDependency{renderNode, renderQueueId, 0});
+    // }
+}
+
+void Engine::buildFrameGraph(FrameGraph::NodeId presentDepNode, FrameGraph::QueueId depQueueId) {
+    frameGraph.addDependency(presentFrameNode, FrameGraph::EnqueueDependency{presentDepNode, 0});
+    frameGraph.addDependency(cleanUpNode,
+                             FrameGraph::QueueCpuDependency{presentDepNode, depQueueId, 0});
 
     frameGraph.build();
+}
+
+Engine::~Engine() {
+    LOG_ENGINE("Engine closed");
 }
 
 bool Engine::sampleInput(FrameId frameId) {
@@ -356,7 +327,7 @@ void Engine::simulationLoop(volatile std::atomic<FrameId>* simulationFrame,
             assert(frameGraph.isStopped());
             break;
         }
-        simulation->simulate(frameGraph, *simulationFrame);
+        simulate(*simulationFrame);
         {
             FrameGraph::NodeHandle simEndHandle =
               frameGraph.acquireNode(simEndNode, *simulationFrame);
@@ -445,7 +416,7 @@ void Engine::recordCommandsLoop(const volatile std::atomic<FrameId>* stopFrame) 
                 ExecutionPackage::Message::RECORD_START, recordFrame, 0, nullptr}));
         }
         const uint32_t semaphoreIndex = acquireImageSemaphoreId;
-        renderer->record(frameGraph, recordFrame);
+        record(recordFrame);
         {
             FrameGraph::NodeHandle presentHandle =
               frameGraph.acquireNode(presentFrameNode, recordFrame);
@@ -661,8 +632,6 @@ void Engine::cleanUpLoop(const volatile std::atomic<FrameId>* stopFrame) {
 
 void Engine::gameLoop() {
     RUNTIME_STAT_SCOPE(gameLoop);
-    if (simulation == nullptr || renderer == nullptr)
-        throw std::runtime_error("Simulation or renderer was not initialized before game loop");
     // entityManager.start();
     // ExecutionQueue executionQueue;
     // RenderState state;

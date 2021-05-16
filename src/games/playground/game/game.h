@@ -4,32 +4,24 @@
 
 #include <drvrenderpass.h>
 
+#include <3dgame.h>
 #include <engine.h>
-#include <irenderer.h>
-#include <isimulation.h>
 #include <shaderregistry.h>
 
 #include <shader_test.h>
 
-class Game final
-  : public IRenderer
-  , public ISimulation
+class Game final : public Game3D
 {
  public:
-    explicit Game(Engine* engine);
+    Game(int argc, char* argv[], const Config& config,
+         const drv::StateTrackingConfig& trackingConfig, const std::string& shaderbinFile,
+         ResourceManager::ResourceInfos resource_infos, const Args& args);
     ~Game() override;
 
-    bool initRenderFrameGraph(FrameGraph& frameGraph, const IRenderer::FrameGraphData& data,
-                              FrameGraph::NodeId& presentDepNode,
-                              FrameGraph::QueueId& depQueueId) override;
-    void initSimulationFrameGraph(FrameGraph& frameGraph,
-                                  const ISimulation::FrameGraphData& data) override;
-
-    void record(FrameGraph& frameGraph, FrameId frameId) override;
-    void simulate(FrameGraph& frameGraph, FrameId frameId) override;
+    void record(FrameId frameId) override;
+    void simulate(FrameId frameId) override;
 
  private:
-    Engine* engine;
     ShaderHeaderRegistry shaderHeaders;
     ShaderObjRegistry shaderObjects;
     shader_global_descriptor shaderGlobalDesc;

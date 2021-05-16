@@ -1,22 +1,20 @@
 file(GLOB ENGINE_SOURCES *.cpp *.h *.hpp)
 
-add_library(AnimationsEngine STATIC ${ENGINE_SOURCES})
+add_library(EngineLib STATIC ${ENGINE_SOURCES})
 
-set_target_properties(  AnimationsEngine
+set_target_properties(  EngineLib
                         PROPERTIES
                         COMPILE_FLAGS ${TARGETCOMPILEFLAGS}
                         LINK_OPTIONS "${TARGET_LINK_FLAGS}")
-target_include_directories(AnimationsEngine PUBLIC . ${CMAKE_CURRENT_BINARY_DIR})
-target_link_libraries(AnimationsEngine PRIVATE
+target_include_directories(EngineLib PUBLIC . ${CMAKE_CURRENT_BINARY_DIR})
+target_link_libraries(EngineLib PRIVATE
     json_external
 )
-target_link_libraries(AnimationsEngine PUBLIC
+target_link_libraries(EngineLib PUBLIC
     AnimationsEntities
     AnimationsSerializable
     AnimationsAssetLoaders
     AnimationsDrv
-    AnimationsIRenderer
-    AnimationsISimulation
     AnimationsResources
     AnimationsInput
     EngineCmdBuffer

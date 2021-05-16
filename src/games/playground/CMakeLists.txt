@@ -4,7 +4,7 @@ add_subdirectory(game)
 
 add_executable(Playground playground.cpp)
 target_link_libraries(Playground PRIVATE
-    AnimationsEngine
+    EngineLib
     AnimationsController
     PlaygroundLib
     cli11_external

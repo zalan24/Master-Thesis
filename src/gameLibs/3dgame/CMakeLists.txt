@@ -8,9 +8,7 @@ set_target_properties(  Game3D
                         LINK_OPTIONS "${TARGET_LINK_FLAGS}")
 target_include_directories(Game3D PUBLIC . ${CMAKE_CURRENT_BINARY_DIR})
 target_link_libraries(Game3D PUBLIC
-    AnimationsIRenderer
-    AnimationsISimulation
     ShaderManager
-    AnimationsEngine
+    EngineLib
     EngineRenderPass
 )

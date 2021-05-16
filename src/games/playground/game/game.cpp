@@ -7,15 +7,17 @@
 #include <drverror.h>
 #include <renderpass.h>
 
-Game::Game(Engine* _engine)
-  : engine(_engine),
-    shaderHeaders(engine->getDevice()),
-    shaderObjects(engine->getDevice(), *engine->getShaderBin(), shaderHeaders),
-    shaderGlobalDesc(engine->getDevice(), &shaderHeaders.global),
-    shaderTestDesc(engine->getDevice(), &shaderHeaders.test),
+Game::Game(int argc, char* argv[], const Config& config,
+           const drv::StateTrackingConfig& trackingConfig, const std::string& shaderbinFile,
+           ResourceManager::ResourceInfos resource_infos, const Args& args)
+  : Game3D(argc, argv, config, trackingConfig, shaderbinFile, resource_infos, args),
+    shaderHeaders(getDevice()),
+    shaderObjects(getDevice(), *getShaderBin(), shaderHeaders),
+    shaderGlobalDesc(getDevice(), &shaderHeaders.global),
+    shaderTestDesc(getDevice(), &shaderHeaders.test),
     dynamicStates(drv::DrvShader::DynamicStates::FIXED_SCISSOR,
                   drv::DrvShader::DynamicStates::FIXED_VIEWPORT),
-    testShader(engine->getDevice(), &shaderObjects.test, dynamicStates) {
+    testShader(getDevice(), &shaderObjects.test, dynamicStates) {
     // shader_obj_test::Descriptor descriptor;
     // descriptor.setVariant("Color", "red");
     // descriptor.setVariant("TestVariant", "two");
@@ -25,7 +27,7 @@ Game::Game(Engine* _engine)
     // std::cout << descriptor.desc_test.getLocalVariantId() << std::endl;
     // std::cout << descriptor.getLocalVariantId() << std::endl;
 
-    testRenderPass = drv::create_render_pass(engine->getDevice(), "Test pass");
+    testRenderPass = drv::create_render_pass(getDevice(), "Test pass");
     drv::RenderPass::AttachmentInfo colorInfo;
     colorInfo.initialLayout = drv::ImageLayout::COLOR_ATTACHMENT_OPTIMAL;
     colorInfo.finalLayout = drv::ImageLayout::PRESENT_SRC_KHR;
@@ -41,36 +43,23 @@ Game::Game(Engine* _engine)
       {testColorAttachment, drv::ImageLayout::COLOR_ATTACHMENT_OPTIMAL});
     testSubpass = testRenderPass->createSubpass(std::move(subpassInfo));
     testRenderPass->build();
+
+    testDraw = getFrameGraph().addNode(FrameGraph::Node("testDraw", true));
+    getFrameGraph().addDependency(testDraw, FrameGraph::CpuDependency{getRecStartNode(), 0});
+    getFrameGraph().addDependency(testDraw, FrameGraph::EnqueueDependency{getRecStartNode(), 0});
+    getFrameGraph().addDependency(getRecEndNode(), FrameGraph::CpuDependency{testDraw, 0});
+    getFrameGraph().addDependency(getRecEndNode(), FrameGraph::EnqueueDependency{testDraw, 0});
+
+    buildFrameGraph(testDraw, getQueues().renderQueue.id);
 }
 
 Game::~Game() {
 }
 
-bool Game::initRenderFrameGraph(FrameGraph& frameGraph, const IRenderer::FrameGraphData& data,
-                                FrameGraph::NodeId& presentDepNode,
-                                FrameGraph::QueueId& depQueueId) {
-    testDraw = frameGraph.addNode(FrameGraph::Node("testDraw", true));
-    frameGraph.addDependency(testDraw, FrameGraph::CpuDependency{data.recStart, 0});
-    frameGraph.addDependency(testDraw, FrameGraph::EnqueueDependency{data.recStart, 0});
-    frameGraph.addDependency(data.recEnd, FrameGraph::CpuDependency{testDraw, 0});
-    frameGraph.addDependency(data.recEnd, FrameGraph::EnqueueDependency{testDraw, 0});
-
-    presentDepNode = testDraw;
-    depQueueId = engine->getQueues().renderQueue.id;
-    return true;
-}
-
-void Game::initSimulationFrameGraph(FrameGraph& frameGraph,
-                                    const ISimulation::FrameGraphData& data) {
-    UNUSED(frameGraph);
-    UNUSED(data);
-    // TODO
-}
-
 void Game::recreateViews(uint32_t imageCount, const drv::ImagePtr* images) {
     frameBuffers.clear();
     while (imageViews.size()) {
-        engine->getGarbageSystem()->useGarbage([this](Garbage* trashBin) {
+        getGarbageSystem()->useGarbage([this](Garbage* trashBin) {
             trashBin->releaseImageView(std::move(imageViews.back()));
             imageViews.pop_back();
         });
@@ -89,8 +78,8 @@ void Game::recreateViews(uint32_t imageCount, const drv::ImagePtr* images) {
         createInfo.subresourceRange.baseMipLevel = 0;
         createInfo.subresourceRange.layerCount = 1;
         createInfo.subresourceRange.levelCount = 1;
-        imageViews.emplace_back(engine->getDevice(), createInfo);
-        frameBuffers.emplace_back(engine->getDevice());
+        imageViews.emplace_back(getDevice(), createInfo);
+        frameBuffers.emplace_back(getDevice());
     }
 }
 
@@ -108,8 +97,7 @@ static ShaderObject::DynamicState get_dynamic_states(drv::Extent2D extent) {
 }
 
 void Game::initShader(drv::Extent2D extent) {
-    engine->getGarbageSystem()->useGarbage(
-      [this](Garbage* trashBin) { testShader.clear(trashBin); });
+    getGarbageSystem()->useGarbage([this](Garbage* trashBin) { testShader.clear(trashBin); });
     ShaderObject::DynamicState dynStates = get_dynamic_states(extent);
     shader_global_descriptor::VariantDesc globalDesc;
     shader_test_descriptor::VariantDesc blueVariant;
@@ -192,14 +180,14 @@ void Game::record_cmd_buffer(const RecordData& data, drv::DrvCmdBufferRecorder* 
     // memory is made visible to all read operations (add this to tracker?) -- only available memory
 }
 
-void Game::record(FrameGraph& frameGraph, FrameId frameId) {
+void Game::record(FrameId frameId) {
     // std::cout << "Record: " << frameId << std::endl;
     RUNTIME_STAT_SCOPE(gameRecord);
-    Engine::QueueInfo queues = engine->getQueues();
-    if (FrameGraph::NodeHandle testDrawHandle = frameGraph.acquireNode(testDraw, frameId);
+    Engine::QueueInfo queues = getQueues();
+    if (FrameGraph::NodeHandle testDrawHandle = getFrameGraph().acquireNode(testDraw, frameId);
         testDrawHandle) {
         std::this_thread::sleep_for(std::chrono::milliseconds(4));
-        Engine::AcquiredImageData swapChainData = engine->acquiredSwapchainImage(testDrawHandle);
+        Engine::AcquiredImageData swapChainData = acquiredSwapchainImage(testDrawHandle);
         drv::drv_assert(swapChainData.version != Engine::INVALID_SWAPCHAIN, "Handle this somehow");
         if (swapchainVersion != swapChainData.version) {
             recreateViews(swapChainData.imageCount, swapChainData.images);
@@ -221,11 +209,11 @@ void Game::record(FrameGraph& frameGraph, FrameId frameId) {
             frameBuffers[swapChainData.imageIndex].set(
               testRenderPass->createFramebuffer(testImageInfo));
 
-        OneTimeCmdBuffer<RecordData> cmdBuffer(
-          engine->getPhysicalDevice(), engine->getDevice(), queues.renderQueue.handle,
-          engine->getCommandBufferBank(), engine->getGarbageSystem(), record_cmd_buffer);
+        OneTimeCmdBuffer<RecordData> cmdBuffer(getPhysicalDevice(), getDevice(),
+                                               queues.renderQueue.handle, getCommandBufferBank(),
+                                               getGarbageSystem(), record_cmd_buffer);
         RecordData recordData;
-        recordData.device = engine->getDevice();
+        recordData.device = getDevice();
         recordData.targetImage = swapChainData.image;
         recordData.targetView = imageViews[swapChainData.imageIndex];
         recordData.testColorAttachment = testColorAttachment;
@@ -240,21 +228,20 @@ void Game::record(FrameGraph& frameGraph, FrameId frameId) {
         recordData.testSubpass = testSubpass;
         recordData.shaderGlobalDesc = &shaderGlobalDesc;
         ExecutionPackage::CommandBufferPackage submission = make_submission_package(
-          queues.renderQueue.handle, cmdBuffer.use(std::move(recordData)),
-          engine->getGarbageSystem(), ResourceStateValidationMode::IGNORE_FIRST_SUBMISSION);
+          queues.renderQueue.handle, cmdBuffer.use(std::move(recordData)), getGarbageSystem(),
+          ResourceStateValidationMode::IGNORE_FIRST_SUBMISSION);
         submission.signalSemaphores.push_back(swapChainData.renderFinishedSemaphore);
         submission.waitSemaphores.push_back(
           {swapChainData.imageAvailableSemaphore,
            drv::IMAGE_USAGE_COLOR_OUTPUT_WRITE | drv::IMAGE_USAGE_TRANSFER_DESTINATION});
         testDrawHandle.submit(queues.renderQueue.id, std::move(submission));
-        //   engine->acquireCommandRecorder(testDrawHandle, frameId, queues.renderQueue.id);
+        //   acquireCommandRecorder(testDrawHandle, frameId, queues.renderQueue.id);
     }
     else
-        assert(frameGraph.isStopped());
+        assert(getFrameGraph().isStopped());
 }
 
-void Game::simulate(FrameGraph& frameGraph, FrameId frameId) {
-    UNUSED(frameGraph);
+void Game::simulate(FrameId frameId) {
     UNUSED(frameId);
     std::this_thread::sleep_for(std::chrono::milliseconds(4));
     // std::cout << "Simulate: " << frameId << std::endl;

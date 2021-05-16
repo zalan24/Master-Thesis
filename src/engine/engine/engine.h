@@ -35,8 +35,6 @@
 #include <oneTimeCmdBuffer.hpp>
 
 struct ExecutionPackage;
-class ISimulation;
-class IRenderer;
 
 class Engine
 {
@@ -70,19 +68,19 @@ class Engine
     Engine(int argc, char* argv[], const Config& config,
            const drv::StateTrackingConfig& trackingConfig, const std::string& shaderbinFile,
            ResourceManager::ResourceInfos resource_infos, const Args& args);
-    Engine(int argc, char* argv[], const std::string& configFile,
-           const std::string& trackingConfigFile, const std::string& shaderbinFile,
-           ResourceManager::ResourceInfos resource_infos, const Args& args);
-    ~Engine();
+    virtual ~Engine();
 
     Engine(const Engine&) = delete;
     Engine& operator=(const Engine&) = delete;
 
-    void initGame(IRenderer* renderer, ISimulation* simulation);
     void gameLoop();
 
-    // EntityManager* getEntityManager() { return &entityManager; }
-    // const EntityManager* getEntityManager() const { return &entityManager; }
+    // TODO remove
+    virtual void record(FrameId frameId) = 0;
+    virtual void simulate(FrameId frameId) = 0;
+    FrameGraph::NodeId getRecStartNode() const { return recordStartNode; }
+    FrameGraph::NodeId getRecEndNode() const { return recordEndNode; }
+    // ---
 
     drv::LogicalDevicePtr getDevice() const { return device; }
     drv::PhysicalDevicePtr getPhysicalDevice() const { return physicalDevice; }
@@ -126,6 +124,13 @@ class Engine
 
     GarbageSystem* getGarbageSystem() { return &garbageSystem; }
     drv::CommandBufferBank* getCommandBufferBank() { return &cmdBufferBank; }
+
+ protected:
+    // Needs to be called from game implementation after finishing the framegraph
+    void buildFrameGraph(FrameGraph::NodeId presentDepNode, FrameGraph::QueueId depQueueId);
+
+    FrameGraph& getFrameGraph() { return frameGraph; }
+    const FrameGraph& getFrameGraph() const { return frameGraph; }
 
  private:
     struct ErrorCallback
@@ -178,8 +183,6 @@ class Engine
     FrameGraph frameGraph;
     RuntimeStats runtimeStats;
 
-    ISimulation* simulation = nullptr;
-    IRenderer* renderer = nullptr;
     FrameGraph::NodeId inputSampleNode;
     FrameGraph::NodeId simStartNode;
     FrameGraph::NodeId simEndNode;
