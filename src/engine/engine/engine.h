@@ -76,8 +76,9 @@ class Engine
     void gameLoop();
 
     // TODO remove
-    virtual void record(FrameId frameId) = 0;
     virtual void simulate(FrameId frameId) = 0;
+    virtual void beforeDraw(FrameId frameId) = 0;
+    virtual void record(FrameId frameId) = 0;
     FrameGraph::NodeId getRecStartNode() const { return recordStartNode; }
     FrameGraph::NodeId getRecEndNode() const { return recordEndNode; }
     // ---
@@ -197,14 +198,12 @@ class Engine
     uint32_t acquireImageSemaphoreId = 0;
     SwapchaingVersion swapchainVersion = 0;
 
-    mutable std::shared_mutex stopFrameMutex;
     mutable std::mutex executionMutex;
 
-    void simulationLoop(volatile std::atomic<FrameId>* simulationFrame,
-                        const volatile std::atomic<FrameId>* stopFrame);
-    void recordCommandsLoop(const volatile std::atomic<FrameId>* stopFrame);
+    void simulationLoop();
+    void recordCommandsLoop();
     void executeCommandsLoop();
-    void cleanUpLoop(const volatile std::atomic<FrameId>* stopFrame);
+    void cleanUpLoop();
     bool execute(FrameId& executionFrame, ExecutionPackage&& package);
     void present(FrameId presentFrame, uint32_t semaphoreIndex);
     bool sampleInput(FrameId frameId);

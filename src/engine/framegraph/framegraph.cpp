@@ -196,11 +196,29 @@ bool FrameGraph::isStopped() const {
     return quit;
 }
 
-void FrameGraph::stopExecution() {
-    quit = true;
-    for (Node& node : nodes) {
-        std::unique_lock<std::mutex> lock(node.cpuMutex);
-        node.cpuCv.notify_all();
+bool FrameGraph::tryDoFrame(FrameId frameId) {
+    std::shared_lock<std::shared_mutex> lk(stopFrameMutex);
+    if (stopFrameId == INVALID_FRAME || frameId <= stopFrameId) {
+        FrameId expected = frameId > 0 ? frameId - 1 : 0;
+        // atomic max
+        while (!startedFrameId.compare_exchange_strong(expected, frameId) && expected < frameId) {
+        }
+        return true;
+    }
+    return false;
+}
+
+void FrameGraph::stopExecution(bool force) {
+    {
+        std::unique_lock<std::shared_mutex> lk(stopFrameMutex);
+        stopFrameId.store(startedFrameId);
+    }
+    if (force) {
+        quit = true;
+        for (Node& node : nodes) {
+            std::unique_lock<std::mutex> lock(node.cpuMutex);
+            node.cpuCv.notify_all();
+        }
     }
 }
 
@@ -406,7 +424,7 @@ void FrameGraph::NodeHandle::submit(QueueId queueId,
 }
 
 FrameGraph::NodeHandle FrameGraph::acquireNode(NodeId nodeId, Stage stage, FrameId frame) {
-    if (isStopped())
+    if (isStopped() || !tryDoFrame(frame))
         return NodeHandle();
     Node* node = getNode(nodeId);
     assert(node->completedFrames[get_stage_id(stage)] + 1 == frame
@@ -447,7 +465,7 @@ FrameGraph::NodeHandle FrameGraph::tryAcquireNode(NodeId nodeId, Stage stage, Fr
     const std::chrono::high_resolution_clock::time_point start =
       std::chrono::high_resolution_clock::now();
     std::chrono::nanoseconds maxDuration(timeoutNsec);
-    if (isStopped())
+    if (isStopped() || !tryDoFrame(frame))
         return NodeHandle();
     Node* node = getNode(nodeId);
     assert(node->stages & stage);
@@ -493,6 +511,8 @@ FrameGraph::NodeHandle FrameGraph::tryAcquireNode(NodeId nodeId, Stage stage, Fr
 }
 
 FrameGraph::NodeHandle FrameGraph::tryAcquireNode(NodeId nodeId, Stage stage, FrameId frame) {
+    if (!tryDoFrame(frame))
+        return NodeHandle();
     Node* node = getNode(nodeId);
     assert(node->stages & stage);
     for (const CpuDependency& dep : node->cpuDeps) {

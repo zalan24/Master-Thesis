@@ -252,3 +252,6 @@ void Game::simulate(FrameId frameId) {
     std::this_thread::sleep_for(std::chrono::milliseconds(4));
     // std::cout << "Simulate: " << frameId << std::endl;
 }
+
+void Game::beforeDraw(FrameId frameId) {
+}

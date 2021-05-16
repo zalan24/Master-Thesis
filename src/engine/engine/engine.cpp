@@ -194,7 +194,7 @@ Engine::Engine(int argc, char* argv[], const Config& cfg,
     std::stringstream ss;
     ss << configJson;
     LOG_ENGINE("Engine initialized with config: %s", ss.str().c_str());
-    // LOG_ENGINE("Build time %s %s", __DATE__, __TIME__);
+    LOG_ENGINE("Build time %s %s", __DATE__, __TIME__);
     log_queue("render", renderQueue);
     log_queue("present", presentQueue);
     log_queue("compute", computeQueue);
@@ -340,30 +340,24 @@ bool Engine::sampleInput(FrameId frameId) {
     return true;
 }
 
-void Engine::simulationLoop(volatile std::atomic<FrameId>* simulationFrame,
-                            const volatile std::atomic<FrameId>* stopFrame) {
+void Engine::simulationLoop() {
     RUNTIME_STAT_SCOPE(simulationLoop);
     loguru::set_thread_name("simulate");
-    simulationFrame->store(0);
-    while (!frameGraph.isStopped() && *simulationFrame <= *stopFrame) {
-        if (!frameGraph.applyTag(simStartNode, *simulationFrame)) {
+    FrameId simulationFrame = 0;
+    while (!frameGraph.isStopped()) {
+        if (!frameGraph.applyTag(simStartNode, simulationFrame))
+            break;
+        garbageSystem.startGarbage(simulationFrame);
+        if (!sampleInput(simulationFrame)) {
             assert(frameGraph.isStopped());
             break;
         }
-        garbageSystem.startGarbage(*simulationFrame);
-        if (!sampleInput(*simulationFrame)) {
+        simulate(simulationFrame);
+        if (!frameGraph.applyTag(simEndNode, simulationFrame)) {
             assert(frameGraph.isStopped());
             break;
         }
-        simulate(*simulationFrame);
-        if (!frameGraph.applyTag(simEndNode, *simulationFrame)) {
-            assert(frameGraph.isStopped());
-            break;
-        }
-        {
-            std::shared_lock<std::shared_mutex> lock(stopFrameMutex);
-            simulationFrame->store(simulationFrame->load() + 1);
-        }
+        simulationFrame++;
     }
 }
 
@@ -422,19 +416,17 @@ Engine::AcquiredImageData Engine::acquiredSwapchainImage(
     return ret;
 }
 
-void Engine::recordCommandsLoop(const volatile std::atomic<FrameId>* stopFrame) {
+void Engine::recordCommandsLoop() {
     RUNTIME_STAT_SCOPE(recordLoop);
     loguru::set_thread_name("record");
     FrameId recordFrame = 0;
-    while (!frameGraph.isStopped() && recordFrame <= *stopFrame) {
+    while (!frameGraph.isStopped()) {
         // TODO preframe stuff (resize)
         {
             FrameGraph::NodeHandle recStartHandle =
               frameGraph.acquireNode(recordStartNode, FrameGraph::RECORD_STAGE, recordFrame);
-            if (!recStartHandle) {
-                assert(frameGraph.isStopped());
+            if (!recStartHandle)
                 break;
-            }
             frameGraph.getExecutionQueue(recStartHandle)
               ->push(ExecutionPackage(ExecutionPackage::MessagePackage{
                 ExecutionPackage::Message::RECORD_START, recordFrame, 0, nullptr}));
@@ -465,11 +457,8 @@ void Engine::recordCommandsLoop(const volatile std::atomic<FrameId>* stopFrame) 
               ->push(ExecutionPackage(ExecutionPackage::MessagePackage{
                 ExecutionPackage::Message::RECORD_END, recordFrame, 0, nullptr}));
         }
-        {
-            std::shared_lock<std::shared_mutex> lock(stopFrameMutex);
             recordFrame++;
         }
-    }
     // No node can be waiting for enqueue at this point (or they will never be enqueued)
     frameGraph.getGlobalExecutionQueue()->push(ExecutionPackage(
       ExecutionPackage::MessagePackage{ExecutionPackage::Message::QUIT, 0, 0, nullptr}));
@@ -625,23 +614,18 @@ void Engine::executeCommandsLoop() {
     }
 }
 
-void Engine::cleanUpLoop(const volatile std::atomic<FrameId>* stopFrame) {
+void Engine::cleanUpLoop() {
     RUNTIME_STAT_SCOPE(cleanupLoop);
     loguru::set_thread_name("clean up");
     FrameId cleanUpFrame = 0;
-    while (!frameGraph.isStopped() && cleanUpFrame <= *stopFrame) {
+    while (!frameGraph.isStopped()) {
         FrameGraph::NodeHandle cleanUpHandle =
           frameGraph.acquireNode(cleanUpNode, FrameGraph::SIMULATION_STAGE, cleanUpFrame);
-        if (!cleanUpHandle) {
-            assert(frameGraph.isStopped());
+        if (!cleanUpHandle)
             break;
-        }
         garbageSystem.releaseGarbage(cleanUpFrame);
-        {
-            std::shared_lock<std::shared_mutex> lock(stopFrameMutex);
             cleanUpFrame++;
         }
-    }
     {
         // wait for execution queue to finish
         std::unique_lock<std::mutex> executionLock(executionMutex);
@@ -657,13 +641,10 @@ void Engine::gameLoop() {
     // RenderState state;
     // state.executionQueue = &executionQueue;
 
-    volatile std::atomic<FrameId> simulationFrame;
-    std::atomic<FrameId> stopFrame = INVALID_FRAME;
-
-    std::thread simulationThread(&Engine::simulationLoop, this, &simulationFrame, &stopFrame);
-    std::thread recordThread(&Engine::recordCommandsLoop, this, &stopFrame);
+    std::thread simulationThread(&Engine::simulationLoop, this);
+    std::thread recordThread(&Engine::recordCommandsLoop, this);
     std::thread executeThread(&Engine::executeCommandsLoop, this);
-    std::thread cleanUpThread(&Engine::cleanUpLoop, this, &stopFrame);
+    std::thread cleanUpThread(&Engine::cleanUpLoop, this);
 
     try {
         set_thread_name(&simulationThread, "simulation");
@@ -686,19 +667,27 @@ void Engine::gameLoop() {
         // state.recordCV.notify_one();
         // frameGraph.stopExecution();
         // }
-        {
-            std::unique_lock<std::shared_mutex> lock(stopFrameMutex);
-            stopFrame = simulationFrame;
-        }
+        frameGraph.stopExecution(false);
         simulationThread.join();
         recordThread.join();
         executeThread.join();
         cleanUpThread.join();
     }
+    catch (const std::exception& e) {
+        LOG_F(ERROR, "An exception happend during gameLoop. Waiting for threads to join: <%s>",
+              e.what());
+        BREAK_POINT;
+        frameGraph.stopExecution(true);
+        simulationThread.join();
+        recordThread.join();
+        executeThread.join();
+        cleanUpThread.join();
+        throw;
+    }
     catch (...) {
-        std::cerr << "An exception happend during gameLoop. Waiting for threads to join..."
-                  << std::endl;
-        frameGraph.stopExecution();
+        LOG_F(ERROR, "An exception happend during gameLoop. Waiting for threads to join");
+        BREAK_POINT;
+        frameGraph.stopExecution(true);
         simulationThread.join();
         recordThread.join();
         executeThread.join();

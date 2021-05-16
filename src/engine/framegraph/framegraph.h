@@ -220,7 +220,7 @@ class FrameGraph
     ExecutionQueue* getGlobalExecutionQueue();
 
     void build();
-    void stopExecution();  // used when quitting the app
+    void stopExecution(bool force);  // used when quitting the app
     bool isStopped() const;
 
     QueueId registerQueue(drv::QueuePtr queue);
@@ -256,6 +256,9 @@ class FrameGraph
     FlexibleArray<drv::QueuePtr, 8> queues;
 
     mutable std::mutex enqueueMutex;
+    mutable std::shared_mutex stopFrameMutex;
+    std::atomic<FrameId> stopFrameId = INVALID_FRAME;
+    std::atomic<FrameId> startedFrameId = 0;
 
     void release(const NodeHandle& handle);
     struct DependencyInfo
@@ -269,4 +272,5 @@ class FrameGraph
       const std::function<DependencyInfo(const Node&, Stage, uint32_t)>& depF) const;
     FrameId calcMaxEnqueueFrame(NodeId nodeId, FrameId frameId) const;
     void checkAndEnqueue(NodeId nodeId, FrameId frameId, Stage stage, bool traverse);
+    bool tryDoFrame(FrameId frameId);
 };
