@@ -251,7 +251,7 @@ Engine::Engine(int argc, char* argv[], const Config& cfg,
       FrameGraph::CpuDependency{simEndNode, FrameGraph::TAG_STAGE, FrameGraph::TAG_STAGE, 1});
     frameGraph.addDependency(
       simStartNode,
-      FrameGraph::CpuDependency{recordEndNode, FrameGraph::TAG_STAGE, FrameGraph::RECORD_STAGE, 1});
+      FrameGraph::CpuDependency{recordEndNode, FrameGraph::RECORD_STAGE, FrameGraph::TAG_STAGE, 1});
     frameGraph.addDependency(
       recordStartNode,
       FrameGraph::CpuDependency{simStartNode, FrameGraph::TAG_STAGE, FrameGraph::RECORD_STAGE, 0});
@@ -275,8 +275,8 @@ Engine::Engine(int argc, char* argv[], const Config& cfg,
                                                        FrameGraph::RECORD_STAGE, 0});
     frameGraph.addDependency(recordEndNode, FrameGraph::EnqueueDependency{presentFrameNode, 0});
     frameGraph.addDependency(executeStartNode,
-                             FrameGraph::CpuDependency{recordStartNode, FrameGraph::TAG_STAGE,
-                                                       FrameGraph::RECORD_STAGE, 0});
+                             FrameGraph::CpuDependency{recordStartNode, FrameGraph::RECORD_STAGE,
+                                                       FrameGraph::TAG_STAGE, 0});
     frameGraph.addDependency(
       executeEndNode,
       FrameGraph::CpuDependency{executeStartNode, FrameGraph::TAG_STAGE, FrameGraph::TAG_STAGE, 0});

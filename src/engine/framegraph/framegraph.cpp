@@ -20,6 +20,7 @@ FrameGraph::Node::Node(const std::string& _name, Stages _stages, bool _hasExecut
 
 FrameGraph::Node::Node(Node&& other)
   : name(std::move(other.name)),
+    stages(other.stages),
     ownId(other.ownId),
     frameGraph(other.frameGraph),
     cpuDeps(std::move(other.cpuDeps)),
@@ -47,6 +48,7 @@ FrameGraph::Node& FrameGraph::Node::operator=(Node&& other) {
     if (this == &other)
         return *this;
     name = std::move(other.name);
+    stages = std::move(other.stages);
     ownId = other.ownId;
     frameGraph = other.frameGraph;
     cpuDeps = std::move(other.cpuDeps);
@@ -202,107 +204,83 @@ void FrameGraph::stopExecution() {
     }
 }
 
+static size_t get_graph_id(FrameGraph::NodeId nodeId, FrameGraph::Stage stage) {
+    return nodeId * FrameGraph::NUM_STAGES + FrameGraph::get_stage_id(stage);
+}
+
 void FrameGraph::validateFlowGraph(
-  const std::function<uint32_t(const Node&)>& depCountF,
-  const std::function<DependencyInfo(const Node&, uint32_t)>& depF) const {
-    std::vector<std::vector<NodeId>> children(nodes.size());
-    std::vector<unsigned int> depCount(nodes.size(), 0);
+  const std::function<uint32_t(const Node&, Stage)>& depCountF,
+  const std::function<DependencyInfo(const Node&, Stage, uint32_t)>& depF) const {
+    std::vector<std::vector<std::pair<NodeId, Stage>>> children(nodes.size() * NUM_STAGES);
+    std::vector<unsigned int> depCount(nodes.size() * NUM_STAGES, 0);
     size_t dependingNodeCount = 0;
-    std::deque<NodeId> q;
+    std::deque<std::pair<NodeId, Stage>> q;
     for (NodeId i = 0; i < nodes.size(); ++i) {
-        unsigned int directDep = 0;
-        const uint32_t count = depCountF(nodes[i]);
-        for (uint32_t j = 0; j < count; ++j) {
-            DependencyInfo dep = depF(nodes[i], j);
-            if (dep.srcNode == i)
+        for (uint32_t stageId = 0; stageId < NUM_STAGES; ++stageId) {
+            Stage stage = get_stage(stageId);
+            if ((nodes[i].stages & stage) == 0)
                 continue;
-            if (dep.offset == 0) {
-                children[dep.srcNode].push_back(i);
-                if (directDep++ == 0)
-                    dependingNodeCount++;
+            unsigned int directDep = 0;
+            const uint32_t count = depCountF(nodes[i], stage);
+            for (uint32_t j = 0; j < count; ++j) {
+                DependencyInfo dep = depF(nodes[i], stage, j);
+                if (dep.srcNode == i)
+                    continue;
+                if (dep.offset == 0) {
+                    children[get_graph_id(dep.srcNode, dep.srcStage)].push_back(
+                      std::make_pair(i, stage));
+                    if (directDep++ == 0)
+                        dependingNodeCount++;
+                }
             }
+            depCount[get_graph_id(i, stage)] = directDep;
+            if (directDep == 0)  // source node
+                q.push_back(std::make_pair(i, stage));
         }
-        depCount[i] = directDep;
-        if (directDep == 0)  // source node
-            q.push_back(i);
     }
     // topology order
     while (!q.empty()) {
-        NodeId node = q.front();
+        std::pair<NodeId, Stage> node = q.front();
         q.pop_front();
-        for (const NodeId& id : children[node]) {
-            if (--depCount[id] == 0) {
+        for (const auto& [id, stage] : children[get_graph_id(node.first, node.second)]) {
+            if (--depCount[get_graph_id(id, stage)] == 0) {
                 dependingNodeCount--;
-                q.push_back(id);
+                q.push_back(std::make_pair(id, stage));
             }
         }
     }
-    if (dependingNodeCount > 0) {
-        // there is a circle
-        throw std::runtime_error(
-          "The nodes connected by cpu-cpu dependencies with offset = 0 need to form a flow graph (circle found)");
-    }
-}
-
-void FrameGraph::calcDependencyTable() {
-    dependencyTable.clear();
-    dependencyTable.resize(nodes.size() * nodes.size());
-
-    struct NodeData
-    {
-        NodeId node;
-        DependenceData dependence;
-    };
-
-    std::vector<std::map<NodeId, DependenceData>> directChildren(nodes.size());
-    for (NodeId i = 0; i < nodes.size(); ++i) {
-        for (const CpuDependency& dep : nodes[i].cpuDeps) {
-            if (dep.srcNode == i)
-                continue;
-            directChildren[i][dep.srcNode].cpuOffset = dep.offset;
-        }
-        for (const EnqueueDependency& dep : nodes[i].enqDeps) {
-            if (dep.srcNode == i)
-                continue;
-            directChildren[i][dep.srcNode].enqOffset = dep.offset;
-        }
-    }
-
-    for (NodeId i = 0; i < nodes.size(); ++i) {
-        std::deque<NodeData> q;
-        q.push_back({i, {0, nodes[i].hasExecution() ? 0 : NO_SYNC}});
-        while (!q.empty()) {
-            NodeData node = q.front();
-            q.pop_front();
-            DependenceData& dep = getDependenceData(i, node.node);
-            if (dep.cpuOffset <= node.dependence.cpuOffset
-                && dep.enqOffset <= node.dependence.enqOffset)
-                continue;
-            dep.cpuOffset = std::min(dep.cpuOffset, node.dependence.cpuOffset);
-            dep.enqOffset = std::min(dep.enqOffset, node.dependence.enqOffset);
-            for (const auto& [id, data] : directChildren[node.node]) {
-                DependenceData d;
-                if (dep.cpuOffset != NO_SYNC && data.cpuOffset != NO_SYNC)
-                    d.cpuOffset = dep.cpuOffset + data.cpuOffset;
-                if (dep.enqOffset != NO_SYNC && data.enqOffset != NO_SYNC)
-                    d.enqOffset = dep.enqOffset + data.enqOffset;
-                q.push_back({id, std::move(d)});
-            }
-        }
-    }
+    drv::drv_assert(
+      dependingNodeCount == 0,
+      "The nodes connected by cpu-cpu dependencies with offset = 0 need to form a flow graph (circle found)");
 }
 
 void FrameGraph::build() {
-    std::vector<bool> cpuChildrenIndirect(nodes.size(), false);
+    std::vector<bool> cpuChildrenIndirect(nodes.size() * NUM_STAGES, false);
     for (NodeId i = 0; i < nodes.size(); ++i) {
         bool hasCpuIndirectDep = false;
         for (const CpuDependency& dep : nodes[i].cpuDeps) {
-            if (dep.srcNode == i)
+            drv::drv_assert((nodes[i].stages & dep.dstStage) != 0,
+                            ("A node doesn't use a stage, that it has a dependency for: "
+                             + nodes[i].name + " / " + std::to_string(get_stage_id(dep.dstStage)))
+                              .c_str());
+            drv::drv_assert(
+              (nodes[dep.srcNode].stages & dep.srcStage) != 0,
+              ("A node doesn't use a stage, that it has a dependency for: "
+               + nodes[dep.srcNode].name + " / " + std::to_string(get_stage_id(dep.srcStage)))
+                .c_str());
+            if (dep.srcNode == i && dep.srcStage == dep.dstStage)
                 continue;
-            cpuChildrenIndirect[dep.srcNode] = true;
+            cpuChildrenIndirect[get_graph_id(dep.srcNode, dep.srcStage)] = true;
             hasCpuIndirectDep = true;
         }
+        // use drv assert instead
+        drv::drv_assert(hasCpuIndirectDep,
+                        ("A node <" + nodes[i].name
+                         + "> doesn't have any cpu-cpu dependencies (direct or indirect)")
+                          .c_str());
+        // }
         for (const EnqueueDependency& dep : nodes[i].enqDeps) {
+            // assert for record stage
             if (dep.srcNode == i)
                 continue;
             if (!nodes[i].hasExecution())
@@ -314,27 +292,40 @@ void FrameGraph::build() {
                                          + "> has an enqueue order dependency on <"
                                          + nodes[dep.srcNode].name + ">, which has no execution");
         }
-        if (!hasCpuIndirectDep) {
-            throw std::runtime_error(
-              "A node <" + nodes[i].name
-              + "> doesn't have any cpu-cpu dependencies (direct or indirect)");
-        }
     }
     for (NodeId i = 0; i < nodes.size(); ++i) {
-        if (!cpuChildrenIndirect[i]) {
-            throw std::runtime_error("A node <" + nodes[i].name
-                                     + "> doesn't have any cpu-cpu children (direct or indirect)");
+        for (uint32_t j = 0; j < NUM_STAGES; ++j) {
+            if ((nodes[i].stages & get_stage(j)) == 0)
+                continue;
+            drv::drv_assert(cpuChildrenIndirect[get_graph_id(i, get_stage(j))],
+                            ("A node <" + nodes[i].name
+                             + "> doesn't have any cpu-cpu children on stage: " + std::to_string(j))
+                              .c_str());
         }
     }
     validateFlowGraph(
-      [](const Node& node) { return node.cpuDeps.size(); },
-      [](const Node& node, uint32_t index) {
-          return DependencyInfo{node.cpuDeps[index].srcNode, node.cpuDeps[index].offset};
+      [](const Node& node, Stage s) {
+          uint32_t count = 0;
+          for (const auto& dep : node.cpuDeps)
+              if (dep.dstStage == s)
+                  count++;
+          return count;
+      },
+      [](const Node& node, Stage s, uint32_t index) {
+          for (const auto& dep : node.cpuDeps) {
+              if (dep.dstStage == s) {
+                  if (index == 0)
+                      return DependencyInfo{dep.srcNode, dep.srcStage, dep.offset};
+                  index--;
+              }
+          }
+          return DependencyInfo{};
       });
     validateFlowGraph(
-      [](const Node& node) { return node.enqDeps.size(); },
-      [](const Node& node, uint32_t index) {
-          return DependencyInfo{node.enqDeps[index].srcNode, node.enqDeps[index].offset};
+      [](const Node& node, Stage s) { return s == RECORD_STAGE ? node.enqDeps.size() : 0; },
+      [](const Node& node, Stage, uint32_t index) {
+          return DependencyInfo{node.enqDeps[index].srcNode, RECORD_STAGE,
+                                node.enqDeps[index].offset};
       });
     // validateFlowGraph(
     //   [](const Node& node) {
@@ -349,7 +340,6 @@ void FrameGraph::build() {
     //       index -= node.queCpuDeps.size();
     //       return DependencyInfo{node.queQueDeps[index].srcNode, node.queQueDeps[index].offset};
     //   });
-    calcDependencyTable();
     for (NodeId i = 0; i < nodes.size(); ++i) {
         for (const QueueCpuDependency& dep : nodes[i].queCpuDeps)
             nodes[dep.srcNode].checkAndCreateSemaphore(getQueue(dep.srcQueue));
