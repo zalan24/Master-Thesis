@@ -184,12 +184,12 @@ class Engine
     RuntimeStats runtimeStats;
 
     FrameGraph::NodeId inputSampleNode;
-    FrameGraph::NodeId simStartNode;
-    FrameGraph::NodeId simEndNode;
+    FrameGraph::TagNodeId simStartNode;
+    FrameGraph::TagNodeId simEndNode;
     FrameGraph::NodeId recordStartNode;
     FrameGraph::NodeId recordEndNode;
-    FrameGraph::NodeId executeStartNode;
-    FrameGraph::NodeId executeEndNode;
+    FrameGraph::TagNodeId executeStartNode;
+    FrameGraph::TagNodeId executeEndNode;
     FrameGraph::NodeId presentFrameNode;
     FrameGraph::NodeId cleanUpNode;
     QueueInfo queueInfos;

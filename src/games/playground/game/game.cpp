@@ -44,10 +44,15 @@ Game::Game(int argc, char* argv[], const Config& config,
     testSubpass = testRenderPass->createSubpass(std::move(subpassInfo));
     testRenderPass->build();
 
-    testDraw = getFrameGraph().addNode(FrameGraph::Node("testDraw", true));
-    getFrameGraph().addDependency(testDraw, FrameGraph::CpuDependency{getRecStartNode(), 0});
+    testDraw =
+      getFrameGraph().addNode(FrameGraph::Node("testDraw", FrameGraph::RECORD_STAGE, true));
+    getFrameGraph().addDependency(
+      testDraw, FrameGraph::CpuDependency{getRecStartNode(), FrameGraph::RECORD_STAGE,
+                                          FrameGraph::RECORD_STAGE, 0});
     getFrameGraph().addDependency(testDraw, FrameGraph::EnqueueDependency{getRecStartNode(), 0});
-    getFrameGraph().addDependency(getRecEndNode(), FrameGraph::CpuDependency{testDraw, 0});
+    getFrameGraph().addDependency(
+      getRecEndNode(),
+      FrameGraph::CpuDependency{testDraw, FrameGraph::RECORD_STAGE, FrameGraph::RECORD_STAGE, 0});
     getFrameGraph().addDependency(getRecEndNode(), FrameGraph::EnqueueDependency{testDraw, 0});
 
     buildFrameGraph(testDraw, getQueues().renderQueue.id);
@@ -184,7 +189,8 @@ void Game::record(FrameId frameId) {
     // std::cout << "Record: " << frameId << std::endl;
     RUNTIME_STAT_SCOPE(gameRecord);
     Engine::QueueInfo queues = getQueues();
-    if (FrameGraph::NodeHandle testDrawHandle = getFrameGraph().acquireNode(testDraw, frameId);
+    if (FrameGraph::NodeHandle testDrawHandle =
+          getFrameGraph().acquireNode(testDraw, FrameGraph::RECORD_STAGE, frameId);
         testDrawHandle) {
         std::this_thread::sleep_for(std::chrono::milliseconds(4));
         Engine::AcquiredImageData swapChainData = acquiredSwapchainImage(testDrawHandle);

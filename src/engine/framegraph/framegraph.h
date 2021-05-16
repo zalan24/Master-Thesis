@@ -23,13 +23,34 @@ class FrameGraph
 {
  public:
     using NodeId = uint32_t;
+    using TagNodeId = NodeId;
     using QueueId = uint32_t;
     using Offset = uint32_t;
     static constexpr NodeId INVALID_NODE = std::numeric_limits<NodeId>::max();
     static constexpr uint32_t NO_SYNC = std::numeric_limits<Offset>::max();
+
+    using Stages = uint8_t;
+    enum Stage : Stages
+    {
+        SIMULATION_STAGE = 1 << 0,
+        TAG_STAGE = SIMULATION_STAGE,
+        BEFORE_DRAW_STAGE = 1 << 1,
+        RECORD_STAGE = 1 << 2
+    };
+    static constexpr uint32_t NUM_STAGES = 3;
+    static constexpr Stage get_stage(uint32_t id) { return static_cast<Stage>(1 << id); }
+    static constexpr uint32_t get_stage_id(Stage stage) {
+        uint32_t ret = 0;
+        while ((get_stage(ret) & stage) == 0)
+            ret++;
+        return ret;
+    }
+
     struct CpuDependency
     {
         NodeId srcNode;
+        Stage srcStage;
+        Stage dstStage;
         Offset offset = 0;
     };
     struct EnqueueDependency
@@ -47,6 +68,7 @@ class FrameGraph
     {
         NodeId srcNode;
         QueueId srcQueue;
+        Stage dstStage;
         Offset offset = 0;
     };
     // struct QueueQueueDependency
@@ -59,8 +81,7 @@ class FrameGraph
     class Node
     {
      public:
-        Node(const std::string& name,
-             bool hasExecution);  // current node can only run serially with itself
+        Node(const std::string& name, Stages stages, bool hasExecution);
 
         Node(Node&& other);
         Node& operator=(Node&& other);
@@ -83,6 +104,7 @@ class FrameGraph
 
      private:
         std::string name;
+        Stages stages;
         NodeId ownId = INVALID_NODE;
         FrameGraph* frameGraph = nullptr;
         std::vector<CpuDependency> cpuDeps;
@@ -105,7 +127,7 @@ class FrameGraph
 
         std::vector<SyncData> semaphores;
 
-        std::atomic<FrameId> completedFrame = INVALID_FRAME;
+        std::array<std::atomic<FrameId>, NUM_STAGES> completedFrames;
         mutable std::mutex cpuMutex;
         std::condition_variable cpuCv;
 
@@ -153,9 +175,10 @@ class FrameGraph
 
      private:
         NodeHandle();
-        NodeHandle(FrameGraph* frameGraph, FrameGraph::NodeId node, FrameId frameId);
+        NodeHandle(FrameGraph* frameGraph, FrameGraph::NodeId node, Stage stage, FrameId frameId);
         FrameGraph* frameGraph;
         FrameGraph::NodeId node;
+        Stage stage;
         FrameId frameId;
 
         using SemaphoreFlag = uint64_t;
@@ -180,11 +203,18 @@ class FrameGraph
     void addDependency(NodeId target, QueueCpuDependency dep);
     // void addDependency(NodeId target, QueueQueueDependency dep);
 
-    NodeHandle acquireNode(NodeId node, FrameId frame);
-    NodeHandle tryAcquireNode(NodeId node, FrameId frame, uint64_t timeoutNsec);
+    TagNodeId addTagNode(const std::string& name);
+
+    NodeHandle acquireNode(NodeId node, Stage stage, FrameId frame);
+    NodeHandle tryAcquireNode(NodeId node, Stage stage, FrameId frame, uint64_t timeoutNsec);
     // no blocking, returns a handle if currently available
-    NodeHandle tryAcquireNode(NodeId node, FrameId frame);
+    NodeHandle tryAcquireNode(NodeId node, Stage stage, FrameId frame);
     // void skipNode(NodeId, FrameId); // blocking???
+
+    bool applyTag(TagNodeId node, FrameId frame);
+    bool tryApplyTag(TagNodeId node, FrameId frame, uint64_t timeoutNsec);
+    // no blocking, returns a handle if currently available
+    bool tryApplyTag(TagNodeId node, FrameId frame);
 
     ExecutionQueue* getExecutionQueue(NodeHandle& handle);
     ExecutionQueue* getGlobalExecutionQueue();
@@ -239,8 +269,7 @@ class FrameGraph
     void validateFlowGraph(const std::function<uint32_t(const Node&)>& depCountF,
                            const std::function<DependencyInfo(const Node&, uint32_t)>& depF) const;
     FrameId calcMaxEnqueueFrame(NodeId nodeId, FrameId frameId) const;
-    void checkAndEnqueue(NodeId nodeId, FrameId frameId, bool traverse);
-    bool canReuseTracker(NodeId currentUser, NodeId newNode);
+    void checkAndEnqueue(NodeId nodeId, FrameId frameId, Stage stage, bool traverse);
     void calcDependencyTable();
     DependenceData& getDependenceData(NodeId srcNode, NodeId dstNode) {
         return dependencyTable[srcNode * nodes.size() + dstNode];

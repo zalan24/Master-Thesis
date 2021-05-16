@@ -8,9 +8,14 @@
 
 #include <drverror.h>
 
-FrameGraph::Node::Node(const std::string& _name, bool _hasExecution) : name(_name) {
+FrameGraph::Node::Node(const std::string& _name, Stages _stages, bool _hasExecution)
+  : name(_name), stages(_stages) {
     if (_hasExecution)
         localExecutionQueue = std::make_unique<ExecutionQueue>();
+    for (auto& frameId : completedFrames)
+        frameId = INVALID_FRAME;
+    if (stages == 0)
+        throw std::runtime_error("Nodes must have at least one stage");
 }
 
 FrameGraph::Node::Node(Node&& other)
@@ -25,9 +30,10 @@ FrameGraph::Node::Node(Node&& other)
     localExecutionQueue(std::move(other.localExecutionQueue)),
     enqIndirectChildren(std::move(other.enqIndirectChildren)),
     semaphores(std::move(other.semaphores)),
-    completedFrame(other.completedFrame.load()),
     enqueuedFrame(other.enqueuedFrame.load()),
     enqueueFrameClearance(other.enqueueFrameClearance) {
+    for (uint32_t i = 0; i < NUM_STAGES; ++i)
+        completedFrames[i].store(other.completedFrames[i].load());
 }
 
 FrameGraph::Node::~Node() {
@@ -51,7 +57,8 @@ FrameGraph::Node& FrameGraph::Node::operator=(Node&& other) {
     localExecutionQueue = std::move(other.localExecutionQueue);
     enqIndirectChildren = std::move(other.enqIndirectChildren);
     semaphores = std::move(other.semaphores);
-    completedFrame = other.completedFrame.load();
+    for (uint32_t i = 0; i < NUM_STAGES; ++i)
+        completedFrames[i].store(other.completedFrames[i].load());
     enqueuedFrame = other.enqueuedFrame.load();
     enqueueFrameClearance = other.enqueueFrameClearance;
     return *this;
@@ -77,11 +84,36 @@ void FrameGraph::Node::addDependency(QueueCpuDependency dep) {
 //     queQueDeps.push_back(std::move(dep));
 // }
 
+FrameGraph::TagNodeId FrameGraph::addTagNode(const std::string& name) {
+    return addNode(Node(name, SIMULATION_STAGE, false));
+}
+
 FrameGraph::NodeId FrameGraph::addNode(Node&& node) {
     node.frameGraph = this;
     NodeId id = safe_cast<NodeId>(nodes.size());
     node.ownId = id;
-    node.addDependency(CpuDependency{id, 1});
+    uint32_t firstStageId = std::numeric_limits<uint32_t>::max();
+    uint32_t lastStageId = 0;
+    for (uint32_t i = 0; i < NUM_STAGES; ++i) {
+        Stage stage = get_stage(i);
+        if (node.stages & stage) {
+            if (i < firstStageId)
+                firstStageId = i;
+            lastStageId = i;
+            if (i > 0) {
+                uint32_t prev = i - 1;
+                while (prev > 0 && (get_stage(prev) & node.stages) == 0)
+                    prev--;
+                Stage prevStage = get_stage(prev);
+                if (node.stages & prevStage)
+                    node.addDependency(CpuDependency{id, prevStage, stage, 0});
+            }
+        }
+    }
+    // Equal case takes care of self dependency
+    if (firstStageId <= lastStageId) {
+        node.addDependency(CpuDependency{id, get_stage(lastStageId), get_stage(firstStageId), 1});
+    }
     if (node.hasExecution())
         node.addDependency(EnqueueDependency{id, 1});
     node.enqIndirectChildren.clear();
@@ -329,9 +361,9 @@ void FrameGraph::build() {
 FrameGraph::NodeHandle::NodeHandle() : frameGraph(nullptr) {
 }
 
-FrameGraph::NodeHandle::NodeHandle(FrameGraph* _frameGraph, FrameGraph::NodeId _node,
+FrameGraph::NodeHandle::NodeHandle(FrameGraph* _frameGraph, FrameGraph::NodeId _node, Stage _stage,
                                    FrameId _frameId)
-  : frameGraph(_frameGraph), node(_node), frameId(_frameId) {
+  : frameGraph(_frameGraph), node(_node), stage(_stage), frameId(_frameId) {
 }
 
 FrameGraph::Node& FrameGraph::NodeHandle::getNode() const {
@@ -383,19 +415,22 @@ void FrameGraph::NodeHandle::submit(QueueId queueId,
     q->push(std::move(submission));
 }
 
-FrameGraph::NodeHandle FrameGraph::acquireNode(NodeId nodeId, FrameId frame) {
+FrameGraph::NodeHandle FrameGraph::acquireNode(NodeId nodeId, Stage stage, FrameId frame) {
     if (isStopped())
         return NodeHandle();
     Node* node = getNode(nodeId);
-    assert(node->completedFrame + 1 == frame
-           || frame == 0 && node->completedFrame == INVALID_FRAME);
+    assert(node->completedFrames[get_stage_id(stage)] + 1 == frame
+           || frame == 0 && node->completedFrames[get_stage_id(stage)] == INVALID_FRAME);
+    assert(node->stages & stage);
     for (const CpuDependency& dep : node->cpuDeps) {
+        if (dep.dstStage != stage)
+            continue;
         if (dep.offset <= frame) {
             FrameId requiredFrame = frame - dep.offset;
             Node* sourceNode = getNode(dep.srcNode);
             std::unique_lock<std::mutex> lock(sourceNode->cpuMutex);
             sourceNode->cpuCv.wait(lock, [&, this] {
-                FrameId id = sourceNode->completedFrame.load();
+                FrameId id = sourceNode->completedFrames[get_stage_id(dep.srcStage)].load();
                 return isStopped() || (requiredFrame <= id && id != INVALID_FRAME);
             });
             if (isStopped())
@@ -414,10 +449,10 @@ FrameGraph::NodeHandle FrameGraph::acquireNode(NodeId nodeId, FrameId frame) {
     }
     if (isStopped())
         return NodeHandle();
-    return NodeHandle(this, nodeId, frame);
+    return NodeHandle(this, nodeId, stage, frame);
 }
 
-FrameGraph::NodeHandle FrameGraph::tryAcquireNode(NodeId nodeId, FrameId frame,
+FrameGraph::NodeHandle FrameGraph::tryAcquireNode(NodeId nodeId, Stage stage, FrameId frame,
                                                   uint64_t timeoutNsec) {
     const std::chrono::high_resolution_clock::time_point start =
       std::chrono::high_resolution_clock::now();
@@ -425,7 +460,10 @@ FrameGraph::NodeHandle FrameGraph::tryAcquireNode(NodeId nodeId, FrameId frame,
     if (isStopped())
         return NodeHandle();
     Node* node = getNode(nodeId);
+    assert(node->stages & stage);
     for (const CpuDependency& dep : node->cpuDeps) {
+        if (dep.dstStage != stage)
+            continue;
         if (dep.offset <= frame) {
             FrameId requiredFrame = frame - dep.offset;
             Node* sourceNode = getNode(dep.srcNode);
@@ -434,7 +472,7 @@ FrameGraph::NodeHandle FrameGraph::tryAcquireNode(NodeId nodeId, FrameId frame,
               std::chrono::high_resolution_clock::now() - start;
             if (duration >= maxDuration
                 || !sourceNode->cpuCv.wait_for(lock, maxDuration - duration, [&, this] {
-                       FrameId id = sourceNode->completedFrame.load();
+                       FrameId id = sourceNode->completedFrames[get_stage_id(dep.srcStage)].load();
                        return isStopped() || (requiredFrame <= id && id != INVALID_FRAME);
                    }))
                 return NodeHandle();
@@ -461,16 +499,19 @@ FrameGraph::NodeHandle FrameGraph::tryAcquireNode(NodeId nodeId, FrameId frame,
     }
     if (isStopped())
         return NodeHandle();
-    return NodeHandle(this, nodeId, frame);
+    return NodeHandle(this, nodeId, stage, frame);
 }
 
-FrameGraph::NodeHandle FrameGraph::tryAcquireNode(NodeId nodeId, FrameId frame) {
+FrameGraph::NodeHandle FrameGraph::tryAcquireNode(NodeId nodeId, Stage stage, FrameId frame) {
     Node* node = getNode(nodeId);
+    assert(node->stages & stage);
     for (const CpuDependency& dep : node->cpuDeps) {
+        if (dep.dstStage != stage)
+            continue;
         if (dep.offset <= frame) {
             FrameId requiredFrame = frame - dep.offset;
             const Node* sourceNode = getNode(dep.srcNode);
-            FrameId id = sourceNode->completedFrame.load();
+            FrameId id = sourceNode->completedFrames[get_stage_id(dep.srcStage)].load();
             if (id < requiredFrame || id == INVALID_FRAME)
                 return NodeHandle();
         }
@@ -489,7 +530,19 @@ FrameGraph::NodeHandle FrameGraph::tryAcquireNode(NodeId nodeId, FrameId frame) 
     }
     if (isStopped())
         return NodeHandle();
-    return NodeHandle(this, nodeId, frame);
+    return NodeHandle(this, nodeId, stage, frame);
+}
+
+bool FrameGraph::applyTag(TagNodeId node, FrameId frame) {
+    return static_cast<bool>(acquireNode(node, TAG_STAGE, frame));
+}
+
+bool FrameGraph::tryApplyTag(TagNodeId node, FrameId frame, uint64_t timeoutNsec) {
+    return static_cast<bool>(tryAcquireNode(node, TAG_STAGE, frame, timeoutNsec));
+}
+
+bool FrameGraph::tryApplyTag(TagNodeId node, FrameId frame) {
+    return static_cast<bool>(tryAcquireNode(node, TAG_STAGE, frame));
 }
 
 void FrameGraph::release(const NodeHandle& handle) {
@@ -497,28 +550,33 @@ void FrameGraph::release(const NodeHandle& handle) {
     Node* node = getNode(handle.node);
     {  // cpu sync
         std::unique_lock<std::mutex> lock(node->cpuMutex);
-        node->completedFrame = handle.frameId;
+        node->completedFrames[get_stage_id(handle.stage)] = handle.frameId;
+        // uint32_t stageId = get_stage_id(handle.stage);
+        // for (uint32_t id = 1;
+        //      id < NUM_STAGES && (node->stages & get_stage((stageId + id) % NUM_STAGES)) == 0; ++id)
+        //     node->completedFrames[(stageId + id) % NUM_STAGES] = handle.frameId;
         node->cpuCv.notify_all();
     }
-    if (node->hasExecution()) {  // enqueue sync
+    if (node->hasExecution() && handle.stage == RECORD_STAGE) {  // enqueue sync
         if (!handle.nodeExecutionData.hasLocalCommands) {
             assert(node->enqueuedFrame < handle.frameId || node->enqueuedFrame == INVALID_FRAME);
             node->enqueuedFrame = handle.frameId;
-            checkAndEnqueue(handle.node, handle.frameId, true);
+            checkAndEnqueue(handle.node, handle.frameId, handle.stage, true);
         }
         else {
             node->localExecutionQueue->push(ExecutionPackage(
               ExecutionPackage::MessagePackage{ExecutionPackage::Message::RECURSIVE_END_MARKER,
                                                handle.node, handle.frameId, nullptr}));
-            checkAndEnqueue(handle.node, handle.frameId, false);
+            checkAndEnqueue(handle.node, handle.frameId, handle.stage, false);
         }
     }
 }
 
-void FrameGraph::checkAndEnqueue(NodeId nodeId, FrameId frameId, bool traverse) {
+void FrameGraph::checkAndEnqueue(NodeId nodeId, FrameId frameId, Stage stage, bool traverse) {
     Node* node = getNode(nodeId);
     const FrameId clearance = calcMaxEnqueueFrame(nodeId, frameId);
-    for (FrameId i = node->enqueuedFrame + 1; i <= clearance && i <= node->completedFrame; ++i) {
+    for (FrameId i = node->enqueuedFrame + 1;
+         i <= clearance && i <= node->completedFrames[get_stage_id(stage)]; ++i) {
         traverse = true;
         executionQueue.push(
           ExecutionPackage(ExecutionPackage::RecursiveQueue{node->localExecutionQueue.get()}));
@@ -526,7 +584,7 @@ void FrameGraph::checkAndEnqueue(NodeId nodeId, FrameId frameId, bool traverse) 
     }
     if (traverse)
         for (const NodeId child : node->enqIndirectChildren)
-            checkAndEnqueue(child, frameId, false);
+            checkAndEnqueue(child, frameId, stage, false);
 }
 
 FrameId FrameGraph::calcMaxEnqueueFrame(NodeId nodeId, FrameId frameId) const {
@@ -548,6 +606,8 @@ FrameId FrameGraph::calcMaxEnqueueFrame(NodeId nodeId, FrameId frameId) const {
 }
 
 ExecutionQueue* FrameGraph::getExecutionQueue(NodeHandle& handle) {
+    drv::drv_assert(handle.stage == RECORD_STAGE,
+                    "Only the recording stage is allowed to submit any commands");
     Node* node = getNode(handle.node);
     if (!node->hasExecution())
         throw std::runtime_error("Execution queue acquired for a node, that has no execution");
@@ -573,14 +633,6 @@ ExecutionQueue* FrameGraph::getExecutionQueue(NodeHandle& handle) {
 
 ExecutionQueue* FrameGraph::getGlobalExecutionQueue() {
     return &executionQueue;
-}
-
-bool FrameGraph::canReuseTracker(NodeId currentUser, NodeId newNode) {
-    const DependenceData& d1 = getDependenceData(currentUser, newNode);
-    const DependenceData& d2 = getDependenceData(newNode, currentUser);
-
-    return (d1.cpuOffset == 0 && d2.cpuOffset == 1 && d1.enqOffset == 0 && d2.enqOffset == 1)
-           || (d2.cpuOffset == 0 && d1.cpuOffset == 1 && d2.enqOffset == 0 && d1.enqOffset == 1);
 }
 
 FrameGraph::QueueId FrameGraph::registerQueue(drv::QueuePtr queue) {

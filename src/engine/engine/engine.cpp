@@ -215,16 +215,21 @@ Engine::Engine(int argc, char* argv[], const Config& cfg,
     queueInfos.presentQueue = {presentQueue.queue, frameGraph.registerQueue(presentQueue.queue)};
     queueInfos.renderQueue = {renderQueue.queue, frameGraph.registerQueue(renderQueue.queue)};
 
-    inputSampleNode = frameGraph.addNode(FrameGraph::Node("sample_input", false));
-    presentFrameNode = frameGraph.addNode(FrameGraph::Node("presentFrame", true));
-    cleanUpNode = frameGraph.addNode(FrameGraph::Node("cleanUp", false));
+    inputSampleNode =
+      frameGraph.addNode(FrameGraph::Node("sample_input", FrameGraph::SIMULATION_STAGE, false));
+    presentFrameNode =
+      frameGraph.addNode(FrameGraph::Node("presentFrame", FrameGraph::RECORD_STAGE, true));
+    cleanUpNode =
+      frameGraph.addNode(FrameGraph::Node("cleanUp", FrameGraph::SIMULATION_STAGE, false));
     // These are just marker nodes, no actual work is done in them
-    simStartNode = frameGraph.addNode(FrameGraph::Node("simulation/start", false));
-    simEndNode = frameGraph.addNode(FrameGraph::Node("simulation/end", false));
-    recordStartNode = frameGraph.addNode(FrameGraph::Node("record/start", true));
-    recordEndNode = frameGraph.addNode(FrameGraph::Node("record/end", true));
-    executeStartNode = frameGraph.addNode(FrameGraph::Node("execute/start", false));
-    executeEndNode = frameGraph.addNode(FrameGraph::Node("execute/end", false));
+    simStartNode = frameGraph.addTagNode("simulation/start");
+    simEndNode = frameGraph.addTagNode("simulation/end");
+    recordStartNode =
+      frameGraph.addNode(FrameGraph::Node("record/start", FrameGraph::RECORD_STAGE, true));
+    recordEndNode =
+      frameGraph.addNode(FrameGraph::Node("record/end", FrameGraph::RECORD_STAGE, true));
+    executeStartNode = frameGraph.addTagNode("execute/start");
+    executeEndNode = frameGraph.addTagNode("execute/end");
 
     if (config.maxFramesInExecutionQueue < 1)
         throw std::runtime_error("maxFramesInExecutionQueue must be at least 1");
@@ -238,29 +243,54 @@ Engine::Engine(int argc, char* argv[], const Config& cfg,
     const uint32_t cleanUpCpuOffset = static_cast<uint32_t>(config.maxFramesInFlight + 1);
     garbageSystem.resize(cleanUpCpuOffset);
 
-    frameGraph.addDependency(inputSampleNode, FrameGraph::CpuDependency{simStartNode, 0});
-    frameGraph.addDependency(simStartNode, FrameGraph::CpuDependency{simEndNode, 1});
-    frameGraph.addDependency(simStartNode, FrameGraph::CpuDependency{recordEndNode, 1});
-    frameGraph.addDependency(recordStartNode, FrameGraph::CpuDependency{simStartNode, 0});
-    frameGraph.addDependency(recordStartNode,
-                             FrameGraph::CpuDependency{executeEndNode, executionDepOffset});
+    frameGraph.addDependency(inputSampleNode,
+                             FrameGraph::CpuDependency{simStartNode, FrameGraph::TAG_STAGE,
+                                                       FrameGraph::SIMULATION_STAGE, 0});
+    frameGraph.addDependency(
+      simStartNode,
+      FrameGraph::CpuDependency{simEndNode, FrameGraph::TAG_STAGE, FrameGraph::TAG_STAGE, 1});
+    frameGraph.addDependency(
+      simStartNode,
+      FrameGraph::CpuDependency{recordEndNode, FrameGraph::TAG_STAGE, FrameGraph::RECORD_STAGE, 1});
+    frameGraph.addDependency(
+      recordStartNode,
+      FrameGraph::CpuDependency{simStartNode, FrameGraph::TAG_STAGE, FrameGraph::RECORD_STAGE, 0});
+    // TODO Do we really need this? Probably not
+    frameGraph.addDependency(
+      recordStartNode, FrameGraph::CpuDependency{executeEndNode, FrameGraph::TAG_STAGE,
+                                                 FrameGraph::RECORD_STAGE, executionDepOffset});
     frameGraph.addDependency(recordStartNode, FrameGraph::EnqueueDependency{recordEndNode, 1});
-    frameGraph.addDependency(simEndNode, FrameGraph::CpuDependency{simStartNode, 0});
-    frameGraph.addDependency(simEndNode, FrameGraph::CpuDependency{inputSampleNode, 0});
-    frameGraph.addDependency(presentFrameNode, FrameGraph::CpuDependency{recordStartNode, 0});
+    frameGraph.addDependency(
+      simEndNode,
+      FrameGraph::CpuDependency{simStartNode, FrameGraph::TAG_STAGE, FrameGraph::TAG_STAGE, 0});
+    frameGraph.addDependency(
+      simEndNode, FrameGraph::CpuDependency{inputSampleNode, FrameGraph::SIMULATION_STAGE,
+                                            FrameGraph::TAG_STAGE, 0});
+    frameGraph.addDependency(presentFrameNode,
+                             FrameGraph::CpuDependency{recordStartNode, FrameGraph::RECORD_STAGE,
+                                                       FrameGraph::RECORD_STAGE, 0});
     frameGraph.addDependency(presentFrameNode, FrameGraph::EnqueueDependency{recordStartNode, 0});
-    frameGraph.addDependency(recordEndNode, FrameGraph::CpuDependency{presentFrameNode, 0});
+    frameGraph.addDependency(recordEndNode,
+                             FrameGraph::CpuDependency{presentFrameNode, FrameGraph::RECORD_STAGE,
+                                                       FrameGraph::RECORD_STAGE, 0});
     frameGraph.addDependency(recordEndNode, FrameGraph::EnqueueDependency{presentFrameNode, 0});
-    frameGraph.addDependency(executeStartNode, FrameGraph::CpuDependency{recordStartNode, 0});
-    frameGraph.addDependency(executeEndNode, FrameGraph::CpuDependency{executeStartNode, 0});
+    frameGraph.addDependency(executeStartNode,
+                             FrameGraph::CpuDependency{recordStartNode, FrameGraph::TAG_STAGE,
+                                                       FrameGraph::RECORD_STAGE, 0});
+    frameGraph.addDependency(
+      executeEndNode,
+      FrameGraph::CpuDependency{executeStartNode, FrameGraph::TAG_STAGE, FrameGraph::TAG_STAGE, 0});
     frameGraph.addDependency(
       presentFrameNode, FrameGraph::QueueCpuDependency{presentFrameNode, queueInfos.presentQueue.id,
-                                                       presentDepOffset});
+                                                       FrameGraph::RECORD_STAGE, presentDepOffset});
     // frameGraph.addDependency(
     //   cleanUpNode, FrameGraph::QueueCpuDependency{presentFrameNode, queueInfos.presentQueue.id, 0});
-    frameGraph.addDependency(cleanUpNode, FrameGraph::CpuDependency{executeEndNode, 0});
+    frameGraph.addDependency(cleanUpNode,
+                             FrameGraph::CpuDependency{executeEndNode, FrameGraph::TAG_STAGE,
+                                                       FrameGraph::SIMULATION_STAGE, 0});
     frameGraph.addDependency(simStartNode,
-                             FrameGraph::CpuDependency{cleanUpNode, cleanUpCpuOffset});
+                             FrameGraph::CpuDependency{cleanUpNode, FrameGraph::SIMULATION_STAGE,
+                                                       FrameGraph::TAG_STAGE, cleanUpCpuOffset});
 
     // ISimulation::FrameGraphData simData;
     // simData.simStart = simStartNode;
@@ -288,8 +318,9 @@ Engine::Engine(int argc, char* argv[], const Config& cfg,
 
 void Engine::buildFrameGraph(FrameGraph::NodeId presentDepNode, FrameGraph::QueueId depQueueId) {
     frameGraph.addDependency(presentFrameNode, FrameGraph::EnqueueDependency{presentDepNode, 0});
-    frameGraph.addDependency(cleanUpNode,
-                             FrameGraph::QueueCpuDependency{presentDepNode, depQueueId, 0});
+    frameGraph.addDependency(
+      cleanUpNode,
+      FrameGraph::QueueCpuDependency{presentDepNode, depQueueId, FrameGraph::SIMULATION_STAGE, 0});
 
     frameGraph.build();
 }
@@ -299,7 +330,8 @@ Engine::~Engine() {
 }
 
 bool Engine::sampleInput(FrameId frameId) {
-    FrameGraph::NodeHandle inputHandle = frameGraph.acquireNode(inputSampleNode, frameId);
+    FrameGraph::NodeHandle inputHandle =
+      frameGraph.acquireNode(inputSampleNode, FrameGraph::SIMULATION_STAGE, frameId);
     if (!inputHandle)
         return false;
     Input::InputEvent event;
@@ -314,27 +346,19 @@ void Engine::simulationLoop(volatile std::atomic<FrameId>* simulationFrame,
     loguru::set_thread_name("simulate");
     simulationFrame->store(0);
     while (!frameGraph.isStopped() && *simulationFrame <= *stopFrame) {
-        {
-            FrameGraph::NodeHandle simStartHandle =
-              frameGraph.acquireNode(simStartNode, *simulationFrame);
-            if (!simStartHandle) {
-                assert(frameGraph.isStopped());
-                break;
-            }
-            garbageSystem.startGarbage(*simulationFrame);
+        if (!frameGraph.applyTag(simStartNode, *simulationFrame)) {
+            assert(frameGraph.isStopped());
+            break;
         }
+        garbageSystem.startGarbage(*simulationFrame);
         if (!sampleInput(*simulationFrame)) {
             assert(frameGraph.isStopped());
             break;
         }
         simulate(*simulationFrame);
-        {
-            FrameGraph::NodeHandle simEndHandle =
-              frameGraph.acquireNode(simEndNode, *simulationFrame);
-            if (!simEndHandle) {
-                assert(frameGraph.isStopped());
-                break;
-            }
+        if (!frameGraph.applyTag(simEndNode, *simulationFrame)) {
+            assert(frameGraph.isStopped());
+            break;
         }
         {
             std::shared_lock<std::shared_mutex> lock(stopFrameMutex);
@@ -406,7 +430,7 @@ void Engine::recordCommandsLoop(const volatile std::atomic<FrameId>* stopFrame) 
         // TODO preframe stuff (resize)
         {
             FrameGraph::NodeHandle recStartHandle =
-              frameGraph.acquireNode(recordStartNode, recordFrame);
+              frameGraph.acquireNode(recordStartNode, FrameGraph::RECORD_STAGE, recordFrame);
             if (!recStartHandle) {
                 assert(frameGraph.isStopped());
                 break;
@@ -419,7 +443,7 @@ void Engine::recordCommandsLoop(const volatile std::atomic<FrameId>* stopFrame) 
         record(recordFrame);
         {
             FrameGraph::NodeHandle presentHandle =
-              frameGraph.acquireNode(presentFrameNode, recordFrame);
+              frameGraph.acquireNode(presentFrameNode, FrameGraph::RECORD_STAGE, recordFrame);
             if (!presentHandle) {
                 assert(frameGraph.isStopped());
                 break;
@@ -432,7 +456,7 @@ void Engine::recordCommandsLoop(const volatile std::atomic<FrameId>* stopFrame) 
         }
         {
             FrameGraph::NodeHandle recEndHandle =
-              frameGraph.acquireNode(recordEndNode, recordFrame);
+              frameGraph.acquireNode(recordEndNode, FrameGraph::RECORD_STAGE, recordFrame);
             if (!recEndHandle) {
                 assert(frameGraph.isStopped());
                 break;
@@ -458,9 +482,7 @@ bool Engine::execute(FrameId& executionFrame, ExecutionPackage&& package) {
         switch (message.msg) {
             case ExecutionPackage::Message::RECORD_START: {
                 executionFrame = static_cast<FrameId>(message.value1);
-                FrameGraph::NodeHandle executionStartHandle =
-                  frameGraph.acquireNode(executeStartNode, executionFrame);
-                if (!executionStartHandle) {
+                if (!frameGraph.applyTag(executeStartNode, executionFrame)) {
                     assert(frameGraph.isStopped());
                     return false;
                 }
@@ -468,10 +490,7 @@ bool Engine::execute(FrameId& executionFrame, ExecutionPackage&& package) {
             } break;
             case ExecutionPackage::Message::RECORD_END: {
                 assert(executionFrame == static_cast<FrameId>(message.value1));
-                FrameGraph::NodeHandle executionEndHandle =
-                  frameGraph.acquireNode(executeEndNode, executionFrame);
-                // queued work gets finished
-                if (!executionEndHandle) {
+                if (!frameGraph.applyTag(executeEndNode, executionFrame)) {
                     assert(frameGraph.isStopped());
                     return false;
                 }
@@ -611,7 +630,8 @@ void Engine::cleanUpLoop(const volatile std::atomic<FrameId>* stopFrame) {
     loguru::set_thread_name("clean up");
     FrameId cleanUpFrame = 0;
     while (!frameGraph.isStopped() && cleanUpFrame <= *stopFrame) {
-        FrameGraph::NodeHandle cleanUpHandle = frameGraph.acquireNode(cleanUpNode, cleanUpFrame);
+        FrameGraph::NodeHandle cleanUpHandle =
+          frameGraph.acquireNode(cleanUpNode, FrameGraph::SIMULATION_STAGE, cleanUpFrame);
         if (!cleanUpHandle) {
             assert(frameGraph.isStopped());
             break;
