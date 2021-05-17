@@ -89,8 +89,7 @@ struct ExecutionPackage
 
     enum class Message
     {
-        RECORD_START,
-        RECORD_END,
+        FRAMEGRAPH_NODE_MARKER,
         PRESENT,
         RECURSIVE_END_MARKER,  // end of recursive command list
         QUIT

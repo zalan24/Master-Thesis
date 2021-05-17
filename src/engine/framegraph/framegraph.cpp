@@ -8,19 +8,27 @@
 
 #include <drverror.h>
 
-FrameGraph::Node::Node(const std::string& _name, Stages _stages, bool _hasExecution)
-  : name(_name), stages(_stages) {
-    if (_hasExecution)
+FrameGraph::Node::Node(const std::string& _name, Stages _stages, bool _tagNode)
+  : name(_name), stages(_stages), tagNode(_tagNode) {
+    if (stages & EXECUTION_STAGE) {
         localExecutionQueue = std::make_unique<ExecutionQueue>();
+        drv::drv_assert(
+          stages & RECORD_STAGE,
+          ("A node may only have an execution stage, if it also has a recording stage: " + name)
+            .c_str());
+    }
+    else
+        drv::drv_assert((stages & RECORD_STAGE) == 0,
+                        ("A node has a record stage, but not execution stage: " + name).c_str());
     for (auto& frameId : completedFrames)
         frameId = INVALID_FRAME;
-    if (stages == 0)
-        throw std::runtime_error("Nodes must have at least one stage");
+    drv::drv_assert(stages != 0, "Nodes must have at least one stage");
 }
 
 FrameGraph::Node::Node(Node&& other)
   : name(std::move(other.name)),
     stages(other.stages),
+    tagNode(other.tagNode),
     ownId(other.ownId),
     frameGraph(other.frameGraph),
     cpuDeps(std::move(other.cpuDeps)),
@@ -49,6 +57,7 @@ FrameGraph::Node& FrameGraph::Node::operator=(Node&& other) {
         return *this;
     name = std::move(other.name);
     stages = std::move(other.stages);
+    tagNode = std::move(other.tagNode);
     ownId = other.ownId;
     frameGraph = other.frameGraph;
     cpuDeps = std::move(other.cpuDeps);
@@ -86,8 +95,8 @@ void FrameGraph::Node::addDependency(QueueCpuDependency dep) {
 //     queQueDeps.push_back(std::move(dep));
 // }
 
-FrameGraph::TagNodeId FrameGraph::addTagNode(const std::string& name) {
-    return addNode(Node(name, SIMULATION_STAGE, false));
+FrameGraph::TagNodeId FrameGraph::addTagNode(const std::string& name, Stage stage) {
+    return addNode(Node(name, stage, true));
 }
 
 FrameGraph::NodeId FrameGraph::addNode(Node&& node) {
@@ -98,6 +107,8 @@ FrameGraph::NodeId FrameGraph::addNode(Node&& node) {
     uint32_t lastStageId = 0;
     for (uint32_t i = 0; i < NUM_STAGES; ++i) {
         Stage stage = get_stage(i);
+        if (stage == EXECUTION_STAGE)
+            continue;
         if (node.stages & stage) {
             if (i < firstStageId)
                 firstStageId = i;
@@ -277,6 +288,10 @@ void FrameGraph::build() {
     for (NodeId i = 0; i < nodes.size(); ++i) {
         bool hasCpuIndirectDep = false;
         for (const CpuDependency& dep : nodes[i].cpuDeps) {
+            drv::drv_assert(
+              dep.dstStage != EXECUTION_STAGE,
+              ("Execution stage cannot be the destination in any dependencies: " + nodes[i].name)
+                .c_str());
             drv::drv_assert((nodes[i].stages & dep.dstStage) != 0,
                             ("A node doesn't use a stage, that it has a dependency for: "
                              + nodes[i].name + " / " + std::to_string(get_stage_id(dep.dstStage)))
@@ -286,17 +301,21 @@ void FrameGraph::build() {
               ("A node doesn't use a stage, that it has a dependency for: "
                + nodes[dep.srcNode].name + " / " + std::to_string(get_stage_id(dep.srcStage)))
                 .c_str());
+            // TODO deal with clean up node and uncomment this
+            // drv::drv_assert(
+            //   get_stage_id(dep.srcStage) <= get_stage_id(dep.dstStage) || dep.offset > 0,
+            //   ("Framegraph stages are meant to be consecutive to allow serial execution of them in stage_id order. A node depends on a higher stage than itself: "
+            //    + nodes[i].name)
+            //     .c_str());
             if (dep.srcNode == i && dep.srcStage == dep.dstStage)
                 continue;
             cpuChildrenIndirect[get_graph_id(dep.srcNode, dep.srcStage)] = true;
             hasCpuIndirectDep = true;
         }
-        // use drv assert instead
         drv::drv_assert(hasCpuIndirectDep,
                         ("A node <" + nodes[i].name
                          + "> doesn't have any cpu-cpu dependencies (direct or indirect)")
                           .c_str());
-        // }
         for (const EnqueueDependency& dep : nodes[i].enqDeps) {
             // assert for record stage
             if (dep.srcNode == i)
@@ -313,9 +332,12 @@ void FrameGraph::build() {
     }
     for (NodeId i = 0; i < nodes.size(); ++i) {
         for (uint32_t j = 0; j < NUM_STAGES; ++j) {
-            if ((nodes[i].stages & get_stage(j)) == 0)
+            Stage stage = get_stage(j);
+            if (stage == EXECUTION_STAGE)
                 continue;
-            drv::drv_assert(cpuChildrenIndirect[get_graph_id(i, get_stage(j))],
+            if ((nodes[i].stages & stage) == 0)
+                continue;
+            drv::drv_assert(cpuChildrenIndirect[get_graph_id(i, stage)],
                             ("A node <" + nodes[i].name
                              + "> doesn't have any cpu-cpu children on stage: " + std::to_string(j))
                               .c_str());
@@ -543,28 +565,41 @@ FrameGraph::NodeHandle FrameGraph::tryAcquireNode(NodeId nodeId, Stage stage, Fr
     return NodeHandle(this, nodeId, stage, frame);
 }
 
-bool FrameGraph::applyTag(TagNodeId node, FrameId frame) {
-    return static_cast<bool>(acquireNode(node, TAG_STAGE, frame));
+FrameGraph::NodeHandle FrameGraph::applyTag(TagNodeId node, FrameId frame) {
+    return acquireNode(node, static_cast<Stage>(nodes[node].stages), frame);
 }
 
-bool FrameGraph::tryApplyTag(TagNodeId node, FrameId frame, uint64_t timeoutNsec) {
-    return static_cast<bool>(tryAcquireNode(node, TAG_STAGE, frame, timeoutNsec));
+FrameGraph::NodeHandle FrameGraph::tryApplyTag(TagNodeId node, FrameId frame,
+                                               uint64_t timeoutNsec) {
+    return tryAcquireNode(node, static_cast<Stage>(nodes[node].stages), frame, timeoutNsec);
 }
 
-bool FrameGraph::tryApplyTag(TagNodeId node, FrameId frame) {
-    return static_cast<bool>(tryAcquireNode(node, TAG_STAGE, frame));
+FrameGraph::NodeHandle FrameGraph::tryApplyTag(TagNodeId node, FrameId frame) {
+    return tryAcquireNode(node, static_cast<Stage>(nodes[node].stages), frame);
 }
 
-void FrameGraph::release(const NodeHandle& handle) {
-    std::unique_lock<std::mutex> enqueueLock(enqueueMutex);
+void FrameGraph::executionFinished(NodeId nodeId, FrameId frame) {
+    Node* node = getNode(nodeId);
+    std::unique_lock<std::mutex> lock(node->cpuMutex);
+    FrameId expected = frame == 0 ? INVALID_FRAME : frame - 1;
+    drv::drv_assert(
+      node->completedFrames[get_stage_id(EXECUTION_STAGE)].compare_exchange_strong(expected, frame),
+      ("A node's execution is out of order with itself: " + node->name).c_str());
+    node->cpuCv.notify_all();
+}
+
+void FrameGraph::release(NodeHandle& handle) {
     Node* node = getNode(handle.node);
+    if (handle.stage == RECORD_STAGE && node->hasExecution()) {
+        getExecutionQueue(handle)->push(ExecutionPackage(
+          ExecutionPackage::MessagePackage{ExecutionPackage::Message::FRAMEGRAPH_NODE_MARKER,
+                                           handle.node, handle.frameId, nullptr}));
+    }
+
+    std::unique_lock<std::mutex> enqueueLock(enqueueMutex);
     {  // cpu sync
         std::unique_lock<std::mutex> lock(node->cpuMutex);
         node->completedFrames[get_stage_id(handle.stage)] = handle.frameId;
-        // uint32_t stageId = get_stage_id(handle.stage);
-        // for (uint32_t id = 1;
-        //      id < NUM_STAGES && (node->stages & get_stage((stageId + id) % NUM_STAGES)) == 0; ++id)
-        //     node->completedFrames[(stageId + id) % NUM_STAGES] = handle.frameId;
         node->cpuCv.notify_all();
     }
     if (node->hasExecution() && handle.stage == RECORD_STAGE) {  // enqueue sync
@@ -721,44 +756,46 @@ void FrameGraph::NodeHandle::close() {
     if (frameGraph) {
         Node& n = *frameGraph->getNode(node);
 
-        auto signalSemaphores =
-          make_vector<ExecutionPackage::CommandBufferPackage::SemaphoreSignalInfo>(
-            frameGraph->garbageSystem);
-        auto waitSemaphores =
-          make_vector<ExecutionPackage::CommandBufferPackage::SemaphoreWaitInfo>(
-            frameGraph->garbageSystem);
-        auto waitTimelineSemaphores =
-          make_vector<ExecutionPackage::CommandBufferPackage::TimelineSemaphoreWaitInfo>(
-            frameGraph->garbageSystem);
+        if (stage == RECORD_STAGE && n.hasExecution()) {
+            auto signalSemaphores =
+              make_vector<ExecutionPackage::CommandBufferPackage::SemaphoreSignalInfo>(
+                frameGraph->garbageSystem);
+            auto waitSemaphores =
+              make_vector<ExecutionPackage::CommandBufferPackage::SemaphoreWaitInfo>(
+                frameGraph->garbageSystem);
+            auto waitTimelineSemaphores =
+              make_vector<ExecutionPackage::CommandBufferPackage::TimelineSemaphoreWaitInfo>(
+                frameGraph->garbageSystem);
 
-        SemaphoreFlag flag = 1;
-        bool clean = true;
-        for (uint32_t i = 0; i < n.semaphores.size(); ++i) {
-            if (!(semaphoresSignalled & flag)) {
-                semaphoresSignalled |= flag;
-                if (wasQueueUsed(n.semaphores[i].queue))
-                    clean = false;
-                ExecutionQueue* q = frameGraph->getExecutionQueue(*this);
-                ExecutionPackage::CommandBufferPackage::TimelineSemaphoreSignalInfo signal;
-                signal.semaphore = n.semaphores[i].semaphore;
-                signal.signalValue = getSignalValue();
-                auto signalTimelineSemaphores =
-                  make_vector<ExecutionPackage::CommandBufferPackage::TimelineSemaphoreSignalInfo>(
-                    frameGraph->garbageSystem);
-                signalTimelineSemaphores.push_back(std::move(signal));
-                // TODO wait on semaphores to apply transitive dependencies
-                q->push(ExecutionPackage(ExecutionPackage::CommandBufferPackage{
-                  n.semaphores[i].queue, CommandBufferData(frameGraph->garbageSystem),
-                  signalSemaphores, std::move(signalTimelineSemaphores), waitSemaphores,
-                  waitTimelineSemaphores}));
+            SemaphoreFlag flag = 1;
+            bool clean = true;
+            for (uint32_t i = 0; i < n.semaphores.size(); ++i) {
+                if (!(semaphoresSignalled & flag)) {
+                    semaphoresSignalled |= flag;
+                    if (wasQueueUsed(n.semaphores[i].queue))
+                        clean = false;
+                    ExecutionQueue* q = frameGraph->getExecutionQueue(*this);
+                    ExecutionPackage::CommandBufferPackage::TimelineSemaphoreSignalInfo signal;
+                    signal.semaphore = n.semaphores[i].semaphore;
+                    signal.signalValue = getSignalValue();
+                    auto signalTimelineSemaphores = make_vector<
+                      ExecutionPackage::CommandBufferPackage::TimelineSemaphoreSignalInfo>(
+                      frameGraph->garbageSystem);
+                    signalTimelineSemaphores.push_back(std::move(signal));
+                    // TODO wait on semaphores to apply transitive dependencies
+                    q->push(ExecutionPackage(ExecutionPackage::CommandBufferPackage{
+                      n.semaphores[i].queue, CommandBufferData(frameGraph->garbageSystem),
+                      signalSemaphores, std::move(signalTimelineSemaphores), waitSemaphores,
+                      waitTimelineSemaphores}));
+                }
+                flag <<= 1;
             }
-            flag <<= 1;
-        }
-        if (!clean) {
-            LOG_F(
-              WARNING,
-              "Some semaphores were not signalled in any command buffer. Use the finishQueueWork() to resolve this: <%s> frame: %d",
-              n.name.c_str(), static_cast<int>(frameId));
+            if (!clean) {
+                LOG_F(
+                  WARNING,
+                  "Some semaphores were not signalled in any command buffer. Use the finishQueueWork() to resolve this: <%s> frame: %d",
+                  n.name.c_str(), static_cast<int>(frameId));
+            }
         }
 
         frameGraph->release(*this);

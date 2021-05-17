@@ -191,8 +191,6 @@ class Engine
     FrameGraph::TagNodeId beforeDrawEndNode;
     FrameGraph::NodeId recordStartNode;
     FrameGraph::NodeId recordEndNode;
-    FrameGraph::TagNodeId executeStartNode;
-    FrameGraph::TagNodeId executeEndNode;
     FrameGraph::NodeId presentFrameNode;
     FrameGraph::NodeId cleanUpNode;
     QueueInfo queueInfos;
@@ -207,7 +205,7 @@ class Engine
     void recordCommandsLoop();
     void executeCommandsLoop();
     void cleanUpLoop();
-    bool execute(FrameId& executionFrame, ExecutionPackage&& package);
+    bool execute(ExecutionPackage&& package);
     void present(FrameId presentFrame, uint32_t semaphoreIndex);
     bool sampleInput(FrameId frameId);
 

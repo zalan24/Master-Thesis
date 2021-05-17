@@ -18,7 +18,7 @@
       "stopAtEntry": false,
       "cwd": "${workspaceFolder}/build/src/gameLibs/shaders",
       "environment": [],
-      "externalConsole": false,
+      "console": "internalConsole",
       "internalConsoleOptions": "openOnSessionStart"
     },
     {
@@ -36,7 +36,7 @@
       "stopAtEntry": false,
       "cwd": "${workspaceFolder}/build/src/gameLibs/shaders",
       "environment": [],
-      "externalConsole": false,
+      "console": "internalConsole",
       "internalConsoleOptions": "openOnSessionStart"
     },
     {
@@ -59,7 +59,7 @@
         {"name": "VK_APIDUMP_LOG_FILENAME", "value": "${workspaceFolder}/build/api_dump_log.txt"},
         // {"name": "VK_LAYER_PATH", "value": "${workspaceFolder}/build/vulkanLayers"}
       ],
-      "externalConsole": false,
+      "console": "internalConsole",
       "internalConsoleOptions": "openOnSessionStart",
       "args": [
         "-c../data/configs/playground_default.json",
@@ -86,7 +86,7 @@
       "stopAtEntry": false,
       "cwd": "${workspaceFolder}/build",
       "environment": [],
-      "externalConsole": false,
+      "console": "internalConsole",
       "internalConsoleOptions": "openOnSessionStart",
     },
     {
@@ -100,7 +100,7 @@
       "stopAtEntry": false,
       "cwd": "${workspaceFolder}/build",
       "environment": [],
-      "externalConsole": false,
+      "console": "internalConsole",
       "internalConsoleOptions": "openOnSessionStart",
     },
     {
@@ -114,7 +114,7 @@
       "stopAtEntry": false,
       "cwd": "${workspaceFolder}/build",
       "environment": [],
-      "externalConsole": false,
+      "console": "internalConsole",
       "internalConsoleOptions": "openOnSessionStart",
     }
   ]

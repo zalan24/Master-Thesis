@@ -334,6 +334,7 @@ Get a triangle on screen:
         ☐ Each stage is autamatically synced with the begin stage marker of that stage (like the current start sime / start record markers, just automatic)
         ☐ The engine will need to trigger the stage markers using the built in stuff instead of custom nodes
         ☐ The record stage should have a function that initializes a command buffer recorder with all known resources from prev nodes + earlier cmd buffers from the current node
+    ☐ drv::drv_assert shouldn't use std::strings, because it causes dynamic memory allocations...
 
 Cleanup & other:
     ☐ Remove useless common driver stuff (drv/common)

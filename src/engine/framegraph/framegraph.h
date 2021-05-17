@@ -33,17 +33,21 @@ class FrameGraph
     enum Stage : Stages
     {
         SIMULATION_STAGE = 1 << 0,
-        TAG_STAGE = SIMULATION_STAGE,
         BEFORE_DRAW_STAGE = 1 << 1,
-        RECORD_STAGE = 1 << 2
+        RECORD_STAGE = 1 << 2,
+        EXECUTION_STAGE = 1 << 3,
     };
-    static constexpr uint32_t NUM_STAGES = 3;
+    static constexpr uint32_t NUM_STAGES = 4;
     static constexpr Stage get_stage(uint32_t id) { return static_cast<Stage>(1 << id); }
     static constexpr uint32_t get_stage_id(Stage stage) {
         uint32_t ret = 0;
         while ((get_stage(ret) & stage) == 0)
             ret++;
         return ret;
+    }
+    static const char* get_stage_name(Stage stage) {
+        const char* names[] = {"simulation", "beforeDraw", "record", "execution"};
+        return names[get_stage_id(stage)];
     }
 
     struct CpuDependency
@@ -81,7 +85,7 @@ class FrameGraph
     class Node
     {
      public:
-        Node(const std::string& name, Stages stages, bool hasExecution);
+        Node(const std::string& name, Stages stages, bool tagNode = false);
 
         Node(Node&& other);
         Node& operator=(Node&& other);
@@ -105,6 +109,7 @@ class FrameGraph
      private:
         std::string name;
         Stages stages = 0;
+        bool tagNode;
         NodeId ownId = INVALID_NODE;
         FrameGraph* frameGraph = nullptr;
         std::vector<CpuDependency> cpuDeps;
@@ -203,7 +208,7 @@ class FrameGraph
     void addDependency(NodeId target, QueueCpuDependency dep);
     // void addDependency(NodeId target, QueueQueueDependency dep);
 
-    TagNodeId addTagNode(const std::string& name);
+    TagNodeId addTagNode(const std::string& name, Stage stage);
 
     NodeHandle acquireNode(NodeId node, Stage stage, FrameId frame);
     NodeHandle tryAcquireNode(NodeId node, Stage stage, FrameId frame, uint64_t timeoutNsec);
@@ -211,10 +216,12 @@ class FrameGraph
     NodeHandle tryAcquireNode(NodeId node, Stage stage, FrameId frame);
     // void skipNode(NodeId, FrameId); // blocking???
 
-    bool applyTag(TagNodeId node, FrameId frame);
-    bool tryApplyTag(TagNodeId node, FrameId frame, uint64_t timeoutNsec);
+    NodeHandle applyTag(TagNodeId node, FrameId frame);
+    NodeHandle tryApplyTag(TagNodeId node, FrameId frame, uint64_t timeoutNsec);
     // no blocking, returns a handle if currently available
-    bool tryApplyTag(TagNodeId node, FrameId frame);
+    NodeHandle tryApplyTag(TagNodeId node, FrameId frame);
+
+    void executionFinished(NodeId node, FrameId frame);
 
     ExecutionQueue* getExecutionQueue(NodeHandle& handle);
     ExecutionQueue* getGlobalExecutionQueue();
@@ -260,7 +267,7 @@ class FrameGraph
     std::atomic<FrameId> stopFrameId = INVALID_FRAME;
     std::atomic<FrameId> startedFrameId = 0;
 
-    void release(const NodeHandle& handle);
+    void release(NodeHandle& handle);
     struct DependencyInfo
     {
         NodeId srcNode;

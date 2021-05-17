@@ -44,8 +44,8 @@ Game::Game(int argc, char* argv[], const Config& config,
     testSubpass = testRenderPass->createSubpass(std::move(subpassInfo));
     testRenderPass->build();
 
-    testDraw =
-      getFrameGraph().addNode(FrameGraph::Node("testDraw", FrameGraph::RECORD_STAGE, true));
+    testDraw = getFrameGraph().addNode(
+      FrameGraph::Node("testDraw", FrameGraph::RECORD_STAGE | FrameGraph::EXECUTION_STAGE, true));
     getFrameGraph().addDependency(
       testDraw, FrameGraph::CpuDependency{getRecStartNode(), FrameGraph::RECORD_STAGE,
                                           FrameGraph::RECORD_STAGE, 0});

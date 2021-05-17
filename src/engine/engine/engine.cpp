@@ -216,22 +216,19 @@ Engine::Engine(int argc, char* argv[], const Config& cfg,
     queueInfos.renderQueue = {renderQueue.queue, frameGraph.registerQueue(renderQueue.queue)};
 
     inputSampleNode =
-      frameGraph.addNode(FrameGraph::Node("sample_input", FrameGraph::SIMULATION_STAGE, false));
-    presentFrameNode =
-      frameGraph.addNode(FrameGraph::Node("presentFrame", FrameGraph::RECORD_STAGE, true));
-    cleanUpNode =
-      frameGraph.addNode(FrameGraph::Node("cleanUp", FrameGraph::SIMULATION_STAGE, false));
+      frameGraph.addNode(FrameGraph::Node("sample_input", FrameGraph::SIMULATION_STAGE));
+    presentFrameNode = frameGraph.addNode(
+      FrameGraph::Node("presentFrame", FrameGraph::RECORD_STAGE | FrameGraph::EXECUTION_STAGE));
+    cleanUpNode = frameGraph.addNode(FrameGraph::Node("cleanUp", FrameGraph::SIMULATION_STAGE));
     // These are just marker nodes, no actual work is done in them
-    simStartNode = frameGraph.addTagNode("simulation/start");
-    simEndNode = frameGraph.addTagNode("simulation/end");
-    beforeDrawStartNode = frameGraph.addTagNode("beforeDraw/start");
-    beforeDrawEndNode = frameGraph.addTagNode("beforeDraw/end");
-    recordStartNode =
-      frameGraph.addNode(FrameGraph::Node("record/start", FrameGraph::RECORD_STAGE, true));
-    recordEndNode =
-      frameGraph.addNode(FrameGraph::Node("record/end", FrameGraph::RECORD_STAGE, true));
-    executeStartNode = frameGraph.addTagNode("execute/start");
-    executeEndNode = frameGraph.addTagNode("execute/end");
+    simStartNode = frameGraph.addTagNode("simulation/start", FrameGraph::SIMULATION_STAGE);
+    simEndNode = frameGraph.addTagNode("simulation/end", FrameGraph::SIMULATION_STAGE);
+    beforeDrawStartNode = frameGraph.addTagNode("beforeDraw/start", FrameGraph::BEFORE_DRAW_STAGE);
+    beforeDrawEndNode = frameGraph.addTagNode("beforeDraw/end", FrameGraph::BEFORE_DRAW_STAGE);
+    recordStartNode = frameGraph.addNode(
+      FrameGraph::Node("record/start", FrameGraph::RECORD_STAGE | FrameGraph::EXECUTION_STAGE));
+    recordEndNode = frameGraph.addNode(
+      FrameGraph::Node("record/end", FrameGraph::RECORD_STAGE | FrameGraph::EXECUTION_STAGE));
 
     if (config.maxFramesInExecutionQueue < 1)
         throw std::runtime_error("maxFramesInExecutionQueue must be at least 1");
@@ -246,36 +243,38 @@ Engine::Engine(int argc, char* argv[], const Config& cfg,
     garbageSystem.resize(cleanUpCpuOffset);
 
     frameGraph.addDependency(inputSampleNode,
-                             FrameGraph::CpuDependency{simStartNode, FrameGraph::TAG_STAGE,
+                             FrameGraph::CpuDependency{simStartNode, FrameGraph::SIMULATION_STAGE,
                                                        FrameGraph::SIMULATION_STAGE, 0});
-    frameGraph.addDependency(
-      simStartNode,
-      FrameGraph::CpuDependency{simEndNode, FrameGraph::TAG_STAGE, FrameGraph::TAG_STAGE, 1});
-    frameGraph.addDependency(beforeDrawStartNode,
-                             FrameGraph::CpuDependency{beforeDrawEndNode, FrameGraph::TAG_STAGE,
-                                                       FrameGraph::TAG_STAGE, 1});
-    frameGraph.addDependency(
-      simStartNode,
-      FrameGraph::CpuDependency{recordEndNode, FrameGraph::RECORD_STAGE, FrameGraph::TAG_STAGE, 1});
+    frameGraph.addDependency(simStartNode,
+                             FrameGraph::CpuDependency{simEndNode, FrameGraph::SIMULATION_STAGE,
+                                                       FrameGraph::SIMULATION_STAGE, 1});
     frameGraph.addDependency(
       beforeDrawStartNode,
-      FrameGraph::CpuDependency{simStartNode, FrameGraph::TAG_STAGE, FrameGraph::TAG_STAGE, 0});
-    frameGraph.addDependency(recordStartNode,
-                             FrameGraph::CpuDependency{beforeDrawStartNode, FrameGraph::TAG_STAGE,
-                                                       FrameGraph::RECORD_STAGE, 0});
+      FrameGraph::CpuDependency{beforeDrawEndNode, FrameGraph::BEFORE_DRAW_STAGE,
+                                FrameGraph::BEFORE_DRAW_STAGE, 1});
+    frameGraph.addDependency(simStartNode,
+                             FrameGraph::CpuDependency{recordEndNode, FrameGraph::RECORD_STAGE,
+                                                       FrameGraph::SIMULATION_STAGE, 1});
+    frameGraph.addDependency(beforeDrawStartNode,
+                             FrameGraph::CpuDependency{simStartNode, FrameGraph::SIMULATION_STAGE,
+                                                       FrameGraph::BEFORE_DRAW_STAGE, 0});
     frameGraph.addDependency(
-      recordStartNode, FrameGraph::CpuDependency{executeEndNode, FrameGraph::TAG_STAGE,
+      recordStartNode, FrameGraph::CpuDependency{beforeDrawStartNode, FrameGraph::BEFORE_DRAW_STAGE,
+                                                 FrameGraph::RECORD_STAGE, 0});
+    frameGraph.addDependency(
+      recordStartNode, FrameGraph::CpuDependency{recordEndNode, FrameGraph::EXECUTION_STAGE,
                                                  FrameGraph::RECORD_STAGE, executionDepOffset});
     frameGraph.addDependency(recordStartNode, FrameGraph::EnqueueDependency{recordEndNode, 1});
+    frameGraph.addDependency(simEndNode,
+                             FrameGraph::CpuDependency{simStartNode, FrameGraph::SIMULATION_STAGE,
+                                                       FrameGraph::SIMULATION_STAGE, 0});
     frameGraph.addDependency(
-      simEndNode,
-      FrameGraph::CpuDependency{simStartNode, FrameGraph::TAG_STAGE, FrameGraph::TAG_STAGE, 0});
-    frameGraph.addDependency(beforeDrawEndNode,
-                             FrameGraph::CpuDependency{beforeDrawStartNode, FrameGraph::TAG_STAGE,
-                                                       FrameGraph::TAG_STAGE, 0});
+      beforeDrawEndNode,
+      FrameGraph::CpuDependency{beforeDrawStartNode, FrameGraph::BEFORE_DRAW_STAGE,
+                                FrameGraph::BEFORE_DRAW_STAGE, 0});
     frameGraph.addDependency(
       simEndNode, FrameGraph::CpuDependency{inputSampleNode, FrameGraph::SIMULATION_STAGE,
-                                            FrameGraph::TAG_STAGE, 0});
+                                            FrameGraph::SIMULATION_STAGE, 0});
     frameGraph.addDependency(presentFrameNode,
                              FrameGraph::CpuDependency{recordStartNode, FrameGraph::RECORD_STAGE,
                                                        FrameGraph::RECORD_STAGE, 0});
@@ -284,46 +283,17 @@ Engine::Engine(int argc, char* argv[], const Config& cfg,
                              FrameGraph::CpuDependency{presentFrameNode, FrameGraph::RECORD_STAGE,
                                                        FrameGraph::RECORD_STAGE, 0});
     frameGraph.addDependency(recordEndNode, FrameGraph::EnqueueDependency{presentFrameNode, 0});
-    frameGraph.addDependency(executeStartNode,
-                             FrameGraph::CpuDependency{recordStartNode, FrameGraph::RECORD_STAGE,
-                                                       FrameGraph::TAG_STAGE, 0});
-    frameGraph.addDependency(
-      executeEndNode,
-      FrameGraph::CpuDependency{executeStartNode, FrameGraph::TAG_STAGE, FrameGraph::TAG_STAGE, 0});
     frameGraph.addDependency(
       presentFrameNode, FrameGraph::QueueCpuDependency{presentFrameNode, queueInfos.presentQueue.id,
                                                        FrameGraph::RECORD_STAGE, presentDepOffset});
     // frameGraph.addDependency(
     //   cleanUpNode, FrameGraph::QueueCpuDependency{presentFrameNode, queueInfos.presentQueue.id, 0});
     frameGraph.addDependency(cleanUpNode,
-                             FrameGraph::CpuDependency{executeEndNode, FrameGraph::TAG_STAGE,
+                             FrameGraph::CpuDependency{recordEndNode, FrameGraph::EXECUTION_STAGE,
                                                        FrameGraph::SIMULATION_STAGE, 0});
-    frameGraph.addDependency(simStartNode,
-                             FrameGraph::CpuDependency{cleanUpNode, FrameGraph::SIMULATION_STAGE,
-                                                       FrameGraph::TAG_STAGE, cleanUpCpuOffset});
-
-    // ISimulation::FrameGraphData simData;
-    // simData.simStart = simStartNode;
-    // simData.sampleInput = inputSampleNode;
-    // simData.simEnd = simEndNode;
-
-    // IRenderer::FrameGraphData renderData;
-    // renderData.recStart = recordStartNode;
-    // renderData.recEnd = recordEndNode;
-    // renderData.present = presentFrameNode;
-
-    // simulation->initSimulationFrameGraph(frameGraph, simData);
-    // FrameGraph::NodeId renderNode = FrameGraph::INVALID_NODE;
-    // FrameGraph::QueueId renderQueueId;
-    // if (renderer->initRenderFrameGraph(frameGraph, renderData, renderNode, renderQueueId)) {
-    //     assert(renderNode != FrameGraph::INVALID_NODE);
-    //     // frameGraph.addDependency(presentFrameNode,
-    //     //                          FrameGraph::QueueQueueDependency{renderNode, renderQueueId,
-    //     //                                                           queueInfos.presentQueue.id, 0});
-    //     frameGraph.addDependency(presentFrameNode, FrameGraph::EnqueueDependency{renderNode, 0});
-    //     frameGraph.addDependency(cleanUpNode,
-    //                              FrameGraph::QueueCpuDependency{renderNode, renderQueueId, 0});
-    // }
+    frameGraph.addDependency(
+      simStartNode, FrameGraph::CpuDependency{cleanUpNode, FrameGraph::SIMULATION_STAGE,
+                                              FrameGraph::SIMULATION_STAGE, cleanUpCpuOffset});
 }
 
 void Engine::buildFrameGraph(FrameGraph::NodeId presentDepNode, FrameGraph::QueueId depQueueId) {
@@ -355,9 +325,13 @@ void Engine::simulationLoop() {
     loguru::set_thread_name("simulate");
     FrameId simulationFrame = 0;
     while (!frameGraph.isStopped()) {
-        if (!frameGraph.applyTag(simStartNode, simulationFrame))
+        if (auto startNode =
+              frameGraph.acquireNode(simStartNode, FrameGraph::SIMULATION_STAGE, simulationFrame);
+            startNode) {
+            garbageSystem.startGarbage(simulationFrame);
+        }
+        else
             break;
-        garbageSystem.startGarbage(simulationFrame);
         if (!sampleInput(simulationFrame)) {
             assert(frameGraph.isStopped());
             break;
@@ -453,9 +427,6 @@ void Engine::recordCommandsLoop() {
               frameGraph.acquireNode(recordStartNode, FrameGraph::RECORD_STAGE, recordFrame);
             if (!recStartHandle)
                 break;
-            frameGraph.getExecutionQueue(recStartHandle)
-              ->push(ExecutionPackage(ExecutionPackage::MessagePackage{
-                ExecutionPackage::Message::RECORD_START, recordFrame, 0, nullptr}));
         }
         const uint32_t semaphoreIndex = acquireImageSemaphoreId;
         record(recordFrame);
@@ -479,9 +450,6 @@ void Engine::recordCommandsLoop() {
                 assert(frameGraph.isStopped());
                 break;
             }
-            frameGraph.getExecutionQueue(recEndHandle)
-              ->push(ExecutionPackage(ExecutionPackage::MessagePackage{
-                ExecutionPackage::Message::RECORD_END, recordFrame, 0, nullptr}));
         }
         recordFrame++;
     }
@@ -490,26 +458,15 @@ void Engine::recordCommandsLoop() {
       ExecutionPackage::MessagePackage{ExecutionPackage::Message::QUIT, 0, 0, nullptr}));
 }
 
-bool Engine::execute(FrameId& executionFrame, ExecutionPackage&& package) {
+bool Engine::execute(ExecutionPackage&& package) {
     if (std::holds_alternative<ExecutionPackage::MessagePackage>(package.package)) {
         ExecutionPackage::MessagePackage& message =
           std::get<ExecutionPackage::MessagePackage>(package.package);
         switch (message.msg) {
-            case ExecutionPackage::Message::RECORD_START: {
-                executionFrame = static_cast<FrameId>(message.value1);
-                if (!frameGraph.applyTag(executeStartNode, executionFrame)) {
-                    assert(frameGraph.isStopped());
-                    return false;
-                }
-                // std::cout << "Execute start: " << message.value1 << std::endl;
-            } break;
-            case ExecutionPackage::Message::RECORD_END: {
-                assert(executionFrame == static_cast<FrameId>(message.value1));
-                if (!frameGraph.applyTag(executeEndNode, executionFrame)) {
-                    assert(frameGraph.isStopped());
-                    return false;
-                }
-                // std::cout << "Execute end: " << message.value1 << std::endl;
+            case ExecutionPackage::Message::FRAMEGRAPH_NODE_MARKER: {
+                FrameGraph::NodeId nodeId = static_cast<FrameGraph::NodeId>(message.value1);
+                FrameId frame = static_cast<FrameId>(message.value2);
+                frameGraph.executionFinished(nodeId, frame);
             } break;
             case ExecutionPackage::Message::PRESENT:
                 present(message.value1, static_cast<uint32_t>(message.value2));
@@ -618,7 +575,7 @@ bool Engine::execute(FrameId& executionFrame, ExecutionPackage&& package) {
                 if (message.msg == ExecutionPackage::Message::RECURSIVE_END_MARKER)
                     break;
             }
-            if (!execute(executionFrame, std::move(p)))
+            if (!execute(std::move(p)))
                 return false;
         }
     }
@@ -629,13 +586,12 @@ void Engine::executeCommandsLoop() {
     RUNTIME_STAT_SCOPE(executionLoop);
     loguru::set_thread_name("execution");
     std::unique_lock<std::mutex> executionLock(executionMutex);
-    FrameId executionFrame = 0;
     while (true) {
         ExecutionPackage package;
         ExecutionQueue* executionQueue = frameGraph.getGlobalExecutionQueue();
         executionQueue->waitForPackage();
         while (executionQueue->pop(package))
-            if (!execute(executionFrame, std::move(package)))
+            if (!execute(std::move(package)))
                 return;
     }
 }
