@@ -199,7 +199,7 @@ class FrameGraph
         void close();
     };
 
-    NodeId addNode(Node&& node);
+    NodeId addNode(Node&& node, bool applyTagDependencies = true);
     Node* getNode(NodeId id);
     const Node* getNode(NodeId id) const;
     void addDependency(NodeId target, CpuDependency dep);
@@ -216,12 +216,18 @@ class FrameGraph
     NodeHandle tryAcquireNode(NodeId node, Stage stage, FrameId frame);
     // void skipNode(NodeId, FrameId); // blocking???
 
-    NodeHandle applyTag(TagNodeId node, FrameId frame);
-    NodeHandle tryApplyTag(TagNodeId node, FrameId frame, uint64_t timeoutNsec);
+    bool applyTag(TagNodeId node, FrameId frame);
+    bool tryApplyTag(TagNodeId node, FrameId frame, uint64_t timeoutNsec);
     // no blocking, returns a handle if currently available
-    NodeHandle tryApplyTag(TagNodeId node, FrameId frame);
+    bool tryApplyTag(TagNodeId node, FrameId frame);
 
     void executionFinished(NodeId node, FrameId frame);
+
+    bool startStage(Stage stage, FrameId frame);
+    bool endStage(Stage stage, FrameId frame);
+
+    TagNodeId getStageStartNode(Stage stage) const;
+    TagNodeId getStageEndNode(Stage stage) const;
 
     ExecutionQueue* getExecutionQueue(NodeHandle& handle);
     ExecutionQueue* getGlobalExecutionQueue();
@@ -233,14 +239,9 @@ class FrameGraph
     QueueId registerQueue(drv::QueuePtr queue);
     drv::QueuePtr getQueue(QueueId queueId) const;
 
-    FrameGraph(drv::PhysicalDevice _physicalDevice, drv::LogicalDevicePtr _device,
-               GarbageSystem* _garbageSystem, EventPool* _eventPool,
-               drv::StateTrackingConfig _trackerConfig)
-      : physicalDevice(_physicalDevice),
-        device(_device),
-        garbageSystem(_garbageSystem),
-        eventPool(_eventPool),
-        trackerConfig(_trackerConfig) {}
+    FrameGraph(drv::PhysicalDevice physicalDevice, drv::LogicalDevicePtr device,
+               GarbageSystem* garbageSystem, EventPool* eventPool,
+               drv::StateTrackingConfig trackerConfig);
 
  private:
     struct DependenceData
@@ -261,6 +262,8 @@ class FrameGraph
     std::vector<Node> nodes;
     std::atomic<bool> quit = false;
     FlexibleArray<drv::QueuePtr, 8> queues;
+    std::array<TagNodeId, NUM_STAGES-1> stageStartNodes;
+    std::array<TagNodeId, NUM_STAGES-1> stageEndNodes;
 
     mutable std::mutex enqueueMutex;
     mutable std::shared_mutex stopFrameMutex;

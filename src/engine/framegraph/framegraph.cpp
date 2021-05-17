@@ -8,6 +8,43 @@
 
 #include <drverror.h>
 
+FrameGraph::FrameGraph(drv::PhysicalDevice _physicalDevice, drv::LogicalDevicePtr _device,
+                       GarbageSystem* _garbageSystem, EventPool* _eventPool,
+                       drv::StateTrackingConfig _trackerConfig)
+  : physicalDevice(_physicalDevice),
+    device(_device),
+    garbageSystem(_garbageSystem),
+    eventPool(_eventPool),
+    trackerConfig(_trackerConfig) {
+    static_assert(get_stage(NUM_STAGES - 1) == EXECUTION_STAGE);
+    for (uint32_t i = 0; i < NUM_STAGES - 1; ++i) {
+        stageStartNodes[i] =
+          addTagNode(std::string(get_stage_name(get_stage(i))) + "/start", get_stage(i));
+        stageEndNodes[i] =
+          addTagNode(std::string(get_stage_name(get_stage(i))) + "/end", get_stage(i));
+    }
+    for (uint32_t i = 0; i < NUM_STAGES - 1; ++i) {
+        addDependency(stageEndNodes[i],
+                      CpuDependency{stageStartNodes[i], get_stage(i), get_stage(i), 0});
+        addDependency(stageStartNodes[i],
+                      CpuDependency{stageEndNodes[i], get_stage(i), get_stage(i), 1});
+        if (i > 0)
+            addDependency(stageStartNodes[i],
+                          CpuDependency{stageStartNodes[i - 1], get_stage(i - 1), get_stage(i), 0});
+    }
+    addDependency(stageStartNodes[0],
+                  CpuDependency{stageEndNodes[NUM_STAGES - 2], get_stage(NUM_STAGES - 2),
+                                get_stage(0), NUM_STAGES});
+}
+
+FrameGraph::TagNodeId FrameGraph::getStageStartNode(Stage stage) const {
+    return stageStartNodes[get_stage_id(stage)];
+}
+
+FrameGraph::TagNodeId FrameGraph::getStageEndNode(Stage stage) const {
+    return stageEndNodes[get_stage_id(stage)];
+}
+
 FrameGraph::Node::Node(const std::string& _name, Stages _stages, bool _tagNode)
   : name(_name), stages(_stages), tagNode(_tagNode) {
     if (stages & EXECUTION_STAGE) {
@@ -96,10 +133,13 @@ void FrameGraph::Node::addDependency(QueueCpuDependency dep) {
 // }
 
 FrameGraph::TagNodeId FrameGraph::addTagNode(const std::string& name, Stage stage) {
-    return addNode(Node(name, stage, true));
+    Stages stages = stage;
+    if (stage == RECORD_STAGE)
+        stages |= EXECUTION_STAGE;
+    return addNode(Node(name, stages, true), false);
 }
 
-FrameGraph::NodeId FrameGraph::addNode(Node&& node) {
+FrameGraph::NodeId FrameGraph::addNode(Node&& node, bool applyTagDependencies) {
     node.frameGraph = this;
     NodeId id = safe_cast<NodeId>(nodes.size());
     node.ownId = id;
@@ -176,6 +216,21 @@ FrameGraph::NodeId FrameGraph::addNode(Node&& node) {
     nodes.push_back(std::move(node));
     for (const EnqueueDependency& dep : nodes.back().enqDeps)
         nodes[dep.srcNode].enqIndirectChildren.push_back(id);
+
+    if (applyTagDependencies && !nodes[id].tagNode) {
+        static_assert(get_stage(NUM_STAGES - 1) == EXECUTION_STAGE);
+        for (uint32_t i = 0; i < NUM_STAGES - 1; ++i) {
+            Stage stage = get_stage(i);
+            if (nodes[id].stages & stage) {
+                addDependency(id, CpuDependency{stageStartNodes[i], stage, stage, 0});
+                addDependency(stageEndNodes[i], CpuDependency{id, stage, stage, 0});
+            }
+        }
+        if (nodes[id].hasExecution()) {
+            addDependency(id, EnqueueDependency{stageStartNodes[get_stage_id(RECORD_STAGE)], 0});
+            addDependency(stageEndNodes[get_stage_id(RECORD_STAGE)], EnqueueDependency{id, 0});
+        }
+    }
     return id;
 }
 
@@ -205,6 +260,14 @@ void FrameGraph::addDependency(NodeId target, QueueCpuDependency dep) {
 
 bool FrameGraph::isStopped() const {
     return quit;
+}
+
+bool FrameGraph::startStage(Stage stage, FrameId frame) {
+    return tryApplyTag(stageStartNodes[get_stage_id(stage)], frame);
+}
+
+bool FrameGraph::endStage(Stage stage, FrameId frame) {
+    return tryApplyTag(stageEndNodes[get_stage_id(stage)], frame);
 }
 
 bool FrameGraph::tryDoFrame(FrameId frameId) {
@@ -301,12 +364,11 @@ void FrameGraph::build() {
               ("A node doesn't use a stage, that it has a dependency for: "
                + nodes[dep.srcNode].name + " / " + std::to_string(get_stage_id(dep.srcStage)))
                 .c_str());
-            // TODO deal with clean up node and uncomment this
-            // drv::drv_assert(
-            //   get_stage_id(dep.srcStage) <= get_stage_id(dep.dstStage) || dep.offset > 0,
-            //   ("Framegraph stages are meant to be consecutive to allow serial execution of them in stage_id order. A node depends on a higher stage than itself: "
-            //    + nodes[i].name)
-            //     .c_str());
+            drv::drv_assert(
+              get_stage_id(dep.srcStage) <= get_stage_id(dep.dstStage) || dep.offset > 0,
+              ("Framegraph stages are meant to be consecutive to allow serial execution of them in stage_id order. A node depends on a higher stage than itself: "
+               + nodes[i].name)
+                .c_str());
             if (dep.srcNode == i && dep.srcStage == dep.dstStage)
                 continue;
             cpuChildrenIndirect[get_graph_id(dep.srcNode, dep.srcStage)] = true;
@@ -565,16 +627,15 @@ FrameGraph::NodeHandle FrameGraph::tryAcquireNode(NodeId nodeId, Stage stage, Fr
     return NodeHandle(this, nodeId, stage, frame);
 }
 
-FrameGraph::NodeHandle FrameGraph::applyTag(TagNodeId node, FrameId frame) {
+bool FrameGraph::applyTag(TagNodeId node, FrameId frame) {
     return acquireNode(node, static_cast<Stage>(nodes[node].stages), frame);
 }
 
-FrameGraph::NodeHandle FrameGraph::tryApplyTag(TagNodeId node, FrameId frame,
-                                               uint64_t timeoutNsec) {
+bool FrameGraph::tryApplyTag(TagNodeId node, FrameId frame, uint64_t timeoutNsec) {
     return tryAcquireNode(node, static_cast<Stage>(nodes[node].stages), frame, timeoutNsec);
 }
 
-FrameGraph::NodeHandle FrameGraph::tryApplyTag(TagNodeId node, FrameId frame) {
+bool FrameGraph::tryApplyTag(TagNodeId node, FrameId frame) {
     return tryAcquireNode(node, static_cast<Stage>(nodes[node].stages), frame);
 }
 

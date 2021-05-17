@@ -45,16 +45,9 @@ Game::Game(int argc, char* argv[], const Config& config,
     testRenderPass->build();
 
     testDraw = getFrameGraph().addNode(
-      FrameGraph::Node("testDraw", FrameGraph::RECORD_STAGE | FrameGraph::EXECUTION_STAGE, true));
-    getFrameGraph().addDependency(
-      testDraw, FrameGraph::CpuDependency{getRecStartNode(), FrameGraph::RECORD_STAGE,
-                                          FrameGraph::RECORD_STAGE, 0});
-    getFrameGraph().addDependency(testDraw, FrameGraph::EnqueueDependency{getRecStartNode(), 0});
-    getFrameGraph().addDependency(
-      getRecEndNode(),
-      FrameGraph::CpuDependency{testDraw, FrameGraph::RECORD_STAGE, FrameGraph::RECORD_STAGE, 0});
-    getFrameGraph().addDependency(getRecEndNode(), FrameGraph::EnqueueDependency{testDraw, 0});
+      FrameGraph::Node("testDraw", FrameGraph::RECORD_STAGE | FrameGraph::EXECUTION_STAGE));
 
+    // TODO present node could be inside of record end node???
     buildFrameGraph(testDraw, getQueues().renderQueue.id);
 }
 

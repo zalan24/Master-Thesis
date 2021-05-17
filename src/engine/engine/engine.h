@@ -75,14 +75,6 @@ class Engine
 
     void gameLoop();
 
-    // TODO remove
-    virtual void simulate(FrameId frameId) = 0;
-    virtual void beforeDraw(FrameId frameId) = 0;
-    virtual void record(FrameId frameId) = 0;
-    FrameGraph::NodeId getRecStartNode() const { return recordStartNode; }
-    FrameGraph::NodeId getRecEndNode() const { return recordEndNode; }
-    // ---
-
     drv::LogicalDevicePtr getDevice() const { return device; }
     drv::PhysicalDevicePtr getPhysicalDevice() const { return physicalDevice; }
     const ShaderBin* getShaderBin() const { return &shaderBin; }
@@ -132,6 +124,10 @@ class Engine
 
     FrameGraph& getFrameGraph() { return frameGraph; }
     const FrameGraph& getFrameGraph() const { return frameGraph; }
+
+    virtual void simulate(FrameId frameId) = 0;
+    virtual void beforeDraw(FrameId frameId) = 0;
+    virtual void record(FrameId frameId) = 0;
 
  private:
     struct ErrorCallback
@@ -185,12 +181,6 @@ class Engine
     RuntimeStats runtimeStats;
 
     FrameGraph::NodeId inputSampleNode;
-    FrameGraph::TagNodeId simStartNode;
-    FrameGraph::TagNodeId simEndNode;
-    FrameGraph::TagNodeId beforeDrawStartNode;
-    FrameGraph::TagNodeId beforeDrawEndNode;
-    FrameGraph::NodeId recordStartNode;
-    FrameGraph::NodeId recordEndNode;
     FrameGraph::NodeId presentFrameNode;
     FrameGraph::NodeId cleanUpNode;
     QueueInfo queueInfos;

@@ -18,6 +18,7 @@ class Game final : public Game3D
          ResourceManager::ResourceInfos resource_infos, const Args& args);
     ~Game() override;
 
+ protected:
     void simulate(FrameId frameId) override;
     void beforeDraw(FrameId frameId) override;
     void record(FrameId frameId) override;
