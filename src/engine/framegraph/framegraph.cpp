@@ -373,10 +373,13 @@ void FrameGraph::validateFlowGraph(
 }
 
 void FrameGraph::build() {
-    std::vector<bool> cpuChildrenIndirect(nodes.size() * NUM_STAGES, false);
+    std::vector<uint32_t> cpuChildrenIndirect(nodes.size() * NUM_STAGES, 0);
     for (NodeId i = 0; i < nodes.size(); ++i) {
         bool hasCpuIndirectDep = false;
+        bool hasDepInStage[NUM_STAGES] = {false};
         for (const CpuDependency& dep : nodes[i].cpuDeps) {
+            if (dep.dstStage == dep.srcStage && dep.srcNode != getStageStartNode(dep.srcStage))
+                hasDepInStage[get_stage_id(dep.dstStage)] = true;
             drv::drv_assert(
               dep.dstStage != EXECUTION_STAGE,
               ("Execution stage cannot be the destination in any dependencies: " + nodes[i].name)
@@ -397,8 +400,24 @@ void FrameGraph::build() {
                 .c_str());
             if (dep.srcNode == i && dep.srcStage == dep.dstStage)
                 continue;
-            cpuChildrenIndirect[get_graph_id(dep.srcNode, dep.srcStage)] = true;
+            cpuChildrenIndirect[get_graph_id(dep.srcNode, dep.srcStage)]++;
             hasCpuIndirectDep = true;
+        }
+        // erase some redundant dependencies
+        for (uint32_t stageId = 0; stageId < NUM_STAGES; ++stageId) {
+            Stage stage = get_stage(stageId);
+            if (stage == EXECUTION_STAGE)
+                continue;
+            if ((nodes[i].stages & stage) == 0)
+                continue;
+            if (hasDepInStage[stageId]) {
+                auto itr = std::find_if(nodes[i].cpuDeps.begin(), nodes[i].cpuDeps.end(),
+                                        [&](const CpuDependency& dep) {
+                                            return dep.srcNode == getStageStartNode(stage);
+                                        });
+                if (itr != nodes[i].cpuDeps.end())
+                    nodes[i].cpuDeps.erase(itr);
+            }
         }
         drv::drv_assert(hasCpuIndirectDep,
                         ("A node <" + nodes[i].name
@@ -425,10 +444,19 @@ void FrameGraph::build() {
                 continue;
             if ((nodes[i].stages & stage) == 0)
                 continue;
-            drv::drv_assert(cpuChildrenIndirect[get_graph_id(i, stage)],
+            drv::drv_assert(cpuChildrenIndirect[get_graph_id(i, stage)] > 0,
                             ("A node <" + nodes[i].name
                              + "> doesn't have any cpu-cpu children on stage: " + std::to_string(j))
                               .c_str());
+            if (cpuChildrenIndirect[get_graph_id(i, stage)] > 1) {
+                // erase some redundant dependencies
+                TagNodeId endNode = getStageEndNode(stage);
+                auto itr =
+                  std::find_if(nodes[endNode].cpuDeps.begin(), nodes[endNode].cpuDeps.end(),
+                               [&](const CpuDependency& dep) { return dep.srcNode == i; });
+                if (itr != nodes[endNode].cpuDeps.end())
+                    nodes[endNode].cpuDeps.erase(itr);
+            }
         }
     }
     validateFlowGraph(
