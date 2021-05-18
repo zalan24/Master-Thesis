@@ -34,17 +34,14 @@ static void callback(const drv::CallbackData* data) {
             // TODO reword command buffer usage
             LOG_F(WARNING, "Driver warning: %s", data->text);
             // BREAK_POINT;
-            // std::cerr << data->text << std::endl;
             break;
         case drv::CallbackData::Type::ERROR:
             LOG_F(ERROR, "Driver error: %s", data->text);
             BREAK_POINT;
-            // std::cerr << data->text << std::endl;
             throw std::runtime_error(data->text ? std::string{data->text} : "<0x0>");
         case drv::CallbackData::Type::FATAL:
             LOG_F(ERROR, "Driver warning: %s", data->text);
             BREAK_POINT;
-            // std::cerr << data->text << std::endl;
             std::abort();
     }
 }
@@ -188,7 +185,9 @@ Engine::Engine(int argc, char* argv[], const Config& cfg,
     syncBlock(device, safe_cast<uint32_t>(config.maxFramesInFlight)),
     resourceMgr(std::move(resource_infos)),
     garbageSystem(safe_cast<size_t>(config.frameMemorySizeKb) << 10),
-    frameGraph(physicalDevice, device, &garbageSystem, &eventPool, config.trackerConfig),
+    // maxFramesInFlight + 1 for readback stage
+    frameGraph(physicalDevice, device, &garbageSystem, &eventPool, config.trackerConfig,
+               config.maxFramesInExecutionQueue, config.maxFramesInFlight + 1),
     runtimeStats(args.runtimeStatsBin.c_str()) {
     json configJson = ISerializable::serialize(config);
     std::stringstream ss;
@@ -219,41 +218,27 @@ Engine::Engine(int argc, char* argv[], const Config& cfg,
       frameGraph.addNode(FrameGraph::Node("sample_input", FrameGraph::SIMULATION_STAGE));
     presentFrameNode = frameGraph.addNode(
       FrameGraph::Node("presentFrame", FrameGraph::RECORD_STAGE | FrameGraph::EXECUTION_STAGE));
-    cleanUpNode = frameGraph.addNode(FrameGraph::Node("cleanUp", FrameGraph::SIMULATION_STAGE));
-    // These are just marker nodes, no actual work is done in them
 
-    if (config.maxFramesInExecutionQueue < 1)
-        throw std::runtime_error("maxFramesInExecutionQueue must be at least 1");
-    const uint32_t executionDepOffset = static_cast<uint32_t>(config.maxFramesInExecutionQueue);
-    if (config.maxFramesInFlight < 2)
-        throw std::runtime_error("maxFramesInFlight must be at least 2");
-    if (config.maxFramesInFlight < config.maxFramesInExecutionQueue)
-        throw std::runtime_error(
-          "maxFramesInFlight must be at least the value of maxFramesInExecutionQueue");
+    drv::drv_assert(config.maxFramesInExecutionQueue >= 1,
+                    "maxFramesInExecutionQueue must be at least 1");
+    drv::drv_assert(config.maxFramesInFlight >= 2, "maxFramesInFlight must be at least 2");
+    drv::drv_assert(config.maxFramesInFlight >= config.maxFramesInExecutionQueue,
+                    "maxFramesInFlight must be at least the value of maxFramesInExecutionQueue");
     const uint32_t presentDepOffset = static_cast<uint32_t>(config.maxFramesInFlight - 1);
-    const uint32_t cleanUpCpuOffset = static_cast<uint32_t>(config.maxFramesInFlight + 1);
-    garbageSystem.resize(cleanUpCpuOffset);
+    garbageSystem.resize(frameGraph.getMaxFramesInFlight());
 
+    // TODO this can't really auto wait now, because there is now command buffer that waits on the present...
     frameGraph.addDependency(
       presentFrameNode, FrameGraph::QueueCpuDependency{presentFrameNode, queueInfos.presentQueue.id,
                                                        FrameGraph::RECORD_STAGE, presentDepOffset});
-    // frameGraph.addDependency(
-    //   cleanUpNode, FrameGraph::QueueCpuDependency{presentFrameNode, queueInfos.presentQueue.id, 0});
-    frameGraph.addDependency(
-      cleanUpNode,
-      FrameGraph::CpuDependency{frameGraph.getStageEndNode(FrameGraph::RECORD_STAGE),
-                                FrameGraph::EXECUTION_STAGE, FrameGraph::SIMULATION_STAGE, 0});
-    frameGraph.addDependency(
-      frameGraph.getStageStartNode(FrameGraph::SIMULATION_STAGE),
-      FrameGraph::CpuDependency{cleanUpNode, FrameGraph::SIMULATION_STAGE,
-                                FrameGraph::SIMULATION_STAGE, cleanUpCpuOffset});
 }
 
 void Engine::buildFrameGraph(FrameGraph::NodeId presentDepNode, FrameGraph::QueueId depQueueId) {
     frameGraph.addDependency(presentFrameNode, FrameGraph::EnqueueDependency{presentDepNode, 0});
+    // TODO this should be done automatically
     frameGraph.addDependency(
-      cleanUpNode,
-      FrameGraph::QueueCpuDependency{presentDepNode, depQueueId, FrameGraph::SIMULATION_STAGE, 0});
+      frameGraph.getStageEndNode(FrameGraph::READBACK_STAGE),
+      FrameGraph::QueueCpuDependency{presentDepNode, depQueueId, FrameGraph::READBACK_STAGE, 0});
 
     frameGraph.build();
 }
@@ -299,13 +284,12 @@ void Engine::simulationLoop() {
     }
 }
 
-void Engine::present(FrameId presentFrame, uint32_t semaphoreIndex) {
-    UNUSED(presentFrame);
+void Engine::present(uint32_t imageIndex, uint32_t semaphoreIndex) {
     drv::PresentInfo info;
     info.semaphoreCount = 1;
     drv::SemaphorePtr semaphore = syncBlock.renderFinishedSemaphores[semaphoreIndex];
     info.waitSemaphores = &semaphore;
-    drv::PresentResult result = swapchain.present(presentQueue.queue, info);
+    drv::PresentResult result = swapchain.present(presentQueue.queue, info, imageIndex);
     // TODO;  // what's gonna wait on this?
     drv::drv_assert(result != drv::PresentResult::ERROR, "Present error");
     if (result == drv::PresentResult::RECREATE_ADVISED
@@ -323,34 +307,36 @@ const Engine::QueueInfo& Engine::getQueues() const {
 Engine::AcquiredImageData Engine::acquiredSwapchainImage(
   FrameGraph::NodeHandle& acquiringNodeHandle) {
     UNUSED(acquiringNodeHandle);  // TODO latency slop -> acquiringNodeHandle
-    bool acquiredSuccess =
+    uint32_t imageIndex =
       swapchain.acquire(syncBlock.imageAvailableSemaphores[acquireImageSemaphoreId]);
     // ---
     Engine::AcquiredImageData ret;
-    if (acquiredSuccess) {
-        ret.image = swapchain.getAcquiredImage();
+    if (imageIndex != drv::Swapchain::INVALID_INDEX) {
+        ret.image = swapchain.getAcquiredImage(imageIndex);
+        ret.semaphoreIndex = acquireImageSemaphoreId;
         ret.imageAvailableSemaphore = syncBlock.imageAvailableSemaphores[acquireImageSemaphoreId];
         ret.renderFinishedSemaphore = syncBlock.renderFinishedSemaphores[acquireImageSemaphoreId];
-        ret.imageIndex = swapchain.getImageIndex();
+        ret.imageIndex = imageIndex;
         drv::TextureInfo info = drv::get_texture_info(ret.image);
         drv::drv_assert(info.extent.depth == 1);
         ret.extent = {info.extent.width, info.extent.height};
         ret.version = swapchainVersion;
         ret.imageCount = swapchain.getImageCount();
         ret.images = swapchain.getImages();
+        acquireImageSemaphoreId =
+          (acquireImageSemaphoreId + 1) % syncBlock.imageAvailableSemaphores.size();
     }
     else {
         drv::reset_ptr(ret.image);
         drv::reset_ptr(ret.imageAvailableSemaphore);
         drv::reset_ptr(ret.renderFinishedSemaphore);
         ret.imageIndex = 0;
+        ret.semaphoreIndex = 0;
         ret.extent = {0, 0};
         ret.version = INVALID_SWAPCHAIN;
         ret.imageCount = 0;
         ret.images = nullptr;
     }
-    acquireImageSemaphoreId =
-      (acquireImageSemaphoreId + 1) % syncBlock.imageAvailableSemaphores.size();
     return ret;
 }
 
@@ -378,8 +364,7 @@ void Engine::recordCommandsLoop() {
         // TODO preframe stuff (resize)
         if (!frameGraph.startStage(FrameGraph::RECORD_STAGE, recordFrame))
             break;
-        const uint32_t semaphoreIndex = acquireImageSemaphoreId;
-        record(recordFrame);
+        AcquiredImageData swapchainData = record(recordFrame);
         {
             FrameGraph::NodeHandle presentHandle =
               frameGraph.acquireNode(presentFrameNode, FrameGraph::RECORD_STAGE, recordFrame);
@@ -387,10 +372,11 @@ void Engine::recordCommandsLoop() {
                 assert(frameGraph.isStopped());
                 break;
             }
-            if (!drv::is_null_ptr(swapchain.getAcquiredImage())) {
+            if (!drv::is_null_ptr(swapchainData.image)) {
                 frameGraph.getExecutionQueue(presentHandle)
                   ->push(ExecutionPackage(ExecutionPackage::MessagePackage{
-                    ExecutionPackage::Message::PRESENT, recordFrame, semaphoreIndex, nullptr}));
+                    ExecutionPackage::Message::PRESENT, swapchainData.imageIndex,
+                    swapchainData.semaphoreIndex, nullptr}));
             }
         }
         if (!frameGraph.endStage(FrameGraph::RECORD_STAGE, recordFrame)) {
@@ -414,9 +400,11 @@ bool Engine::execute(ExecutionPackage&& package) {
                 FrameId frame = static_cast<FrameId>(message.value2);
                 frameGraph.executionFinished(nodeId, frame);
             } break;
-            case ExecutionPackage::Message::PRESENT:
-                present(message.value1, static_cast<uint32_t>(message.value2));
-                break;
+            case ExecutionPackage::Message::PRESENT: {
+                uint32_t imageIndex = uint32_t(message.value1);
+                uint32_t semaphoreIndex = uint32_t(message.value2);
+                present(imageIndex, semaphoreIndex);
+            } break;
             case ExecutionPackage::Message::RECURSIVE_END_MARKER:
                 break;
             case ExecutionPackage::Message::QUIT:
@@ -542,17 +530,25 @@ void Engine::executeCommandsLoop() {
     }
 }
 
-void Engine::cleanUpLoop() {
-    RUNTIME_STAT_SCOPE(cleanupLoop);
-    loguru::set_thread_name("clean up");
-    FrameId cleanUpFrame = 0;
+void Engine::readbackLoop() {
+    RUNTIME_STAT_SCOPE(readbackLoop);
+    loguru::set_thread_name("readback");
+    FrameId readbackFrame = 0;
     while (!frameGraph.isStopped()) {
-        FrameGraph::NodeHandle cleanUpHandle =
-          frameGraph.acquireNode(cleanUpNode, FrameGraph::SIMULATION_STAGE, cleanUpFrame);
-        if (!cleanUpHandle)
+        if (!frameGraph.startStage(FrameGraph::READBACK_STAGE, readbackFrame))
             break;
-        garbageSystem.releaseGarbage(cleanUpFrame);
-        cleanUpFrame++;
+        readback(readbackFrame);
+        if (auto handle =
+              frameGraph.acquireNode(frameGraph.getStageEndNode(FrameGraph::READBACK_STAGE),
+                                     FrameGraph::READBACK_STAGE, readbackFrame);
+            handle) {
+            garbageSystem.releaseGarbage(readbackFrame);
+        }
+        else {
+            assert(frameGraph.isStopped());
+            break;
+        }
+        readbackFrame++;
     }
     {
         // wait for execution queue to finish
@@ -573,14 +569,14 @@ void Engine::gameLoop() {
     std::thread beforeDrawThread(&Engine::beforeDrawLoop, this);
     std::thread recordThread(&Engine::recordCommandsLoop, this);
     std::thread executeThread(&Engine::executeCommandsLoop, this);
-    std::thread cleanUpThread(&Engine::cleanUpLoop, this);
+    std::thread readbackThread(&Engine::readbackLoop, this);
 
     try {
         set_thread_name(&simulationThread, "simulation");
         set_thread_name(&beforeDrawThread, "beforeDraw");
         set_thread_name(&recordThread, "record");
         set_thread_name(&executeThread, "execute");
-        set_thread_name(&cleanUpThread, "cleanUp");
+        set_thread_name(&readbackThread, "readback");
 
         IWindow* w = window;
         while (!w->shouldClose()) {
@@ -602,7 +598,7 @@ void Engine::gameLoop() {
         beforeDrawThread.join();
         recordThread.join();
         executeThread.join();
-        cleanUpThread.join();
+        readbackThread.join();
     }
     catch (const std::exception& e) {
         LOG_F(ERROR, "An exception happend during gameLoop. Waiting for threads to join: <%s>",
@@ -613,7 +609,7 @@ void Engine::gameLoop() {
         beforeDrawThread.join();
         recordThread.join();
         executeThread.join();
-        cleanUpThread.join();
+        readbackThread.join();
         throw;
     }
     catch (...) {
@@ -624,7 +620,7 @@ void Engine::gameLoop() {
         beforeDrawThread.join();
         recordThread.join();
         executeThread.join();
-        cleanUpThread.join();
+        readbackThread.join();
         throw;
     }
 }

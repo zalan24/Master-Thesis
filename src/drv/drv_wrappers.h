@@ -574,15 +574,14 @@ class Swapchain
     operator SwapchainPtr() const;
 
     void recreate(drv::PhysicalDevicePtr physicalDevice, IWindow* window);
-    bool acquire(SemaphorePtr semaphore = get_null_ptr<SemaphorePtr>(),
-                 FencePtr fence = get_null_ptr<FencePtr>(), uint64_t timeoutNs = UINT16_MAX);
-    PresentResult present(QueuePtr queue, const PresentInfo& info);
+    uint32_t acquire(SemaphorePtr semaphore = get_null_ptr<SemaphorePtr>(),
+                     FencePtr fence = get_null_ptr<FencePtr>(), uint64_t timeoutNs = UINT16_MAX);
+    PresentResult present(QueuePtr queue, const PresentInfo& info, uint32_t imageIndex);
 
     uint32_t getCurrentWidth() const { return currentWidth; }
     uint32_t getCurrentHeight() const { return currentHeight; }
 
-    ImagePtr getAcquiredImage() const;
-    uint32_t getImageIndex() const { return acquiredIndex; }
+    ImagePtr getAcquiredImage(uint32_t index) const;
 
     uint32_t getImageCount() const { return static_cast<uint32_t>(images.size()); }
     const ImagePtr* getImages() const { return images.data(); }
@@ -591,7 +590,6 @@ class Swapchain
     CreateInfo createInfo;
     LogicalDevicePtr device;
     SwapchainPtr ptr;
-    uint32_t acquiredIndex = INVALID_INDEX;
     uint32_t currentWidth = 0;
     uint32_t currentHeight = 0;
     ImageCreateInfo::UsageType usages;

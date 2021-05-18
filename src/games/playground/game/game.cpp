@@ -178,7 +178,7 @@ void Game::record_cmd_buffer(const RecordData& data, drv::DrvCmdBufferRecorder* 
     // memory is made visible to all read operations (add this to tracker?) -- only available memory
 }
 
-void Game::record(FrameId frameId) {
+Engine::AcquiredImageData Game::record(FrameId frameId) {
     // std::cout << "Record: " << frameId << std::endl;
     RUNTIME_STAT_SCOPE(gameRecord);
     Engine::QueueInfo queues = getQueues();
@@ -235,9 +235,9 @@ void Game::record(FrameId frameId) {
            drv::IMAGE_USAGE_COLOR_OUTPUT_WRITE | drv::IMAGE_USAGE_TRANSFER_DESTINATION});
         testDrawHandle.submit(queues.renderQueue.id, std::move(submission));
         //   acquireCommandRecorder(testDrawHandle, frameId, queues.renderQueue.id);
+        return swapChainData;
     }
-    else
-        assert(getFrameGraph().isStopped());
+    return {};
 }
 
 void Game::simulate(FrameId frameId) {
@@ -246,5 +246,8 @@ void Game::simulate(FrameId frameId) {
     // std::cout << "Simulate: " << frameId << std::endl;
 }
 
-void Game::beforeDraw(FrameId frameId) {
+void Game::beforeDraw(FrameId) {
+}
+
+void Game::readback(FrameId) {
 }

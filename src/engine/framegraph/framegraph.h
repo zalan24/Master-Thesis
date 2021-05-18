@@ -36,8 +36,9 @@ class FrameGraph
         BEFORE_DRAW_STAGE = 1 << 1,
         RECORD_STAGE = 1 << 2,
         EXECUTION_STAGE = 1 << 3,
+        READBACK_STAGE = 1 << 4,
     };
-    static constexpr uint32_t NUM_STAGES = 4;
+    static constexpr uint32_t NUM_STAGES = 5;
     static constexpr Stage get_stage(uint32_t id) { return static_cast<Stage>(1 << id); }
     static constexpr uint32_t get_stage_id(Stage stage) {
         uint32_t ret = 0;
@@ -46,7 +47,7 @@ class FrameGraph
         return ret;
     }
     static const char* get_stage_name(Stage stage) {
-        const char* names[] = {"simulation", "beforeDraw", "record", "execution"};
+        const char* names[] = {"simulation", "beforeDraw", "record", "execution", "readback"};
         return names[get_stage_id(stage)];
     }
 
@@ -216,10 +217,10 @@ class FrameGraph
     NodeHandle tryAcquireNode(NodeId node, Stage stage, FrameId frame);
     // void skipNode(NodeId, FrameId); // blocking???
 
-    bool applyTag(TagNodeId node, FrameId frame);
-    bool tryApplyTag(TagNodeId node, FrameId frame, uint64_t timeoutNsec);
+    bool applyTag(TagNodeId node, Stage stage, FrameId frame);
+    bool tryApplyTag(TagNodeId node, Stage stage, FrameId frame, uint64_t timeoutNsec);
     // no blocking, returns a handle if currently available
-    bool tryApplyTag(TagNodeId node, FrameId frame);
+    bool tryApplyTag(TagNodeId node, Stage stage, FrameId frame);
 
     void executionFinished(NodeId node, FrameId frame);
 
@@ -241,7 +242,10 @@ class FrameGraph
 
     FrameGraph(drv::PhysicalDevice physicalDevice, drv::LogicalDevicePtr device,
                GarbageSystem* garbageSystem, EventPool* eventPool,
-               drv::StateTrackingConfig trackerConfig);
+               drv::StateTrackingConfig trackerConfig, uint32_t maxFramesInExecution,
+               uint32_t maxFramesInFlight);
+
+    uint32_t getMaxFramesInFlight() const { return maxFramesInFlight; }
 
  private:
     struct DependenceData
@@ -258,12 +262,13 @@ class FrameGraph
     GarbageSystem* garbageSystem;
     EventPool* eventPool;
     drv::StateTrackingConfig trackerConfig;
+    uint32_t maxFramesInFlight;
     ExecutionQueue executionQueue;
     std::vector<Node> nodes;
     std::atomic<bool> quit = false;
     FlexibleArray<drv::QueuePtr, 8> queues;
-    std::array<TagNodeId, NUM_STAGES-1> stageStartNodes;
-    std::array<TagNodeId, NUM_STAGES-1> stageEndNodes;
+    std::array<TagNodeId, NUM_STAGES> stageStartNodes;
+    std::array<TagNodeId, NUM_STAGES> stageEndNodes;
 
     mutable std::mutex enqueueMutex;
     mutable std::shared_mutex stopFrameMutex;

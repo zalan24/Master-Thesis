@@ -21,7 +21,8 @@ class Game final : public Game3D
  protected:
     void simulate(FrameId frameId) override;
     void beforeDraw(FrameId frameId) override;
-    void record(FrameId frameId) override;
+    AcquiredImageData record(FrameId frameId) override;
+    void readback(FrameId frameId) override;
 
  private:
     ShaderHeaderRegistry shaderHeaders;

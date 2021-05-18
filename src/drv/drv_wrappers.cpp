@@ -503,7 +503,7 @@ BufferSet::BufferSet(PhysicalDevicePtr _physicalDevice, LogicalDevicePtr _device
     drv_assert(get_memory_properties(physicalDevice, props), "Could not get memory props");
     for (unsigned int i = 0; i < MemoryProperties::MAX_MEMORY_TYPES; ++i) {
         if (!selector->isAccepted(props.memoryTypes[i]))
-            defaultMask = defaultMask xor (1 << i);
+            defaultMask = defaultMask ^ (1 << i);
     }
     drv_assert(defaultMask != 0, "There is no suitable memory type");
     buffers.reserve(count);
@@ -695,7 +695,7 @@ ImageSet::ImageSet(PhysicalDevicePtr _physicalDevice, LogicalDevicePtr _device, 
     drv_assert(get_memory_properties(physicalDevice, props), "Could not get memory props");
     for (unsigned int i = 0; i < MemoryProperties::MAX_MEMORY_TYPES; ++i) {
         if (!selector->isAccepted(props.memoryTypes[i]))
-            defaultMask = defaultMask xor (1 << i);
+            defaultMask = defaultMask ^ (1 << i);
     }
     drv_assert(defaultMask != 0, "There is no suitable memory type");
     images.reserve(count);
@@ -1225,7 +1225,6 @@ void Swapchain::close() {
     if (!is_null_ptr(ptr)) {
         drv::drv_assert(destroy_swapchain(device, ptr), "Could not destroy Swapchain");
         reset_ptr(ptr);
-        acquiredIndex = INVALID_INDEX;
         currentWidth = 0;
         currentHeight = 0;
     }
@@ -1235,7 +1234,6 @@ Swapchain::Swapchain(Swapchain&& other) noexcept {
     createInfo = std::move(other.createInfo);
     device = std::move(other.device);
     ptr = std::move(other.ptr);
-    acquiredIndex = other.acquiredIndex;
     currentWidth = other.currentWidth;
     currentHeight = other.currentHeight;
     images = std::move(other.images);
@@ -1249,7 +1247,6 @@ Swapchain& Swapchain::operator=(Swapchain&& other) noexcept {
     createInfo = std::move(other.createInfo);
     device = std::move(other.device);
     ptr = std::move(other.ptr);
-    acquiredIndex = other.acquiredIndex;
     currentWidth = other.currentWidth;
     currentHeight = other.currentHeight;
     images = std::move(other.images);
@@ -1262,29 +1259,20 @@ Swapchain::operator SwapchainPtr() const {
     return ptr;
 }
 
-bool Swapchain::acquire(SemaphorePtr semaphore, FencePtr fence, uint64_t timeoutNs) {
-    if (acquiredIndex != INVALID_INDEX)
-        return true;
-    if (acquire_image(device, ptr, semaphore, fence, &acquiredIndex, timeoutNs)) {
-        return true;
-    }
-    else {
-        acquiredIndex = INVALID_INDEX;
-        return false;
-    }
+uint32_t Swapchain::acquire(SemaphorePtr semaphore, FencePtr fence, uint64_t timeoutNs) {
+    uint32_t index = INVALID_INDEX;
+    if (acquire_image(device, ptr, semaphore, fence, &index, timeoutNs))
+        return index;
+    return INVALID_INDEX;
 }
 
-PresentResult Swapchain::present(QueuePtr queue, const PresentInfo& info) {
-    drv::drv_assert(acquiredIndex != INVALID_INDEX, "Present called without acquiring an image");
-    PresentResult ret = drv::present(queue, ptr, info, acquiredIndex);
-    acquiredIndex = INVALID_INDEX;
-    return ret;
+PresentResult Swapchain::present(QueuePtr queue, const PresentInfo& info, uint32_t imageIndex) {
+    drv::drv_assert(imageIndex != INVALID_INDEX, "Present called without acquiring an image");
+    return drv::present(queue, ptr, info, imageIndex);
 }
 
-drv::ImagePtr Swapchain::getAcquiredImage() const {
-    if (acquiredIndex == INVALID_INDEX)
-        return get_null_ptr<ImagePtr>();
-    return images[acquiredIndex];
+drv::ImagePtr Swapchain::getAcquiredImage(uint32_t index) const {
+    return images[index];
 }
 
 Framebuffer::Framebuffer(LogicalDevicePtr _device) : device(_device) {

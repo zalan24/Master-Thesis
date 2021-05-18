@@ -315,9 +315,6 @@ void VulkanRenderPass::beginRenderPass(drv::FramebufferPtr frameBuffer,
     for (uint32_t i = 0; i < attachments.size(); ++i) {
         // TODO;  // apply starting auto external barriers
 
-        drv::PipelineStages stages = drv::get_image_usage_stages(globalAttachmentUsages[i]);
-        drv::MemoryBarrier::AccessFlagBitType accessMask =
-          drv::get_image_usage_accesses(globalAttachmentUsages[i]);
         static_cast<VulkanCmdBufferRecorder*>(cmdBuffer)->cmdUseAsAttachment(
           attachmentImages[i].image, attachmentImages[i].subresource, globalAttachmentUsages[i],
           attachments[i].initialLayout, attachments[i].finalLayout);

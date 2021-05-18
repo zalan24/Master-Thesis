@@ -10,31 +10,55 @@
 
 FrameGraph::FrameGraph(drv::PhysicalDevice _physicalDevice, drv::LogicalDevicePtr _device,
                        GarbageSystem* _garbageSystem, EventPool* _eventPool,
-                       drv::StateTrackingConfig _trackerConfig)
+                       drv::StateTrackingConfig _trackerConfig, uint32_t maxFramesInExecution,
+                       uint32_t _maxFramesInFlight)
   : physicalDevice(_physicalDevice),
     device(_device),
     garbageSystem(_garbageSystem),
     eventPool(_eventPool),
-    trackerConfig(_trackerConfig) {
-    static_assert(get_stage(NUM_STAGES - 1) == EXECUTION_STAGE);
-    for (uint32_t i = 0; i < NUM_STAGES - 1; ++i) {
-        stageStartNodes[i] =
-          addTagNode(std::string(get_stage_name(get_stage(i))) + "/start", get_stage(i));
-        stageEndNodes[i] =
-          addTagNode(std::string(get_stage_name(get_stage(i))) + "/end", get_stage(i));
+    trackerConfig(_trackerConfig),
+    maxFramesInFlight(_maxFramesInFlight) {
+    for (uint32_t i = 0; i < NUM_STAGES; ++i) {
+        if (get_stage(i) == EXECUTION_STAGE) {
+            stageStartNodes[i] = stageEndNodes[i] = INVALID_NODE;
+        }
+        else {
+            stageStartNodes[i] =
+              addTagNode(std::string(get_stage_name(get_stage(i))) + "/start", get_stage(i));
+            stageEndNodes[i] =
+              addTagNode(std::string(get_stage_name(get_stage(i))) + "/end", get_stage(i));
+        }
     }
-    for (uint32_t i = 0; i < NUM_STAGES - 1; ++i) {
+    for (uint32_t i = 0; i < NUM_STAGES; ++i) {
+        if (get_stage(i) == EXECUTION_STAGE)
+            continue;
         addDependency(stageEndNodes[i],
                       CpuDependency{stageStartNodes[i], get_stage(i), get_stage(i), 0});
         addDependency(stageStartNodes[i],
                       CpuDependency{stageEndNodes[i], get_stage(i), get_stage(i), 1});
-        if (i > 0)
-            addDependency(stageStartNodes[i],
-                          CpuDependency{stageStartNodes[i - 1], get_stage(i - 1), get_stage(i), 0});
     }
-    addDependency(stageStartNodes[0],
-                  CpuDependency{stageEndNodes[NUM_STAGES - 2], get_stage(NUM_STAGES - 2),
-                                get_stage(0), NUM_STAGES});
+    addDependency(stageStartNodes[get_stage_id(BEFORE_DRAW_STAGE)],
+                  CpuDependency{stageStartNodes[get_stage_id(SIMULATION_STAGE)], SIMULATION_STAGE,
+                                BEFORE_DRAW_STAGE, 0});
+    addDependency(stageStartNodes[get_stage_id(RECORD_STAGE)],
+                  CpuDependency{stageStartNodes[get_stage_id(BEFORE_DRAW_STAGE)], BEFORE_DRAW_STAGE,
+                                RECORD_STAGE, 0});
+    addDependency(stageStartNodes[get_stage_id(READBACK_STAGE)],
+                  CpuDependency{stageStartNodes[get_stage_id(RECORD_STAGE)], EXECUTION_STAGE,
+                                READBACK_STAGE, 0});
+    addDependency(
+      stageEndNodes[get_stage_id(READBACK_STAGE)],
+      CpuDependency{stageEndNodes[get_stage_id(RECORD_STAGE)], EXECUTION_STAGE, READBACK_STAGE, 0});
+    addDependency(stageStartNodes[get_stage_id(SIMULATION_STAGE)],
+                  CpuDependency{stageEndNodes[get_stage_id(RECORD_STAGE)], RECORD_STAGE,
+                                SIMULATION_STAGE, NUM_STAGES});
+    addDependency(stageStartNodes[get_stage_id(SIMULATION_STAGE)],
+                  CpuDependency{stageEndNodes[get_stage_id(READBACK_STAGE)], READBACK_STAGE,
+                                SIMULATION_STAGE, maxFramesInFlight});
+    addDependency(
+      stageStartNodes[get_stage_id(RECORD_STAGE)],
+      CpuDependency{stageEndNodes[get_stage_id(RECORD_STAGE)], FrameGraph::EXECUTION_STAGE,
+                    FrameGraph::RECORD_STAGE, maxFramesInExecution});
 }
 
 FrameGraph::TagNodeId FrameGraph::getStageStartNode(Stage stage) const {
@@ -150,9 +174,11 @@ FrameGraph::NodeId FrameGraph::addNode(Node&& node, bool applyTagDependencies) {
         if (stage == EXECUTION_STAGE)
             continue;
         if (node.stages & stage) {
-            if (i < firstStageId)
-                firstStageId = i;
-            lastStageId = i;
+            if (stage != READBACK_STAGE) {
+                if (i < firstStageId)
+                    firstStageId = i;
+                lastStageId = i;
+            }
             if (i > 0) {
                 uint32_t prev = i - 1;
                 while (prev > 0 && (get_stage(prev) & node.stages) == 0)
@@ -164,9 +190,8 @@ FrameGraph::NodeId FrameGraph::addNode(Node&& node, bool applyTagDependencies) {
         }
     }
     // Equal case takes care of self dependency
-    if (firstStageId <= lastStageId) {
+    if (firstStageId <= lastStageId)
         node.addDependency(CpuDependency{id, get_stage(lastStageId), get_stage(firstStageId), 1});
-    }
     if (node.hasExecution())
         node.addDependency(EnqueueDependency{id, 1});
     node.enqIndirectChildren.clear();
@@ -218,9 +243,10 @@ FrameGraph::NodeId FrameGraph::addNode(Node&& node, bool applyTagDependencies) {
         nodes[dep.srcNode].enqIndirectChildren.push_back(id);
 
     if (applyTagDependencies && !nodes[id].tagNode) {
-        static_assert(get_stage(NUM_STAGES - 1) == EXECUTION_STAGE);
-        for (uint32_t i = 0; i < NUM_STAGES - 1; ++i) {
+        for (uint32_t i = 0; i < NUM_STAGES; ++i) {
             Stage stage = get_stage(i);
+            if (stage == EXECUTION_STAGE)
+                continue;
             if (nodes[id].stages & stage) {
                 addDependency(id, CpuDependency{stageStartNodes[i], stage, stage, 0});
                 addDependency(stageEndNodes[i], CpuDependency{id, stage, stage, 0});
@@ -263,11 +289,11 @@ bool FrameGraph::isStopped() const {
 }
 
 bool FrameGraph::startStage(Stage stage, FrameId frame) {
-    return tryApplyTag(stageStartNodes[get_stage_id(stage)], frame);
+    return applyTag(stageStartNodes[get_stage_id(stage)], stage, frame);
 }
 
 bool FrameGraph::endStage(Stage stage, FrameId frame) {
-    return tryApplyTag(stageEndNodes[get_stage_id(stage)], frame);
+    return tryApplyTag(stageEndNodes[get_stage_id(stage)], stage, frame);
 }
 
 bool FrameGraph::tryDoFrame(FrameId frameId) {
@@ -627,16 +653,16 @@ FrameGraph::NodeHandle FrameGraph::tryAcquireNode(NodeId nodeId, Stage stage, Fr
     return NodeHandle(this, nodeId, stage, frame);
 }
 
-bool FrameGraph::applyTag(TagNodeId node, FrameId frame) {
-    return acquireNode(node, static_cast<Stage>(nodes[node].stages), frame);
+bool FrameGraph::applyTag(TagNodeId node, Stage stage, FrameId frame) {
+    return acquireNode(node, stage, frame);
 }
 
-bool FrameGraph::tryApplyTag(TagNodeId node, FrameId frame, uint64_t timeoutNsec) {
-    return tryAcquireNode(node, static_cast<Stage>(nodes[node].stages), frame, timeoutNsec);
+bool FrameGraph::tryApplyTag(TagNodeId node, Stage stage, FrameId frame, uint64_t timeoutNsec) {
+    return tryAcquireNode(node, stage, frame, timeoutNsec);
 }
 
-bool FrameGraph::tryApplyTag(TagNodeId node, FrameId frame) {
-    return tryAcquireNode(node, static_cast<Stage>(nodes[node].stages), frame);
+bool FrameGraph::tryApplyTag(TagNodeId node, Stage stage, FrameId frame) {
+    return tryAcquireNode(node, stage, frame);
 }
 
 void FrameGraph::executionFinished(NodeId nodeId, FrameId frame) {

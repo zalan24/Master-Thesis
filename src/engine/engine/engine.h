@@ -41,16 +41,16 @@ class Engine
  public:
     struct Config final : public ISerializable
     {
-        int screenWidth;
-        int screenHeight;
-        int imagesInSwapchain;
-        int maxFramesInExecutionQueue;
-        int maxFramesInFlight;
+        uint32_t screenWidth;
+        uint32_t screenHeight;
+        uint32_t imagesInSwapchain;
+        uint32_t maxFramesInExecutionQueue;
+        uint32_t maxFramesInFlight;
         std::string title;
         std::string driver;
-        int inputBufferSize;
-        int stackMemorySizeKb;
-        int frameMemorySizeKb;
+        uint32_t inputBufferSize;
+        uint32_t stackMemorySizeKb;
+        uint32_t frameMemorySizeKb;
         drv::StateTrackingConfig trackerConfig;
         std::string logs;
         void writeJson(json& out) const override final;
@@ -84,13 +84,14 @@ class Engine
       std::numeric_limits<SwapchaingVersion>::max();
     struct AcquiredImageData
     {
-        drv::ImagePtr image;
+        drv::ImagePtr image = drv::get_null_ptr<drv::ImagePtr>();
         uint32_t imageIndex;
+        uint32_t semaphoreIndex;
         drv::SemaphorePtr imageAvailableSemaphore;
         drv::SemaphorePtr renderFinishedSemaphore;
         drv::Extent2D extent;
         SwapchaingVersion version;  // incremented upon recreation
-        uint32_t imageCount;
+        uint32_t imageCount = 0;
         const drv::ImagePtr* images = nullptr;
     };
     AcquiredImageData acquiredSwapchainImage(FrameGraph::NodeHandle& acquiringNodeHandle);
@@ -127,7 +128,8 @@ class Engine
 
     virtual void simulate(FrameId frameId) = 0;
     virtual void beforeDraw(FrameId frameId) = 0;
-    virtual void record(FrameId frameId) = 0;
+    virtual AcquiredImageData record(FrameId frameId) = 0;
+    virtual void readback(FrameId frameId) = 0;
 
  private:
     struct ErrorCallback
@@ -182,7 +184,6 @@ class Engine
 
     FrameGraph::NodeId inputSampleNode;
     FrameGraph::NodeId presentFrameNode;
-    FrameGraph::NodeId cleanUpNode;
     QueueInfo queueInfos;
 
     uint32_t acquireImageSemaphoreId = 0;
@@ -194,9 +195,9 @@ class Engine
     void beforeDrawLoop();
     void recordCommandsLoop();
     void executeCommandsLoop();
-    void cleanUpLoop();
+    void readbackLoop();
     bool execute(ExecutionPackage&& package);
-    void present(FrameId presentFrame, uint32_t semaphoreIndex);
+    void present(uint32_t imageIndex, uint32_t semaphoreIndex);
     bool sampleInput(FrameId frameId);
 
     static drv::PhysicalDevice::SelectionInfo get_device_selection_info(
