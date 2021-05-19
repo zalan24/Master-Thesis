@@ -90,7 +90,6 @@ struct ExecutionPackage
     enum class Message
     {
         FRAMEGRAPH_NODE_MARKER,
-        PRESENT,
         RECURSIVE_END_MARKER,  // end of recursive command list
         QUIT
     };
@@ -98,9 +97,17 @@ struct ExecutionPackage
     struct MessagePackage
     {
         Message msg;
-        size_t value1;
-        size_t value2;
-        void* valuePtr;
+        uint64_t value1;
+        uint64_t value2;
+        union
+        {
+            uint64_t value3;
+            void* valuePtr;
+        };
+        MessagePackage(Message _msg, uint64_t _value1, uint64_t _value2, uint64_t _value3)
+          : msg(_msg), value1(_value1), value2(_value2), value3(_value3) {}
+        MessagePackage(Message _msg, uint64_t _value1, uint64_t _value2, void* ptr)
+          : msg(_msg), value1(_value1), value2(_value2), valuePtr(ptr) {}
     };
 
     struct RecursiveQueue
@@ -114,7 +121,15 @@ struct ExecutionPackage
         virtual ~CustomFunctor() {}
     };
 
-    std::variant<CommandBufferPackage, Functor, MessagePackage, RecursiveQueue,
+    struct PresentPackage
+    {
+        FrameId frame;
+        uint32_t imageIndex;
+        uint32_t semaphoreId;
+        drv::SwapchainPtr swapichain;
+    };
+
+    std::variant<CommandBufferPackage, Functor, MessagePackage, RecursiveQueue, PresentPackage,
                  std::unique_ptr<CustomFunctor>, const void*>
       package;
     // An optional mutex maybe?
@@ -126,6 +141,7 @@ struct ExecutionPackage
     ExecutionPackage(Functor&& f) : package(std::move(f)) {}
     ExecutionPackage(MessagePackage&& m) : package(std::move(m)) {}
     ExecutionPackage(RecursiveQueue&& q) : package(std::move(q)) {}
+    ExecutionPackage(PresentPackage&& p) : package(std::move(p)) {}
     ExecutionPackage(std::unique_ptr<CustomFunctor>&& f) : package(std::move(f)) {}
 };
 

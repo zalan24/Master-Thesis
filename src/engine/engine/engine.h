@@ -85,12 +85,13 @@ class Engine
     struct AcquiredImageData
     {
         drv::ImagePtr image = drv::get_null_ptr<drv::ImagePtr>();
-        uint32_t imageIndex;
-        uint32_t semaphoreIndex;
-        drv::SemaphorePtr imageAvailableSemaphore;
-        drv::SemaphorePtr renderFinishedSemaphore;
-        drv::Extent2D extent;
-        SwapchaingVersion version;  // incremented upon recreation
+        drv::SwapchainPtr swapchain = drv::get_null_ptr<drv::SwapchainPtr>();
+        uint32_t imageIndex = drv::Swapchain::INVALID_INDEX;
+        uint32_t semaphoreIndex = 0;
+        drv::SemaphorePtr imageAvailableSemaphore = drv::get_null_ptr<drv::SemaphorePtr>();
+        drv::SemaphorePtr renderFinishedSemaphore = drv::get_null_ptr<drv::SemaphorePtr>();
+        drv::Extent2D extent = {0, 0};
+        SwapchaingVersion version = INVALID_SWAPCHAIN;  // incremented upon recreation
         uint32_t imageCount = 0;
         const drv::ImagePtr* images = nullptr;
     };
@@ -188,8 +189,11 @@ class Engine
 
     uint32_t acquireImageSemaphoreId = 0;
     SwapchaingVersion swapchainVersion = 0;
+    // FrameId firstPresentableFrame = 0;
+    // FrameId currentAcquiredFrame = INVALID_FRAME;
 
     mutable std::mutex executionMutex;
+    // mutable std::mutex swapchainMutex;
 
     void simulationLoop();
     void beforeDrawLoop();
@@ -197,7 +201,8 @@ class Engine
     void executeCommandsLoop();
     void readbackLoop();
     bool execute(ExecutionPackage&& package);
-    void present(uint32_t imageIndex, uint32_t semaphoreIndex);
+    void present(drv::SwapchainPtr swapchain, FrameId frame, uint32_t imageIndex,
+                 uint32_t semaphoreIndex);
     bool sampleInput(FrameId frameId);
 
     static drv::PhysicalDevice::SelectionInfo get_device_selection_info(
@@ -206,4 +211,5 @@ class Engine
     static drv::Swapchain::CreateInfo get_swapchain_create_info(const Config& config,
                                                                 drv::QueuePtr present_queue,
                                                                 drv::QueuePtr render_queue);
+    void recreateSwapchain();
 };

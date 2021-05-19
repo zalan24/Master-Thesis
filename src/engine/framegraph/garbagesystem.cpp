@@ -14,6 +14,7 @@ void GarbageSystem::resize(size_t count) {
 void GarbageSystem::startGarbage(FrameId frameId) {
     std::unique_lock<std::recursive_mutex> lock(garbageMutex);
     currentGarbage.fetch_add(1);
+    startedFrame = frameId;
     useGarbage([&](Garbage* trashBin) { trashBin->reset(frameId); });
 }
 

@@ -187,7 +187,8 @@ Engine::AcquiredImageData Game::record(FrameId frameId) {
         testDrawHandle) {
         std::this_thread::sleep_for(std::chrono::milliseconds(4));
         Engine::AcquiredImageData swapChainData = acquiredSwapchainImage(testDrawHandle);
-        drv::drv_assert(swapChainData.version != Engine::INVALID_SWAPCHAIN, "Handle this somehow");
+        if (swapChainData.version == Engine::INVALID_SWAPCHAIN)
+            return swapChainData;
         if (swapchainVersion != swapChainData.version) {
             recreateViews(swapChainData.imageCount, swapChainData.images);
             swapchainVersion = swapChainData.version;

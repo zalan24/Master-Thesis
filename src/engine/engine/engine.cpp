@@ -284,20 +284,38 @@ void Engine::simulationLoop() {
     }
 }
 
-void Engine::present(uint32_t imageIndex, uint32_t semaphoreIndex) {
+void Engine::recreateSwapchain() {
+    // images need to keep the same memory address
+    drv::Swapchain::OldSwapchinData oldSwapchain = swapchain.recreate(physicalDevice, window);
+    garbageSystem.useGarbage([&](Garbage* trashBin) {
+        trashBin->releaseTrash(
+          std::make_unique<Garbage::TrashData<drv::Swapchain::OldSwapchinData>>(
+            std::move(oldSwapchain)));
+    });
+    swapchainVersion++;
+}
+
+void Engine::present(drv::SwapchainPtr swapchainPtr, FrameId, uint32_t imageIndex,
+                     uint32_t semaphoreIndex) {
+    if (drv::is_null_ptr(swapchainPtr))
+        return;
     drv::PresentInfo info;
     info.semaphoreCount = 1;
     drv::SemaphorePtr semaphore = syncBlock.renderFinishedSemaphores[semaphoreIndex];
     info.waitSemaphores = &semaphore;
-    drv::PresentResult result = swapchain.present(presentQueue.queue, info, imageIndex);
+    drv::PresentResult result =
+      swapchain.present(presentQueue.queue, swapchainPtr, info, imageIndex);
     // TODO;  // what's gonna wait on this?
     drv::drv_assert(result != drv::PresentResult::ERROR, "Present error");
-    if (result == drv::PresentResult::RECREATE_ADVISED
-        || result == drv::PresentResult::RECREATE_REQUIRED) {
-        throw std::runtime_error("Implement swapchain recreation and increment swapchainVersion");
-        // TODO swapchainVersion ++;
-        // state->recreateSwapchain = presentFrame;
-    }
+    // Present should still be called for the semaphores
+    // if (frame < firstPresentableFrame)
+    //     return;
+    // if (  //result == drv::PresentResult::RECREATE_ADVISED ||
+    //   result == drv::PresentResult::RECREATE_REQUIRED) {
+    //     std::unique_lock<std::mutex> lk(swapchainMutex);
+    //     firstPresentableFrame = currentAcquiredFrame + 1;
+    //     recreateSwapchain();
+    // }
 }
 
 const Engine::QueueInfo& Engine::getQueues() const {
@@ -306,36 +324,61 @@ const Engine::QueueInfo& Engine::getQueues() const {
 
 Engine::AcquiredImageData Engine::acquiredSwapchainImage(
   FrameGraph::NodeHandle& acquiringNodeHandle) {
-    UNUSED(acquiringNodeHandle);  // TODO latency slop -> acquiringNodeHandle
-    uint32_t imageIndex =
-      swapchain.acquire(syncBlock.imageAvailableSemaphores[acquireImageSemaphoreId]);
-    // ---
     Engine::AcquiredImageData ret;
-    if (imageIndex != drv::Swapchain::INVALID_INDEX) {
-        ret.image = swapchain.getAcquiredImage(imageIndex);
-        ret.semaphoreIndex = acquireImageSemaphoreId;
-        ret.imageAvailableSemaphore = syncBlock.imageAvailableSemaphores[acquireImageSemaphoreId];
-        ret.renderFinishedSemaphore = syncBlock.renderFinishedSemaphores[acquireImageSemaphoreId];
-        ret.imageIndex = imageIndex;
-        drv::TextureInfo info = drv::get_texture_info(ret.image);
-        drv::drv_assert(info.extent.depth == 1);
-        ret.extent = {info.extent.width, info.extent.height};
-        ret.version = swapchainVersion;
-        ret.imageCount = swapchain.getImageCount();
-        ret.images = swapchain.getImages();
-        acquireImageSemaphoreId =
-          (acquireImageSemaphoreId + 1) % syncBlock.imageAvailableSemaphores.size();
+    if (window->getHeight() == 0 || window->getWidth() == 0)
+        return ret;
+    if (window->getWidth() != swapchain.getCurrentWidth()
+        || window->getHeight() != swapchain.getCurrentHeight()) {
+        recreateSwapchain();
     }
-    else {
-        drv::reset_ptr(ret.image);
-        drv::reset_ptr(ret.imageAvailableSemaphore);
-        drv::reset_ptr(ret.renderFinishedSemaphore);
-        ret.imageIndex = 0;
-        ret.semaphoreIndex = 0;
-        ret.extent = {0, 0};
-        ret.version = INVALID_SWAPCHAIN;
-        ret.imageCount = 0;
-        ret.images = nullptr;
+    // std::unique_lock<std::mutex> lk(swapchainMutex);
+    // currentAcquiredFrame = acquiringNodeHandle.getFrameId();
+    uint32_t imageIndex = drv::Swapchain::INVALID_INDEX;
+    UNUSED(acquiringNodeHandle);
+    // TODO latency slop -> acquiringNodeHandle
+    drv::AcquireResult result =
+      swapchain.acquire(imageIndex, syncBlock.imageAvailableSemaphores[acquireImageSemaphoreId]);
+    // ---
+    if (result == drv::AcquireResult::ERROR_RECREATE_REQUIRED) {
+        recreateSwapchain();
+        result = swapchain.acquire(imageIndex,
+                                   syncBlock.imageAvailableSemaphores[acquireImageSemaphoreId]);
+    }
+    switch (result) {
+        case drv::AcquireResult::ERROR:
+            drv::drv_assert(false, "Could not acquire swapchain image");
+            break;
+        case drv::AcquireResult::ERROR_RECREATE_REQUIRED:
+        case drv::AcquireResult::TIME_OUT:
+            break;
+        case drv::AcquireResult::SUCCESS_RECREATE_ADVISED:
+        case drv::AcquireResult::SUCCESS_NOT_READY:
+        case drv::AcquireResult::SUCCESS:
+            if (imageIndex != drv::Swapchain::INVALID_INDEX) {
+                ret.image = swapchain.getAcquiredImage(imageIndex);
+                ret.swapchain = swapchain;
+                ret.semaphoreIndex = acquireImageSemaphoreId;
+                ret.imageAvailableSemaphore =
+                  syncBlock.imageAvailableSemaphores[acquireImageSemaphoreId];
+                ret.renderFinishedSemaphore =
+                  syncBlock.renderFinishedSemaphores[acquireImageSemaphoreId];
+                ret.imageIndex = imageIndex;
+                drv::TextureInfo info = drv::get_texture_info(ret.image);
+                drv::drv_assert(info.extent.depth == 1);
+                ret.extent = {info.extent.width, info.extent.height};
+                ret.version = swapchainVersion;
+                ret.imageCount = swapchain.getImageCount();
+                ret.images = swapchain.getImages();
+                acquireImageSemaphoreId =
+                  (acquireImageSemaphoreId + 1) % syncBlock.imageAvailableSemaphores.size();
+            }
+            break;
+    }
+    if (result == drv::AcquireResult::ERROR_RECREATE_REQUIRED
+        || result == drv::AcquireResult::SUCCESS_RECREATE_ADVISED) {
+        recreateSwapchain();
+        result = swapchain.acquire(imageIndex,
+                                   syncBlock.imageAvailableSemaphores[acquireImageSemaphoreId]);
     }
     return ret;
 }
@@ -361,7 +404,6 @@ void Engine::recordCommandsLoop() {
     loguru::set_thread_name("record");
     FrameId recordFrame = 0;
     while (!frameGraph.isStopped()) {
-        // TODO preframe stuff (resize)
         if (!frameGraph.startStage(FrameGraph::RECORD_STAGE, recordFrame))
             break;
         AcquiredImageData swapchainData = record(recordFrame);
@@ -374,9 +416,9 @@ void Engine::recordCommandsLoop() {
             }
             if (!drv::is_null_ptr(swapchainData.image)) {
                 frameGraph.getExecutionQueue(presentHandle)
-                  ->push(ExecutionPackage(ExecutionPackage::MessagePackage{
-                    ExecutionPackage::Message::PRESENT, swapchainData.imageIndex,
-                    swapchainData.semaphoreIndex, nullptr}));
+                  ->push(ExecutionPackage(ExecutionPackage::PresentPackage{
+                    recordFrame, swapchainData.imageIndex, swapchainData.semaphoreIndex,
+                    swapchainData.swapchain}));
             }
         }
         if (!frameGraph.endStage(FrameGraph::RECORD_STAGE, recordFrame)) {
@@ -400,16 +442,16 @@ bool Engine::execute(ExecutionPackage&& package) {
                 FrameId frame = static_cast<FrameId>(message.value2);
                 frameGraph.executionFinished(nodeId, frame);
             } break;
-            case ExecutionPackage::Message::PRESENT: {
-                uint32_t imageIndex = uint32_t(message.value1);
-                uint32_t semaphoreIndex = uint32_t(message.value2);
-                present(imageIndex, semaphoreIndex);
-            } break;
             case ExecutionPackage::Message::RECURSIVE_END_MARKER:
                 break;
             case ExecutionPackage::Message::QUIT:
                 return false;
         }
+    }
+    else if (std::holds_alternative<ExecutionPackage::PresentPackage>(package.package)) {
+        ExecutionPackage::PresentPackage& p =
+          std::get<ExecutionPackage::PresentPackage>(package.package);
+        present(p.swapichain, p.frame, p.imageIndex, p.semaphoreId);
     }
     else if (std::holds_alternative<ExecutionPackage::Functor>(package.package)) {
         ExecutionPackage::Functor& functor = std::get<ExecutionPackage::Functor>(package.package);

@@ -69,9 +69,7 @@ class Instance
     void close();
 };
 
-class Window
-  : public NoCopy
-  , private Exclusive
+class Window : public NoCopy
 {
  public:
     Window(Input* input, InputManager* inputManager, const WindowOptions& options);
@@ -546,9 +544,7 @@ class MemoryMapper : private Exclusive
 //     void close();
 // };
 
-class Swapchain
-  : public NoCopy
-  , private Exclusive
+class Swapchain : public NoCopy
 {
  public:
     using SwapchainIndex = uint32_t;
@@ -564,6 +560,21 @@ class Swapchain
         std::vector<QueuePtr> userQueues;
     };
 
+    struct OldSwapchinData
+    {
+        LogicalDevicePtr device = get_null_ptr<LogicalDevicePtr>();
+        SwapchainPtr swapchain = get_null_ptr<SwapchainPtr>();
+        std::vector<ImagePtr> images;
+        OldSwapchinData(LogicalDevicePtr device, SwapchainPtr swapchain,
+                        std::vector<ImagePtr>&& images);
+        OldSwapchinData(const OldSwapchinData&) = delete;
+        OldSwapchinData& operator=(const OldSwapchinData&) = delete;
+        OldSwapchinData(OldSwapchinData&& other);
+        OldSwapchinData& operator=(OldSwapchinData&& other);
+        void close();
+        ~OldSwapchinData();
+    };
+
     Swapchain(PhysicalDevicePtr physicalDevice, LogicalDevicePtr device, IWindow* window,
               const CreateInfo& info);
     ~Swapchain() noexcept;
@@ -573,10 +584,12 @@ class Swapchain
 
     operator SwapchainPtr() const;
 
-    void recreate(drv::PhysicalDevicePtr physicalDevice, IWindow* window);
-    uint32_t acquire(SemaphorePtr semaphore = get_null_ptr<SemaphorePtr>(),
-                     FencePtr fence = get_null_ptr<FencePtr>(), uint64_t timeoutNs = UINT16_MAX);
-    PresentResult present(QueuePtr queue, const PresentInfo& info, uint32_t imageIndex);
+    OldSwapchinData recreate(drv::PhysicalDevicePtr physicalDevice, IWindow* window);
+    AcquireResult acquire(uint32_t& index, SemaphorePtr semaphore = get_null_ptr<SemaphorePtr>(),
+                          FencePtr fence = get_null_ptr<FencePtr>(),
+                          uint64_t timeoutNs = UINT16_MAX);
+    PresentResult present(QueuePtr queue, SwapchainPtr swapchain, const PresentInfo& info,
+                          uint32_t imageIndex);
 
     uint32_t getCurrentWidth() const { return currentWidth; }
     uint32_t getCurrentHeight() const { return currentHeight; }
@@ -598,7 +611,8 @@ class Swapchain
     std::vector<QueueFamilyPtr> userFamilies;
 
     void close();
-    SwapchainCreateInfo getSwapchainInfo(uint32_t width, uint32_t height);
+    SwapchainCreateInfo getSwapchainInfo(uint32_t width, uint32_t height,
+                                         SwapchainPtr oldSwapchain);
 };
 
 class Framebuffer : public NoCopy

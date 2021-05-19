@@ -6,6 +6,7 @@
 #include <flexiblearray.hpp>
 
 #include <drvcmdbufferbank.h>
+#include <drverror.h>
 #include <eventpool.h>
 
 #include "garbage.h"
@@ -16,6 +17,7 @@ class GarbageSystem
     template <typename F>
     auto useGarbage(F&& f) {
         std::unique_lock<std::recursive_mutex> lock(garbageMutex);
+        drv::drv_assert(startedFrame != INVALID_FRAME, "Garbage has not been initialized yet");
         return f(&trashBins[(currentGarbage.load() - 1 + trashBins.size()) % trashBins.size()]);
     }
 
@@ -34,6 +36,7 @@ class GarbageSystem
 
  private:
     size_t memorySize;
+    FrameId startedFrame = INVALID_FRAME;
 
     mutable std::recursive_mutex garbageMutex;
     std::atomic<uint32_t> currentGarbage = 0;

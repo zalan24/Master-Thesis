@@ -486,6 +486,16 @@ enum class PresentResult
     SUCCESS
 };
 
+enum class AcquireResult
+{
+    ERROR,
+    ERROR_RECREATE_REQUIRED,
+    TIME_OUT,
+    SUCCESS_RECREATE_ADVISED,
+    SUCCESS_NOT_READY,
+    SUCCESS
+};
+
 struct MemoryBarrier
 {
     using AccessFlagBitType = uint32_t;

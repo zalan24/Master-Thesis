@@ -78,7 +78,6 @@ Window::~Window() {
 }
 
 void Window::close() {
-    CHECK_THREAD;
     if (ptr != nullptr) {
         delete ptr;
         ptr = nullptr;
@@ -104,7 +103,6 @@ Window::operator bool() const {
 }
 
 Window::operator IWindow*() const {
-    CHECK_THREAD;
     return ptr;
 }
 
@@ -1156,7 +1154,8 @@ bool Event::isSet() {
 //     reset_ptr(device);
 // }
 
-SwapchainCreateInfo Swapchain::getSwapchainInfo(uint32_t width, uint32_t height) {
+SwapchainCreateInfo Swapchain::getSwapchainInfo(uint32_t width, uint32_t height,
+                                                SwapchainPtr oldSwapchain) {
     SwapchainCreateInfo ret;
     ret.allowedFormatCount = safe_cast<uint32_t>(createInfo.formatPreferences.size());
     ret.formatPreferences = createInfo.formatPreferences.data();
@@ -1165,7 +1164,7 @@ SwapchainCreateInfo Swapchain::getSwapchainInfo(uint32_t width, uint32_t height)
     ret.width = width;
     ret.height = height;
     ret.preferredImageCount = createInfo.preferredImageCount;
-    ret.oldSwapchain = ptr;
+    ret.oldSwapchain = oldSwapchain;
     ret.clipped = createInfo.clipped;
     ret.usage = usages;
     ret.sharingType = userFamilies.size() > 1 ? sharingType : drv::SharingType::EXCLUSIVE;
@@ -1187,7 +1186,8 @@ Swapchain::Swapchain(drv::PhysicalDevicePtr physicalDevice, LogicalDevicePtr _de
     usages = info.usages;
     sharingType = info.sharingType;
     if (currentWidth > 0 && currentHeight > 0) {
-        SwapchainCreateInfo swapchainInfo = getSwapchainInfo(currentWidth, currentHeight);
+        SwapchainCreateInfo swapchainInfo =
+          getSwapchainInfo(currentWidth, currentHeight, get_null_ptr<SwapchainPtr>());
         ptr = create_swapchain(physicalDevice, device, window, &swapchainInfo);
         drv::drv_assert(!is_null_ptr(ptr), "Could not create Swapchain");
         uint32_t count = 0;
@@ -1199,11 +1199,16 @@ Swapchain::Swapchain(drv::PhysicalDevicePtr physicalDevice, LogicalDevicePtr _de
     }
 }
 
-void Swapchain::recreate(drv::PhysicalDevicePtr physicalDevice, IWindow* window) {
+Swapchain::OldSwapchinData Swapchain::recreate(drv::PhysicalDevicePtr physicalDevice,
+                                               IWindow* window) {
     currentWidth = window->getWidth();
     currentHeight = window->getHeight();
+    OldSwapchinData ret(device, ptr, std::move(images));
+    reset_ptr(ptr);
+    images = {};
     if (currentWidth > 0 && currentHeight > 0) {
-        SwapchainCreateInfo swapchainInfo = getSwapchainInfo(currentWidth, currentHeight);
+        SwapchainCreateInfo swapchainInfo =
+          getSwapchainInfo(currentWidth, currentHeight, ret.swapchain);
         ptr = create_swapchain(physicalDevice, device, window, &swapchainInfo);
         drv::drv_assert(!is_null_ptr(ptr), "Could not create Swapchain");
         uint32_t count = 0;
@@ -1213,7 +1218,7 @@ void Swapchain::recreate(drv::PhysicalDevicePtr physicalDevice, IWindow* window)
         images.resize(count);
         get_swapchain_images(device, ptr, &count, images.data());
     }
-    // TODO free old swapchain???
+    return ret;
 }
 
 Swapchain::~Swapchain() noexcept {
@@ -1221,7 +1226,6 @@ Swapchain::~Swapchain() noexcept {
 }
 
 void Swapchain::close() {
-    CHECK_THREAD;
     if (!is_null_ptr(ptr)) {
         drv::drv_assert(destroy_swapchain(device, ptr), "Could not destroy Swapchain");
         reset_ptr(ptr);
@@ -1255,20 +1259,53 @@ Swapchain& Swapchain::operator=(Swapchain&& other) noexcept {
 }
 
 Swapchain::operator SwapchainPtr() const {
-    CHECK_THREAD;
     return ptr;
 }
 
-uint32_t Swapchain::acquire(SemaphorePtr semaphore, FencePtr fence, uint64_t timeoutNs) {
-    uint32_t index = INVALID_INDEX;
-    if (acquire_image(device, ptr, semaphore, fence, &index, timeoutNs))
-        return index;
-    return INVALID_INDEX;
+AcquireResult Swapchain::acquire(uint32_t& index, SemaphorePtr semaphore, FencePtr fence,
+                                 uint64_t timeoutNs) {
+    index = INVALID_INDEX;
+    if (images.size() == 0 || is_null_ptr(ptr))
+        return AcquireResult::ERROR_RECREATE_REQUIRED;
+    return acquire_image(device, ptr, semaphore, fence, &index, timeoutNs);
 }
 
-PresentResult Swapchain::present(QueuePtr queue, const PresentInfo& info, uint32_t imageIndex) {
+PresentResult Swapchain::present(QueuePtr queue, SwapchainPtr swapchain, const PresentInfo& info,
+                                 uint32_t imageIndex) {
     drv::drv_assert(imageIndex != INVALID_INDEX, "Present called without acquiring an image");
-    return drv::present(queue, ptr, info, imageIndex);
+    return drv::present(queue, swapchain, info, imageIndex);
+}
+
+Swapchain::OldSwapchinData::OldSwapchinData(LogicalDevicePtr _device, SwapchainPtr _swapchain,
+                                            std::vector<ImagePtr>&& _images)
+  : device(_device), swapchain(_swapchain), images(std::move(_images)) {
+}
+
+Swapchain::OldSwapchinData::OldSwapchinData(OldSwapchinData&& other)
+  : device(other.device), swapchain(other.swapchain), images(std::move(other.images)) {
+    reset_ptr(other.swapchain);
+}
+
+Swapchain::OldSwapchinData& Swapchain::OldSwapchinData::operator=(OldSwapchinData&& other) {
+    if (this == &other)
+        return *this;
+    close();
+    device = other.device;
+    swapchain = other.swapchain;
+    images = std::move(other.images);
+    reset_ptr(other.swapchain);
+    return *this;
+}
+
+void Swapchain::OldSwapchinData::close() {
+    if (!is_null_ptr(swapchain)) {
+        destroy_swapchain(device, swapchain);
+        reset_ptr(swapchain);
+    }
+}
+
+Swapchain::OldSwapchinData::~OldSwapchinData() {
+    close();
 }
 
 drv::ImagePtr Swapchain::getAcquiredImage(uint32_t index) const {

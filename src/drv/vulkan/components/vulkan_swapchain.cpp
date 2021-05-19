@@ -69,7 +69,11 @@ drv::SwapchainPtr DrvVulkan::create_swapchain(drv::PhysicalDevicePtr physicalDev
     createInfo.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
     createInfo.presentMode = static_cast<VkPresentModeKHR>(*presentModeItr);
     createInfo.clipped = info->clipped;
-    createInfo.oldSwapchain = drv::resolve_ptr<VkSwapchainKHR>(info->oldSwapchain);
+    if (drv::is_null_ptr(info->oldSwapchain))
+        createInfo.oldSwapchain = VK_NULL_HANDLE;
+    else
+        createInfo.oldSwapchain =
+          drv::resolve_ptr<drv_vulkan::Swapchain*>(info->oldSwapchain)->swapchain;
     VkSwapchainKHR swapChain;
     VkResult result =
       vkCreateSwapchainKHR(drv::resolve_ptr<VkDevice>(device), &createInfo, nullptr, &swapChain);
@@ -142,13 +146,22 @@ bool DrvVulkan::get_swapchain_images(drv::LogicalDevicePtr device, drv::Swapchai
     return true;
 }
 
-bool DrvVulkan::acquire_image(drv::LogicalDevicePtr device, drv::SwapchainPtr swapchain,
-                              drv::SemaphorePtr semaphore, drv::FencePtr fence, uint32_t* index,
-                              uint64_t timeoutNs) {
+drv::AcquireResult DrvVulkan::acquire_image(drv::LogicalDevicePtr device,
+                                            drv::SwapchainPtr swapchain,
+                                            drv::SemaphorePtr semaphore, drv::FencePtr fence,
+                                            uint32_t* index, uint64_t timeoutNs) {
     VkResult result =
       vkAcquireNextImageKHR(convertDevice(device), convertSwapchain(swapchain)->swapchain,
                             timeoutNs, convertSemaphore(semaphore), convertFence(fence), index);
-    drv::drv_assert(result == VK_SUCCESS || result == VK_SUBOPTIMAL_KHR || result == VK_TIMEOUT
-                    || result == VK_NOT_READY);
-    return result == VK_SUCCESS || result == VK_SUBOPTIMAL_KHR;
+    if (result == VK_SUCCESS)
+        return drv::AcquireResult::SUCCESS;
+    if (result == VK_TIMEOUT)
+        return drv::AcquireResult::TIME_OUT;
+    if (result == VK_SUBOPTIMAL_KHR)
+        return drv::AcquireResult::SUCCESS_RECREATE_ADVISED;
+    if (result == VK_NOT_READY)
+        return drv::AcquireResult::SUCCESS_NOT_READY;
+    if (result == VK_ERROR_OUT_OF_DATE_KHR)
+        return drv::AcquireResult::ERROR_RECREATE_REQUIRED;
+    return drv::AcquireResult::ERROR;
 }

@@ -153,9 +153,9 @@ class IDriver
                                   uint32_t imageIndex) = 0;
     virtual bool get_swapchain_images(LogicalDevicePtr device, SwapchainPtr swapchain,
                                       uint32_t* count, drv::ImagePtr* images) = 0;
-    virtual bool acquire_image(LogicalDevicePtr device, SwapchainPtr swapchain,
-                               SemaphorePtr semaphore, FencePtr fence, uint32_t* index,
-                               uint64_t timeoutNs) = 0;
+    virtual AcquireResult acquire_image(LogicalDevicePtr device, SwapchainPtr swapchain,
+                                        SemaphorePtr semaphore, FencePtr fence, uint32_t* index,
+                                        uint64_t timeoutNs) = 0;
     virtual EventPtr create_event(LogicalDevicePtr device, const EventCreateInfo* info) = 0;
     virtual bool destroy_event(LogicalDevicePtr device, EventPtr event) = 0;
     virtual bool is_event_set(LogicalDevicePtr device, EventPtr event) = 0;

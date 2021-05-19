@@ -138,8 +138,8 @@ PresentResult present(drv::QueuePtr queue, drv::SwapchainPtr swapchain, const Pr
                       uint32_t imageIndex);
 bool get_swapchain_images(LogicalDevicePtr device, SwapchainPtr swapchain, uint32_t* count,
                           drv::ImagePtr* images);
-bool acquire_image(LogicalDevicePtr device, SwapchainPtr swapchain, SemaphorePtr semaphore,
-                   FencePtr fence, uint32_t* index, uint64_t timeoutNs = UINT64_MAX);
+AcquireResult acquire_image(LogicalDevicePtr device, SwapchainPtr swapchain, SemaphorePtr semaphore,
+                            FencePtr fence, uint32_t* index, uint64_t timeoutNs = UINT64_MAX);
 EventPtr create_event(LogicalDevicePtr device, const EventCreateInfo* info);
 bool destroy_event(LogicalDevicePtr device, EventPtr event);
 bool is_event_set(LogicalDevicePtr device, EventPtr event);

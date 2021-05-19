@@ -50,10 +50,30 @@ class Garbage
     void reset() { reset(0); }
     void reset(FrameId frameId);
 
+    class Trash
+    {
+     public:
+        virtual ~Trash() {}
+
+     private:
+    };
+
+    template <typename T>
+    class TrashData final : public Trash
+    {
+     public:
+        explicit TrashData(T&& _data) : data(std::move(_data)) {}
+        ~TrashData() override {}
+
+     private:
+        T data;
+    };
+
     void resetCommandBuffer(drv::CommandBufferCirculator::CommandBufferHandle&& cmdBuffer);
     void releaseEvent(EventPool::EventHandle&& event);
     void releaseImageView(drv::ImageView&& view);
     void releaseShaderObj(std::unique_ptr<drv::DrvShader>&& shaderObj);
+    void releaseTrash(std::unique_ptr<Trash>&& trash);
     FrameId getFrameId() const;
 
     struct AllocatorData
@@ -220,7 +240,8 @@ class Garbage
     template <typename T>
     using Stack = std::stack<T, Deque<T>>;
 
-    using GeneralResource = std::variant<drv::ImageView, std::unique_ptr<drv::DrvShader>>;
+    using GeneralResource =
+      std::variant<drv::ImageView, std::unique_ptr<drv::DrvShader>, std::unique_ptr<Trash>>;
 
  private:
     FrameId frameId;
@@ -228,14 +249,14 @@ class Garbage
     size_t memorySize;
     std::unique_ptr<AllocatorData> allocatorData;
 
-    struct Trash
+    struct TrashBin
     {
-        Trash(Garbage* garbage);
+        TrashBin(Garbage* garbage);
         Vector<drv::CommandBufferCirculator::CommandBufferHandle> cmdBuffersToReset;
         Vector<EventPool::EventHandle> events;
         Deque<GeneralResource> resources;
     };
-    Trash* trash = nullptr;
+    TrashBin* trashBin = nullptr;
 
     void close() noexcept;
     void clear();

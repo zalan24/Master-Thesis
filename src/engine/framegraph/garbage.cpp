@@ -4,7 +4,7 @@
 
 #include <drverror.h>
 
-Garbage::Trash::Trash(Garbage* garbage)
+Garbage::TrashBin::TrashBin(Garbage* garbage)
   : cmdBuffersToReset(garbage->getAllocator<std::decay_t<decltype(cmdBuffersToReset[0])>>()),
     events(garbage->getAllocator<std::decay_t<decltype(events[0])>>()),
     resources(garbage->getAllocator<GeneralResource>()) {
@@ -34,15 +34,15 @@ Garbage::Garbage(size_t _memorySize, FrameId _frameId)
   : frameId(_frameId), memorySize(_memorySize) {
     allocatorData = std::make_unique<AllocatorData>(memorySize);
     if (memorySize > 0)
-        trash = new (getAllocator<Trash>().allocate(1)) Trash(this);
+        trashBin = new (getAllocator<TrashBin>().allocate(1)) TrashBin(this);
 }
 
 Garbage::Garbage(Garbage&& other)
   : frameId(other.frameId),
     memorySize(other.memorySize),
     allocatorData(std::move(other.allocatorData)),
-    trash(other.trash) {
-    other.trash = nullptr;
+    trashBin(other.trashBin) {
+    other.trashBin = nullptr;
 }
 
 Garbage& Garbage::operator=(Garbage&& other) {
@@ -52,8 +52,8 @@ Garbage& Garbage::operator=(Garbage&& other) {
     frameId = other.frameId;
     memorySize = other.memorySize;
     allocatorData = std::move(other.allocatorData);
-    trash = other.trash;
-    other.trash = nullptr;
+    trashBin = other.trashBin;
+    other.trashBin = nullptr;
     return *this;
 }
 
@@ -63,28 +63,33 @@ Garbage::~Garbage() {
 
 void Garbage::checkTrash() const {
 #ifdef DEBUG
-    drv::drv_assert(trash != nullptr, "Trying to use an uninitialized trash bin");
+    drv::drv_assert(trashBin != nullptr, "Trying to use an uninitialized trash bin");
 #endif
 }
 
 void Garbage::resetCommandBuffer(drv::CommandBufferCirculator::CommandBufferHandle&& cmdBuffer) {
     checkTrash();
-    trash->cmdBuffersToReset.push_back(std::move(cmdBuffer));
+    trashBin->cmdBuffersToReset.push_back(std::move(cmdBuffer));
 }
 
 void Garbage::releaseEvent(EventPool::EventHandle&& event) {
     checkTrash();
-    trash->events.push_back(std::move(event));
+    trashBin->events.push_back(std::move(event));
 }
 
 void Garbage::releaseImageView(drv::ImageView&& view) {
     checkTrash();
-    trash->resources.push_back(std::move(view));
+    trashBin->resources.push_back(std::move(view));
 }
 
 void Garbage::releaseShaderObj(std::unique_ptr<drv::DrvShader>&& shaderObj) {
     checkTrash();
-    trash->resources.push_back(std::move(shaderObj));
+    trashBin->resources.push_back(std::move(shaderObj));
+}
+
+void Garbage::releaseTrash(std::unique_ptr<Trash>&& trash) {
+    checkTrash();
+    trashBin->resources.push_back(std::move(trash));
 }
 
 FrameId Garbage::getFrameId() const {
@@ -92,23 +97,23 @@ FrameId Garbage::getFrameId() const {
 }
 
 void Garbage::clear() {
-    if (!trash)
+    if (!trashBin)
         return;
-    for (auto& cmdBuffer : trash->cmdBuffersToReset)
+    for (auto& cmdBuffer : trashBin->cmdBuffersToReset)
         cmdBuffer.circulator->finished(std::move(cmdBuffer));
-    trash->cmdBuffersToReset.clear();
-    trash->events.clear();
-    while (!trash->resources.empty())
-        trash->resources.pop_front();
-    trash->~Trash();
-    getAllocator<Trash>().deallocate(trash, 1);
-    trash = nullptr;
+    trashBin->cmdBuffersToReset.clear();
+    trashBin->events.clear();
+    while (!trashBin->resources.empty())
+        trashBin->resources.pop_front();
+    trashBin->~TrashBin();
+    getAllocator<TrashBin>().deallocate(trashBin, 1);
+    trashBin = nullptr;
     allocatorData->clear();
-    trash = new (getAllocator<Trash>().allocate(1)) Trash(this);
+    trashBin = new (getAllocator<TrashBin>().allocate(1)) TrashBin(this);
 }
 
 void Garbage::close() noexcept {
-    if (!trash)
+    if (!trashBin)
         return;
     try {
         clear();
@@ -125,7 +130,7 @@ void Garbage::reset(FrameId _frameId) {
     if (allocatorData->memory.size() != memorySize && memorySize > 0) {
         allocatorData = std::make_unique<AllocatorData>(memorySize);
         if (memorySize)
-            trash = new (getAllocator<Trash>().allocate(1)) Trash(this);
+            trashBin = new (getAllocator<TrashBin>().allocate(1)) TrashBin(this);
     }
     frameId = _frameId;
 }

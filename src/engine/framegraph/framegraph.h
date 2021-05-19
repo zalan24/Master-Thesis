@@ -179,6 +179,8 @@ class FrameGraph
 
         void submit(QueueId queueId, ExecutionPackage::CommandBufferPackage&& submission);
 
+        FrameId getFrameId() const {return frameId;}
+
      private:
         NodeHandle();
         NodeHandle(FrameGraph* frameGraph, FrameGraph::NodeId node, Stage stage, FrameId frameId);

@@ -189,8 +189,8 @@ VulkanWindow::WindowObject::WindowObject(int _width, int _height, const std::str
 
 void VulkanWindow::framebuffer_resize_callback(GLFWwindow* window, int width, int height) {
     VulkanWindow* instance = static_cast<VulkanWindow*>(glfwGetWindowUserPointer(window));
-    instance->height = height;
     instance->width = width;
+    instance->height = height;
 }
 
 bool VulkanWindow::init(drv::InstancePtr instance) {
