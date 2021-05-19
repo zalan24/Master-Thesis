@@ -189,6 +189,7 @@ VulkanWindow::WindowObject::WindowObject(int _width, int _height, const std::str
 
 void VulkanWindow::framebuffer_resize_callback(GLFWwindow* window, int width, int height) {
     VulkanWindow* instance = static_cast<VulkanWindow*>(glfwGetWindowUserPointer(window));
+    std::unique_lock<std::mutex> lk(instance->resolutionMutex);
     instance->width = width;
     instance->height = height;
 }
@@ -302,12 +303,9 @@ bool VulkanWindow::shouldClose() {
     return glfwWindowShouldClose(window);
 }
 
-uint32_t VulkanWindow::getWidth() const {
-    return static_cast<uint32_t>(width);
-}
-
-uint32_t VulkanWindow::getHeight() const {
-    return static_cast<uint32_t>(height);
+drv::Extent2D VulkanWindow::getResolution() const {
+    std::unique_lock<std::mutex> lk(resolutionMutex);
+    return {static_cast<uint32_t>(width), static_cast<uint32_t>(height)};
 }
 
 // void VulkanWindow::getFramebufferSize(int& width, int& height) {

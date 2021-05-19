@@ -325,10 +325,10 @@ const Engine::QueueInfo& Engine::getQueues() const {
 Engine::AcquiredImageData Engine::acquiredSwapchainImage(
   FrameGraph::NodeHandle& acquiringNodeHandle) {
     Engine::AcquiredImageData ret;
-    if (window->getHeight() == 0 || window->getWidth() == 0)
+    drv::Extent2D windowExtent = window->getResolution();
+    if (windowExtent.width == 0 || windowExtent.height == 0)
         return ret;
-    if (window->getWidth() != swapchain.getCurrentWidth()
-        || window->getHeight() != swapchain.getCurrentHeight()) {
+    if (windowExtent != swapchain.getCurrentEXtent()) {
         recreateSwapchain();
     }
     // std::unique_lock<std::mutex> lk(swapchainMutex);

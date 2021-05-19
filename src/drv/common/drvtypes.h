@@ -864,6 +864,9 @@ struct Extent2D
     bool operator==(const Extent2D& rhs) const {
         return width == rhs.width && height == rhs.height;
     }
+    bool operator!=(const Extent2D& rhs) const {
+        return !(*this == rhs);
+    }
 };
 
 struct Rect2D

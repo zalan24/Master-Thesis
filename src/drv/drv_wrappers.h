@@ -591,8 +591,7 @@ class Swapchain : public NoCopy
     PresentResult present(QueuePtr queue, SwapchainPtr swapchain, const PresentInfo& info,
                           uint32_t imageIndex);
 
-    uint32_t getCurrentWidth() const { return currentWidth; }
-    uint32_t getCurrentHeight() const { return currentHeight; }
+    Extent2D getCurrentEXtent() const { return extent; }
 
     ImagePtr getAcquiredImage(uint32_t index) const;
 
@@ -603,8 +602,7 @@ class Swapchain : public NoCopy
     CreateInfo createInfo;
     LogicalDevicePtr device;
     SwapchainPtr ptr;
-    uint32_t currentWidth = 0;
-    uint32_t currentHeight = 0;
+    Extent2D extent;
     ImageCreateInfo::UsageType usages;
     SharingType sharingType;
     std::vector<ImagePtr> images;

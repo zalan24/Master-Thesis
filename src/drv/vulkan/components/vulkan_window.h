@@ -2,6 +2,7 @@
 
 #include <atomic>
 #include <memory>
+#include <mutex>
 #include <optional>
 #include <set>
 
@@ -45,8 +46,7 @@ class VulkanWindow final : public IWindow
 
     bool shouldClose() override;
     void pollEvents() override;
-    uint32_t getWidth() const override;
-    uint32_t getHeight() const override;
+    drv::Extent2D getResolution() const override;
 
     bool init(drv::InstancePtr instance) override;
     void close() override;
@@ -88,7 +88,7 @@ class VulkanWindow final : public IWindow
         VkSurfaceKHR surface;
         drv::InstancePtr instance;
     };
-   //  drv::IDriver* driver;
+    //  drv::IDriver* driver;
     int currentCursorMode;
     std::atomic<int> targetCursorMode;
     GLFWInit initer;
@@ -101,6 +101,8 @@ class VulkanWindow final : public IWindow
     std::set<int> pushedMouseButtons;
     int width = 0;
     int height = 0;
+
+    mutable std::mutex resolutionMutex;
 
     static void error_callback [[noreturn]] (int error, const char* description);
     static void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods);

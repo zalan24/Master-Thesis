@@ -1176,8 +1176,7 @@ SwapchainCreateInfo Swapchain::getSwapchainInfo(uint32_t width, uint32_t height,
 Swapchain::Swapchain(drv::PhysicalDevicePtr physicalDevice, LogicalDevicePtr _device,
                      IWindow* window, const CreateInfo& info)
   : createInfo(info), device(_device), ptr(get_null_ptr<SwapchainPtr>()) {
-    currentWidth = window->getWidth();
-    currentHeight = window->getHeight();
+    extent = window->getResolution();
     userFamilies.resize(info.userQueues.size());
     std::transform(info.userQueues.begin(), info.userQueues.end(), userFamilies.begin(),
                    [this](QueuePtr queue) { return drv::get_queue_family(device, queue); });
@@ -1185,9 +1184,9 @@ Swapchain::Swapchain(drv::PhysicalDevicePtr physicalDevice, LogicalDevicePtr _de
     userFamilies.erase(std::unique(userFamilies.begin(), userFamilies.end()), userFamilies.end());
     usages = info.usages;
     sharingType = info.sharingType;
-    if (currentWidth > 0 && currentHeight > 0) {
+    if (extent.width > 0 && extent.height > 0) {
         SwapchainCreateInfo swapchainInfo =
-          getSwapchainInfo(currentWidth, currentHeight, get_null_ptr<SwapchainPtr>());
+          getSwapchainInfo(extent.width, extent.height, get_null_ptr<SwapchainPtr>());
         ptr = create_swapchain(physicalDevice, device, window, &swapchainInfo);
         drv::drv_assert(!is_null_ptr(ptr), "Could not create Swapchain");
         uint32_t count = 0;
@@ -1201,14 +1200,13 @@ Swapchain::Swapchain(drv::PhysicalDevicePtr physicalDevice, LogicalDevicePtr _de
 
 Swapchain::OldSwapchinData Swapchain::recreate(drv::PhysicalDevicePtr physicalDevice,
                                                IWindow* window) {
-    currentWidth = window->getWidth();
-    currentHeight = window->getHeight();
+    extent = window->getResolution();
     OldSwapchinData ret(device, ptr, std::move(images));
     reset_ptr(ptr);
     images = {};
-    if (currentWidth > 0 && currentHeight > 0) {
+    if (extent.width > 0 && extent.height > 0) {
         SwapchainCreateInfo swapchainInfo =
-          getSwapchainInfo(currentWidth, currentHeight, ret.swapchain);
+          getSwapchainInfo(extent.width, extent.height, ret.swapchain);
         ptr = create_swapchain(physicalDevice, device, window, &swapchainInfo);
         drv::drv_assert(!is_null_ptr(ptr), "Could not create Swapchain");
         uint32_t count = 0;
@@ -1229,8 +1227,7 @@ void Swapchain::close() {
     if (!is_null_ptr(ptr)) {
         drv::drv_assert(destroy_swapchain(device, ptr), "Could not destroy Swapchain");
         reset_ptr(ptr);
-        currentWidth = 0;
-        currentHeight = 0;
+        extent = {0, 0};
     }
 }
 
@@ -1238,8 +1235,7 @@ Swapchain::Swapchain(Swapchain&& other) noexcept {
     createInfo = std::move(other.createInfo);
     device = std::move(other.device);
     ptr = std::move(other.ptr);
-    currentWidth = other.currentWidth;
-    currentHeight = other.currentHeight;
+    extent = other.extent;
     images = std::move(other.images);
     reset_ptr(other.ptr);
 }
@@ -1251,8 +1247,7 @@ Swapchain& Swapchain::operator=(Swapchain&& other) noexcept {
     createInfo = std::move(other.createInfo);
     device = std::move(other.device);
     ptr = std::move(other.ptr);
-    currentWidth = other.currentWidth;
-    currentHeight = other.currentHeight;
+    extent = other.extent;
     images = std::move(other.images);
     reset_ptr(other.ptr);
     return *this;

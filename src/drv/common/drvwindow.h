@@ -19,8 +19,7 @@ class IWindow
     virtual void pollEvents() = 0;
 
     // Size of the framebuffer
-    virtual uint32_t getWidth() const = 0;
-    virtual uint32_t getHeight() const = 0;
+    virtual drv::Extent2D getResolution() const = 0;
 
     virtual bool shouldClose() = 0;
 };
