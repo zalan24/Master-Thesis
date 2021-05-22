@@ -289,11 +289,8 @@ void Engine::recreateSwapchain() {
     std::unique_lock<std::mutex> lock(swapchainMutex);
     // images need to keep the same memory address
     drv::Swapchain::OldSwapchinData oldSwapchain = swapchain.recreate(physicalDevice, window);
-    garbageSystem.useGarbage([&](Garbage* trashBin) {
-        trashBin->releaseTrash(
-          std::make_unique<Garbage::TrashData<drv::Swapchain::OldSwapchinData>>(
-            std::move(oldSwapchain)));
-    });
+    garbageSystem.useGarbage(
+      [&](Garbage* trashBin) { trashBin->release(std::move(oldSwapchain)); });
     swapchainVersion++;
 }
 

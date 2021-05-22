@@ -5,9 +5,7 @@
 #include <drverror.h>
 
 Garbage::TrashBin::TrashBin(Garbage* garbage)
-  : cmdBuffersToReset(garbage->getAllocator<std::decay_t<decltype(cmdBuffersToReset[0])>>()),
-    events(garbage->getAllocator<std::decay_t<decltype(events[0])>>()),
-    resources(garbage->getAllocator<GeneralResource>()) {
+  : resources(garbage->getAllocator<GeneralResource>()) {
 }
 
 Garbage::AllocatorData::AllocatorData(size_t _memorySize) : memory(_memorySize), memoryTop(0) {
@@ -28,6 +26,33 @@ void Garbage::AllocatorData::clear() {
     allocations.clear();
 #endif
     drv::drv_assert(allocCount == 0, "Something was not deallocated from garbage memory");
+}
+
+Garbage::TrashPtr::TrashPtr(Trash* _trash) : trash(_trash) {
+}
+
+Garbage::TrashPtr::TrashPtr(TrashPtr&& other) : trash(other.trash) {
+    other.trash = nullptr;
+}
+
+Garbage::TrashPtr& Garbage::TrashPtr::operator=(TrashPtr&& other) {
+    if (this == &other)
+        return *this;
+    close();
+    trash = other.trash;
+    other.trash = nullptr;
+    return *this;
+}
+
+Garbage::TrashPtr::~TrashPtr() {
+    close();
+}
+
+void Garbage::TrashPtr::close() {
+    if (trash) {
+        trash->~Trash();
+        trash = nullptr;
+    }
 }
 
 Garbage::Garbage(size_t _memorySize, FrameId _frameId)
@@ -67,14 +92,38 @@ void Garbage::checkTrash() const {
 #endif
 }
 
+Garbage::ResetCommandBufferHandle::ResetCommandBufferHandle(ResetCommandBufferHandle&& other)
+  : handle(std::move(other.handle)) {
+    other.handle = {};
+}
+
+Garbage::ResetCommandBufferHandle& Garbage::ResetCommandBufferHandle::operator=(
+  ResetCommandBufferHandle&& other) {
+    if (this == &other)
+        return *this;
+    close();
+    handle = std::move(other.handle);
+    other.handle = {};
+    return *this;
+}
+
+void Garbage::ResetCommandBufferHandle::close() {
+    if (handle)
+        handle.circulator->finished(std::move(handle));
+}
+
+Garbage::ResetCommandBufferHandle::~ResetCommandBufferHandle() {
+    close();
+}
+
 void Garbage::resetCommandBuffer(drv::CommandBufferCirculator::CommandBufferHandle&& cmdBuffer) {
     checkTrash();
-    trashBin->cmdBuffersToReset.push_back(std::move(cmdBuffer));
+    trashBin->resources.push_back(ResetCommandBufferHandle(std::move(cmdBuffer)));
 }
 
 void Garbage::releaseEvent(EventPool::EventHandle&& event) {
     checkTrash();
-    trashBin->events.push_back(std::move(event));
+    trashBin->resources.push_back(std::move(event));
 }
 
 void Garbage::releaseImageView(drv::ImageView&& view) {
@@ -99,10 +148,6 @@ FrameId Garbage::getFrameId() const {
 void Garbage::clear() {
     if (!trashBin)
         return;
-    for (auto& cmdBuffer : trashBin->cmdBuffersToReset)
-        cmdBuffer.circulator->finished(std::move(cmdBuffer));
-    trashBin->cmdBuffersToReset.clear();
-    trashBin->events.clear();
     while (!trashBin->resources.empty())
         trashBin->resources.pop_front();
     trashBin->~TrashBin();

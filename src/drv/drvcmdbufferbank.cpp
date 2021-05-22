@@ -88,7 +88,7 @@ void CommandBufferCirculator::finished(CommandBufferHandle&& handle) {
     //     drv::drv_assert(itr->state.compare_exchange_strong(expected, CommandBufferState::READY),
     //                     "Released command buffer was in the wrong state");
     // }
-    acquiredStates.fetch_sub(1);
+    drv::drv_assert(acquiredStates.fetch_sub(1) != 0);
 }
 
 // void CommandBufferCirculator::startExecution(CommandBufferHandle& handle) {

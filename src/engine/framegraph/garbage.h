@@ -74,6 +74,7 @@ class Garbage
     void releaseImageView(drv::ImageView&& view);
     void releaseShaderObj(std::unique_ptr<drv::DrvShader>&& shaderObj);
     void releaseTrash(std::unique_ptr<Trash>&& trash);
+
     FrameId getFrameId() const;
 
     struct AllocatorData
@@ -106,7 +107,7 @@ class Garbage
         mutable std::mutex mutex;
 
         template <typename T>
-        T* allocate(size_t n) {
+        T* allocate(size_t n, bool willDeallocate) {
 #ifdef DEBUG
             if (memory.size() == 0) {
                 LOG_F(ERROR,
@@ -131,7 +132,7 @@ class Garbage
                     memoryTop += requiredAlign + requiredBytes;
                 }
             }
-            if (ret == nullptr) {
+            if (ret == nullptr && willDeallocate) {
                 // TODO;
                 // Why the hell is aligned_alloc undeclared???
                 ret = reinterpret_cast<T*>(
@@ -145,7 +146,7 @@ class Garbage
                 //     ptr += (sizeof(T) / sizeof(Byte)) - offset;
                 // ret = reinterpret_cast<T*>(ptr);
             }
-            if (ret != nullptr) {
+            if (ret != nullptr && willDeallocate) {
                 allocCount++;
 #if FRAME_MEM_SANITIZATION > 0
                 allocations[reinterpret_cast<const void*>(ret)].typeName = typeid(T).name();
@@ -156,6 +157,11 @@ class Garbage
 #endif
             }
             return ret;
+        }
+
+        template <typename T>
+        T* allocate(size_t n) {
+            return allocate<T>(n, true);
         }
 
         template <typename T>
@@ -198,10 +204,12 @@ class Garbage
         T* allocate(size_t n) {
             if (!data)
                 return nullptr;
-            T* ret = data->allocate<T>(n);
-            // for (size_t i = 0; i < n; ++i)
-            //     new (ret + i) T();
-            return ret;
+            return data->allocate<T>(n);
+        }
+        T* allocate(size_t n, bool willDeallocate) {
+            if (!data)
+                return nullptr;
+            return data->allocate<T>(n, willDeallocate);
         }
         void deallocate(T* p, size_t n) {
             if (p == nullptr)
@@ -240,10 +248,67 @@ class Garbage
     template <typename T>
     using Stack = std::stack<T, Deque<T>>;
 
-    using GeneralResource =
-      std::variant<drv::ImageView, std::unique_ptr<drv::DrvShader>, std::unique_ptr<Trash>>;
+ private:
+    class TrashPtr
+    {
+     public:
+        TrashPtr(Trash* trash);
+        TrashPtr(const TrashPtr&) = delete;
+        TrashPtr& operator=(const TrashPtr&) = delete;
+        TrashPtr(TrashPtr&& other);
+        TrashPtr& operator=(TrashPtr&& other);
+        ~TrashPtr();
+        void close();
+
+     private:
+        Trash* trash = nullptr;
+    };
+
+    // template <typename T>
+    // class TrashDataAlloc final : public Trash
+    // {
+    //  public:
+    //     explicit TrashDataAlloc(T&& _data, Allocator<T> _allocator) : data(std::move(_data)), allocator(_allocator) {}
+    //     ~TrashDataAlloc() override {
+    //         allocator->deallocate()
+    //     }
+
+    //  private:
+    //     T data;
+    //     Allocator<T> allocator;
+    // };
+
+ public:
+    template <typename T>
+    void release(T&& data) {
+        TrashData<T>* trash = getAllocator<TrashData<T>>().allocate(1, false);
+        if (trash) {
+            new (trash) TrashData<T>(std::move(data));
+            checkTrash();
+            trashBin->resources.push_back(TrashPtr(trash));
+        }
+        else
+            releaseTrash(std::make_unique<TrashData<T>>(std::move(data)));
+    }
 
  private:
+    struct ResetCommandBufferHandle
+    {
+        drv::CommandBufferCirculator::CommandBufferHandle handle;
+        ResetCommandBufferHandle(drv::CommandBufferCirculator::CommandBufferHandle&& _handle)
+          : handle(std::move(_handle)) {}
+        ~ResetCommandBufferHandle();
+        ResetCommandBufferHandle(const ResetCommandBufferHandle&) = delete;
+        ResetCommandBufferHandle& operator=(const ResetCommandBufferHandle&) = delete;
+        ResetCommandBufferHandle(ResetCommandBufferHandle&& other);
+        ResetCommandBufferHandle& operator=(ResetCommandBufferHandle&& other);
+        void close();
+    };
+
+    using GeneralResource =
+      std::variant<drv::ImageView, std::unique_ptr<drv::DrvShader>, std::unique_ptr<Trash>,
+                   ResetCommandBufferHandle, EventPool::EventHandle, TrashPtr>;
+
     FrameId frameId;
 
     size_t memorySize;
@@ -252,8 +317,8 @@ class Garbage
     struct TrashBin
     {
         TrashBin(Garbage* garbage);
-        Vector<drv::CommandBufferCirculator::CommandBufferHandle> cmdBuffersToReset;
-        Vector<EventPool::EventHandle> events;
+        // Vector<drv::CommandBufferCirculator::CommandBufferHandle> cmdBuffersToReset;
+        // Vector<EventPool::EventHandle> events;
         Deque<GeneralResource> resources;
     };
     TrashBin* trashBin = nullptr;
