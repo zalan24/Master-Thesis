@@ -182,7 +182,7 @@ Engine::Engine(int argc, char* argv[], const Config& cfg,
     swapchain(physicalDevice, device, window,
               get_swapchain_create_info(config, presentQueue.queue, renderQueue.queue)),
     eventPool(device),
-    syncBlock(device, safe_cast<uint32_t>(config.maxFramesInFlight)),
+    syncBlock(device, safe_cast<uint32_t>(config.maxFramesInFlight)),  // TODO why just 2?
     resourceMgr(std::move(resource_infos)),
     garbageSystem(safe_cast<size_t>(config.frameMemorySizeKb) << 10),
     // maxFramesInFlight + 1 for readback stage
@@ -263,6 +263,7 @@ void Engine::simulationLoop() {
     loguru::set_thread_name("simulate");
     FrameId simulationFrame = 0;
     while (!frameGraph.isStopped()) {
+        mainKernelCv.notify_one();
         if (auto startNode =
               frameGraph.acquireNode(frameGraph.getStageStartNode(FrameGraph::SIMULATION_STAGE),
                                      FrameGraph::SIMULATION_STAGE, simulationFrame);
@@ -285,6 +286,7 @@ void Engine::simulationLoop() {
 }
 
 void Engine::recreateSwapchain() {
+    std::unique_lock<std::mutex> lock(swapchainMutex);
     // images need to keep the same memory address
     drv::Swapchain::OldSwapchinData oldSwapchain = swapchain.recreate(physicalDevice, window);
     garbageSystem.useGarbage([&](Garbage* trashBin) {
@@ -295,26 +297,25 @@ void Engine::recreateSwapchain() {
     swapchainVersion++;
 }
 
-void Engine::present(drv::SwapchainPtr swapchainPtr, FrameId, uint32_t imageIndex,
+void Engine::present(drv::SwapchainPtr swapchainPtr, FrameId frameId, uint32_t imageIndex,
                      uint32_t semaphoreIndex) {
     if (drv::is_null_ptr(swapchainPtr))
         return;
+    if (firstPresentableFrame > frameId)
+        LOG_F(WARNING,
+              "Presenting to an invalid swapchain. Wait on the semaphore to fix this warning");
+    // if (firstPresentableFrame <= frameId) {
     drv::PresentInfo info;
     info.semaphoreCount = 1;
     drv::SemaphorePtr semaphore = syncBlock.renderFinishedSemaphores[semaphoreIndex];
     info.waitSemaphores = &semaphore;
+    std::unique_lock<std::mutex> lock(swapchainMutex);
     drv::PresentResult result =
       swapchain.present(presentQueue.queue, swapchainPtr, info, imageIndex);
     // TODO;  // what's gonna wait on this?
     drv::drv_assert(result != drv::PresentResult::ERROR, "Present error");
-    // Present should still be called for the semaphores
-    // if (frame < firstPresentableFrame)
-    //     return;
-    // if (  //result == drv::PresentResult::RECREATE_ADVISED ||
-    //   result == drv::PresentResult::RECREATE_REQUIRED) {
-    //     std::unique_lock<std::mutex> lk(swapchainMutex);
-    //     firstPresentableFrame = currentAcquiredFrame + 1;
-    //     recreateSwapchain();
+    // }
+    // else {
     // }
 }
 
@@ -326,60 +327,53 @@ Engine::AcquiredImageData Engine::acquiredSwapchainImage(
   FrameGraph::NodeHandle& acquiringNodeHandle) {
     Engine::AcquiredImageData ret;
     drv::Extent2D windowExtent = window->getResolution();
-    if (windowExtent.width == 0 || windowExtent.height == 0)
-        return ret;
-    if (windowExtent != swapchain.getCurrentEXtent()) {
-        recreateSwapchain();
+    if (windowExtent.width != 0 && windowExtent.height != 0
+        && windowExtent == swapchain.getCurrentEXtent()) {
+        uint32_t imageIndex = drv::Swapchain::INVALID_INDEX;
+        std::unique_lock<std::mutex> lock(swapchainMutex);
+        // TODO latency slop -> acquiringNodeHandle
+        drv::AcquireResult result = swapchain.acquire(
+          imageIndex, syncBlock.imageAvailableSemaphores[acquireImageSemaphoreId]);
+        // ---
+        switch (result) {
+            case drv::AcquireResult::ERROR:
+                drv::drv_assert(false, "Could not acquire swapchain image");
+                break;
+            case drv::AcquireResult::ERROR_RECREATE_REQUIRED:
+                swapchainState = SwapchainState::INVALID;
+                break;
+            case drv::AcquireResult::TIME_OUT:
+                break;
+            case drv::AcquireResult::SUCCESS_RECREATE_ADVISED:
+            case drv::AcquireResult::SUCCESS_NOT_READY:
+            case drv::AcquireResult::SUCCESS:
+                if (imageIndex != drv::Swapchain::INVALID_INDEX) {
+                    ret.image = swapchain.getAcquiredImage(imageIndex);
+                    ret.swapchain = swapchain;
+                    ret.semaphoreIndex = acquireImageSemaphoreId;
+                    ret.imageAvailableSemaphore =
+                      syncBlock.imageAvailableSemaphores[acquireImageSemaphoreId];
+                    ret.renderFinishedSemaphore =
+                      syncBlock.renderFinishedSemaphores[acquireImageSemaphoreId];
+                    ret.imageIndex = imageIndex;
+                    drv::TextureInfo info = drv::get_texture_info(ret.image);
+                    drv::drv_assert(info.extent.depth == 1);
+                    ret.extent = {info.extent.width, info.extent.height};
+                    ret.version = swapchainVersion;
+                    ret.imageCount = swapchain.getImageCount();
+                    ret.images = swapchain.getImages();
+                    acquireImageSemaphoreId =
+                      (acquireImageSemaphoreId + 1) % syncBlock.imageAvailableSemaphores.size();
+                }
+                break;
+        }
+        if (result == drv::AcquireResult::SUCCESS_RECREATE_ADVISED)
+            swapchainState = SwapchainState::OKAY;
+        if (result == drv::AcquireResult::SUCCESS)
+            swapchainState = SwapchainState::OK;
     }
-    // std::unique_lock<std::mutex> lk(swapchainMutex);
-    // currentAcquiredFrame = acquiringNodeHandle.getFrameId();
-    uint32_t imageIndex = drv::Swapchain::INVALID_INDEX;
-    UNUSED(acquiringNodeHandle);
-    // TODO latency slop -> acquiringNodeHandle
-    drv::AcquireResult result =
-      swapchain.acquire(imageIndex, syncBlock.imageAvailableSemaphores[acquireImageSemaphoreId]);
-    // ---
-    if (result == drv::AcquireResult::ERROR_RECREATE_REQUIRED) {
-        recreateSwapchain();
-        result = swapchain.acquire(imageIndex,
-                                   syncBlock.imageAvailableSemaphores[acquireImageSemaphoreId]);
-    }
-    switch (result) {
-        case drv::AcquireResult::ERROR:
-            drv::drv_assert(false, "Could not acquire swapchain image");
-            break;
-        case drv::AcquireResult::ERROR_RECREATE_REQUIRED:
-        case drv::AcquireResult::TIME_OUT:
-            break;
-        case drv::AcquireResult::SUCCESS_RECREATE_ADVISED:
-        case drv::AcquireResult::SUCCESS_NOT_READY:
-        case drv::AcquireResult::SUCCESS:
-            if (imageIndex != drv::Swapchain::INVALID_INDEX) {
-                ret.image = swapchain.getAcquiredImage(imageIndex);
-                ret.swapchain = swapchain;
-                ret.semaphoreIndex = acquireImageSemaphoreId;
-                ret.imageAvailableSemaphore =
-                  syncBlock.imageAvailableSemaphores[acquireImageSemaphoreId];
-                ret.renderFinishedSemaphore =
-                  syncBlock.renderFinishedSemaphores[acquireImageSemaphoreId];
-                ret.imageIndex = imageIndex;
-                drv::TextureInfo info = drv::get_texture_info(ret.image);
-                drv::drv_assert(info.extent.depth == 1);
-                ret.extent = {info.extent.width, info.extent.height};
-                ret.version = swapchainVersion;
-                ret.imageCount = swapchain.getImageCount();
-                ret.images = swapchain.getImages();
-                acquireImageSemaphoreId =
-                  (acquireImageSemaphoreId + 1) % syncBlock.imageAvailableSemaphores.size();
-            }
-            break;
-    }
-    if (result == drv::AcquireResult::ERROR_RECREATE_REQUIRED
-        || result == drv::AcquireResult::SUCCESS_RECREATE_ADVISED) {
-        recreateSwapchain();
-        result = swapchain.acquire(imageIndex,
-                                   syncBlock.imageAvailableSemaphores[acquireImageSemaphoreId]);
-    }
+    if (drv::is_null_ptr(ret.swapchain))
+        firstPresentableFrame = acquiringNodeHandle.getFrameId() + 1;
     return ret;
 }
 
@@ -404,6 +398,7 @@ void Engine::recordCommandsLoop() {
     loguru::set_thread_name("record");
     FrameId recordFrame = 0;
     while (!frameGraph.isStopped()) {
+        mainKernelCv.notify_one();
         if (!frameGraph.startStage(FrameGraph::RECORD_STAGE, recordFrame))
             break;
         AcquiredImageData swapchainData = record(recordFrame);
@@ -622,19 +617,8 @@ void Engine::gameLoop() {
 
         IWindow* w = window;
         while (!w->shouldClose()) {
-            // TODO this sleep could be replaced with a sync with simulation
-            // only need this data for input sampling
-            std::this_thread::sleep_for(std::chrono::milliseconds(4));
-            static_cast<IWindow*>(window)->pollEvents();
+            mainLoopKernel();
         }
-        // {
-        // std::unique_lock<std::mutex> simLk(state.simulationMutex);
-        // std::unique_lock<std::mutex> recLk(state.recordMutex);
-        // state.quit = true;
-        // state.simulationCV.notify_one();
-        // state.recordCV.notify_one();
-        // frameGraph.stopExecution();
-        // }
         frameGraph.stopExecution(false);
         simulationThread.join();
         beforeDrawThread.join();
@@ -664,5 +648,23 @@ void Engine::gameLoop() {
         executeThread.join();
         readbackThread.join();
         throw;
+    }
+}
+
+void Engine::mainLoopKernel() {
+    std::unique_lock<std::mutex> lock(mainKernelMutex);
+    mainKernelCv.wait_for(lock, std::chrono::milliseconds(4));
+    static_cast<IWindow*>(window)->pollEvents();
+
+    if (garbageSystem.getStartedFrame() != INVALID_FRAME) {
+        drv::Extent2D windowExtent = window->getResolution();
+        if (windowExtent.width != 0 && windowExtent.height != 0) {
+            if (windowExtent != swapchain.getCurrentEXtent()
+                || (swapchainState != SwapchainState::OK
+                    && swapchainState != SwapchainState::UNKNOWN)) {
+                recreateSwapchain();
+                swapchainState = SwapchainState::UNKNOWN;
+            }
+        }
     }
 }

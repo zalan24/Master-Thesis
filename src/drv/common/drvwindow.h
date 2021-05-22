@@ -18,6 +18,8 @@ class IWindow
     virtual void getWindowSize(unsigned int& width, unsigned int& height) const = 0;
     virtual void pollEvents() = 0;
 
+    virtual void queryCurrentResolution(drv::PhysicalDevicePtr physicalDevice) = 0;
+
     // Size of the framebuffer
     virtual drv::Extent2D getResolution() const = 0;
 

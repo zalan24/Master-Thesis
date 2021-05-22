@@ -34,6 +34,8 @@ class GarbageSystem
         return useGarbage([](Garbage* garbage) { return garbage->getAllocator<T>(); });
     }
 
+    FrameId getStartedFrame() const { return startedFrame; }
+
  private:
     size_t memorySize;
     FrameId startedFrame = INVALID_FRAME;

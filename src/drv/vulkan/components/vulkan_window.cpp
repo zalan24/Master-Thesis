@@ -5,6 +5,7 @@
 #include <stdexcept>
 #include <string>
 
+#include <logger.h>
 #include <util.hpp>
 
 #ifdef _WIN32
@@ -192,6 +193,11 @@ void VulkanWindow::framebuffer_resize_callback(GLFWwindow* window, int width, in
     std::unique_lock<std::mutex> lk(instance->resolutionMutex);
     instance->width = width;
     instance->height = height;
+#ifdef DEBUG
+    int w, h;
+    glfwGetWindowSize(window, &w, &h);
+    drv::drv_assert(h == height && w == width, "Framebuffer size callback gave incorrect values");
+#endif
 }
 
 bool VulkanWindow::init(drv::InstancePtr instance) {
@@ -251,12 +257,21 @@ VulkanWindow::Surface::Surface(GLFWwindow* _window, drv::InstancePtr _instance)
                     "Could not create window surface");
 }
 
+void VulkanWindow::Surface::getCapabilities(VkPhysicalDevice physicalDevice,
+                                            VkSurfaceCapabilitiesKHR& capabilities) const {
+    drv::drv_assert(
+      vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physicalDevice, surface, &capabilities)
+        == VK_SUCCESS,
+      "Could not retrieve surface capabilities");
+}
+
 VulkanWindow::Surface::~Surface() {
     close();
 }
 
 VulkanWindow::VulkanWindow(IDriver* _driver, Input* _input, InputManager* _inputManager,
-                           unsigned int _width, unsigned int _height, const std::string& title)
+                           unsigned int _width, unsigned int _height,
+                           const std::string& title)
   :  //driver(_driver),
     initer(),
     input(_input),
@@ -352,4 +367,11 @@ SwapChainSupportDetails drv_vulkan::get_surface_support(drv::PhysicalDevicePtr p
                                                         IWindow* window) {
     // this could cache the support data
     return query_swap_chain_support(physicalDevice, get_surface(window));
+}
+
+void VulkanWindow::queryCurrentResolution(drv::PhysicalDevicePtr physicalDevice) {
+    VkSurfaceCapabilitiesKHR capabilities;
+    surface.getCapabilities(convertPhysicalDevice(physicalDevice), capabilities);
+    width = int(capabilities.currentExtent.width);
+    height = int(capabilities.currentExtent.height);
 }

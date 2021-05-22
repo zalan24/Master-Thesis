@@ -189,17 +189,28 @@ class Engine
 
     uint32_t acquireImageSemaphoreId = 0;
     SwapchaingVersion swapchainVersion = 0;
-    // FrameId firstPresentableFrame = 0;
+    FrameId firstPresentableFrame = 0;
     // FrameId currentAcquiredFrame = INVALID_FRAME;
+    enum class SwapchainState
+    {
+        UNKNOWN,
+        OK,
+        OKAY,
+        INVALID
+    };
+    std::atomic<SwapchainState> swapchainState = SwapchainState::UNKNOWN;
 
     mutable std::mutex executionMutex;
-    // mutable std::mutex swapchainMutex;
+    mutable std::mutex swapchainMutex;
+    mutable std::mutex mainKernelMutex;
+    std::condition_variable mainKernelCv;
 
     void simulationLoop();
     void beforeDrawLoop();
     void recordCommandsLoop();
     void executeCommandsLoop();
     void readbackLoop();
+    void mainLoopKernel();
     bool execute(ExecutionPackage&& package);
     void present(drv::SwapchainPtr swapchain, FrameId frame, uint32_t imageIndex,
                  uint32_t semaphoreIndex);

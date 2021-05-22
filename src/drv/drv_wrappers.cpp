@@ -1176,6 +1176,7 @@ SwapchainCreateInfo Swapchain::getSwapchainInfo(uint32_t width, uint32_t height,
 Swapchain::Swapchain(drv::PhysicalDevicePtr physicalDevice, LogicalDevicePtr _device,
                      IWindow* window, const CreateInfo& info)
   : createInfo(info), device(_device), ptr(get_null_ptr<SwapchainPtr>()) {
+    window->queryCurrentResolution(physicalDevice);
     extent = window->getResolution();
     userFamilies.resize(info.userQueues.size());
     std::transform(info.userQueues.begin(), info.userQueues.end(), userFamilies.begin(),
@@ -1200,6 +1201,7 @@ Swapchain::Swapchain(drv::PhysicalDevicePtr physicalDevice, LogicalDevicePtr _de
 
 Swapchain::OldSwapchinData Swapchain::recreate(drv::PhysicalDevicePtr physicalDevice,
                                                IWindow* window) {
+    window->queryCurrentResolution(physicalDevice);
     extent = window->getResolution();
     OldSwapchinData ret(device, ptr, std::move(images));
     reset_ptr(ptr);

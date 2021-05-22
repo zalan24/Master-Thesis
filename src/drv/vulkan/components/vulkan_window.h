@@ -48,6 +48,8 @@ class VulkanWindow final : public IWindow
     void pollEvents() override;
     drv::Extent2D getResolution() const override;
 
+    void queryCurrentResolution(drv::PhysicalDevicePtr physicalDevice) override;
+
     bool init(drv::InstancePtr instance) override;
     void close() override;
 
@@ -87,6 +89,8 @@ class VulkanWindow final : public IWindow
         void close();
         VkSurfaceKHR surface;
         drv::InstancePtr instance;
+        void getCapabilities(VkPhysicalDevice physicalDevice,
+                             VkSurfaceCapabilitiesKHR& capabilities) const;
     };
     //  drv::IDriver* driver;
     int currentCursorMode;
