@@ -716,14 +716,14 @@ ImageSet::ImageSet(PhysicalDevicePtr _physicalDevice, LogicalDevicePtr _device, 
         *mem = allocate_memory(device, &allocInfo);
         drv_assert(*mem != nullptr, "Could not allocate memory");
         for (unsigned int i = 0; i < offsets.size(); ++i)
-            drv_assert(bind_buffer_memory(device, images[imageInd + i], *mem, offsets[i]),
+            drv_assert(bind_image_memory(device, images[imageInd + i], *mem, offsets[i]),
                        "Could not bind buffer");
     };
     for (unsigned int i = 0; i < count; ++i) {
         ImagePtr image = create_image(device, &infos[i]);
         drv_assert(!is_null_ptr(image), "Could not create buffer");
         MemoryRequirements req;
-        drv_assert(get_buffer_memory_requirements(device, image, req),
+        drv_assert(get_image_memory_requirements(device, image, req),
                    "Could not get memory requirements");
         drv_assert((req.memoryTypeBits & defaultMask) != 0, "No memory type is acceptable");
         if ((mask & req.memoryTypeBits) == 0) {
@@ -749,7 +749,6 @@ ImageSet::~ImageSet() {
 }
 
 void ImageSet::close() {
-    CHECK_THREAD;
     // already deleted
     if (is_null_ptr(device))
         return;
@@ -788,7 +787,6 @@ void ImageSet::get_images(drv::ImagePtr* _images) {
 }
 
 void ImageSet::get_images(drv::ImagePtr* _images, unsigned int from, unsigned int count) {
-    CHECK_THREAD;
     for (unsigned int i = 0; i < count; ++i)
         _images[i] = images[i + from];
 }

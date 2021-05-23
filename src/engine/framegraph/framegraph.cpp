@@ -648,7 +648,7 @@ FrameGraph::NodeHandle FrameGraph::tryAcquireNode(NodeId nodeId, Stage stage, Fr
               std::chrono::high_resolution_clock::now() - start;
             if (duration >= maxDuration
                 || !tryWaitForNode(dep.srcNode, dep.srcStage, frame - dep.offset,
-                                   (maxDuration - duration).count()))
+                                   uint64_t((maxDuration - duration).count())))
                 return NodeHandle();
         }
     }

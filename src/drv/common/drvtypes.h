@@ -685,7 +685,7 @@ struct ImageCreateInfo
     {
         TILING_OPTIMAL = 0,
         TILING_LINEAR = 1
-    } tiling;
+    } tiling = TILING_OPTIMAL;
     using UsageType = unsigned int;
     enum UsageFlagBits : UsageType
     {
@@ -705,7 +705,7 @@ struct ImageCreateInfo
         //     VK_IMAGE_USAGE_FRAGMENT_SHADING_RATE_ATTACHMENT_BIT_KHR = VK_IMAGE_USAGE_SHADING_RATE_IMAGE_BIT_NV,
     };
     UsageType usage;
-    SharingType sharingType;
+    SharingType sharingType = SharingType::EXCLUSIVE;
     unsigned int familyCount = 0;
     QueueFamilyPtr* families = nullptr;
     ImageLayout initialLayout = ImageLayout::UNDEFINED;
@@ -864,9 +864,7 @@ struct Extent2D
     bool operator==(const Extent2D& rhs) const {
         return width == rhs.width && height == rhs.height;
     }
-    bool operator!=(const Extent2D& rhs) const {
-        return !(*this == rhs);
-    }
+    bool operator!=(const Extent2D& rhs) const { return !(*this == rhs); }
 };
 
 struct Rect2D

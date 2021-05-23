@@ -295,7 +295,7 @@ class BufferSet : private Exclusive
     void close();
 };
 
-class ImageSet : private Exclusive
+class ImageSet
 {
  public:
     using ImageInfo = ImageCreateInfo;
@@ -336,7 +336,7 @@ class ImageSet : private Exclusive
              const ImageInfo* infos, const MemorySelector* selector);
     ~ImageSet();
 
-ImageSet() = default;
+    ImageSet() = default;
     ImageSet(const ImageSet& other) = delete;
     ImageSet(ImageSet&& other);
     ImageSet& operator=(const ImageSet& other) = delete;
@@ -344,6 +344,9 @@ ImageSet() = default;
 
     void get_images(drv::ImagePtr* buffers);
     void get_images(drv::ImagePtr* buffers, unsigned int from, unsigned int count);
+
+    drv::ImagePtr getImage() const { return images[0]; }
+    drv::ImagePtr getImage(uint32_t index) const { return images[index]; }
 
  private:
     using MaskType = uint32_t;

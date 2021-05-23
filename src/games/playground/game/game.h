@@ -8,6 +8,7 @@
 #include <engine.h>
 #include <shaderregistry.h>
 
+#include <shader_inputatchm.h>
 #include <shader_test.h>
 
 class Game final : public Game3D
@@ -29,45 +30,62 @@ class Game final : public Game3D
  private:
     ShaderHeaderRegistry shaderHeaders;
     ShaderObjRegistry shaderObjects;
+    drv::DrvShader::DynamicStates dynamicStates;
     shader_global_descriptor shaderGlobalDesc;
     shader_test_descriptor shaderTestDesc;
-    drv::DrvShader::DynamicStates dynamicStates;
     shader_test testShader;
+    shader_inputatchm_descriptor shaderInputAttachmentDesc;
+    shader_inputatchm inputAttachmentShader;
 
     std::unique_ptr<drv::RenderPass> testRenderPass;
-    drv::AttachmentId testColorAttachment;
-    drv::SubpassId testSubpass;
+    drv::AttachmentId swapchainColorAttachment;
+    drv::AttachmentId colorTagretColorAttachment;
+    drv::SubpassId colorSubpass;
+    drv::SubpassId swapchainSubpass;
     FrameGraph::NodeId testDraw;
     std::vector<res::ImageView> imageViews;
-    std::vector<drv::RenderPass::AttachmentData> swapchainAttachments;
+    std::vector<std::vector<drv::RenderPass::AttachmentData>> attachments;
     std::vector<res::Framebuffer> swapchainFrameBuffers;
     res::ImageSet renderTarget;
+    res::ImageView renderTargetView;
 
     struct RecordData
     {
         drv::LogicalDevicePtr device;
         drv::ImagePtr targetImage;
         drv::ImageViewPtr targetView;
-        drv::AttachmentId testColorAttachment;
+        drv::ImagePtr renderTarget;
+        drv::ImageViewPtr renderTargetView;
+        drv::AttachmentId swapchainColorAttachment;
+        drv::AttachmentId colorTagretColorAttachment;
         uint32_t variant;
         drv::Extent2D extent;
         drv::QueuePtr renderQueue;
         drv::QueuePtr presentQueue;
         drv::FramebufferPtr frameBuffer;
         drv::RenderPass* renderPass;
-        drv::SubpassId testSubpass;
+        drv::SubpassId colorSubpass;
+        drv::SubpassId swapchainSubpass;
         shader_test* testShader;
         shader_test_descriptor* shaderTestDesc;
         shader_global_descriptor* shaderGlobalDesc;
+        shader_inputatchm* inputShader;
+        shader_inputatchm_descriptor* shaderInputAttachmentDesc;
         bool operator==(const RecordData& rhs) const {
             return device == rhs.device && targetImage == rhs.targetImage
-                   && targetView == rhs.targetView && testColorAttachment == rhs.testColorAttachment
+                   && targetView == rhs.targetView && renderTarget == rhs.renderTarget
+                   && renderTargetView == rhs.renderTargetView
+                   && swapchainColorAttachment == rhs.swapchainColorAttachment
+                   && colorTagretColorAttachment == rhs.colorTagretColorAttachment
                    && variant == rhs.variant && extent == rhs.extent
                    && renderQueue == rhs.renderQueue && presentQueue == rhs.presentQueue
                    && frameBuffer == rhs.frameBuffer && renderPass == rhs.renderPass
-                   && testSubpass == rhs.testSubpass && testShader == rhs.testShader
-                   && shaderTestDesc == rhs.shaderTestDesc
-                   && shaderGlobalDesc == rhs.shaderGlobalDesc;
+                   && colorSubpass == rhs.colorSubpass && swapchainSubpass == rhs.swapchainSubpass
+                   && testShader == rhs.testShader && shaderTestDesc == rhs.shaderTestDesc
+                   && shaderGlobalDesc == rhs.shaderGlobalDesc
+                   && inputShader == rhs.inputShader
+                   && shaderInputAttachmentDesc == rhs.shaderInputAttachmentDesc
+                   ;
         }
         bool operator!=(const RecordData& rhs) const { return !(*this == rhs); }
     };

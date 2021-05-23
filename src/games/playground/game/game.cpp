@@ -13,11 +13,13 @@ Game::Game(int argc, char* argv[], const Config& config,
   : Game3D(argc, argv, config, trackingConfig, shaderbinFile, resource_infos, args),
     shaderHeaders(getDevice()),
     shaderObjects(getDevice(), *getShaderBin(), shaderHeaders),
-    shaderGlobalDesc(getDevice(), &shaderHeaders.global),
-    shaderTestDesc(getDevice(), &shaderHeaders.test),
     dynamicStates(drv::DrvShader::DynamicStates::FIXED_SCISSOR,
                   drv::DrvShader::DynamicStates::FIXED_VIEWPORT),
-    testShader(getDevice(), &shaderObjects.test, dynamicStates) {
+    shaderGlobalDesc(getDevice(), &shaderHeaders.global),
+    shaderTestDesc(getDevice(), &shaderHeaders.test),
+    testShader(getDevice(), &shaderObjects.test, dynamicStates),
+    shaderInputAttachmentDesc(getDevice(), &shaderHeaders.inputatchm),
+    inputAttachmentShader(getDevice(), &shaderObjects.inputatchm, dynamicStates) {
     // shader_obj_test::Descriptor descriptor;
     // descriptor.setVariant("Color", "red");
     // descriptor.setVariant("TestVariant", "two");
@@ -37,11 +39,16 @@ Game::Game(int argc, char* argv[], const Config& config,
     colorInfo.stencilStoreOp = drv::AttachmentStoreOp::DONT_CARE;
     // colorInfo.srcUsage = 0;
     // colorInfo.dstUsage = drv::IMAGE_USAGE_PRESENT;
-    testColorAttachment = testRenderPass->createAttachment(std::move(colorInfo));
-    drv::SubpassInfo subpassInfo;
-    subpassInfo.colorOutputs.push_back(
-      {testColorAttachment, drv::ImageLayout::COLOR_ATTACHMENT_OPTIMAL});
-    testSubpass = testRenderPass->createSubpass(std::move(subpassInfo));
+    colorTagretColorAttachment = testRenderPass->createAttachment(std::move(colorInfo));
+    swapchainColorAttachment = testRenderPass->createAttachment(std::move(colorInfo));
+    drv::SubpassInfo subpassInfo1;
+    subpassInfo1.colorOutputs.push_back(
+      {colorTagretColorAttachment, drv::ImageLayout::COLOR_ATTACHMENT_OPTIMAL});
+    colorSubpass = testRenderPass->createSubpass(std::move(subpassInfo1));
+    drv::SubpassInfo subpassInfo2;
+    subpassInfo2.colorOutputs.push_back(
+      {swapchainColorAttachment, drv::ImageLayout::COLOR_ATTACHMENT_OPTIMAL});
+    swapchainSubpass = testRenderPass->createSubpass(std::move(subpassInfo2));
     testRenderPass->build();
 
     testDraw = getFrameGraph().addNode(
@@ -69,6 +76,7 @@ static ShaderObject::DynamicState get_dynamic_states(drv::Extent2D extent) {
 
 void Game::record_cmd_buffer(const RecordData& data, drv::DrvCmdBufferRecorder* recorder) {
     recorder->registerUndefinedImage(data.targetImage);
+    recorder->registerUndefinedImage(data.renderTarget);
 
     recorder->cmdImageBarrier({data.targetImage, drv::IMAGE_USAGE_TRANSFER_DESTINATION,
                                drv::ImageMemoryBarrier::AUTO_TRANSITION, true,
@@ -88,26 +96,33 @@ void Game::record_cmd_buffer(const RecordData& data, drv::DrvCmdBufferRecorder* 
     recorder->cmdImageBarrier({data.targetImage, drv::IMAGE_USAGE_COLOR_OUTPUT_WRITE,
                                drv::ImageLayout::COLOR_ATTACHMENT_OPTIMAL, false,
                                drv::get_queue_family(data.device, data.renderQueue)});
-    drv::ClearValue clearValues[1];
-    clearValues[data.testColorAttachment].type = drv::ClearValue::COLOR;
+    recorder->cmdImageBarrier({data.renderTarget, drv::IMAGE_USAGE_COLOR_OUTPUT_WRITE,
+                               drv::ImageLayout::COLOR_ATTACHMENT_OPTIMAL, false,
+                               drv::get_queue_family(data.device, data.renderQueue)});
+    drv::ClearValue clearValues[2];
+    clearValues[data.swapchainColorAttachment].type = drv::ClearValue::COLOR;
+    clearValues[data.colorTagretColorAttachment].type = drv::ClearValue::COLOR;
+    clearValues[data.swapchainColorAttachment].value.color =
+      drv::ClearColorValue(0.2f, 0.2f, 0.2f, 1.f);
     if (data.variant == 0)
-        clearValues[data.testColorAttachment].value.color =
+        clearValues[data.colorTagretColorAttachment].value.color =
           drv::ClearColorValue(0.1f, 0.8f, 0.1f, 1.f);
     else
-        clearValues[data.testColorAttachment].value.color =
+        clearValues[data.colorTagretColorAttachment].value.color =
           drv::ClearColorValue(0.8f, 0.1f, 0.1f, 1.f);
     // clearValues[data.testColorAttachment].value.color = drv::ClearColorValue(255, 255, 255, 255);
     drv::Rect2D renderArea;
     renderArea.extent = data.extent;
     renderArea.offset = {0, 0};
     EngineRenderPass testPass(data.renderPass, recorder, renderArea, data.frameBuffer, clearValues);
-    testPass.beginSubpass(data.testSubpass);
+
+    testPass.beginSubpass(data.colorSubpass);
     drv::ClearRect clearRect;
     clearRect.rect.offset = {100, 100};
     clearRect.rect.extent = {data.extent.width - 200, data.extent.height - 200};
     clearRect.baseLayer = 0;
     clearRect.layerCount = 1;
-    testPass.clearColorAttachment(data.testColorAttachment,
+    testPass.clearColorAttachment(data.colorTagretColorAttachment,
                                   drv::ClearColorValue(0.f, 0.7f, 0.7f, 1.f), 1, &clearRect);
     testPass.bindGraphicsShader(get_dynamic_states(data.extent), {}, *data.testShader,
                                 data.shaderGlobalDesc, data.shaderTestDesc);
@@ -115,6 +130,15 @@ void Game::record_cmd_buffer(const RecordData& data, drv::DrvCmdBufferRecorder* 
     //                             get_dynamic_states(swapChainData.extent), &shaderGlobalDesc,
     //                             &data.shaderTestDesc);
     testPass.draw(3, 1, 0, 0);
+
+    testPass.beginSubpass(data.swapchainSubpass);
+    testPass.bindGraphicsShader(get_dynamic_states(data.extent), {}, *data.inputShader,
+                                data.shaderGlobalDesc, data.shaderInputAttachmentDesc);
+    // testShader.bindGraphicsInfo(ShaderObject::NORMAL_USAGE, testPass,
+    //                             get_dynamic_states(swapChainData.extent), &shaderGlobalDesc,
+    //                             &data.shaderTestDesc);
+    testPass.draw(3, 1, 0, 0);
+
     testPass.end();
 
     // /// --- oroginal clear ---
@@ -160,7 +184,7 @@ Engine::AcquiredImageData Game::record(FrameId frameId) {
         //     || !frameBuffers[swapChainData.imageIndex].get())
         //     frameBuffers[swapChainData.imageIndex] = createResource<drv::Framebuffer>(
         //       getDevice(), testRenderPass->createFramebuffer(testImageInfo));
-        testRenderPass->attach(&swapchainAttachments[swapChainData.imageIndex]);
+        testRenderPass->attach(attachments[swapChainData.imageIndex].data());
 
         OneTimeCmdBuffer<RecordData> cmdBuffer(getPhysicalDevice(), getDevice(),
                                                queues.renderQueue.handle, getCommandBufferBank(),
@@ -169,7 +193,10 @@ Engine::AcquiredImageData Game::record(FrameId frameId) {
         recordData.device = getDevice();
         recordData.targetImage = swapChainData.image;
         recordData.targetView = imageViews[swapChainData.imageIndex].get();
-        recordData.testColorAttachment = testColorAttachment;
+        recordData.renderTarget = renderTarget.get().getImage();
+        recordData.renderTargetView = renderTargetView.get();
+        recordData.colorTagretColorAttachment = colorTagretColorAttachment;
+        recordData.swapchainColorAttachment = swapchainColorAttachment;
         recordData.variant = (frameId / 100) % 2;
         recordData.extent = swapChainData.extent;
         recordData.renderQueue = queues.renderQueue.handle;
@@ -177,8 +204,11 @@ Engine::AcquiredImageData Game::record(FrameId frameId) {
         recordData.renderPass = testRenderPass.get();
         recordData.testShader = &testShader;
         recordData.shaderTestDesc = &shaderTestDesc;
+        recordData.inputShader = &inputAttachmentShader;
+        recordData.shaderInputAttachmentDesc = &shaderInputAttachmentDesc;
         recordData.frameBuffer = swapchainFrameBuffers[swapChainData.imageIndex].get();
-        recordData.testSubpass = testSubpass;
+        recordData.colorSubpass = colorSubpass;
+        recordData.swapchainSubpass = swapchainSubpass;
         recordData.shaderGlobalDesc = &shaderGlobalDesc;
         ExecutionPackage::CommandBufferPackage submission = make_submission_package(
           queues.renderQueue.handle, cmdBuffer.use(std::move(recordData)), getGarbageSystem(),
@@ -207,15 +237,61 @@ void Game::readback(FrameId) {
 }
 
 void Game::releaseSwapchainResources() {
-    getGarbageSystem()->useGarbage([this](Garbage* trashBin) { testShader.clear(trashBin); });
+    getGarbageSystem()->useGarbage([this](Garbage* trashBin) {
+        testShader.clear(trashBin);
+        inputAttachmentShader.clear(trashBin);
+    });
+    renderTargetView.close();
+    renderTarget.close();
     swapchainFrameBuffers.clear();
-    swapchainAttachments.clear();
+    attachments.clear();
     imageViews.clear();
 }
 
 void Game::createSwapchainResources(const drv::Swapchain& swapchain) {
     imageViews.reserve(swapchain.getImageCount());
-    swapchainAttachments.reserve(swapchain.getImageCount());
+    attachments.reserve(swapchain.getImageCount());
+
+    drv::ImageSet::ImageInfo imageInfo;
+    imageInfo.format = drv::ImageFormat::B8G8R8A8_SRGB;
+    imageInfo.extent = {swapchain.getCurrentEXtent().width, swapchain.getCurrentEXtent().height, 1};
+    imageInfo.mipLevels = 1;
+    imageInfo.arrayLayers = 1;
+    imageInfo.sampleCount = drv::SampleCount::SAMPLE_COUNT_1;
+    // imageInfo.initialLayout = ;
+    // imageInfo.familyCount = 0;
+    imageInfo.usage = drv::ImageCreateInfo::COLOR_ATTACHMENT_BIT
+                      | drv::ImageCreateInfo::INPUT_ATTACHMENT_BIT
+                      | drv::ImageCreateInfo::TRANSFER_SRC_BIT;
+    imageInfo.type = drv::ImageCreateInfo::TYPE_2D;
+    // imageInfo.tiling = ;
+    // imageInfo.sharingType = ;
+    renderTarget = createResource<drv::ImageSet>(
+      getPhysicalDevice(), getDevice(), std::vector<drv::ImageSet::ImageInfo>{imageInfo},
+      drv::ImageSet::PreferenceSelector(drv::MemoryType::DEVICE_LOCAL_BIT,
+                                        drv::MemoryType::DEVICE_LOCAL_BIT));
+
+    {
+        drv::ImageViewCreateInfo createInfo;
+        createInfo.image = renderTarget.get().getImage();
+        createInfo.type = drv::ImageViewCreateInfo::TYPE_2D;
+        createInfo.format = imageInfo.format;
+        createInfo.components.r = drv::ImageViewCreateInfo::ComponentSwizzle::IDENTITY;
+        createInfo.components.g = drv::ImageViewCreateInfo::ComponentSwizzle::IDENTITY;
+        createInfo.components.b = drv::ImageViewCreateInfo::ComponentSwizzle::IDENTITY;
+        createInfo.components.a = drv::ImageViewCreateInfo::ComponentSwizzle::IDENTITY;
+        createInfo.subresourceRange.aspectMask = drv::COLOR_BIT;
+        createInfo.subresourceRange.baseArrayLayer = 0;
+        createInfo.subresourceRange.baseMipLevel = 0;
+        createInfo.subresourceRange.layerCount = 1;
+        createInfo.subresourceRange.levelCount = 1;
+        renderTargetView = createResource<drv::ImageView>(getDevice(), createInfo);
+    }
+
+    drv::RenderPass::AttachmentData colorTargetAttachment;
+    colorTargetAttachment.image = renderTarget.get().getImage();
+    colorTargetAttachment.view = renderTargetView.get();
+
     for (uint32_t i = 0; i < swapchain.getImageCount(); ++i) {
         drv::ImageViewCreateInfo createInfo;
         createInfo.image = swapchain.getImages()[i];
@@ -235,16 +311,16 @@ void Game::createSwapchainResources(const drv::Swapchain& swapchain) {
         drv::RenderPass::AttachmentData swapchainAttachment;
         swapchainAttachment.image = swapchain.getImages()[i];
         swapchainAttachment.view = imageViews.back().get();
-        swapchainAttachments.push_back(std::move(swapchainAttachment));
+        attachments.push_back({colorTargetAttachment, swapchainAttachment});
     }
-    if (!testRenderPass->isCompatible(&swapchainAttachments[0])) {
-        testRenderPass->recreate(&swapchainAttachments[0]);
+    if (!testRenderPass->isCompatible(attachments[0].data())) {
+        testRenderPass->recreate(attachments[0].data());
     }
     swapchainFrameBuffers.reserve(swapchain.getImageCount());
     for (uint32_t i = 0; i < swapchain.getImageCount(); ++i) {
-        drv::drv_assert(testRenderPass->isCompatible(&swapchainAttachments[i]));
+        drv::drv_assert(testRenderPass->isCompatible(attachments[i].data()));
         swapchainFrameBuffers.push_back(createResource<drv::Framebuffer>(
-          getDevice(), testRenderPass->createFramebuffer(&swapchainAttachments[i])));
+          getDevice(), testRenderPass->createFramebuffer(attachments[i].data())));
     }
 
     // This only needs recreation, if the renderpass is recreated, but it's good here now for pressure testing
@@ -256,10 +332,12 @@ void Game::createSwapchainResources(const drv::Swapchain& swapchain) {
     blueVariant.color = shader_test_descriptor::Color::BLUE;
     greenVariant.color = shader_test_descriptor::Color::GREEN;
     redVariant.color = shader_test_descriptor::Color::RED;
-    testShader.prepareGraphicalPipeline(testRenderPass.get(), testSubpass, dynStates, globalDesc,
-                                        blueVariant);
-    testShader.prepareGraphicalPipeline(testRenderPass.get(), testSubpass, dynStates, globalDesc,
-                                        greenVariant);
-    testShader.prepareGraphicalPipeline(testRenderPass.get(), testSubpass, dynStates, globalDesc,
-                                        redVariant);
+    testShader.prepareGraphicalPipeline(testRenderPass.get(), swapchainSubpass, dynStates,
+                                        globalDesc, blueVariant);
+    testShader.prepareGraphicalPipeline(testRenderPass.get(), swapchainSubpass, dynStates,
+                                        globalDesc, greenVariant);
+    testShader.prepareGraphicalPipeline(testRenderPass.get(), swapchainSubpass, dynStates,
+                                        globalDesc, redVariant);
+    inputAttachmentShader.prepareGraphicalPipeline(testRenderPass.get(), colorSubpass, dynStates,
+                                                   globalDesc, {});
 }
