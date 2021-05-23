@@ -336,6 +336,7 @@ class ImageSet : private Exclusive
              const ImageInfo* infos, const MemorySelector* selector);
     ~ImageSet();
 
+ImageSet() = default;
     ImageSet(const ImageSet& other) = delete;
     ImageSet(ImageSet&& other);
     ImageSet& operator=(const ImageSet& other) = delete;
@@ -618,6 +619,7 @@ class Framebuffer : public NoCopy
  public:
     Framebuffer() = default;
     Framebuffer(LogicalDevicePtr device);
+    Framebuffer(LogicalDevicePtr device, FramebufferPtr buffer);
     Framebuffer(Framebuffer&& other);
     Framebuffer& operator=(Framebuffer&& other);
     ~Framebuffer();

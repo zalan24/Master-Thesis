@@ -36,9 +36,10 @@ class Game final : public Game3D
     drv::AttachmentId testColorAttachment;
     drv::SubpassId testSubpass;
     FrameGraph::NodeId testDraw;
-    std::vector<drv::ImageView> imageViews;
-    std::vector<drv::Framebuffer> frameBuffers;
+    std::vector<res::ImageView> imageViews;
+    std::vector<res::Framebuffer> frameBuffers;
     Engine::SwapchaingVersion swapchainVersion = Engine::INVALID_SWAPCHAIN;
+    res::ImageSet renderTarget;
 
     struct RecordData
     {

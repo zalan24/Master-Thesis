@@ -56,12 +56,9 @@ Game::~Game() {
 
 void Game::recreateViews(uint32_t imageCount, const drv::ImagePtr* images) {
     frameBuffers.clear();
-    while (imageViews.size()) {
-        getGarbageSystem()->useGarbage([this](Garbage* trashBin) {
-            trashBin->releaseImageView(std::move(imageViews.back()));
-            imageViews.pop_back();
-        });
-    }
+    imageViews.clear();
+    imageViews.reserve(imageCount);
+    frameBuffers.reserve(imageCount);
     for (uint32_t i = 0; i < imageCount; ++i) {
         drv::ImageViewCreateInfo createInfo;
         createInfo.image = images[i];
@@ -76,8 +73,8 @@ void Game::recreateViews(uint32_t imageCount, const drv::ImagePtr* images) {
         createInfo.subresourceRange.baseMipLevel = 0;
         createInfo.subresourceRange.layerCount = 1;
         createInfo.subresourceRange.levelCount = 1;
-        imageViews.emplace_back(getDevice(), createInfo);
-        frameBuffers.emplace_back(getDevice());
+        imageViews.push_back(createResource<drv::ImageView>(getDevice(), createInfo));
+        frameBuffers.push_back(createResource<drv::Framebuffer>(getDevice()));
     }
 }
 
@@ -198,16 +195,17 @@ Engine::AcquiredImageData Game::record(FrameId frameId) {
 
         drv::RenderPass::AttachmentData testImageInfo[1];
         testImageInfo[testColorAttachment].image = swapChainData.image;
-        testImageInfo[testColorAttachment].view = imageViews[swapChainData.imageIndex];
+        testImageInfo[testColorAttachment].view = imageViews[swapChainData.imageIndex].get();
         if (testRenderPass->needRecreation(testImageInfo)) {
             for (auto& framebuffer : frameBuffers)
-                framebuffer.reset();
+                framebuffer = {};
             testRenderPass->recreate(testImageInfo);
             initShader(swapChainData.extent);
         }
-        if (!frameBuffers[swapChainData.imageIndex])
-            frameBuffers[swapChainData.imageIndex].set(
-              testRenderPass->createFramebuffer(testImageInfo));
+        if (!frameBuffers[swapChainData.imageIndex]
+            || !frameBuffers[swapChainData.imageIndex].get())
+            frameBuffers[swapChainData.imageIndex] = createResource<drv::Framebuffer>(
+              getDevice(), testRenderPass->createFramebuffer(testImageInfo));
 
         OneTimeCmdBuffer<RecordData> cmdBuffer(getPhysicalDevice(), getDevice(),
                                                queues.renderQueue.handle, getCommandBufferBank(),
@@ -215,7 +213,7 @@ Engine::AcquiredImageData Game::record(FrameId frameId) {
         RecordData recordData;
         recordData.device = getDevice();
         recordData.targetImage = swapChainData.image;
-        recordData.targetView = imageViews[swapChainData.imageIndex];
+        recordData.targetView = imageViews[swapChainData.imageIndex].get();
         recordData.testColorAttachment = testColorAttachment;
         recordData.variant = (frameId / 100) % 2;
         recordData.extent = swapChainData.extent;
@@ -224,7 +222,7 @@ Engine::AcquiredImageData Game::record(FrameId frameId) {
         recordData.renderPass = testRenderPass.get();
         recordData.testShader = &testShader;
         recordData.shaderTestDesc = &shaderTestDesc;
-        recordData.frameBuffer = frameBuffers[swapChainData.imageIndex];
+        recordData.frameBuffer = frameBuffers[swapChainData.imageIndex].get();
         recordData.testSubpass = testSubpass;
         recordData.shaderGlobalDesc = &shaderGlobalDesc;
         ExecutionPackage::CommandBufferPackage submission = make_submission_package(

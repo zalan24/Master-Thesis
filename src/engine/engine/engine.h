@@ -34,6 +34,8 @@
 #include <cmdBuffer.hpp>
 #include <oneTimeCmdBuffer.hpp>
 
+#include "resources.hpp"
+
 struct ExecutionPackage;
 
 class Engine
@@ -119,6 +121,16 @@ class Engine
 
     GarbageSystem* getGarbageSystem() { return &garbageSystem; }
     drv::CommandBufferBank* getCommandBufferBank() { return &cmdBufferBank; }
+
+    template <typename T, typename... Args>
+    auto createResource(Args&&... args) {
+        return res::GarbageResource<T>(getGarbageSystem(), std::forward<Args>(args)...);
+    }
+
+    template <typename T, typename... Args>
+    void createResource(res::GarbageResource<T>& resource, Args&&... args) {
+        resource = res::GarbageResource<T>(getGarbageSystem(), std::forward<Args>(args)...);
+    }
 
  protected:
     // Needs to be called from game implementation after finishing the framegraph

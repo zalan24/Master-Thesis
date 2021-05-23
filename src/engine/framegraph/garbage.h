@@ -215,7 +215,6 @@ class Garbage
             if (p == nullptr)
                 return;
             for (size_t i = 0; i < n; ++i) {
-                // p[i].~T();
                 ::operator delete(static_cast<void*>(p + i), p + i);
             }
             data->deallocate(p, n);
@@ -264,20 +263,6 @@ class Garbage
         Trash* trash = nullptr;
     };
 
-    // template <typename T>
-    // class TrashDataAlloc final : public Trash
-    // {
-    //  public:
-    //     explicit TrashDataAlloc(T&& _data, Allocator<T> _allocator) : data(std::move(_data)), allocator(_allocator) {}
-    //     ~TrashDataAlloc() override {
-    //         allocator->deallocate()
-    //     }
-
-    //  private:
-    //     T data;
-    //     Allocator<T> allocator;
-    // };
-
  public:
     template <typename T>
     void release(T&& data) {
@@ -317,8 +302,6 @@ class Garbage
     struct TrashBin
     {
         TrashBin(Garbage* garbage);
-        // Vector<drv::CommandBufferCirculator::CommandBufferHandle> cmdBuffersToReset;
-        // Vector<EventPool::EventHandle> events;
         Deque<GeneralResource> resources;
     };
     TrashBin* trashBin = nullptr;

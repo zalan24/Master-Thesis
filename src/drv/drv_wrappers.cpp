@@ -1318,6 +1318,10 @@ Framebuffer::Framebuffer(Framebuffer&& other)
     reset_ptr(other.frameBuffer);
 }
 
+Framebuffer::Framebuffer(LogicalDevicePtr _device, FramebufferPtr _buffer)
+  : device(_device), frameBuffer(_buffer) {
+}
+
 Framebuffer& Framebuffer::operator=(Framebuffer&& other) {
     if (&other == this)
         return *this;
