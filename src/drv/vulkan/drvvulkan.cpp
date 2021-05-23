@@ -255,6 +255,10 @@ void VulkanCmdBufferRecorder::flushBarrier(BarrierInfo& barrier) {
                       convertImageLayout(barrier.imageBarriers[i].oldLayout);
                     vkImageBarriers[imageRangeCount].newLayout =
                       convertImageLayout(barrier.imageBarriers[i].newLayout);
+                    if (vkImageBarriers[imageRangeCount].newLayout == VK_IMAGE_LAYOUT_UNDEFINED)
+                        drv::drv_assert(
+                          vkImageBarriers[imageRangeCount].oldLayout == VK_IMAGE_LAYOUT_UNDEFINED,
+                          "Cannot transition to UNDEFINED layout");
                     vkImageBarriers[imageRangeCount].srcQueueFamilyIndex =
                       barrier.imageBarriers[i].srcFamily != drv::IGNORE_FAMILY
                         ? convertFamilyToVk(barrier.imageBarriers[i].srcFamily)

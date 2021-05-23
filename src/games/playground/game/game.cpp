@@ -48,6 +48,9 @@ Game::Game(int argc, char* argv[], const Config& config,
     drv::SubpassInfo subpassInfo2;
     subpassInfo2.colorOutputs.push_back(
       {swapchainColorAttachment, drv::ImageLayout::COLOR_ATTACHMENT_OPTIMAL});
+    // TODO
+    // subpassInfo2.inputs.push_back(
+    //   {colorTagretColorAttachment, drv::ImageLayout::SHADER_READ_ONLY_OPTIMAL});
     swapchainSubpass = testRenderPass->createSubpass(std::move(subpassInfo2));
     testRenderPass->build();
 
