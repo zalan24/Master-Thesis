@@ -80,10 +80,6 @@ class Engine
     drv::LogicalDevicePtr getDevice() const { return device; }
     drv::PhysicalDevicePtr getPhysicalDevice() const { return physicalDevice; }
     const ShaderBin* getShaderBin() const { return &shaderBin; }
-
-    using SwapchaingVersion = uint64_t;
-    static constexpr SwapchaingVersion INVALID_SWAPCHAIN =
-      std::numeric_limits<SwapchaingVersion>::max();
     struct AcquiredImageData
     {
         drv::ImagePtr image = drv::get_null_ptr<drv::ImagePtr>();
@@ -93,9 +89,9 @@ class Engine
         drv::SemaphorePtr imageAvailableSemaphore = drv::get_null_ptr<drv::SemaphorePtr>();
         drv::SemaphorePtr renderFinishedSemaphore = drv::get_null_ptr<drv::SemaphorePtr>();
         drv::Extent2D extent = {0, 0};
-        SwapchaingVersion version = INVALID_SWAPCHAIN;  // incremented upon recreation
         uint32_t imageCount = 0;
         const drv::ImagePtr* images = nullptr;
+        operator bool() const { return !drv::is_null_ptr(image); }
     };
     AcquiredImageData acquiredSwapchainImage(FrameGraph::NodeHandle& acquiringNodeHandle);
 
@@ -143,6 +139,8 @@ class Engine
     virtual void beforeDraw(FrameId frameId) = 0;
     virtual AcquiredImageData record(FrameId frameId) = 0;
     virtual void readback(FrameId frameId) = 0;
+    virtual void releaseSwapchainResources() = 0;
+    virtual void createSwapchainResources(const drv::Swapchain& swapchain) = 0;
 
  private:
     struct ErrorCallback
@@ -200,9 +198,7 @@ class Engine
     QueueInfo queueInfos;
 
     uint32_t acquireImageSemaphoreId = 0;
-    SwapchaingVersion swapchainVersion = 0;
     FrameId firstPresentableFrame = 0;
-    // FrameId currentAcquiredFrame = INVALID_FRAME;
     enum class SwapchainState
     {
         UNKNOWN,
@@ -215,7 +211,12 @@ class Engine
     mutable std::mutex executionMutex;
     mutable std::mutex swapchainMutex;
     mutable std::mutex mainKernelMutex;
+    mutable std::mutex swapchainRecreationMutex;
     std::condition_variable mainKernelCv;
+    std::condition_variable mainKernelSwapchainCv;
+    std::condition_variable beforeDrawSwapchainCv;
+    std::atomic<bool> swapchainRecreationRequired = {false};
+    std::atomic<bool> swapchainRecreationPossible = {false};
 
     void simulationLoop();
     void beforeDrawLoop();
@@ -234,5 +235,5 @@ class Engine
     static drv::Swapchain::CreateInfo get_swapchain_create_info(const Config& config,
                                                                 drv::QueuePtr present_queue,
                                                                 drv::QueuePtr render_queue);
-    void recreateSwapchain();
+    drv::Swapchain::OldSwapchinData recreateSwapchain();
 };

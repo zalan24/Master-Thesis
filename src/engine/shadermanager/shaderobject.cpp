@@ -20,6 +20,7 @@ void ShaderObject::clear(Garbage* trashBin) {
     if (trashBin != nullptr)
         trashBin->releaseShaderObj(std::move(shader));
     shader = drv::create_shader(device, reg->reg.get());
+    pipelines.clear();
 }
 
 drv::DrvShader::ShaderStage ShaderObject::getShaderStage(

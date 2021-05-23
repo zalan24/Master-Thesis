@@ -561,6 +561,47 @@ void FrameGraph::NodeHandle::submit(QueueId queueId,
     q->push(std::move(submission));
 }
 
+bool FrameGraph::waitForNode(NodeId node, Stage stage, FrameId frame) {
+    if (isStopped() || !tryDoFrame(frame))
+        return false;
+    Node* sourceNode = getNode(node);
+    std::unique_lock<std::mutex> lock(sourceNode->cpuMutex);
+    sourceNode->cpuCv.wait(lock, [&, this] {
+        FrameId id = sourceNode->completedFrames[get_stage_id(stage)].load();
+        return isStopped() || (frame <= id && id != INVALID_FRAME);
+    });
+    if (isStopped())
+        return false;
+    return true;
+}
+
+bool FrameGraph::tryWaitForNode(NodeId node, Stage stage, FrameId frame, uint64_t timeoutNsec) {
+    if (isStopped() || !tryDoFrame(frame))
+        return false;
+
+    Node* sourceNode = getNode(node);
+    std::unique_lock<std::mutex> lock(sourceNode->cpuMutex);
+    if (!sourceNode->cpuCv.wait_for(lock, std::chrono::nanoseconds(timeoutNsec), [&, this] {
+            FrameId id = sourceNode->completedFrames[get_stage_id(stage)].load();
+            return isStopped() || (frame <= id && id != INVALID_FRAME);
+        }))
+        return false;
+    if (isStopped())
+        return false;
+    return true;
+}
+
+// no blocking, returns a handle if currently available
+bool FrameGraph::tryWaitForNode(NodeId node, Stage stage, FrameId frame) {
+    if (isStopped() || !tryDoFrame(frame))
+        return false;
+    const Node* sourceNode = getNode(node);
+    FrameId id = sourceNode->completedFrames[get_stage_id(stage)].load();
+    if (id < frame || id == INVALID_FRAME)
+        return false;
+    return true;
+}
+
 FrameGraph::NodeHandle FrameGraph::acquireNode(NodeId nodeId, Stage stage, FrameId frame) {
     if (isStopped() || !tryDoFrame(frame))
         return NodeHandle();
@@ -571,17 +612,9 @@ FrameGraph::NodeHandle FrameGraph::acquireNode(NodeId nodeId, Stage stage, Frame
     for (const CpuDependency& dep : node->cpuDeps) {
         if (dep.dstStage != stage)
             continue;
-        if (dep.offset <= frame) {
-            FrameId requiredFrame = frame - dep.offset;
-            Node* sourceNode = getNode(dep.srcNode);
-            std::unique_lock<std::mutex> lock(sourceNode->cpuMutex);
-            sourceNode->cpuCv.wait(lock, [&, this] {
-                FrameId id = sourceNode->completedFrames[get_stage_id(dep.srcStage)].load();
-                return isStopped() || (requiredFrame <= id && id != INVALID_FRAME);
-            });
-            if (isStopped())
+        if (dep.offset <= frame)
+            if (!waitForNode(dep.srcNode, dep.srcStage, frame - dep.offset))
                 return NodeHandle();
-        }
     }
     for (const QueueCpuDependency& dep : node->queCpuDeps) {
         if (dep.offset <= frame) {
@@ -611,18 +644,11 @@ FrameGraph::NodeHandle FrameGraph::tryAcquireNode(NodeId nodeId, Stage stage, Fr
         if (dep.dstStage != stage)
             continue;
         if (dep.offset <= frame) {
-            FrameId requiredFrame = frame - dep.offset;
-            Node* sourceNode = getNode(dep.srcNode);
-            std::unique_lock<std::mutex> lock(sourceNode->cpuMutex);
             const std::chrono::nanoseconds duration =
               std::chrono::high_resolution_clock::now() - start;
             if (duration >= maxDuration
-                || !sourceNode->cpuCv.wait_for(lock, maxDuration - duration, [&, this] {
-                       FrameId id = sourceNode->completedFrames[get_stage_id(dep.srcStage)].load();
-                       return isStopped() || (requiredFrame <= id && id != INVALID_FRAME);
-                   }))
-                return NodeHandle();
-            if (isStopped())
+                || !tryWaitForNode(dep.srcNode, dep.srcStage, frame - dep.offset,
+                                   (maxDuration - duration).count()))
                 return NodeHandle();
         }
     }
@@ -649,20 +675,16 @@ FrameGraph::NodeHandle FrameGraph::tryAcquireNode(NodeId nodeId, Stage stage, Fr
 }
 
 FrameGraph::NodeHandle FrameGraph::tryAcquireNode(NodeId nodeId, Stage stage, FrameId frame) {
-    if (!tryDoFrame(frame))
+    if (isStopped() || !tryDoFrame(frame))
         return NodeHandle();
     Node* node = getNode(nodeId);
     assert(node->stages & stage);
     for (const CpuDependency& dep : node->cpuDeps) {
         if (dep.dstStage != stage)
             continue;
-        if (dep.offset <= frame) {
-            FrameId requiredFrame = frame - dep.offset;
-            const Node* sourceNode = getNode(dep.srcNode);
-            FrameId id = sourceNode->completedFrames[get_stage_id(dep.srcStage)].load();
-            if (id < requiredFrame || id == INVALID_FRAME)
+        if (dep.offset <= frame)
+            if (!tryWaitForNode(dep.srcNode, dep.srcStage, frame - dep.offset))
                 return NodeHandle();
-        }
     }
     for (const QueueCpuDependency& dep : node->queCpuDeps) {
         if (dep.offset <= frame) {

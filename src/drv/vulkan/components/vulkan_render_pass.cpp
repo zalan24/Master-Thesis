@@ -170,25 +170,27 @@ void VulkanRenderPass::build() {
     attachmentImages.resize(attachments.size());
 }
 
-bool VulkanRenderPass::needRecreation(const AttachmentData* images) {
+bool VulkanRenderPass::isCompatible(const AttachmentData* images) const {
+    // TODO;  // prohibit resources that are also attachments
+    if (renderPass == VK_NULL_HANDLE)
+        return false;
+    for (uint32_t i = 0; i < attachmentInfos.size(); ++i) {
+        if (attachmentInfos[i].format != convertImageView(images[i].view)->format)
+            return false;
+        if (attachmentInfos[i].samples != convertImage(images[i].image)->sampleCount)
+            return false;
+    }
+    return true;
+}
+
+void VulkanRenderPass::attach(const AttachmentData* images) {
+#ifdef DEBUG
+    drv::drv_assert(isCompatible(images));
+#endif
     for (uint32_t i = 0; i < attachments.size(); ++i) {
         attachmentImages[i].image = images[i].image;
         attachmentImages[i].subresource = convertImageView(images[i].view)->subresource;
     }
-    // TODO;  // prohibit resources that are also attachments
-    bool changed = false;
-    for (uint32_t i = 0; i < attachmentInfos.size() && !changed; ++i) {
-        if (attachmentInfos[i].format != convertImageView(images[i].view)->format)
-            changed = true;
-        if (attachmentInfos[i].samples != convertImage(images[i].image)->sampleCount)
-            changed = true;
-    }
-    if (renderPass == VK_NULL_HANDLE || attachmentInfos.size() == 0 || changed) {
-        state = NEED_RECREATE;
-        return true;
-    }
-    state = OK;
-    return false;
 }
 
 drv::SampleCount VulkanRenderPass::getSampleCount(drv::SubpassId subpass) const {
@@ -204,7 +206,6 @@ drv::SampleCount VulkanRenderPass::getSampleCount(drv::SubpassId subpass) const 
 }
 
 void VulkanRenderPass::recreate(const AttachmentData* images) {
-    drv::drv_assert(state == NEED_RECREATE, "Render pass recreated for no reason");
 #ifdef DEBUG
     for (uint32_t i = 0; i < attachments.size(); ++i)
         for (uint32_t j = i + 1; j < attachments.size(); ++j)
@@ -246,7 +247,6 @@ void VulkanRenderPass::recreate(const AttachmentData* images) {
     createInfo.pDependencies = dependencies.data();
     VkResult result = vkCreateRenderPass(convertDevice(device), &createInfo, nullptr, &renderPass);
     drv::drv_assert(result == VK_SUCCESS, "Could not create renderpass");
-    state = OK;
 }
 
 drv::FramebufferPtr VulkanRenderPass::createFramebuffer(const AttachmentData* images) const {
@@ -288,12 +288,8 @@ drv::FramebufferPtr VulkanRenderPass::createFramebuffer(const AttachmentData* im
 }
 
 drv::RenderPass::PassBeginData VulkanRenderPass::begin(const drv::ClearValue* _clearValues) {
-    drv::drv_assert(
-      state == OK,
-      "Use the needRecreation() (and recreate() if needed) functions before beginning the render pass");
     for (uint32_t i = 0; i < attachments.size(); ++i)
         clearValues[i] = convertClearValue(_clearValues[i]);
-    state = UNCHECKED;
     uint32_t numLayers = attachments.size() > 0 ? attachmentImages[0].subresource.layerCount : 0;
     PassBeginData ret;
     ret.numLayers = numLayers;

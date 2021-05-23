@@ -179,7 +179,7 @@ class FrameGraph
 
         void submit(QueueId queueId, ExecutionPackage::CommandBufferPackage&& submission);
 
-        FrameId getFrameId() const {return frameId;}
+        FrameId getFrameId() const { return frameId; }
 
      private:
         NodeHandle();
@@ -213,11 +213,15 @@ class FrameGraph
 
     TagNodeId addTagNode(const std::string& name, Stage stage);
 
+    bool waitForNode(NodeId node, Stage stage, FrameId frame);
+    bool tryWaitForNode(NodeId node, Stage stage, FrameId frame, uint64_t timeoutNsec);
+    // no blocking, returns a handle if currently available
+    bool tryWaitForNode(NodeId node, Stage stage, FrameId frame);
+
     NodeHandle acquireNode(NodeId node, Stage stage, FrameId frame);
     NodeHandle tryAcquireNode(NodeId node, Stage stage, FrameId frame, uint64_t timeoutNsec);
     // no blocking, returns a handle if currently available
     NodeHandle tryAcquireNode(NodeId node, Stage stage, FrameId frame);
-    // void skipNode(NodeId, FrameId); // blocking???
 
     bool applyTag(TagNodeId node, Stage stage, FrameId frame);
     bool tryApplyTag(TagNodeId node, Stage stage, FrameId frame, uint64_t timeoutNsec);

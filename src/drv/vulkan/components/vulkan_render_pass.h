@@ -22,7 +22,8 @@ class VulkanRenderPass final : public drv::RenderPass
 
     VkRenderPass getRenderPass() const { return renderPass; }
 
-    bool needRecreation(const AttachmentData* attachments) override;
+    bool isCompatible(const AttachmentData* attachments) const override;
+    void attach(const AttachmentData* attachments) override;
     void recreate(const AttachmentData* attachments) override;
     drv::FramebufferPtr createFramebuffer(const AttachmentData* attachments) const override;
 
@@ -62,12 +63,6 @@ class VulkanRenderPass final : public drv::RenderPass
         drv::ImageSubresourceRange subresource;
     };
     std::vector<AttachmentImage> attachmentImages;
-    enum State
-    {
-        UNCHECKED,
-        NEED_RECREATE,
-        OK
-    } state = UNCHECKED;
 
     void clear();
     void applySync(drv::SubpassId id) const;

@@ -137,7 +137,8 @@ class RenderPass
         ImagePtr image;
         ImageViewPtr view;
     };
-    virtual bool needRecreation(const AttachmentData* attachments) = 0;
+    virtual bool isCompatible(const AttachmentData* attachments) const = 0;
+    virtual void attach(const AttachmentData* attachments) = 0;
     virtual void recreate(const AttachmentData* attachments) = 0;
     virtual FramebufferPtr createFramebuffer(const AttachmentData* attachments) const = 0;
 

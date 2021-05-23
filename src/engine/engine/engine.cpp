@@ -285,13 +285,10 @@ void Engine::simulationLoop() {
     }
 }
 
-void Engine::recreateSwapchain() {
+drv::Swapchain::OldSwapchinData Engine::recreateSwapchain() {
     std::unique_lock<std::mutex> lock(swapchainMutex);
     // images need to keep the same memory address
-    drv::Swapchain::OldSwapchinData oldSwapchain = swapchain.recreate(physicalDevice, window);
-    garbageSystem.useGarbage(
-      [&](Garbage* trashBin) { trashBin->release(std::move(oldSwapchain)); });
-    swapchainVersion++;
+    return swapchain.recreate(physicalDevice, window);
 }
 
 void Engine::present(drv::SwapchainPtr swapchainPtr, FrameId frameId, uint32_t imageIndex,
@@ -356,7 +353,6 @@ Engine::AcquiredImageData Engine::acquiredSwapchainImage(
                     drv::TextureInfo info = drv::get_texture_info(ret.image);
                     drv::drv_assert(info.extent.depth == 1);
                     ret.extent = {info.extent.width, info.extent.height};
-                    ret.version = swapchainVersion;
                     ret.imageCount = swapchain.getImageCount();
                     ret.images = swapchain.getImages();
                     acquireImageSemaphoreId =
@@ -379,7 +375,30 @@ void Engine::beforeDrawLoop() {
     loguru::set_thread_name("beforeDraw");
     FrameId beforeDrawFrame = 0;
     while (!frameGraph.isStopped()) {
-        if (!frameGraph.startStage(FrameGraph::BEFORE_DRAW_STAGE, beforeDrawFrame))
+        if (auto startNode =
+              frameGraph.acquireNode(frameGraph.getStageStartNode(FrameGraph::BEFORE_DRAW_STAGE),
+                                     FrameGraph::BEFORE_DRAW_STAGE, beforeDrawFrame);
+            startNode) {
+            if (swapchainRecreationRequired) {
+                std::unique_lock<std::mutex> lock(swapchainRecreationMutex);
+
+                if (beforeDrawFrame > 0
+                    && !frameGraph.waitForNode(frameGraph.getStageEndNode(FrameGraph::RECORD_STAGE),
+                                               FrameGraph::RECORD_STAGE, beforeDrawFrame - 1)) {
+                    assert(frameGraph.isStopped());
+                    break;
+                }
+
+                releaseSwapchainResources();
+
+                swapchainRecreationPossible = true;
+                beforeDrawSwapchainCv.wait(lock);
+
+                createSwapchainResources(swapchain);
+                swapchainRecreationRequired = false;
+            }
+        }
+        else
             break;
         beforeDraw(beforeDrawFrame);
         if (!frameGraph.endStage(FrameGraph::BEFORE_DRAW_STAGE, beforeDrawFrame)) {
@@ -594,10 +613,8 @@ void Engine::readbackLoop() {
 
 void Engine::gameLoop() {
     RUNTIME_STAT_SCOPE(gameLoop);
-    // entityManager.start();
-    // ExecutionQueue executionQueue;
-    // RenderState state;
-    // state.executionQueue = &executionQueue;
+
+    createSwapchainResources(swapchain);
 
     std::thread simulationThread(&Engine::simulationLoop, this);
     std::thread beforeDrawThread(&Engine::beforeDrawLoop, this);
@@ -654,13 +671,27 @@ void Engine::mainLoopKernel() {
     static_cast<IWindow*>(window)->pollEvents();
 
     if (garbageSystem.getStartedFrame() != INVALID_FRAME) {
-        drv::Extent2D windowExtent = window->getResolution();
-        if (windowExtent.width != 0 && windowExtent.height != 0) {
-            if (windowExtent != swapchain.getCurrentEXtent()
-                || (swapchainState != SwapchainState::OK
-                    && swapchainState != SwapchainState::UNKNOWN)) {
-                recreateSwapchain();
-                swapchainState = SwapchainState::UNKNOWN;
+        if (swapchainRecreationPossible) {
+            // must block here before destroying old swapchain to prevent another recreation before destroying the prev one
+            std::unique_lock<std::mutex> swapchainLock(swapchainRecreationMutex);
+            swapchainRecreationPossible = false;
+
+            drv::Swapchain::OldSwapchinData oldSwapchain = recreateSwapchain();
+            swapchainState = SwapchainState::UNKNOWN;
+
+            garbageSystem.useGarbage(
+              [&](Garbage* trashBin) { trashBin->release(std::move(oldSwapchain)); });
+
+            beforeDrawSwapchainCv.notify_one();
+        }
+        else if (!swapchainRecreationRequired) {
+            drv::Extent2D windowExtent = window->getResolution();
+            if (windowExtent.width != 0 && windowExtent.height != 0) {
+                if (windowExtent != swapchain.getCurrentEXtent()
+                    || (swapchainState != SwapchainState::OK
+                        && swapchainState != SwapchainState::UNKNOWN)) {
+                    swapchainRecreationRequired = true;
+                }
             }
         }
     }

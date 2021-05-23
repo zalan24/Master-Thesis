@@ -14,5 +14,9 @@ class Game3D : public Engine
 
     virtual ~Game3D() override;
 
+ protected:
+    //  void releaseSwapchainResources() override;
+    //  void createSwapchainResources(const drv::Swapchain& swapchain) override;
+
  private:
 };

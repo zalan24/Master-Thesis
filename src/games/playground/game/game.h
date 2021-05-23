@@ -23,6 +23,8 @@ class Game final : public Game3D
     void beforeDraw(FrameId frameId) override;
     AcquiredImageData record(FrameId frameId) override;
     void readback(FrameId frameId) override;
+    void releaseSwapchainResources() override;
+    void createSwapchainResources(const drv::Swapchain& swapchain) override;
 
  private:
     ShaderHeaderRegistry shaderHeaders;
@@ -37,8 +39,8 @@ class Game final : public Game3D
     drv::SubpassId testSubpass;
     FrameGraph::NodeId testDraw;
     std::vector<res::ImageView> imageViews;
-    std::vector<res::Framebuffer> frameBuffers;
-    Engine::SwapchaingVersion swapchainVersion = Engine::INVALID_SWAPCHAIN;
+    std::vector<drv::RenderPass::AttachmentData> swapchainAttachments;
+    std::vector<res::Framebuffer> swapchainFrameBuffers;
     res::ImageSet renderTarget;
 
     struct RecordData
@@ -72,6 +74,6 @@ class Game final : public Game3D
 
     static void record_cmd_buffer(const RecordData& data, drv::DrvCmdBufferRecorder* recorder);
 
-    void recreateViews(uint32_t imageCount, const drv::ImagePtr* images);
-    void initShader(drv::Extent2D extent);
+    //  void recreateViews(uint32_t imageCount, const drv::ImagePtr* images);
+    //  void initShader(drv::Extent2D extent);
 };
