@@ -1,28 +1,61 @@
 #include "runtimestats.h"
 
+#include <logger.h>
+
+#include <binary_io.h>
 #include <drverror.h>
 
-RuntimeStats::RuntimeStats(const char* _filename) : filename(_filename) {
+RuntimeStats::RuntimeStats(const fs::path& _persistance, const fs::path& _gameExports)
+  : persistance(_persistance), gameExports(_gameExports) {
 #if ENABLE_RUNTIME_STATS_GENERATION
-    rootNode = std::make_unique<RuntimeStatNode>("root");
+    {
+        std::ifstream in(persistance.c_str(), std::ios::binary);
+        if (in.is_open()) {
+        }
+        else
+            LOG_F(WARNING, "Could not open persistance file: %s", persistance.string().c_str());
+    }
 #endif
-    // TODO load
+    {
+        std::ifstream in(gameExports.c_str(), std::ios::binary);
+        if (in.is_open())
+            rootGameExports.load(in);
+        else
+            LOG_F(ERROR, "Could not open game exports file: %s", gameExports.string().c_str());
+    }
+    rootNode = std::make_unique<RuntimeStatNode>("root", nullptr, &rootGameExports);
 }
 
 RuntimeStats::~RuntimeStats() {
-    // TODO save
-}
-
-void RuntimeStats::pushNode(RuntimeStatNode* node) {
 #if ENABLE_RUNTIME_STATS_GENERATION
-    std::unique_lock<std::mutex> lock(mutex);
-    activeNodes[std::this_thread::get_id()].push(node);
+    {
+        std::ofstream out(persistance.c_str(), std::ios::binary);
+        if (out.is_open()) {
+        }
+        else
+            LOG_F(ERROR, "Could not open persistance file: %s", persistance.string().c_str());
+    }
+    // TODO export game export stats as well
 #endif
 }
 
+void RuntimeStats::pushNode(RuntimeStatNode* node) {
+    std::unique_lock<std::shared_mutex> lock(mutex);
+    activeNodes[std::this_thread::get_id()].push(node);
+}
+
+RuntimeStatNode* RuntimeStats::getTop() {
+    // this doesn't modify memory
+    std::shared_lock<std::shared_mutex> lock(mutex);
+    auto itr = activeNodes.find(std::this_thread::get_id());
+    if (itr == activeNodes.end() || itr->second.empty())
+        return rootNode.get();
+    return itr->second.top();
+}
+
 RuntimeStatNode* RuntimeStats::popNode() {
-#if ENABLE_RUNTIME_STATS_GENERATION
-    std::unique_lock<std::mutex> lock(mutex);
+    // This cannot create a now stack, so no need for unique_lock
+    std::shared_lock<std::shared_mutex> lock(mutex);
     auto itr = activeNodes.find(std::this_thread::get_id());
     drv::drv_assert(itr != activeNodes.end() && !itr->second.empty(),
                     "popNode is executed on the wrong thread");
@@ -31,31 +64,38 @@ RuntimeStatNode* RuntimeStats::popNode() {
     RuntimeStatNode* parent = itr->second.empty() ? rootNode.get() : itr->second.top();
     parent->addChildNode(node);
     return node;
-#else
-    return nullptr;
-#endif
+}
+
+const GameExportsNodeData* RuntimeStatNode::getGameExportData(const std::string& subNode) const {
+    if (gameExportsData == nullptr)
+        return nullptr;
+    auto itr = gameExportsData->subnodes.find(subNode);
+    if (itr == gameExportsData->subnodes.end())
+        return nullptr;
+    return itr->second.get();
 }
 
 RuntimeStatisticsScope::RuntimeStatisticsScope(RuntimeStats* _stats, const char* name)
-#if ENABLE_RUNTIME_STATS_GENERATION
   : stats(_stats),
-    node(std::string(name))
-#endif
-{
-#if ENABLE_RUNTIME_STATS_GENERATION
+    node(std::string(name), stats->getTop(), stats->getTop()->getGameExportData({name})) {
     stats->pushNode(&node);
-#endif
 }
 
 RuntimeStatisticsScope::~RuntimeStatisticsScope() {
-#if ENABLE_RUNTIME_STATS_GENERATION
     drv::drv_assert(stats->popNode() == &node);
-#endif
 }
 
-RuntimeStatNode::RuntimeStatNode(std::string _name) : name(std::move(_name)) {
+RuntimeStatNode::RuntimeStatNode(std::string _name, const RuntimeStatNode* _parent,
+                                 const GameExportsNodeData* _gameExportsData)
+  : name(std::move(_name)), parent(_parent), gameExportsData(_gameExportsData) {
+}
+
+const GameExportsNodeData* RuntimeStats::getCurrentGameExportData() {
+    return getTop()->gameExportsData;
 }
 
 void RuntimeStatNode::addChildNode(const RuntimeStatNode* node) {
-    // TODO
+#if ENABLE_RUNTIME_STATS_GENERATION
+// TODO
+#endif
 }

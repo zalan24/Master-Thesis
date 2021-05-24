@@ -78,6 +78,8 @@ static ShaderObject::DynamicState get_dynamic_states(drv::Extent2D extent) {
 }
 
 void Game::record_cmd_buffer(const RecordData& data, drv::DrvCmdBufferRecorder* recorder) {
+    RUNTIME_STAT_SCOPE(gameRecord);
+
     recorder->registerUndefinedImage(data.targetImage);
     recorder->registerUndefinedImage(data.renderTarget);
 
@@ -189,7 +191,6 @@ void Game::record_cmd_buffer(const RecordData& data, drv::DrvCmdBufferRecorder* 
 
 Engine::AcquiredImageData Game::record(FrameId frameId) {
     // std::cout << "Record: " << frameId << std::endl;
-    RUNTIME_STAT_SCOPE(gameRecord);
     Engine::QueueInfo queues = getQueues();
     if (FrameGraph::NodeHandle testDrawHandle =
           getFrameGraph().acquireNode(testDraw, FrameGraph::RECORD_STAGE, frameId);

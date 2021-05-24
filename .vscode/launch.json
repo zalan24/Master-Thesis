@@ -69,8 +69,10 @@
         // "--gfx",
         "--api_dump",
         "--renderdoc",
-        "--runtime_stats",
+        "--runtime_stats_persistance",
         "${workspaceFolder}/build/statistics/runtimeStats.bin",
+        "--runtime_stats_game_exports",
+        "${workspaceFolder}/build/statistics/runtimeStatsGameExports.bin",
         "-sshaders/shaders.bin"
       ]
     },

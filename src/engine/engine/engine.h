@@ -63,7 +63,8 @@ class Engine
         bool renderdocEnabled;
         bool gfxCaptureEnabled;
         bool apiDumpEnabled;
-        std::string runtimeStatsBin;
+        std::string runtimeStatsPersistanceBin;
+        std::string runtimeStatsGameExportsBin;
     };
 
     Engine(int argc, char* argv[], const Config& config,
