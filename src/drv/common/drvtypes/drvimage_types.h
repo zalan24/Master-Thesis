@@ -2,6 +2,13 @@
 
 #include <cstdint>
 #include <limits>
+#include <string>
+
+#include <features.h>
+
+#if ENABLE_RESOURCE_STACKTRACES
+#    include <boost/stacktrace.hpp>
+#endif
 
 #include <fixedarray.hpp>
 
@@ -10,6 +17,35 @@
 
 namespace drv
 {
+struct ImageId
+{
+    using SubId = uint32_t;
+    static constexpr SubId NO_SUB_ID = std::numeric_limits<SubId>::max();
+    // Persistent capable id
+    std::string name;         // not necessarily unique
+    SubId subId = NO_SUB_ID;  // eg. swapchain image index
+
+#if ENABLE_RESOURCE_STACKTRACES
+    std::unique_ptr<boost::stacktrace> stackTrace;
+#endif
+    ImageId(std::string _name, uint32_t _subId)
+      : name(std::move(_name)),
+        subId(_subId)
+#if ENABLE_RESOURCE_STACKTRACES
+        ,
+        stackTrace(std::make_unique<boost::stacktrace>())
+#endif
+    {
+    }
+
+    ImageId(std::string _name) : ImageId(std::move(_name), NO_SUB_ID) {}
+    ImageId() : ImageId("unnamed") {}
+    ImageId(const ImageId&) = default;
+    ImageId& operator=(const ImageId&) = default;
+    ImageId(ImageId&&) = default;
+    ImageId& operator=(ImageId&&) = default;
+};
+
 enum class ImageFormat
 {
     UNDEFINED = 0,
@@ -545,6 +581,7 @@ struct ImageBlit
 
 struct ImageCreateInfo
 {
+    ImageId imageId;
     // flags?
     enum Type
     {

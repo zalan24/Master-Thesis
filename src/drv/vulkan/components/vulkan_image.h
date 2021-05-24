@@ -9,6 +9,7 @@ namespace drv_vulkan
 {
 struct Image
 {
+    drv::ImageId imageId;
     VkImage image = VK_NULL_HANDLE;
     drv::Extent3D extent;
     uint32_t arraySize = 1;
@@ -24,10 +25,11 @@ struct Image
     // This state is only valid during linear submission, not parallel recording
     drv::ImageTrackingState linearTrackingState;
 
-    Image(VkImage _image, drv::Extent3D _extent, uint32_t _arraySize, uint32_t _numMipLevels,
-          drv::ImageAspectBitType _aspects, bool _sharedResource, drv::SampleCount _sampleCount,
-          drv::ImageFormat _format, bool _swapchainImage)
-      : image(_image),
+    Image(drv::ImageId _imageId, VkImage _image, drv::Extent3D _extent, uint32_t _arraySize,
+          uint32_t _numMipLevels, drv::ImageAspectBitType _aspects, bool _sharedResource,
+          drv::SampleCount _sampleCount, drv::ImageFormat _format, bool _swapchainImage)
+      : imageId(std::move(_imageId)),
+        image(_image),
         extent(_extent),
         arraySize(_arraySize),
         numMipLevels(_numMipLevels),

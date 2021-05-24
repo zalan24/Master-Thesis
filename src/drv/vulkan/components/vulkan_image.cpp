@@ -41,7 +41,7 @@ drv::ImagePtr DrvVulkan::create_image(drv::LogicalDevicePtr device,
     drv::drv_assert(result == VK_SUCCESS, "Could not create buffer");
     try {
         drv_vulkan::Image* ret = new drv_vulkan::Image(
-          vkImage, info->extent, info->arrayLayers, info->mipLevels,
+          info->imageId, vkImage, info->extent, info->arrayLayers, info->mipLevels,
           drv::get_format_aspects(info->format), info->sharingType == drv::SharingType::CONCURRENT,
           info->sampleCount, info->format, false);
         return drv::store_ptr<drv::ImagePtr>(ret);

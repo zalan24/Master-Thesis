@@ -10,6 +10,7 @@ set_target_properties(  AnimationsDrvCommon
                         COMPILE_FLAGS ${TARGETCOMPILEFLAGS}
                         LINK_OPTIONS "${TARGET_LINK_FLAGS}")
 target_link_libraries(AnimationsDrvCommon PUBLIC
+    # boost_stacktrace_external
     CoreDataStructures
     DrvConfigs
     AnimationsDrvProfiler

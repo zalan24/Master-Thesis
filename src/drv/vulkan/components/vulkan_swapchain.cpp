@@ -135,7 +135,7 @@ bool DrvVulkan::get_swapchain_images(drv::LogicalDevicePtr device, drv::Swapchai
     if (images) {
         for (uint32_t i = 0; i < *count; ++i) {
             images[i] = drv::store_ptr<drv::ImagePtr>(new drv_vulkan::Image(
-              vkImages[i],
+              drv::ImageId("swapchain", i), vkImages[i],
               {convertSwapchain(swapchain)->extent.width,
                convertSwapchain(swapchain)->extent.height, 1},
               1, 1, drv::get_format_aspects(convertSwapchain(swapchain)->format),

@@ -283,6 +283,7 @@ void Game::createSwapchainResources(const drv::Swapchain& swapchain) {
     attachments.reserve(swapchain.getImageCount());
 
     drv::ImageSet::ImageInfo imageInfo;
+    imageInfo.imageId = drv::ImageId("targetImage");
     imageInfo.format = drv::ImageFormat::B8G8R8A8_SRGB;
     imageInfo.extent = {swapchain.getCurrentEXtent().width, swapchain.getCurrentEXtent().height, 1};
     imageInfo.mipLevels = 1;

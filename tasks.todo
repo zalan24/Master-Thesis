@@ -363,3 +363,35 @@ Questions:
 
     ☐ Read: https://mynameismjp.wordpress.com/2018/06/17/breaking-down-barriers-part-3-multiple-command-processors/
     ☐ Read: https://community.arm.com/developer/tools-software/graphics/b/blog/posts/vulkan-mobile-best-practices-and-management
+
+
+Resource identifiers
+ * ???
+Runtime stat object
+ * Add structure to runtime stats (???)
+    * Probably a map of resource id -> resource data
+ * Add a feature flag for savig stats
+ * Load / save stats (loading should consider which stats are required at runtime, only load those)
+    * Save two files, one full, which is used when export stats is enabled (this will preserve previously collected data, used by shader compiler)
+    * One for load only version, which only loads data, that's used in a prod version
+ * Create a macro, that creates a recorder/reader object for the resource stats
+ * Create a resource stat object for each command buffer automatically
+Auto register resources
+ * Instead of throwing an error, auto register unregistered resources based on the first access
+    * Assume current ownership
+    * Assume most optimal layout
+    * Assume clean state (or whatever is required)
+ * In a situation like this, record the current resource into the resource stats object
+    * The dst state is as assumed here
+    * The src state is found during execution
+ * If exportation of runtime stats is enabled, add a resource usage stats object to the execution queue's command buffer data
+    * The execution queue should record all resource usage into it (src usage)
+External resources in render passes
+ * Give a name to the render pass (and each subpass)
+ * Create two resource stat objects per render pass
+    * One for incoming resources
+    * One for outgoing resources
+ * When recording to cmd buffer, record attachment usage into the resource stats object
+ * At the creation of render pass, create external dependencies based on usual usage
+    * If unavailable, use something basic (auto pipeline barriers can fix it)
+    * It's required to have some kind of an external barrier (at least for transitive dependency)

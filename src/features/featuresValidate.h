@@ -7,3 +7,8 @@
 #pragma message("ENABLE_RUNTIME_STATS_GENERATION not specified in feature config")
 #define ENABLE_RUNTIME_STATS_GENERATION 0
 #endif
+
+#ifndef ENABLE_RESOURCE_STACKTRACES
+#pragma message("ENABLE_RESOURCE_STACKTRACES not specified in feature config")
+#define ENABLE_RESOURCE_STACKTRACES 0
+#endif
