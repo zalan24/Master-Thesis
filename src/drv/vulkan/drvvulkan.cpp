@@ -232,7 +232,7 @@ void VulkanCmdBufferRecorder::flushBarrier(BarrierInfo& barrier) {
           barrier.imageBarriers[i].subresourceSet.getUsedAspects();
         auto addImageBarrier = [&](drv::ImageAspectBitType aspects, uint32_t baseLayer,
                                    uint32_t layers, drv::ImageSubresourceSet::MipBit mips) {
-            if (mips == 0)
+            if (mips == 0 || layers == 0)
                 return;
             uint32_t baseMip = 0;
             uint32_t mipCount = 0;
@@ -311,8 +311,10 @@ void VulkanCmdBufferRecorder::flushBarrier(BarrierInfo& barrier) {
                         layerCount = 1;
                     }
                 }
+                else
+                    layerCount++;
             }
-            if (mips != 0)
+            if (mips != 0 && layerCount > 0)
                 addImageBarrier(aspectMask, baseLayer, layerCount, mips);
         };
         if (barrier.imageBarriers[i].subresourceSet.isAspectMaskConstant())
@@ -394,7 +396,7 @@ void VulkanCmdBufferRecorder::flushBarriersFor(drv::ImagePtr _image, uint32_t nu
         if (!barriers[i])
             continue;
         for (uint32_t j = 0; j < barriers[i].numImageRanges; ++j) {
-            if (barriers[i].imageBarriers[i].subresourceSet.overlap(subresources)) {
+            if (barriers[i].imageBarriers[j].subresourceSet.overlap(subresources)) {
                 flushBarrier(barriers[i]);
                 break;
             }
@@ -618,10 +620,11 @@ void VulkanCmdBufferRecorder::add_memory_sync(
         }
         subresourceData.ownership = newOwner;
     }
+    bool justFlushed = false;
     if ((trackingConfig->forceFlush || flush) && subresourceData.dirtyMask != 0) {
         barrierDstStage.add(dstStages);
         barrierSrcStage.add(subresourceData.ongoingWrites | subresourceData.ongoingReads
-                            | drv::PipelineStages::TOP_OF_PIPE_BIT);
+                            | drv::PipelineStages::TOP_OF_PIPE_BIT | subresourceData.usableStages);
         barrier.sourceAccessFlags = subresourceData.dirtyMask;
         subresourceData.ongoingWrites = 0;
         subresourceData.ongoingReads = 0;
@@ -629,13 +632,14 @@ void VulkanCmdBufferRecorder::add_memory_sync(
         subresourceData.visible = 0;
         subresourceData.usableStages = stages;
         subresUsage.preserveUsableStages = 0;
+        justFlushed = true;
     }
-    const drv::PipelineStages::FlagType missingVisibility =
+    const drv::MemoryBarrier::AccessFlagBitType missingVisibility =
       accessMask ^ (accessMask & subresourceData.visible);
     if (missingVisibility != 0) {
         if (subresourceData.ongoingWrites | subresourceData.ongoingReads)
             barrierSrcStage.add(subresourceData.ongoingWrites | subresourceData.ongoingReads);
-        else
+        else if (!justFlushed)
             barrierSrcStage.add(drv::PipelineStages(subresourceData.usableStages)
                                   .getEarliestStage(getQueueSupport()));
         barrierDstStage.add(dstStages);
