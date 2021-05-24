@@ -73,6 +73,8 @@
         "${workspaceFolder}/build/statistics/runtimeStats.bin",
         "--runtime_stats_game_exports",
         "${workspaceFolder}/build/statistics/runtimeStatsGameExports.bin",
+        "--runtime_stats_cache",
+        "${workspaceFolder}/build/statistics/runtimeStatsCache.bin",
         "-sshaders/shaders.bin"
       ]
     },

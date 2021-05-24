@@ -83,7 +83,9 @@ int main(int argc, char* argv[]) {
         app.add_option("--runtime_stats_persistance", args.runtimeStatsPersistanceBin,
                        "Binary file for storing runtime statistics persistance");
         app.add_option("--runtime_stats_game_exports", args.runtimeStatsGameExportsBin,
-                       "Binary file for storing runtime statistics game exports (required)");
+                       "Binary file for storing runtime statistics game exports");
+        app.add_option("--runtime_stats_cache", args.runtimeStatsCacheBin,
+                       "Binary file for storing runtime statistics cache");
         // std::string root = "";
         // app.add_option("-r,--root", root, "Working directory for the specified folder");
 

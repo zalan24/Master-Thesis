@@ -65,6 +65,7 @@ class Engine
         bool apiDumpEnabled;
         std::string runtimeStatsPersistanceBin;
         std::string runtimeStatsGameExportsBin;
+        std::string runtimeStatsCacheBin;
     };
 
     Engine(int argc, char* argv[], const Config& config,

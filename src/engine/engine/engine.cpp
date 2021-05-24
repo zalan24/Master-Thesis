@@ -186,7 +186,8 @@ Engine::Engine(int argc, char* argv[], const Config& cfg,
     // maxFramesInFlight + 1 for readback stage
     frameGraph(physicalDevice, device, &garbageSystem, &eventPool, trackingConfig,
                config.maxFramesInExecutionQueue, config.maxFramesInFlight + 1),
-    runtimeStats(args.runtimeStatsPersistanceBin, args.runtimeStatsGameExportsBin) {
+    runtimeStats(args.runtimeStatsPersistanceBin, args.runtimeStatsGameExportsBin,
+                 args.runtimeStatsCacheBin) {
     json configJson = ISerializable::serialize(config);
     std::stringstream ss;
     ss << configJson;
