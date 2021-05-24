@@ -216,12 +216,6 @@ struct ExecutionInfo
     const uint64_t* timelineSignalValues = nullptr;
 };
 
-enum class SharingType
-{
-    EXCLUSIVE,
-    CONCURRENT
-};
-
 struct BufferCreateInfo
 {
     unsigned long size = 0;
@@ -649,168 +643,8 @@ struct ShaderCreateInfo
     const uint32_t* code;
 };
 
-struct Extent3D
-{
-    uint32_t width;
-    uint32_t height;
-    uint32_t depth;
-};
-
-enum class SampleCount : uint32_t
-{
-    SAMPLE_COUNT_1 = 0x00000001,
-    SAMPLE_COUNT_2 = 0x00000002,
-    SAMPLE_COUNT_4 = 0x00000004,
-    SAMPLE_COUNT_8 = 0x00000008,
-    SAMPLE_COUNT_16 = 0x00000010,
-    SAMPLE_COUNT_32 = 0x00000020,
-    SAMPLE_COUNT_64 = 0x00000040,
-};
-
-struct ImageCreateInfo
-{
-    // flags?
-    enum Type
-    {
-        TYPE_1D = 0,
-        TYPE_2D = 1,
-        TYPE_3D = 2,
-    } type;
-    ImageFormat format;
-    Extent3D extent;
-    uint32_t mipLevels;
-    uint32_t arrayLayers;
-    SampleCount sampleCount;
-    enum Tiling
-    {
-        TILING_OPTIMAL = 0,
-        TILING_LINEAR = 1
-    } tiling = TILING_OPTIMAL;
-    using UsageType = unsigned int;
-    enum UsageFlagBits : UsageType
-    {
-        TRANSFER_SRC_BIT = 0x00000001,
-        TRANSFER_DST_BIT = 0x00000002,
-        SAMPLED_BIT = 0x00000004,
-        STORAGE_BIT = 0x00000008,
-        COLOR_ATTACHMENT_BIT = 0x00000010,
-        DEPTH_STENCIL_ATTACHMENT_BIT = 0x00000020,
-        TRANSIENT_ATTACHMENT_BIT = 0x00000040,
-        INPUT_ATTACHMENT_BIT = 0x00000080,
-        //   // Provided by VK_NV_shading_rate_image
-        //     VK_IMAGE_USAGE_SHADING_RATE_IMAGE_BIT_NV = 0x00000100,
-        //   // Provided by VK_EXT_fragment_density_map
-        //     VK_IMAGE_USAGE_FRAGMENT_DENSITY_MAP_BIT_EXT = 0x00000200,
-        //   // Provided by VK_KHR_fragment_shading_rate
-        //     VK_IMAGE_USAGE_FRAGMENT_SHADING_RATE_ATTACHMENT_BIT_KHR = VK_IMAGE_USAGE_SHADING_RATE_IMAGE_BIT_NV,
-    };
-    UsageType usage;
-    SharingType sharingType = SharingType::EXCLUSIVE;
-    unsigned int familyCount = 0;
-    QueueFamilyPtr* families = nullptr;
-    ImageLayout initialLayout = ImageLayout::UNDEFINED;
-};
-
-struct ImageViewCreateInfo
-{
-    ImagePtr image;
-    enum Type
-    {
-        TYPE_1D = 0,
-        TYPE_2D = 1,
-        TYPE_3D = 2,
-        TYPE_CUBE = 3,
-        TYPE_1D_ARRAY = 4,
-        TYPE_2D_ARRAY = 5,
-        TYPE_CUBE_ARRAY = 6,
-    } type;
-    ImageFormat format;
-    enum class ComponentSwizzle
-    {
-        IDENTITY = 0,
-        ZERO = 1,
-        ONE = 2,
-        R = 3,
-        G = 4,
-        B = 5,
-        A = 6,
-    };
-    struct ComponentMapping
-    {
-        ComponentSwizzle r;
-        ComponentSwizzle g;
-        ComponentSwizzle b;
-        ComponentSwizzle a;
-    } components;
-    ImageSubresourceRange subresourceRange;
-};
-
-struct ClearColorValue
-{
-    union Value
-    {
-        float float32[4];
-        int32_t int32[4];
-        uint32_t uint32[4];
-    } value;
-    ClearColorValue() = default;
-    ClearColorValue(uint32_t r, uint32_t g, uint32_t b, uint32_t a) {
-        value.uint32[0] = r;
-        value.uint32[1] = g;
-        value.uint32[2] = b;
-        value.uint32[3] = a;
-    }
-    ClearColorValue(int32_t r, int32_t g, int32_t b, int32_t a) {
-        value.int32[0] = r;
-        value.int32[1] = g;
-        value.int32[2] = b;
-        value.int32[3] = a;
-    }
-    ClearColorValue(float r, float g, float b, float a) {
-        value.float32[0] = r;
-        value.float32[1] = g;
-        value.float32[2] = b;
-        value.float32[3] = a;
-    }
-};
-
-struct ClearDepthStencilValue
-{
-    float depth;
-    uint32_t stencil;
-};
-
-struct ClearValue
-{
-    enum Type
-    {
-        COLOR,
-        DEPTH
-    } type;
-    union Value
-    {
-        ClearColorValue color;
-        ClearDepthStencilValue depthStencil;
-    } value;
-};
-
-using ImageResourceUsageFlag = uint64_t;
-enum ImageResourceUsage : ImageResourceUsageFlag
-{
-    IMAGE_USAGE_TRANSFER_DESTINATION = 1ull << 0,
-    IMAGE_USAGE_PRESENT = 1ull << 1,
-    IMAGE_USAGE_ATTACHMENT_INPUT = 1ull << 2,
-    IMAGE_USAGE_COLOR_OUTPUT_READ = 1ull << 3,
-    IMAGE_USAGE_COLOR_OUTPUT_WRITE = 1ull << 4,
-    IMAGE_USAGE_DEPTH_STENCIL_READ = 1ull << 5,
-    IMAGE_USAGE_DEPTH_STENCIL_WRITE = 1ull << 6,
-};
-
 PipelineStages get_image_usage_stages(ImageResourceUsageFlag usages);
 MemoryBarrier::AccessFlagBitType get_image_usage_accesses(ImageResourceUsageFlag usages);
-ImageLayoutMask get_accepted_image_layouts(ImageResourceUsageFlag usages);
-
-ImageAspectBitType get_format_aspects(ImageFormat format);
 
 struct SwapchainCreateInfo
 {
@@ -848,49 +682,6 @@ enum class AttachmentStoreOp
 {
     STORE = 0,
     DONT_CARE = 1,
-};
-
-struct Offset2D
-{
-    int32_t x;
-    int32_t y;
-    bool operator==(const Offset2D& rhs) const { return x == rhs.x && y == rhs.y; }
-};
-
-struct Extent2D
-{
-    uint32_t width;
-    uint32_t height;
-    bool operator==(const Extent2D& rhs) const {
-        return width == rhs.width && height == rhs.height;
-    }
-    bool operator!=(const Extent2D& rhs) const { return !(*this == rhs); }
-};
-
-struct Rect2D
-{
-    Offset2D offset;
-    Extent2D extent;
-    bool operator==(const Rect2D& rhs) const {
-        return offset == rhs.offset && extent == rhs.extent;
-    }
-};
-
-struct TextureInfo
-{
-    Extent3D extent;
-    uint32_t numMips;
-    uint32_t arraySize;
-    ImageFormat format;
-    SampleCount samples;
-    ImageAspectBitType aspects;
-};
-
-struct ClearRect
-{
-    Rect2D rect;
-    uint32_t baseLayer;
-    uint32_t layerCount;
 };
 
 enum class PrimitiveTopology
@@ -943,28 +734,3 @@ enum class CompareOp
 };
 
 };  // namespace drv
-
-namespace std
-{
-template <>
-struct hash<drv::Offset2D>
-{
-    std::size_t operator()(const drv::Offset2D& s) const noexcept {
-        return std::hash<int32_t>{}(s.x) ^ std::hash<int32_t>{}(s.y);
-    }
-};
-template <>
-struct hash<drv::Extent2D>
-{
-    std::size_t operator()(const drv::Extent2D& s) const noexcept {
-        return std::hash<uint32_t>{}(s.width) ^ std::hash<uint32_t>{}(s.height);
-    }
-};
-template <>
-struct hash<drv::Rect2D>
-{
-    std::size_t operator()(const drv::Rect2D& s) const noexcept {
-        return std::hash<drv::Offset2D>{}(s.offset) ^ std::hash<drv::Extent2D>{}(s.extent);
-    }
-};
-}  // namespace std

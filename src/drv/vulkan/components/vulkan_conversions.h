@@ -136,6 +136,14 @@ inline VkOffset2D convertOffset2D(const drv::Offset2D& value) {
     return ret;
 }
 
+inline VkOffset3D convertOffset3D(const drv::Offset3D& value) {
+    VkOffset3D ret;
+    ret.x = value.x;
+    ret.y = value.y;
+    ret.z = value.d;
+    return ret;
+}
+
 inline VkExtent2D convertExtent2D(const drv::Extent2D& value) {
     VkExtent2D ret;
     ret.height = value.height;
@@ -157,6 +165,16 @@ inline VkClearRect convertClearRect(const drv::ClearRect& clearRect) {
     ret.layerCount = clearRect.layerCount == drv::ImageSubresourceRange::REMAINING_ARRAY_LAYERS
                        ? VK_REMAINING_ARRAY_LAYERS
                        : clearRect.layerCount;
+    return ret;
+}
+
+inline VkImageSubresourceLayers convertImageSubresourceLayers(
+  const drv::ImageSubresourceLayers& layers) {
+    VkImageSubresourceLayers ret;
+    ret.aspectMask = static_cast<VkImageAspectFlags>(layers.aspectMask);
+    ret.baseArrayLayer = layers.baseArrayLayer;
+    ret.layerCount = layers.layerCount;
+    ret.mipLevel = layers.mipLevel;
     return ret;
 }
 

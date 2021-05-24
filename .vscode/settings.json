@@ -212,6 +212,7 @@
         "bidiagonal",
         "bidiagonalization",
         "bidiagonalize",
+        "blit",
         "cmake",
         "cuda",
         "eigen",

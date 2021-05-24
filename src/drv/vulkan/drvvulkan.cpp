@@ -434,10 +434,8 @@ void VulkanCmdBufferRecorder::appendBarrier(drv::PipelineStages srcStage,
         return;
     }
     BarrierInfo barrier;
-    barrier.srcStages =
-      trackingConfig->forceAllSrcStages ? drv::PipelineStages::ALL_COMMANDS_BIT : srcStage;
-    barrier.dstStages =
-      trackingConfig->forceAllDstStages ? drv::PipelineStages::ALL_COMMANDS_BIT : dstStage;
+    barrier.srcStages = trackingConfig->forceAllSrcStages ? getAvailableStages() : srcStage;
+    barrier.dstStages = trackingConfig->forceAllDstStages ? getAvailableStages() : dstStage;
     // barrier.event = event;
     barrier.numImageRanges = 1;
     barrier.imageBarriers[0] = std::move(imageBarrier);

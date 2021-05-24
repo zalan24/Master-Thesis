@@ -58,7 +58,6 @@ void Engine::Config::writeJson(json& out) const {
     WRITE_OBJECT(maxFramesInFlight, out);
     WRITE_OBJECT(driver, out);
     WRITE_OBJECT(logs, out);
-    WRITE_OBJECT(trackerConfig, out);
 }
 
 void Engine::Config::readJson(const json& in) {
@@ -73,7 +72,6 @@ void Engine::Config::readJson(const json& in) {
     READ_OBJECT(maxFramesInFlight, in);
     READ_OBJECT(driver, in);
     READ_OBJECT(logs, in);
-    READ_OBJECT_OPT(trackerConfig, in, {});
 }
 
 static drv::Driver get_driver(const std::string& name) {
@@ -186,7 +184,7 @@ Engine::Engine(int argc, char* argv[], const Config& cfg,
     resourceMgr(std::move(resource_infos)),
     garbageSystem(safe_cast<size_t>(config.frameMemorySizeKb) << 10),
     // maxFramesInFlight + 1 for readback stage
-    frameGraph(physicalDevice, device, &garbageSystem, &eventPool, config.trackerConfig,
+    frameGraph(physicalDevice, device, &garbageSystem, &eventPool, trackingConfig,
                config.maxFramesInExecutionQueue, config.maxFramesInFlight + 1),
     runtimeStats(args.runtimeStatsBin.c_str()) {
     json configJson = ISerializable::serialize(config);

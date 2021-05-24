@@ -53,7 +53,6 @@ class Engine
         uint32_t inputBufferSize;
         uint32_t stackMemorySizeKb;
         uint32_t frameMemorySizeKb;
-        drv::StateTrackingConfig trackerConfig;
         std::string logs;
         void writeJson(json& out) const override final;
         void readJson(const json& in) override final;

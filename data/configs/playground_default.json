@@ -9,14 +9,5 @@
     "maxFramesInFlight": 4,
     "title": "Playground",
     "driver": "Vulkan",
-    "logs": "logs",
-    "trackerConfig": {
-        "forceAllDstStages": false,
-        "forceFlush": false,
-        "forceInvalidateAll": false,
-        "immediateBarriers": false,
-        "immediateEventBarriers": false,
-        "syncAllOperations": false,
-        "verbosity": "AllErrors"
-    }
+    "logs": "logs"
 }

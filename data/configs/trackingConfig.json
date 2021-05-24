@@ -1,5 +1,5 @@
 {
-    "verbosity": "DebugErrors",
+    "verbosity": "AllErrors",
     "immediateBarriers": false,
     "forceAllDstStages": false,
     "forceAllSrcStages": false,
