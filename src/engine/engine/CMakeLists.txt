@@ -12,7 +12,7 @@ target_link_libraries(EngineLib PRIVATE
 )
 target_link_libraries(EngineLib PUBLIC
     AnimationsEntities
-    AnimationsSerializable
+    SerializableLib
     AnimationsAssetLoaders
     AnimationsDrv
     AnimationsResources

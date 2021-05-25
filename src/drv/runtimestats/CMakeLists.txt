@@ -8,7 +8,7 @@ set_target_properties(  RuntimeStats
                         LINK_OPTIONS "${TARGET_LINK_FLAGS}")
 target_include_directories(RuntimeStats PUBLIC . ${CMAKE_CURRENT_BINARY_DIR})
 target_link_libraries(RuntimeStats PUBLIC
-    AnimationsDrv
-    AnimationsIO
     FeaturesLib
+    DrvTypes
+    SerializableLib
 )

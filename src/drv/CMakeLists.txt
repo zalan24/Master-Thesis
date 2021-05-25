@@ -1,6 +1,8 @@
+add_subdirectory(types)
 add_subdirectory(profiler)
 add_subdirectory(configs)
 add_subdirectory(common)
+add_subdirectory(runtimestats)
 
 option(BUILD_DRV_VULKAN "Build driver for vulkan" ON)
 
@@ -17,7 +19,7 @@ set_target_properties(  AnimationsDrv
                         COMPILE_FLAGS ${TARGETCOMPILEFLAGS}
                         LINK_OPTIONS "${TARGET_LINK_FLAGS}")
 target_link_libraries(AnimationsDrv PUBLIC
-    AnimationsDrvCommon
+    DrvCommon
     AnimationsTools
 )
 

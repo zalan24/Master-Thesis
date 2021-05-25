@@ -16,5 +16,5 @@ target_link_libraries(AnimationsAssetLoaders PUBLIC
     glm_external
     AnimationsData
     AnimationsTools
-    AnimationsSerializable
+    SerializableLib
 )

@@ -18,7 +18,6 @@ class VulkanRenderPass final : public drv::RenderPass
     VulkanRenderPass& operator=(const VulkanRenderPass&) = delete;
 
     drv::SampleCount getSampleCount(drv::SubpassId subpass) const override;
-    void build() override;
 
     VkRenderPass getRenderPass() const { return renderPass; }
 
@@ -43,6 +42,8 @@ class VulkanRenderPass final : public drv::RenderPass
               uint32_t firstVertex, uint32_t firstInstance) const override;
 
     PassBeginData begin(const drv::ClearValue* clearValues) override;
+
+    void build_impl() override;
 
  private:
     VkRenderPass renderPass = VK_NULL_HANDLE;

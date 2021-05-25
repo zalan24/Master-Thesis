@@ -10,8 +10,8 @@
 
 struct StatsCache
 {
-    static constexpr uint32_t FILE_HEADER = 0x11545678;
-    static constexpr uint32_t FILE_END = 0xEFCBA787;
+    static constexpr uint32_t FILE_HEADER_LABEL = 0x11545678;
+    static constexpr uint32_t FILE_END_LABEL = 0xEFCBA787;
 
     void save(std::ostream& out) const;
     void load(std::istream& in);

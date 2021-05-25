@@ -5,16 +5,13 @@
 #include <corecontext.h>
 #include <flexiblearray.hpp>
 
-#include "drvbarrier.h"
-#include "drvtypes.h"
-#include "drvtypes/drvresourceptrs.hpp"
-#include "drvtypes/drvtracking.hpp"
+#include <drvtypes.h>
+#include <drvresourceptrs.hpp>
+#include <drvtracking.hpp>
 
-#ifdef DEBUG
-#    define VALIDATE_USAGE 1
-#else
-#    define VALIDATE_USAGE 0
-#endif
+#include <runtimestats.h>
+
+#include "drvbarrier.h"
 
 namespace drv
 {
@@ -31,30 +28,10 @@ class DrvCmdBufferRecorder
     struct RecordImageInfo
     {
         bool used = false;
-#if VALIDATE_USAGE
         ImageSubresourceSet initMask;
-#endif
-        RecordImageInfo(bool _used
-#if VALIDATE_USAGE
-                        ,
-                        ImageSubresourceSet _initMask
-#endif
-                        )
-          : used(_used)
-#if VALIDATE_USAGE
-            ,
-            initMask(std::move(_initMask))
-#endif
-        {
-        }
-        RecordImageInfo()
-          : used(false)
-#if VALIDATE_USAGE
-            ,
-            initMask(0)
-#endif
-        {
-        }
+        RecordImageInfo(bool _used, ImageSubresourceSet _initMask)
+          : used(_used), initMask(std::move(_initMask)) {}
+        RecordImageInfo() : used(false), initMask(0) {}
     };
 
     using ImageStates =
@@ -93,6 +70,9 @@ class DrvCmdBufferRecorder
     void registerImage(ImagePtr image, ImageLayout layout,
                        QueueFamilyPtr ownerShip = IGNORE_FAMILY);
     void registerUndefinedImage(ImagePtr image, QueueFamilyPtr ownerShip = IGNORE_FAMILY);
+    void autoRegisterImage(ImagePtr image, QueueFamilyPtr ownerShip = IGNORE_FAMILY);
+    void autoRegisterImage(ImagePtr image, uint32_t layer, uint32_t mip, AspectFlagBits aspect,
+                           QueueFamilyPtr ownerShip = IGNORE_FAMILY);
 
     void updateImageState(drv::ImagePtr image, const ImageTrackInfo& state,
                           const ImageSubresourceSet& initMask);
@@ -142,10 +122,11 @@ class DrvCmdBuffer
 
     using DrvRecordCallback = void (*)(const D&, DrvCmdBufferRecorder*);
 
-    explicit DrvCmdBuffer(IDriver* _driver, PhysicalDevicePtr _physicalDevice,
+    explicit DrvCmdBuffer(std::string _name, IDriver* _driver, PhysicalDevicePtr _physicalDevice,
                           LogicalDevicePtr _device, QueueFamilyPtr _queueFamily,
                           DrvRecordCallback _recordCallback)
-      : driver(_driver),
+      : name(std::move(_name)),
+        driver(_driver),
         physicalDevice(_physicalDevice),
         device(_device),
         queueFamily(_queueFamily),
@@ -165,6 +146,7 @@ class DrvCmdBuffer
             currentData = std::move(d);
             StackMemory::MemoryHandle<uint8_t> recorderMem(driver->get_cmd_buffer_recorder_size(),
                                                            TEMPMEM);
+            RuntimeStatisticsScope runtimeStatsNode(RuntimeStats::getSingleton(), name.c_str());
             PlacementPtr<DrvCmdBufferRecorder> recorder = driver->create_cmd_buffer_recorder(
               recorderMem, physicalDevice, device, queueFamily, cmdBufferPtr, isSingleTimeBuffer(),
               isSimultaneous());
@@ -195,6 +177,7 @@ class DrvCmdBuffer
     LogicalDevicePtr getDevice() const { return device; }
 
  private:
+    std::string name;
     IDriver* driver;
     D currentData;
     PhysicalDevicePtr physicalDevice;

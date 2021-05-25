@@ -2,8 +2,9 @@
 
 #include <util.hpp>
 
+#include <drvtypes.h>
+
 #include "drvrenderpass.h"
-#include "drvtypes.h"
 
 namespace drv
 {

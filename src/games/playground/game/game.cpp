@@ -217,7 +217,7 @@ Engine::AcquiredImageData Game::record(FrameId frameId) {
         //       getDevice(), testRenderPass->createFramebuffer(testImageInfo));
         testRenderPass->attach(attachments[swapChainData.imageIndex].data());
 
-        OneTimeCmdBuffer<RecordData> cmdBuffer(getPhysicalDevice(), getDevice(),
+        OneTimeCmdBuffer<RecordData> cmdBuffer("testcmdbuffer1", getPhysicalDevice(), getDevice(),
                                                queues.renderQueue.handle, getCommandBufferBank(),
                                                getGarbageSystem(), record_cmd_buffer);
         RecordData recordData;

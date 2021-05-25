@@ -12,6 +12,6 @@ target_link_libraries(AnimationsShaderCompiler PUBLIC
     AnimationsIO
     ShaderManager
     FeaturesLib
-    AnimationsSerializable
+    SerializableLib
     RuntimeStats
 )

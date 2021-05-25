@@ -9,8 +9,8 @@
 
 struct GameExportsNodeData
 {
-    static constexpr uint32_t FILE_HEADER = 0x12545678;
-    static constexpr uint32_t FILE_END = 0xEDCBA787;
+    static constexpr uint32_t FILE_HEADER_LABEL = 0x12545678;
+    static constexpr uint32_t FILE_END_LABEL = 0xEDCBA787;
 
     void save(std::ostream& out) const;
     void load(std::istream& in);

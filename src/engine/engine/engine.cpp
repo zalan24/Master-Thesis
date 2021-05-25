@@ -524,8 +524,8 @@ bool Engine::execute(ExecutionPackage&& package) {
                     BREAK_POINT;
                 }
                 OneTimeCmdBuffer<const drv::StateCorrectionData*> correctionCmdBuffer(
-                  physicalDevice, device, cmdBuffer.queue, getCommandBufferBank(),
-                  getGarbageSystem(),
+                  "correctionCmdBuffer", physicalDevice, device, cmdBuffer.queue,
+                  getCommandBufferBank(), getGarbageSystem(),
                   [](const drv::StateCorrectionData* const& data,
                      drv::DrvCmdBufferRecorder* recorder) { recorder->corrigate(*data); });
                 commandBuffers[numCommandBuffers++] =

@@ -561,6 +561,7 @@ struct TextureInfo
     ImageFormat format;
     SampleCount samples;
     ImageAspectBitType aspects;
+    ImageSubresourceRange getSubresourceRange() const;
 };
 
 struct ImageSubresourceLayers

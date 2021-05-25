@@ -10,7 +10,7 @@ target_include_directories(ShaderPreprocessorLib PUBLIC . ${CMAKE_CURRENT_BINARY
 target_link_libraries(ShaderPreprocessorLib PRIVATE simple_cpp_external)
 target_link_libraries(ShaderPreprocessorLib PUBLIC
     AnimationsIO
-    AnimationsSerializable
+    SerializableLib
     ShaderBin
     AnimationsTools
 )

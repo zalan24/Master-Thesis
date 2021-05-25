@@ -10,6 +10,6 @@ target_include_directories(AnimationsController PUBLIC . ${CMAKE_CURRENT_BINARY_
 target_link_libraries(AnimationsController PUBLIC
     glm_external
     AnimationsTools
-    AnimationsSerializable
+    SerializableLib
     AnimationsMath
 )

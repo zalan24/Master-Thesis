@@ -1,12 +1,11 @@
-#include "statscache.h"
+#include "exported_gamestats.h"
 
 #include <binary_io.h>
 
 #include <drverror.h>
 
-void StatsCache::save(std::ostream& out) const {
-    std::shared_lock<std::shared_mutex> lock(mutex);
-    write_data(out, FILE_HEADER);
+void GameExportsNodeData::save(std::ostream& out) const {
+    write_data(out, FILE_HEADER_LABEL);
     write_string(out, __TIMESTAMP__);
 
     // TODO content
@@ -17,14 +16,13 @@ void StatsCache::save(std::ostream& out) const {
         write_string(out, name);
         data->save(out);
     }
-    write_data(out, FILE_END);
+    write_data(out, FILE_END_LABEL);
 }
 
-void StatsCache::load(std::istream& in) {
-    std::unique_lock<std::shared_mutex> lock(mutex);
+void GameExportsNodeData::load(std::istream& in) {
     uint32_t header;
     read_data(in, header);
-    drv::drv_assert(header == FILE_HEADER, "Invalid file header");
+    drv::drv_assert(header == FILE_HEADER_LABEL, "Invalid file header");
     std::string stamp;
     read_string(in, stamp);
     if (stamp != __TIMESTAMP__)
@@ -38,10 +36,10 @@ void StatsCache::load(std::istream& in) {
     for (uint32_t i = 0; i < subnodeCount; ++i) {
         std::string name;
         read_string(in, name);
-        std::unique_ptr<StatsCache> data = std::make_unique<StatsCache>();
+        std::unique_ptr<GameExportsNodeData> data = std::make_unique<GameExportsNodeData>();
         data->load(in);
     }
     uint32_t ending;
     read_data(in, ending);
-    drv::drv_assert(ending == FILE_END, "Invalid file ending");
+    drv::drv_assert(ending == FILE_END_LABEL, "Invalid file ending");
 }

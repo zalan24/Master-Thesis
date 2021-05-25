@@ -10,5 +10,5 @@ set_target_properties(  DrvConfigs
                         COMPILE_FLAGS ${TARGETCOMPILEFLAGS}
                         LINK_OPTIONS "${TARGET_LINK_FLAGS}")
 target_link_libraries(DrvConfigs PUBLIC
-    AnimationsSerializable
+    SerializableLib
 )

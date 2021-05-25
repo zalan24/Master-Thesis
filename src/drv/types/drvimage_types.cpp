@@ -411,3 +411,13 @@ ImageAspectBitType drv::get_format_aspects(ImageFormat format) {
             return COLOR_BIT;
     }
 }
+
+ImageSubresourceRange TextureInfo::getSubresourceRange() const {
+    ImageSubresourceRange ret;
+    ret.aspectMask = aspects;
+    ret.baseArrayLayer = 0;
+    ret.layerCount = arraySize;
+    ret.baseMipLevel = 0;
+    ret.levelCount = numMips;
+    return ret;
+}

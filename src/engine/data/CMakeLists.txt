@@ -10,5 +10,5 @@ target_include_directories(AnimationsData PUBLIC . ${CMAKE_CURRENT_BINARY_DIR})
 target_link_libraries(AnimationsData PUBLIC
     glm_external
     AnimationsTools
-    AnimationsSerializable
+    SerializableLib
 )

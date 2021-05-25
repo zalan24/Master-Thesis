@@ -23,7 +23,7 @@ VulkanRenderPass::~VulkanRenderPass() {
     clear();
 }
 
-void VulkanRenderPass::build() {
+void VulkanRenderPass::build_impl() {
     struct AttachmentUsage
     {
         drv::AttachmentRef attachment;
@@ -309,6 +309,7 @@ void VulkanRenderPass::beginRenderPass(drv::FramebufferPtr frameBuffer,
                                        const drv::Rect2D& renderArea,
                                        drv::DrvCmdBufferRecorder* cmdBuffer) const {
     for (uint32_t i = 0; i < attachments.size(); ++i) {
+        TODO;  // import external barriers from runtime stats
         // TODO;  // apply starting auto external barriers
 
         static_cast<VulkanCmdBufferRecorder*>(cmdBuffer)->cmdUseAsAttachment(

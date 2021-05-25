@@ -5,8 +5,8 @@
 #include <vulkan/vulkan.h>
 
 #include <drverror.h>
-#include <drvtypes/drvimage_types.h>
-#include <drvtypes/drvresourceptrs.hpp>
+#include <drvimage_types.h>
+#include <drvresourceptrs.hpp>
 
 #include "vulkan_buffer.h"
 #include "vulkan_enum_compare.h"

@@ -4,7 +4,7 @@
 #include <drvshader.h>
 #include <drvtypes.h>
 #include <hardwareconfig.h>
-#include <drvtypes/drvtracking.hpp>
+#include <drvtracking.hpp>
 
 #include <memory>
 #include <mutex>

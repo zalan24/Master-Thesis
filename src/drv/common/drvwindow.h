@@ -1,6 +1,6 @@
 #pragma once
 
-#include "drvtypes.h"
+#include <drvtypes.h>
 
 class IWindow
 {

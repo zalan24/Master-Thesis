@@ -4,8 +4,9 @@
 #include <string>
 #include <vector>
 
+#include <drvtypes.h>
+
 #include "drvcmdbuffer.h"
-#include "drvtypes.h"
 
 namespace drv
 {
@@ -130,7 +131,7 @@ class RenderPass
     RenderPassResourceId createResource();
 
     virtual SampleCount getSampleCount(SubpassId subpass) const = 0;
-    virtual void build() = 0;
+    void build();
 
     struct AttachmentData
     {
@@ -164,6 +165,8 @@ class RenderPass
     virtual void draw(drv::DrvCmdBufferRecorder* cmdBuffer, uint32_t vertexCount,
                       uint32_t instanceCount, uint32_t firstVertex,
                       uint32_t firstInstance) const = 0;
+
+    virtual void build_impl() = 0;
 
     struct PassBeginData
     {

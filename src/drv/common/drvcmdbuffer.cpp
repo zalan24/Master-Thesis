@@ -2,8 +2,9 @@
 
 #include <logger.h>
 
+#include <drverror.h>
+
 #include "drv_interface.h"
-#include "drverror.h"
 
 using namespace drv;
 
@@ -39,11 +40,24 @@ DrvCmdBufferRecorder::DrvCmdBufferRecorder(IDriver* _driver, drv::PhysicalDevice
     imageStates(nullptr) {
 }
 
+void DrvCmdBufferRecorder::autoRegisterImage(ImagePtr image, QueueFamilyPtr ownerShip) {
+    TextureInfo texInfo = driver->get_texture_info(image);
+    texInfo.getSubresourceRange().traverse(
+      texInfo.arraySize, texInfo.numMips,
+      [&, this](uint32_t layer, uint32_t mip, AspectFlagBits aspect) {
+          autoRegisterImage(image, layer, mip, aspect, ownerShip);
+      });
+}
+
+void DrvCmdBufferRecorder::autoRegisterImage(ImagePtr image, uint32_t layer, uint32_t mip,
+                                             AspectFlagBits aspect, QueueFamilyPtr ownerShip) {
+    TODO;  // instead of showing an error, use the runtime stats (return a default value, if not available)
+}
+
 ImageTrackInfo& DrvCmdBufferRecorder::getImageState(
   drv::ImagePtr image, uint32_t ranges, const drv::ImageSubresourceRange* subresourceRanges) {
     TextureInfo texInfo = driver->get_texture_info(image);
     bool found = false;
-#if VALIDATE_USAGE
     for (uint32_t i = 0; i < imageRecordStates.size() && !found; ++i) {
         if (imageRecordStates[i].first == image) {
             drv::TextureInfo info = driver->get_texture_info(image);
@@ -53,15 +67,14 @@ ImageTrackInfo& DrvCmdBufferRecorder::getImageState(
                   [&, this](uint32_t layer, uint32_t mip, AspectFlagBits aspect) {
                       if (!(texInfo.aspects & aspect))
                           return;
-                      drv::drv_assert(
-                        imageRecordStates[i].second.initMask.has(layer, mip, aspect),
-                        "The used image subresource range was not initialized in command buffer recorder");
+                      if (!imageRecordStates[i].second.initMask.has(layer, mip, aspect))
+                          autoRegisterImage(image, layer, mip, aspect);
                   });
             found = true;
         }
     }
-    drv::drv_assert(found, "Command buffer uses an image without previous registration");
-#endif
+    if (!found)
+        autoRegisterImage(image);
     found = false;
     for (uint32_t i = 0; i < imageRecordStates.size() && !found; ++i) {
         if (imageRecordStates[i].first == image) {
@@ -72,8 +85,7 @@ ImageTrackInfo& DrvCmdBufferRecorder::getImageState(
     for (uint32_t i = 0; i < imageStates->size(); ++i)
         if ((*imageStates)[i].first == image)
             return (*imageStates)[i].second;
-    LOG_F(ERROR, "Command buffer uses an image without previous registration");
-    BREAK_POINT;
+    drv::drv_assert(false, "Something went wrong with the registration of an image");
     // undefined, unknown queue family
     // let's hope, it works out
     ImageTrackInfo state(texInfo.arraySize, texInfo.numMips, texInfo.aspects);
@@ -120,9 +132,7 @@ void DrvCmdBufferRecorder::registerImage(ImagePtr image, const ImageStartingStat
         imageStates->emplace_back(image, std::move(imgState));
     else
         (*imageStates)[ind].second = std::move(imgState);
-#if VALIDATE_USAGE
     imgRecState.initMask.merge(initMask);
-#endif
 }
 
 void DrvCmdBufferRecorder::registerImage(ImagePtr image, ImageLayout layout,
@@ -162,18 +172,11 @@ void DrvCmdBufferRecorder::updateImageState(drv::ImagePtr image, const ImageTrac
     for (uint32_t i = 0; i < imageRecordStates.size() && !found; ++i) {
         if (imageRecordStates[i].first == image) {
             found = true;
-#if VALIDATE_USAGE
             imageRecordStates[i].second.initMask.merge(initMask);
-#endif
         }
     }
     if (!found) {
-        RecordImageInfo recInfo(false
-#if VALIDATE_USAGE
-                                ,
-                                initMask
-#endif
-        );
+        RecordImageInfo recInfo(false, initMask);
         imageRecordStates.emplace_back(image, std::move(recInfo));
     }
 }

@@ -16,7 +16,7 @@ if (Vulkan_FOUND)
                             COMPILE_FLAGS ${TARGETCOMPILEFLAGS}
                             LINK_OPTIONS "${TARGET_LINK_FLAGS}")
     target_link_libraries(AnimationsDrvVulkan PUBLIC
-        AnimationsDrvCommon
+        DrvCommon
         AnimationsInput
         AnimationsTools
         CoreDataStructures

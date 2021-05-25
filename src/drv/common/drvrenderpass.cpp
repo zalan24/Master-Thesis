@@ -1,6 +1,6 @@
 #include "drvrenderpass.h"
 
-#include "drverror.h"
+#include <drverror.h>
 
 using namespace drv;
 
@@ -109,4 +109,9 @@ void CmdRenderPass::bindGraphicsPipeline(const GraphicsPipelineBindInfo& info) {
 void CmdRenderPass::draw(uint32_t vertexCount, uint32_t instanceCount, uint32_t firstVertex,
                          uint32_t firstInstance) {
     renderPass->draw(cmdBuffer, vertexCount, instanceCount, firstVertex, firstInstance);
+}
+
+void RenderPass::build() {
+    RuntimeStatisticsScope runtimeStatsNode(RuntimeStats::getSingleton(), name.c_str());
+    build_impl();
 }

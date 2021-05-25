@@ -9,7 +9,7 @@
 #include <util.hpp>
 
 #include "drv.h"
-#include "drvtypes/drvresourceptrs.hpp"
+#include "drvresourceptrs.hpp"
 
 class IWindow;
 

@@ -1,9 +1,21 @@
 #pragma once
 
-#include "drvtypes.h"
-
 namespace drv
 {
+struct CallbackData
+{
+    const char* text;
+    enum class Type
+    {
+        VERBOSE,
+        NOTE,
+        WARNING,
+        ERROR,
+        FATAL
+    } type;
+};
+using CallbackFunction = void (*)(const CallbackData*);
+
 void set_callback(CallbackFunction func);
 void report_error(CallbackData* data);
 // TODO currently a lot of string are constructed for this...

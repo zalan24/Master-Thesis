@@ -5,8 +5,9 @@
 #include <serializable.h>
 #include <placementptr.hpp>
 
-#include "drvtypes.h"
-#include "drvtypes/drvtracking.hpp"
+#include <drvtypes.h>
+#include <drvtracking.hpp>
+
 #include "hardwareconfig.h"
 
 class IWindow;

@@ -7,4 +7,4 @@ set_target_properties(  ShaderBin
                         COMPILE_FLAGS ${TARGETCOMPILEFLAGS}
                         LINK_OPTIONS "${TARGET_LINK_FLAGS}")
 target_include_directories(ShaderBin PUBLIC . ${CMAKE_CURRENT_BINARY_DIR})
-target_link_libraries(ShaderBin PUBLIC AnimationsDrvCommon)
+target_link_libraries(ShaderBin PUBLIC DrvCommon)

@@ -8,8 +8,8 @@
 
 #include <string_hash.h>
 
-#include "drvtypes/drvimage_types.h"
-#include "drvtypes/drvresourceptrs.hpp"
+#include "drvimage_types.h"
+#include "drvresourceptrs.hpp"
 
 // TODO split this file up
 
@@ -22,20 +22,6 @@ struct InstanceCreateInfo
     bool gfxCaptureEnabled = false;
     bool apiDumpEnabled = false;
 };
-
-struct CallbackData
-{
-    const char* text;
-    enum class Type
-    {
-        VERBOSE,
-        NOTE,
-        WARNING,
-        ERROR,
-        FATAL
-    } type;
-};
-using CallbackFunction = void (*)(const CallbackData*);
 
 struct PhysicalDeviceInfo
 {

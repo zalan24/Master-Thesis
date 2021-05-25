@@ -10,7 +10,7 @@ target_include_directories(ShaderCompilerLib PUBLIC . ${CMAKE_CURRENT_BINARY_DIR
 target_link_libraries(ShaderCompilerLib PRIVATE glslang_external spirv_tools_external)
 target_link_libraries(ShaderCompilerLib PUBLIC
     AnimationsIO
-    AnimationsSerializable
+    SerializableLib
     ShaderBin
     AnimationsTools
     ShaderPreprocessorLib
