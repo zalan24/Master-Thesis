@@ -12,6 +12,8 @@
 #define GLM_FORCE_RADIANS
 #include <glm/glm.hpp>
 
+#include <binary_io.h>
+
 using json = nlohmann::json;
 
 std::string hash_string(const std::string& data);
@@ -20,22 +22,64 @@ std::string hash_binary(size_t size, const void* data);
 class ISerializable
 {
  protected:
+    using Marker = uint16_t;
+    static constexpr Marker MARKER_STR = 0x53fe;
+    static constexpr Marker MARKER_VEC = 0x542e;
+    static constexpr Marker MARKER_MAP = 0xfea7;
+    static constexpr Marker MARKER_SET = 0x5e10;
+    static constexpr Marker MARKER_OBJ = 0x1253;
+
     // This is required by the vector and map serialization
     static auto serialize(int32_t value) { return value; }
     static auto serialize(uint32_t value) { return value; }
+    static auto serialize(int64_t value) { return value; }
+    static auto serialize(uint64_t value) { return value; }
     static auto serialize(float value) { return value; }
+    static auto serialize(double value) { return value; }
     static auto serialize(const std::string& value) { return value; }
     static auto serialize(bool value) { return value; }
 
     static void serialize(const json& in, int32_t& value) { value = in; }
     static void serialize(const json& in, uint32_t& value) { value = in; }
+    static void serialize(const json& in, int64_t& value) { value = in; }
+    static void serialize(const json& in, uint64_t& value) { value = in; }
     static void serialize(const json& in, float& value) { value = in; }
+    static void serialize(const json& in, double& value) { value = in; }
     static void serialize(const json& in, std::string& value) { value = in; }
     static void serialize(const json& in, bool& value) { value = in; }
 
+    static bool serializeBin(std::ostream& out, int32_t value) { return write_data(out, value); }
+    static bool serializeBin(std::ostream& out, uint32_t value) { return write_data(out, value); }
+    static bool serializeBin(std::ostream& out, int64_t value) { return write_data(out, value); }
+    static bool serializeBin(std::ostream& out, uint64_t value) { return write_data(out, value); }
+    static bool serializeBin(std::ostream& out, float value) { return write_data(out, value); }
+    static bool serializeBin(std::ostream& out, double value) { return write_data(out, value); }
+    static bool serializeBin(std::ostream& out, const std::string& value) {
+        if (!write_data(out, MARKER_STR))
+            return false;
+        return write_string(value);
+    }
+    static bool serializeBin(std::ostream& out, bool value) { return write_data(out, value); }
+
+    static bool serializeBin(std::istream& in, int32_t& value) { return read_data(in, value); }
+    static bool serializeBin(std::istream& in, uint32_t& value) { return read_data(in, value); }
+    static bool serializeBin(std::istream& in, int64_t& value) { return read_data(in, value); }
+    static bool serializeBin(std::istream& in, uint64_t& value) { return read_data(in, value); }
+    static bool serializeBin(std::istream& in, float& value) { return read_data(in, value); }
+    static bool serializeBin(std::istream& in, double& value) { return read_data(in, value); }
+    static bool serializeBin(std::istream& in, std::string& value) {
+        Marker m;
+        if (!read_data(in, m))
+            return false;
+        if (m != MARKER_STR)
+            throw std::runtime_error("Invalid binary file");
+        return read_string(in, value);
+    }
+    static bool serializeBin(std::istream& in, bool& value) { return read_data(in, value); }
+
  public:
-    virtual void write(std::ostream& out) const;
-    virtual void read(std::istream& in);
+    virtual bool writeBin(std::ostream& out) const = 0;
+    virtual bool readBin(std::istream& in) = 0;
 
     virtual void writeJson(json& out) const = 0;
     virtual void readJson(const json& in) = 0;
@@ -50,6 +94,19 @@ class ISerializable
         return out;
     }
 
+    template <typename T>
+    static bool serializeBin(std::ostream& out, const std::vector<T>& data) {
+        if (!write_data(out, MARKER_VEC))
+            return false;
+        uint64_t size = data.size();
+        if (!write_data(out, size))
+            return false;
+        for (const T& v : data)
+            if (!serializeBin(out, v))
+                return false;
+        return true;
+    }
+
     template <typename T, size_t N>
     static json serialize(const std::array<T, N>& data) {
         json out = json::array();
@@ -58,12 +115,38 @@ class ISerializable
         return out;
     }
 
+    template <typename T, size_t N>
+    static bool serializeBin(std::ostream& out, const std::array<T, N>& data) {
+        if (!write_data(out, MARKER_VEC))
+            return false;
+        uint64_t size = data.size();
+        if (!write_data(out, size))
+            return false;
+        for (const T& v : data)
+            if (!serializeBin(out, v))
+                return false;
+        return true;
+    }
+
     template <typename T>
     static json serialize(const std::set<T>& data) {
         json out = json::array();
         for (const T& v : data)
             out.push_back(serialize(v));
         return out;
+    }
+
+    template <typename T>
+    static bool serializeBin(std::ostream& out, const std::set<T>& data) {
+        if (!write_data(out, MARKER_SET))
+            return false;
+        uint64_t size = data.size();
+        if (!write_data(out, size))
+            return false;
+        for (const T& v : data)
+            if (!serializeBin(out, v))
+                return false;
+        return true;
     }
 
     template <typename V>
@@ -75,11 +158,43 @@ class ISerializable
     }
 
     template <typename V>
+    static bool serializeBin(std::ostream& out, const std::map<std::string, V>& data) {
+        if (!write_data(out, MARKER_MAP))
+            return false;
+        uint64_t size = data.size();
+        if (!write_data(out, size))
+            return false;
+        for (const auto& [key, value] : data) {
+            if (!serializeBin(out, key))
+                return false;
+            if (!serializeBin(out, value))
+                return false;
+        }
+        return true;
+    }
+
+    template <typename V>
     static json serialize(const std::unordered_map<std::string, V>& data) {
         json out = json::object();
         for (const auto& [k, v] : data)
             out[k] = serialize(v);
         return out;
+    }
+
+    template <typename V>
+    static bool serializeBin(std::ostream& out, const std::unordered_map<std::string, V>& data) {
+        if (!write_data(out, MARKER_MAP))
+            return false;
+        uint64_t size = data.size();
+        if (!write_data(out, size))
+            return false;
+        for (const auto& [key, value] : data) {
+            if (!serializeBin(out, key))
+                return false;
+            if (!serializeBin(out, value))
+                return false;
+        }
+        return true;
     }
 
     static json serialize(const ISerializable* value) {
@@ -88,7 +203,16 @@ class ISerializable
         return out;
     }
 
+    static bool serializeBin(std::ostream& out, const ISerializable* value) {
+        if (!write_data(out, MARKER_OBJ))
+            return false;
+        value->writeBin(out);
+    }
+
     static json serialize(const ISerializable& value) { return serialize(&value); }
+    static bool serializeBin(std::ostream& out, const ISerializable& value) {
+        return serializeBin(out, &value);
+    }
 
     template <typename T>
     static json serialize(size_t count, const T* values) {
@@ -98,11 +222,28 @@ class ISerializable
         return out;
     }
 
+    template <typename T>
+    static bool serializeBin(std::ostream& out, size_t count, const T* values) {
+        if (!write_data(out, MARKER_VEC))
+            return false;
+        uint64_t size = uint64_t(count);
+        if (!write_data(out, size))
+            return false;
+        for (size_t i = 0; i < count; ++i)
+            if (!serializeBin(out, v))
+                return false;
+        return true;
+    }
+
     static json serialize(const glm::vec2& value) {
         json out = json::array();
         out.push_back(serialize(value.x));
         out.push_back(serialize(value.y));
         return out;
+    }
+
+    static bool serializeBin(std::ostream& out, const glm::vec2& value) {
+        return write_data(out, value);
     }
 
     static json serialize(const glm::vec3& value) {
@@ -111,6 +252,10 @@ class ISerializable
         out.push_back(serialize(value.y));
         out.push_back(serialize(value.z));
         return out;
+    }
+
+    static bool serializeBin(std::ostream& out, const glm::vec3& value) {
+        return write_data(out, value);
     }
 
     static json serialize(const glm::vec4& value) {
@@ -122,11 +267,19 @@ class ISerializable
         return out;
     }
 
+    static bool serializeBin(std::ostream& out, const glm::vec4& value) {
+        return write_data(out, value);
+    }
+
     static json serialize(const glm::ivec2& value) {
         json out = json::array();
         out.push_back(serialize(value.x));
         out.push_back(serialize(value.y));
         return out;
+    }
+
+    static bool serializeBin(std::ostream& out, const glm::ivec2& value) {
+        return write_data(out, value);
     }
 
     static json serialize(const glm::ivec3& value) {
@@ -135,6 +288,10 @@ class ISerializable
         out.push_back(serialize(value.y));
         out.push_back(serialize(value.z));
         return out;
+    }
+
+    static bool serializeBin(std::ostream& out, const glm::ivec3& value) {
+        return write_data(out, value);
     }
 
     static json serialize(const glm::ivec4& value) {
@@ -146,6 +303,10 @@ class ISerializable
         return out;
     }
 
+    static bool serializeBin(std::ostream& out, const glm::ivec4& value) {
+        return write_data(out, value);
+    }
+
     static json serialize(const glm::mat4& value) {
         json out = json::array();
         out.push_back(serialize(value[0]));
@@ -153,6 +314,10 @@ class ISerializable
         out.push_back(serialize(value[2]));
         out.push_back(serialize(value[3]));
         return out;
+    }
+
+    static bool serializeBin(std::ostream& out, const glm::mat4& value) {
+        return write_data(out, value);
     }
 
     template <typename T, size_t C>
@@ -164,6 +329,16 @@ class ISerializable
         return serialize(std::string(names[ind].second));
     }
 
+    template <typename T, size_t C>
+    static auto serializeEnumBin(std::ostream& out, T value,
+                                 const std::pair<T, const char*> (&names)[C]) {
+        uint32_t ind = 0;
+        while (ind < C && names[ind].first != value)
+            ind++;
+        assert(ind != C);
+        return serializeBin(out, std::string(names[ind].second));
+    }
+
     template <typename T>
     static void serialize(const json& in, std::vector<T>& data) {
         if (!in.is_array())
@@ -171,6 +346,27 @@ class ISerializable
         data.resize(in.size());
         for (size_t i = 0; i < in.size(); ++i)
             serialize(in[i], data[i]);
+    }
+
+    template <typename T>
+    static bool serializeBin(std::istream& in, std::vector<T>& data) {
+        Marker m;
+        if (!read_data(in, m))
+            return false;
+        if (m != MARKER_VEC)
+            throw std::runtime_error("Invalid binary file");
+        uint64_t size;
+        if (!read_data(in, size))
+            return false;
+        data.clear();
+        data.reserve(size);
+        for (uint64_t i = 0; i < size; ++i) {
+            T value;
+            if (!serializeBin(in, value))
+                return false;
+            data.push_back(std::move(value));
+        }
+        return true;
     }
 
     template <typename T, size_t N>
@@ -181,6 +377,27 @@ class ISerializable
             throw std::runtime_error("Wrong input size: " + in.dump());
         for (size_t i = 0; i < N; ++i)
             serialize(in[i], data[i]);
+    }
+
+    template <typename T, size_t N>
+    static bool serializeBin(std::istream& in, std::array<T, N>& data) {
+        Marker m;
+        if (!read_data(in, m))
+            return false;
+        if (m != MARKER_VEC)
+            throw std::runtime_error("Invalid binary file");
+        uint64_t size;
+        if (!read_data(in, size))
+            return false;
+        if (data.size() != size)
+            throw std::runtime_error("Wrong input size");
+        for (uint64_t i = 0; i < size; ++i) {
+            T value;
+            if (!serializeBin(in, value))
+                return false;
+            data.push_back(std::move(value));
+        }
+        return true;
     }
 
     template <typename T>
@@ -195,6 +412,26 @@ class ISerializable
         }
     }
 
+    template <typename T>
+    static bool serializeBin(std::istream& in, std::set<T>& data) {
+        Marker m;
+        if (!read_data(in, m))
+            return false;
+        if (m != MARKER_SET)
+            throw std::runtime_error("Invalid binary file");
+        uint64_t size;
+        if (!read_data(in, size))
+            return false;
+        data.clear();
+        for (uint64_t i = 0; i < size; ++i) {
+            T value;
+            if (!serializeBin(in, value))
+                return false;
+            data.insert(std::move(value));
+        }
+        return true;
+    }
+
     template <typename V>
     static void serialize(const json& in, std::map<std::string, V>& data) {
         if (!in.is_object())
@@ -202,6 +439,28 @@ class ISerializable
         data.clear();
         for (auto& [key, value] : in.items())
             serialize(value, data[key]);
+    }
+
+    template <typename V>
+    static bool serializeBin(std::istream& in, std::map<std::string, V>& data) {
+        Marker m;
+        if (!read_data(in, m))
+            return false;
+        if (m != MARKER_MAP)
+            throw std::runtime_error("Invalid binary file");
+        uint64_t size;
+        if (read_data(in, size))
+            return false;
+        data.clear();
+        for (uint64_t i = 0; i < size; ++i) {
+            T key;
+            read_data(in, key);
+            T value;
+            if (!serializeBin(in, value))
+                return false;
+            data[std::move(key)] = std::move(value);
+        }
+        return true;
     }
 
     template <typename V>
@@ -213,13 +472,48 @@ class ISerializable
             serialize(value, data[key]);
     }
 
+    template <typename V>
+    static bool serializeBin(std::istream& in, std::unordered_map<std::string, V>& data) {
+        Marker m;
+        if (!read_data(in, m))
+            return false;
+        if (m != MARKER_MAP)
+            throw std::runtime_error("Invalid binary file");
+        uint64_t size;
+        if (!read_data(in, size))
+            return false;
+        data.clear();
+        for (uint64_t i = 0; i < size; ++i) {
+            T key;
+            if (!serializeBin(in, key))
+                return false;
+            T value;
+            if (!serializeBin(in, value))
+                return false;
+            data[std::move(key)] = std::move(value);
+        }
+        return true;
+    }
+
     static void serialize(const json& in, ISerializable* value) {
         if (!in.is_object())
             throw std::runtime_error("Input json is not an object: " + in.dump());
         value->readJson(in);
     }
 
+    static bool serializeBin(std::istream& in, ISerializable* value) {
+        Marker m;
+        if (!read_data(in, m))
+            return false;
+        if (m != MARKER_OBJ)
+            throw std::runtime_error("Invalid binary file");
+        return value->readBin(in);
+    }
+
     static void serialize(const json& in, ISerializable& value) { return serialize(in, &value); }
+    static bool serializeBin(std::istream& in, ISerializable& value) {
+        return serializeBin(in, &value);
+    }
 
     template <typename T>
     static void serialize(const json& in, size_t count, T* values) {
@@ -232,6 +526,24 @@ class ISerializable
             serialize(in[i], values[i]);
     }
 
+    template <typename T>
+    static bool serializeBin(std::istream& in, size_t count, T* values) {
+        Marker m;
+        if (!read_data(in, m))
+            return false;
+        if (m != MARKER_VEC)
+            throw std::runtime_error("Invalid binary file");
+        uint64_t size;
+        if (!read_data(in, size))
+            return false;
+        if (count != size)
+            throw std::runtime_error("Invalid count in binary file");
+        for (uint64_t i = 0; i < size; ++i)
+            if (!serializeBin(in, values[i]))
+                return false;
+        return true;
+    }
+
     static void serialize(const json& in, glm::vec2& value) {
         if (!in.is_array())
             throw std::runtime_error("Input json is not an array: " + in.dump());
@@ -240,6 +552,8 @@ class ISerializable
         serialize(in[0], value.x);
         serialize(in[1], value.y);
     }
+
+    static bool serializeBin(std::istream& in, glm::vec2& value) { return read_data(in, value); }
 
     static void serialize(const json& in, glm::vec3& value) {
         if (!in.is_array())
@@ -250,6 +564,8 @@ class ISerializable
         serialize(in[1], value.y);
         serialize(in[2], value.z);
     }
+
+    static bool serializeBin(std::istream& in, glm::vec3& value) { return read_data(in, value); }
 
     static void serialize(const json& in, glm::vec4& value) {
         if (!in.is_array())
@@ -262,6 +578,8 @@ class ISerializable
         serialize(in[3], value.w);
     }
 
+    static bool serializeBin(std::istream& in, glm::vec4& value) { return read_data(in, value); }
+
     static void serialize(const json& in, glm::ivec2& value) {
         if (!in.is_array())
             throw std::runtime_error("Input json is not an array: " + in.dump());
@@ -270,6 +588,8 @@ class ISerializable
         serialize(in[0], value.x);
         serialize(in[1], value.y);
     }
+
+    static bool serializeBin(std::istream& in, glm::ivec2& value) { return read_data(in, value); }
 
     static void serialize(const json& in, glm::ivec3& value) {
         if (!in.is_array())
@@ -280,6 +600,8 @@ class ISerializable
         serialize(in[1], value.y);
         serialize(in[2], value.z);
     }
+
+    static bool serializeBin(std::istream& in, glm::ivec3& value) { return read_data(in, value); }
 
     static void serialize(const json& in, glm::ivec4& value) {
         if (!in.is_array())
@@ -292,6 +614,8 @@ class ISerializable
         serialize(in[3], value.w);
     }
 
+    static bool serializeBin(std::istream& in, glm::ivec4& value) { return read_data(in, value); }
+
     static void serialize(const json& in, glm::mat4& value) {
         if (!in.is_array())
             throw std::runtime_error("Input json is not an array: " + in.dump());
@@ -302,6 +626,8 @@ class ISerializable
         serialize(in[2], value[2]);
         serialize(in[3], value[3]);
     }
+
+    static bool serializeBin(std::istream& in, glm::mat4& value) { return read_data(in, value); }
 
     template <typename T, size_t C>
     static void serializeEnum(const json& in, T& value,
@@ -315,6 +641,22 @@ class ISerializable
             throw std::runtime_error("Invalid enum value <" + name
                                      + "> for type: " + std::string(typeid(T).name()));
         value = names[ind].first;
+    }
+
+    template <typename T, size_t C>
+    static void serializeEnumBin(std::istream& in, T& value,
+                                 const std::pair<T, const char*> (&names)[C]) {
+        std::string name;
+        if (!serializeBin(in, name))
+            return false;
+        uint32_t ind = 0;
+        while (ind < C && strcmp(names[ind].second, name.c_str()) != 0)
+            ind++;
+        if (ind == C)
+            throw std::runtime_error("Invalid enum value <" + name
+                                     + "> for type: " + std::string(typeid(T).name()));
+        value = names[ind].first;
+        return true;
     }
 
  protected:

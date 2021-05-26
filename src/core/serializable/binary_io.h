@@ -4,32 +4,36 @@
 #include <vector>
 
 template <typename T>
-void write_data(std::ostream& out, const T& value) {
+bool write_data(std::ostream& out, const T& value) {
     out.write(reinterpret_cast<const char*>(&value), sizeof(T));
+    return out.good();
 }
 
-void write_string(std::ostream& out, const std::string& value);
+bool write_string(std::ostream& out, const std::string& value);
 
 template <typename T>
-void write_vector(std::ostream& out, const std::vector<T>& data) {
+bool write_vector(std::ostream& out, const std::vector<T>& data) {
     uint64_t size = data.size();
     write_data(out, size);
     out.write(reinterpret_cast<const char*>(data.data()),
               static_cast<std::streamsize>(sizeof(data[0]) * size));
+    return out.good();
 }
 
 template <typename T>
-void read_data(std::istream& in, T& value) {
+bool read_data(std::istream& in, T& value) {
     in.read(reinterpret_cast<char*>(&value), sizeof(T));
+    return in.good();
 }
 
-void read_string(std::istream& in, std::string& value);
+bool read_string(std::istream& in, std::string& value);
 
 template <typename T>
-void read_vector(std::istream& in, std::vector<T>& data) {
+bool read_vector(std::istream& in, std::vector<T>& data) {
     uint64_t size = 0;
     read_data(in, size);
     data.resize(size);
     in.read(reinterpret_cast<char*>(data.data()),
             static_cast<std::streamsize>(sizeof(data[0]) * size));
+    return in.good();
 }
