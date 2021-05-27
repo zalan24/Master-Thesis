@@ -11,11 +11,10 @@ target_link_libraries(EngineLib PRIVATE
     json_external
 )
 target_link_libraries(EngineLib PUBLIC
-    AnimationsEntities
     SerializableLib
-    AnimationsAssetLoaders
+    # AnimationsAssetLoaders
     AnimationsDrv
-    AnimationsResources
+    # AnimationsResources
     AnimationsInput
     EngineCmdBuffer
     EngineOneTimeCmdBuffer

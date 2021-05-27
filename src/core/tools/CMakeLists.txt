@@ -10,6 +10,11 @@ set_target_properties(  AnimationsTools
 target_include_directories(AnimationsTools PUBLIC . ${CMAKE_CURRENT_BINARY_DIR})
 target_link_libraries(AnimationsTools PUBLIC
     glm_external
+    boost_pp_external
+    boost_type_traits_external
+    boost_mpl_external
+    boost_bind_external
+    # flexible_reflection_external
     backward_cpp_external
     loguru_external
 )

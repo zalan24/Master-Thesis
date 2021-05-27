@@ -9,7 +9,6 @@ set_target_properties(  SerializableLib
 target_include_directories(SerializableLib PUBLIC . ${CMAKE_CURRENT_BINARY_DIR})
 target_link_libraries(SerializableLib PRIVATE hashlib4cpp_external)
 target_link_libraries(SerializableLib PUBLIC
-    boost_pp_external
     json_external
     glm_external
     AnimationsTools

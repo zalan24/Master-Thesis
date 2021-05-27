@@ -27,18 +27,28 @@ struct VariantConfig
     std::map<std::string, size_t> variantValues;
 };
 
-struct Variants final : public ISerializable
+struct Variants final : public IAutoSerializable<Variants>
 {
-    std::map<std::string, std::vector<std::string>> values;
 
-    void writeJson(json& out) const override;
-    void readJson(const json& in) override;
+    REFLECTABLE
+    (
+        (std::map<std::string, std::vector<std::string>>) values
+    )
+
+    // std::map<std::string, std::vector<std::string>> values;
+
+    // REFLECT()
 };
 
-struct Resources final : public ISerializable
+struct Resources final : public IAutoSerializable<Resources>
 {
     // name -> type
-    std::map<std::string, std::string> variables;
+    REFLECTABLE
+    (
+        (std::map<std::string, std::string>) variables
+    )
+
+    // std::map<std::string, std::string> variables;
     // std::map<std::string, std::string> staticVariables;
     // std::map<std::string, std::string> dynamicVariables;
 
@@ -49,8 +59,7 @@ struct Resources final : public ISerializable
         return ret;
     }
 
-    void writeJson(json& out) const override;
-    void readJson(const json& in) override;
+    // REFLECT()
 };
 
 struct ShaderGenerationInput
@@ -64,9 +73,14 @@ std::string format_variant(uint32_t variantId, const std::vector<Variants>& vari
                            const std::stringstream& text,
                            const std::map<std::string, uint32_t>& variantParamMultiplier);
 
-struct ResourceUsage final : public ISerializable
+struct ResourceUsage final : public IAutoSerializable<ResourceUsage>
 {
-    std::set<std::string> usedVars;
+    REFLECTABLE
+    (
+        (std::set<std::string>) usedVars
+    )
+
+    // std::set<std::string> usedVars;
     // TODO bindings
     bool operator<(const ResourceUsage& other) const {
         if (usedVars.size() < other.usedVars.size())
@@ -86,13 +100,17 @@ struct ResourceUsage final : public ISerializable
         return false;
     }
 
-    void writeJson(json& out) const override;
-    void readJson(const json& in) override;
+    // REFLECT()
 };
 
-struct PipelineResourceUsage final : public ISerializable
+struct PipelineResourceUsage final : public IAutoSerializable<PipelineResourceUsage>
 {
-    std::array<ResourceUsage, ShaderBin::NUM_STAGES> usages;
+    REFLECTABLE
+    (
+        (std::array<ResourceUsage, ShaderBin::NUM_STAGES>) usages
+    )
+
+    // std::array<ResourceUsage, ShaderBin::NUM_STAGES> usages;
     bool operator<(const PipelineResourceUsage& other) const {
         for (uint32_t i = 0; i < ShaderBin::NUM_STAGES; ++i) {
             if (usages[i] < other.usages[i])
@@ -103,49 +121,85 @@ struct PipelineResourceUsage final : public ISerializable
         return false;
     }
 
-    void writeJson(json& out) const override;
-    void readJson(const json& in) override;
+    // REFLECT()
 };
 
-struct ShaderHeaderData final : public ISerializable
+struct ShaderHeaderData final : public IAutoSerializable<ShaderHeaderData>
 {
-    std::string name;
-    std::string fileHash;
-    std::string filePath;
-    std::string headerHash;
-    std::string cxxHash;
-    Variants variants;
-    Resources resources;
-    std::string descriptorClassName;
-    std::string descriptorRegistryClassName;
-    uint32_t totalVariantMultiplier;
-    std::map<std::string, uint32_t> variantMultiplier;
-    std::vector<PipelineResourceUsage> variantToResourceUsage;
-    std::string headerFileName;
-    std::set<std::string> includes;
+    REFLECTABLE
+    (
+        (std::string) name,
+        (std::string) fileHash,
+        (std::string) filePath,
+        (std::string) headerHash,
+        (std::string) cxxHash,
+        (Variants) variants,
+        (Resources) resources,
+        (std::string) descriptorClassName,
+        (std::string) descriptorRegistryClassName,
+        (uint32_t) totalVariantMultiplier,
+        (std::map<std::string, uint32_t>) variantMultiplier,
+        (std::vector<PipelineResourceUsage>) variantToResourceUsage,
+        (std::string) headerFileName,
+        (std::set<std::string>) includes
+    )
 
-    void writeJson(json& out) const override;
-    void readJson(const json& in) override;
+    // std::string name;
+    // std::string fileHash;
+    // std::string filePath;
+    // std::string headerHash;
+    // std::string cxxHash;
+    // Variants variants;
+    // Resources resources;
+    // std::string descriptorClassName;
+    // std::string descriptorRegistryClassName;
+    // uint32_t totalVariantMultiplier;
+    // std::map<std::string, uint32_t> variantMultiplier;
+    // std::vector<PipelineResourceUsage> variantToResourceUsage;
+    // std::string headerFileName;
+    // std::set<std::string> includes;
+
+    // REFLECT()
 };
 
-struct ShaderObjectData final : public ISerializable
+struct ShaderObjectData final : public IAutoSerializable<ShaderHeaderData>
 {
-    std::string name;
-    std::string fileHash;
-    std::string headersHash;
-    std::string filePath;
-    std::string headerHash;
-    std::string cxxHash;
-    std::string className;
-    std::string registryClassName;
-    std::string headerFileName;
-    uint32_t variantCount;
-    std::map<std::string, uint32_t> headerVariantIdMultiplier;
-    std::map<std::string, uint32_t> variantIdMultiplier;
-    std::vector<std::string> allIncludes;
-    std::vector<Variants> variants;
-    std::map<std::string, std::string> headerLocations;
-    Resources resources;
+    REFLECTABLE
+    (
+        (std::string) name,
+        (std::string) fileHash,
+        (std::string) headersHash,
+        (std::string) filePath,
+        (std::string) headerHash,
+        (std::string) cxxHash,
+        (std::string) className,
+        (std::string) registryClassName,
+        (std::string) headerFileName,
+        (uint32_t) variantCount,
+        (std::map<std::string, uint32_t>) headerVariantIdMultiplier,
+        (std::map<std::string, uint32_t>) variantIdMultiplier,
+        (std::vector<std::string>) allIncludes,
+        (std::vector<Variants>) variants,
+        (std::map<std::string, std::string>) headerLocations,
+        (Resources) resources
+    )
+
+    // std::string name;
+    // std::string fileHash;
+    // std::string headersHash;
+    // std::string filePath;
+    // std::string headerHash;
+    // std::string cxxHash;
+    // std::string className;
+    // std::string registryClassName;
+    // std::string headerFileName;
+    // uint32_t variantCount;
+    // std::map<std::string, uint32_t> headerVariantIdMultiplier;
+    // std::map<std::string, uint32_t> variantIdMultiplier;
+    // std::vector<std::string> allIncludes;
+    // std::vector<Variants> variants;
+    // std::map<std::string, std::string> headerLocations;
+    // Resources resources;
     // ShaderBin::StageConfig stageConfigs;
 
     struct ComputeUnit
@@ -157,17 +211,24 @@ struct ShaderObjectData final : public ISerializable
     ComputeUnit readComputeUnite(ShaderGenerationInput* outCfg = nullptr) const;
     ShaderGenerationInput readGenInput() const;
 
-    void writeJson(json& out) const override;
-    void readJson(const json& in) override;
+    // REFLECT()
 };
 
-struct PreprocessorData final : public ISerializable
+struct PreprocessorData final : public IAutoSerializable<ShaderHeaderData>
 {
-    std::map<std::string, ShaderHeaderData> headers;
-    std::map<std::string, ShaderObjectData> sources;
+    REFLECTABLE
+    (
+        (std::map<std::string, ShaderHeaderData>) headers,
+        (std::map<std::string, ShaderObjectData>) sources
+    )
 
-    void writeJson(json& out) const override;
-    void readJson(const json& in) override;
+    // std::map<std::string, ShaderHeaderData> headers;
+    // std::map<std::string, ShaderObjectData> sources;
+
+    // REFLECT()
+
+ protected:
+    bool needTimeStamp() const override { return true; }
 };
 
 ShaderBin::StageConfig read_stage_configs(
@@ -184,8 +245,14 @@ class Preprocessor
 
     void cleanUp();
 
-    void load(std::istream& in) { data.read(in); }
-    void exportData(std::ostream& out) { data.write(out); }
+    bool exportToFile(const fs::path& p) const { return data.exportToFile(p); }
+    bool importFromFile(const fs::path& p) { return data.importFromFile(p); }
+
+    // void loadBin(std::istream& in) { data.readBin(in); }
+    // void exportDataBin(std::ostream& out) const { data.writeBin(out); }
+
+    // void loadJson(json& in) { data.readJson(in); }
+    // void exportDataJson(json& out) const { data.writeJson(out); }
 
  private:
     std::unordered_set<std::string> usedHeaders;

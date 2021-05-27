@@ -7,10 +7,10 @@
 #include <drverror.h>
 #include <renderpass.h>
 
-Game::Game(int argc, char* argv[], const Config& config,
+Game::Game(int argc, char* argv[], const EngineConfig& config,
            const drv::StateTrackingConfig& trackingConfig, const std::string& shaderbinFile,
-           ResourceManager::ResourceInfos resource_infos, const Args& args)
-  : Game3D(argc, argv, config, trackingConfig, shaderbinFile, resource_infos, args),
+           const Args& args)
+  : Game3D(argc, argv, config, trackingConfig, shaderbinFile, args),
     shaderHeaders(getDevice()),
     shaderObjects(getDevice(), *getShaderBin(), shaderHeaders),
     dynamicStates(drv::DrvShader::DynamicStates::FIXED_SCISSOR,

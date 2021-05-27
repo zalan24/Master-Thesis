@@ -86,12 +86,7 @@ int main(int argc, char* argv[]) {
 
         Preprocessor preprocessor;
 
-        {
-            std::ifstream preprocessorIn(target.c_str());
-            if (preprocessorIn.is_open()) {
-                preprocessor.load(preprocessorIn);
-            }
-        }
+        preprocessor.importFromFile(fs::path{target});
 
         for (const auto& header : headers)
             preprocessor.processHeader(fs::path{header}, fs::path{outputDir});
@@ -192,12 +187,8 @@ int main(int argc, char* argv[]) {
         //     shaderBin.setHash(compileData.cache.getHeaderHash());
         //     shaderBin.write(binOut);
         //     binOut.close();
-        {
-            std::ofstream preprocessorOut(target);
-            if (!preprocessorOut.is_open())
-                throw std::runtime_error("Could not open file: " + target);
-            preprocessor.exportData(preprocessorOut);
-        }
+        if (!preprocessor.exportToFile(fs::path{target}))
+            throw std::runtime_error("Could not export to file: " + target);
     }
     catch (const std::exception& e) {
         std::cerr << "An exception has ocurred: " << e.what() << std::endl;

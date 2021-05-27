@@ -71,7 +71,7 @@ int main(int argc, char* argv[]) {
         }
 
         fs::path cacheFolder = fs::path{cacheF};
-        fs::path cacheFile = cacheFolder / fs::path{"compilerCache.json"};
+        fs::path cacheFile = cacheFolder / fs::path{"compilerCache.bin"};
         // fs::path rootPath = root;
         // fs::path debugPath = debugOut;
 
@@ -83,21 +83,15 @@ int main(int argc, char* argv[]) {
         GenerateOptions options;
 
         if (hardwareReq != "") {
-            std::ifstream limitsIn(hardwareReq.c_str());
-            if (!limitsIn.is_open()) {
-                std::cerr << "Could not open file: " << hardwareReq << std::endl;
-                return 1;
-            }
-            options.limits.read(limitsIn);
+            if (!options.limits.importFromFile(fs::path{hardwareReq}))
+                std::cerr << "Could not import hardware requirements from: " << hardwareReq
+                          << std::endl;
         }
 
         if (compileOptionsFile != "") {
-            std::ifstream optionsIn(compileOptionsFile.c_str());
-            if (!optionsIn.is_open()) {
-                std::cerr << "Could not open file: " << compileOptionsFile << std::endl;
-                return 1;
-            }
-            options.compileOptions.read(optionsIn);
+            if (!options.compileOptions.importFromFile(fs::path{compileOptionsFile}))
+                std::cerr << "Could not import hardware requirements from: " << hardwareReq
+                          << std::endl;
         }
 
         // TODO runtime stats
@@ -107,34 +101,27 @@ int main(int argc, char* argv[]) {
 
         Compiler compiler;
 
-        {
-            std::ifstream compilerIn(cacheFile);
-            if (compilerIn.is_open()) {
-                compiler.loadCache(compilerIn);
-            }
-        }
+        compiler.importCache(cacheFile);
 
         for (const auto& file : files) {
-            std::ifstream in(file.c_str());
-            if (!in.is_open()) {
-                std::cerr << "Could not open file: " << file << std::endl;
-                return 1;
-            }
+            // std::ifstream in(file.c_str());
+            // if (!in.is_open()) {
+            //     std::cerr << "Could not open file: " << file << std::endl;
+            //     return 1;
+            // }
             PreprocessorData data;
-            data.read(in);
+            if (!data.importFromFile(fs::path{file}))
+                std::cerr << "Could not read preprocessor data: " << file << std::endl;
+            // throw std::runtime_error("This makes no sense :/ + " + file);
+            // data.read(in);
             compiler.addShaders(std::move(data));
         }
 
         fs::path shaderDir = cacheFolder / fs::path{"glsl"};
         compiler.generateShaders(options, shaderDir, compiledShaders);
         ShaderBin bin = compiler.link(shaderDir, options.limits);
-
-        {
-            std::ofstream binOut(binFile.c_str(), std::ios::binary | std::ios::out);
-            if (!binOut.is_open())
-                throw std::runtime_error("Could not open bin file: " + binFile);
-            bin.write(binOut);
-        }
+        if (!bin.exportToFile(fs::path{binFile}))
+            throw std::runtime_error("Could not export shader bin: " + binFile);
 
         // for (const auto& header : headers)
         //     preprocessor.processHeader(fs::path{header}, fs::path{outputDir});
@@ -223,12 +210,8 @@ int main(int argc, char* argv[]) {
         //     shaderBin.setHash(compileData.cache.getHeaderHash());
         //     shaderBin.write(binOut);
         //     binOut.close();
-        {
-            std::ofstream compilerOut(cacheFile);
-            if (!compilerOut.is_open())
-                throw std::runtime_error("Could not open file: " + cacheFile.string());
-            compiler.exportCache(compilerOut);
-        }
+        if (!compiler.exportCache(cacheFile))
+            throw std::runtime_error("Could not export cache to file: " + cacheFile.string());
     }
     catch (const std::exception& e) {
         std::cerr << "An exception has ocurred: " << e.what() << std::endl;

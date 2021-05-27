@@ -28,124 +28,124 @@ namespace fs = std::filesystem;
 //     return res->ToString();
 // }
 
-void Variants::writeJson(json& out) const {
-    WRITE_OBJECT(values, out);
-}
+// void Variants::writeJson(json& out) const {
+//     WRITE_OBJECT(values, out);
+// }
 
-void Variants::readJson(const json& in) {
-    READ_OBJECT(values, in);
-}
+// void Variants::readJson(const json& in) {
+//     READ_OBJECT(values, in);
+// }
 
-void Resources::writeJson(json& out) const {
-    WRITE_OBJECT(variables, out);
-}
+// void Resources::writeJson(json& out) const {
+//     WRITE_OBJECT(variables, out);
+// }
 
-void Resources::readJson(const json& in) {
-    READ_OBJECT(variables, in);
-}
+// void Resources::readJson(const json& in) {
+//     READ_OBJECT(variables, in);
+// }
 
-void ResourceUsage::writeJson(json& out) const {
-    WRITE_OBJECT(usedVars, out);
-}
+// void ResourceUsage::writeJson(json& out) const {
+//     WRITE_OBJECT(usedVars, out);
+// }
 
-void ResourceUsage::readJson(const json& in) {
-    READ_OBJECT(usedVars, in);
-}
+// void ResourceUsage::readJson(const json& in) {
+//     READ_OBJECT(usedVars, in);
+// }
 
-void PipelineResourceUsage::writeJson(json& out) const {
-    WRITE_OBJECT(usages, out);
-}
+// void PipelineResourceUsage::writeJson(json& out) const {
+//     WRITE_OBJECT(usages, out);
+// }
 
-void PipelineResourceUsage::readJson(const json& in) {
-    READ_OBJECT(usages, in);
-}
+// void PipelineResourceUsage::readJson(const json& in) {
+//     READ_OBJECT(usages, in);
+// }
 
-void ShaderHeaderData::writeJson(json& out) const {
-    WRITE_OBJECT(name, out);
-    WRITE_OBJECT(fileHash, out);
-    WRITE_OBJECT(filePath, out);
-    WRITE_OBJECT(headerHash, out);
-    WRITE_OBJECT(cxxHash, out);
-    WRITE_OBJECT(variants, out);
-    WRITE_OBJECT(resources, out);
-    WRITE_OBJECT(descriptorClassName, out);
-    WRITE_OBJECT(descriptorRegistryClassName, out);
-    WRITE_OBJECT(totalVariantMultiplier, out);
-    WRITE_OBJECT(variantMultiplier, out);
-    WRITE_OBJECT(variantToResourceUsage, out);
-    WRITE_OBJECT(headerFileName, out);
-    WRITE_OBJECT(includes, out);
-}
+// void ShaderHeaderData::writeJson(json& out) const {
+//     WRITE_OBJECT(name, out);
+//     WRITE_OBJECT(fileHash, out);
+//     WRITE_OBJECT(filePath, out);
+//     WRITE_OBJECT(headerHash, out);
+//     WRITE_OBJECT(cxxHash, out);
+//     WRITE_OBJECT(variants, out);
+//     WRITE_OBJECT(resources, out);
+//     WRITE_OBJECT(descriptorClassName, out);
+//     WRITE_OBJECT(descriptorRegistryClassName, out);
+//     WRITE_OBJECT(totalVariantMultiplier, out);
+//     WRITE_OBJECT(variantMultiplier, out);
+//     WRITE_OBJECT(variantToResourceUsage, out);
+//     WRITE_OBJECT(headerFileName, out);
+//     WRITE_OBJECT(includes, out);
+// }
 
-void ShaderHeaderData::readJson(const json& in) {
-    READ_OBJECT(name, in);
-    READ_OBJECT(fileHash, in);
-    READ_OBJECT(filePath, in);
-    READ_OBJECT(headerHash, in);
-    READ_OBJECT(cxxHash, in);
-    READ_OBJECT(variants, in);
-    READ_OBJECT(resources, in);
-    READ_OBJECT(descriptorClassName, in);
-    READ_OBJECT(descriptorRegistryClassName, in);
-    READ_OBJECT(totalVariantMultiplier, in);
-    READ_OBJECT(variantMultiplier, in);
-    READ_OBJECT(variantToResourceUsage, in);
-    READ_OBJECT(headerFileName, in);
-    READ_OBJECT(includes, in);
-}
+// void ShaderHeaderData::readJson(const json& in) {
+//     READ_OBJECT(name, in);
+//     READ_OBJECT(fileHash, in);
+//     READ_OBJECT(filePath, in);
+//     READ_OBJECT(headerHash, in);
+//     READ_OBJECT(cxxHash, in);
+//     READ_OBJECT(variants, in);
+//     READ_OBJECT(resources, in);
+//     READ_OBJECT(descriptorClassName, in);
+//     READ_OBJECT(descriptorRegistryClassName, in);
+//     READ_OBJECT(totalVariantMultiplier, in);
+//     READ_OBJECT(variantMultiplier, in);
+//     READ_OBJECT(variantToResourceUsage, in);
+//     READ_OBJECT(headerFileName, in);
+//     READ_OBJECT(includes, in);
+// }
 
-void ShaderObjectData::writeJson(json& out) const {
-    WRITE_OBJECT(name, out);
-    WRITE_OBJECT(fileHash, out);
-    WRITE_OBJECT(headersHash, out);
-    WRITE_OBJECT(filePath, out);
-    WRITE_OBJECT(headerHash, out);
-    WRITE_OBJECT(cxxHash, out);
-    WRITE_OBJECT(className, out);
-    WRITE_OBJECT(registryClassName, out);
-    WRITE_OBJECT(headerFileName, out);
-    WRITE_OBJECT(variantCount, out);
-    WRITE_OBJECT(headerVariantIdMultiplier, out);
-    WRITE_OBJECT(variantIdMultiplier, out);
-    WRITE_OBJECT(allIncludes, out);
-    WRITE_OBJECT(variants, out);
-    WRITE_OBJECT(headerLocations, out);
-    WRITE_OBJECT(resources, out);
-    // WRITE_OBJECT(stageConfigs, out);
-}
+// void ShaderObjectData::writeJson(json& out) const {
+//     WRITE_OBJECT(name, out);
+//     WRITE_OBJECT(fileHash, out);
+//     WRITE_OBJECT(headersHash, out);
+//     WRITE_OBJECT(filePath, out);
+//     WRITE_OBJECT(headerHash, out);
+//     WRITE_OBJECT(cxxHash, out);
+//     WRITE_OBJECT(className, out);
+//     WRITE_OBJECT(registryClassName, out);
+//     WRITE_OBJECT(headerFileName, out);
+//     WRITE_OBJECT(variantCount, out);
+//     WRITE_OBJECT(headerVariantIdMultiplier, out);
+//     WRITE_OBJECT(variantIdMultiplier, out);
+//     WRITE_OBJECT(allIncludes, out);
+//     WRITE_OBJECT(variants, out);
+//     WRITE_OBJECT(headerLocations, out);
+//     WRITE_OBJECT(resources, out);
+//     // WRITE_OBJECT(stageConfigs, out);
+// }
 
-void ShaderObjectData::readJson(const json& in) {
-    READ_OBJECT(name, in);
-    READ_OBJECT(fileHash, in);
-    READ_OBJECT(headersHash, in);
-    READ_OBJECT(filePath, in);
-    READ_OBJECT(headerHash, in);
-    READ_OBJECT(cxxHash, in);
-    READ_OBJECT(className, in);
-    READ_OBJECT(registryClassName, in);
-    READ_OBJECT(headerFileName, in);
-    READ_OBJECT(variantCount, in);
-    READ_OBJECT(headerVariantIdMultiplier, in);
-    READ_OBJECT(variantIdMultiplier, in);
-    READ_OBJECT(allIncludes, in);
-    READ_OBJECT(variants, in);
-    READ_OBJECT(headerLocations, in);
-    READ_OBJECT(resources, in);
-    // READ_OBJECT(stageConfigs, in);
-}
+// void ShaderObjectData::readJson(const json& in) {
+//     READ_OBJECT(name, in);
+//     READ_OBJECT(fileHash, in);
+//     READ_OBJECT(headersHash, in);
+//     READ_OBJECT(filePath, in);
+//     READ_OBJECT(headerHash, in);
+//     READ_OBJECT(cxxHash, in);
+//     READ_OBJECT(className, in);
+//     READ_OBJECT(registryClassName, in);
+//     READ_OBJECT(headerFileName, in);
+//     READ_OBJECT(variantCount, in);
+//     READ_OBJECT(headerVariantIdMultiplier, in);
+//     READ_OBJECT(variantIdMultiplier, in);
+//     READ_OBJECT(allIncludes, in);
+//     READ_OBJECT(variants, in);
+//     READ_OBJECT(headerLocations, in);
+//     READ_OBJECT(resources, in);
+//     // READ_OBJECT(stageConfigs, in);
+// }
 
-void PreprocessorData::writeJson(json& out) const {
-    WRITE_TIMESTAMP(out);
-    WRITE_OBJECT(headers, out);
-    WRITE_OBJECT(sources, out);
-}
+// void PreprocessorData::writeJson(json& out) const {
+//     WRITE_TIMESTAMP(out);
+//     WRITE_OBJECT(headers, out);
+//     WRITE_OBJECT(sources, out);
+// }
 
-void PreprocessorData::readJson(const json& in) {
-    if (CHECK_TIMESTAMP(in)) {
-        READ_OBJECT(headers, in);
-        READ_OBJECT(sources, in);
-    }
-}
+// void PreprocessorData::readJson(const json& in) {
+//     if (CHECK_TIMESTAMP(in)) {
+//         READ_OBJECT(headers, in);
+//         READ_OBJECT(sources, in);
+//     }
+// }
 
 Resources& Resources::operator+=(const Resources& rhs) {
     for (const auto& [name, type] : rhs.variables) {

@@ -18,7 +18,7 @@ function(preprocess_shaders)
         list(APPEND GENERATED_FILES "${OUTPUT_DIR}/shader_${NAME}.h" "${OUTPUT_DIR}/shader_${NAME}.cpp")
     endforeach()
 
-    set(targetFile "${SHADERS_TARGETS_DIR}/${SHADERS_TARGET}.json")
+    set(targetFile "${SHADERS_TARGETS_DIR}/${SHADERS_TARGET}.bin")
 
     add_custom_command(
         OUTPUT   ${GENERATED_FILES} ${targetFile}
@@ -46,7 +46,7 @@ function(compile_shaders)
 
     set(targetFiles)
     foreach(T IN ITEMS ${COMPILER_TARGETS})
-        list(APPEND targetFiles "${COMPILER_DATA_DIR}/${T}.json")
+        list(APPEND targetFiles "${COMPILER_DATA_DIR}/${T}.bin")
     endforeach()
 
 

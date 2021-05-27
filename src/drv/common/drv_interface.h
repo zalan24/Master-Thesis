@@ -25,7 +25,7 @@ class DrvShaderObjectRegistry;
 class DrvShader;
 class DrvCmdBufferRecorder;
 
-struct StateTrackingConfig final : public ISerializable
+struct StateTrackingConfig final : public IAutoSerializable<StateTrackingConfig>
 {
     enum Verbosity
     {
@@ -33,20 +33,60 @@ struct StateTrackingConfig final : public ISerializable
         DEBUG_ERRORS,
         ALL_ERRORS
     };
+    static std::string get_enum_name(Verbosity v) {
+        switch (v) {
+            case SILENT_FIXES:
+                return "SilentFixes";
+            case DEBUG_ERRORS:
+                return "DebugErrors";
+            case ALL_ERRORS:
+                return "AllErrors";
+        }
+    }
+    int get_enum(const std::string& s) {
+        for (const Verbosity& v : {SILENT_FIXES, DEBUG_ERRORS, ALL_ERRORS})
+            if (get_enum_name(v) == s)
+                return static_cast<int>(v);
+        throw std::runtime_error("Could decode enum");
+    }
+// #ifdef DEBUG
+//     Verbosity verbosity = DEBUG_ERRORS;
+// #else
+//     Verbosity verbosity = SILENT_FIXES;
+// #endif
+    // bool immediateBarriers = false;
+    // bool forceAllDstStages = false;
+    // bool forceAllSrcStages = false;
+    // bool forceFlush = false;
+    // bool forceInvalidateAll = false;
+    // bool syncAllOperations = false;
+    REFLECTABLE
+    (
+        (Verbosity) verbosity,
+        (bool) immediateBarriers,
+        (bool) forceAllDstStages,
+        (bool) forceAllSrcStages,
+        (bool) forceFlush,
+        (bool) forceInvalidateAll,
+        (bool) syncAllOperations
+    )
+
+    StateTrackingConfig()
+      :
 #ifdef DEBUG
-    Verbosity verbosity = DEBUG_ERRORS;
+        verbosity(DEBUG_ERRORS),
 #else
-    Verbosity verbosity = SILENT_FIXES;
+        verbosity(SILENT_FIXES),
 #endif
-    bool immediateBarriers = false;
-    // bool immediateEventBarriers = false;
-    bool forceAllDstStages = false;
-    bool forceAllSrcStages = false;
-    bool forceFlush = false;
-    bool forceInvalidateAll = false;
-    bool syncAllOperations = false;
-    void writeJson(json& out) const override final;
-    void readJson(const json& in) override final;
+        immediateBarriers(false),
+        forceAllDstStages(false),
+        forceAllSrcStages(false),
+        forceFlush(false),
+        forceInvalidateAll(false),
+        syncAllOperations(false) {
+    }
+
+    // REFLECT()
 };
 
 struct DriverSupport

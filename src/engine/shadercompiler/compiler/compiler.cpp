@@ -50,54 +50,54 @@ Compiler::~Compiler() {
     glslang::FinalizeProcess();
 }
 
-void ShaderCache::writeJson(json& out) const {
-    WRITE_OBJECT(shaderHash, out);
-    WRITE_OBJECT(includesHash, out);
-    WRITE_OBJECT(codeHashes, out);
-    WRITE_OBJECT(binaryConfigHashes, out);
-}
+// void ShaderCache::writeJson(json& out) const {
+//     WRITE_OBJECT(shaderHash, out);
+//     WRITE_OBJECT(includesHash, out);
+//     WRITE_OBJECT(codeHashes, out);
+//     WRITE_OBJECT(binaryConfigHashes, out);
+// }
 
-void ShaderCache::readJson(const json& in) {
-    READ_OBJECT(shaderHash, in);
-    READ_OBJECT(includesHash, in);
-    READ_OBJECT(codeHashes, in);
-    READ_OBJECT(binaryConfigHashes, in);
-}
+// void ShaderCache::readJson(const json& in) {
+//     READ_OBJECT(shaderHash, in);
+//     READ_OBJECT(includesHash, in);
+//     READ_OBJECT(codeHashes, in);
+//     READ_OBJECT(binaryConfigHashes, in);
+// }
 
-void GenerateOptions::writeJson(json& out) const {
-    WRITE_OBJECT(limits, out);
-    WRITE_OBJECT(compileOptions, out);
-    // WRITE_OBJECT(runtimeStats, out);
-}
+// void GenerateOptions::writeJson(json& out) const {
+//     WRITE_OBJECT(limits, out);
+//     WRITE_OBJECT(compileOptions, out);
+//     // WRITE_OBJECT(runtimeStats, out);
+// }
 
-void GenerateOptions::readJson(const json& in) {
-    READ_OBJECT(limits, in);
-    READ_OBJECT(compileOptions, in);
-    // READ_OBJECT(runtimeStats, in);
-}
+// void GenerateOptions::readJson(const json& in) {
+//     READ_OBJECT(limits, in);
+//     READ_OBJECT(compileOptions, in);
+//     // READ_OBJECT(runtimeStats, in);
+// }
 
-void CompilerCache::writeJson(json& out) const {
-    WRITE_TIMESTAMP(out);
-    WRITE_OBJECT(options, out);
-    // WRITE_OBJECT(headers, out);
-    WRITE_OBJECT(shaders, out);
-}
+// void CompilerCache::writeJson(json& out) const {
+//     WRITE_TIMESTAMP(out);
+//     WRITE_OBJECT(options, out);
+//     // WRITE_OBJECT(headers, out);
+//     WRITE_OBJECT(shaders, out);
+// }
 
-void CompilerCache::readJson(const json& in) {
-    if (CHECK_TIMESTAMP(in)) {
-        READ_OBJECT(options, in);
-        // READ_OBJECT(headers, in);
-        READ_OBJECT(shaders, in);
-    }
-}
+// void CompilerCache::readJson(const json& in) {
+//     if (CHECK_TIMESTAMP(in)) {
+//         READ_OBJECT(options, in);
+//         // READ_OBJECT(headers, in);
+//         READ_OBJECT(shaders, in);
+//     }
+// }
 
-void Compiler::loadCache(std::istream& in) {
-    cache.read(in);
-}
+// void Compiler::loadCache(std::istream& in) {
+//     cache.read(in);
+// }
 
-void Compiler::exportCache(std::ostream& out) const {
-    cache.write(out);
-}
+// void Compiler::exportCache(std::ostream& out) const {
+//     cache.write(out);
+// }
 
 void Compiler::addShaders(PreprocessorData&& data) {
     for (const auto& header : data.headers)
@@ -254,99 +254,100 @@ static void generate_shader_attachments(const ShaderBin::StageConfig& configs, s
 
 static TBuiltInResource reade_resources(const ShaderBuiltInResource& resources) {
     TBuiltInResource ret;
-    ret.maxLights = resources.maxLights;
-    ret.maxClipPlanes = resources.maxClipPlanes;
-    ret.maxTextureUnits = resources.maxTextureUnits;
-    ret.maxTextureCoords = resources.maxTextureCoords;
-    ret.maxVertexAttribs = resources.maxVertexAttribs;
-    ret.maxVertexUniformComponents = resources.maxVertexUniformComponents;
-    ret.maxVaryingFloats = resources.maxVaryingFloats;
-    ret.maxVertexTextureImageUnits = resources.maxVertexTextureImageUnits;
-    ret.maxCombinedTextureImageUnits = resources.maxCombinedTextureImageUnits;
-    ret.maxTextureImageUnits = resources.maxTextureImageUnits;
-    ret.maxFragmentUniformComponents = resources.maxFragmentUniformComponents;
-    ret.maxDrawBuffers = resources.maxDrawBuffers;
-    ret.maxVertexUniformVectors = resources.maxVertexUniformVectors;
-    ret.maxVaryingVectors = resources.maxVaryingVectors;
-    ret.maxFragmentUniformVectors = resources.maxFragmentUniformVectors;
-    ret.maxVertexOutputVectors = resources.maxVertexOutputVectors;
-    ret.maxFragmentInputVectors = resources.maxFragmentInputVectors;
-    ret.minProgramTexelOffset = resources.minProgramTexelOffset;
-    ret.maxProgramTexelOffset = resources.maxProgramTexelOffset;
-    ret.maxClipDistances = resources.maxClipDistances;
-    ret.maxComputeWorkGroupCountX = resources.maxComputeWorkGroupCountX;
-    ret.maxComputeWorkGroupCountY = resources.maxComputeWorkGroupCountY;
-    ret.maxComputeWorkGroupCountZ = resources.maxComputeWorkGroupCountZ;
-    ret.maxComputeWorkGroupSizeX = resources.maxComputeWorkGroupSizeX;
-    ret.maxComputeWorkGroupSizeY = resources.maxComputeWorkGroupSizeY;
-    ret.maxComputeWorkGroupSizeZ = resources.maxComputeWorkGroupSizeZ;
-    ret.maxComputeUniformComponents = resources.maxComputeUniformComponents;
-    ret.maxComputeTextureImageUnits = resources.maxComputeTextureImageUnits;
-    ret.maxComputeImageUniforms = resources.maxComputeImageUniforms;
-    ret.maxComputeAtomicCounters = resources.maxComputeAtomicCounters;
-    ret.maxComputeAtomicCounterBuffers = resources.maxComputeAtomicCounterBuffers;
-    ret.maxVaryingComponents = resources.maxVaryingComponents;
-    ret.maxVertexOutputComponents = resources.maxVertexOutputComponents;
-    ret.maxGeometryInputComponents = resources.maxGeometryInputComponents;
-    ret.maxGeometryOutputComponents = resources.maxGeometryOutputComponents;
-    ret.maxFragmentInputComponents = resources.maxFragmentInputComponents;
-    ret.maxImageUnits = resources.maxImageUnits;
-    ret.maxCombinedImageUnitsAndFragmentOutputs = resources.maxCombinedImageUnitsAndFragmentOutputs;
-    ret.maxCombinedShaderOutputResources = resources.maxCombinedShaderOutputResources;
-    ret.maxImageSamples = resources.maxImageSamples;
-    ret.maxVertexImageUniforms = resources.maxVertexImageUniforms;
-    ret.maxTessControlImageUniforms = resources.maxTessControlImageUniforms;
-    ret.maxTessEvaluationImageUniforms = resources.maxTessEvaluationImageUniforms;
-    ret.maxGeometryImageUniforms = resources.maxGeometryImageUniforms;
-    ret.maxFragmentImageUniforms = resources.maxFragmentImageUniforms;
-    ret.maxCombinedImageUniforms = resources.maxCombinedImageUniforms;
-    ret.maxGeometryTextureImageUnits = resources.maxGeometryTextureImageUnits;
-    ret.maxGeometryOutputVertices = resources.maxGeometryOutputVertices;
-    ret.maxGeometryTotalOutputComponents = resources.maxGeometryTotalOutputComponents;
-    ret.maxGeometryUniformComponents = resources.maxGeometryUniformComponents;
-    ret.maxGeometryVaryingComponents = resources.maxGeometryVaryingComponents;
-    ret.maxTessControlInputComponents = resources.maxTessControlInputComponents;
-    ret.maxTessControlOutputComponents = resources.maxTessControlOutputComponents;
-    ret.maxTessControlTextureImageUnits = resources.maxTessControlTextureImageUnits;
-    ret.maxTessControlUniformComponents = resources.maxTessControlUniformComponents;
-    ret.maxTessControlTotalOutputComponents = resources.maxTessControlTotalOutputComponents;
-    ret.maxTessEvaluationInputComponents = resources.maxTessEvaluationInputComponents;
-    ret.maxTessEvaluationOutputComponents = resources.maxTessEvaluationOutputComponents;
-    ret.maxTessEvaluationTextureImageUnits = resources.maxTessEvaluationTextureImageUnits;
-    ret.maxTessEvaluationUniformComponents = resources.maxTessEvaluationUniformComponents;
-    ret.maxTessPatchComponents = resources.maxTessPatchComponents;
-    ret.maxPatchVertices = resources.maxPatchVertices;
-    ret.maxTessGenLevel = resources.maxTessGenLevel;
-    ret.maxViewports = resources.maxViewports;
-    ret.maxVertexAtomicCounters = resources.maxVertexAtomicCounters;
-    ret.maxTessControlAtomicCounters = resources.maxTessControlAtomicCounters;
-    ret.maxTessEvaluationAtomicCounters = resources.maxTessEvaluationAtomicCounters;
-    ret.maxGeometryAtomicCounters = resources.maxGeometryAtomicCounters;
-    ret.maxFragmentAtomicCounters = resources.maxFragmentAtomicCounters;
-    ret.maxCombinedAtomicCounters = resources.maxCombinedAtomicCounters;
-    ret.maxAtomicCounterBindings = resources.maxAtomicCounterBindings;
-    ret.maxVertexAtomicCounterBuffers = resources.maxVertexAtomicCounterBuffers;
-    ret.maxTessControlAtomicCounterBuffers = resources.maxTessControlAtomicCounterBuffers;
-    ret.maxTessEvaluationAtomicCounterBuffers = resources.maxTessEvaluationAtomicCounterBuffers;
-    ret.maxGeometryAtomicCounterBuffers = resources.maxGeometryAtomicCounterBuffers;
-    ret.maxFragmentAtomicCounterBuffers = resources.maxFragmentAtomicCounterBuffers;
-    ret.maxCombinedAtomicCounterBuffers = resources.maxCombinedAtomicCounterBuffers;
-    ret.maxAtomicCounterBufferSize = resources.maxAtomicCounterBufferSize;
-    ret.maxTransformFeedbackBuffers = resources.maxTransformFeedbackBuffers;
+    ret.maxLights = resources.misc.maxLights;
+    ret.maxClipPlanes = resources.misc.maxClipPlanes;
+    ret.maxTextureUnits = resources.misc.maxTextureUnits;
+    ret.maxTextureCoords = resources.misc.maxTextureCoords;
+    ret.maxVertexAttribs = resources.vs.maxVertexAttribs;
+    ret.maxVertexUniformComponents = resources.vs.maxVertexUniformComponents;
+    ret.maxVaryingFloats = resources.misc.maxVaryingFloats;
+    ret.maxVertexTextureImageUnits = resources.vs.maxVertexTextureImageUnits;
+    ret.maxCombinedTextureImageUnits = resources.misc.maxCombinedTextureImageUnits;
+    ret.maxTextureImageUnits = resources.misc.maxTextureImageUnits;
+    ret.maxFragmentUniformComponents = resources.ps.maxFragmentUniformComponents;
+    ret.maxDrawBuffers = resources.misc.maxDrawBuffers;
+    ret.maxVertexUniformVectors = resources.vs.maxVertexUniformVectors;
+    ret.maxVaryingVectors = resources.misc.maxVaryingVectors;
+    ret.maxFragmentUniformVectors = resources.ps.maxFragmentUniformVectors;
+    ret.maxVertexOutputVectors = resources.vs.maxVertexOutputVectors;
+    ret.maxFragmentInputVectors = resources.ps.maxFragmentInputVectors;
+    ret.minProgramTexelOffset = resources.misc.minProgramTexelOffset;
+    ret.maxProgramTexelOffset = resources.misc.maxProgramTexelOffset;
+    ret.maxClipDistances = resources.misc.maxClipDistances;
+    ret.maxComputeWorkGroupCountX = resources.cs.maxComputeWorkGroupCountX;
+    ret.maxComputeWorkGroupCountY = resources.cs.maxComputeWorkGroupCountY;
+    ret.maxComputeWorkGroupCountZ = resources.cs.maxComputeWorkGroupCountZ;
+    ret.maxComputeWorkGroupSizeX = resources.cs.maxComputeWorkGroupSizeX;
+    ret.maxComputeWorkGroupSizeY = resources.cs.maxComputeWorkGroupSizeY;
+    ret.maxComputeWorkGroupSizeZ = resources.cs.maxComputeWorkGroupSizeZ;
+    ret.maxComputeUniformComponents = resources.cs.maxComputeUniformComponents;
+    ret.maxComputeTextureImageUnits = resources.cs.maxComputeTextureImageUnits;
+    ret.maxComputeImageUniforms = resources.cs.maxComputeImageUniforms;
+    ret.maxComputeAtomicCounters = resources.cs.maxComputeAtomicCounters;
+    ret.maxComputeAtomicCounterBuffers = resources.cs.maxComputeAtomicCounterBuffers;
+    ret.maxVaryingComponents = resources.misc.maxVaryingComponents;
+    ret.maxVertexOutputComponents = resources.vs.maxVertexOutputComponents;
+    ret.maxGeometryInputComponents = resources.gs.maxGeometryInputComponents;
+    ret.maxGeometryOutputComponents = resources.gs.maxGeometryOutputComponents;
+    ret.maxFragmentInputComponents = resources.ps.maxFragmentInputComponents;
+    ret.maxImageUnits = resources.misc.maxImageUnits;
+    ret.maxCombinedImageUnitsAndFragmentOutputs =
+      resources.ps.maxCombinedImageUnitsAndFragmentOutputs;
+    ret.maxCombinedShaderOutputResources = resources.misc.maxCombinedShaderOutputResources;
+    ret.maxImageSamples = resources.misc.maxImageSamples;
+    ret.maxVertexImageUniforms = resources.vs.maxVertexImageUniforms;
+    ret.maxTessControlImageUniforms = resources.tc.maxTessControlImageUniforms;
+    ret.maxTessEvaluationImageUniforms = resources.te.maxTessEvaluationImageUniforms;
+    ret.maxGeometryImageUniforms = resources.gs.maxGeometryImageUniforms;
+    ret.maxFragmentImageUniforms = resources.ps.maxFragmentImageUniforms;
+    ret.maxCombinedImageUniforms = resources.misc.maxCombinedImageUniforms;
+    ret.maxGeometryTextureImageUnits = resources.gs.maxGeometryTextureImageUnits;
+    ret.maxGeometryOutputVertices = resources.gs.maxGeometryOutputVertices;
+    ret.maxGeometryTotalOutputComponents = resources.gs.maxGeometryTotalOutputComponents;
+    ret.maxGeometryUniformComponents = resources.gs.maxGeometryUniformComponents;
+    ret.maxGeometryVaryingComponents = resources.gs.maxGeometryVaryingComponents;
+    ret.maxTessControlInputComponents = resources.tc.maxTessControlInputComponents;
+    ret.maxTessControlOutputComponents = resources.tc.maxTessControlOutputComponents;
+    ret.maxTessControlTextureImageUnits = resources.tc.maxTessControlTextureImageUnits;
+    ret.maxTessControlUniformComponents = resources.tc.maxTessControlUniformComponents;
+    ret.maxTessControlTotalOutputComponents = resources.tc.maxTessControlTotalOutputComponents;
+    ret.maxTessEvaluationInputComponents = resources.te.maxTessEvaluationInputComponents;
+    ret.maxTessEvaluationOutputComponents = resources.te.maxTessEvaluationOutputComponents;
+    ret.maxTessEvaluationTextureImageUnits = resources.te.maxTessEvaluationTextureImageUnits;
+    ret.maxTessEvaluationUniformComponents = resources.te.maxTessEvaluationUniformComponents;
+    ret.maxTessPatchComponents = resources.tc.maxTessPatchComponents;
+    ret.maxPatchVertices = resources.tc.maxPatchVertices;
+    ret.maxTessGenLevel = resources.tc.maxTessGenLevel;
+    ret.maxViewports = resources.misc.maxViewports;
+    ret.maxVertexAtomicCounters = resources.vs.maxVertexAtomicCounters;
+    ret.maxTessControlAtomicCounters = resources.tc.maxTessControlAtomicCounters;
+    ret.maxTessEvaluationAtomicCounters = resources.te.maxTessEvaluationAtomicCounters;
+    ret.maxGeometryAtomicCounters = resources.gs.maxGeometryAtomicCounters;
+    ret.maxFragmentAtomicCounters = resources.ps.maxFragmentAtomicCounters;
+    ret.maxCombinedAtomicCounters = resources.misc.maxCombinedAtomicCounters;
+    ret.maxAtomicCounterBindings = resources.misc.maxAtomicCounterBindings;
+    ret.maxVertexAtomicCounterBuffers = resources.vs.maxVertexAtomicCounterBuffers;
+    ret.maxTessControlAtomicCounterBuffers = resources.tc.maxTessControlAtomicCounterBuffers;
+    ret.maxTessEvaluationAtomicCounterBuffers = resources.te.maxTessEvaluationAtomicCounterBuffers;
+    ret.maxGeometryAtomicCounterBuffers = resources.gs.maxGeometryAtomicCounterBuffers;
+    ret.maxFragmentAtomicCounterBuffers = resources.ps.maxFragmentAtomicCounterBuffers;
+    ret.maxCombinedAtomicCounterBuffers = resources.misc.maxCombinedAtomicCounterBuffers;
+    ret.maxAtomicCounterBufferSize = resources.misc.maxAtomicCounterBufferSize;
+    ret.maxTransformFeedbackBuffers = resources.misc.maxTransformFeedbackBuffers;
     ret.maxTransformFeedbackInterleavedComponents =
-      resources.maxTransformFeedbackInterleavedComponents;
-    ret.maxCullDistances = resources.maxCullDistances;
-    ret.maxCombinedClipAndCullDistances = resources.maxCombinedClipAndCullDistances;
-    ret.maxSamples = resources.maxSamples;
-    ret.maxMeshOutputVerticesNV = resources.maxMeshOutputVerticesNV;
-    ret.maxMeshOutputPrimitivesNV = resources.maxMeshOutputPrimitivesNV;
-    ret.maxMeshWorkGroupSizeX_NV = resources.maxMeshWorkGroupSizeX_NV;
-    ret.maxMeshWorkGroupSizeY_NV = resources.maxMeshWorkGroupSizeY_NV;
-    ret.maxMeshWorkGroupSizeZ_NV = resources.maxMeshWorkGroupSizeZ_NV;
-    ret.maxTaskWorkGroupSizeX_NV = resources.maxTaskWorkGroupSizeX_NV;
-    ret.maxTaskWorkGroupSizeY_NV = resources.maxTaskWorkGroupSizeY_NV;
-    ret.maxTaskWorkGroupSizeZ_NV = resources.maxTaskWorkGroupSizeZ_NV;
-    ret.maxMeshViewCountNV = resources.maxMeshViewCountNV;
+      resources.misc.maxTransformFeedbackInterleavedComponents;
+    ret.maxCullDistances = resources.misc.maxCullDistances;
+    ret.maxCombinedClipAndCullDistances = resources.misc.maxCombinedClipAndCullDistances;
+    ret.maxSamples = resources.misc.maxSamples;
+    ret.maxMeshOutputVerticesNV = resources.ms.maxMeshOutputVerticesNV;
+    ret.maxMeshOutputPrimitivesNV = resources.ms.maxMeshOutputPrimitivesNV;
+    ret.maxMeshWorkGroupSizeX_NV = resources.ms.maxMeshWorkGroupSizeX_NV;
+    ret.maxMeshWorkGroupSizeY_NV = resources.ms.maxMeshWorkGroupSizeY_NV;
+    ret.maxMeshWorkGroupSizeZ_NV = resources.ms.maxMeshWorkGroupSizeZ_NV;
+    ret.maxTaskWorkGroupSizeX_NV = resources.ts.maxTaskWorkGroupSizeX_NV;
+    ret.maxTaskWorkGroupSizeY_NV = resources.ts.maxTaskWorkGroupSizeY_NV;
+    ret.maxTaskWorkGroupSizeZ_NV = resources.ts.maxTaskWorkGroupSizeZ_NV;
+    ret.maxMeshViewCountNV = resources.ms.maxMeshViewCountNV;
     // ret.maxDualSourceDrawBuffersEXT = resources.maxDualSourceDrawBuffersEXT;
 
     ret.limits.nonInductiveForLoops = resources.limits.nonInductiveForLoops;

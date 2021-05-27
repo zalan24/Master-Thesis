@@ -6,11 +6,17 @@
 
 namespace drv
 {
-struct DeviceLimits final : public ISerializable
+struct DeviceLimits final : public IAutoSerializable<DeviceLimits>
 {
-    uint32_t maxPushConstantsSize = 0;
+    REFLECTABLE
+    (
+        (uint32_t) maxPushConstantsSize
+    )
 
-    void writeJson(json& out) const override;
-    void readJson(const json& in) override;
+    DeviceLimits() : maxPushConstantsSize(0) {}
+
+    // uint32_t maxPushConstantsSize = 0;
+
+    // REFLECT()
 };
 }  // namespace drv

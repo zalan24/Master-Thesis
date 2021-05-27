@@ -11,15 +11,15 @@
 #include <hardwareconfig.h>
 #include <serializable.h>
 
-class ShaderBin
+class ShaderBin final : public IAutoSerializable<ShaderBin>
 {
  public:
     static constexpr size_t MAX_VARIANT_PARAM_COUNT = 8;
-    static constexpr uint32_t FILE_HEADER = 0x12345678;
-    static constexpr uint32_t FILE_CODES_START = 0xAABBCCDD;
-    static constexpr uint32_t FILE_BLOCK_START = 0xCF8778EF;
-    static constexpr uint32_t FILE_BLOCK_END = 0xDF8778EF;
-    static constexpr uint32_t FILE_END = 0xEDCBA987;
+    // static constexpr uint32_t FILE_HEADER = 0x12345678;
+    // static constexpr uint32_t FILE_CODES_START = 0xAABBCCDD;
+    // static constexpr uint32_t FILE_BLOCK_START = 0xCF8778EF;
+    // static constexpr uint32_t FILE_BLOCK_END = 0xDF8778EF;
+    // static constexpr uint32_t FILE_END = 0xEDCBA987;
     static constexpr uint32_t CODE_BLOCK_BITS = 20;
     static constexpr uint32_t CODE_BLOCK_SIZE = 1 << CODE_BLOCK_BITS;
     static constexpr uint64_t CODE_BLOCK_LOW_FILETR = CODE_BLOCK_SIZE - 1;
@@ -67,50 +67,89 @@ class ShaderBin
         uint8_t location = 0;
     };
 
-    struct StageConfig  // final : public ISerializable
+    struct StageConfig final : public IAutoSerializable<StageConfig>
     {
-        std::array<std::string, NUM_STAGES> entryPoints;
-        drv::PolygonMode polygonMode = drv::PolygonMode::FILL;
-        drv::CullMode cullMode = drv::CullMode::NONE;
-        drv::CompareOp depthCompare = drv::CompareOp::GREATER_OR_EQUAL;
-        bool useDepthClamp = false;
-        bool depthBiasEnable = false;
-        bool depthTest = false;
-        bool depthWrite = false;
-        bool stencilTest = false;
-        std::vector<AttachmentInfo> attachments;
+        REFLECTABLE
+        (
+            (std::array<std::string, NUM_STAGES>) entryPoints,
+            (drv::PolygonMode) polygonMode,
+            (drv::CullMode) cullMode,
+            (drv::CompareOp) depthCompare,
+            (bool) useDepthClamp,
+            (bool) depthBiasEnable,
+            (bool) depthTest,
+            (bool) depthWrite,
+            (bool) stencilTest,
+            (std::vector<AttachmentInfo>) attachments
+        )
+
+        StageConfig()
+          : polygonMode(drv::PolygonMode::FILL),
+            cullMode(drv::CullMode::NONE),
+            depthCompare(drv::CompareOp::GREATER_OR_EQUAL),
+            useDepthClamp(false),
+            depthBiasEnable(false),
+            depthTest(false),
+            depthWrite(false),
+            stencilTest(false) {}
+
+        // std::array<std::string, NUM_STAGES> entryPoints;
+        // drv::PolygonMode polygonMode = drv::PolygonMode::FILL;
+        // drv::CullMode cullMode = drv::CullMode::NONE;
+        // drv::CompareOp depthCompare = drv::CompareOp::GREATER_OR_EQUAL;
+        // bool useDepthClamp = false;
+        // bool depthBiasEnable = false;
+        // bool depthTest = false;
+        // bool depthWrite = false;
+        // bool stencilTest = false;
+        // std::vector<AttachmentInfo> attachments;
 
         // void writeJson(json& out) const override;
         // void readJson(const json& in) override;
 
-        void write(std::ostream& out) const;
-        void read(std::istream& in);
     };
 
     // struct PushConstBindData
     // {};
 
-    struct ShaderData
+    struct ShaderData final : public IAutoSerializable<ShaderData>
     {
         static constexpr uint64_t INVALID_SHADER = std::numeric_limits<uint64_t>::max();
-        struct StageData
+        struct StageData final : public IAutoSerializable<StageData>
         {
-            std::array<uint64_t, NUM_STAGES> stageOffsets = {INVALID_SHADER};
-            std::array<uint64_t, NUM_STAGES> stageCodeSizes = {INVALID_SHADER};
-            StageConfig configs;
+            REFLECTABLE
+            (
+                (std::array<uint64_t, NUM_STAGES>) stageOffsets,
+                (std::array<uint64_t, NUM_STAGES>) stageCodeSizes,
+                (StageConfig) configs
+            )
+
+            StageData() {
+                for (uint32_t i = 0; i < NUM_STAGES; ++i) {
+                    stageOffsets[i] = INVALID_SHADER;
+                    stageCodeSizes[i] = 0;
+                }
+            }
+            // std::array<uint64_t, NUM_STAGES> stageOffsets = {INVALID_SHADER};
+            // std::array<uint64_t, NUM_STAGES> stageCodeSizes = {INVALID_SHADER};
+            // StageConfig configs;
             // PushConstBindData pushConstBindInfo;
         };
-        uint32_t totalVariantCount;
+        REFLECTABLE
+        (
+            (uint32_t) totalVariantCount,
+            (std::vector<StageData>) stages
+        )
+
+        ShaderData() : totalVariantCount(0) {}
+
         // uint32_t variantParamNum;
         // std::array<uint16_t, MAX_VARIANT_PARAM_COUNT> variantValues;
-        std::vector<StageData> stages;
+        // std::vector<StageData> stages;
     };
 
     ShaderBin(drv::DeviceLimits limits);
-    ShaderBin(const std::string& binfile);
-
-    void read(std::istream& in);
-    void write(std::ostream& out) const;
+    ShaderBin(const fs::path& binfile);
 
     void clear();
 
@@ -127,10 +166,23 @@ class ShaderBin
     uint32_t* getCode(uint64_t ind);
     const uint32_t* getCode(uint64_t ind) const;
 
+ protected:
+    bool needTimeStamp() const override { return true; }
+
  private:
-    uint64_t shaderHeadersHash = 0;  // compatibility with c++ code
-    drv::DeviceLimits limits;
-    std::unordered_map<std::string, ShaderData> shaders;
-    size_t codeLen = 0;
-    std::vector<std::vector<uint32_t>> codeBlocks;
+
+    REFLECTABLE
+    (
+        (uint64_t) shaderHeadersHash,
+        (drv::DeviceLimits) limits,
+        (std::unordered_map<std::string, ShaderData>) shaders,
+        (size_t) codeLen,
+        (std::vector<std::vector<uint32_t>>) codeBlocks
+    )
+
+    // uint64_t shaderHeadersHash = 0;  // compatibility with c++ code
+    // drv::DeviceLimits limits;
+    // std::unordered_map<std::string, ShaderData> shaders;
+    // size_t codeLen = 0;
+    // std::vector<std::vector<uint32_t>> codeBlocks;
 };

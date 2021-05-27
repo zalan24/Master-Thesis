@@ -5,10 +5,10 @@
 #include <nlohmann/json.hpp>
 
 // #include <animchar.h>
-#include <controllerholder.h>
-#include <engine.h>
+// #include <controllerholder.h>
+// #include <engine.h>
 #include <game.h>
-#include <loadmesh.h>
+// #include <loadmesh.h>
 
 using json = nlohmann::json;
 
@@ -96,17 +96,15 @@ int main(int argc, char* argv[]) {
             return 1;
         }
 
-        Engine::Config engineCfg;
+        EngineConfig engineCfg;
         {
-            std::ifstream in(config);
-            assert(in.is_open());
-            engineCfg.read(in);
+            if (!engineCfg.importFromFile(fs::path{config}))
+                throw std::runtime_error("Could not open engine config file: " + config);
         }
         drv::StateTrackingConfig trackingCfg;
         if (trackingConfig != "") {
-            std::ifstream in(trackingConfig);
-            assert(in.is_open());
-            trackingCfg.read(in);
+            if (!trackingCfg.importFromFile(fs::path{trackingConfig}))
+                throw std::runtime_error("Could not open tracking config file: " + trackingConfig);
         }
 
         // json controllers;
@@ -117,11 +115,11 @@ int main(int argc, char* argv[]) {
         //     in >> controllers;
         // }
 
-        ResourceManager::ResourceInfos resourceInfos;
-        resourceInfos.resourceFolder = resourceFolder;
-        resourceInfos.modelResourcesJson = modelResources;
-        std::unique_ptr<Game> game = std::make_unique<Game>(
-          argc, argv, engineCfg, trackingCfg, shaderbin, std::move(resourceInfos), args);
+        // ResourceManager::ResourceInfos resourceInfos;
+        // resourceInfos.resourceFolder = resourceFolder;
+        // resourceInfos.modelResourcesJson = modelResources;
+        std::unique_ptr<Game> game =
+          std::make_unique<Game>(argc, argv, engineCfg, trackingCfg, shaderbin, args);
         // engine.getRenderer()->getCamera().lookAt(glm::vec3{0, 3, -5}, glm::vec3{0, 1, 0},
         //                                          glm::vec3{0, 1, 0});
 

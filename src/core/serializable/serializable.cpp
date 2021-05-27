@@ -19,8 +19,10 @@ std::string hash_binary(size_t size, const void* data) {
 
 std::string ISerializable::hash() const {
     std::stringstream ss;
-    write(ss);
-    return hash_string(ss.str());
+    writeBin(ss);
+    std::vector<char> binary(size_t(ss.gcount()));
+    ss.read(binary.data(), ss.gcount());
+    return hash_binary(binary.size(), reinterpret_cast<const void*>(binary.data()));
 }
 
 void IVirtualSerializable::writeJson(json& out) const {
@@ -44,4 +46,44 @@ void IVirtualSerializable::readJson(const json& in) {
         ISerializable* content = init(type);
         READ_OBJECT(content, in);
     }
+}
+
+bool ISerializable::exportToFile(const fs::path& p) const {
+    if (p.extension() == ".json") {
+        std::ofstream out(p.c_str());
+        if (!out.is_open())
+            return false;
+        json j;
+        writeJson(j);
+        out << j;
+        return !out.fail();
+    }
+    else if (p.extension() == ".bin") {
+        std::ofstream out(p.c_str(), std::ios::binary);
+        if (!out.is_open())
+            return false;
+        return writeBin(out);
+    }
+    else
+        throw std::runtime_error("Unknown file extension: " + p.string());
+}
+
+bool ISerializable::importFromFile(const fs::path& p) {
+    if (p.extension() == ".json") {
+        std::ifstream in(p.c_str());
+        if (!in.is_open())
+            return false;
+        json j;
+        in >> j;
+        readJson(j);
+        return !in.fail();
+    }
+    else if (p.extension() == ".bin") {
+        std::ifstream in(p.c_str(), std::ios::binary);
+        if (!in.is_open())
+            return false;
+        return readBin(in);
+    }
+    else
+        throw std::runtime_error("Unknown file extension: " + p.string());
 }

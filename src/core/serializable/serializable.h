@@ -6,8 +6,10 @@
 #include <type_traits>
 #include <unordered_map>
 #include <vector>
+#include <filesystem>
 
 #include <nlohmann/json.hpp>
+#include <reflectable.hpp>
 
 #define GLM_FORCE_RADIANS
 #include <glm/glm.hpp>
@@ -15,6 +17,7 @@
 #include <binary_io.h>
 
 using json = nlohmann::json;
+namespace fs = std::filesystem;
 
 std::string hash_string(const std::string& data);
 std::string hash_binary(size_t size, const void* data);
@@ -57,7 +60,7 @@ class ISerializable
     static bool serializeBin(std::ostream& out, const std::string& value) {
         if (!write_data(out, MARKER_STR))
             return false;
-        return write_string(value);
+        return write_string(out, value);
     }
     static bool serializeBin(std::ostream& out, bool value) { return write_data(out, value); }
 
@@ -83,6 +86,9 @@ class ISerializable
 
     virtual void writeJson(json& out) const = 0;
     virtual void readJson(const json& in) = 0;
+
+    bool exportToFile(const fs::path &p) const;
+    bool importFromFile(const fs::path &p);
 
     std::string hash() const;
 
@@ -206,7 +212,7 @@ class ISerializable
     static bool serializeBin(std::ostream& out, const ISerializable* value) {
         if (!write_data(out, MARKER_OBJ))
             return false;
-        value->writeBin(out);
+        return value->writeBin(out);
     }
 
     static json serialize(const ISerializable& value) { return serialize(&value); }
@@ -696,3 +702,107 @@ class IVirtualSerializable : public ISerializable
         name = def
 #define WRITE_TIMESTAMP(json) json["timeStamp"] = serialize(std::string{__TIMESTAMP__})
 #define CHECK_TIMESTAMP(json) (json["timeStamp"] == std::string{__TIMESTAMP__})
+
+template <typename Derived>
+class IAutoSerializable : public ISerializable
+{
+ protected:
+    virtual bool needTimeStamp() const { return false; }
+
+    struct serialize_json_out_visitor
+    {
+        json& out;
+        template <class FieldData>
+        void operator()(FieldData f) {
+            if constexpr (std::is_enum_v<decltype(f.get())>) {
+                out[f.name()] = ISerializable::serialize(f.get(), get_enum_name(f.get()));
+            }
+            else {
+                out[f.name()] = ISerializable::serialize(f.get());
+            }
+        }
+    };
+
+    struct serialize_json_in_visitor
+    {
+        const json& in;
+        template <class FieldData>
+        void operator()(FieldData f) {
+            if constexpr (std::is_enum_v<decltype(f.get())>) {
+                std::string name;
+                ISerializable::serialize(in[f.name()], name) f.get() =
+                  static_cast<decltype(f.get())>(get_enum(name));
+            }
+            else {
+                ISerializable::serialize(in[f.name()], f.get())
+            }
+        }
+    };
+
+    struct serialize_bin_out_visitor
+    {
+        bool& ok;
+        std::ostream& out;
+        template <class FieldData>
+        void operator()(FieldData f) {
+            if constexpr (std::is_enum_v<decltype(f.get())>) {
+                uint32_t enumVal = static_cast<int>(f.get());
+                ok = ISerializable::serializeBin(out, enumVal) && ok;
+            }
+            else {
+                ok = ISerializable::serializeBin(out, f.get()) && ok;
+            }
+        }
+    };
+
+    struct serialize_bin_in_visitor
+    {
+        bool& ok;
+        std::istream& in;
+        template <class FieldData>
+        void operator()(FieldData f) {
+            if constexpr (std::is_enum_v<decltype(f.get())>) {
+                uint32_t enumVal;
+                ok = ISerializable::serializeBin(in, enumVal) && ok;
+                f.get() = static_cast<decltype(f.get())>(enumVal);
+            }
+            else {
+                ok = ISerializable::serializeBin(in, f.get()) && ok;
+            }
+        }
+    };
+
+ public:
+    bool writeBin(std::ostream& out) const override {
+        if (needTimeStamp())
+            write_string(out, __TIMESTAMP__);
+        bool ok = true;
+        reflect::visit_each(*static_cast<const Derived*>(this), serialize_bin_out_visitor{ok, out});
+        return ok;
+    }
+    bool readBin(std::istream& in) override {
+        if (needTimeStamp()) {
+            std::string stamp;
+            read_string(in, stamp);
+            if (stamp != __TIMESTAMP__)
+                return false;
+        }
+        bool ok = true;
+        reflect::visit_each(*static_cast<const Derived*>(this), serialize_bin_in_visitor{ok, in});
+        return ok;
+    }
+
+    void writeJson(json& out) const override {
+        if (needTimeStamp())
+            WRITE_TIMESTAMP(out);
+        reflect::visit_each(*static_cast<const Derived*>(this), serialize_json_out_visitor{out});
+    }
+    void readJson(const json& in) override {
+        if (needTimeStamp())
+            CHECK_TIMESTAMP(in);
+        reflect::visit_each(*static_cast<const Derived*>(this), serialize_json_in_visitor{in});
+    }
+
+ protected:
+    ~IAutoSerializable() = default;
+};

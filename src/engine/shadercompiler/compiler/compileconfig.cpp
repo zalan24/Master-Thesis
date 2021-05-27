@@ -1,229 +1,114 @@
 #include "compileconfig.h"
 
-void ShaderLimits::writeJson(json& out) const {
-    WRITE_OBJECT(nonInductiveForLoops, out);
-    WRITE_OBJECT(whileLoops, out);
-    WRITE_OBJECT(doWhileLoops, out);
-    WRITE_OBJECT(generalUniformIndexing, out);
-    WRITE_OBJECT(generalAttributeMatrixVectorIndexing, out);
-    WRITE_OBJECT(generalVaryingIndexing, out);
-    WRITE_OBJECT(generalSamplerIndexing, out);
-    WRITE_OBJECT(generalVariableIndexing, out);
-    WRITE_OBJECT(generalConstantMatrixVectorIndexing, out);
-}
+// REFLECT_STRUCT_BEGIN(ShaderLimits)
+// REFLECT_STRUCT_MEMBER(nonInductiveForLoops)
+// REFLECT_STRUCT_MEMBER(whileLoops)
+// REFLECT_STRUCT_MEMBER(doWhileLoops)
+// REFLECT_STRUCT_MEMBER(generalUniformIndexing)
+// REFLECT_STRUCT_MEMBER(generalAttributeMatrixVectorIndexing)
+// REFLECT_STRUCT_MEMBER(generalVaryingIndexing)
+// REFLECT_STRUCT_MEMBER(generalSamplerIndexing)
+// REFLECT_STRUCT_MEMBER(generalVariableIndexing)
+// REFLECT_STRUCT_MEMBER(generalConstantMatrixVectorIndexing)
+// REFLECT_STRUCT_END()
 
-void ShaderLimits::readJson(const json& in) {
-    READ_OBJECT(nonInductiveForLoops, in);
-    READ_OBJECT(whileLoops, in);
-    READ_OBJECT(doWhileLoops, in);
-    READ_OBJECT(generalUniformIndexing, in);
-    READ_OBJECT(generalAttributeMatrixVectorIndexing, in);
-    READ_OBJECT(generalVaryingIndexing, in);
-    READ_OBJECT(generalSamplerIndexing, in);
-    READ_OBJECT(generalVariableIndexing, in);
-    READ_OBJECT(generalConstantMatrixVectorIndexing, in);
-}
+// REFLECT_STRUCT_BEGIN(ShaderBuiltInResource)
+// REFLECT_STRUCT_MEMBER(maxLights)
+// REFLECT_STRUCT_MEMBER(maxClipPlanes)
+// REFLECT_STRUCT_MEMBER(maxTextureUnits)
+// REFLECT_STRUCT_MEMBER(maxTextureCoords)
+// REFLECT_STRUCT_MEMBER(maxVertexAttribs)
+// REFLECT_STRUCT_MEMBER(maxVertexUniformComponents)
+// REFLECT_STRUCT_MEMBER(maxVaryingFloats)
+// REFLECT_STRUCT_MEMBER(maxVertexTextureImageUnits)
+// REFLECT_STRUCT_MEMBER(maxCombinedTextureImageUnits)
+// REFLECT_STRUCT_MEMBER(maxTextureImageUnits)
+// REFLECT_STRUCT_MEMBER(maxFragmentUniformComponents)
+// REFLECT_STRUCT_MEMBER(maxDrawBuffers)
+// REFLECT_STRUCT_MEMBER(maxVertexUniformVectors)
+// REFLECT_STRUCT_MEMBER(maxVaryingVectors)
+// REFLECT_STRUCT_MEMBER(maxFragmentUniformVectors)
+// REFLECT_STRUCT_MEMBER(maxVertexOutputVectors)
+// REFLECT_STRUCT_MEMBER(maxFragmentInputVectors)
+// REFLECT_STRUCT_MEMBER(minProgramTexelOffset)
+// REFLECT_STRUCT_MEMBER(maxProgramTexelOffset)
+// REFLECT_STRUCT_MEMBER(maxClipDistances)
+// REFLECT_STRUCT_MEMBER(maxComputeWorkGroupCountX)
+// REFLECT_STRUCT_MEMBER(maxComputeWorkGroupCountY)
+// REFLECT_STRUCT_MEMBER(maxComputeWorkGroupCountZ)
+// REFLECT_STRUCT_MEMBER(maxComputeWorkGroupSizeX)
+// REFLECT_STRUCT_MEMBER(maxComputeWorkGroupSizeY)
+// REFLECT_STRUCT_MEMBER(maxComputeWorkGroupSizeZ)
+// REFLECT_STRUCT_MEMBER(maxComputeUniformComponents)
+// REFLECT_STRUCT_MEMBER(maxComputeTextureImageUnits)
+// REFLECT_STRUCT_MEMBER(maxComputeImageUniforms)
+// REFLECT_STRUCT_MEMBER(maxComputeAtomicCounters)
+// REFLECT_STRUCT_MEMBER(maxComputeAtomicCounterBuffers)
+// REFLECT_STRUCT_MEMBER(maxVaryingComponents)
+// REFLECT_STRUCT_MEMBER(maxVertexOutputComponents)
+// REFLECT_STRUCT_MEMBER(maxGeometryInputComponents)
+// REFLECT_STRUCT_MEMBER(maxGeometryOutputComponents)
+// REFLECT_STRUCT_MEMBER(maxFragmentInputComponents)
+// REFLECT_STRUCT_MEMBER(maxImageUnits)
+// REFLECT_STRUCT_MEMBER(maxCombinedImageUnitsAndFragmentOutputs)
+// REFLECT_STRUCT_MEMBER(maxCombinedShaderOutputResources)
+// REFLECT_STRUCT_MEMBER(maxImageSamples)
+// REFLECT_STRUCT_MEMBER(maxVertexImageUniforms)
+// REFLECT_STRUCT_MEMBER(maxTessControlImageUniforms)
+// REFLECT_STRUCT_MEMBER(maxTessEvaluationImageUniforms)
+// REFLECT_STRUCT_MEMBER(maxGeometryImageUniforms)
+// REFLECT_STRUCT_MEMBER(maxFragmentImageUniforms)
+// REFLECT_STRUCT_MEMBER(maxCombinedImageUniforms)
+// REFLECT_STRUCT_MEMBER(maxGeometryTextureImageUnits)
+// REFLECT_STRUCT_MEMBER(maxGeometryOutputVertices)
+// REFLECT_STRUCT_MEMBER(maxGeometryTotalOutputComponents)
+// REFLECT_STRUCT_MEMBER(maxGeometryUniformComponents)
+// REFLECT_STRUCT_MEMBER(maxGeometryVaryingComponents)
+// REFLECT_STRUCT_MEMBER(maxTessControlInputComponents)
+// REFLECT_STRUCT_MEMBER(maxTessControlOutputComponents)
+// REFLECT_STRUCT_MEMBER(maxTessControlTextureImageUnits)
+// REFLECT_STRUCT_MEMBER(maxTessControlUniformComponents)
+// REFLECT_STRUCT_MEMBER(maxTessControlTotalOutputComponents)
+// REFLECT_STRUCT_MEMBER(maxTessEvaluationInputComponents)
+// REFLECT_STRUCT_MEMBER(maxTessEvaluationOutputComponents)
+// REFLECT_STRUCT_MEMBER(maxTessEvaluationTextureImageUnits)
+// REFLECT_STRUCT_MEMBER(maxTessEvaluationUniformComponents)
+// REFLECT_STRUCT_MEMBER(maxTessPatchComponents)
+// REFLECT_STRUCT_MEMBER(maxPatchVertices)
+// REFLECT_STRUCT_MEMBER(maxTessGenLevel)
+// REFLECT_STRUCT_MEMBER(maxViewports)
+// REFLECT_STRUCT_MEMBER(maxVertexAtomicCounters)
+// REFLECT_STRUCT_MEMBER(maxTessControlAtomicCounters)
+// REFLECT_STRUCT_MEMBER(maxTessEvaluationAtomicCounters)
+// REFLECT_STRUCT_MEMBER(maxGeometryAtomicCounters)
+// REFLECT_STRUCT_MEMBER(maxFragmentAtomicCounters)
+// REFLECT_STRUCT_MEMBER(maxCombinedAtomicCounters)
+// REFLECT_STRUCT_MEMBER(maxAtomicCounterBindings)
+// REFLECT_STRUCT_MEMBER(maxVertexAtomicCounterBuffers)
+// REFLECT_STRUCT_MEMBER(maxTessControlAtomicCounterBuffers)
+// REFLECT_STRUCT_MEMBER(maxTessEvaluationAtomicCounterBuffers)
+// REFLECT_STRUCT_MEMBER(maxGeometryAtomicCounterBuffers)
+// REFLECT_STRUCT_MEMBER(maxFragmentAtomicCounterBuffers)
+// REFLECT_STRUCT_MEMBER(maxCombinedAtomicCounterBuffers)
+// REFLECT_STRUCT_MEMBER(maxAtomicCounterBufferSize)
+// REFLECT_STRUCT_MEMBER(maxTransformFeedbackBuffers)
+// REFLECT_STRUCT_MEMBER(maxTransformFeedbackInterleavedComponents)
+// REFLECT_STRUCT_MEMBER(maxCullDistances)
+// REFLECT_STRUCT_MEMBER(maxCombinedClipAndCullDistances)
+// REFLECT_STRUCT_MEMBER(maxSamples)
+// REFLECT_STRUCT_MEMBER(maxMeshOutputVerticesNV)
+// REFLECT_STRUCT_MEMBER(maxMeshOutputPrimitivesNV)
+// REFLECT_STRUCT_MEMBER(maxMeshWorkGroupSizeX_NV)
+// REFLECT_STRUCT_MEMBER(maxMeshWorkGroupSizeY_NV)
+// REFLECT_STRUCT_MEMBER(maxMeshWorkGroupSizeZ_NV)
+// REFLECT_STRUCT_MEMBER(maxTaskWorkGroupSizeX_NV)
+// REFLECT_STRUCT_MEMBER(maxTaskWorkGroupSizeY_NV)
+// REFLECT_STRUCT_MEMBER(maxTaskWorkGroupSizeZ_NV)
+// REFLECT_STRUCT_MEMBER(maxMeshViewCountNV)
+// // REFLECT_STRUCT_MEMBER(maxDualSourceDrawBuffersEXT)
+// REFLECT_STRUCT_MEMBER(limits)
+// REFLECT_STRUCT_END()
 
-void ShaderBuiltInResource::writeJson(json& out) const {
-    WRITE_OBJECT(maxLights, out);
-    WRITE_OBJECT(maxClipPlanes, out);
-    WRITE_OBJECT(maxTextureUnits, out);
-    WRITE_OBJECT(maxTextureCoords, out);
-    WRITE_OBJECT(maxVertexAttribs, out);
-    WRITE_OBJECT(maxVertexUniformComponents, out);
-    WRITE_OBJECT(maxVaryingFloats, out);
-    WRITE_OBJECT(maxVertexTextureImageUnits, out);
-    WRITE_OBJECT(maxCombinedTextureImageUnits, out);
-    WRITE_OBJECT(maxTextureImageUnits, out);
-    WRITE_OBJECT(maxFragmentUniformComponents, out);
-    WRITE_OBJECT(maxDrawBuffers, out);
-    WRITE_OBJECT(maxVertexUniformVectors, out);
-    WRITE_OBJECT(maxVaryingVectors, out);
-    WRITE_OBJECT(maxFragmentUniformVectors, out);
-    WRITE_OBJECT(maxVertexOutputVectors, out);
-    WRITE_OBJECT(maxFragmentInputVectors, out);
-    WRITE_OBJECT(minProgramTexelOffset, out);
-    WRITE_OBJECT(maxProgramTexelOffset, out);
-    WRITE_OBJECT(maxClipDistances, out);
-    WRITE_OBJECT(maxComputeWorkGroupCountX, out);
-    WRITE_OBJECT(maxComputeWorkGroupCountY, out);
-    WRITE_OBJECT(maxComputeWorkGroupCountZ, out);
-    WRITE_OBJECT(maxComputeWorkGroupSizeX, out);
-    WRITE_OBJECT(maxComputeWorkGroupSizeY, out);
-    WRITE_OBJECT(maxComputeWorkGroupSizeZ, out);
-    WRITE_OBJECT(maxComputeUniformComponents, out);
-    WRITE_OBJECT(maxComputeTextureImageUnits, out);
-    WRITE_OBJECT(maxComputeImageUniforms, out);
-    WRITE_OBJECT(maxComputeAtomicCounters, out);
-    WRITE_OBJECT(maxComputeAtomicCounterBuffers, out);
-    WRITE_OBJECT(maxVaryingComponents, out);
-    WRITE_OBJECT(maxVertexOutputComponents, out);
-    WRITE_OBJECT(maxGeometryInputComponents, out);
-    WRITE_OBJECT(maxGeometryOutputComponents, out);
-    WRITE_OBJECT(maxFragmentInputComponents, out);
-    WRITE_OBJECT(maxImageUnits, out);
-    WRITE_OBJECT(maxCombinedImageUnitsAndFragmentOutputs, out);
-    WRITE_OBJECT(maxCombinedShaderOutputResources, out);
-    WRITE_OBJECT(maxImageSamples, out);
-    WRITE_OBJECT(maxVertexImageUniforms, out);
-    WRITE_OBJECT(maxTessControlImageUniforms, out);
-    WRITE_OBJECT(maxTessEvaluationImageUniforms, out);
-    WRITE_OBJECT(maxGeometryImageUniforms, out);
-    WRITE_OBJECT(maxFragmentImageUniforms, out);
-    WRITE_OBJECT(maxCombinedImageUniforms, out);
-    WRITE_OBJECT(maxGeometryTextureImageUnits, out);
-    WRITE_OBJECT(maxGeometryOutputVertices, out);
-    WRITE_OBJECT(maxGeometryTotalOutputComponents, out);
-    WRITE_OBJECT(maxGeometryUniformComponents, out);
-    WRITE_OBJECT(maxGeometryVaryingComponents, out);
-    WRITE_OBJECT(maxTessControlInputComponents, out);
-    WRITE_OBJECT(maxTessControlOutputComponents, out);
-    WRITE_OBJECT(maxTessControlTextureImageUnits, out);
-    WRITE_OBJECT(maxTessControlUniformComponents, out);
-    WRITE_OBJECT(maxTessControlTotalOutputComponents, out);
-    WRITE_OBJECT(maxTessEvaluationInputComponents, out);
-    WRITE_OBJECT(maxTessEvaluationOutputComponents, out);
-    WRITE_OBJECT(maxTessEvaluationTextureImageUnits, out);
-    WRITE_OBJECT(maxTessEvaluationUniformComponents, out);
-    WRITE_OBJECT(maxTessPatchComponents, out);
-    WRITE_OBJECT(maxPatchVertices, out);
-    WRITE_OBJECT(maxTessGenLevel, out);
-    WRITE_OBJECT(maxViewports, out);
-    WRITE_OBJECT(maxVertexAtomicCounters, out);
-    WRITE_OBJECT(maxTessControlAtomicCounters, out);
-    WRITE_OBJECT(maxTessEvaluationAtomicCounters, out);
-    WRITE_OBJECT(maxGeometryAtomicCounters, out);
-    WRITE_OBJECT(maxFragmentAtomicCounters, out);
-    WRITE_OBJECT(maxCombinedAtomicCounters, out);
-    WRITE_OBJECT(maxAtomicCounterBindings, out);
-    WRITE_OBJECT(maxVertexAtomicCounterBuffers, out);
-    WRITE_OBJECT(maxTessControlAtomicCounterBuffers, out);
-    WRITE_OBJECT(maxTessEvaluationAtomicCounterBuffers, out);
-    WRITE_OBJECT(maxGeometryAtomicCounterBuffers, out);
-    WRITE_OBJECT(maxFragmentAtomicCounterBuffers, out);
-    WRITE_OBJECT(maxCombinedAtomicCounterBuffers, out);
-    WRITE_OBJECT(maxAtomicCounterBufferSize, out);
-    WRITE_OBJECT(maxTransformFeedbackBuffers, out);
-    WRITE_OBJECT(maxTransformFeedbackInterleavedComponents, out);
-    WRITE_OBJECT(maxCullDistances, out);
-    WRITE_OBJECT(maxCombinedClipAndCullDistances, out);
-    WRITE_OBJECT(maxSamples, out);
-    WRITE_OBJECT(maxMeshOutputVerticesNV, out);
-    WRITE_OBJECT(maxMeshOutputPrimitivesNV, out);
-    WRITE_OBJECT(maxMeshWorkGroupSizeX_NV, out);
-    WRITE_OBJECT(maxMeshWorkGroupSizeY_NV, out);
-    WRITE_OBJECT(maxMeshWorkGroupSizeZ_NV, out);
-    WRITE_OBJECT(maxTaskWorkGroupSizeX_NV, out);
-    WRITE_OBJECT(maxTaskWorkGroupSizeY_NV, out);
-    WRITE_OBJECT(maxTaskWorkGroupSizeZ_NV, out);
-    WRITE_OBJECT(maxMeshViewCountNV, out);
-    // WRITE_OBJECT(maxDualSourceDrawBuffersEXT, out);
-
-    WRITE_OBJECT(limits, out);
-}
-
-void ShaderBuiltInResource::readJson(const json& in) {
-    READ_OBJECT(maxLights, in);
-    READ_OBJECT(maxClipPlanes, in);
-    READ_OBJECT(maxTextureUnits, in);
-    READ_OBJECT(maxTextureCoords, in);
-    READ_OBJECT(maxVertexAttribs, in);
-    READ_OBJECT(maxVertexUniformComponents, in);
-    READ_OBJECT(maxVaryingFloats, in);
-    READ_OBJECT(maxVertexTextureImageUnits, in);
-    READ_OBJECT(maxCombinedTextureImageUnits, in);
-    READ_OBJECT(maxTextureImageUnits, in);
-    READ_OBJECT(maxFragmentUniformComponents, in);
-    READ_OBJECT(maxDrawBuffers, in);
-    READ_OBJECT(maxVertexUniformVectors, in);
-    READ_OBJECT(maxVaryingVectors, in);
-    READ_OBJECT(maxFragmentUniformVectors, in);
-    READ_OBJECT(maxVertexOutputVectors, in);
-    READ_OBJECT(maxFragmentInputVectors, in);
-    READ_OBJECT(minProgramTexelOffset, in);
-    READ_OBJECT(maxProgramTexelOffset, in);
-    READ_OBJECT(maxClipDistances, in);
-    READ_OBJECT(maxComputeWorkGroupCountX, in);
-    READ_OBJECT(maxComputeWorkGroupCountY, in);
-    READ_OBJECT(maxComputeWorkGroupCountZ, in);
-    READ_OBJECT(maxComputeWorkGroupSizeX, in);
-    READ_OBJECT(maxComputeWorkGroupSizeY, in);
-    READ_OBJECT(maxComputeWorkGroupSizeZ, in);
-    READ_OBJECT(maxComputeUniformComponents, in);
-    READ_OBJECT(maxComputeTextureImageUnits, in);
-    READ_OBJECT(maxComputeImageUniforms, in);
-    READ_OBJECT(maxComputeAtomicCounters, in);
-    READ_OBJECT(maxComputeAtomicCounterBuffers, in);
-    READ_OBJECT(maxVaryingComponents, in);
-    READ_OBJECT(maxVertexOutputComponents, in);
-    READ_OBJECT(maxGeometryInputComponents, in);
-    READ_OBJECT(maxGeometryOutputComponents, in);
-    READ_OBJECT(maxFragmentInputComponents, in);
-    READ_OBJECT(maxImageUnits, in);
-    READ_OBJECT(maxCombinedImageUnitsAndFragmentOutputs, in);
-    READ_OBJECT(maxCombinedShaderOutputResources, in);
-    READ_OBJECT(maxImageSamples, in);
-    READ_OBJECT(maxVertexImageUniforms, in);
-    READ_OBJECT(maxTessControlImageUniforms, in);
-    READ_OBJECT(maxTessEvaluationImageUniforms, in);
-    READ_OBJECT(maxGeometryImageUniforms, in);
-    READ_OBJECT(maxFragmentImageUniforms, in);
-    READ_OBJECT(maxCombinedImageUniforms, in);
-    READ_OBJECT(maxGeometryTextureImageUnits, in);
-    READ_OBJECT(maxGeometryOutputVertices, in);
-    READ_OBJECT(maxGeometryTotalOutputComponents, in);
-    READ_OBJECT(maxGeometryUniformComponents, in);
-    READ_OBJECT(maxGeometryVaryingComponents, in);
-    READ_OBJECT(maxTessControlInputComponents, in);
-    READ_OBJECT(maxTessControlOutputComponents, in);
-    READ_OBJECT(maxTessControlTextureImageUnits, in);
-    READ_OBJECT(maxTessControlUniformComponents, in);
-    READ_OBJECT(maxTessControlTotalOutputComponents, in);
-    READ_OBJECT(maxTessEvaluationInputComponents, in);
-    READ_OBJECT(maxTessEvaluationOutputComponents, in);
-    READ_OBJECT(maxTessEvaluationTextureImageUnits, in);
-    READ_OBJECT(maxTessEvaluationUniformComponents, in);
-    READ_OBJECT(maxTessPatchComponents, in);
-    READ_OBJECT(maxPatchVertices, in);
-    READ_OBJECT(maxTessGenLevel, in);
-    READ_OBJECT(maxViewports, in);
-    READ_OBJECT(maxVertexAtomicCounters, in);
-    READ_OBJECT(maxTessControlAtomicCounters, in);
-    READ_OBJECT(maxTessEvaluationAtomicCounters, in);
-    READ_OBJECT(maxGeometryAtomicCounters, in);
-    READ_OBJECT(maxFragmentAtomicCounters, in);
-    READ_OBJECT(maxCombinedAtomicCounters, in);
-    READ_OBJECT(maxAtomicCounterBindings, in);
-    READ_OBJECT(maxVertexAtomicCounterBuffers, in);
-    READ_OBJECT(maxTessControlAtomicCounterBuffers, in);
-    READ_OBJECT(maxTessEvaluationAtomicCounterBuffers, in);
-    READ_OBJECT(maxGeometryAtomicCounterBuffers, in);
-    READ_OBJECT(maxFragmentAtomicCounterBuffers, in);
-    READ_OBJECT(maxCombinedAtomicCounterBuffers, in);
-    READ_OBJECT(maxAtomicCounterBufferSize, in);
-    READ_OBJECT(maxTransformFeedbackBuffers, in);
-    READ_OBJECT(maxTransformFeedbackInterleavedComponents, in);
-    READ_OBJECT(maxCullDistances, in);
-    READ_OBJECT(maxCombinedClipAndCullDistances, in);
-    READ_OBJECT(maxSamples, in);
-    READ_OBJECT(maxMeshOutputVerticesNV, in);
-    READ_OBJECT(maxMeshOutputPrimitivesNV, in);
-    READ_OBJECT(maxMeshWorkGroupSizeX_NV, in);
-    READ_OBJECT(maxMeshWorkGroupSizeY_NV, in);
-    READ_OBJECT(maxMeshWorkGroupSizeZ_NV, in);
-    READ_OBJECT(maxTaskWorkGroupSizeX_NV, in);
-    READ_OBJECT(maxTaskWorkGroupSizeY_NV, in);
-    READ_OBJECT(maxTaskWorkGroupSizeZ_NV, in);
-    READ_OBJECT(maxMeshViewCountNV, in);
-    // READ_OBJECT(maxDualSourceDrawBuffersEXT, in);
-
-    READ_OBJECT(limits, in);
-}
-
-void CompileOptions::writeJson(json& out) const {
-    WRITE_OBJECT(shaderResources, out);
-}
-
-void CompileOptions::readJson(const json& in) {
-    READ_OBJECT(shaderResources, in);
-}
+// REFLECT_STRUCT_BEGIN(CompileOptions)
+// REFLECT_STRUCT_MEMBER(shaderResources)
+// REFLECT_STRUCT_END()

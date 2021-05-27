@@ -18,6 +18,20 @@
 
 #include "execution_queue.h"
 
+// REFLECT_STRUCT_BEGIN(EngineConfig)
+// REFLECT_STRUCT_MEMBER(screenWidth)
+// REFLECT_STRUCT_MEMBER(screenHeight)
+// REFLECT_STRUCT_MEMBER(imagesInSwapchain)
+// REFLECT_STRUCT_MEMBER(maxFramesInExecutionQueue)
+// REFLECT_STRUCT_MEMBER(maxFramesInFlight)
+// REFLECT_STRUCT_MEMBER(title)
+// REFLECT_STRUCT_MEMBER(driver)
+// REFLECT_STRUCT_MEMBER(inputBufferSize)
+// REFLECT_STRUCT_MEMBER(stackMemorySizeKb)
+// REFLECT_STRUCT_MEMBER(frameMemorySizeKb)
+// REFLECT_STRUCT_MEMBER(logs)
+// REFLECT_STRUCT_END()
+
 static void callback(const drv::CallbackData* data) {
     switch (data->type) {
         case drv::CallbackData::Type::VERBOSE:
@@ -44,34 +58,6 @@ static void callback(const drv::CallbackData* data) {
             BREAK_POINT;
             std::abort();
     }
-}
-
-void Engine::Config::writeJson(json& out) const {
-    WRITE_OBJECT(screenWidth, out);
-    WRITE_OBJECT(screenHeight, out);
-    WRITE_OBJECT(stackMemorySizeKb, out);
-    WRITE_OBJECT(frameMemorySizeKb, out);
-    WRITE_OBJECT(inputBufferSize, out);
-    WRITE_OBJECT(title, out);
-    WRITE_OBJECT(imagesInSwapchain, out);
-    WRITE_OBJECT(maxFramesInExecutionQueue, out);
-    WRITE_OBJECT(maxFramesInFlight, out);
-    WRITE_OBJECT(driver, out);
-    WRITE_OBJECT(logs, out);
-}
-
-void Engine::Config::readJson(const json& in) {
-    READ_OBJECT(screenWidth, in);
-    READ_OBJECT(screenHeight, in);
-    READ_OBJECT(stackMemorySizeKb, in);
-    READ_OBJECT(frameMemorySizeKb, in);
-    READ_OBJECT(inputBufferSize, in);
-    READ_OBJECT(title, in);
-    READ_OBJECT(imagesInSwapchain, in);
-    READ_OBJECT(maxFramesInExecutionQueue, in);
-    READ_OBJECT(maxFramesInFlight, in);
-    READ_OBJECT(driver, in);
-    READ_OBJECT(logs, in);
 }
 
 static drv::Driver get_driver(const std::string& name) {
@@ -106,7 +92,7 @@ Engine::WindowIniter::~WindowIniter() {
     window->close();
 }
 
-drv::Swapchain::CreateInfo Engine::get_swapchain_create_info(const Config& config,
+drv::Swapchain::CreateInfo Engine::get_swapchain_create_info(const EngineConfig& config,
                                                              drv::QueuePtr present_queue,
                                                              drv::QueuePtr render_queue) {
     drv::Swapchain::CreateInfo ret;
@@ -143,9 +129,9 @@ static void log_queue(const char* name, const drv::QueueManager::Queue& queue) {
                queue.info.priority, queue.info.queueIndex, queue.info.familyPtr);
 }
 
-Engine::Engine(int argc, char* argv[], const Config& cfg,
+Engine::Engine(int argc, char* argv[], const EngineConfig& cfg,
                const drv::StateTrackingConfig& trackingConfig, const std::string& shaderbinFile,
-               ResourceManager::ResourceInfos resource_infos, const Args& args)
+               const Args& args)
   : config(cfg),
     logger(argc, argv, config.logs),
     coreContext({safe_cast<size_t>(config.stackMemorySizeKb << 10)}),
@@ -181,7 +167,6 @@ Engine::Engine(int argc, char* argv[], const Config& cfg,
               get_swapchain_create_info(config, presentQueue.queue, renderQueue.queue)),
     eventPool(device),
     syncBlock(device, safe_cast<uint32_t>(config.maxFramesInFlight)),  // TODO why just 2?
-    resourceMgr(std::move(resource_infos)),
     garbageSystem(safe_cast<size_t>(config.frameMemorySizeKb) << 10),
     // maxFramesInFlight + 1 for readback stage
     frameGraph(physicalDevice, device, &garbageSystem, &eventPool, trackingConfig,

@@ -250,5 +250,6 @@
         "vulkan"
     ],
     "cmake.configureOnOpen": false,
-    "cmake.configureOnEdit": false
+    "cmake.configureOnEdit": false,
+    "editor.formatOnSaveMode": "modifications"
 }

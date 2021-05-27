@@ -26,7 +26,6 @@
 #include <garbagesystem.h>
 #include <input.h>
 #include <inputmanager.h>
-#include <resourcemanager.h>
 #include <serializable.h>
 
 #include <runtimestats.h>
@@ -38,26 +37,41 @@
 
 struct ExecutionPackage;
 
+struct EngineConfig final : public IAutoSerializable<EngineConfig>
+{
+    REFLECTABLE
+    (
+        (uint32_t) screenWidth,
+        (uint32_t) screenHeight,
+        (uint32_t) imagesInSwapchain,
+        (uint32_t) maxFramesInExecutionQueue,
+        (uint32_t) maxFramesInFlight,
+        (std::string) title,
+        (std::string) driver,
+        (uint32_t) inputBufferSize,
+        (uint32_t) stackMemorySizeKb,
+        (uint32_t) frameMemorySizeKb,
+        (std::string) logs
+    )
+
+    // uint32_t screenWidth;
+    // uint32_t screenHeight;
+    // uint32_t imagesInSwapchain;
+    // uint32_t maxFramesInExecutionQueue;
+    // uint32_t maxFramesInFlight;
+    // std::string title;
+    // std::string driver;
+    // uint32_t inputBufferSize;
+    // uint32_t stackMemorySizeKb;
+    // uint32_t frameMemorySizeKb;
+    // std::string logs;
+
+    // REFLECT()
+};
+
 class Engine
 {
  public:
-    struct Config final : public ISerializable
-    {
-        uint32_t screenWidth;
-        uint32_t screenHeight;
-        uint32_t imagesInSwapchain;
-        uint32_t maxFramesInExecutionQueue;
-        uint32_t maxFramesInFlight;
-        std::string title;
-        std::string driver;
-        uint32_t inputBufferSize;
-        uint32_t stackMemorySizeKb;
-        uint32_t frameMemorySizeKb;
-        std::string logs;
-        void writeJson(json& out) const override final;
-        void readJson(const json& in) override final;
-    };
-
     struct Args
     {
         bool renderdocEnabled;
@@ -68,9 +82,9 @@ class Engine
         std::string runtimeStatsCacheBin;
     };
 
-    Engine(int argc, char* argv[], const Config& config,
+    Engine(int argc, char* argv[], const EngineConfig& config,
            const drv::StateTrackingConfig& trackingConfig, const std::string& shaderbinFile,
-           ResourceManager::ResourceInfos resource_infos, const Args& args);
+           const Args& args);
     virtual ~Engine();
 
     Engine(const Engine&) = delete;
@@ -161,7 +175,7 @@ class Engine
         SyncBlock(drv::LogicalDevicePtr device, uint32_t maxFramesInFlight);
     };
 
-    Config config;
+    EngineConfig config;
 
     Logger logger;
     ErrorCallback callback;
@@ -188,7 +202,7 @@ class Engine
     drv::Swapchain swapchain;
     EventPool eventPool;
     SyncBlock syncBlock;
-    ResourceManager resourceMgr;
+    // ResourceManager resourceMgr;
     // EntityManager entityManager;
     GarbageSystem garbageSystem;
     FrameGraph frameGraph;
@@ -233,7 +247,7 @@ class Engine
     static drv::PhysicalDevice::SelectionInfo get_device_selection_info(
       drv::InstancePtr instance, const drv::DeviceExtensions& deviceExtensions,
       const ShaderBin& shaderBin);
-    static drv::Swapchain::CreateInfo get_swapchain_create_info(const Config& config,
+    static drv::Swapchain::CreateInfo get_swapchain_create_info(const EngineConfig& config,
                                                                 drv::QueuePtr present_queue,
                                                                 drv::QueuePtr render_queue);
     drv::Swapchain::OldSwapchinData recreateSwapchain();

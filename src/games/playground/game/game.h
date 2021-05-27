@@ -14,9 +14,9 @@
 class Game final : public Game3D
 {
  public:
-    Game(int argc, char* argv[], const Config& config,
+    Game(int argc, char* argv[], const EngineConfig& config,
          const drv::StateTrackingConfig& trackingConfig, const std::string& shaderbinFile,
-         ResourceManager::ResourceInfos resource_infos, const Args& args);
+         const Args& args);
     ~Game() override;
 
  protected:
@@ -82,10 +82,8 @@ class Game final : public Game3D
                    && frameBuffer == rhs.frameBuffer && renderPass == rhs.renderPass
                    && colorSubpass == rhs.colorSubpass && swapchainSubpass == rhs.swapchainSubpass
                    && testShader == rhs.testShader && shaderTestDesc == rhs.shaderTestDesc
-                   && shaderGlobalDesc == rhs.shaderGlobalDesc
-                   && inputShader == rhs.inputShader
-                   && shaderInputAttachmentDesc == rhs.shaderInputAttachmentDesc
-                   ;
+                   && shaderGlobalDesc == rhs.shaderGlobalDesc && inputShader == rhs.inputShader
+                   && shaderInputAttachmentDesc == rhs.shaderInputAttachmentDesc;
         }
         bool operator!=(const RecordData& rhs) const { return !(*this == rhs); }
     };
