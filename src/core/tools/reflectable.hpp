@@ -4,9 +4,9 @@
 
 // #include <Reflect.h>
 
-#include <boost/bind.hpp>
-#include <boost/mpl/for_each.hpp>
-#include <boost/mpl/range_c.hpp>
+// #include <boost/bind.hpp>
+// #include <boost/mpl/for_each.hpp>
+// #include <boost/mpl/range_c.hpp>
 #include <boost/preprocessor.hpp>
 #include <boost/type_traits.hpp>
 
@@ -77,10 +77,19 @@ struct field_visitor
     }
 };
 
+template <class C, class Visitor, unsigned int N>
+void visitor_helper(C& c, Visitor v) {
+    if constexpr (N > 0) {
+        visitor_helper<C, Visitor, N - 1>(c, v);
+        v(reflector::get_field_data<N - 1>(c));
+    }
+}
+
 template <class C, class Visitor>
 void visit_each(C& c, Visitor v) {
-    typedef boost::mpl::range_c<int, 0, reflector::fields<C>::n> range;
-    boost::mpl::for_each<range>(boost::bind<void>(field_visitor(), boost::ref(c), v, _1));
+    visitor_helper<C, Visitor, reflector::fields<C>::n>(c, v);
+    // typedef boost::mpl::range_c<int, 0, reflector::fields<C>::n> range;
+    // boost::mpl::for_each<range>(boost::bind<void>(field_visitor(), boost::ref(c), v, _1));
 }
 
 }  // namespace reflect

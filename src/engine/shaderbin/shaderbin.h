@@ -52,9 +52,9 @@ class ShaderBin final : public IAutoSerializable<ShaderBin>
         }
     }
 
-    struct AttachmentInfo
+    struct AttachmentInfo final : public IAutoSerializable<AttachmentInfo>
     {
-        std::string name;  // only for debugging
+        // std::string name;  // only for debugging
         enum InfoBits
         {
             WRITE = 1,
@@ -63,12 +63,81 @@ class ShaderBin final : public IAutoSerializable<ShaderBin>
             USE_BLUE = 8,
             USE_ALPHA = 16,
         };
-        uint8_t info = 0;
-        uint8_t location = 0;
+        // uint8_t info = 0;
+        // uint8_t location = 0;
+
+        REFLECTABLE
+        (
+            (std::string) name,
+            (uint8_t) info,
+            (uint8_t) location
+        )
+
+        AttachmentInfo() : info(0), location(0) {}
     };
 
     struct StageConfig final : public IAutoSerializable<StageConfig>
     {
+        static std::string get_enum_name(drv::PolygonMode polygonMode) {
+            switch (polygonMode) {
+                case drv::PolygonMode::FILL:
+                    return "fill";
+                case drv::PolygonMode::LINE:
+                    return "line";
+                case drv::PolygonMode::POINT:
+                    return "point";
+            }
+        }
+        static std::string get_enum_name(drv::CullMode cullMode) {
+            switch (cullMode) {
+                case drv::CullMode::NONE:
+                    return "none";
+                case drv::CullMode::FRONT:
+                    return "front";
+                case drv::CullMode::BACK:
+                    return "back";
+                case drv::CullMode::FRONT_AND_BACK:
+                    return "front_and_back";
+            }
+        }
+        static std::string get_enum_name(drv::CompareOp compOp) {
+            switch (compOp) {
+                case drv::CompareOp::NEVER:
+                    return "never";
+                case drv::CompareOp::LESS:
+                    return "less";
+                case drv::CompareOp::EQUAL:
+                    return "equal";
+                case drv::CompareOp::LESS_OR_EQUAL:
+                    return "less_or_equal";
+                case drv::CompareOp::GREATER:
+                    return "greater";
+                case drv::CompareOp::NOT_EQUAL:
+                    return "not_equal";
+                case drv::CompareOp::GREATER_OR_EQUAL:
+                    return "greater_or_equal";
+                case drv::CompareOp::ALWAYS:
+                    return "always";
+            }
+        }
+        static int32_t get_enum(const std::string& s) {
+            for (const drv::PolygonMode& v :
+                 {drv::PolygonMode::FILL, drv::PolygonMode::LINE, drv::PolygonMode::POINT})
+                if (get_enum_name(v) == s)
+                    return static_cast<int32_t>(v);
+            for (const drv::CullMode& v : {drv::CullMode::NONE, drv::CullMode::FRONT,
+                                           drv::CullMode::BACK, drv::CullMode::FRONT_AND_BACK})
+                if (get_enum_name(v) == s)
+                    return static_cast<int32_t>(v);
+            for (const drv::CompareOp& v :
+                 {drv::CompareOp::NEVER, drv::CompareOp::LESS, drv::CompareOp::EQUAL,
+                  drv::CompareOp::LESS_OR_EQUAL, drv::CompareOp::GREATER, drv::CompareOp::NOT_EQUAL,
+                  drv::CompareOp::GREATER_OR_EQUAL, drv::CompareOp::ALWAYS})
+                if (get_enum_name(v) == s)
+                    return static_cast<int32_t>(v);
+            throw std::runtime_error("Could decode enum");
+        }
+
         REFLECTABLE
         (
             (std::array<std::string, NUM_STAGES>) entryPoints,

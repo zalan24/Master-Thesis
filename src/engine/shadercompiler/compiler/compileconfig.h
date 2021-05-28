@@ -45,7 +45,7 @@ struct ShaderLimits final : public IAutoSerializable<ShaderLimits>
 
 struct ShaderBuiltInResource final : public IAutoSerializable<ShaderBuiltInResource>
 {
-    struct Misc final : public IAutoSerializable<ShaderBuiltInResource>
+    struct Misc final : public IAutoSerializable<Misc>
     {
         REFLECTABLE
         (
@@ -107,7 +107,7 @@ struct ShaderBuiltInResource final : public IAutoSerializable<ShaderBuiltInResou
             maxCombinedClipAndCullDistances(8),
             maxSamples(4) {}
     };
-    struct VertexShader final : public IAutoSerializable<ShaderBuiltInResource>
+    struct VertexShader final : public IAutoSerializable<VertexShader>
     {
         REFLECTABLE
         (
@@ -133,7 +133,7 @@ struct ShaderBuiltInResource final : public IAutoSerializable<ShaderBuiltInResou
             maxVertexAtomicCounters(0),
             maxVertexAtomicCounterBuffers(0) {}
     };
-    struct GeometryShader final : public IAutoSerializable<ShaderBuiltInResource>
+    struct GeometryShader final : public IAutoSerializable<GeometryShader>
     {
         REFLECTABLE
         (
@@ -161,7 +161,7 @@ struct ShaderBuiltInResource final : public IAutoSerializable<ShaderBuiltInResou
             maxGeometryAtomicCounters(0),
             maxGeometryAtomicCounterBuffers(0) {}
     };
-    struct TessControlShader final : public IAutoSerializable<ShaderBuiltInResource>
+    struct TessControlShader final : public IAutoSerializable<TessControlShader>
     {
         REFLECTABLE
         (
@@ -191,7 +191,7 @@ struct ShaderBuiltInResource final : public IAutoSerializable<ShaderBuiltInResou
             maxPatchVertices(32),
             maxTessGenLevel(64) {}
     };
-    struct TessEvalShader final : public IAutoSerializable<ShaderBuiltInResource>
+    struct TessEvalShader final : public IAutoSerializable<TessEvalShader>
     {
         REFLECTABLE
         (
@@ -213,7 +213,7 @@ struct ShaderBuiltInResource final : public IAutoSerializable<ShaderBuiltInResou
             maxTessEvaluationAtomicCounters(0),
             maxTessEvaluationAtomicCounterBuffers(0) {}
     };
-    struct FragmentShader final : public IAutoSerializable<ShaderBuiltInResource>
+    struct FragmentShader final : public IAutoSerializable<FragmentShader>
     {
         REFLECTABLE
         (
@@ -237,7 +237,7 @@ struct ShaderBuiltInResource final : public IAutoSerializable<ShaderBuiltInResou
             maxFragmentAtomicCounters(8),
             maxFragmentAtomicCounterBuffers(1) {}
     };
-    struct ComputeShader final : public IAutoSerializable<ShaderBuiltInResource>
+    struct ComputeShader final : public IAutoSerializable<ComputeShader>
     {
         REFLECTABLE
         (
@@ -267,7 +267,7 @@ struct ShaderBuiltInResource final : public IAutoSerializable<ShaderBuiltInResou
             maxComputeAtomicCounters(8),
             maxComputeAtomicCounterBuffers(1) {}
     };
-    struct MeshShader final : public IAutoSerializable<ShaderBuiltInResource>
+    struct MeshShader final : public IAutoSerializable<MeshShader>
     {
         REFLECTABLE
         (
@@ -287,7 +287,7 @@ struct ShaderBuiltInResource final : public IAutoSerializable<ShaderBuiltInResou
             maxMeshWorkGroupSizeZ_NV(1),
             maxMeshViewCountNV(4) {}
     };
-    struct TaskShader final : public IAutoSerializable<ShaderBuiltInResource>
+    struct TaskShader final : public IAutoSerializable<TaskShader>
     {
         REFLECTABLE
         (

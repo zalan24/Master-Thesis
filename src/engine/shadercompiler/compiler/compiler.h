@@ -22,7 +22,7 @@
 
 namespace fs = std::filesystem;
 
-// struct HeaderCache final : public IAutoSerializable<Variants>
+// struct HeaderCache final : public IAutoSerializable<HeaderCache>
 // {
 //     std::string headerHash;
 
@@ -30,7 +30,7 @@ namespace fs = std::filesystem;
 //     void readJson(const json& in) override;
 // };
 
-struct ShaderCache final : public IAutoSerializable<Variants>
+struct ShaderCache final : public IAutoSerializable<ShaderCache>
 {
     REFLECTABLE
     (
@@ -48,7 +48,7 @@ struct ShaderCache final : public IAutoSerializable<Variants>
     // REFLECT()
 };
 
-struct GenerateOptions final : public IAutoSerializable<Variants>
+struct GenerateOptions final : public IAutoSerializable<GenerateOptions>
 {
     REFLECTABLE
     (
@@ -63,7 +63,7 @@ struct GenerateOptions final : public IAutoSerializable<Variants>
     // REFLECT()
 };
 
-struct CompilerCache final : public IAutoSerializable<Variants>
+struct CompilerCache final : public IAutoSerializable<CompilerCache>
 {
     REFLECTABLE
     (
@@ -138,7 +138,7 @@ class Compiler
 //     void readJson(const json& in) override;
 // };
 
-// struct Resources final : public IAutoSerializable<Variants>
+// struct Resources final : public IAutoSerializable<Resources>
 // {
 //     // name -> type
 //     std::map<std::string, std::string> variables;
@@ -159,7 +159,7 @@ class Compiler
 //     std::map<std::string, std::stringstream> attachments;
 // };
 
-// struct ResourceUsage final : public IAutoSerializable<Variants>
+// struct ResourceUsage final : public IAutoSerializable<ResourceUsage>
 // {
 //     std::set<std::string> usedVars;
 //     // TODO bindings
@@ -185,7 +185,7 @@ class Compiler
 //     void readJson(const json& in) override;
 // };
 
-// struct PipelineResourceUsage final : public IAutoSerializable<Variants>
+// struct PipelineResourceUsage final : public IAutoSerializable<PipelineResourceUsage>
 // {
 //     ResourceUsage psUsage;
 //     ResourceUsage vsUsage;
@@ -210,7 +210,7 @@ class Compiler
 //     void readJson(const json& in) override;
 // };
 
-// struct ShaderHeaderData final : public IAutoSerializable<Variants>
+// struct ShaderHeaderData final : public IAutoSerializable<ShaderHeaderData>
 // {
 //     std::string name;
 //     std::string fileHash;
@@ -231,7 +231,7 @@ class Compiler
 //     void readJson(const json& in) override;
 // };
 
-// struct ShaderObjectData final : public IAutoSerializable<Variants>
+// struct ShaderObjectData final : public IAutoSerializable<ShaderObjectData>
 // {
 //     std::string name;
 //     std::string fileHash;
@@ -250,7 +250,7 @@ class Compiler
 //     void readJson(const json& in) override;
 // };
 
-// struct PreprocessorData final : public IAutoSerializable<Variants>
+// struct PreprocessorData final : public IAutoSerializable<PreprocessorData>
 // {
 //     std::map<std::string, ShaderHeaderData> headers;
 //     std::map<std::string, ShaderObjectData> sources;
@@ -365,7 +365,7 @@ class Compiler
 //     bool firstObj = true;
 // };
 
-// class Cache final : public IAutoSerializable<Variants>
+// class Cache final : public IAutoSerializable<Cache>
 // {
 //  public:
 //     std::map<std::string, std::string> headerHashes;

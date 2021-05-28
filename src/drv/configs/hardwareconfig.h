@@ -13,7 +13,7 @@ struct DeviceLimits final : public IAutoSerializable<DeviceLimits>
         (uint32_t) maxPushConstantsSize
     )
 
-    DeviceLimits() : maxPushConstantsSize(0) {}
+    DeviceLimits() : maxPushConstantsSize(128) {}
 
     // uint32_t maxPushConstantsSize = 0;
 

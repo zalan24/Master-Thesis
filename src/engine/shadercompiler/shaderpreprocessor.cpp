@@ -83,6 +83,8 @@ int main(int argc, char* argv[]) {
 
         if (!fs::exists(fs::path{target}))
             fs::create_directories(fs::path{target}.parent_path());
+        if (!fs::exists(fs::path{outputDir}))
+            fs::create_directories(fs::path{outputDir});
 
         Preprocessor preprocessor;
 

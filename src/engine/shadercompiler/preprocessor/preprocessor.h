@@ -162,7 +162,7 @@ struct ShaderHeaderData final : public IAutoSerializable<ShaderHeaderData>
     // REFLECT()
 };
 
-struct ShaderObjectData final : public IAutoSerializable<ShaderHeaderData>
+struct ShaderObjectData final : public IAutoSerializable<ShaderObjectData>
 {
     REFLECTABLE
     (
@@ -214,7 +214,7 @@ struct ShaderObjectData final : public IAutoSerializable<ShaderHeaderData>
     // REFLECT()
 };
 
-struct PreprocessorData final : public IAutoSerializable<ShaderHeaderData>
+struct PreprocessorData final : public IAutoSerializable<PreprocessorData>
 {
     REFLECTABLE
     (

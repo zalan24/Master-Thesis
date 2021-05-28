@@ -696,8 +696,8 @@ enum class PolygonMode
 enum class CullMode
 {
     NONE = 0,
-    FRONT_BIT = 0x00000001,
-    BACK_BIT = 0x00000002,
+    FRONT = 0x00000001,
+    BACK = 0x00000002,
     FRONT_AND_BACK = 0x00000003,
 };
 

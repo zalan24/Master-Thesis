@@ -43,10 +43,10 @@ struct StateTrackingConfig final : public IAutoSerializable<StateTrackingConfig>
                 return "AllErrors";
         }
     }
-    int get_enum(const std::string& s) {
+    static int32_t get_enum(const std::string& s) {
         for (const Verbosity& v : {SILENT_FIXES, DEBUG_ERRORS, ALL_ERRORS})
             if (get_enum_name(v) == s)
-                return static_cast<int>(v);
+                return static_cast<int32_t>(v);
         throw std::runtime_error("Could decode enum");
     }
 // #ifdef DEBUG

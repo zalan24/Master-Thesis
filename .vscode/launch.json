@@ -10,11 +10,14 @@
       "request": "launch",
       "program": "${workspaceFolder}/build/src/engine/shadercompiler/ShaderPreprocessor.exe",
       "args": [
-        "--target",
-        "${workspaceFolder}/build/shaders/preprocessors/testShaders.bin",
         "--output", "${workspaceFolder}/build/shaders/cpp",
-        "--headers", "${workspaceFolder}/src/gameLibs/shaders/global.sh",
-        "--sources", "${workspaceFolder}/src/gameLibs/shaders/test.sd",
+        "--target",
+        "${workspaceFolder}/build/shaders/preprocessors/playgroundShaders.bin",
+        "--headers",
+        "${workspaceFolder}/src/games/playground/shaders/global.sh",
+        "--sources",
+        "${workspaceFolder}/src/games/playground/shaders/test.sd",
+        "${workspaceFolder}/src/games/playground/shaders/inputatchm.sd",
       ],
       "stopAtEntry": false,
       "cwd": "${workspaceFolder}/build/src/gameLibs/shaders",
@@ -33,7 +36,7 @@
         "-o${workspaceFolder}/build/shaders/shaders.bin",
         "-c${workspaceFolder}/build/shaders/cache",
         "--files",
-        "${workspaceFolder}/build/shaders/preprocessors/testShaders.bin"
+        "${workspaceFolder}/build/shaders/preprocessors/playgroundShaders.bin"
       ],
       "stopAtEntry": false,
       "cwd": "${workspaceFolder}/build/src/gameLibs/shaders",

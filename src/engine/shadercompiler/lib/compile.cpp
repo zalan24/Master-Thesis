@@ -324,8 +324,8 @@ static ShaderBin::StageConfig read_stage_configs(
     if (auto itr = statesValues.find("cull"); itr != statesValues.end())
         ret.cullMode =
           translate_input<drv::CullMode>(itr->second, {{"none", drv::CullMode::NONE},
-                                                       {"front", drv::CullMode::FRONT_BIT},
-                                                       {"back", drv::CullMode::BACK_BIT},
+                                                       {"front", drv::CullMode::FRONT},
+                                                       {"back", drv::CullMode::BACK},
                                                        {"all", drv::CullMode::FRONT_AND_BACK}});
     if (auto itr = statesValues.find("depthCompare"); itr != statesValues.end())
         ret.depthCompare = translate_input<drv::CompareOp>(
