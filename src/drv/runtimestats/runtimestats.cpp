@@ -15,50 +15,31 @@ RuntimeStats::RuntimeStats(const fs::path& _persistance, const fs::path& _gameEx
     if (!fs::exists(statsCacheFile.parent_path()))
         fs::create_directories(statsCacheFile.parent_path());
 #if ENABLE_RUNTIME_STATS_GENERATION
-    {
-        std::ifstream in(persistance.c_str(), std::ios::binary);
-        if (in.is_open()) {
-        }
-        else
-            LOG_F(WARNING, "Could not open persistance file: %s", persistance.string().c_str());
-    }
+    if (!rootPersistance.importFromFile(persistance))
+        LOG_F(WARNING, "Could not read persistance file: %s", persistance.string().c_str());
 #endif
-    {
-        std::ifstream in(gameExports.c_str(), std::ios::binary);
-        if (in.is_open())
-            rootGameExports.load(in);
-        else
-            LOG_F(ERROR, "Could not open game exports file: %s", gameExports.string().c_str());
-    }
-    {
-        std::ifstream in(statsCacheFile.c_str(), std::ios::binary);
-        if (in.is_open())
-            rootStatsCache.load(in);
-        else
-            LOG_F(WARNING, "Could not open stats cache file: %s", statsCacheFile.string().c_str());
-    }
+    if (!rootGameExports.importFromFile(persistance))
+        LOG_F(ERROR, "Could not read game exports file: %s", gameExports.string().c_str());
+    if (!rootStatsCache.importFromFile(persistance))
+        LOG_F(WARNING, "Could not read stats cache file: %s", statsCacheFile.string().c_str());
     rootNode =
-      std::make_unique<RuntimeStatNode>("root", nullptr, &rootGameExports, &rootStatsCache);
+      std::make_unique<RuntimeStatNode>("root", nullptr, &rootGameExports, &rootStatsCache
+      #if ENABLE_RUNTIME_STATS_GENERATION
+      , &rootPersistance
+      #endif
+      );
 }
 
 RuntimeStats::~RuntimeStats() {
 #if ENABLE_RUNTIME_STATS_GENERATION
-    {
-        std::ofstream out(persistance.c_str(), std::ios::binary);
-        if (out.is_open()) {
-        }
-        else
-            LOG_F(ERROR, "Could not open persistance file: %s", persistance.string().c_str());
-    }
-    // TODO export game export stats as well
+    if (!rootPersistance.exportToFile(persistance))
+        LOG_F(ERROR, "Could not write persistance file: %s", persistance.string().c_str());
+    // TODO generate game exports
+    // if (!rootGameExports.exportToFile(gameExports))
+    //     LOG_F(ERROR, "Could not write gameExports file: %s", gameExports.string().c_str());
 #endif
-    {
-        std::ofstream out(statsCacheFile.c_str(), std::ios::binary);
-        if (out.is_open())
-            rootStatsCache.save(out);
-        else
-            LOG_F(ERROR, "Could not open stats cache file: %s", statsCacheFile.string().c_str());
-    }
+    if (!rootStatsCache.exportToFile(statsCacheFile))
+        LOG_F(ERROR, "Could not write stats cache file file: %s", statsCacheFile.string().c_str());
 }
 
 void RuntimeStats::pushNode(RuntimeStatNode* node) {
@@ -83,8 +64,6 @@ RuntimeStatNode* RuntimeStats::popNode() {
                     "popNode is executed on the wrong thread");
     RuntimeStatNode* node = itr->second.top();
     itr->second.pop();
-    RuntimeStatNode* parent = itr->second.empty() ? rootNode.get() : itr->second.top();
-    parent->addChildNode(node);
     return node;
 }
 
@@ -108,10 +87,28 @@ StatsCache* RuntimeStatNode::getStatsCache(const std::string& subNode) {
     return (statsCache->subnodes[subNode] = std::make_unique<StatsCache>()).get();
 }
 
+#if ENABLE_RUNTIME_STATS_GENERATION
+PersistanceNodeData* RuntimeStatNode::getPersistanceData(const std::string& subNode) {
+    {
+        std::shared_lock<std::shared_mutex> lock(persistanceData->mutex);
+        auto itr = persistanceData->subnodes.find(subNode);
+        if (itr != persistanceData->subnodes.end())
+            return itr->second.get();
+    }
+    std::unique_lock<std::shared_mutex> lock(persistanceData->mutex);
+    return (persistanceData->subnodes[subNode] = std::make_unique<PersistanceNodeData>()).get();
+}
+#endif
+
 RuntimeStatisticsScope::RuntimeStatisticsScope(RuntimeStats* _stats, const char* name)
   : stats(_stats),
     node(std::string(name), stats->getTop(), stats->getTop()->getGameExportData(name),
-         stats->getTop()->getStatsCache(name)) {
+         stats->getTop()->getStatsCache(name)
+#if ENABLE_RUNTIME_STATS_GENERATION
+           ,
+         stats->getTop()->getPersistanceData(name)
+#endif
+    ) {
     stats->pushNode(&node);
 }
 
@@ -121,19 +118,33 @@ RuntimeStatisticsScope::~RuntimeStatisticsScope() {
 
 RuntimeStatNode::RuntimeStatNode(std::string _name, const RuntimeStatNode* _parent,
                                  const GameExportsNodeData* _gameExportsData,
-                                 StatsCache* _statsCache)
+                                 StatsCache* _statsCache
+                                 #if ENABLE_RUNTIME_STATS_GENERATION
+                                 , PersistanceNodeData* _persistanceData
+                                 #endif
+                                 )
   : name(std::move(_name)),
     parent(_parent),
     gameExportsData(_gameExportsData),
-    statsCache(_statsCache) {
+    statsCache(_statsCache)
+    #if ENABLE_RUNTIME_STATS_GENERATION
+    ,persistanceData(_persistanceData)
+    #endif
+     {
 }
 
 const GameExportsNodeData* RuntimeStats::getCurrentGameExportData() {
     return getTop()->gameExportsData;
 }
 
-void RuntimeStatNode::addChildNode(const RuntimeStatNode* node) {
+StatsCache* RuntimeStats::getCurrentStatsCache() {
+    return getTop()->statsCache;
+}
+
+PersistanceNodeData* RuntimeStats::getCurrentPersistance() {
 #if ENABLE_RUNTIME_STATS_GENERATION
-// TODO
+    return getTop()->persistanceData;
+#else
+    return nullptr;
 #endif
 }

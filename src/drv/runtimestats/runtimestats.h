@@ -24,7 +24,12 @@ class RuntimeStatNode
 {
  public:
     explicit RuntimeStatNode(std::string name, const RuntimeStatNode* parent,
-                             const GameExportsNodeData* gameExportsData, StatsCache* statsCache);
+                             const GameExportsNodeData* gameExportsData, StatsCache* statsCache
+#if ENABLE_RUNTIME_STATS_GENERATION
+                             ,
+                             PersistanceNodeData* persistanceData
+#endif
+    );
     // struct ShaderUsageInfo
     // {
     //     //   std::unordered_map<std::vector<std::string>, uint64_t> preActiveHeaderCounts;
@@ -42,19 +47,20 @@ class RuntimeStatNode
     //     //   uint64_t changePushConstCount = 0;
     // };
 
-    void addChildNode(const RuntimeStatNode* node);
-
  private:
     std::string name;
     const RuntimeStatNode* parent;
     const GameExportsNodeData* gameExportsData;
     StatsCache* statsCache;
 #if ENABLE_RUNTIME_STATS_GENERATION
-    PersistanceNodeData persistanceData;
+    PersistanceNodeData* persistanceData;
 #endif
 
     const GameExportsNodeData* getGameExportData(const std::string& subNode) const;
     StatsCache* getStatsCache(const std::string& subNode);
+#if ENABLE_RUNTIME_STATS_GENERATION
+    PersistanceNodeData* getPersistanceData(const std::string& subNode);
+#endif
 
     friend class RuntimeStatisticsScope;
     friend class RuntimeStats;
@@ -86,6 +92,9 @@ class RuntimeStats final : public Singleton<RuntimeStats>
     fs::path statsCacheFile;
     GameExportsNodeData rootGameExports;
     StatsCache rootStatsCache;
+#if ENABLE_RUNTIME_STATS_GENERATION
+    PersistanceNodeData rootPersistance;
+#endif
     std::unique_ptr<RuntimeStatNode> rootNode;
     std::unordered_map<std::thread::id, std::stack<RuntimeStatNode*>> activeNodes;
     mutable std::shared_mutex mutex;
@@ -96,9 +105,12 @@ class RuntimeStats final : public Singleton<RuntimeStats>
     RuntimeStatNode* getTop();
 
     StatsCache* getCurrentStatsCache();
+    PersistanceNodeData* getCurrentPersistance();
 
     friend class StatsCacheReader;
     friend class StatsCacheWriter;
+    friend class RuntimeStatsReader;
+    friend class RuntimeStatsWriter;
 };
 
 class RuntimeStatisticsScope
@@ -142,6 +154,32 @@ class StatsCacheWriter
     std::unique_lock<std::shared_mutex> lock;
 };
 
+class RuntimeStatsReader
+{
+ public:
+    explicit RuntimeStatsReader(RuntimeStats* stats)
+      : node(stats->getCurrentPersistance()), lock(node->mutex) {}
+
+    const PersistanceNodeData* operator->() const { return node; }
+
+ private:
+    const PersistanceNodeData* node;
+    std::shared_lock<std::shared_mutex> lock;
+};
+
+class RuntimeStatsWriter
+{
+ public:
+    explicit RuntimeStatsWriter(RuntimeStats* stats)
+      : node(stats->getCurrentPersistance()), lock(node->mutex) {}
+
+    PersistanceNodeData* operator->() const { return node; }
+
+ private:
+    PersistanceNodeData* node;
+    std::unique_lock<std::shared_mutex> lock;
+};
+
 #define RUNTIME_STAT_SCOPE(name) \
     RuntimeStatisticsScope __runtime_stat_##name(RuntimeStats::getSingleton(), #name)
 
@@ -150,6 +188,9 @@ class StatsCacheWriter
 
 #define STATS_CACHE_READER StatsCacheReader(RuntimeStats::getSingleton())
 #define STATS_CACHE_WRITER StatsCacheWriter(RuntimeStats::getSingleton())
+
+#define RUNTIME_STATS_READER RuntimeStatsReader(RuntimeStats::getSingleton())
+#define RUNTIME_STATS_WRITER RuntimeStatsWriter(RuntimeStats::getSingleton())
 
 #if ENABLE_RUNTIME_STATS_GENERATION
 // #    define RUNTIME_STAT_RECORD_SHADER_USAGE(renderPass, subpass, shaderName, activeHeaders) TODO
