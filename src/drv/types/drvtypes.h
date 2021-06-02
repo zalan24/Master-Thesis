@@ -529,33 +529,33 @@ struct MemoryBarrier
     };
     AccessFlagBitType sourceAccessFlags;
     AccessFlagBitType dstAccessFlags;
-    static AccessFlagBitType get_all_read_bits() {
+    static constexpr AccessFlagBitType get_all_read_bits() {
         return INDIRECT_COMMAND_READ_BIT | INDEX_READ_BIT | VERTEX_ATTRIBUTE_READ_BIT
                | UNIFORM_READ_BIT | INPUT_ATTACHMENT_READ_BIT | SHADER_READ_BIT
                | COLOR_ATTACHMENT_READ_BIT | DEPTH_STENCIL_ATTACHMENT_READ_BIT | TRANSFER_READ_BIT
                | HOST_READ_BIT;
     }
-    static AccessFlagBitType get_all_write_bits() {
+    static constexpr AccessFlagBitType get_all_write_bits() {
         return SHADER_WRITE_BIT | COLOR_ATTACHMENT_WRITE_BIT | DEPTH_STENCIL_ATTACHMENT_WRITE_BIT
                | TRANSFER_WRITE_BIT | HOST_WRITE_BIT;
     }
-    static AccessFlagBitType get_all_bits() { return get_all_read_bits() | get_all_write_bits(); }
-    static AccessFlagBitType resolve(AccessFlagBitType mask) {
+    static constexpr AccessFlagBitType get_all_bits() { return get_all_read_bits() | get_all_write_bits(); }
+    static constexpr AccessFlagBitType resolve(AccessFlagBitType mask) {
         if (mask & MEMORY_READ_BIT)
             mask = (mask ^ MEMORY_READ_BIT) | get_all_read_bits();
         if (mask & MEMORY_WRITE_BIT)
             mask = (mask ^ MEMORY_WRITE_BIT) | get_all_write_bits();
         return mask;
     }
-    static AccessFlagBitType get_write_bits(AccessFlagBitType accessMask) {
+    static constexpr AccessFlagBitType get_write_bits(AccessFlagBitType accessMask) {
         return resolve(accessMask) & get_all_write_bits();
     }
-    static AccessFlagBitType get_read_bits(AccessFlagBitType accessMask) {
+    static constexpr AccessFlagBitType get_read_bits(AccessFlagBitType accessMask) {
         return resolve(accessMask) & get_all_read_bits();
     }
-    static bool is_write(AccessFlagBitType accessMask) { return get_write_bits(accessMask); }
-    static bool is_read(AccessFlagBitType accessMask) { return get_read_bits(accessMask); }
-    static uint32_t get_access_count(AccessFlagBitType mask) {
+    static constexpr bool is_write(AccessFlagBitType accessMask) { return get_write_bits(accessMask); }
+    static constexpr bool is_read(AccessFlagBitType accessMask) { return get_read_bits(accessMask); }
+    static constexpr uint32_t get_access_count(AccessFlagBitType mask) {
         mask = resolve(mask);
         uint32_t ret = 0;
         while (mask) {
@@ -574,6 +574,12 @@ struct MemoryBarrier
             ret <<= 1;
         }
         throw std::runtime_error("Invalid index for access mask");
+    }
+    static constexpr uint32_t get_total_access_count() {
+        return get_access_count(get_all_bits());
+    }
+    static uint32_t get_access(uint32_t index) {
+        return get_access(get_all_bits(), index);
     }
 };
 

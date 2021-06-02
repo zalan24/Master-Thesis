@@ -11,4 +11,5 @@ target_link_libraries(RuntimeStats PUBLIC
     FeaturesLib
     DrvTypes
     SerializableLib
+    CoreDataStructures
 )

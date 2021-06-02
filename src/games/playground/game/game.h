@@ -49,6 +49,7 @@ class Game final : public Game3D
     res::ImageSet renderTarget;
     res::ImageView renderTargetView;
 
+    // TODO automatize this kind of thing + check resource states
     struct RecordData
     {
         drv::LogicalDevicePtr device;

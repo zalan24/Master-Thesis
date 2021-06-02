@@ -184,7 +184,6 @@ class RuntimeStatsWriter
     RuntimeStatisticsScope __runtime_stat_##name(RuntimeStats::getSingleton(), #name)
 
 #define GAME_EXPORT_STATS (RuntimeStats::getSingleton()->getCurrentGameExportData())
-// #define STATS_CACHE (RuntimeStats::getSingleton()->getCurrentStatsCache())
 
 #define STATS_CACHE_READER StatsCacheReader(RuntimeStats::getSingleton())
 #define STATS_CACHE_WRITER StatsCacheWriter(RuntimeStats::getSingleton())

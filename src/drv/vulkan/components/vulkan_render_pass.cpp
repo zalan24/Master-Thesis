@@ -125,6 +125,7 @@ void VulkanRenderPass::build_impl() {
                   | drv::PipelineStages::LATE_FRAGMENT_TESTS_BIT
                   | drv::PipelineStages::COLOR_ATTACHMENT_OUTPUT_BIT);
                 dep.dependencyFlags = 0;
+                TODO;  // is any the good option here? Can it have other types of stages?
                 if (srcStages.hasAnyStage_resolved(framebufferStages.stageFlags)
                     && dstStages.hasAnyStage_resolved(framebufferStages.stageFlags))
                     dep.dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
@@ -133,6 +134,7 @@ void VulkanRenderPass::build_impl() {
             else
                 drv::drv_assert(srcAccessFlags == 0 && dstAccessFlags == 0);
         }
+        TODO;  // read cache stats here and create external deps
     }
 
     vkSubpasses.resize(subpasses.size());
@@ -343,6 +345,7 @@ void VulkanRenderPass::startNextSubpass(drv::DrvCmdBufferRecorder* cmdBuffer,
 }
 
 void VulkanRenderPass::applySync(drv::SubpassId id) const {
+    TODO;  // apply dependencies here instead of globally (remove globalAttachmentUsages)
     UNUSED(id);
     // track only resources, not attachments
     //     TODO;  // apply external incoming dependencies in tracker

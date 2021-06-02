@@ -11,19 +11,23 @@
 #endif
 
 #include <fixedarray.hpp>
+#include <serializable.h>
 
 #include "drvres_types.h"
 #include "drvresourceptrs.hpp"
 
 namespace drv
 {
-struct ImageId
+struct ImageId final : public IAutoSerializable<ImageId>
 {
     using SubId = uint32_t;
     static constexpr SubId NO_SUB_ID = std::numeric_limits<SubId>::max();
     // Persistent capable id
-    std::string name;         // not necessarily unique
-    SubId subId = NO_SUB_ID;  // eg. swapchain image index
+    REFLECTABLE
+    (
+        (std::string) name, // not necessarily unique
+        (SubId) subId       // eg. swapchain image index
+    )
 
 #if ENABLE_RESOURCE_STACKTRACES
     std::unique_ptr<boost::stacktrace> stackTrace;
@@ -44,6 +48,15 @@ struct ImageId
     ImageId& operator=(const ImageId&) = default;
     ImageId(ImageId&&) = default;
     ImageId& operator=(ImageId&&) = default;
+
+    bool operator==(const ImageId& other) const {
+        return name == other.name && subId == other.subId;
+    }
+    bool operator<(const ImageId& other) const {
+        if (subId != other.subId)
+            return subId < other.subId;
+        return name < other.name;
+    }
 };
 
 enum class ImageFormat
@@ -342,7 +355,22 @@ enum class ImageLayout : ImageLayoutMask
     // // Provided by VK_KHR_separate_depth_stencil_layouts
     // STENCIL_READ_ONLY_OPTIMAL_KHR = STENCIL_READ_ONLY_OPTIMAL,
 };
-ImageLayoutMask get_all_layouts_mask();
+constexpr ImageLayoutMask get_all_layouts_mask() {
+    return static_cast<ImageLayoutMask>(drv::ImageLayout::UNDEFINED)
+           | static_cast<ImageLayoutMask>(drv::ImageLayout::GENERAL)
+           | static_cast<ImageLayoutMask>(drv::ImageLayout::COLOR_ATTACHMENT_OPTIMAL)
+           | static_cast<ImageLayoutMask>(drv::ImageLayout::DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
+           | static_cast<ImageLayoutMask>(drv::ImageLayout::DEPTH_STENCIL_READ_ONLY_OPTIMAL)
+           | static_cast<ImageLayoutMask>(drv::ImageLayout::SHADER_READ_ONLY_OPTIMAL)
+           | static_cast<ImageLayoutMask>(drv::ImageLayout::TRANSFER_SRC_OPTIMAL)
+           | static_cast<ImageLayoutMask>(drv::ImageLayout::TRANSFER_DST_OPTIMAL)
+           | static_cast<ImageLayoutMask>(drv::ImageLayout::PREINITIALIZED)
+           | static_cast<ImageLayoutMask>(drv::ImageLayout::PRESENT_SRC_KHR)
+           | static_cast<ImageLayoutMask>(drv::ImageLayout::SHARED_PRESENT_KHR);
+}
+
+constexpr uint32_t get_image_layout_count() {
+}
 
 struct Offset2D
 {
@@ -555,6 +583,7 @@ struct ImageSubresourceSet
 
 struct TextureInfo
 {
+    const drv::ImageId* imageId;
     Extent3D extent;
     uint32_t numMips;
     uint32_t arraySize;

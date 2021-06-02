@@ -122,6 +122,7 @@ bool DrvVulkan::destroy_image_view(drv::LogicalDevicePtr device, drv::ImageViewP
 drv::TextureInfo DrvVulkan::get_texture_info(drv::ImagePtr _image) {
     drv_vulkan::Image* image = convertImage(_image);
     drv::TextureInfo ret;
+    ret.imageId = &image->imageId;
     ret.extent = image->extent;
     ret.numMips = image->numMipLevels;
     ret.arraySize = image->arraySize;

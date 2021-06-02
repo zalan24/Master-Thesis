@@ -3,6 +3,7 @@
 #include <logger.h>
 
 #include <drverror.h>
+#include <runtimestats.h>
 
 #include "drv_interface.h"
 
@@ -40,22 +41,45 @@ DrvCmdBufferRecorder::DrvCmdBufferRecorder(IDriver* _driver, drv::PhysicalDevice
     imageStates(nullptr) {
 }
 
-void DrvCmdBufferRecorder::autoRegisterImage(ImagePtr image, QueueFamilyPtr ownerShip) {
+void DrvCmdBufferRecorder::autoRegisterImage(ImagePtr image, drv::ImageLayout preferrefLayout) {
     TextureInfo texInfo = driver->get_texture_info(image);
     texInfo.getSubresourceRange().traverse(
       texInfo.arraySize, texInfo.numMips,
       [&, this](uint32_t layer, uint32_t mip, AspectFlagBits aspect) {
-          autoRegisterImage(image, layer, mip, aspect, ownerShip);
+          autoRegisterImage(image, layer, mip, aspect, preferrefLayout);
       });
 }
 
 void DrvCmdBufferRecorder::autoRegisterImage(ImagePtr image, uint32_t layer, uint32_t mip,
-                                             AspectFlagBits aspect, QueueFamilyPtr ownerShip) {
-    TODO;  // instead of showing an error, use the runtime stats (return a default value, if not available)
+                                             AspectFlagBits aspect,
+                                             drv::ImageLayout preferrefLayout) {
+    TextureInfo texInfo = driver->get_texture_info(image);
+    ImageStartingState state(texInfo.arraySize, texInfo.numMips, texInfo.aspects);
+    ImageSubresourceSet initMask(texInfo.arraySize);
+    initMask.add(layer, mip, aspect);
+    auto& s = state.get(layer, mip, aspect);
+
+    {
+        auto reader = STATS_CACHE_READER;
+        if (auto imageItr = reader->cmdBufferImageStates.find(*texInfo.imageId);
+            imageItr != reader->cmdBufferImageStates.end()
+            && imageItr->second.isCompatible(image)) {
+            const ImageSubresStateStat& subRes =
+              imageItr->second.subresources.get(layer, mip, aspect);
+            subRes.get(s);
+        }
+        else {
+            // everything else is default
+            s.layout = preferrefLayout;
+            s.ownership = family;
+        }
+    }
+    registerImage(image, state, initMask);
 }
 
 ImageTrackInfo& DrvCmdBufferRecorder::getImageState(
-  drv::ImagePtr image, uint32_t ranges, const drv::ImageSubresourceRange* subresourceRanges) {
+  drv::ImagePtr image, uint32_t ranges, const drv::ImageSubresourceRange* subresourceRanges,
+  drv::ImageLayout preferrefLayout) {
     TextureInfo texInfo = driver->get_texture_info(image);
     bool found = false;
     for (uint32_t i = 0; i < imageRecordStates.size() && !found; ++i) {
@@ -68,13 +92,13 @@ ImageTrackInfo& DrvCmdBufferRecorder::getImageState(
                       if (!(texInfo.aspects & aspect))
                           return;
                       if (!imageRecordStates[i].second.initMask.has(layer, mip, aspect))
-                          autoRegisterImage(image, layer, mip, aspect);
+                          autoRegisterImage(image, layer, mip, aspect, preferrefLayout);
                   });
             found = true;
         }
     }
     if (!found)
-        autoRegisterImage(image);
+        autoRegisterImage(image, preferrefLayout);
     found = false;
     for (uint32_t i = 0; i < imageRecordStates.size() && !found; ++i) {
         if (imageRecordStates[i].first == image) {

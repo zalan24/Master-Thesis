@@ -70,9 +70,8 @@ class DrvCmdBufferRecorder
     void registerImage(ImagePtr image, ImageLayout layout,
                        QueueFamilyPtr ownerShip = IGNORE_FAMILY);
     void registerUndefinedImage(ImagePtr image, QueueFamilyPtr ownerShip = IGNORE_FAMILY);
-    void autoRegisterImage(ImagePtr image, QueueFamilyPtr ownerShip = IGNORE_FAMILY);
-    void autoRegisterImage(ImagePtr image, uint32_t layer, uint32_t mip, AspectFlagBits aspect,
-                           QueueFamilyPtr ownerShip = IGNORE_FAMILY);
+    void autoRegisterImage(ImagePtr image, drv::ImageLayout preferrefLayout);
+    void autoRegisterImage(ImagePtr image, uint32_t layer, uint32_t mip, AspectFlagBits aspect, drv::ImageLayout preferrefLayout);
 
     void updateImageState(drv::ImagePtr image, const ImageTrackInfo& state,
                           const ImageSubresourceSet& initMask);
@@ -87,7 +86,8 @@ class DrvCmdBufferRecorder
 
  protected:
     ImageTrackInfo& getImageState(drv::ImagePtr image, uint32_t ranges,
-                                  const drv::ImageSubresourceRange* subresourceRanges);
+                                  const drv::ImageSubresourceRange* subresourceRanges,
+                                  drv::ImageLayout preferrefLayout);
 
     IDriver* driver;
     LogicalDevicePtr device;
