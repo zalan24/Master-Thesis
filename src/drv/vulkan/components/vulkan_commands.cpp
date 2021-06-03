@@ -166,9 +166,14 @@ drv::PipelineStages VulkanCmdBufferRecorder::cmd_image_barrier(
 
 void VulkanCmdBufferRecorder::cmdUseAsAttachment(drv::ImagePtr image,
                                                  const drv::ImageSubresourceRange& subresourceRange,
-                                                 drv::ImageResourceUsageFlag usages,
                                                  drv::ImageLayout initialLayout,
-                                                 drv::ImageLayout resultLayout) {
+                                                 drv::ImageLayout resultLayout, const drv::PerSubresourceRangeTrackData& assumedState,
+                            const drv::PipelineStages& writingStages,
+                            const drv::PipelineStages& readingStages) {
+    TODO;
+    // Match state to assumed state using barriers (if needed) without layout transition
+    // apply result layout
+    // set resulting state based on writing stages and reading stages (just directly set it, no barriers)
     drv::PipelineStages stages = drv::get_image_usage_stages(usages);
     drv::MemoryBarrier::AccessFlagBitType accessMask = drv::get_image_usage_accesses(usages);
     bool transitionLayout = initialLayout != resultLayout;

@@ -19,7 +19,8 @@ struct StatsCache final : public IAutoSerializable<StatsCache>
         (std::unordered_map<std::string, std::unique_ptr<StatsCache>>) subnodes,
         (std::map<drv::ImageId, ImageStateStat>) cmdBufferImageStates,
         (std::map<drv::ImageId, ImageStateStat>) renderpassAttachmentInitalState,
-        (std::map<drv::ImageId, ImageStateStat>) renderpassAttachmentFinalState
+        (std::map<drv::ImageId, ImageStateStat>) renderpassAttachmentFinalState,
+        (std::vector<SimpleSubresStateStat>) renderpassExternalAttachmentInputs
     )
 
     mutable std::shared_mutex mutex;

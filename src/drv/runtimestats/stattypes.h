@@ -7,17 +7,29 @@
 #include <drvresourceptrs.hpp>
 #include <drvtracking.hpp>
 
+struct SimpleSubresStateStat final : public IAutoSerializable<SimpleSubresStateStat>
+{
+    REFLECTABLE
+    (
+        (std::array<float, drv::PipelineStages::get_total_stage_count()>) usableStages,
+        (std::array<float, drv::PipelineStages::get_total_stage_count()>) writes,
+        (std::array<float, drv::PipelineStages::get_total_stage_count()>) reads,
+        (std::array<float, drv::MemoryBarrier::get_total_access_count>()) dirtyMask,
+        (std::array<float, drv::MemoryBarrier::get_total_access_count>()) visible
+    )
+
+    void set(const drv::PerSubresourceRangeTrackData& data);
+    void append(const drv::PerSubresourceRangeTrackData& data);
+    void get(drv::PerSubresourceRangeTrackData& data) const;
+};
+
 struct SubresStateStat final : public IAutoSerializable<SubresStateStat>
 {
     REFLECTABLE
     (
         (float) noFamily,
         (FixedArray<float>) queueFamilies,
-        (std::array<float, drv::PipelineStages::get_total_stage_count()>) usableStages,
-        (std::array<float, drv::PipelineStages::get_total_stage_count()>) writes,
-        (std::array<float, drv::PipelineStages::get_total_stage_count()>) reads,
-        (std::array<float, drv::MemoryBarrier::get_total_access_count>()) dirtyMask,
-        (std::array<float, drv::MemoryBarrier::get_total_access_count>()) visible
+        (SimpleSubresStateStat) simpleStats
     )
 
     void set(const drv::PerSubresourceRangeTrackData& data);

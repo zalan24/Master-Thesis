@@ -30,7 +30,25 @@ void VulkanRenderPass::build_impl() {
         drv::ImageResourceUsageFlag usages;
     };
 
-    globalAttachmentUsages = std::vector<drv::ImageResourceUsageFlag>(attachments.size(), 0);
+    const drv::PipelineStages framebufferStages(drv::PipelineStages::FRAGMENT_SHADER_BIT
+                                                | drv::PipelineStages::EARLY_FRAGMENT_TESTS_BIT
+                                                | drv::PipelineStages::LATE_FRAGMENT_TESTS_BIT
+                                                | drv::PipelineStages::COLOR_ATTACHMENT_OUTPUT_BIT);
+
+    attachmentAssumedStates.clear();
+    attachmentReadingStages.clear();
+    attachmentWritingStages.clear();
+    attachmentAssumedStates.resize(attachments.size());
+    std::vector<bool> attachmentsWritten(attachments.size(), false);
+    std::vector<drv::SubpassId> lastAttachmentWrites(attachments.size(), 0);
+    attachmentReadingStages.resize(attachments.size());
+    attachmentWritingStages.resize(attachments.size());
+    {
+        auto reader = STATS_CACHE_READER;
+        if (reader->renderpassExternalAttachmentInputs.size() == attachments.size())
+            for (uint32_t i = 0; i < attachments.size(); ++i)
+                reader->renderpassExternalAttachmentInputs[i].get(attachmentAssumedStates[i]);
+    }
 
     std::vector<std::vector<drv::ImageResourceUsageFlag>> attachmentUsages;
     attachmentUsages.resize(subpasses.size());
@@ -64,13 +82,9 @@ void VulkanRenderPass::build_impl() {
                 usages |= drv::IMAGE_USAGE_COLOR_OUTPUT_WRITE;
             attachmentUsages[pass][subpasses[pass].colorOutputs[i].id] |= usages;
         }
-        for (uint32_t i = 0; i < attachments.size(); ++i)
-            globalAttachmentUsages[i] |= attachmentUsages[pass][i];
     }
 
     for (uint32_t src = 0; src < subpasses.size(); ++src) {
-        // TODO;  // external deps
-
         for (uint32_t dst = src + 1; dst < subpasses.size(); ++dst) {
             drv::PipelineStages srcStages = drv::PipelineStages::TOP_OF_PIPE_BIT;
             drv::PipelineStages dstStages = drv::PipelineStages::BOTTOM_OF_PIPE_BIT;
@@ -119,22 +133,90 @@ void VulkanRenderPass::build_impl() {
                 dep.dstStageMask = convertPipelineStages(dstStages);
                 dep.srcAccessMask = static_cast<VkAccessFlags>(srcAccessFlags);
                 dep.dstAccessMask = static_cast<VkAccessFlags>(dstAccessFlags);
-                const drv::PipelineStages framebufferStages(
-                  drv::PipelineStages::FRAGMENT_SHADER_BIT
-                  | drv::PipelineStages::EARLY_FRAGMENT_TESTS_BIT
-                  | drv::PipelineStages::LATE_FRAGMENT_TESTS_BIT
-                  | drv::PipelineStages::COLOR_ATTACHMENT_OUTPUT_BIT);
                 dep.dependencyFlags = 0;
-                TODO;  // is any the good option here? Can it have other types of stages?
-                if (srcStages.hasAnyStage_resolved(framebufferStages.stageFlags)
-                    && dstStages.hasAnyStage_resolved(framebufferStages.stageFlags))
-                    dep.dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
+                // This currently works with attachments only -> dependency by region always works
+                drv::drv_assert(srcStages.hasAllStage_resolved(framebufferStages.stageFlags)
+                                && dstStages.hasAllStage_resolved(framebufferStages.stageFlags));
+                dep.dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
                 dependencies.push_back(dep);
             }
             else
                 drv::drv_assert(srcAccessFlags == 0 && dstAccessFlags == 0);
         }
-        TODO;  // read cache stats here and create external deps
+
+        VkSubpassDependency externalInputDep;
+        externalInputDep.srcSubpass = VK_SUBPASS_EXTERNAL;
+        externalInputDep.dstSubpass = src;
+        externalInputDep.srcStageMask = 0;
+        externalInputDep.dstStageMask = 0;
+        externalInputDep.srcAccessMask = 0;
+        externalInputDep.dstAccessMask = 0;
+        externalInputDep.dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
+        // TODO transitive dependencies could be culled here
+        for (uint32_t i = 0; i < attachments.size(); ++i) {
+            if (attachmentUsages[src][i] == 0)
+                continue;
+            // First write must sync with everything else, so transitive dependencies are guaranteed
+            drv::MemoryBarrier::AccessFlagBitType dstAccess =
+              drv::get_image_usage_accesses(subpasses[src].resources[i].imageUsages);
+            if (drv::MemoryBarrier::get_write_bits(dstAccess) != 0)
+                lastAttachmentWrites[i] = src;
+            if (attachmentsWritten[i])
+                continue;
+            drv::MemoryBarrier::AccessFlagBitType srcAccess = attachmentAssumedStates[i].dirtyMask;
+            if (drv::MemoryBarrier::get_write_bits(srcAccess) != 0
+                || drv::MemoryBarrier::get_write_bits(dstAccess) != 0) {
+                attachmentsWritten[i] || = drv::MemoryBarrier::get_write_bits(dstAccess) != 0;
+                externalInputDep.srcStageMask =
+                  convertPipelineStages(attachmentAssumedStates[i].ongoingWrites);
+                if (drv::MemoryBarrier::get_write_bits(dstAccess) != 0)
+                    externalInputDep.srcStageMask |=
+                      convertPipelineStages(attachmentAssumedStates[i].ongoingReads);
+                externalInputDep.dstStageMask = convertPipelineStages(
+                  drv::get_image_usage_stages(subpasses[src].resources[i].imageUsages));
+                externalInputDep.dstAccessMask =
+                  static_cast<VkAccessFlags>(drv::MemoryBarrier::get_read_bits(dstAccess));
+                externalInputDep.srcAccessMask =
+                  externalInputDep.dstAccessMask != 0
+                    ? static_cast<VkAccessFlags>(drv::MemoryBarrier::get_write_bits(srcAccess))
+                    : 0;
+                // This currently works with attachments only -> dependency by region always works
+                drv::drv_assert(srcStages.hasAllStage_resolved(framebufferStages.stageFlags));
+            }
+        }
+        if (externalInputDep.srcStageMask != 0 && externalInputDep.dstStageMask != 0)
+            dependencies.push_back(externalInputDep);
+    }
+
+    for (uint32_t src = 0; src < subpasses.size(); ++src) {
+        VkSubpassDependency externalInputDep;
+        externalInputDep.srcSubpass = src;
+        externalInputDep.dstSubpass = VK_SUBPASS_EXTERNAL;
+        externalInputDep.srcStageMask = 0;
+        externalInputDep.dstStageMask = 0;
+        externalInputDep.srcAccessMask = 0;
+        externalInputDep.dstAccessMask = 0;
+        externalInputDep.dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
+        for (uint32_t i = 0; i < attachments.size(); ++i) {
+            if (attachmentUsages[src][i] == 0 || src < lastAttachmentWrites[i])
+                continue;
+            drv::MemoryBarrier::AccessFlagBitType srcAccess =
+              drv::get_image_usage_accesses(subpasses[src].resources[i].imageUsages);
+            drv::PipelineStages srcStages =
+              drv::get_image_usage_stages(subpasses[src].resources[i].imageUsages);
+            if (drv::MemoryBarrier::get_write_bits(srcAccess) != 0) {
+                externalInputDep.srcAccessMask |=
+                  static_cast<VkAccessFlags>(drv::MemoryBarrier::get_write_bits(srcAccess));
+                attachmentWritingStages[i].add(srcStages);
+            }
+            if (drv::MemoryBarrier::get_read_bits(srcAccess) != 0)
+                attachmentReadingStages[i].add(srcStages);
+            // Transitive dependencies can sync with these stages
+            externalInputDep.dstStageMask |= convertPipelineStages(srcStages);
+            externalInputDep.srcStageMask |= convertPipelineStages(srcStages);
+        }
+        if (externalInputDep.srcStageMask != 0 && externalInputDep.dstStageMask != 0)
+            dependencies.push_back(externalInputDep);
     }
 
     vkSubpasses.resize(subpasses.size());
@@ -311,14 +393,10 @@ void VulkanRenderPass::beginRenderPass(drv::FramebufferPtr frameBuffer,
                                        const drv::Rect2D& renderArea,
                                        drv::DrvCmdBufferRecorder* cmdBuffer) const {
     for (uint32_t i = 0; i < attachments.size(); ++i) {
-        TODO;  // import external barriers from runtime stats
-        // TODO;  // apply starting auto external barriers
-
         static_cast<VulkanCmdBufferRecorder*>(cmdBuffer)->cmdUseAsAttachment(
-          attachmentImages[i].image, attachmentImages[i].subresource, globalAttachmentUsages[i],
-          attachments[i].initialLayout, attachments[i].finalLayout);
-
-        // TODO;  // apply finishing auto external barriers
+          attachmentImages[i].image, attachmentImages[i].subresource, attachments[i].initialLayout,
+          attachments[i].finalLayout, attachmentAssumedStates[i], attachmentWritingStages[i],
+          attachmentReadingStages[i]);
     }
     applySync(0);
     VkRenderPassBeginInfo beginInfo;
@@ -345,7 +423,6 @@ void VulkanRenderPass::startNextSubpass(drv::DrvCmdBufferRecorder* cmdBuffer,
 }
 
 void VulkanRenderPass::applySync(drv::SubpassId id) const {
-    TODO;  // apply dependencies here instead of globally (remove globalAttachmentUsages)
     UNUSED(id);
     // track only resources, not attachments
     //     TODO;  // apply external incoming dependencies in tracker

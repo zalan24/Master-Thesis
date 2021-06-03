@@ -51,7 +51,9 @@ class VulkanRenderPass final : public drv::RenderPass
     std::vector<VkSubpassDescription> vkSubpasses;
     std::vector<VkSubpassDependency> dependencies;
     std::vector<VkClearValue> clearValues;
-    std::vector<drv::ImageResourceUsageFlag> globalAttachmentUsages;
+    std::vector<drv::PerSubresourceRangeTrackData> attachmentAssumedStates;
+    std::vector<drv::PipelineStages> attachmentWritingStages;
+    std::vector<drv::PipelineStages> attachmentReadingStages;
     struct AttachmentInfo
     {
         drv::ImageFormat format;
