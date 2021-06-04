@@ -47,7 +47,7 @@ class VulkanCmdBufferRecorder final : public drv::DrvCmdBufferRecorder
 
     struct ResourceBarrier
     {
-        drv::MemoryBarrier::AccessFlagBitType sourceAccessFlags = 0;
+        drv::MemoryBarrier::AccessFlagBitType srcAccessFlags = 0;
         drv::MemoryBarrier::AccessFlagBitType dstAccessFlags = 0;
 
         // ownership transfer
@@ -111,9 +111,9 @@ class VulkanCmdBufferRecorder final : public drv::DrvCmdBufferRecorder
 
     void cmdUseAsAttachment(drv::ImagePtr image, const drv::ImageSubresourceRange& subresourceRange,
                             drv::ImageLayout initialLayout, drv::ImageLayout resultLayout,
+                            drv::ImageResourceUsageFlag usages,
                             const drv::PerSubresourceRangeTrackData& assumedState,
-                            const drv::PipelineStages& writingStages,
-                            const drv::PipelineStages& readingStages);
+                            const drv::PerSubresourceRangeTrackData& resultState);
     void cmdImageBarrier(const drv::ImageMemoryBarrier& barrier) override;
     void cmdClearImage(drv::ImagePtr image, const drv::ClearColorValue* clearColors,
                        uint32_t ranges = 0,

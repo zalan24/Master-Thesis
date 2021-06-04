@@ -527,7 +527,7 @@ struct MemoryBarrier
         // // Provided by VK_KHR_fragment_shading_rate
         // FRAGMENT_SHADING_RATE_ATTACHMENT_READ_BIT_KHR = SHADING_RATE_IMAGE_READ_BIT_NV,
     };
-    AccessFlagBitType sourceAccessFlags;
+    AccessFlagBitType srcAccessFlags;
     AccessFlagBitType dstAccessFlags;
     static constexpr AccessFlagBitType get_all_read_bits() {
         return INDIRECT_COMMAND_READ_BIT | INDEX_READ_BIT | VERTEX_ATTRIBUTE_READ_BIT
@@ -585,7 +585,7 @@ struct MemoryBarrier
 
 struct BufferMemoryBarrier
 {
-    MemoryBarrier::AccessFlagBitType sourceAccessFlags;
+    MemoryBarrier::AccessFlagBitType srcAccessFlags;
     MemoryBarrier::AccessFlagBitType dstAccessFlags;
 
     // ownership transfer
@@ -599,7 +599,7 @@ struct BufferMemoryBarrier
 
 // struct ImageMemoryBarrier
 // {
-//     MemoryBarrier::AccessFlagBitType sourceAccessFlags;
+//     MemoryBarrier::AccessFlagBitType srcAccessFlags;
 //     MemoryBarrier::AccessFlagBitType dstAccessFlags;
 
 //     ImageLayout oldLayout;

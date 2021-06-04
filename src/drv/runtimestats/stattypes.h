@@ -7,13 +7,25 @@
 #include <drvresourceptrs.hpp>
 #include <drvtracking.hpp>
 
+struct PipelineStagesStat final : public IAutoSerializable<PipelineStagesStat>
+{
+    REFLECTABLE
+    (
+        (std::array<float, drv::PipelineStages::get_total_stage_count()>) stages
+    )
+
+    void set(const drv::PipelineStages::FlagType& stages);
+    void append(const const drv::PipelineStages::FlagType& stages);
+    drv::PipelineStages::FlagType get() const;
+};
+
 struct SimpleSubresStateStat final : public IAutoSerializable<SimpleSubresStateStat>
 {
     REFLECTABLE
     (
-        (std::array<float, drv::PipelineStages::get_total_stage_count()>) usableStages,
-        (std::array<float, drv::PipelineStages::get_total_stage_count()>) writes,
-        (std::array<float, drv::PipelineStages::get_total_stage_count()>) reads,
+        (PipelineStagesStat) usableStages,
+        (PipelineStagesStat) writes,
+        (PipelineStagesStat) reads,
         (std::array<float, drv::MemoryBarrier::get_total_access_count>()) dirtyMask,
         (std::array<float, drv::MemoryBarrier::get_total_access_count>()) visible
     )

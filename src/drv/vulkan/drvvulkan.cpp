@@ -146,8 +146,7 @@ bool VulkanCmdBufferRecorder::merge(BarrierInfo& barrier0, BarrierInfo& barrier)
                 return false;
             if (barrier0.imageBarriers[i].newLayout != barrier.imageBarriers[j].newLayout)
                 return false;
-            if (barrier0.imageBarriers[i].sourceAccessFlags
-                != barrier.imageBarriers[j].sourceAccessFlags)
+            if (barrier0.imageBarriers[i].srcAccessFlags != barrier.imageBarriers[j].srcAccessFlags)
                 return false;
             if (barrier0.imageBarriers[i].dstAccessFlags != barrier.imageBarriers[j].dstAccessFlags)
                 return false;
@@ -172,8 +171,8 @@ bool VulkanCmdBufferRecorder::merge(BarrierInfo& barrier0, BarrierInfo& barrier)
                 barrier.imageBarriers[k - 1] = std::move(barrier.imageBarriers[j - 1]);
             barrier.imageBarriers[k - 1].subresourceSet.merge(
               barrier0.imageBarriers[i - 1].subresourceSet);
-            barrier.imageBarriers[k - 1].sourceAccessFlags |=
-              barrier0.imageBarriers[i - 1].sourceAccessFlags;
+            barrier.imageBarriers[k - 1].srcAccessFlags |=
+              barrier0.imageBarriers[i - 1].srcAccessFlags;
             barrier.imageBarriers[k - 1].dstAccessFlags |=
               barrier0.imageBarriers[i - 1].dstAccessFlags;
             i--;
@@ -225,7 +224,7 @@ void VulkanCmdBufferRecorder::flushBarrier(BarrierInfo& barrier) {
         if ((barrier.imageBarriers[i].dstFamily == barrier.imageBarriers[i].srcFamily
              && barrier.imageBarriers[i].oldLayout == barrier.imageBarriers[i].newLayout
              && barrier.imageBarriers[i].dstAccessFlags == 0
-             && barrier.imageBarriers[i].sourceAccessFlags == 0)
+             && barrier.imageBarriers[i].srcAccessFlags == 0)
             || barrier.imageBarriers[i].subresourceSet.getLayerCount() == 0)
             continue;
         drv::ImageSubresourceSet::UsedAspectMap aspectMask =
@@ -268,7 +267,7 @@ void VulkanCmdBufferRecorder::flushBarrier(BarrierInfo& barrier) {
                         ? convertFamilyToVk(barrier.imageBarriers[i].dstFamily)
                         : VK_QUEUE_FAMILY_IGNORED;
                     vkImageBarriers[imageRangeCount].srcAccessMask =
-                      static_cast<VkAccessFlags>(barrier.imageBarriers[i].sourceAccessFlags);
+                      static_cast<VkAccessFlags>(barrier.imageBarriers[i].srcAccessFlags);
                     vkImageBarriers[imageRangeCount].dstAccessMask =
                       static_cast<VkAccessFlags>(barrier.imageBarriers[i].dstAccessFlags);
                     vkImageBarriers[imageRangeCount].subresourceRange.aspectMask = aspects;
@@ -331,7 +330,7 @@ void VulkanCmdBufferRecorder::flushBarrier(BarrierInfo& barrier) {
     //     for (uint32_t i = 0; i < memoryBarrierCount; ++i) {
     //         barriers[i].sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER;
     //         barriers[i].pNext = nullptr;
-    //         barriers[i].srcAccessMask = static_cast<VkAccessFlags>(memoryBarriers[i].sourceAccessFlags);
+    //         barriers[i].srcAccessMask = static_cast<VkAccessFlags>(memoryBarriers[i].srcAccessFlags);
     //         barriers[i].dstAccessMask = static_cast<VkAccessFlags>(memoryBarriers[i].dstAccessFlags);
     //     }
 
@@ -339,7 +338,7 @@ void VulkanCmdBufferRecorder::flushBarrier(BarrierInfo& barrier) {
     //         vkBufferBarriers[i].sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
     //         vkBufferBarriers[i].pNext = nullptr;
     //         vkBufferBarriers[i].srcAccessMask =
-    //           static_cast<VkAccessFlags>(bufferBarriers[i].sourceAccessFlags);
+    //           static_cast<VkAccessFlags>(bufferBarriers[i].srcAccessFlags);
     //         vkBufferBarriers[i].dstAccessMask =
     //           static_cast<VkAccessFlags>(bufferBarriers[i].dstAccessFlags);
     //         vkBufferBarriers[i].srcQueueFamilyIndex = convertFamily(bufferBarriers[i].srcFamily);
@@ -409,10 +408,9 @@ void VulkanCmdBufferRecorder::appendBarrier(drv::PipelineStages srcStage,
                                             ImageSingleSubresourceMemoryBarrier&& imageBarrier) {
     if (!(srcStage.resolve(getQueueSupport()) & (~drv::PipelineStages::TOP_OF_PIPE_BIT))
         && dstStage.stageFlags == 0) {
-        drv::drv_assert(imageBarrier.dstAccessFlags == 0
-                        && imageBarrier.dstFamily == imageBarrier.srcFamily
-                        && imageBarrier.newLayout == imageBarrier.oldLayout
-                        && imageBarrier.sourceAccessFlags == 0);
+        drv::drv_assert(
+          imageBarrier.dstAccessFlags == 0 && imageBarrier.dstFamily == imageBarrier.srcFamily
+          && imageBarrier.newLayout == imageBarrier.oldLayout && imageBarrier.srcAccessFlags == 0);
         return;
     }
     ImageMemoryBarrier barrier(convertImage(imageBarrier.image)->arraySize);
@@ -429,10 +427,9 @@ void VulkanCmdBufferRecorder::appendBarrier(drv::PipelineStages srcStage,
                                             ImageMemoryBarrier&& imageBarrier) {
     if (!(srcStage.resolve(getQueueSupport()) & (~drv::PipelineStages::TOP_OF_PIPE_BIT))
         && dstStage.stageFlags == 0) {
-        drv::drv_assert(imageBarrier.dstAccessFlags == 0
-                        && imageBarrier.dstFamily == imageBarrier.srcFamily
-                        && imageBarrier.newLayout == imageBarrier.oldLayout
-                        && imageBarrier.sourceAccessFlags == 0);
+        drv::drv_assert(
+          imageBarrier.dstAccessFlags == 0 && imageBarrier.dstFamily == imageBarrier.srcFamily
+          && imageBarrier.newLayout == imageBarrier.oldLayout && imageBarrier.srcAccessFlags == 0);
         return;
     }
     BarrierInfo barrier;
@@ -625,7 +622,7 @@ void VulkanCmdBufferRecorder::add_memory_sync(
         barrierDstStage.add(dstStages);
         barrierSrcStage.add(subresourceData.ongoingWrites | subresourceData.ongoingReads
                             | drv::PipelineStages::TOP_OF_PIPE_BIT | subresourceData.usableStages);
-        barrier.sourceAccessFlags = subresourceData.dirtyMask;
+        barrier.srcAccessFlags = subresourceData.dirtyMask;
         subresourceData.ongoingWrites = 0;
         subresourceData.ongoingReads = 0;
         subresourceData.dirtyMask = 0;

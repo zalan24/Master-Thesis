@@ -20,6 +20,7 @@ struct StatsCache final : public IAutoSerializable<StatsCache>
         (std::map<drv::ImageId, ImageStateStat>) cmdBufferImageStates,
         (std::map<drv::ImageId, ImageStateStat>) renderpassAttachmentInitalState,
         (std::map<drv::ImageId, ImageStateStat>) renderpassAttachmentFinalState,
+        (std::map<drv::ImageId, PipelineStagesStat>) renderpassAttachmentPostUsage,
         (std::vector<SimpleSubresStateStat>) renderpassExternalAttachmentInputs
     )
 

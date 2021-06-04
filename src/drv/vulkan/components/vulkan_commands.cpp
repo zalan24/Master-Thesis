@@ -164,27 +164,114 @@ drv::PipelineStages VulkanCmdBufferRecorder::cmd_image_barrier(
                            barrier.discardCurrentContent, barrier.resultLayout);
 }
 
-void VulkanCmdBufferRecorder::cmdUseAsAttachment(drv::ImagePtr image,
-                                                 const drv::ImageSubresourceRange& subresourceRange,
-                                                 drv::ImageLayout initialLayout,
-                                                 drv::ImageLayout resultLayout, const drv::PerSubresourceRangeTrackData& assumedState,
-                            const drv::PipelineStages& writingStages,
-                            const drv::PipelineStages& readingStages) {
-    TODO;
-    // Match state to assumed state using barriers (if needed) without layout transition
-    // apply result layout
-    // set resulting state based on writing stages and reading stages (just directly set it, no barriers)
+void VulkanCmdBufferRecorder::cmdUseAsAttachment(
+  drv::ImagePtr image, const drv::ImageSubresourceRange& subresourceRange,
+  drv::ImageLayout initialLayout, drv::ImageLayout resultLayout, drv::ImageResourceUsageFlag usages,
+  const drv::PerSubresourceRangeTrackData& assumedState,
+  const drv::PerSubresourceRangeTrackData& resultState) {
+    drv::TextureInfo texInfo = driver->get_texture_info(image);
     drv::PipelineStages stages = drv::get_image_usage_stages(usages);
     drv::MemoryBarrier::AccessFlagBitType accessMask = drv::get_image_usage_accesses(usages);
-    bool transitionLayout = initialLayout != resultLayout;
-    uint32_t requiredLayoutMask = initialLayout == drv::ImageLayout::UNDEFINED
-                                    ? drv::get_all_layouts_mask()
-                                    : static_cast<drv::ImageLayoutMask>(initialLayout);
-    add_memory_access(getImageState(image, 1, &subresourceRange, initialLayout).cmdState, image, 1,
-                      &subresourceRange, drv::MemoryBarrier::get_read_bits(accessMask) != 0,
-                      drv::MemoryBarrier::get_write_bits(accessMask) != 0 || transitionLayout,
-                      stages, accessMask, requiredLayoutMask, true, nullptr, transitionLayout,
-                      resultLayout);
+    bool transitionLayout = true;
+    drv::ImageLayoutMask requiredLayoutMask = initialLayout == drv::ImageLayout::UNDEFINED
+                                                ? drv::get_all_layouts_mask()
+                                                : static_cast<drv::ImageLayoutMask>(initialLayout);
+    drv::CmdImageTrackingState& cmdState =
+      getImageState(image, 1, &subresourceRange, initialLayout).cmdState;
+
+    subresourceRange.traverse(
+      texInfo.arraySize, texInfo.numMips,
+      [&](uint32_t layer, uint32_t mip, drv::AspectFlagBits aspect) {
+          auto& s = cmdState.state.get(layer, mip, aspect);
+          auto& usage = cmdState.usage.get(layer, mip, aspect);
+          cmdState.usageMask.add(layer, mip, aspect);
+
+          drv::PipelineStages barrierSrcStages;
+          drv::PipelineStages barrierDstStages;
+          ImageSingleSubresourceMemoryBarrier barrier;
+          barrier.image = image;
+          barrier.layer = layer;
+          barrier.mipLevel = mip;
+          barrier.aspect = aspect;
+
+          barrier.srcAccessFlags = 0;
+          barrier.dstAccessFlags = 0;
+          barrierSrcStages.add(s.ongoingWrites & ~assumedState.ongoingWrites);
+          barrierSrcStages.add(s.ongoingReads & ~assumedState.ongoingReads);
+          bool needSync = false;
+          bool layoutTransition = false;
+          if ((assumedState.usableStages & s.usableStages) != assumedState.usableStages)
+              needSync = true;
+          if (!(static_cast<drv::ImageLayoutMask>(s.layout) & requiredLayoutMask)) {
+              barrier.oldLayout = s.layout;
+              barrier.newLayout = initialLayout;
+              needSync = true;
+              layoutTransition = true;
+          }
+          if (s.ownership != getFamily() && s.ownership != drv::IGNORE_FAMILY
+              && !convertImage(image)->sharedResource) {
+              barrier.srcFamily = s.ownership;
+              barrier.dstFamily = getFamily();
+              needSync = true;
+          }
+          if (initialLayout != drv::ImageLayout::UNDEFINED) {
+              if ((s.dirtyMask & assumedState.dirtyMask) != s.dirtyMask) {
+                  barrier.srcAccessFlags = s.dirtyMask & ~assumedState.dirtyMask;
+                  needSync = true;
+              }
+              if (drv::MemoryBarrier::get_read_bits(accessMask) != 0
+                  && (s.visible & assumedState.visible) != assumedState.visible) {
+                  barrier.dstAccessFlags = assumedState.visible & ~s.visible;
+                  needSync = true;
+              }
+          }
+          if (needSync) {
+              barrierSrcStages.add(s.ongoingWrites);
+              barrierSrcStages.add(s.ongoingReads);
+              barrierSrcStages.add(
+                drv::PipelineStages(s.usableStages).getEarliestStage(getQueueSupport()));
+          }
+          if (srcStage.resolve(getQueueSupport()) & (~drv::PipelineStages::TOP_OF_PIPE_BIT)
+              || needSync) {
+              // This only happens, if the runtime stats is wrong
+              barrierDstStages.add(assumedState.usableStages);
+              if (assumedState.usableStages == 0)
+                  barrierDstStages.add(stages);
+
+              appendBarrier(barrierSrcStages, barrierDstStages, std::move(barrier));
+              s.layout = initialLayout;
+              s.ownership = getFamily();
+              if (needSync) {
+                  s.ongoingWrites = 0;
+                  s.ongoingReads = 0;
+              }
+              if (initialLayout == drv::ImageLayout::UNDEFINED)
+                  s.dirtyMask = 0;
+              else
+                  s.dirtyMask &= assumedState.dirtyMask;
+              s.visible =
+                layoutTransition ? assumedState.visible : (s.visible | assumedState.visible);
+              s.ongoingWrites &= assumedState.ongoingWrites;
+              s.ongoingReads &= assumedState.ongoingReads;
+              s.usableStages = barrierDstStages.resolve(getQueueSupport());
+              usage.preserveUsableStages = 0;
+          }
+      });
+    flushBarriersFor(image, 1, &subresourceRange);
+    subresourceRange.traverse(
+      texInfo.arraySize, texInfo.numMips,
+      [&](uint32_t layer, uint32_t mip, drv::AspectFlagBits aspect) {
+          auto& s = cmdState.state.get(layer, mip, aspect);
+          auto& usage = cmdState.usage.get(layer, mip, aspect);
+          s.layout = resultLayout;
+          s.dirtyMask = resultState.dirtyMask;
+          s.ongoingReads = resultState.ongoingReads;
+          s.ongoingWrites = resultState.ongoingWrites;
+          s.visible = resultState.visible;
+          s.usableStages = resultState.usableStages;
+          if (drv::MemoryBarrier::get_write_bits(accessMask) != 0 || initialLayout != resultLayout)
+              usage.preserveUsableStages = 0;
+      });
 }
 
 void VulkanCmdBufferRecorder::corrigate(const drv::StateCorrectionData& data) {
