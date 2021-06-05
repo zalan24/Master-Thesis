@@ -10,9 +10,9 @@ RuntimeStats::RuntimeStats(const fs::path& _persistance, const fs::path& _gameEx
   : persistance(_persistance), gameExports(_gameExports), statsCacheFile(_statsCacheFile) {
     if (!fs::exists(persistance.parent_path()))
         fs::create_directories(persistance.parent_path());
-    if (!fs::exists(gameExports.parent_path()))
+    if (!gameExports.empty() && !fs::exists(gameExports.parent_path()))
         fs::create_directories(gameExports.parent_path());
-    if (!fs::exists(statsCacheFile.parent_path()))
+    if (!statsCacheFile.empty() && !fs::exists(statsCacheFile.parent_path()))
         fs::create_directories(statsCacheFile.parent_path());
 #if ENABLE_RUNTIME_STATS_GENERATION
     try {
@@ -25,10 +25,10 @@ RuntimeStats::RuntimeStats(const fs::path& _persistance, const fs::path& _gameEx
         rootPersistance = PersistanceNodeData();
     }
 #endif
-    if (!rootGameExports.importFromFile(gameExports))
+    if (!gameExports.empty() && !rootGameExports.importFromFile(gameExports))
         LOG_F(ERROR, "Could not read game exports file: %s", gameExports.string().c_str());
     try {
-        if (!rootStatsCache.importFromFile(statsCacheFile))
+        if (!statsCacheFile.empty() && !rootStatsCache.importFromFile(statsCacheFile))
             LOG_F(WARNING, "Could not read stats cache file: %s", statsCacheFile.string().c_str());
     }
     catch (const std::runtime_error& e) {
@@ -38,9 +38,9 @@ RuntimeStats::RuntimeStats(const fs::path& _persistance, const fs::path& _gameEx
     }
     rootNode =
       std::make_unique<RuntimeStatNode>("root", nullptr, &rootGameExports, &rootStatsCache
-      #if ENABLE_RUNTIME_STATS_GENERATION
+#if ENABLE_RUNTIME_STATS_GENERATION
       , &rootPersistance
-      #endif
+#endif
       );
 }
 
@@ -48,9 +48,7 @@ RuntimeStats::~RuntimeStats() {
 #if ENABLE_RUNTIME_STATS_GENERATION
     if (!rootPersistance.exportToFile(persistance))
         LOG_F(ERROR, "Could not write persistance file: %s", persistance.string().c_str());
-    // TODO generate game exports
-    // if (!rootGameExports.exportToFile(gameExports))
-    //     LOG_F(ERROR, "Could not write gameExports file: %s", gameExports.string().c_str());
+    exportGameExports();
 #endif
     if (!rootStatsCache.exportToFile(statsCacheFile))
         LOG_F(ERROR, "Could not write stats cache file file: %s", statsCacheFile.string().c_str());
@@ -166,7 +164,7 @@ PersistanceNodeData* RuntimeStats::getCurrentPersistance() {
 void RuntimeStats::initExecution() {
 #if ENABLE_RUNTIME_STATS_GENERATION
     std::stack<PersistanceNodeData*> nodes;
-    nodes.push(getTop()->persistanceData);
+    nodes.push(rootNode.get()->getPersistance());
     while (!nodes.empty()) {
         PersistanceNodeData* node = nodes.top();
         nodes.pop();
@@ -179,12 +177,37 @@ void RuntimeStats::initExecution() {
 void RuntimeStats::stopExecution() {
 #if ENABLE_RUNTIME_STATS_GENERATION
     std::stack<PersistanceNodeData*> nodes;
-    nodes.push(getTop()->persistanceData);
+    nodes.push(rootNode.get()->getPersistance());
     while (!nodes.empty()) {
         PersistanceNodeData* node = nodes.top();
         nodes.pop();
         if (node)
             node->lastExecution.stop();
     }
+#endif
+}
+
+void RuntimeStats::exportReport(const std::string& filename) const {
+    // TODO
+}
+
+static void generate_game_exports(const PersistanceNodeData* input, GameExportsNodeData* output) {
+    for (const auto& [name, nodePtr] : input->subnodes) {
+        GameExportsNodeData* child =
+          (output->subnodes[name] = std::make_unique<GameExportsNodeData>()).get();
+        generate_game_exports(nodePtr.get(), child);
+
+        // TODO generate content
+    }
+}
+
+void RuntimeStats::exportGameExports() const {
+    if (gameExports.empty())
+        return;
+#if ENABLE_RUNTIME_STATS_GENERATION
+    GameExportsNodeData root;
+    generate_game_exports(getRoot()->getPersistance(), &root);
+    if (!root.exportToFile(gameExports))
+        throw std::runtime_error("Could not save game exports to file: " + gameExports.string());
 #endif
 }

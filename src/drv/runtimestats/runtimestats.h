@@ -47,6 +47,21 @@ class RuntimeStatNode
     //     //   uint64_t changePushConstCount = 0;
     // };
 
+    const PersistanceNodeData* getPersistance() const {
+#if ENABLE_RUNTIME_STATS_GENERATION
+        return persistanceData;
+#else
+        return nullptr;
+#endif
+    }
+    PersistanceNodeData* getPersistance() {
+#if ENABLE_RUNTIME_STATS_GENERATION
+        return persistanceData;
+#else
+        return nullptr;
+#endif
+    }
+
  private:
     std::string name;
     const RuntimeStatNode* parent;
@@ -74,8 +89,8 @@ class RuntimeStatNode
 class RuntimeStats final : public Singleton<RuntimeStats>
 {
  public:
-    explicit RuntimeStats(const fs::path& persistance, const fs::path& gameExports,
-                          const fs::path& statsCacheFile);
+    explicit RuntimeStats(const fs::path& persistance, const fs::path& gameExports = {},
+                          const fs::path& statsCacheFile = {});
 
     RuntimeStats(const RuntimeStats&) = delete;
     RuntimeStats& operator=(const RuntimeStats&) = delete;
@@ -88,6 +103,11 @@ class RuntimeStats final : public Singleton<RuntimeStats>
 
     void initExecution();
     void stopExecution();
+
+    const RuntimeStatNode* getRoot() const { return rootNode.get(); }
+
+    void exportReport(const std::string& filename) const;
+    void exportGameExports() const;
 
  private:
     fs::path persistance;
