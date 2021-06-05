@@ -294,7 +294,7 @@ drv::PipelineStages VulkanCmdBufferRecorder::add_memory_sync(
   drv::ImageLayout resultLayout) {
     state.usageMask.add(arrayIndex, mipLevel, aspect);
     // drv_vulkan::Image* image = convertImage(_image);
-    const drv::PipelineStages::FlagType stages = dstStages.resolve(getQueueSupport());
+    const drv::PipelineStages::FlagType stages = dstStages.stageFlags;
     drv::ImageSubresourceTrackData& subresourceData = state.state.get(arrayIndex, mipLevel, aspect);
     auto& usage = state.usage.get(arrayIndex, mipLevel, aspect);
     // 'subresourceData.layout != resultLayout' excluded for consistent behaviour

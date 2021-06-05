@@ -496,11 +496,9 @@ class ISerializable
         if (!read_data(in, size))
             return false;
         data = FixedArray<T, N>(size);
-        for (uint64_t i = 0; i < size; ++i) {
-            T value;
+        for (uint64_t i = 0; i < size; ++i)
             if (!serializeBin(in, data[i]))
                 return false;
-        }
         if (!read_data(in, m))
             return false;
         if (m != MARKER_VEC_END)

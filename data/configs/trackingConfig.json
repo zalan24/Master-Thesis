@@ -4,6 +4,5 @@
     "forceAllDstStages": false,
     "forceAllSrcStages": false,
     "forceFlush": false,
-    "forceInvalidateAll": false,
-    "syncAllOperations": false
+    "forceInvalidateAll": false
 }

@@ -4,9 +4,8 @@ using namespace drv;
 
 #include "drverror.h"
 
-PipelineStages::PipelineStageFlagBits PipelineStages::getEarliestStage(
-  CommandTypeMask queueSupport) const {
-    return getStage(queueSupport, 0);
+PipelineStages::PipelineStageFlagBits PipelineStages::getEarliestStage() const {
+    return getStage(0);
 }
 
 PipelineStages::PipelineStages(FlagType flags) : stageFlags(flags) {
@@ -23,14 +22,12 @@ void PipelineStages::add(const PipelineStages& stages) {
     stageFlags |= stages.stageFlags;
 }
 bool PipelineStages::hasAllStages_resolved(FlagType flags) const {
-    drv::drv_assert((stageFlags & ALL_GRAPHICS_BIT) == 0 && (stageFlags & ALL_COMMANDS_BIT) == 0);
     return (stageFlags & flags) == flags;
 }
 bool PipelineStages::hasAllStages_resolved(PipelineStageFlagBits stage) const {
     return hasAllStages_resolved(FlagType(stage));
 }
 bool PipelineStages::hasAnyStage_resolved(FlagType flags) const {
-    drv::drv_assert((stageFlags & ALL_GRAPHICS_BIT) == 0 && (stageFlags & ALL_COMMANDS_BIT) == 0);
     return (stageFlags & flags) != 0;
 }
 bool PipelineStages::hasAnyStages_resolved(PipelineStageFlagBits stage) const {
@@ -56,16 +53,8 @@ PipelineStages::FlagType PipelineStages::get_all_bits(CommandTypeBase queueSuppo
         ret |= COMPUTE_SHADER_BIT;
     return ret;
 }
-PipelineStages::FlagType PipelineStages::resolve(CommandTypeMask queueSupport) const {
-    FlagType ret = stageFlags;
-    if (ret & ALL_GRAPHICS_BIT)
-        ret = (ret ^ ALL_GRAPHICS_BIT) | get_graphics_bits();
-    if (ret & ALL_COMMANDS_BIT)
-        ret = (ret ^ ALL_COMMANDS_BIT) | get_all_bits(queueSupport);
-    return ret;
-}
-uint32_t PipelineStages::getStageCount(CommandTypeMask queueSupport) const {
-    FlagType stages = resolve(queueSupport);
+uint32_t PipelineStages::getStageCount() const {
+    FlagType stages = stageFlags;
     uint32_t ret = 0;
     while (stages) {
         ret += stages & 0b1;
@@ -73,9 +62,8 @@ uint32_t PipelineStages::getStageCount(CommandTypeMask queueSupport) const {
     }
     return ret;
 }
-PipelineStages::PipelineStageFlagBits PipelineStages::getStage(CommandTypeMask queueSupport,
-                                                               uint32_t index) const {
-    FlagType stages = resolve(queueSupport);
+PipelineStages::PipelineStageFlagBits PipelineStages::getStage(uint32_t index) const {
+    FlagType stages = stageFlags;
     FlagType ret = 1;
     while (ret <= stages) {
         if (stages & ret)

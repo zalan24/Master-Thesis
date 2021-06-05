@@ -175,7 +175,7 @@ void VulkanRenderPass::build_impl() {
               drv::get_image_usage_stages(subpasses[src].resources[i].imageUsages);
             if (drv::MemoryBarrier::get_write_bits(dstAccess) != 0)
                 lastAttachmentWrites[i] = src;
-            attachmentResultStates[i].usableStages |= dstStages.resolve();
+            attachmentResultStates[i].usableStages |= dstStages.stageFlags;
             if (attachmentsWritten[i])
                 continue;
             drv::MemoryBarrier::AccessFlagBitType srcAccess = attachmentAssumedStates[i].dirtyMask;
@@ -188,8 +188,8 @@ void VulkanRenderPass::build_impl() {
                 if (drv::MemoryBarrier::get_write_bits(dstAccess) != 0)
                     externalInputDep.srcStageMask |=
                       convertPipelineStages(attachmentAssumedStates[i].ongoingReads);
-                if ((attachmentAssumedStates[i].usableStages & dstStages.resolve())
-                    != dstStages.resolve())
+                if ((attachmentAssumedStates[i].usableStages & dstStages.stageFlags)
+                    != dstStages.stageFlags)
                     externalInputDep.srcStageMask |= convertPipelineStages(
                       drv::PipelineStages(attachmentAssumedStates[i].usableStages)
                         .getEarliestStage());
@@ -232,7 +232,7 @@ void VulkanRenderPass::build_impl() {
                       drv::PipelineStages(reader->renderpassAttachmentPostUsage[i].get());
             }
             if (drv::MemoryBarrier::get_read_bits(srcAccess) != 0) {
-                attachmentResultStates[i].ongoingReads |= srcStages.resolve();
+                attachmentResultStates[i].ongoingReads |= srcStages.stageFlags;
                 // These must have been made available already, but they are not synced...
                 // attachmentResultStates[i].visible |= drv::MemoryBarrier::get_read_bits(srcAccess);
             }
@@ -247,7 +247,7 @@ void VulkanRenderPass::build_impl() {
                 externalOutputDep.srcStageMask |= convertPipelineStages(srcStages);
                 externalOutputDep.dstStageMask |= convertPipelineStages(usedStages);
                 // attachmentResultStates[i].ongoingWrites.add(srcStages); -- it's synced
-                attachmentResultStates[i].usableStages = usedStages.resolve();
+                attachmentResultStates[i].usableStages = usedStages.stageFlags;
             }
         }
         if (externalOutputDep.srcStageMask != 0 && externalOutputDep.dstStageMask != 0)

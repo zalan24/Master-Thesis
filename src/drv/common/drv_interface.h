@@ -49,17 +49,6 @@ struct StateTrackingConfig final : public IAutoSerializable<StateTrackingConfig>
                 return static_cast<int32_t>(v);
         throw std::runtime_error("Could decode enum");
     }
-// #ifdef DEBUG
-//     Verbosity verbosity = DEBUG_ERRORS;
-// #else
-//     Verbosity verbosity = SILENT_FIXES;
-// #endif
-    // bool immediateBarriers = false;
-    // bool forceAllDstStages = false;
-    // bool forceAllSrcStages = false;
-    // bool forceFlush = false;
-    // bool forceInvalidateAll = false;
-    // bool syncAllOperations = false;
     REFLECTABLE
     (
         (Verbosity) verbosity,
@@ -67,8 +56,7 @@ struct StateTrackingConfig final : public IAutoSerializable<StateTrackingConfig>
         (bool) forceAllDstStages,
         (bool) forceAllSrcStages,
         (bool) forceFlush,
-        (bool) forceInvalidateAll,
-        (bool) syncAllOperations
+        (bool) forceInvalidateAll
     )
 
     StateTrackingConfig()
@@ -82,8 +70,7 @@ struct StateTrackingConfig final : public IAutoSerializable<StateTrackingConfig>
         forceAllDstStages(false),
         forceAllSrcStages(false),
         forceFlush(false),
-        forceInvalidateAll(false),
-        syncAllOperations(false) {
+        forceInvalidateAll(false) {
     }
 
     // REFLECT()

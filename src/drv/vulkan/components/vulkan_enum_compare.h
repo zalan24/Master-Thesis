@@ -71,10 +71,6 @@ COMPARE_ENUMS(unsigned int, drv::PipelineStages::TRANSFER_BIT, VK_PIPELINE_STAGE
 COMPARE_ENUMS(unsigned int, drv::PipelineStages::BOTTOM_OF_PIPE_BIT,
               VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT);
 COMPARE_ENUMS(unsigned int, drv::PipelineStages::HOST_BIT, VK_PIPELINE_STAGE_HOST_BIT);
-COMPARE_ENUMS(unsigned int, drv::PipelineStages::ALL_GRAPHICS_BIT,
-              VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT);
-COMPARE_ENUMS(unsigned int, drv::PipelineStages::ALL_COMMANDS_BIT,
-              VK_PIPELINE_STAGE_ALL_COMMANDS_BIT);
 // COMPARE_ENUMS(unsigned int, drv::PipelineStages::TRANSFORM_FEEDBACK_BIT_EXT,
 //               VK_PIPELINE_STAGE_TRANSFORM_FEEDBACK_BIT_EXT);
 // COMPARE_ENUMS(unsigned int, drv::PipelineStages::CONDITIONAL_RENDERING_BIT_EXT,
@@ -410,10 +406,6 @@ COMPARE_ENUMS(unsigned int, drv::MemoryBarrier::AccessFlagBits::HOST_READ_BIT,
               VK_ACCESS_HOST_READ_BIT);
 COMPARE_ENUMS(unsigned int, drv::MemoryBarrier::AccessFlagBits::HOST_WRITE_BIT,
               VK_ACCESS_HOST_WRITE_BIT);
-COMPARE_ENUMS(unsigned int, drv::MemoryBarrier::AccessFlagBits::MEMORY_READ_BIT,
-              VK_ACCESS_MEMORY_READ_BIT);
-COMPARE_ENUMS(unsigned int, drv::MemoryBarrier::AccessFlagBits::MEMORY_WRITE_BIT,
-              VK_ACCESS_MEMORY_WRITE_BIT);
 
 COMPARE_ENUMS(unsigned int, drv::AspectFlagBits::COLOR_BIT, VK_IMAGE_ASPECT_COLOR_BIT);
 COMPARE_ENUMS(unsigned int, drv::AspectFlagBits::DEPTH_BIT, VK_IMAGE_ASPECT_DEPTH_BIT);

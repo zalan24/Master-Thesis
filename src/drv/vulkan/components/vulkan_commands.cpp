@@ -172,7 +172,6 @@ void VulkanCmdBufferRecorder::cmdUseAsAttachment(
     drv::TextureInfo texInfo = driver->get_texture_info(image);
     drv::PipelineStages stages = drv::get_image_usage_stages(usages);
     drv::MemoryBarrier::AccessFlagBitType accessMask = drv::get_image_usage_accesses(usages);
-    bool transitionLayout = true;
     drv::ImageLayoutMask requiredLayoutMask = initialLayout == drv::ImageLayout::UNDEFINED
                                                 ? drv::get_all_layouts_mask()
                                                 : static_cast<drv::ImageLayoutMask>(initialLayout);
@@ -228,11 +227,9 @@ void VulkanCmdBufferRecorder::cmdUseAsAttachment(
           if (needSync) {
               barrierSrcStages.add(s.ongoingWrites);
               barrierSrcStages.add(s.ongoingReads);
-              barrierSrcStages.add(
-                drv::PipelineStages(s.usableStages).getEarliestStage(getQueueSupport()));
+              barrierSrcStages.add(drv::PipelineStages(s.usableStages).getEarliestStage());
           }
-          if (barrierSrcStages.resolve(getQueueSupport()) & (~drv::PipelineStages::TOP_OF_PIPE_BIT)
-              || needSync) {
+          if (barrierSrcStages.stageFlags & (~drv::PipelineStages::TOP_OF_PIPE_BIT) || needSync) {
               // This only happens, if the runtime stats is wrong
               barrierDstStages.add(assumedState.usableStages);
               if (assumedState.usableStages == 0)
@@ -253,7 +250,7 @@ void VulkanCmdBufferRecorder::cmdUseAsAttachment(
                 layoutTransition ? assumedState.visible : (s.visible | assumedState.visible);
               s.ongoingWrites &= assumedState.ongoingWrites;
               s.ongoingReads &= assumedState.ongoingReads;
-              s.usableStages = barrierDstStages.resolve(getQueueSupport());
+              s.usableStages = barrierDstStages.stageFlags;
               usage.preserveUsableStages = 0;
           }
       });

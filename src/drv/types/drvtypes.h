@@ -141,8 +141,6 @@ struct PipelineStages
         TRANSFER_BIT = 0x00001000,
         BOTTOM_OF_PIPE_BIT = 0x00002000,
         HOST_BIT = 0x00004000,
-        ALL_GRAPHICS_BIT = 0x00008000,
-        ALL_COMMANDS_BIT = 0x00010000,
         STAGES_END
         // TODO adds these, and handle them in get_support / getAvailableStages
         // TRANSFORM_FEEDBACK_BIT_EXT = 0x01000000,
@@ -160,11 +158,6 @@ struct PipelineStages
     PipelineStages() = default;
     PipelineStages(FlagType flags);
     PipelineStages(PipelineStageFlagBits stage);
-    // bool operator==(const PipelineStages& other) const {
-    //     return resolve(CMD_TYPE_TRANSFER | CMD_TYPE_GRAPHICS | CMD_TYPE_COMPUTE)
-    //            == other.resolve(CMD_TYPE_TRANSFER | CMD_TYPE_GRAPHICS | CMD_TYPE_COMPUTE);
-    // }
-    // bool operator!=(const PipelineStages& other) const { return !(*this == other); }
     void add(FlagType flags);
     void add(PipelineStageFlagBits stage);
     void add(const PipelineStages& stages);
@@ -174,14 +167,13 @@ struct PipelineStages
     bool hasAnyStages_resolved(PipelineStageFlagBits stage) const;
     static FlagType get_graphics_bits();
     static FlagType get_all_bits(CommandTypeBase queueSupport);
-    FlagType resolve(CommandTypeMask queueSupport) const;
-    uint32_t getStageCount(CommandTypeMask queueSupport) const;
-    PipelineStageFlagBits getStage(CommandTypeMask queueSupport, uint32_t index) const;
+    uint32_t getStageCount() const;
+    PipelineStageFlagBits getStage(uint32_t index) const;
     static constexpr uint32_t get_total_stage_count() {
-        static_assert(STAGES_END == ALL_COMMANDS_BIT + 1, "Update this function");
-        return 7;
+        static_assert(STAGES_END == HOST_BIT + 1, "Update this function");
+        return 15;
     }
-    PipelineStageFlagBits getEarliestStage(CommandTypeMask queueSupport) const;
+    PipelineStageFlagBits getEarliestStage() const;
 };
 
 struct ExecutionInfo
@@ -495,9 +487,7 @@ struct MemoryBarrier
         TRANSFER_READ_BIT = 0x00000800,
         TRANSFER_WRITE_BIT = 0x00001000,
         HOST_READ_BIT = 0x00002000,
-        HOST_WRITE_BIT = 0x00004000,
-        MEMORY_READ_BIT = 0x00008000,
-        MEMORY_WRITE_BIT = 0x00010000,
+        HOST_WRITE_BIT = 0x00004000
         // // Provided by VK_EXT_transform_feedback
         // TRANSFORM_FEEDBACK_WRITE_BIT_EXT = 0x02000000,
         // // Provided by VK_EXT_transform_feedback
@@ -540,23 +530,15 @@ struct MemoryBarrier
                | TRANSFER_WRITE_BIT | HOST_WRITE_BIT;
     }
     static constexpr AccessFlagBitType get_all_bits() { return get_all_read_bits() | get_all_write_bits(); }
-    static constexpr AccessFlagBitType resolve(AccessFlagBitType mask) {
-        if (mask & MEMORY_READ_BIT)
-            mask = (mask ^ MEMORY_READ_BIT) | get_all_read_bits();
-        if (mask & MEMORY_WRITE_BIT)
-            mask = (mask ^ MEMORY_WRITE_BIT) | get_all_write_bits();
-        return mask;
-    }
     static constexpr AccessFlagBitType get_write_bits(AccessFlagBitType accessMask) {
-        return resolve(accessMask) & get_all_write_bits();
+        return accessMask & get_all_write_bits();
     }
     static constexpr AccessFlagBitType get_read_bits(AccessFlagBitType accessMask) {
-        return resolve(accessMask) & get_all_read_bits();
+        return accessMask & get_all_read_bits();
     }
     static constexpr bool is_write(AccessFlagBitType accessMask) { return get_write_bits(accessMask); }
     static constexpr bool is_read(AccessFlagBitType accessMask) { return get_read_bits(accessMask); }
     static constexpr uint32_t get_access_count(AccessFlagBitType mask) {
-        mask = resolve(mask);
         uint32_t ret = 0;
         while (mask) {
             ret += mask & 0b1;
@@ -565,7 +547,6 @@ struct MemoryBarrier
         return ret;
     }
     static AccessFlagBits get_access(AccessFlagBitType mask, uint32_t index) {
-        mask = resolve(mask);
         AccessFlagBitType ret = 1;
         while (ret <= mask) {
             if (mask & ret)
