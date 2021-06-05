@@ -18,9 +18,9 @@ RuntimeStats::RuntimeStats(const fs::path& _persistance, const fs::path& _gameEx
     if (!rootPersistance.importFromFile(persistance))
         LOG_F(WARNING, "Could not read persistance file: %s", persistance.string().c_str());
 #endif
-    if (!rootGameExports.importFromFile(persistance))
+    if (!rootGameExports.importFromFile(gameExports))
         LOG_F(ERROR, "Could not read game exports file: %s", gameExports.string().c_str());
-    if (!rootStatsCache.importFromFile(persistance))
+    if (!rootStatsCache.importFromFile(statsCacheFile))
         LOG_F(WARNING, "Could not read stats cache file: %s", statsCacheFile.string().c_str());
     rootNode =
       std::make_unique<RuntimeStatNode>("root", nullptr, &rootGameExports, &rootStatsCache

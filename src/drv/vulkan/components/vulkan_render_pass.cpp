@@ -38,6 +38,10 @@ void VulkanRenderPass::build_impl() {
     attachmentAssumedStates.clear();
     attachmentResultStates.clear();
     attachmentAssumedStates.resize(attachments.size());
+    for (uint32_t i = 0; i < attachments.size(); ++i) {
+        attachmentAssumedStates[i].usableStages = drv::PipelineStages::TOP_OF_PIPE_BIT;
+        attachmentAssumedStates[i].visible = 0;
+    }
     globalAttachmentUsages = std::vector<drv::ImageResourceUsageFlag>(attachments.size(), 0);
     std::vector<bool> attachmentsWritten(attachments.size(), false);
     std::vector<drv::SubpassId> lastAttachmentWrites(attachments.size(), 0);
@@ -147,8 +151,8 @@ void VulkanRenderPass::build_impl() {
                 dep.dstAccessMask = static_cast<VkAccessFlags>(dstAccessFlags);
                 dep.dependencyFlags = 0;
                 // This currently works with attachments only -> dependency by region always works
-                drv::drv_assert(srcStages.hasAllStages_resolved(framebufferStages.stageFlags)
-                                && dstStages.hasAllStages_resolved(framebufferStages.stageFlags));
+                drv::drv_assert(framebufferStages.hasAllStages_resolved(srcStages.stageFlags)
+                                && framebufferStages.hasAllStages_resolved(dstStages.stageFlags));
                 dep.dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
                 dependencies.push_back(dep);
             }
@@ -170,9 +174,8 @@ void VulkanRenderPass::build_impl() {
                 continue;
             // First write must sync with everything else, so transitive dependencies are guaranteed
             drv::MemoryBarrier::AccessFlagBitType dstAccess =
-              drv::get_image_usage_accesses(subpasses[src].resources[i].imageUsages);
-            drv::PipelineStages dstStages =
-              drv::get_image_usage_stages(subpasses[src].resources[i].imageUsages);
+              drv::get_image_usage_accesses(attachmentUsages[src][i]);
+            drv::PipelineStages dstStages = drv::get_image_usage_stages(attachmentUsages[src][i]);
             if (drv::MemoryBarrier::get_write_bits(dstAccess) != 0)
                 lastAttachmentWrites[i] = src;
             attachmentResultStates[i].usableStages |= dstStages.stageFlags;
@@ -201,7 +204,7 @@ void VulkanRenderPass::build_impl() {
                     ? static_cast<VkAccessFlags>(drv::MemoryBarrier::get_write_bits(srcAccess))
                     : 0;
                 // This currently works with attachments only -> dependency by region always works
-                drv::drv_assert(dstStages.hasAllStages_resolved(framebufferStages.stageFlags));
+                drv::drv_assert(framebufferStages.hasAllStages_resolved(dstStages.stageFlags));
             }
         }
         if (externalInputDep.srcStageMask != 0 && externalInputDep.dstStageMask != 0)
@@ -221,9 +224,8 @@ void VulkanRenderPass::build_impl() {
             if (attachmentUsages[src][i] == 0 || src < lastAttachmentWrites[i])
                 continue;
             drv::MemoryBarrier::AccessFlagBitType srcAccess =
-              drv::get_image_usage_accesses(subpasses[src].resources[i].imageUsages);
-            drv::PipelineStages srcStages =
-              drv::get_image_usage_stages(subpasses[src].resources[i].imageUsages);
+              drv::get_image_usage_accesses(attachmentUsages[src][i]);
+            drv::PipelineStages srcStages = drv::get_image_usage_stages(attachmentUsages[src][i]);
             drv::PipelineStages usedStages = convertPipelineStages(srcStages.getEarliestStage());
             {
                 auto reader = STATS_CACHE_READER;
