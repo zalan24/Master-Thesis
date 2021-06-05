@@ -90,8 +90,8 @@ void VulkanCmdBufferRecorder::cmdBlitImage(drv::ImagePtr srcImage, drv::ImagePtr
       &dstCurrentLayout, false, drv::ImageLayout::UNDEFINED);
 
     vkCmdBlitImage(convertCommandBuffer(getCommandBuffer()), convertImage(srcImage)->image,
-                   static_cast<VkImageLayout>(srcCurrentLayout), convertImage(dstImage)->image,
-                   static_cast<VkImageLayout>(dstCurrentLayout), regionCount, regions,
+                   convertImageLayout(srcCurrentLayout), convertImage(dstImage)->image,
+                   convertImageLayout(dstCurrentLayout), regionCount, regions,
                    static_cast<VkFilter>(filter));
 }
 
