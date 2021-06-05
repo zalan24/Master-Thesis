@@ -39,7 +39,7 @@ void VulkanRenderPass::build_impl() {
     attachmentResultStates.clear();
     attachmentAssumedStates.resize(attachments.size());
     for (uint32_t i = 0; i < attachments.size(); ++i) {
-        attachmentAssumedStates[i].usableStages = drv::PipelineStages::TOP_OF_PIPE_BIT;
+        attachmentAssumedStates[i].usableStages = drv::PipelineStages::BOTTOM_OF_PIPE_BIT;
         attachmentAssumedStates[i].visible = 0;
     }
     globalAttachmentUsages = std::vector<drv::ImageResourceUsageFlag>(attachments.size(), 0);

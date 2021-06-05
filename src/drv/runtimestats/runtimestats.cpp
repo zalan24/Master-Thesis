@@ -15,13 +15,27 @@ RuntimeStats::RuntimeStats(const fs::path& _persistance, const fs::path& _gameEx
     if (!fs::exists(statsCacheFile.parent_path()))
         fs::create_directories(statsCacheFile.parent_path());
 #if ENABLE_RUNTIME_STATS_GENERATION
-    if (!rootPersistance.importFromFile(persistance))
-        LOG_F(WARNING, "Could not read persistance file: %s", persistance.string().c_str());
+    try {
+        if (!rootPersistance.importFromFile(persistance))
+            LOG_F(WARNING, "Could not read persistance file: %s", persistance.string().c_str());
+    }
+    catch (const std::runtime_error& e) {
+        LOG_F(ERROR, "Could not read persistance file: %s: %s", persistance.string().c_str(),
+              e.what());
+        rootPersistance = PersistanceNodeData();
+    }
 #endif
     if (!rootGameExports.importFromFile(gameExports))
         LOG_F(ERROR, "Could not read game exports file: %s", gameExports.string().c_str());
-    if (!rootStatsCache.importFromFile(statsCacheFile))
-        LOG_F(WARNING, "Could not read stats cache file: %s", statsCacheFile.string().c_str());
+    try {
+        if (!rootStatsCache.importFromFile(statsCacheFile))
+            LOG_F(WARNING, "Could not read stats cache file: %s", statsCacheFile.string().c_str());
+    }
+    catch (const std::runtime_error& e) {
+        LOG_F(ERROR, "Could not read stats cache file: %s: %s", statsCacheFile.string().c_str(),
+              e.what());
+        rootStatsCache = StatsCache();
+    }
     rootNode =
       std::make_unique<RuntimeStatNode>("root", nullptr, &rootGameExports, &rootStatsCache
       #if ENABLE_RUNTIME_STATS_GENERATION
@@ -146,5 +160,31 @@ PersistanceNodeData* RuntimeStats::getCurrentPersistance() {
     return getTop()->persistanceData;
 #else
     return nullptr;
+#endif
+}
+
+void RuntimeStats::initExecution() {
+#if ENABLE_RUNTIME_STATS_GENERATION
+    std::stack<PersistanceNodeData*> nodes;
+    nodes.push(getTop()->persistanceData);
+    while (!nodes.empty()) {
+        PersistanceNodeData* node = nodes.top();
+        nodes.pop();
+        if (node)
+            node->lastExecution.start();
+    }
+#endif
+}
+
+void RuntimeStats::stopExecution() {
+#if ENABLE_RUNTIME_STATS_GENERATION
+    std::stack<PersistanceNodeData*> nodes;
+    nodes.push(getTop()->persistanceData);
+    while (!nodes.empty()) {
+        PersistanceNodeData* node = nodes.top();
+        nodes.pop();
+        if (node)
+            node->lastExecution.stop();
+    }
 #endif
 }

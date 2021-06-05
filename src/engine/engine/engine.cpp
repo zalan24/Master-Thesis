@@ -607,6 +607,8 @@ void Engine::gameLoop() {
     std::thread readbackThread(&Engine::readbackLoop, this);
 
     try {
+        runtimeStats.initExecution();
+
         set_thread_name(&simulationThread, "simulation");
         set_thread_name(&beforeDrawThread, "beforeDraw");
         set_thread_name(&recordThread, "record");
@@ -623,6 +625,8 @@ void Engine::gameLoop() {
         recordThread.join();
         executeThread.join();
         readbackThread.join();
+
+        runtimeStats.stopExecution();
     }
     catch (const std::exception& e) {
         LOG_F(ERROR, "An exception happend during gameLoop. Waiting for threads to join: <%s>",

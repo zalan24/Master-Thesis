@@ -7,12 +7,41 @@
 
 #include <serializable.h>
 
+struct SingleExecutionData final : public IAutoSerializable<SingleExecutionData>
+{
+    REFLECTABLE
+    (
+        (std::string) startTime,
+        (std::string) endTime
+    )
+
+    void start();
+    void stop();
+};
+
 struct PersistanceNodeData final : public IAutoSerializable<PersistanceNodeData>
 {
     REFLECTABLE
     (
-        (std::unordered_map<std::string, std::unique_ptr<PersistanceNodeData>>) subnodes
+        (std::unordered_map<std::string, std::unique_ptr<PersistanceNodeData>>) subnodes,
+        (SingleExecutionData) lastExecution
     )
+
+    PersistanceNodeData() = default;
+    // PersistanceNodeData(const PersistanceNodeData& rhs)
+    //   : subnodes(rhs.subnodes), lastExecution(rhs.lastExecution) {}
+    // PersistanceNodeData& operator=(const PersistanceNodeData& rhs) {
+    //     subnodes = rhs.subnodes;
+    //     lastExecution = rhs.lastExecution;
+    //     return *this;
+    // }
+    PersistanceNodeData(PersistanceNodeData&& rhs)
+      : subnodes(std::move(rhs.subnodes)), lastExecution(std::move(rhs.lastExecution)) {}
+    PersistanceNodeData& operator=(PersistanceNodeData&& rhs) {
+        subnodes = std::move(rhs.subnodes);
+        lastExecution = std::move(rhs.lastExecution);
+        return *this;
+    }
 
     mutable std::shared_mutex mutex;
 

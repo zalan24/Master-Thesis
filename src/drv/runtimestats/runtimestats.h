@@ -86,6 +86,9 @@ class RuntimeStats final : public Singleton<RuntimeStats>
 
     const GameExportsNodeData* getCurrentGameExportData();
 
+    void initExecution();
+    void stopExecution();
+
  private:
     fs::path persistance;
     fs::path gameExports;

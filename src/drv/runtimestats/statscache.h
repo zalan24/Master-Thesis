@@ -22,6 +22,32 @@ struct StatsCache final : public IAutoSerializable<StatsCache>
         (std::vector<SimpleSubresStateStat>) renderpassExternalAttachmentInputs
     )
 
+    StatsCache() = default;
+    // StatsCache(const StatsCache& rhs)
+    //   : subnodes(rhs.subnodes),
+    //     cmdBufferImageStates(rhs.cmdBufferImageStates),
+    //     renderpassAttachmentPostUsage(rhs.renderpassAttachmentPostUsage),
+    //     renderpassExternalAttachmentInputs(rhs.renderpassExternalAttachmentInputs) {}
+    StatsCache(StatsCache&& rhs)
+      : subnodes(std::move(rhs.subnodes)),
+        cmdBufferImageStates(std::move(rhs.cmdBufferImageStates)),
+        renderpassAttachmentPostUsage(std::move(rhs.renderpassAttachmentPostUsage)),
+        renderpassExternalAttachmentInputs(std::move(rhs.renderpassExternalAttachmentInputs)) {}
+    // StatsCache& operator=(const StatsCache& rhs) {
+    //     subnodes = rhs.subnodes;
+    //     cmdBufferImageStates = rhs.cmdBufferImageStates;
+    //     renderpassAttachmentPostUsage = rhs.renderpassAttachmentPostUsage;
+    //     renderpassExternalAttachmentInputs = rhs.renderpassExternalAttachmentInputs;
+    //     return *this;
+    // }
+    StatsCache& operator=(StatsCache&& rhs) {
+        subnodes = std::move(rhs.subnodes);
+        cmdBufferImageStates = std::move(rhs.cmdBufferImageStates);
+        renderpassAttachmentPostUsage = std::move(rhs.renderpassAttachmentPostUsage);
+        renderpassExternalAttachmentInputs = std::move(rhs.renderpassExternalAttachmentInputs);
+        return *this;
+    }
+
     mutable std::shared_mutex mutex;
 
  protected:
