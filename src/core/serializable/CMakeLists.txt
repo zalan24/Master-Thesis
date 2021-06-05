@@ -12,4 +12,5 @@ target_link_libraries(SerializableLib PUBLIC
     json_external
     glm_external
     AnimationsTools
+    CoreDataStructures
 )

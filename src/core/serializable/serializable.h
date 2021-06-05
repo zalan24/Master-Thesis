@@ -15,6 +15,7 @@
 #include <glm/glm.hpp>
 
 #include <binary_io.h>
+#include <fixedarray.hpp>
 
 using json = nlohmann::json;
 namespace fs = std::filesystem;
@@ -36,6 +37,8 @@ class ISerializable
     static constexpr Marker MARKER_SET_END = 0x01e5;
     static constexpr Marker MARKER_OBJ = 0x1253;
     static constexpr Marker MARKER_OBJ_END = 0x3521;
+    static constexpr Marker MARKER_PTR = 0x12a3;
+    static constexpr Marker MARKER_PTR_END = 0x35a1;
 
     template <typename Integer, typename = std::enable_if_t<std::is_integral<Integer>::value>>
     static auto serialize(Integer value) {
@@ -98,6 +101,20 @@ class ISerializable
     std::string hash() const;
 
     template <typename T>
+    static json serialize(const std::unique_ptr<T>& data) {
+        return serialize(*data);
+    }
+
+    template <typename T>
+    static bool serializeBin(std::ostream& out, const std::unique_ptr<T>& data) {
+        if (!write_data(out, MARKER_PTR))
+            return false;
+        if (!serializeBin(out, *data))
+            return false;
+        return write_data(out, MARKER_PTR_END);
+    }
+
+    template <typename T>
     static json serialize(const std::vector<T>& data) {
         json out = json::array();
         for (const T& v : data)
@@ -114,6 +131,27 @@ class ISerializable
             return false;
         for (const T& v : data)
             if (!serializeBin(out, v))
+                return false;
+        return write_data(out, MARKER_VEC_END);
+    }
+
+    template <typename T, size_t N>
+    static json serialize(const FixedArray<T, N>& data) {
+        json out = json::array();
+        for (uint32_t i = 0; i < data.size(); ++i)
+            out.push_back(serialize(data[i]));
+        return out;
+    }
+
+    template <typename T, size_t N>
+    static bool serializeBin(std::ostream& out, const FixedArray<T, N>& data) {
+        if (!write_data(out, MARKER_VEC))
+            return false;
+        uint64_t size = data.size();
+        if (!write_data(out, size))
+            return false;
+        for (uint32_t i = 0; i < data.size(); ++i)
+            if (!serializeBin(out, data[i]))
                 return false;
         return write_data(out, MARKER_VEC_END);
     }
@@ -169,6 +207,18 @@ class ISerializable
     }
 
     template <typename K, typename V>
+    static json serialize(const std::map<K, V>& data) {
+        json out = json::array();
+        for (const auto& [k, v] : data) {
+            json pair = json::array();
+            pair.push_back(serialize(k));
+            pair.push_back(serialize(v));
+            out.push_back(pair);
+        }
+        return out;
+    }
+
+    template <typename K, typename V>
     static bool serializeBin(std::ostream& out, const std::map<K, V>& data) {
         if (!write_data(out, MARKER_MAP))
             return false;
@@ -192,6 +242,18 @@ class ISerializable
         json out = json::object();
         for (const auto& [k, v] : data)
             out[k] = serialize(v);
+        return out;
+    }
+
+    template <typename K, typename V>
+    static json serialize(const std::unordered_map<K, V>& data) {
+        json out = json::array();
+        for (const auto& [k, v] : data) {
+            json pair = json::array();
+            pair.push_back(serialize(k));
+            pair.push_back(serialize(v));
+            out.push_bock(pair);
+        }
         return out;
     }
 
@@ -365,6 +427,31 @@ class ISerializable
     }
 
     template <typename T>
+    static void serialize(const json& in, std::unique_ptr<T>& data) {
+        data = std::make_unique<T>();
+        return serialize(in, *data);
+    }
+
+    template <typename T>
+    static bool serializeBin(std::istream& in, std::unique_ptr<T>& data) {
+        Marker m;
+        if (!read_data(in, m))
+            return false;
+        if (m != MARKER_PTR)
+            throw std::runtime_error("Invalid binary file (ptr)");
+
+        data = std::make_unique<T>();
+        if (!serializeBin(in, *data))
+            return false;
+
+        if (!read_data(in, m))
+            return false;
+        if (m != MARKER_PTR_END)
+            throw std::runtime_error("Invalid binary file (ptr)");
+        return true;
+    }
+
+    template <typename T>
     static bool serializeBin(std::istream& in, std::vector<T>& data) {
         Marker m;
         if (!read_data(in, m))
@@ -381,6 +468,38 @@ class ISerializable
             if (!serializeBin(in, value))
                 return false;
             data.push_back(std::move(value));
+        }
+        if (!read_data(in, m))
+            return false;
+        if (m != MARKER_VEC_END)
+            throw std::runtime_error("Invalid binary file (vecEnd)");
+        return true;
+    }
+
+    template <typename T, size_t N>
+    static void serialize(const json& in, FixedArray<T, N>& data) {
+        if (!in.is_array())
+            throw std::runtime_error("Input json is not an array: " + in.dump());
+        data = FixedArray<T, N>(in.size());
+        for (size_t i = 0; i < in.size(); ++i)
+            serialize(in[i], data[i]);
+    }
+
+    template <typename T, size_t N>
+    static bool serializeBin(std::istream& in, FixedArray<T, N>& data) {
+        Marker m;
+        if (!read_data(in, m))
+            return false;
+        if (m != MARKER_VEC)
+            throw std::runtime_error("Invalid binary file (vec)");
+        uint64_t size;
+        if (!read_data(in, size))
+            return false;
+        data = FixedArray<T, N>(size);
+        for (uint64_t i = 0; i < size; ++i) {
+            T value;
+            if (!serializeBin(in, data[i]))
+                return false;
         }
         if (!read_data(in, m))
             return false;
@@ -470,6 +589,21 @@ class ISerializable
     }
 
     template <typename K, typename V>
+    static void serialize(const json& in, std::map<K, V>& data) {
+        if (!in.is_array())
+            throw std::runtime_error("Input json is not an array: " + in.dump());
+        data.clear();
+        for (auto& pair : in) {
+            if (!pair.is_array() || pair.size() != 2)
+                throw std::runtime_error("Input json is not a 2-sized array: " + pair.dump());
+            K key;
+            V value;
+            serialize(pair[0], key);
+            serialize(pair[1], data[key]);
+        }
+    }
+
+    template <typename K, typename V>
     static bool serializeBin(std::istream& in, std::map<K, V>& data) {
         Marker m;
         if (!read_data(in, m))
@@ -503,6 +637,21 @@ class ISerializable
         data.clear();
         for (auto& [key, value] : in.items())
             serialize(value, data[key]);
+    }
+
+    template <typename K, typename V>
+    static void serialize(const json& in, std::unordered_map<K, V>& data) {
+        if (!in.is_array())
+            throw std::runtime_error("Input json is not an array: " + in.dump());
+        data.clear();
+        for (auto& pair : in) {
+            if (!pair.is_array() || pair.size() != 2)
+                throw std::runtime_error("Input json is not a 2-sized array: " + pair.dump());
+            K key;
+            V value;
+            serialize(pair[0], key);
+            serialize(pair[1], data[key]);
+        }
     }
 
     template <typename K, typename V>

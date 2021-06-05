@@ -49,6 +49,17 @@ void VulkanRenderPass::build_impl() {
                 reader->renderpassExternalAttachmentInputs[i].get(attachmentAssumedStates[i]);
     }
 
+    for (uint32_t i = 0; i < attachments.size(); ++i) {
+        attachmentResultStates[i] = attachmentAssumedStates[i];
+        if (attachments[i].initialLayout != attachments[i].finalLayout) {
+            attachmentResultStates[i].visible = 0;
+            attachmentResultStates[i].usableStages = 0;
+            attachmentResultStates[i].dirtyMask = 0;
+            attachmentResultStates[i].ongoingReads = 0;
+            attachmentResultStates[i].ongoingWrites = 0;
+        }
+    }
+
     std::vector<std::vector<drv::ImageResourceUsageFlag>> attachmentUsages;
     attachmentUsages.resize(subpasses.size());
     for (uint32_t pass = 0; pass < subpasses.size(); ++pass) {
@@ -136,8 +147,8 @@ void VulkanRenderPass::build_impl() {
                 dep.dstAccessMask = static_cast<VkAccessFlags>(dstAccessFlags);
                 dep.dependencyFlags = 0;
                 // This currently works with attachments only -> dependency by region always works
-                drv::drv_assert(srcStages.hasAllStage_resolved(framebufferStages.stageFlags)
-                                && dstStages.hasAllStage_resolved(framebufferStages.stageFlags));
+                drv::drv_assert(srcStages.hasAllStages_resolved(framebufferStages.stageFlags)
+                                && dstStages.hasAllStages_resolved(framebufferStages.stageFlags));
                 dep.dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
                 dependencies.push_back(dep);
             }
@@ -160,21 +171,23 @@ void VulkanRenderPass::build_impl() {
             // First write must sync with everything else, so transitive dependencies are guaranteed
             drv::MemoryBarrier::AccessFlagBitType dstAccess =
               drv::get_image_usage_accesses(subpasses[src].resources[i].imageUsages);
+            drv::PipelineStages dstStages =
+              drv::get_image_usage_stages(subpasses[src].resources[i].imageUsages);
             if (drv::MemoryBarrier::get_write_bits(dstAccess) != 0)
                 lastAttachmentWrites[i] = src;
+            attachmentResultStates[i].usableStages |= dstStages.resolve();
             if (attachmentsWritten[i])
                 continue;
             drv::MemoryBarrier::AccessFlagBitType srcAccess = attachmentAssumedStates[i].dirtyMask;
             if (drv::MemoryBarrier::get_write_bits(srcAccess) != 0
                 || drv::MemoryBarrier::get_write_bits(dstAccess) != 0) {
-                attachmentsWritten[i] || = drv::MemoryBarrier::get_write_bits(dstAccess) != 0;
+                attachmentsWritten[i] =
+                  attachmentsWritten[i] || drv::MemoryBarrier::get_write_bits(dstAccess) != 0;
                 externalInputDep.srcStageMask =
                   convertPipelineStages(attachmentAssumedStates[i].ongoingWrites);
                 if (drv::MemoryBarrier::get_write_bits(dstAccess) != 0)
                     externalInputDep.srcStageMask |=
                       convertPipelineStages(attachmentAssumedStates[i].ongoingReads);
-                drv::PipelineStages dstStages =
-                  drv::get_image_usage_stages(subpasses[src].resources[i].imageUsages);
                 if ((attachmentAssumedStates[i].usableStages & dstStages.resolve())
                     != dstStages.resolve())
                     externalInputDep.srcStageMask |= convertPipelineStages(
@@ -188,22 +201,11 @@ void VulkanRenderPass::build_impl() {
                     ? static_cast<VkAccessFlags>(drv::MemoryBarrier::get_write_bits(srcAccess))
                     : 0;
                 // This currently works with attachments only -> dependency by region always works
-                drv::drv_assert(srcStages.hasAllStage_resolved(framebufferStages.stageFlags));
+                drv::drv_assert(dstStages.hasAllStages_resolved(framebufferStages.stageFlags));
             }
         }
         if (externalInputDep.srcStageMask != 0 && externalInputDep.dstStageMask != 0)
             dependencies.push_back(externalInputDep);
-    }
-
-    for (uint32_t i = 0; i < attachments.size(); ++i) {
-        attachmentResultStates[i] = attachmentAssumedStates[i];
-        if (attachments[i].initialLayout != attachments[i].finalLayout) {
-            attachmentResultStates[i].visible = 0;
-            attachmentResultStates[i].usableStages = ;
-            attachmentResultStates[i].dirtyMask = 0;
-            attachmentResultStates[i].ongoingReads = 0;
-            attachmentResultStates[i].ongoingWrites = 0;
-        }
     }
 
     for (uint32_t src = 0; src < subpasses.size(); ++src) {
@@ -225,12 +227,12 @@ void VulkanRenderPass::build_impl() {
             drv::PipelineStages usedStages = convertPipelineStages(srcStages.getEarliestStage());
             {
                 auto reader = STATS_CACHE_READER;
-                if (auto itr = reader->renderpassAttachmentPostUsage.find(texInfo.imageId);
-                    itr != reader->renderpassAttachmentPostUsage.end())
-                    usedStages = drv::PipelineStages(itr->second.get());
+                if (reader->renderpassAttachmentPostUsage.size() == attachments.size())
+                    usedStages =
+                      drv::PipelineStages(reader->renderpassAttachmentPostUsage[i].get());
             }
             if (drv::MemoryBarrier::get_read_bits(srcAccess) != 0) {
-                attachmentResultStates[i].ongoingReads.add(srcStages);
+                attachmentResultStates[i].ongoingReads |= srcStages.resolve();
                 // These must have been made available already, but they are not synced...
                 // attachmentResultStates[i].visible |= drv::MemoryBarrier::get_read_bits(srcAccess);
             }
@@ -245,7 +247,7 @@ void VulkanRenderPass::build_impl() {
                 externalOutputDep.srcStageMask |= convertPipelineStages(srcStages);
                 externalOutputDep.dstStageMask |= convertPipelineStages(usedStages);
                 // attachmentResultStates[i].ongoingWrites.add(srcStages); -- it's synced
-                attachmentResultStates[i].usableStages = usedStages;
+                attachmentResultStates[i].usableStages = usedStages.resolve();
             }
         }
         if (externalOutputDep.srcStageMask != 0 && externalOutputDep.dstStageMask != 0)

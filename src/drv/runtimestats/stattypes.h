@@ -15,8 +15,10 @@ struct PipelineStagesStat final : public IAutoSerializable<PipelineStagesStat>
     )
 
     void set(const drv::PipelineStages::FlagType& stages);
-    void append(const const drv::PipelineStages::FlagType& stages);
+    void append(const drv::PipelineStages::FlagType& stages);
     drv::PipelineStages::FlagType get() const;
+
+    PipelineStagesStat();
 };
 
 struct SimpleSubresStateStat final : public IAutoSerializable<SimpleSubresStateStat>
@@ -26,13 +28,15 @@ struct SimpleSubresStateStat final : public IAutoSerializable<SimpleSubresStateS
         (PipelineStagesStat) usableStages,
         (PipelineStagesStat) writes,
         (PipelineStagesStat) reads,
-        (std::array<float, drv::MemoryBarrier::get_total_access_count>()) dirtyMask,
-        (std::array<float, drv::MemoryBarrier::get_total_access_count>()) visible
+        (std::array<float, drv::MemoryBarrier::get_total_access_count()>) dirtyMask,
+        (std::array<float, drv::MemoryBarrier::get_total_access_count()>) visible
     )
 
     void set(const drv::PerSubresourceRangeTrackData& data);
     void append(const drv::PerSubresourceRangeTrackData& data);
     void get(drv::PerSubresourceRangeTrackData& data) const;
+
+    SimpleSubresStateStat();
 };
 
 struct SubresStateStat final : public IAutoSerializable<SubresStateStat>
@@ -40,13 +44,15 @@ struct SubresStateStat final : public IAutoSerializable<SubresStateStat>
     REFLECTABLE
     (
         (float) noFamily,
-        (FixedArray<float>) queueFamilies,
+        (FixedArray<float, 8>) queueFamilies,
         (SimpleSubresStateStat) simpleStats
     )
 
     void set(const drv::PerSubresourceRangeTrackData& data);
     void append(const drv::PerSubresourceRangeTrackData& data);
     void get(drv::PerSubresourceRangeTrackData& data) const;
+
+    SubresStateStat();
 };
 
 struct ImageSubresStateStat final : public IAutoSerializable<ImageSubresStateStat>
@@ -60,11 +66,15 @@ struct ImageSubresStateStat final : public IAutoSerializable<ImageSubresStateSta
     void set(const drv::ImageSubresourceTrackData& data);
     void append(const drv::ImageSubresourceTrackData& data);
     void get(drv::ImageSubresourceTrackData& data) const;
+
+    ImageSubresStateStat();
 };
 
 struct ImageStateStat final : public ISerializable
 {
     drv::ImagePerSubresourceData<ImageSubresStateStat, 1> subresources;
+
+    ImageStateStat();
 
     bool writeBin(std::ostream& out) const override;
     bool readBin(std::istream& in) override;

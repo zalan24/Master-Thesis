@@ -231,7 +231,7 @@ void VulkanCmdBufferRecorder::cmdUseAsAttachment(
               barrierSrcStages.add(
                 drv::PipelineStages(s.usableStages).getEarliestStage(getQueueSupport()));
           }
-          if (srcStage.resolve(getQueueSupport()) & (~drv::PipelineStages::TOP_OF_PIPE_BIT)
+          if (barrierSrcStages.resolve(getQueueSupport()) & (~drv::PipelineStages::TOP_OF_PIPE_BIT)
               || needSync) {
               // This only happens, if the runtime stats is wrong
               barrierDstStages.add(assumedState.usableStages);

@@ -370,6 +370,12 @@ constexpr ImageLayoutMask get_all_layouts_mask() {
 }
 
 constexpr uint32_t get_image_layout_count() {
+    uint32_t ret = 0;
+    constexpr ImageLayoutMask allMask = get_all_layouts_mask();
+    for (uint32_t i = 0; i < sizeof(drv::ImageLayoutMask) * 8; ++i)
+        if ((1 << i) & allMask)
+            ret++;
+    return ret;
 }
 
 struct Offset2D
