@@ -77,11 +77,8 @@ static ShaderObject::DynamicState get_dynamic_states(drv::Extent2D extent) {
     return ret;
 }
 
-void Game::record_cmd_buffer(const RecordData& data, drv::DrvCmdBufferRecorder* recorder) {
-    RUNTIME_STAT_SCOPE(gameRecord);
-
-    recorder->registerUndefinedImage(data.targetImage);
-    recorder->registerUndefinedImage(data.renderTarget);
+void Game::record_cmd_buffer_clear(const RecordData& data, drv::DrvCmdBufferRecorder* recorder) {
+    RUNTIME_STAT_SCOPE(gameRecord0);
 
     recorder->cmdImageBarrier({data.targetImage, drv::IMAGE_USAGE_TRANSFER_DESTINATION,
                                drv::ImageMemoryBarrier::AUTO_TRANSITION, true,
@@ -104,6 +101,11 @@ void Game::record_cmd_buffer(const RecordData& data, drv::DrvCmdBufferRecorder* 
     recorder->cmdImageBarrier({data.renderTarget, drv::IMAGE_USAGE_COLOR_OUTPUT_WRITE,
                                drv::ImageLayout::COLOR_ATTACHMENT_OPTIMAL, false,
                                drv::get_queue_family(data.device, data.renderQueue)});
+}
+
+void Game::record_cmd_buffer_render(const RecordData& data, drv::DrvCmdBufferRecorder* recorder) {
+    RUNTIME_STAT_SCOPE(gameRecord1);
+
     drv::ClearValue clearValues[2];
     clearValues[data.swapchainColorAttachment].type = drv::ClearValue::COLOR;
     clearValues[data.colorTagretColorAttachment].type = drv::ClearValue::COLOR;
@@ -145,8 +147,11 @@ void Game::record_cmd_buffer(const RecordData& data, drv::DrvCmdBufferRecorder* 
     testPass.draw(3, 1, 0, 0);
 
     testPass.end();
+}
 
-    // /// --- oroginal clear ---
+void Game::record_cmd_buffer_blit(const RecordData& data, drv::DrvCmdBufferRecorder* recorder) {
+    RUNTIME_STAT_SCOPE(gameRecord2);
+
     recorder->cmdImageBarrier({data.renderTarget, drv::IMAGE_USAGE_TRANSFER_SOURCE,
                                drv::ImageMemoryBarrier::AUTO_TRANSITION});
 
@@ -215,9 +220,6 @@ Engine::AcquiredImageData Game::record(FrameId frameId) {
         //       getDevice(), testRenderPass->createFramebuffer(testImageInfo));
         testRenderPass->attach(attachments[swapChainData.imageIndex].data());
 
-        OneTimeCmdBuffer<RecordData> cmdBuffer("testcmdbuffer1", getPhysicalDevice(), getDevice(),
-                                               queues.renderQueue.handle, getCommandBufferBank(),
-                                               getGarbageSystem(), record_cmd_buffer);
         RecordData recordData;
         recordData.device = getDevice();
         recordData.targetImage = swapChainData.image;
@@ -239,14 +241,41 @@ Engine::AcquiredImageData Game::record(FrameId frameId) {
         recordData.colorSubpass = colorSubpass;
         recordData.swapchainSubpass = swapchainSubpass;
         recordData.shaderGlobalDesc = &shaderGlobalDesc;
-        ExecutionPackage::CommandBufferPackage submission = make_submission_package(
-          queues.renderQueue.handle, cmdBuffer.use(std::move(recordData)), getGarbageSystem(),
-          ResourceStateValidationMode::IGNORE_FIRST_SUBMISSION);
-        submission.signalSemaphores.push_back(swapChainData.renderFinishedSemaphore);
-        submission.waitSemaphores.push_back(
-          {swapChainData.imageAvailableSemaphore,
-           drv::IMAGE_USAGE_COLOR_OUTPUT_WRITE | drv::IMAGE_USAGE_TRANSFER_DESTINATION});
-        testDrawHandle.submit(queues.renderQueue.id, std::move(submission));
+
+        {
+            OneTimeCmdBuffer<RecordData> cmdBuffer(
+              "testcmdbuffer_clear", getPhysicalDevice(), getDevice(), queues.renderQueue.handle,
+              getCommandBufferBank(), getGarbageSystem(), record_cmd_buffer_clear);
+            ExecutionPackage::CommandBufferPackage submission = make_submission_package(
+              queues.renderQueue.handle, cmdBuffer.use(std::move(recordData)), getGarbageSystem(),
+              ResourceStateValidationMode::IGNORE_FIRST_SUBMISSION);
+            submission.waitSemaphores.push_back(
+              {swapChainData.imageAvailableSemaphore,
+               drv::IMAGE_USAGE_COLOR_OUTPUT_WRITE | drv::IMAGE_USAGE_TRANSFER_DESTINATION});
+            testDrawHandle.submit(queues.renderQueue.id, std::move(submission));
+        }
+        {
+            OneTimeCmdBuffer<RecordData> cmdBuffer(
+              "testcmdbuffer_render", getPhysicalDevice(), getDevice(), queues.renderQueue.handle,
+              getCommandBufferBank(), getGarbageSystem(), record_cmd_buffer_render);
+            ExecutionPackage::CommandBufferPackage submission = make_submission_package(
+              queues.renderQueue.handle, cmdBuffer.use(std::move(recordData)), getGarbageSystem(),
+              ResourceStateValidationMode::IGNORE_FIRST_SUBMISSION);
+            // submission.waitSemaphores.push_back(
+            //   {swapChainData.imageAvailableSemaphore,
+            //    drv::IMAGE_USAGE_COLOR_OUTPUT_WRITE | drv::IMAGE_USAGE_TRANSFER_DESTINATION});
+            testDrawHandle.submit(queues.renderQueue.id, std::move(submission));
+        }
+        {
+            OneTimeCmdBuffer<RecordData> cmdBuffer(
+              "testcmdbuffer_blit", getPhysicalDevice(), getDevice(), queues.renderQueue.handle,
+              getCommandBufferBank(), getGarbageSystem(), record_cmd_buffer_blit);
+            ExecutionPackage::CommandBufferPackage submission = make_submission_package(
+              queues.renderQueue.handle, cmdBuffer.use(std::move(recordData)), getGarbageSystem(),
+              ResourceStateValidationMode::IGNORE_FIRST_SUBMISSION);
+            submission.signalSemaphores.push_back(swapChainData.renderFinishedSemaphore);
+            testDrawHandle.submit(queues.renderQueue.id, std::move(submission));
+        }
         //   acquireCommandRecorder(testDrawHandle, frameId, queues.renderQueue.id);
         return swapChainData;
     }

@@ -89,7 +89,11 @@ class Game final : public Game3D
         bool operator!=(const RecordData& rhs) const { return !(*this == rhs); }
     };
 
-    static void record_cmd_buffer(const RecordData& data, drv::DrvCmdBufferRecorder* recorder);
+    static void record_cmd_buffer_clear(const RecordData& data,
+                                        drv::DrvCmdBufferRecorder* recorder);
+    static void record_cmd_buffer_render(const RecordData& data,
+                                         drv::DrvCmdBufferRecorder* recorder);
+    static void record_cmd_buffer_blit(const RecordData& data, drv::DrvCmdBufferRecorder* recorder);
 
     //  void recreateViews(uint32_t imageCount, const drv::ImagePtr* images);
     //  void initShader(drv::Extent2D extent);
