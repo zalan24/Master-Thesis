@@ -173,6 +173,15 @@ struct PipelineStages
         static_assert(STAGES_END == HOST_BIT + 1, "Update this function");
         return 15;
     }
+    static constexpr PipelineStageFlagBits get_stage(uint32_t index) {
+        return static_cast<PipelineStageFlagBits>(1 << index);
+    }
+    static constexpr uint32_t get_stage_index(PipelineStageFlagBits stage) {
+        for (uint32_t i = 0; i < get_total_stage_count(); ++i)
+            if (get_stage(i) == stage)
+                return i;
+        throw std::runtime_error("Unkown stage: " + std::to_string(stage));
+    }
     PipelineStageFlagBits getEarliestStage() const;
 };
 
@@ -407,14 +416,6 @@ struct CopyDescriptorSet
     uint32_t dstArrayElement;
     uint32_t descriptorCount;
 };
-
-// struct ShaderInfo
-// {
-//     ShaderCreateInfoPtr createInfo;
-//     ShaderStage::FlagType stage;
-//     unsigned int numDescriptorSetLayouts;
-//     DescriptorSetLayoutCreateInfo* descriptorSetLayoutInfos;
-// };
 
 struct PipelineLayoutCreateInfo
 {

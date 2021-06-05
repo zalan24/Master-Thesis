@@ -9,16 +9,65 @@
 
 struct PipelineStagesStat final : public IAutoSerializable<PipelineStagesStat>
 {
+    static constexpr float EXP_AVG = 0.1f;
+    static constexpr float THRESHOLD = 0.01f;
+
+    enum ApproximationMode
+    {
+        TEND_TO_FALSE,
+        TEND_TO_TRUE
+    };
+
     REFLECTABLE
     (
         (std::array<float, drv::PipelineStages::get_total_stage_count()>) stages
     )
 
-    void set(const drv::PipelineStages::FlagType& stages);
-    void append(const drv::PipelineStages::FlagType& stages);
-    drv::PipelineStages::FlagType get() const;
+    void set(const drv::PipelineStages& stages);
+    void append(const drv::PipelineStages& stages);
+    drv::PipelineStages get(ApproximationMode mode) const;
 
     PipelineStagesStat();
+};
+
+struct MemoryAccessStat final : public IAutoSerializable<MemoryAccessStat>
+{
+    static constexpr float EXP_AVG = 0.1f;
+    static constexpr float THRESHOLD = 0.01f;
+
+    enum ApproximationMode
+    {
+        TEND_TO_FALSE,
+        TEND_TO_TRUE
+    };
+
+    REFLECTABLE
+    (
+        (std::array<float, drv::MemoryBarrier::get_total_access_count()>) mask
+    )
+
+    void set(const drv::MemoryBarrier::AccessFlagBitType& mask);
+    void append(const drv::MemoryBarrier::AccessFlagBitType& stages);
+    drv::MemoryBarrier::AccessFlagBitType get(ApproximationMode mode) const;
+
+    MemoryAccessStat();
+};
+
+struct ImageLayoutStat final : public IAutoSerializable<ImageLayoutStat>
+{
+    static constexpr float EXP_AVG = 0.1f;
+    static constexpr float THRESHOLD = 0.01f;
+
+    REFLECTABLE
+    (
+        (std::array<float, drv::get_image_layout_count()>) layouts
+    )
+
+    void set(const drv::ImageLayout layout);
+    void append(const drv::ImageLayout layout);
+    drv::ImageLayout get() const;
+
+    ImageLayoutStat();
 };
 
 struct SimpleSubresStateStat final : public IAutoSerializable<SimpleSubresStateStat>
@@ -28,19 +77,20 @@ struct SimpleSubresStateStat final : public IAutoSerializable<SimpleSubresStateS
         (PipelineStagesStat) usableStages,
         (PipelineStagesStat) writes,
         (PipelineStagesStat) reads,
-        (std::array<float, drv::MemoryBarrier::get_total_access_count()>) dirtyMask,
-        (std::array<float, drv::MemoryBarrier::get_total_access_count()>) visible
+        (MemoryAccessStat) dirtyMask,
+        (MemoryAccessStat) visible
     )
 
     void set(const drv::PerSubresourceRangeTrackData& data);
     void append(const drv::PerSubresourceRangeTrackData& data);
+    // Try to assume a clean state by default. It's not possible for usableStages and visible mask
     void get(drv::PerSubresourceRangeTrackData& data) const;
-
-    SimpleSubresStateStat();
 };
 
 struct SubresStateStat final : public IAutoSerializable<SubresStateStat>
 {
+    static constexpr float EXP_AVG = 0.1f;
+
     REFLECTABLE
     (
         (float) noFamily,
@@ -53,6 +103,9 @@ struct SubresStateStat final : public IAutoSerializable<SubresStateStat>
     void get(drv::PerSubresourceRangeTrackData& data) const;
 
     SubresStateStat();
+
+    private:
+    void resizeFamilies(size_t size);
 };
 
 struct ImageSubresStateStat final : public IAutoSerializable<ImageSubresStateStat>
@@ -60,21 +113,17 @@ struct ImageSubresStateStat final : public IAutoSerializable<ImageSubresStateSta
     REFLECTABLE
     (
         (SubresStateStat) subres,
-        (std::array<float, drv::get_image_layout_count()>) layout
+        (ImageLayoutStat) layout
     )
 
     void set(const drv::ImageSubresourceTrackData& data);
     void append(const drv::ImageSubresourceTrackData& data);
     void get(drv::ImageSubresourceTrackData& data) const;
-
-    ImageSubresStateStat();
 };
 
 struct ImageStateStat final : public ISerializable
 {
     drv::ImagePerSubresourceData<ImageSubresStateStat, 1> subresources;
-
-    ImageStateStat();
 
     bool writeBin(std::ostream& out) const override;
     bool readBin(std::istream& in) override;
@@ -82,5 +131,5 @@ struct ImageStateStat final : public ISerializable
     void writeJson(json& out) const override;
     void readJson(const json& in) override;
 
-    bool isCompatible(drv::ImagePtr image) const;
+    bool isCompatible(const drv::TextureInfo& info) const;
 };

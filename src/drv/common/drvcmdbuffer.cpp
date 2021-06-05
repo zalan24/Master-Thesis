@@ -63,7 +63,7 @@ void DrvCmdBufferRecorder::autoRegisterImage(ImagePtr image, uint32_t layer, uin
         auto reader = STATS_CACHE_READER;
         if (auto imageItr = reader->cmdBufferImageStates.find(*texInfo.imageId);
             imageItr != reader->cmdBufferImageStates.end()
-            && imageItr->second.isCompatible(image)) {
+            && imageItr->second.isCompatible(texInfo)) {
             const ImageSubresStateStat& subRes =
               imageItr->second.subresources.get(layer, mip, aspect);
             subRes.get(s);

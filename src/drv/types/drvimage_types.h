@@ -377,6 +377,16 @@ constexpr uint32_t get_image_layout_count() {
             ret++;
     return ret;
 }
+constexpr ImageLayout get_image_layout(uint32_t index) {
+    return static_cast<ImageLayout>(1 << index);
+}
+
+constexpr uint32_t get_image_layout_index(ImageLayout layout) {
+    for (uint32_t i = 0; i < get_image_layout_count(); ++i)
+        if (get_image_layout(i) == layout)
+            return i;
+    return get_image_layout_count();
+}
 
 struct Offset2D
 {

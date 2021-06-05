@@ -228,8 +228,9 @@ void VulkanRenderPass::build_impl() {
             {
                 auto reader = STATS_CACHE_READER;
                 if (reader->renderpassAttachmentPostUsage.size() == attachments.size())
-                    usedStages =
-                      drv::PipelineStages(reader->renderpassAttachmentPostUsage[i].get());
+                    usedStages = drv::PipelineStages(reader->renderpassAttachmentPostUsage[i].get(
+                      PipelineStagesStat::TEND_TO_FALSE));
+                usedStages.add(drv::PipelineStages::TOP_OF_PIPE_BIT);
             }
             if (drv::MemoryBarrier::get_read_bits(srcAccess) != 0) {
                 attachmentResultStates[i].ongoingReads |= srcStages.stageFlags;
