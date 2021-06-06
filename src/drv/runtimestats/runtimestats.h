@@ -89,8 +89,8 @@ class RuntimeStatNode
 class RuntimeStats final : public Singleton<RuntimeStats>
 {
  public:
-    explicit RuntimeStats(const fs::path& persistance, const fs::path& gameExports = {},
-                          const fs::path& statsCacheFile = {});
+    explicit RuntimeStats(bool loadFiles, const fs::path& persistance,
+                          const fs::path& gameExports = {}, const fs::path& statsCacheFile = {});
 
     RuntimeStats(const RuntimeStats&) = delete;
     RuntimeStats& operator=(const RuntimeStats&) = delete;
@@ -106,6 +106,7 @@ class RuntimeStats final : public Singleton<RuntimeStats>
     void incrementFrame();
     void incrementInputSample();
     void incrementSubmissionCount();
+    void incrementAllowedSubmissionCorrections();
     void corrigateSubmission(const char* submissionName);
     void corrigateAttachment(const char* renderpass, const char* submission, uint32_t attachmentId);
 

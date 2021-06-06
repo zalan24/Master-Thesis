@@ -158,8 +158,8 @@ Engine::Engine(int argc, char* argv[], const EngineConfig& cfg,
     // maxFramesInFlight + 1 for readback stage
     frameGraph(physicalDevice, device, &garbageSystem, &eventPool, trackingConfig,
                config.maxFramesInExecutionQueue, config.maxFramesInFlight + 1),
-    runtimeStats(args.runtimeStatsPersistanceBin, args.runtimeStatsGameExportsBin,
-                 args.runtimeStatsCacheBin) {
+    runtimeStats(!args.clearRuntimeStats, args.runtimeStatsPersistanceBin,
+                 args.runtimeStatsGameExportsBin, args.runtimeStatsCacheBin) {
     json configJson = ISerializable::serialize(config);
     std::stringstream ss;
     ss << configJson;
@@ -495,7 +495,11 @@ bool Engine::execute(ExecutionPackage&& package) {
                   cmdBuffer.cmdBufferData.imageStates.data())) {
                 if (cmdBuffer.cmdBufferData.stateValidation) {
                     LOG_F(ERROR, "Some resources are not in the expected state");
+                    runtimeStats.corrigateSubmission(cmdBuffer.cmdBufferData.getName());
                     BREAK_POINT;
+                }
+                else {
+                    runtimeStats.incrementAllowedSubmissionCorrections();
                 }
                 OneTimeCmdBuffer<const drv::StateCorrectionData*> correctionCmdBuffer(
                   "correctionCmdBuffer", physicalDevice, device, cmdBuffer.queue,
@@ -507,7 +511,6 @@ bool Engine::execute(ExecutionPackage&& package) {
             }
             if (!drv::is_null_ptr(cmdBuffer.cmdBufferData.cmdBufferPtr)) {
                 commandBuffers[numCommandBuffers++] = cmdBuffer.cmdBufferData.cmdBufferPtr;
-                runtimeStats.corrigateSubmission(cmdBuffer.cmdBufferData.getName());
             }
         }
         executionInfo.numCommandBuffers = numCommandBuffers;

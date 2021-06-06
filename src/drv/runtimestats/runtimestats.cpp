@@ -5,8 +5,8 @@
 #include <binary_io.h>
 #include <drverror.h>
 
-RuntimeStats::RuntimeStats(const fs::path& _persistance, const fs::path& _gameExports,
-                           const fs::path& _statsCacheFile)
+RuntimeStats::RuntimeStats(bool loadFiles, const fs::path& _persistance,
+                           const fs::path& _gameExports, const fs::path& _statsCacheFile)
   : persistance(_persistance), gameExports(_gameExports), statsCacheFile(_statsCacheFile) {
     if (!fs::exists(persistance.parent_path()))
         fs::create_directories(persistance.parent_path());
@@ -14,27 +14,30 @@ RuntimeStats::RuntimeStats(const fs::path& _persistance, const fs::path& _gameEx
         fs::create_directories(gameExports.parent_path());
     if (!statsCacheFile.empty() && !fs::exists(statsCacheFile.parent_path()))
         fs::create_directories(statsCacheFile.parent_path());
+    if (loadFiles) {
 #if ENABLE_RUNTIME_STATS_GENERATION
-    try {
-        if (!rootPersistance.importFromFile(persistance))
-            LOG_F(WARNING, "Could not read persistance file: %s", persistance.string().c_str());
-    }
-    catch (const std::runtime_error& e) {
-        LOG_F(ERROR, "Could not read persistance file: %s: %s", persistance.string().c_str(),
-              e.what());
-        rootPersistance = PersistanceNodeData();
-    }
+        try {
+            if (!rootPersistance.importFromFile(persistance))
+                LOG_F(WARNING, "Could not read persistance file: %s", persistance.string().c_str());
+        }
+        catch (const std::runtime_error& e) {
+            LOG_F(ERROR, "Could not read persistance file: %s: %s", persistance.string().c_str(),
+                  e.what());
+            rootPersistance = PersistanceNodeData();
+        }
 #endif
-    if (!gameExports.empty() && !rootGameExports.importFromFile(gameExports))
-        LOG_F(ERROR, "Could not read game exports file: %s", gameExports.string().c_str());
-    try {
-        if (!statsCacheFile.empty() && !rootStatsCache.importFromFile(statsCacheFile))
-            LOG_F(WARNING, "Could not read stats cache file: %s", statsCacheFile.string().c_str());
-    }
-    catch (const std::runtime_error& e) {
-        LOG_F(ERROR, "Could not read stats cache file: %s: %s", statsCacheFile.string().c_str(),
-              e.what());
-        rootStatsCache = StatsCache();
+        if (!gameExports.empty() && !rootGameExports.importFromFile(gameExports))
+            LOG_F(ERROR, "Could not read game exports file: %s", gameExports.string().c_str());
+        try {
+            if (!statsCacheFile.empty() && !rootStatsCache.importFromFile(statsCacheFile))
+                LOG_F(WARNING, "Could not read stats cache file: %s",
+                      statsCacheFile.string().c_str());
+        }
+        catch (const std::runtime_error& e) {
+            LOG_F(ERROR, "Could not read stats cache file: %s: %s", statsCacheFile.string().c_str(),
+                  e.what());
+            rootStatsCache = StatsCache();
+        }
     }
     rootNode =
       std::make_unique<RuntimeStatNode>("root", nullptr, &rootGameExports, &rootStatsCache
@@ -214,6 +217,13 @@ void RuntimeStats::incrementSubmissionCount() {
 #endif
 }
 
+void RuntimeStats::incrementAllowedSubmissionCorrections() {
+#if ENABLE_RUNTIME_STATS_GENERATION
+    RuntimeStatsWriter writer(this);
+    writer->lastExecution.allowedSubmissionCorrections++;
+#endif
+}
+
 void RuntimeStats::corrigateSubmission(const char* submissionName) {
 #if ENABLE_RUNTIME_STATS_GENERATION
     RuntimeStatsWriter writer(this);
@@ -242,6 +252,7 @@ void RuntimeStats::exportReport(const std::string& filename) const {
     uint32_t frameCount = 0;
     uint32_t sampleInputCount = 0;
     uint32_t submissionCount = 0;
+    uint32_t allowedSubmissionCorrections = 0;
 
     std::stack<PersistanceNodeData*> nodes;
     nodes.push(rootNode.get()->getPersistance());
@@ -252,6 +263,8 @@ void RuntimeStats::exportReport(const std::string& filename) const {
             frameCount = std::max(frameCount, node->lastExecution.frameCount);
             sampleInputCount = std::max(sampleInputCount, node->lastExecution.sampleInputCount);
             submissionCount = std::max(submissionCount, node->lastExecution.submissionCount);
+            allowedSubmissionCorrections = std::max(
+              allowedSubmissionCorrections, node->lastExecution.allowedSubmissionCorrections);
             for (const auto& [name, ptr] : node->subnodes)
                 nodes.push(ptr.get());
         }
@@ -260,8 +273,10 @@ void RuntimeStats::exportReport(const std::string& filename) const {
     out << "Rendered frames:        " << frameCount << std::endl;
     out << "OS input queue sampled: " << sampleInputCount << " ("
         << float(sampleInputCount) / float(frameCount) << " per frame)" << std::endl;
-    out << "Number of submissions:  " << submissionCount << "("
+    out << "Number of submissions:  " << submissionCount << " ("
         << float(submissionCount) / float(frameCount) << " per frame)" << std::endl;
+    out << "Allowed corrections:    " << allowedSubmissionCorrections << " ("
+        << float(allowedSubmissionCorrections) / float(frameCount) << " per frame)" << std::endl;
 
     nodes.push(rootNode.get()->getPersistance());
     while (!nodes.empty()) {

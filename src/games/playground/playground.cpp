@@ -80,6 +80,8 @@ int main(int argc, char* argv[]) {
         app.add_flag("-r,--renderdoc", args.renderdocEnabled, "Enable renderdoc layer");
         app.add_flag("-g,--gfx", args.gfxCaptureEnabled, "Enable gfx capture layer");
         app.add_flag("--api_dump", args.apiDumpEnabled, "Enable vulkan api dump");
+        app.add_flag("--no_persistance", args.clearRuntimeStats,
+                     "Don't load any previously exported runtime stats");
         app.add_option("--runtime_stats_persistance", args.runtimeStatsPersistanceBin,
                        "Binary file for storing runtime statistics persistance");
         app.add_option("--runtime_stats_game_exports", args.runtimeStatsGameExportsBin,

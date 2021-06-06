@@ -21,6 +21,7 @@ void SingleExecutionData::start() {
     frameCount = 0;
     sampleInputCount = 0;
     submissionCount = 0;
+    allowedSubmissionCorrections = 0;
     submissionCorrections.clear();
     attachmentCorrections.clear();
 }
