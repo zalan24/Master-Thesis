@@ -164,11 +164,12 @@ drv::PipelineStages VulkanCmdBufferRecorder::cmd_image_barrier(
                            barrier.discardCurrentContent, barrier.resultLayout);
 }
 
-void VulkanCmdBufferRecorder::cmdUseAsAttachment(
+bool VulkanCmdBufferRecorder::cmdUseAsAttachment(
   drv::ImagePtr image, const drv::ImageSubresourceRange& subresourceRange,
   drv::ImageLayout initialLayout, drv::ImageLayout resultLayout, drv::ImageResourceUsageFlag usages,
   const drv::PerSubresourceRangeTrackData& assumedState,
   const drv::PerSubresourceRangeTrackData& resultState) {
+    bool ret = true;
     drv::TextureInfo texInfo = driver->get_texture_info(image);
     drv::PipelineStages stages = drv::get_image_usage_stages(usages);
     drv::MemoryBarrier::AccessFlagBitType accessMask = drv::get_image_usage_accesses(usages);
@@ -230,6 +231,7 @@ void VulkanCmdBufferRecorder::cmdUseAsAttachment(
               barrierSrcStages.add(drv::PipelineStages(s.usableStages).getEarliestStage());
           }
           if (barrierSrcStages.stageFlags & (~drv::PipelineStages::TOP_OF_PIPE_BIT) || needSync) {
+              ret = false;
               // This only happens, if the runtime stats is wrong
               barrierDstStages.add(assumedState.usableStages);
               if (assumedState.usableStages == 0)
@@ -269,6 +271,7 @@ void VulkanCmdBufferRecorder::cmdUseAsAttachment(
           if (drv::MemoryBarrier::get_write_bits(accessMask) != 0 || initialLayout != resultLayout)
               usage.preserveUsableStages = 0;
       });
+    return ret;
 }
 
 void VulkanCmdBufferRecorder::corrigate(const drv::StateCorrectionData& data) {

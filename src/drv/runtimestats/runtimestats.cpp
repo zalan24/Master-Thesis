@@ -187,6 +187,46 @@ void RuntimeStats::stopExecution() {
 #endif
 }
 
+void RuntimeStats::incrementFrame() {
+#if ENABLE_RUNTIME_STATS_GENERATION
+    RuntimeStatsWriter writer(this);
+    writer->lastExecution.frameCount++;
+#endif
+}
+
+void RuntimeStats::incrementInputSample() {
+#if ENABLE_RUNTIME_STATS_GENERATION
+    RuntimeStatsWriter writer(this);
+    writer->lastExecution.sampleInputCount++;
+#endif
+}
+
+void RuntimeStats::incrementSubmissionCount() {
+#if ENABLE_RUNTIME_STATS_GENERATION
+    RuntimeStatsWriter writer(this);
+    writer->lastExecution.submissionCount++;
+#endif
+}
+
+void RuntimeStats::corrigateSubmission(const char* submissionName) {
+#if ENABLE_RUNTIME_STATS_GENERATION
+    RuntimeStatsWriter writer(this);
+    writer->lastExecution.submissionCorrections[std::string(submissionName)]++;
+#endif
+}
+
+void RuntimeStats::corrigateAttachment(const char* renderpass, const char* submission,
+                                       uint32_t attachmentId) {
+#if ENABLE_RUNTIME_STATS_GENERATION
+    RuntimeStatsWriter writer(this);
+    RenderpassCorrectionData data;
+    data.renderpass = renderpass;
+    data.submission = submission;
+    data.attachmentId = attachmentId;
+    writer->lastExecution.attachmentCorrections.insert(std::move(data));
+#endif
+}
+
 void RuntimeStats::exportReport(const std::string& filename) const {
     // TODO
 }

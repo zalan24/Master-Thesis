@@ -247,6 +247,27 @@ class Garbage
     template <typename T>
     using Stack = std::stack<T, Deque<T>>;
 
+    class String
+    {
+     public:
+        explicit String(Garbage* garbage) : data(garbage->getAllocator<char>()) {}
+        String(Allocator<char> allocator) : data(std::move(allocator)) {}
+
+        void set(const std::string& str) {
+            data.resize(str.length());
+            memcpy(data.data(), str.data(), str.length());
+        }
+        void set(const char* str) {
+            data.resize(strlen(str));
+            memcpy(data.data(), str, data.size());
+        }
+
+        const char* get() const { return data.size() > 0 ? data.data() : nullptr; }
+
+     private:
+        Vector<char> data;
+    };
+
  private:
     class TrashPtr
     {

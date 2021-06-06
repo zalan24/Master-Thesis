@@ -18,20 +18,6 @@
 
 #include "execution_queue.h"
 
-// REFLECT_STRUCT_BEGIN(EngineConfig)
-// REFLECT_STRUCT_MEMBER(screenWidth)
-// REFLECT_STRUCT_MEMBER(screenHeight)
-// REFLECT_STRUCT_MEMBER(imagesInSwapchain)
-// REFLECT_STRUCT_MEMBER(maxFramesInExecutionQueue)
-// REFLECT_STRUCT_MEMBER(maxFramesInFlight)
-// REFLECT_STRUCT_MEMBER(title)
-// REFLECT_STRUCT_MEMBER(driver)
-// REFLECT_STRUCT_MEMBER(inputBufferSize)
-// REFLECT_STRUCT_MEMBER(stackMemorySizeKb)
-// REFLECT_STRUCT_MEMBER(frameMemorySizeKb)
-// REFLECT_STRUCT_MEMBER(logs)
-// REFLECT_STRUCT_END()
-
 static void callback(const drv::CallbackData* data) {
     switch (data->type) {
         case drv::CallbackData::Type::VERBOSE:
@@ -256,6 +242,7 @@ void Engine::simulationLoop() {
         }
         else
             break;
+        runtimeStats.incrementFrame();
         if (!sampleInput(simulationFrame)) {
             assert(frameGraph.isStopped());
             break;
@@ -459,6 +446,7 @@ bool Engine::execute(ExecutionPackage&& package) {
         functor->call();
     }
     else if (std::holds_alternative<ExecutionPackage::CommandBufferPackage>(package.package)) {
+        runtimeStats.incrementSubmissionCount();
         drv::CommandBufferPtr commandBuffers[2];
         uint32_t numCommandBuffers = 0;
 
@@ -516,8 +504,10 @@ bool Engine::execute(ExecutionPackage&& package) {
                 commandBuffers[numCommandBuffers++] =
                   correctionCmdBuffer.use(&correctionData).cmdBufferPtr;
             }
-            if (!drv::is_null_ptr(cmdBuffer.cmdBufferData.cmdBufferPtr))
+            if (!drv::is_null_ptr(cmdBuffer.cmdBufferData.cmdBufferPtr)) {
                 commandBuffers[numCommandBuffers++] = cmdBuffer.cmdBufferData.cmdBufferPtr;
+                runtimeStats.corrigateSubmission(cmdBuffer.cmdBufferData.getName());
+            }
         }
         executionInfo.numCommandBuffers = numCommandBuffers;
         executionInfo.commandBuffers = commandBuffers;
@@ -656,6 +646,7 @@ void Engine::gameLoop() {
 void Engine::mainLoopKernel() {
     std::unique_lock<std::mutex> lock(mainKernelMutex);
     mainKernelCv.wait_for(lock, std::chrono::milliseconds(4));
+    runtimeStats.incrementInputSample();
     static_cast<IWindow*>(window)->pollEvents();
 
     if (garbageSystem.getStartedFrame() != INVALID_FRAME) {

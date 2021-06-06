@@ -7,12 +7,34 @@
 
 #include <serializable.h>
 
+struct RenderpassCorrectionData final : public IAutoSerializable<RenderpassCorrectionData>
+{
+    REFLECTABLE
+    (
+        (std::string) renderpass,
+        (std::string) submission,
+        (uint32_t) attachmentId
+    )
+    bool operator<(const RenderpassCorrectionData& rhs) const {
+        if (attachmentId != rhs.attachmentId)
+            return attachmentId < rhs.attachmentId;
+        if (renderpass != rhs.renderpass)
+            return renderpass < rhs.renderpass;
+        return submission < rhs.submission;
+    }
+};
+
 struct SingleExecutionData final : public IAutoSerializable<SingleExecutionData>
 {
     REFLECTABLE
     (
         (std::string) startTime,
-        (std::string) endTime
+        (std::string) endTime,
+        (uint32_t) frameCount,
+        (uint32_t) sampleInputCount,
+        (uint32_t) submissionCount,
+        (std::unordered_map<std::string, uint32_t>) submissionCorrections,
+        (std::set<RenderpassCorrectionData>) attachmentCorrections
     )
 
     void start();

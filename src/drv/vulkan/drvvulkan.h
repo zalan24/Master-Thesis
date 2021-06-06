@@ -109,7 +109,8 @@ class VulkanCmdBufferRecorder final : public drv::DrvCmdBufferRecorder
     void flushBarriersFor(drv::ImagePtr image, uint32_t numSubresourceRanges,
                           const drv::ImageSubresourceRange* subresourceRange);
 
-    void cmdUseAsAttachment(drv::ImagePtr image, const drv::ImageSubresourceRange& subresourceRange,
+    // returns true if no correction was necessary
+    bool cmdUseAsAttachment(drv::ImagePtr image, const drv::ImageSubresourceRange& subresourceRange,
                             drv::ImageLayout initialLayout, drv::ImageLayout resultLayout,
                             drv::ImageResourceUsageFlag usages,
                             const drv::PerSubresourceRangeTrackData& assumedState,

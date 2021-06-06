@@ -11,8 +11,13 @@
 
 #include <drvcmdbufferbank.h>
 #include <drvtypes.h>
+#include <features.h>
 
 #include "garbagesystem.h"
+
+#if ENABLE_RUNTIME_STATS_GENERATION
+#    define USE_COMMAND_BUFFER_NAME 1
+#endif
 
 class ExecutionQueue;
 
@@ -21,27 +26,57 @@ struct CommandBufferData
     drv::CommandBufferPtr cmdBufferPtr = drv::get_null_ptr<drv::CommandBufferPtr>();
     GarbageVector<std::pair<drv::ImagePtr, drv::ImageTrackInfo>> imageStates;
     bool stateValidation;
+#if USE_COMMAND_BUFFER_NAME
+    Garbage::String commandBufferName;
+#endif
 
-    explicit CommandBufferData(GarbageSystem* garbageSystem)
+    explicit CommandBufferData(GarbageSystem* garbageSystem, const char *name)
       : imageStates(garbageSystem->getAllocator<std::pair<drv::ImagePtr, drv::ImageTrackInfo>>()),
-        stateValidation(false) {}
+        stateValidation(false)
+#if USE_COMMAND_BUFFER_NAME
+        ,
+        commandBufferName(garbageSystem->getAllocator<char>())
+#endif
+    {
+        setName(name);
+    }
 
     CommandBufferData(GarbageSystem* garbageSystem, drv::CommandBufferPtr _cmdBufferPtr,
                       const drv::DrvCmdBufferRecorder::ImageStates* _imageStates,
-                      bool _stateValidation)
+                      bool _stateValidation, const char* name)
       : cmdBufferPtr(_cmdBufferPtr),
         imageStates(garbageSystem->getAllocator<std::pair<drv::ImagePtr, drv::ImageTrackInfo>>()),
-        stateValidation(_stateValidation) {
+        stateValidation(_stateValidation)
+#if USE_COMMAND_BUFFER_NAME
+        ,
+        commandBufferName(garbageSystem->getAllocator<char>())
+#endif
+    {
         // imageStates.resize(_imageStates->size());
         imageStates.reserve(_imageStates->size());
         for (size_t i = 0; i < _imageStates->size(); ++i)
             imageStates.push_back((*_imageStates)[i]);
+        setName(name);
     }
 
     CommandBufferData(GarbageSystem* garbageSystem, const drv::CommandBufferInfo& info,
-                      bool _stateValidation)
+                      bool _stateValidation, const char *name)
       : CommandBufferData(garbageSystem, info.cmdBufferPtr, info.stateTransitions.imageStates,
-                          _stateValidation) {}
+                          _stateValidation, name) {}
+
+    void setName(const char* name) {
+#if USE_COMMAND_BUFFER_NAME
+        commandBufferName.set(name);
+#endif
+    }
+
+    const char* getName() const {
+#if USE_COMMAND_BUFFER_NAME
+        if (commandBufferName.get() != nullptr)
+            return commandBufferName.get();
+#endif
+        return "<unknown>";
+    }
 };
 
 struct ExecutionPackage
@@ -154,7 +189,7 @@ enum class ResourceStateValidationMode
 
 ExecutionPackage::CommandBufferPackage make_submission_package(
   drv::QueuePtr queue, const drv::CommandBufferInfo& info, GarbageSystem* garbageSystem,
-  ResourceStateValidationMode validationMode);
+  ResourceStateValidationMode validationMode, const char *name);
 
 class ExecutionQueue
 {

@@ -431,10 +431,11 @@ void VulkanRenderPass::beginRenderPass(drv::FramebufferPtr frameBuffer,
                                        const drv::Rect2D& renderArea,
                                        drv::DrvCmdBufferRecorder* cmdBuffer) const {
     for (uint32_t i = 0; i < attachments.size(); ++i) {
-        static_cast<VulkanCmdBufferRecorder*>(cmdBuffer)->cmdUseAsAttachment(
+        if (!static_cast<VulkanCmdBufferRecorder*>(cmdBuffer)->cmdUseAsAttachment(
           attachmentImages[i].image, attachmentImages[i].subresource, attachments[i].initialLayout,
           attachments[i].finalLayout, globalAttachmentUsages[i], attachmentAssumedStates[i],
-          attachmentResultStates[i]);
+          attachmentResultStates[i]))
+            RuntimeStats::getSingleton()->corrigateAttachment(name.c_str(), cmdBuffer->getName(), i);
     }
     applySync(0);
     VkRenderPassBeginInfo beginInfo;

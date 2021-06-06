@@ -84,6 +84,9 @@ class DrvCmdBufferRecorder
 
     virtual drv::PipelineStages::FlagType getAvailableStages() const = 0;
 
+    const char* getName() const { return name; }
+    void setName(const char* _name) { name = _name; }
+
  protected:
     ImageTrackInfo& getImageState(drv::ImagePtr image, uint32_t ranges,
                                   const drv::ImageSubresourceRange* subresourceRanges,
@@ -99,6 +102,7 @@ class DrvCmdBufferRecorder
     CommandBufferPtr cmdBufferPtr;
     ImageStates* imageStates;
     ImageRecordStates imageRecordStates;
+    const char* name = nullptr;
 };
 
 struct StateTransition
@@ -150,6 +154,7 @@ class DrvCmdBuffer
             PlacementPtr<DrvCmdBufferRecorder> recorder = driver->create_cmd_buffer_recorder(
               recorderMem, physicalDevice, device, queueFamily, cmdBufferPtr, isSingleTimeBuffer(),
               isSimultaneous());
+            recorder->setName(name.c_str());
             recorder->setImageStates(&imageStates);
             recordCallback(currentData, recorder);
             numSubmissions = 0;

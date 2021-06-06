@@ -248,7 +248,7 @@ Engine::AcquiredImageData Game::record(FrameId frameId) {
               getCommandBufferBank(), getGarbageSystem(), record_cmd_buffer_clear);
             ExecutionPackage::CommandBufferPackage submission = make_submission_package(
               queues.renderQueue.handle, cmdBuffer.use(std::move(recordData)), getGarbageSystem(),
-              ResourceStateValidationMode::IGNORE_FIRST_SUBMISSION);
+              ResourceStateValidationMode::IGNORE_FIRST_SUBMISSION, "test_clear");
             submission.waitSemaphores.push_back(
               {swapChainData.imageAvailableSemaphore,
                drv::IMAGE_USAGE_COLOR_OUTPUT_WRITE | drv::IMAGE_USAGE_TRANSFER_DESTINATION});
@@ -260,7 +260,7 @@ Engine::AcquiredImageData Game::record(FrameId frameId) {
               getCommandBufferBank(), getGarbageSystem(), record_cmd_buffer_render);
             ExecutionPackage::CommandBufferPackage submission = make_submission_package(
               queues.renderQueue.handle, cmdBuffer.use(std::move(recordData)), getGarbageSystem(),
-              ResourceStateValidationMode::IGNORE_FIRST_SUBMISSION);
+              ResourceStateValidationMode::IGNORE_FIRST_SUBMISSION, "test_render");
             // submission.waitSemaphores.push_back(
             //   {swapChainData.imageAvailableSemaphore,
             //    drv::IMAGE_USAGE_COLOR_OUTPUT_WRITE | drv::IMAGE_USAGE_TRANSFER_DESTINATION});
@@ -272,7 +272,7 @@ Engine::AcquiredImageData Game::record(FrameId frameId) {
               getCommandBufferBank(), getGarbageSystem(), record_cmd_buffer_blit);
             ExecutionPackage::CommandBufferPackage submission = make_submission_package(
               queues.renderQueue.handle, cmdBuffer.use(std::move(recordData)), getGarbageSystem(),
-              ResourceStateValidationMode::IGNORE_FIRST_SUBMISSION);
+              ResourceStateValidationMode::IGNORE_FIRST_SUBMISSION, "test_blit");
             submission.signalSemaphores.push_back(swapChainData.renderFinishedSemaphore);
             testDrawHandle.submit(queues.renderQueue.id, std::move(submission));
         }

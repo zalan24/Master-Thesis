@@ -25,13 +25,13 @@ void ExecutionQueue::waitForPackage() {
 
 ExecutionPackage::CommandBufferPackage make_submission_package(
   drv::QueuePtr queue, const drv::CommandBufferInfo& info, GarbageSystem* garbageSystem,
-  ResourceStateValidationMode validationMode) {
+  ResourceStateValidationMode validationMode, const char* name) {
     bool stateValidation =
       validationMode == ResourceStateValidationMode::ALWAYS_VALIDATE
       || (validationMode == ResourceStateValidationMode::IGNORE_FIRST_SUBMISSION
           && info.numUsages > 1);
     return ExecutionPackage::CommandBufferPackage(
-      queue, CommandBufferData(garbageSystem, info, stateValidation),
+      queue, CommandBufferData(garbageSystem, info, stateValidation, name),
       GarbageVector<ExecutionPackage::CommandBufferPackage::SemaphoreSignalInfo>(
         garbageSystem->getAllocator<ExecutionPackage::CommandBufferPackage::SemaphoreSignalInfo>()),
       GarbageVector<ExecutionPackage::CommandBufferPackage::TimelineSemaphoreSignalInfo>(

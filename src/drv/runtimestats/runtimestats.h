@@ -103,6 +103,11 @@ class RuntimeStats final : public Singleton<RuntimeStats>
 
     void initExecution();
     void stopExecution();
+    void incrementFrame();
+    void incrementInputSample();
+    void incrementSubmissionCount();
+    void corrigateSubmission(const char* submissionName);
+    void corrigateAttachment(const char* renderpass, const char* submission, uint32_t attachmentId);
 
     const RuntimeStatNode* getRoot() const { return rootNode.get(); }
 
