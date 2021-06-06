@@ -254,12 +254,12 @@ class Garbage
         String(Allocator<char> allocator) : data(std::move(allocator)) {}
 
         void set(const std::string& str) {
-            data.resize(str.length());
+            data.resize(str.length() + 1, '\0');
             memcpy(data.data(), str.data(), str.length());
         }
         void set(const char* str) {
-            data.resize(strlen(str));
-            memcpy(data.data(), str, data.size());
+            data.resize(strlen(str) + 1, '\0');
+            memcpy(data.data(), str, data.size() - 1);
         }
 
         const char* get() const { return data.size() > 0 ? data.data() : nullptr; }

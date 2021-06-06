@@ -17,6 +17,12 @@ void SingleExecutionData::start() {
     localtime_s(&timeinfo, &in_time_t);
     ss << std::put_time(&timeinfo, "%Y-%m-%d %X");
     startTime = ss.str();
+    endTime = "";
+    frameCount = 0;
+    sampleInputCount = 0;
+    submissionCount = 0;
+    submissionCorrections.clear();
+    attachmentCorrections.clear();
 }
 
 void SingleExecutionData::stop() {

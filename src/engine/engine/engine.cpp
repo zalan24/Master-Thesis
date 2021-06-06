@@ -119,6 +119,7 @@ Engine::Engine(int argc, char* argv[], const EngineConfig& cfg,
                const drv::StateTrackingConfig& trackingConfig, const std::string& shaderbinFile,
                const Args& args)
   : config(cfg),
+    launchArgs(args),
     logger(argc, argv, config.logs),
     coreContext({safe_cast<size_t>(config.stackMemorySizeKb << 10)}),
     shaderBin(shaderbinFile),
@@ -617,6 +618,7 @@ void Engine::gameLoop() {
         readbackThread.join();
 
         runtimeStats.stopExecution();
+        runtimeStats.exportReport(launchArgs.reportFile);
     }
     catch (const std::exception& e) {
         LOG_F(ERROR, "An exception happend during gameLoop. Waiting for threads to join: <%s>",

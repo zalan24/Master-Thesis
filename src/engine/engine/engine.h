@@ -39,34 +39,10 @@ struct ExecutionPackage;
 
 struct EngineConfig final : public IAutoSerializable<EngineConfig>
 {
-    REFLECTABLE
-    (
-        (uint32_t) screenWidth,
-        (uint32_t) screenHeight,
-        (uint32_t) imagesInSwapchain,
-        (uint32_t) maxFramesInExecutionQueue,
-        (uint32_t) maxFramesInFlight,
-        (std::string) title,
-        (std::string) driver,
-        (uint32_t) inputBufferSize,
-        (uint32_t) stackMemorySizeKb,
-        (uint32_t) frameMemorySizeKb,
-        (std::string) logs
-    )
-
-    // uint32_t screenWidth;
-    // uint32_t screenHeight;
-    // uint32_t imagesInSwapchain;
-    // uint32_t maxFramesInExecutionQueue;
-    // uint32_t maxFramesInFlight;
-    // std::string title;
-    // std::string driver;
-    // uint32_t inputBufferSize;
-    // uint32_t stackMemorySizeKb;
-    // uint32_t frameMemorySizeKb;
-    // std::string logs;
-
-    // REFLECT()
+    REFLECTABLE((uint32_t)screenWidth, (uint32_t)screenHeight, (uint32_t)imagesInSwapchain,
+                (uint32_t)maxFramesInExecutionQueue, (uint32_t)maxFramesInFlight,
+                (std::string)title, (std::string)driver, (uint32_t)inputBufferSize,
+                (uint32_t)stackMemorySizeKb, (uint32_t)frameMemorySizeKb, (std::string)logs)
 };
 
 class Engine
@@ -80,6 +56,7 @@ class Engine
         std::string runtimeStatsPersistanceBin;
         std::string runtimeStatsGameExportsBin;
         std::string runtimeStatsCacheBin;
+        std::string reportFile;
     };
 
     Engine(int argc, char* argv[], const EngineConfig& config,
@@ -176,6 +153,7 @@ class Engine
     };
 
     EngineConfig config;
+    Args launchArgs;
 
     Logger logger;
     ErrorCallback callback;

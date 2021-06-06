@@ -80,7 +80,9 @@
         "${workspaceFolder}/build/statistics/runtimeStatsGameExports.bin",
         "--runtime_stats_cache",
         "${workspaceFolder}/build/statistics/runtimeStatsCache.bin",
-        "-sshaders/shaders.bin"
+        "-sshaders/shaders.bin",
+        "--report",
+        "${workspaceFolder}/build/statistics/report.txt",
       ]
     },
     {

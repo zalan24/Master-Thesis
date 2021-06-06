@@ -168,8 +168,11 @@ void RuntimeStats::initExecution() {
     while (!nodes.empty()) {
         PersistanceNodeData* node = nodes.top();
         nodes.pop();
-        if (node)
+        if (node) {
             node->lastExecution.start();
+            for (const auto& [name, ptr] : node->subnodes)
+                nodes.push(ptr.get());
+        }
     }
 #endif
 }
@@ -181,8 +184,11 @@ void RuntimeStats::stopExecution() {
     while (!nodes.empty()) {
         PersistanceNodeData* node = nodes.top();
         nodes.pop();
-        if (node)
+        if (node) {
             node->lastExecution.stop();
+            for (const auto& [name, ptr] : node->subnodes)
+                nodes.push(ptr.get());
+        }
     }
 #endif
 }
@@ -228,7 +234,57 @@ void RuntimeStats::corrigateAttachment(const char* renderpass, const char* submi
 }
 
 void RuntimeStats::exportReport(const std::string& filename) const {
-    // TODO
+#if ENABLE_RUNTIME_STATS_GENERATION
+    std::ofstream out(filename.c_str());
+    out << "Session start: " << getRoot()->persistanceData->lastExecution.startTime << std::endl;
+    out << "Session end:   " << getRoot()->persistanceData->lastExecution.endTime << std::endl;
+
+    uint32_t frameCount = 0;
+    uint32_t sampleInputCount = 0;
+    uint32_t submissionCount = 0;
+
+    std::stack<PersistanceNodeData*> nodes;
+    nodes.push(rootNode.get()->getPersistance());
+    while (!nodes.empty()) {
+        PersistanceNodeData* node = nodes.top();
+        nodes.pop();
+        if (node) {
+            frameCount = std::max(frameCount, node->lastExecution.frameCount);
+            sampleInputCount = std::max(sampleInputCount, node->lastExecution.sampleInputCount);
+            submissionCount = std::max(submissionCount, node->lastExecution.submissionCount);
+            for (const auto& [name, ptr] : node->subnodes)
+                nodes.push(ptr.get());
+        }
+    }
+
+    out << "Rendered frames:        " << frameCount << std::endl;
+    out << "OS input queue sampled: " << sampleInputCount << " ("
+        << float(sampleInputCount) / float(frameCount) << " per frame)" << std::endl;
+    out << "Number of submissions:  " << submissionCount << "("
+        << float(submissionCount) / float(frameCount) << " per frame)" << std::endl;
+
+    nodes.push(rootNode.get()->getPersistance());
+    while (!nodes.empty()) {
+        PersistanceNodeData* node = nodes.top();
+        nodes.pop();
+        if (node) {
+            frameCount = std::max(frameCount, node->lastExecution.frameCount);
+            sampleInputCount = std::max(sampleInputCount, node->lastExecution.sampleInputCount);
+            submissionCount = std::max(submissionCount, node->lastExecution.submissionCount);
+
+            for (const auto& [submission, count] : node->lastExecution.submissionCorrections)
+                if (count > 0)
+                    out << "Corrected submission: " << submission << ": " << count << " ("
+                        << float(count) / float(frameCount) << " per frame)" << std::endl;
+            for (const auto& a : node->lastExecution.attachmentCorrections)
+                out << "Corrected attachment: " << a.renderpass << "/" << a.submission << "/"
+                    << a.attachmentId << std::endl;
+
+            for (const auto& [name, ptr] : node->subnodes)
+                nodes.push(ptr.get());
+        }
+    }
+#endif
 }
 
 static void generate_game_exports(const PersistanceNodeData* input, GameExportsNodeData* output) {

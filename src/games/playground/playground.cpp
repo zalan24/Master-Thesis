@@ -86,8 +86,7 @@ int main(int argc, char* argv[]) {
                        "Binary file for storing runtime statistics game exports");
         app.add_option("--runtime_stats_cache", args.runtimeStatsCacheBin,
                        "Binary file for storing runtime statistics cache");
-        // std::string root = "";
-        // app.add_option("-r,--root", root, "Working directory for the specified folder");
+        app.add_option("--report", args.reportFile, "Txt file, where the report will be generated");
 
         CLI11_PARSE(app, argc, argv)
 
