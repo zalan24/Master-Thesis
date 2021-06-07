@@ -122,6 +122,9 @@ void SimpleSubresStateStat::get(drv::PerSubresourceRangeTrackData& data) const {
     data.dirtyMask = dirtyMask.get(MemoryAccessStat::TEND_TO_FALSE);
     // Assumed accesses will be mode available. This could be a problem if an access is not supported at all
     data.visible = visible.get(MemoryAccessStat::TEND_TO_FALSE);
+
+    if (data.usableStages == 0)
+        data.usableStages |= drv::PipelineStages::BOTTOM_OF_PIPE_BIT;
 }
 
 void SubresStateStat::resizeFamilies(size_t size) {
@@ -246,4 +249,9 @@ void ImageStateStat::readJson(const json& in) {
 bool ImageStateStat::isCompatible(const drv::TextureInfo& info) const {
     return info.arraySize == subresources.layerCount && info.numMips == subresources.mipCount
            && info.aspects == subresources.aspects;
+}
+
+void ImageStateStat::init(const drv::TextureInfo& info) {
+    subresources = drv::ImagePerSubresourceData<ImageSubresStateStat, 1>(
+      info.arraySize, info.numMips, info.aspects);
 }

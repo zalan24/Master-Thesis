@@ -50,6 +50,11 @@ void DrvCmdBufferRecorder::autoRegisterImage(ImagePtr image, drv::ImageLayout pr
       });
 }
 
+StatsCache* DrvCmdBufferRecorder::getStatsCacheHandle() {
+    auto reader = STATS_CACHE_WRITER;
+    return reader.getHandle();
+}
+
 void DrvCmdBufferRecorder::autoRegisterImage(ImagePtr image, uint32_t layer, uint32_t mip,
                                              AspectFlagBits aspect,
                                              drv::ImageLayout preferrefLayout) {

@@ -132,4 +132,5 @@ struct ImageStateStat final : public ISerializable
     void readJson(const json& in) override;
 
     bool isCompatible(const drv::TextureInfo& info) const;
+    void init(const drv::TextureInfo& info);
 };

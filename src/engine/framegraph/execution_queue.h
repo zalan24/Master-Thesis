@@ -12,6 +12,7 @@
 #include <drvcmdbufferbank.h>
 #include <drvtypes.h>
 #include <features.h>
+#include <runtimestats.h>
 
 #include "garbagesystem.h"
 
@@ -26,13 +27,15 @@ struct CommandBufferData
     drv::CommandBufferPtr cmdBufferPtr = drv::get_null_ptr<drv::CommandBufferPtr>();
     GarbageVector<std::pair<drv::ImagePtr, drv::ImageTrackInfo>> imageStates;
     bool stateValidation;
+    StatsCache *statsCacheHandle;
 #if USE_COMMAND_BUFFER_NAME
     Garbage::String commandBufferName;
 #endif
 
     explicit CommandBufferData(GarbageSystem* garbageSystem, const char *name)
       : imageStates(garbageSystem->getAllocator<std::pair<drv::ImagePtr, drv::ImageTrackInfo>>()),
-        stateValidation(false)
+        stateValidation(false),
+        statsCacheHandle(nullptr)
 #if USE_COMMAND_BUFFER_NAME
         ,
         commandBufferName(garbageSystem->getAllocator<char>())
@@ -43,10 +46,11 @@ struct CommandBufferData
 
     CommandBufferData(GarbageSystem* garbageSystem, drv::CommandBufferPtr _cmdBufferPtr,
                       const drv::DrvCmdBufferRecorder::ImageStates* _imageStates,
-                      bool _stateValidation, const char* name)
+                      bool _stateValidation, const char* name, StatsCache *_statsCacheHandle)
       : cmdBufferPtr(_cmdBufferPtr),
         imageStates(garbageSystem->getAllocator<std::pair<drv::ImagePtr, drv::ImageTrackInfo>>()),
-        stateValidation(_stateValidation)
+        stateValidation(_stateValidation),
+        statsCacheHandle(_statsCacheHandle)
 #if USE_COMMAND_BUFFER_NAME
         ,
         commandBufferName(garbageSystem->getAllocator<char>())
@@ -60,9 +64,9 @@ struct CommandBufferData
     }
 
     CommandBufferData(GarbageSystem* garbageSystem, const drv::CommandBufferInfo& info,
-                      bool _stateValidation, const char *name)
+                      bool _stateValidation)
       : CommandBufferData(garbageSystem, info.cmdBufferPtr, info.stateTransitions.imageStates,
-                          _stateValidation, name) {}
+                          _stateValidation, info.name, info.statsCacheHandle) {}
 
     void setName(const char* name) {
 #if USE_COMMAND_BUFFER_NAME
@@ -189,7 +193,7 @@ enum class ResourceStateValidationMode
 
 ExecutionPackage::CommandBufferPackage make_submission_package(
   drv::QueuePtr queue, const drv::CommandBufferInfo& info, GarbageSystem* garbageSystem,
-  ResourceStateValidationMode validationMode, const char *name);
+  ResourceStateValidationMode validationMode);
 
 class ExecutionQueue
 {

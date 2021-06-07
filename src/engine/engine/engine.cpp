@@ -493,11 +493,14 @@ bool Engine::execute(ExecutionPackage&& package) {
             drv::StateCorrectionData correctionData;
             if (!drv::validate_and_apply_state_transitions(
                   correctionData, uint32_t(cmdBuffer.cmdBufferData.imageStates.size()),
-                  cmdBuffer.cmdBufferData.imageStates.data())) {
+                  cmdBuffer.cmdBufferData.imageStates.data(),
+                  cmdBuffer.cmdBufferData.stateValidation ? cmdBuffer.cmdBufferData.statsCacheHandle
+                                                          : nullptr)) {
                 if (cmdBuffer.cmdBufferData.stateValidation) {
-                    LOG_F(ERROR, "Some resources are not in the expected state");
+                    // TODO turn breakpoint and log back on (in debug builds)
+                    // LOG_F(ERROR, "Some resources are not in the expected state");
                     runtimeStats.corrigateSubmission(cmdBuffer.cmdBufferData.getName());
-                    BREAK_POINT;
+                    // BREAK_POINT;
                 }
                 else {
                     runtimeStats.incrementAllowedSubmissionCorrections();

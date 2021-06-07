@@ -163,11 +163,17 @@ class StatsCacheReader
     explicit StatsCacheReader(RuntimeStats* stats)
       : cache(stats->getCurrentStatsCache()), lock(cache->mutex) {}
 
+    explicit StatsCacheReader(const StatsCache* _cache) : cache(_cache), lock(cache->mutex) {}
+
     const StatsCache* operator->() const { return cache; }
 
- private:
-    const StatsCache* cache;
-    std::shared_lock<std::shared_mutex> lock;
+    const StatsCache* getHandle() const { return cache; }
+
+    operator bool() const {return cache != nullptr;}
+
+private:
+     const StatsCache* cache;
+     std::shared_lock<std::shared_mutex> lock;
 };
 
 class StatsCacheWriter
@@ -176,9 +182,15 @@ class StatsCacheWriter
     explicit StatsCacheWriter(RuntimeStats* stats)
       : cache(stats->getCurrentStatsCache()), lock(cache->mutex) {}
 
+    explicit StatsCacheWriter(StatsCache* _cache) : cache(_cache), lock(cache->mutex) {}
+
     StatsCache* operator->() const { return cache; }
 
- private:
+    StatsCache* getHandle() const { return cache; }
+
+    operator bool() const {return cache != nullptr;}
+
+private:
     StatsCache* cache;
     std::unique_lock<std::shared_mutex> lock;
 };

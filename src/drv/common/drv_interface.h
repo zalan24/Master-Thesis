@@ -14,6 +14,7 @@ class IWindow;
 
 class Input;
 class InputManager;
+struct StatsCache;
 
 namespace drv
 {
@@ -231,7 +232,7 @@ class IDriver
 
     virtual bool validate_and_apply_state_transitions(
       StateCorrectionData& correction, uint32_t imageCount,
-      const std::pair<drv::ImagePtr, ImageTrackInfo>* transitions) = 0;
+      const std::pair<drv::ImagePtr, ImageTrackInfo>* transitions, StatsCache* cacheHandle) = 0;
 
     virtual DriverSupport get_support(LogicalDevicePtr device) = 0;
 

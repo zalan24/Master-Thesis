@@ -425,7 +425,7 @@ bool drv::destroy_framebuffer(LogicalDevicePtr device, FramebufferPtr frameBuffe
 
 bool drv::validate_and_apply_state_transitions(
   StateCorrectionData& correction, uint32_t imageCount,
-  const std::pair<drv::ImagePtr, ImageTrackInfo>* transitions) {
+  const std::pair<drv::ImagePtr, ImageTrackInfo>* transitions, StatsCache* cacheHandle) {
     return current_driver_interface->validate_and_apply_state_transitions(correction, imageCount,
-                                                                          transitions);
+                                                                          transitions, cacheHandle);
 }

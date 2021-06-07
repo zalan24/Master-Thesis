@@ -90,12 +90,8 @@ bool VulkanCmdBufferRecorder::swappable(const BarrierInfo& barrier0,
     // if (!drv::is_null_ptr(barrier0.event))
     //     return (barrier0.dstStages.stageFlags & barrier1.srcStages.stageFlags)
     //            == 0;
-    return (barrier0.dstStages.stageFlags
-            & barrier1.srcStages.stageFlags)
-             == 0
-           && (barrier0.srcStages.stageFlags
-               & barrier1.dstStages.stageFlags)
-                == 0;
+    return (barrier0.dstStages.stageFlags & barrier1.srcStages.stageFlags) == 0
+           && (barrier0.srcStages.stageFlags & barrier1.dstStages.stageFlags) == 0;
 }
 
 bool VulkanCmdBufferRecorder::requireFlush(const BarrierInfo& barrier0,
@@ -121,9 +117,7 @@ bool VulkanCmdBufferRecorder::requireFlush(const BarrierInfo& barrier0,
 bool VulkanCmdBufferRecorder::merge(BarrierInfo& barrier0, BarrierInfo& barrier) const {
     if (!matches(barrier0, barrier))
         return false;
-    if ((barrier0.dstStages.stageFlags
-         & barrier.srcStages.stageFlags)
-        == 0)
+    if ((barrier0.dstStages.stageFlags & barrier.srcStages.stageFlags) == 0)
         return false;
     // if (barrier0.event != barrier.event)
     //     return false;
@@ -491,10 +485,8 @@ void VulkanCmdBufferRecorder::appendBarrier(drv::PipelineStages srcStage,
     if (
       (trackingConfig->immediateBarriers /* && drv::is_null_ptr<drv::EventPtr>(event)*/)
       /*|| (trackingConfig->immediateEventBarriers && !drv::is_null_ptr<drv::EventPtr>(event))*/) {
-        drv::drv_assert(barriers[lastBarrier].srcStages.stageFlags
-                          == srcStage.stageFlags
-                        && barriers[lastBarrier].dstStages.stageFlags
-                             == dstStage.stageFlags
+        drv::drv_assert(barriers[lastBarrier].srcStages.stageFlags == srcStage.stageFlags
+                        && barriers[lastBarrier].dstStages.stageFlags == dstStage.stageFlags
                         /*&& barriers[lastBarrier].event == event*/);
         flushBarrier(barriers[lastBarrier]);
     }
@@ -630,8 +622,8 @@ void VulkanCmdBufferRecorder::add_memory_sync(
         if (subresourceData.ongoingWrites | subresourceData.ongoingReads)
             barrierSrcStage.add(subresourceData.ongoingWrites | subresourceData.ongoingReads);
         else if (!justFlushed)
-            barrierSrcStage.add(drv::PipelineStages(subresourceData.usableStages)
-                                  .getEarliestStage());
+            barrierSrcStage.add(
+              drv::PipelineStages(subresourceData.usableStages).getEarliestStage());
         barrierDstStage.add(dstStages);
         barrier.dstAccessFlags |= missingVisibility;
         subresourceData.usableStages = stages;
@@ -644,8 +636,8 @@ void VulkanCmdBufferRecorder::add_memory_sync(
         if (subresourceData.ongoingWrites | subresourceData.ongoingReads)
             barrierSrcStage.add(subresourceData.ongoingWrites | subresourceData.ongoingReads);
         else
-            barrierSrcStage.add(drv::PipelineStages(subresourceData.usableStages)
-                                  .getEarliestStage());
+            barrierSrcStage.add(
+              drv::PipelineStages(subresourceData.usableStages).getEarliestStage());
         barrierDstStage.add(missingUsability);
         subresourceData.usableStages |= missingUsability;
     }
@@ -653,11 +645,12 @@ void VulkanCmdBufferRecorder::add_memory_sync(
 
 bool DrvVulkan::validate_and_apply_state_transitions(
   drv::StateCorrectionData& correction, uint32_t imageCount,
-  const std::pair<drv::ImagePtr, drv::ImageTrackInfo>* transitions) {
+  const std::pair<drv::ImagePtr, drv::ImageTrackInfo>* transitions, StatsCache* cacheHandle) {
     uint32_t correctedImageCount = 0;
     StackMemory::MemoryHandle<std::pair<drv::ImagePtr, drv::ImageStateCorrection>> imageCorrections(
       imageCount, TEMPMEM);
     for (uint32_t i = 0; i < imageCount; ++i) {
+        drv::TextureInfo texInfo = get_texture_info(transitions[i].first);
         drv_vulkan::Image* image = convertImage(transitions[i].first);
 
         bool invalid = false;
@@ -681,6 +674,13 @@ bool DrvVulkan::validate_and_apply_state_transitions(
                   invalid = true;
               else if ((state.visible & requirement.visible) != requirement.visible)
                   invalid = true;
+              if (cacheHandle) {
+                  StatsCacheWriter cacheWriter(cacheHandle);
+                  auto& imgData = cacheWriter->cmdBufferImageStates[image->imageId];
+                  if (!imgData.isCompatible(texInfo))
+                      imgData.init(texInfo);
+                  imgData.subresources.get(layer, mip, aspect).append(state);
+              }
           });
         if (invalid) {
             imageCorrections[correctedImageCount].first = transitions[i].first;

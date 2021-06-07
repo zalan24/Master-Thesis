@@ -87,6 +87,8 @@ class DrvCmdBufferRecorder
     const char* getName() const { return name; }
     void setName(const char* _name) { name = _name; }
 
+    StatsCache* getStatsCacheHandle();
+
  protected:
     ImageTrackInfo& getImageState(drv::ImagePtr image, uint32_t ranges,
                                   const drv::ImageSubresourceRange* subresourceRanges,
@@ -116,6 +118,8 @@ struct CommandBufferInfo
     CommandBufferPtr cmdBufferPtr;
     StateTransition stateTransitions;
     uint64_t numUsages;
+    const char* name;
+    StatsCache* statsCacheHandle;
 };
 
 template <typename D>
@@ -158,6 +162,7 @@ class DrvCmdBuffer
             recorder->setImageStates(&imageStates);
             recordCallback(currentData, recorder);
             numSubmissions = 0;
+            statsCacheHandle = recorder->getStatsCacheHandle();
         }
         needToPrepare = false;
     }
@@ -166,7 +171,7 @@ class DrvCmdBuffer
         if (needToPrepare)
             prepare(std::move(d));
         needToPrepare = true;
-        return {cmdBufferPtr, {&imageStates}, ++numSubmissions};
+        return {cmdBufferPtr, {&imageStates}, ++numSubmissions, name.c_str(), statsCacheHandle};
     }
 
     const DrvCmdBufferRecorder::ImageStates* getImageStates() { return &imageStates; }
@@ -191,6 +196,7 @@ class DrvCmdBuffer
     DrvRecordCallback recordCallback;
     CommandBufferPtr cmdBufferPtr = get_null_ptr<CommandBufferPtr>();
     DrvCmdBufferRecorder::ImageStates imageStates;
+    StatsCache* statsCacheHandle = nullptr;
 
     bool needToPrepare = true;
     uint64_t numSubmissions = 0;
