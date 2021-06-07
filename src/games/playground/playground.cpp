@@ -120,7 +120,7 @@ int main(int argc, char* argv[]) {
         // resourceInfos.resourceFolder = resourceFolder;
         // resourceInfos.modelResourcesJson = modelResources;
         std::unique_ptr<Game> game =
-          std::make_unique<Game>(argc, argv, engineCfg, trackingCfg, shaderbin, args);
+          std::make_unique<Game>(argc, argv, engineCfg, trackingCfg, shaderbin, std::move(args));
         // engine.getRenderer()->getCamera().lookAt(glm::vec3{0, 3, -5}, glm::vec3{0, 1, 0},
         //                                          glm::vec3{0, 1, 0});
 

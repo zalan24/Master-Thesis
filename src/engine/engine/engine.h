@@ -72,7 +72,7 @@ class Engine
 
     Engine(int argc, char* argv[], const EngineConfig& config,
            const drv::StateTrackingConfig& trackingConfig, const std::string& shaderbinFile,
-           const Args& args);
+           Args args);
     virtual ~Engine();
 
     Engine(const Engine&) = delete;
@@ -168,7 +168,7 @@ class Engine
 
     Logger logger;
     ErrorCallback callback;
-    CoreContext coreContext;
+    std::unique_ptr<CoreContext> coreContext;
     ShaderBin shaderBin;
     Input input;
     InputManager inputManager;

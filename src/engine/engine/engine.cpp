@@ -117,19 +117,20 @@ static void log_queue(const char* name, const drv::QueueManager::Queue& queue) {
 
 Engine::Engine(int argc, char* argv[], const EngineConfig& cfg,
                const drv::StateTrackingConfig& trackingConfig, const std::string& shaderbinFile,
-               const Args& args)
+               Args _args)
   : config(cfg),
-    launchArgs(args),
+    launchArgs(std::move(_args)),
     logger(argc, argv, config.logs),
-    coreContext({safe_cast<size_t>(config.stackMemorySizeKb << 10)}),
+    coreContext(std::make_unique<CoreContext>(
+      CoreContext::Config{safe_cast<size_t>(config.stackMemorySizeKb << 10)})),
     shaderBin(shaderbinFile),
     input(safe_cast<size_t>(config.inputBufferSize)),
     driver(trackingConfig, {get_driver(cfg.driver)}),
     window(&input, &inputManager,
            drv::WindowOptions{static_cast<unsigned int>(cfg.screenWidth),
                               static_cast<unsigned int>(cfg.screenHeight), cfg.title.c_str()}),
-    drvInstance(drv::InstanceCreateInfo{cfg.title.c_str(), args.renderdocEnabled,
-                                        args.gfxCaptureEnabled, args.apiDumpEnabled}),
+    drvInstance(drv::InstanceCreateInfo{cfg.title.c_str(), launchArgs.renderdocEnabled,
+                                        launchArgs.gfxCaptureEnabled, launchArgs.apiDumpEnabled}),
     windowIniter(window, drvInstance),
     deviceExtensions(true),
     physicalDevice(get_device_selection_info(drvInstance, deviceExtensions, shaderBin), window),
@@ -158,8 +159,8 @@ Engine::Engine(int argc, char* argv[], const EngineConfig& cfg,
     // maxFramesInFlight + 1 for readback stage
     frameGraph(physicalDevice, device, &garbageSystem, &eventPool, trackingConfig,
                config.maxFramesInExecutionQueue, config.maxFramesInFlight + 1),
-    runtimeStats(!args.clearRuntimeStats, args.runtimeStatsPersistanceBin,
-                 args.runtimeStatsGameExportsBin, args.runtimeStatsCacheBin) {
+    runtimeStats(!launchArgs.clearRuntimeStats, launchArgs.runtimeStatsPersistanceBin,
+                 launchArgs.runtimeStatsGameExportsBin, launchArgs.runtimeStatsCacheBin) {
     json configJson = ISerializable::serialize(config);
     std::stringstream ss;
     ss << configJson;
