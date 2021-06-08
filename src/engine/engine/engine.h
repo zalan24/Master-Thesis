@@ -60,14 +60,14 @@ class Engine
  public:
     struct Args
     {
-        bool renderdocEnabled;
-        bool gfxCaptureEnabled;
-        bool apiDumpEnabled;
+        bool renderdocEnabled = false;
+        bool gfxCaptureEnabled = false;
+        bool apiDumpEnabled = false;
         std::string runtimeStatsPersistanceBin;
         std::string runtimeStatsGameExportsBin;
         std::string runtimeStatsCacheBin;
         std::string reportFile;
-        bool clearRuntimeStats;
+        bool clearRuntimeStats = false;
     };
 
     Engine(int argc, char* argv[], const EngineConfig& config,

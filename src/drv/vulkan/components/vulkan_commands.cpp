@@ -299,7 +299,7 @@ void VulkanCmdBufferRecorder::corrigate(const drv::StateCorrectionData& data) {
             add_memory_sync(
               getImageState(data.imageCorrections[i].first, 1, &range, subres.layout).cmdState,
               data.imageCorrections[i].first, mip, layer, aspect, !discardContent,
-              subres.usableStages, drv::MemoryBarrier::get_all_bits(),
+              subres.usableStages, subres.visible,
               !convertImage(data.imageCorrections[i].first)->sharedResource,
               subres.ownership != drv::IGNORE_FAMILY ? subres.ownership : getFamily(), true,
               discardContent, subres.layout);
