@@ -563,6 +563,7 @@ struct MemoryBarrier
     static uint32_t get_access(uint32_t index) {
         return get_access(get_all_bits(), index);
     }
+    static PipelineStages::FlagType get_supported_stages(AccessFlagBits access);
 };
 
 struct BufferMemoryBarrier

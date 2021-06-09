@@ -74,6 +74,7 @@
         // "--gfx",
         "--api_dump",
         "--renderdoc",
+        // "--no_persistance",
         "--runtime_stats_persistance",
         "${workspaceFolder}/build/statistics/runtimeStats.bin",
         "--runtime_stats_game_exports",

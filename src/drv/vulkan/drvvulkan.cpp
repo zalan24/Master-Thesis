@@ -659,7 +659,8 @@ bool DrvVulkan::validate_and_apply_state_transitions(
               const auto& requirement = transitions[i].second.guarantee.get(layer, mip, aspect);
               const auto& state = image->linearTrackingState.get(layer, mip, aspect);
               if (requirement.ownership != state.ownership
-                  && requirement.ownership != drv::IGNORE_FAMILY)
+                  && requirement.ownership != drv::IGNORE_FAMILY
+                  && state.ownership != drv::IGNORE_FAMILY)
                   invalid = true;
               else if (requirement.layout != drv::ImageLayout::UNDEFINED
                        && requirement.layout != state.layout)

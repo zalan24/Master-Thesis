@@ -149,3 +149,68 @@ MemoryBarrier::AccessFlagBitType drv::get_image_usage_accesses(ImageResourceUsag
     }
     return ret;
 }
+
+drv::PipelineStages::FlagType drv::MemoryBarrier::get_supported_stages(AccessFlagBits access) {
+    switch (access) {
+        case INDIRECT_COMMAND_READ_BIT:
+            return PipelineStages::
+              DRAW_INDIRECT_BIT;  // | PipelineStages::ACCELERATION_STRUCTURE_BUILD_BIT_NV;
+        case INDEX_READ_BIT:
+            return PipelineStages::VERTEX_INPUT_BIT;
+        case VERTEX_ATTRIBUTE_READ_BIT:
+            return PipelineStages::VERTEX_INPUT_BIT;
+        case UNIFORM_READ_BIT:
+            return 0
+                   // | PipelineStages::TASK_SHADER_BIT_NV
+                   // | PipelineStages::MESH_SHADER_BIT_NV
+                   // | PipelineStages::RAY_TRACING_SHADER_BIT_NV
+                   | PipelineStages::VERTEX_SHADER_BIT
+                   | PipelineStages::TESSELLATION_CONTROL_SHADER_BIT
+                   | PipelineStages::TESSELLATION_EVALUATION_SHADER_BIT
+                   | PipelineStages::GEOMETRY_SHADER_BIT | PipelineStages::FRAGMENT_SHADER_BIT
+                   | PipelineStages::COMPUTE_SHADER_BIT;
+        case SHADER_READ_BIT:
+            return 0
+                   // | PipelineStages::ACCELERATION_STRUCTURE_BUILD_BIT_NV;
+                   // | PipelineStages::TASK_SHADER_BIT_NV
+                   // | PipelineStages::MESH_SHADER_BIT_NV
+                   // | PipelineStages::RAY_TRACING_SHADER_BIT_NV
+                   | PipelineStages::VERTEX_SHADER_BIT
+                   | PipelineStages::TESSELLATION_CONTROL_SHADER_BIT
+                   | PipelineStages::TESSELLATION_EVALUATION_SHADER_BIT
+                   | PipelineStages::GEOMETRY_SHADER_BIT | PipelineStages::FRAGMENT_SHADER_BIT
+                   | PipelineStages::COMPUTE_SHADER_BIT;
+        case SHADER_WRITE_BIT:
+            return 0
+                   // | PipelineStages::TASK_SHADER_BIT_NV
+                   // | PipelineStages::MESH_SHADER_BIT_NV
+                   // | PipelineStages::RAY_TRACING_SHADER_BIT_NV
+                   | PipelineStages::VERTEX_SHADER_BIT
+                   | PipelineStages::TESSELLATION_CONTROL_SHADER_BIT
+                   | PipelineStages::TESSELLATION_EVALUATION_SHADER_BIT
+                   | PipelineStages::GEOMETRY_SHADER_BIT | PipelineStages::FRAGMENT_SHADER_BIT
+                   | PipelineStages::COMPUTE_SHADER_BIT;
+        case INPUT_ATTACHMENT_READ_BIT:
+            return PipelineStages::FRAGMENT_SHADER_BIT;
+        case COLOR_ATTACHMENT_WRITE_BIT:
+            return PipelineStages::COLOR_ATTACHMENT_OUTPUT_BIT;
+        case COLOR_ATTACHMENT_READ_BIT:
+            return PipelineStages::COLOR_ATTACHMENT_OUTPUT_BIT;
+        case DEPTH_STENCIL_ATTACHMENT_READ_BIT:
+            return PipelineStages::EARLY_FRAGMENT_TESTS_BIT
+                   | PipelineStages::LATE_FRAGMENT_TESTS_BIT;
+        case DEPTH_STENCIL_ATTACHMENT_WRITE_BIT:
+            return PipelineStages::EARLY_FRAGMENT_TESTS_BIT
+                   | PipelineStages::LATE_FRAGMENT_TESTS_BIT;
+        case TRANSFER_READ_BIT:
+            return PipelineStages::
+              TRANSFER_BIT;  // | PipelineStages::ACCELERATION_STRUCTURE_BUILD_BIT_NV;
+        case TRANSFER_WRITE_BIT:
+            return PipelineStages::
+              TRANSFER_BIT;  // | PipelineStages::ACCELERATION_STRUCTURE_BUILD_BIT_NV;
+        case HOST_READ_BIT:
+            return PipelineStages::HOST_BIT;
+        case HOST_WRITE_BIT:
+            return PipelineStages::HOST_BIT;
+    }
+}

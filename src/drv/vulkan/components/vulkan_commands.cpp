@@ -275,6 +275,17 @@ bool VulkanCmdBufferRecorder::cmdUseAsAttachment(
 }
 
 void VulkanCmdBufferRecorder::corrigate(const drv::StateCorrectionData& data) {
+    static drv::PipelineStages::PipelineStageFlagBits supportedStageOrder[] = {
+      drv::PipelineStages::TRANSFER_BIT,
+      drv::PipelineStages::FRAGMENT_SHADER_BIT,
+      drv::PipelineStages::VERTEX_SHADER_BIT,
+      drv::PipelineStages::VERTEX_INPUT_BIT,
+      drv::PipelineStages::COLOR_ATTACHMENT_OUTPUT_BIT,
+      drv::PipelineStages::EARLY_FRAGMENT_TESTS_BIT,
+      drv::PipelineStages::LATE_FRAGMENT_TESTS_BIT,
+      drv::PipelineStages::HOST_BIT,
+      drv::PipelineStages::DRAW_INDIRECT_BIT,
+    };
     for (uint32_t i = 0; i < data.imageCorrections.size(); ++i) {
         ImageStartingState state(data.imageCorrections[i].second.oldState.layerCount,
                                  data.imageCorrections[i].second.oldState.mipCount,
@@ -296,11 +307,29 @@ void VulkanCmdBufferRecorder::corrigate(const drv::StateCorrectionData& data) {
             range.levelCount = 1;
             const auto& subres = data.imageCorrections[i].second.newState.get(layer, mip, aspect);
             bool discardContent = subres.layout == drv::ImageLayout::UNDEFINED;
+            drv::PipelineStages::FlagType dstStages = subres.usableStages;
+            for (uint32_t j = 0; j < drv::MemoryBarrier::get_access_count(subres.visible); ++j) {
+                drv::MemoryBarrier::AccessFlagBits access =
+                  drv::MemoryBarrier::get_access(subres.visible, j);
+                drv::PipelineStages::FlagType supportedStages =
+                  drv::MemoryBarrier::get_supported_stages(access);
+                if ((supportedStages & dstStages) == 0) {
+                    bool found = false;
+                    for (const auto& stage : supportedStageOrder) {
+                        if ((stage & supportedStages)) {
+                            dstStages |= stage;
+                            found = true;
+                            break;
+                        }
+                    }
+                    drv::drv_assert(found,
+                                    "Could not find any supported stage for the given access type");
+                }
+            }
             add_memory_sync(
               getImageState(data.imageCorrections[i].first, 1, &range, subres.layout).cmdState,
-              data.imageCorrections[i].first, mip, layer, aspect, !discardContent,
-              subres.usableStages, subres.visible,
-              !convertImage(data.imageCorrections[i].first)->sharedResource,
+              data.imageCorrections[i].first, mip, layer, aspect, !discardContent, dstStages,
+              subres.visible, !convertImage(data.imageCorrections[i].first)->sharedResource,
               subres.ownership != drv::IGNORE_FAMILY ? subres.ownership : getFamily(), true,
               discardContent, subres.layout);
         });

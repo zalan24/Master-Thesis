@@ -9,7 +9,7 @@
 
 struct PipelineStagesStat final : public IAutoSerializable<PipelineStagesStat>
 {
-    static constexpr float EXP_AVG = 0.1f;
+    static constexpr float EXP_AVG = 0.01f;
     static constexpr float THRESHOLD = 0.01f;
 
     enum ApproximationMode
@@ -32,7 +32,7 @@ struct PipelineStagesStat final : public IAutoSerializable<PipelineStagesStat>
 
 struct MemoryAccessStat final : public IAutoSerializable<MemoryAccessStat>
 {
-    static constexpr float EXP_AVG = 0.1f;
+    static constexpr float EXP_AVG = 0.01f;
     static constexpr float THRESHOLD = 0.01f;
 
     enum ApproximationMode
@@ -55,7 +55,7 @@ struct MemoryAccessStat final : public IAutoSerializable<MemoryAccessStat>
 
 struct ImageLayoutStat final : public IAutoSerializable<ImageLayoutStat>
 {
-    static constexpr float EXP_AVG = 0.1f;
+    static constexpr float EXP_AVG = 0.01f;
     static constexpr float THRESHOLD = 0.01f;
 
     REFLECTABLE
@@ -89,7 +89,7 @@ struct SimpleSubresStateStat final : public IAutoSerializable<SimpleSubresStateS
 
 struct SubresStateStat final : public IAutoSerializable<SubresStateStat>
 {
-    static constexpr float EXP_AVG = 0.1f;
+    static constexpr float EXP_AVG = 0.01f;
 
     REFLECTABLE
     (

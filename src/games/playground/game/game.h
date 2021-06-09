@@ -72,6 +72,7 @@ class Game final : public Game3D
         shader_global_descriptor* shaderGlobalDesc;
         shader_inputatchm* inputShader;
         shader_inputatchm_descriptor* shaderInputAttachmentDesc;
+        bool doBlit;
         bool operator==(const RecordData& rhs) const {
             return device == rhs.device && targetImage == rhs.targetImage
                    && targetView == rhs.targetView && renderTarget == rhs.renderTarget
@@ -84,7 +85,8 @@ class Game final : public Game3D
                    && colorSubpass == rhs.colorSubpass && swapchainSubpass == rhs.swapchainSubpass
                    && testShader == rhs.testShader && shaderTestDesc == rhs.shaderTestDesc
                    && shaderGlobalDesc == rhs.shaderGlobalDesc && inputShader == rhs.inputShader
-                   && shaderInputAttachmentDesc == rhs.shaderInputAttachmentDesc;
+                   && shaderInputAttachmentDesc == rhs.shaderInputAttachmentDesc
+                   && doBlit == rhs.doBlit;
         }
         bool operator!=(const RecordData& rhs) const { return !(*this == rhs); }
     };

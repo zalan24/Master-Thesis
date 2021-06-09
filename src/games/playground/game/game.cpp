@@ -146,31 +146,33 @@ void Game::record_cmd_buffer_render(const RecordData& data, drv::DrvCmdBufferRec
 }
 
 void Game::record_cmd_buffer_blit(const RecordData& data, drv::DrvCmdBufferRecorder* recorder) {
-    recorder->cmdImageBarrier({data.renderTarget, drv::IMAGE_USAGE_TRANSFER_SOURCE,
-                               drv::ImageMemoryBarrier::AUTO_TRANSITION});
+    if (data.doBlit) {
+        recorder->cmdImageBarrier({data.renderTarget, drv::IMAGE_USAGE_TRANSFER_SOURCE,
+                                   drv::ImageMemoryBarrier::AUTO_TRANSITION});
 
-    recorder->cmdImageBarrier({data.targetImage, drv::IMAGE_USAGE_TRANSFER_DESTINATION,
-                               drv::ImageMemoryBarrier::AUTO_TRANSITION});
+        recorder->cmdImageBarrier({data.targetImage, drv::IMAGE_USAGE_TRANSFER_DESTINATION,
+                                   drv::ImageMemoryBarrier::AUTO_TRANSITION});
 
-    drv::ImageBlit region;
-    region.srcSubresource.aspectMask = drv::COLOR_BIT;
-    region.srcSubresource.baseArrayLayer = 0;
-    region.srcSubresource.layerCount = 1;
-    region.srcSubresource.mipLevel = 0;
-    region.dstSubresource.aspectMask = drv::COLOR_BIT;
-    region.dstSubresource.baseArrayLayer = 0;
-    region.dstSubresource.layerCount = 1;
-    region.dstSubresource.mipLevel = 0;
-    region.srcOffsets[0] = drv::Offset3D{0, 0, 0};
-    region.srcOffsets[1] = drv::Offset3D{int(data.extent.width), int(data.extent.height), 1};
-    region.dstOffsets[0] = drv::Offset3D{0, 0, 0};
-    region.dstOffsets[1] = drv::Offset3D{int(data.extent.width), int(data.extent.height), 1};
-    if (region.dstOffsets[1].x > 100)
-        region.dstOffsets[1].x = 100;
-    if (region.dstOffsets[1].y > 100)
-        region.dstOffsets[1].y = 100;
-    recorder->cmdBlitImage(data.renderTarget, data.targetImage, 1, &region,
-                           drv::ImageFilter::NEAREST);
+        drv::ImageBlit region;
+        region.srcSubresource.aspectMask = drv::COLOR_BIT;
+        region.srcSubresource.baseArrayLayer = 0;
+        region.srcSubresource.layerCount = 1;
+        region.srcSubresource.mipLevel = 0;
+        region.dstSubresource.aspectMask = drv::COLOR_BIT;
+        region.dstSubresource.baseArrayLayer = 0;
+        region.dstSubresource.layerCount = 1;
+        region.dstSubresource.mipLevel = 0;
+        region.srcOffsets[0] = drv::Offset3D{0, 0, 0};
+        region.srcOffsets[1] = drv::Offset3D{int(data.extent.width), int(data.extent.height), 1};
+        region.dstOffsets[0] = drv::Offset3D{0, 0, 0};
+        region.dstOffsets[1] = drv::Offset3D{int(data.extent.width), int(data.extent.height), 1};
+        if (region.dstOffsets[1].x > 100)
+            region.dstOffsets[1].x = 100;
+        if (region.dstOffsets[1].y > 100)
+            region.dstOffsets[1].y = 100;
+        recorder->cmdBlitImage(data.renderTarget, data.targetImage, 1, &region,
+                               drv::ImageFilter::NEAREST);
+    }
 
     // recorder->cmdImageBarrier(
     //   {data.targetImage, drv::IMAGE_USAGE_PRESENT, drv::ImageMemoryBarrier::AUTO_TRANSITION});
@@ -235,6 +237,12 @@ Engine::AcquiredImageData Game::record(FrameId frameId) {
         recordData.colorSubpass = colorSubpass;
         recordData.swapchainSubpass = swapchainSubpass;
         recordData.shaderGlobalDesc = &shaderGlobalDesc;
+        recordData.doBlit = (frameId % 200) > 0;
+
+        // Just for testing with one-time-submit command buffers
+        ResourceStateValidationMode validation = frameId < swapChainData.imageCount
+                                                   ? ResourceStateValidationMode::NEVER_VALIDATE
+                                                   : ResourceStateValidationMode::ALWAYS_VALIDATE;
 
         {
             OneTimeCmdBuffer<RecordData> cmdBuffer(
@@ -242,7 +250,7 @@ Engine::AcquiredImageData Game::record(FrameId frameId) {
               getCommandBufferBank(), getGarbageSystem(), record_cmd_buffer_clear);
             ExecutionPackage::CommandBufferPackage submission = make_submission_package(
               queues.renderQueue.handle, cmdBuffer.use(std::move(recordData)), getGarbageSystem(),
-              ResourceStateValidationMode::ALWAYS_VALIDATE);
+              validation);
             submission.waitSemaphores.push_back(
               {swapChainData.imageAvailableSemaphore,
                drv::IMAGE_USAGE_COLOR_OUTPUT_WRITE | drv::IMAGE_USAGE_TRANSFER_DESTINATION});
@@ -254,7 +262,7 @@ Engine::AcquiredImageData Game::record(FrameId frameId) {
               getCommandBufferBank(), getGarbageSystem(), record_cmd_buffer_render);
             ExecutionPackage::CommandBufferPackage submission = make_submission_package(
               queues.renderQueue.handle, cmdBuffer.use(std::move(recordData)), getGarbageSystem(),
-              ResourceStateValidationMode::ALWAYS_VALIDATE);
+              validation);
             // submission.waitSemaphores.push_back(
             //   {swapChainData.imageAvailableSemaphore,
             //    drv::IMAGE_USAGE_COLOR_OUTPUT_WRITE | drv::IMAGE_USAGE_TRANSFER_DESTINATION});
@@ -266,7 +274,7 @@ Engine::AcquiredImageData Game::record(FrameId frameId) {
               getCommandBufferBank(), getGarbageSystem(), record_cmd_buffer_blit);
             ExecutionPackage::CommandBufferPackage submission = make_submission_package(
               queues.renderQueue.handle, cmdBuffer.use(std::move(recordData)), getGarbageSystem(),
-              ResourceStateValidationMode::ALWAYS_VALIDATE);
+              validation);
             submission.signalSemaphores.push_back(swapChainData.renderFinishedSemaphore);
             testDrawHandle.submit(queues.renderQueue.id, std::move(submission));
         }
