@@ -168,7 +168,8 @@ bool VulkanCmdBufferRecorder::cmdUseAsAttachment(
   drv::ImagePtr image, const drv::ImageSubresourceRange& subresourceRange,
   drv::ImageLayout initialLayout, drv::ImageLayout resultLayout, drv::ImageResourceUsageFlag usages,
   const drv::PerSubresourceRangeTrackData& assumedState,
-  const drv::PerSubresourceRangeTrackData& resultState) {
+  const drv::PerSubresourceRangeTrackData& resultState,
+  drv::PerSubresourceRangeTrackData& mergedState) {
     bool ret = true;
     drv::TextureInfo texInfo = driver->get_texture_info(image);
     drv::PipelineStages stages = drv::get_image_usage_stages(usages);
@@ -186,6 +187,12 @@ bool VulkanCmdBufferRecorder::cmdUseAsAttachment(
           auto& usage = cmdState.usage.get(layer, mip, aspect);
           cmdState.usageMask.add(layer, mip, aspect);
 
+          mergedState.dirtyMask |= s.dirtyMask;
+          mergedState.visible &= s.visible;
+          mergedState.ongoingReads |= s.ongoingReads;
+          mergedState.ongoingWrites |= s.ongoingWrites;
+          mergedState.usableStages &= s.usableStages;
+
           drv::PipelineStages barrierSrcStages;
           drv::PipelineStages barrierDstStages;
           ImageSingleSubresourceMemoryBarrier barrier;
@@ -200,29 +207,37 @@ bool VulkanCmdBufferRecorder::cmdUseAsAttachment(
           barrierSrcStages.add(s.ongoingReads & ~assumedState.ongoingReads);
           bool needSync = false;
           bool layoutTransition = false;
-          if ((assumedState.usableStages & s.usableStages) != assumedState.usableStages)
+          if (barrierSrcStages.stageFlags & (~drv::PipelineStages::TOP_OF_PIPE_BIT))
+              ret = false;
+          if ((assumedState.usableStages & s.usableStages) != assumedState.usableStages) {
               needSync = true;
+              ret = false;
+          }
           if (!(static_cast<drv::ImageLayoutMask>(s.layout) & requiredLayoutMask)) {
               barrier.oldLayout = s.layout;
               barrier.newLayout = initialLayout;
               needSync = true;
               layoutTransition = true;
+              ret = false;
           }
           if (s.ownership != getFamily() && s.ownership != drv::IGNORE_FAMILY
               && !convertImage(image)->sharedResource) {
               barrier.srcFamily = s.ownership;
               barrier.dstFamily = getFamily();
               needSync = true;
+              // ret = false; // probably no reason to do it, because render pass can't correct it
           }
           if (initialLayout != drv::ImageLayout::UNDEFINED) {
               if ((s.dirtyMask & assumedState.dirtyMask) != s.dirtyMask) {
                   barrier.srcAccessFlags = s.dirtyMask & ~assumedState.dirtyMask;
                   needSync = true;
+                  // ret = false; // currently occasionally dirty states are ignored by render pass correction
               }
               if (drv::MemoryBarrier::get_read_bits(accessMask) != 0
                   && (s.visible & assumedState.visible) != assumedState.visible) {
                   barrier.dstAccessFlags = assumedState.visible & ~s.visible;
                   needSync = true;
+                  ret = false;
               }
           }
           if (needSync) {
@@ -231,7 +246,6 @@ bool VulkanCmdBufferRecorder::cmdUseAsAttachment(
               barrierSrcStages.add(drv::PipelineStages(s.usableStages).getEarliestStage());
           }
           if (barrierSrcStages.stageFlags & (~drv::PipelineStages::TOP_OF_PIPE_BIT) || needSync) {
-              ret = false;
               // This only happens, if the runtime stats is wrong
               barrierDstStages.add(assumedState.usableStages);
               if (assumedState.usableStages == 0)

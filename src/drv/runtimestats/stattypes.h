@@ -84,7 +84,7 @@ struct SimpleSubresStateStat final : public IAutoSerializable<SimpleSubresStateS
     void set(const drv::PerSubresourceRangeTrackData& data);
     void append(const drv::PerSubresourceRangeTrackData& data);
     // Try to assume a clean state by default. It's not possible for usableStages and visible mask
-    void get(drv::PerSubresourceRangeTrackData& data) const;
+    void get(drv::PerSubresourceRangeTrackData& data, bool tendTo) const;
 };
 
 struct SubresStateStat final : public IAutoSerializable<SubresStateStat>
@@ -121,16 +121,74 @@ struct ImageSubresStateStat final : public IAutoSerializable<ImageSubresStateSta
     void get(drv::ImageSubresourceTrackData& data) const;
 };
 
-struct ImageStateStat final : public ISerializable
+template <typename T>
+struct ImageSubresourcesData final : public ISerializable
 {
-    drv::ImagePerSubresourceData<ImageSubresStateStat, 1> subresources;
+    drv::ImagePerSubresourceData<T, 1> subresources;
 
-    bool writeBin(std::ostream& out) const override;
-    bool readBin(std::istream& in) override;
+    bool writeBin(std::ostream& out) const override {
+        if (!serializeBin(out, subresources.layerCount))
+            return false;
+        if (!serializeBin(out, subresources.mipCount))
+            return false;
+        if (!serializeBin(out, subresources.aspects))
+            return false;
+        for (uint32_t i = 0; i < subresources.size(); ++i)
+            if (!serializeBin(out, subresources[i]))
+                return false;
+        return true;
+    }
 
-    void writeJson(json& out) const override;
-    void readJson(const json& in) override;
+    bool readBin(std::istream& in) override {
+        decltype(subresources.layerCount) layerCount;
+        decltype(subresources.mipCount) mipCount;
+        decltype(subresources.aspects) aspects;
+        if (!serializeBin(in, layerCount))
+            return false;
+        if (!serializeBin(in, mipCount))
+            return false;
+        if (!serializeBin(in, aspects))
+            return false;
+        subresources =
+          drv::ImagePerSubresourceData<ImageSubresStateStat, 1>(layerCount, mipCount, aspects);
+        for (uint32_t i = 0; i < subresources.size(); ++i)
+            if (!serializeBin(in, subresources[i]))
+                return false;
+        return true;
+    }
 
-    bool isCompatible(const drv::TextureInfo& info) const;
-    void init(const drv::TextureInfo& info);
+    void writeJson(json& out) const override {
+        out = json::object();
+        out["layerCount"] = subresources.layerCount;
+        out["mipCount"] = subresources.mipCount;
+        out["aspects"] = subresources.aspects;
+        json subres = json::array();
+        for (uint32_t i = 0; i < subresources.size(); ++i)
+            subres.push_back(serialize(subresources[i]));
+        out["subres"] = std::move(subres);
+    }
+
+    void readJson(const json& in) override {
+        if (!in.is_object())
+            throw std::runtime_error("Json object expected");
+        uint32_t layerCount = in["layerCount"];
+        uint32_t mipCount = in["mipCount"];
+        drv::ImageAspectBitType aspects = in["aspects"];
+        subresources =
+          drv::ImagePerSubresourceData<ImageSubresStateStat, 1>(layerCount, mipCount, aspects);
+        for (uint32_t i = 0; i < subresources.size(); ++i)
+            serialize(in["subres"][i], subresources[i]);
+    }
+
+    bool isCompatible(const drv::TextureInfo& info) const {
+        return info.arraySize == subresources.layerCount && info.numMips == subresources.mipCount
+               && info.aspects == subresources.aspects;
+    }
+
+    void init(const drv::TextureInfo& info) {
+        subresources = drv::ImagePerSubresourceData<ImageSubresStateStat, 1>(
+          info.arraySize, info.numMips, info.aspects);
+    }
 };
+
+using ImageStateStat = ImageSubresourcesData<ImageSubresStateStat>;

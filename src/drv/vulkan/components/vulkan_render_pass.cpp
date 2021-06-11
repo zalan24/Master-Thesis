@@ -3,6 +3,8 @@
 #include <corecontext.h>
 #include <logger.h>
 
+#include <drvtracking.hpp>
+
 #include "vulkan_conversions.h"
 #include "vulkan_enum_compare.h"
 #include "vulkan_image.h"
@@ -46,23 +48,7 @@ void VulkanRenderPass::build_impl() {
     std::vector<bool> attachmentsWritten(attachments.size(), false);
     std::vector<drv::SubpassId> lastAttachmentWrites(attachments.size(), 0);
     attachmentResultStates.resize(attachments.size());
-    {
-        auto reader = STATS_CACHE_READER;
-        if (reader->renderpassExternalAttachmentInputs.size() == attachments.size())
-            for (uint32_t i = 0; i < attachments.size(); ++i)
-                reader->renderpassExternalAttachmentInputs[i].get(attachmentAssumedStates[i]);
-    }
-
-    for (uint32_t i = 0; i < attachments.size(); ++i) {
-        attachmentResultStates[i] = attachmentAssumedStates[i];
-        if (attachments[i].initialLayout != attachments[i].finalLayout) {
-            attachmentResultStates[i].visible = 0;
-            attachmentResultStates[i].usableStages = 0;
-            attachmentResultStates[i].dirtyMask = 0;
-            attachmentResultStates[i].ongoingReads = 0;
-            attachmentResultStates[i].ongoingWrites = 0;
-        }
-    }
+    attachmentIntputCacheHandle = STATS_CACHE_WRITER.getHandle();
 
     std::vector<std::vector<drv::ImageResourceUsageFlag>> attachmentUsages;
     attachmentUsages.resize(subpasses.size());
@@ -98,6 +84,59 @@ void VulkanRenderPass::build_impl() {
         }
         for (uint32_t i = 0; i < attachments.size(); ++i)
             globalAttachmentUsages[i] |= attachmentUsages[pass][i];
+    }
+
+    {
+        auto reader = STATS_CACHE_READER;
+        if (reader->renderpassExternalAttachmentInputs.size() == attachments.size()) {
+            for (uint32_t i = 0; i < attachments.size(); ++i) {
+                drv::PerSubresourceRangeTrackData tendToTrue;
+                drv::PerSubresourceRangeTrackData tendToFalse;
+                reader->renderpassExternalAttachmentInputs[i].get(tendToFalse, false);
+                reader->renderpassExternalAttachmentInputs[i].get(tendToTrue, true);
+                attachmentAssumedStates[i].ownership = drv::IGNORE_FAMILY;
+                attachmentAssumedStates[i].ongoingReads = tendToTrue.ongoingReads;
+                attachmentAssumedStates[i].ongoingWrites = tendToTrue.ongoingWrites;
+                attachmentAssumedStates[i].dirtyMask = tendToFalse.dirtyMask;
+
+                attachmentAssumedStates[i].visible = tendToFalse.visible;
+                attachmentAssumedStates[i].visible &= drv::MemoryBarrier::get_read_bits(
+                  drv::get_image_usage_accesses(globalAttachmentUsages[i]));
+
+                attachmentAssumedStates[i].usableStages = 0;
+                attachmentAssumedStates[i].usableStages |=
+                  drv::get_image_usage_stages(globalAttachmentUsages[i]).stageFlags
+                  & tendToTrue.usableStages;
+                if (attachmentAssumedStates[i].usableStages == 0)
+                    attachmentAssumedStates[i].usableStages |=
+                      drv::PipelineStages(tendToTrue.usableStages).getEarliestStage();
+                if (attachmentAssumedStates[i].usableStages == 0)
+                    attachmentAssumedStates[i].usableStages |= drv::PipelineStages::TOP_OF_PIPE_BIT;
+
+                TODO;
+
+                // problems:
+                //  + what is assumed visibility requires access, that are not supported by dst stages?
+                //    -> use the same stuff as in submission correction
+                //  + can an invalid state be part of assumed usable stages?
+                //    -> separate stage order into a drvvulkan function and get the first stage from it, that tends to true
+                //    if no such stage, just go with top of pipe
+                //  + exp avg won't like very rare recordings...
+                //    -> replace render pass correction set in cache with a map that counts the number of corrections
+                //    -> in cmd buffer record, don't increment values, instead save what should be incremented and increment at usage
+            }
+        }
+    }
+
+    for (uint32_t i = 0; i < attachments.size(); ++i) {
+        attachmentResultStates[i] = attachmentAssumedStates[i];
+        if (attachments[i].initialLayout != attachments[i].finalLayout) {
+            attachmentResultStates[i].visible = 0;
+            attachmentResultStates[i].usableStages = 0;
+            attachmentResultStates[i].dirtyMask = 0;
+            attachmentResultStates[i].ongoingReads = 0;
+            attachmentResultStates[i].ongoingWrites = 0;
+        }
     }
 
     for (uint32_t src = 0; src < subpasses.size(); ++src) {
@@ -218,6 +257,7 @@ void VulkanRenderPass::build_impl() {
         externalOutputDep.srcStageMask = 0;
         externalOutputDep.dstStageMask = 0;
         externalOutputDep.srcAccessMask = 0;
+        TODO;  // dstAccessMask is empty
         externalOutputDep.dstAccessMask = 0;
         externalOutputDep.dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
         for (uint32_t i = 0; i < attachments.size(); ++i) {
@@ -431,11 +471,18 @@ void VulkanRenderPass::beginRenderPass(drv::FramebufferPtr frameBuffer,
                                        const drv::Rect2D& renderArea,
                                        drv::DrvCmdBufferRecorder* cmdBuffer) const {
     for (uint32_t i = 0; i < attachments.size(); ++i) {
+        drv::PerSubresourceRangeTrackData state;
         if (!static_cast<VulkanCmdBufferRecorder*>(cmdBuffer)->cmdUseAsAttachment(
-          attachmentImages[i].image, attachmentImages[i].subresource, attachments[i].initialLayout,
-          attachments[i].finalLayout, globalAttachmentUsages[i], attachmentAssumedStates[i],
-          attachmentResultStates[i]))
-            RuntimeStats::getSingleton()->corrigateAttachment(name.c_str(), cmdBuffer->getName(), i);
+              attachmentImages[i].image, attachmentImages[i].subresource,
+              attachments[i].initialLayout, attachments[i].finalLayout, globalAttachmentUsages[i],
+              attachmentAssumedStates[i], attachmentResultStates[i], state)) {
+            RuntimeStats::getSingleton()->corrigateAttachment(name.c_str(), cmdBuffer->getName(),
+                                                              i);
+        }
+        {
+            StatsCacheWriter writer(attachmentIntputCacheHandle);
+            writer->renderpassExternalAttachmentInputs[i].append(state);
+        }
     }
     applySync(0);
     VkRenderPassBeginInfo beginInfo;

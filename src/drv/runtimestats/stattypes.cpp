@@ -114,15 +114,26 @@ void SimpleSubresStateStat::append(const drv::PerSubresourceRangeTrackData& data
     visible.append(data.visible);
 }
 
-void SimpleSubresStateStat::get(drv::PerSubresourceRangeTrackData& data) const {
+void SimpleSubresStateStat::get(drv::PerSubresourceRangeTrackData& data, bool tendTo) const {
     // Assumed usable stages will be used as sync destitanion. It can be a problem for unsupported stages
-    data.usableStages = usableStages.get(PipelineStagesStat::TEND_TO_FALSE).stageFlags;
-    data.ongoingWrites = writes.get(PipelineStagesStat::TEND_TO_FALSE).stageFlags;
-    data.ongoingReads = reads.get(PipelineStagesStat::TEND_TO_FALSE).stageFlags;
-    data.dirtyMask = dirtyMask.get(MemoryAccessStat::TEND_TO_FALSE);
+    data.usableStages =
+      usableStages
+        .get(tendTo ? PipelineStagesStat::TEND_TO_TRUE : PipelineStagesStat::TEND_TO_FALSE)
+        .stageFlags;
+    data.ongoingWrites =
+      writes.get(tendTo ? PipelineStagesStat::TEND_TO_TRUE : PipelineStagesStat::TEND_TO_FALSE)
+        .stageFlags;
+    data.ongoingReads =
+      reads.get(tendTo ? PipelineStagesStat::TEND_TO_TRUE : PipelineStagesStat::TEND_TO_FALSE)
+        .stageFlags;
+    data.dirtyMask =
+      dirtyMask.get(tendTo ? MemoryAccessStat::TEND_TO_TRUE : MemoryAccessStat::TEND_TO_FALSE);
     // Assumed accesses will be mode available. This could be a problem if an access is not supported at all
-    data.visible = visible.get(MemoryAccessStat::TEND_TO_FALSE);
+    data.visible =
+      visible.get(tendTo ? MemoryAccessStat::TEND_TO_TRUE : MemoryAccessStat::TEND_TO_FALSE);
 
+    TODO;  // this is not good here.
+    // it needs to be handled outside as appropriate
     if (data.usableStages == 0)
         data.usableStages |= drv::PipelineStages::BOTTOM_OF_PIPE_BIT;
 }
@@ -190,68 +201,4 @@ void ImageSubresStateStat::append(const drv::ImageSubresourceTrackData& data) {
 void ImageSubresStateStat::get(drv::ImageSubresourceTrackData& data) const {
     subres.get(data);
     data.layout = layout.get();
-}
-
-bool ImageStateStat::writeBin(std::ostream& out) const {
-    if (!serializeBin(out, subresources.layerCount))
-        return false;
-    if (!serializeBin(out, subresources.mipCount))
-        return false;
-    if (!serializeBin(out, subresources.aspects))
-        return false;
-    for (uint32_t i = 0; i < subresources.size(); ++i)
-        if (!serializeBin(out, subresources[i]))
-            return false;
-    return true;
-}
-
-bool ImageStateStat::readBin(std::istream& in) {
-    decltype(subresources.layerCount) layerCount;
-    decltype(subresources.mipCount) mipCount;
-    decltype(subresources.aspects) aspects;
-    if (!serializeBin(in, layerCount))
-        return false;
-    if (!serializeBin(in, mipCount))
-        return false;
-    if (!serializeBin(in, aspects))
-        return false;
-    subresources =
-      drv::ImagePerSubresourceData<ImageSubresStateStat, 1>(layerCount, mipCount, aspects);
-    for (uint32_t i = 0; i < subresources.size(); ++i)
-        if (!serializeBin(in, subresources[i]))
-            return false;
-    return true;
-}
-
-void ImageStateStat::writeJson(json& out) const {
-    out = json::object();
-    out["layerCount"] = subresources.layerCount;
-    out["mipCount"] = subresources.mipCount;
-    out["aspects"] = subresources.aspects;
-    json subres = json::array();
-    for (uint32_t i = 0; i < subresources.size(); ++i)
-        subres.push_back(serialize(subresources[i]));
-    out["subres"] = std::move(subres);
-}
-
-void ImageStateStat::readJson(const json& in) {
-    if (!in.is_object())
-        throw std::runtime_error("Json object expected");
-    uint32_t layerCount = in["layerCount"];
-    uint32_t mipCount = in["mipCount"];
-    drv::ImageAspectBitType aspects = in["aspects"];
-    subresources =
-      drv::ImagePerSubresourceData<ImageSubresStateStat, 1>(layerCount, mipCount, aspects);
-    for (uint32_t i = 0; i < subresources.size(); ++i)
-        serialize(in["subres"][i], subresources[i]);
-}
-
-bool ImageStateStat::isCompatible(const drv::TextureInfo& info) const {
-    return info.arraySize == subresources.layerCount && info.numMips == subresources.mipCount
-           && info.aspects == subresources.aspects;
-}
-
-void ImageStateStat::init(const drv::TextureInfo& info) {
-    subresources = drv::ImagePerSubresourceData<ImageSubresStateStat, 1>(
-      info.arraySize, info.numMips, info.aspects);
 }

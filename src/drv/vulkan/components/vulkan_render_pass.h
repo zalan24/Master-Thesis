@@ -54,6 +54,7 @@ class VulkanRenderPass final : public drv::RenderPass
     std::vector<drv::ImageResourceUsageFlag> globalAttachmentUsages;
     std::vector<drv::PerSubresourceRangeTrackData> attachmentAssumedStates;
     std::vector<drv::PerSubresourceRangeTrackData> attachmentResultStates;
+    StatsCache* attachmentIntputCacheHandle = nullptr;
     struct AttachmentInfo
     {
         drv::ImageFormat format;

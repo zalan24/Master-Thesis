@@ -114,7 +114,8 @@ class VulkanCmdBufferRecorder final : public drv::DrvCmdBufferRecorder
                             drv::ImageLayout initialLayout, drv::ImageLayout resultLayout,
                             drv::ImageResourceUsageFlag usages,
                             const drv::PerSubresourceRangeTrackData& assumedState,
-                            const drv::PerSubresourceRangeTrackData& resultState);
+                            const drv::PerSubresourceRangeTrackData& resultState,
+                            drv::PerSubresourceRangeTrackData& mergedState);
     void cmdImageBarrier(const drv::ImageMemoryBarrier& barrier) override;
     void cmdClearImage(drv::ImagePtr image, const drv::ClearColorValue* clearColors,
                        uint32_t ranges = 0,
