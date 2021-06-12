@@ -20,6 +20,26 @@ class DrvCmdBuffer;
 
 class IDriver;
 
+class RenderPassStats
+{
+ public:
+    RenderPassStats(StatsCache* _writer, size_t attachmentCount)
+      : writer(_writer), attachmentInputStates(attachmentCount) {}
+
+    void write();
+
+    drv::PerSubresourceRangeTrackData& getAttachmentInputState(size_t i) {
+        return attachmentInputStates[i];
+    }
+    const drv::PerSubresourceRangeTrackData& getAttachmentInputState(size_t i) const {
+        return attachmentInputStates[i];
+    }
+
+ private:
+    StatsCache* writer = nullptr;
+    std::vector<drv::PerSubresourceRangeTrackData> attachmentInputStates;
+};
+
 class DrvCmdBufferRecorder
 {
  public:
@@ -89,6 +109,12 @@ class DrvCmdBufferRecorder
 
     StatsCache* getStatsCacheHandle();
 
+    void setRenderPassStats(std::vector<drv::RenderPassStats>* _renderPassStats) {
+        renderPassStats = _renderPassStats;
+    }
+
+    void addRenderPassStat(drv::RenderPassStats&& stat);
+
  protected:
     ImageTrackInfo& getImageState(drv::ImagePtr image, uint32_t ranges,
                                   const drv::ImageSubresourceRange* subresourceRanges,
@@ -104,6 +130,7 @@ class DrvCmdBufferRecorder
     CommandBufferPtr cmdBufferPtr;
     ImageStates* imageStates;
     ImageRecordStates imageRecordStates;
+    std::vector<drv::RenderPassStats>* renderPassStats = nullptr;
     const char* name = nullptr;
 };
 
@@ -160,6 +187,7 @@ class DrvCmdBuffer
               isSimultaneous());
             recorder->setName(name.c_str());
             recorder->setImageStates(&imageStates);
+            recorder->setRenderPassStats(&renderPassStats);
             recordCallback(currentData, recorder);
             numSubmissions = 0;
             statsCacheHandle = recorder->getStatsCacheHandle();
@@ -171,6 +199,8 @@ class DrvCmdBuffer
         if (needToPrepare)
             prepare(std::move(d));
         needToPrepare = true;
+        for (auto& stat : renderPassStats)
+            stat.write();
         return {cmdBufferPtr, {&imageStates}, ++numSubmissions, name.c_str(), statsCacheHandle};
     }
 
@@ -197,6 +227,7 @@ class DrvCmdBuffer
     CommandBufferPtr cmdBufferPtr = get_null_ptr<CommandBufferPtr>();
     DrvCmdBufferRecorder::ImageStates imageStates;
     StatsCache* statsCacheHandle = nullptr;
+    std::vector<drv::RenderPassStats> renderPassStats;
 
     bool needToPrepare = true;
     uint64_t numSubmissions = 0;

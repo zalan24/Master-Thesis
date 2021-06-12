@@ -71,7 +71,10 @@ void DrvCmdBufferRecorder::autoRegisterImage(ImagePtr image, uint32_t layer, uin
             && imageItr->second.isCompatible(texInfo)) {
             const ImageSubresStateStat& subRes =
               imageItr->second.subresources.get(layer, mip, aspect);
-            subRes.get(s);
+            subRes.get(s, false);
+
+            if (s.usableStages == 0)
+                s.usableStages |= drv::PipelineStages::BOTTOM_OF_PIPE_BIT;
         }
         else {
             // everything else is default
@@ -208,4 +211,20 @@ void DrvCmdBufferRecorder::updateImageState(drv::ImagePtr image, const ImageTrac
         RecordImageInfo recInfo(false, initMask);
         imageRecordStates.emplace_back(image, std::move(recInfo));
     }
+}
+
+void RenderPassStats::write() {
+    if (!writer)
+        return;
+    StatsCacheWriter cache(writer);
+    if (cache->renderpassExternalAttachmentInputs.size() != attachmentInputStates.size())
+        cache->renderpassExternalAttachmentInputs.resize(attachmentInputStates.size());
+    for (uint32_t i = 0; i < attachmentInputStates.size(); ++i)
+        cache->renderpassExternalAttachmentInputs[i].append(attachmentInputStates[i]);
+}
+
+void DrvCmdBufferRecorder::addRenderPassStat(drv::RenderPassStats&& stat) {
+    drv::drv_assert(renderPassStats != nullptr);
+    if (renderPassStats != nullptr)
+        renderPassStats->push_back(std::move(stat));
 }

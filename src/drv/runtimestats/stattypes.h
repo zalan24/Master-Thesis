@@ -100,7 +100,7 @@ struct SubresStateStat final : public IAutoSerializable<SubresStateStat>
 
     void set(const drv::PerSubresourceRangeTrackData& data);
     void append(const drv::PerSubresourceRangeTrackData& data);
-    void get(drv::PerSubresourceRangeTrackData& data) const;
+    void get(drv::PerSubresourceRangeTrackData& data, bool tendTo) const;
 
     SubresStateStat();
 
@@ -118,7 +118,7 @@ struct ImageSubresStateStat final : public IAutoSerializable<ImageSubresStateSta
 
     void set(const drv::ImageSubresourceTrackData& data);
     void append(const drv::ImageSubresourceTrackData& data);
-    void get(drv::ImageSubresourceTrackData& data) const;
+    void get(drv::ImageSubresourceTrackData& data, bool tendTo) const;
 };
 
 template <typename T>

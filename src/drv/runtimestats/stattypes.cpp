@@ -131,11 +131,6 @@ void SimpleSubresStateStat::get(drv::PerSubresourceRangeTrackData& data, bool te
     // Assumed accesses will be mode available. This could be a problem if an access is not supported at all
     data.visible =
       visible.get(tendTo ? MemoryAccessStat::TEND_TO_TRUE : MemoryAccessStat::TEND_TO_FALSE);
-
-    TODO;  // this is not good here.
-    // it needs to be handled outside as appropriate
-    if (data.usableStages == 0)
-        data.usableStages |= drv::PipelineStages::BOTTOM_OF_PIPE_BIT;
 }
 
 void SubresStateStat::resizeFamilies(size_t size) {
@@ -171,7 +166,7 @@ void SubresStateStat::append(const drv::PerSubresourceRangeTrackData& data) {
     simpleStats.append(data);
 }
 
-void SubresStateStat::get(drv::PerSubresourceRangeTrackData& data) const {
+void SubresStateStat::get(drv::PerSubresourceRangeTrackData& data, bool tendTo) const {
     uint32_t maxFamily = 0;
     for (uint32_t i = 1; i < queueFamilies.size(); ++i)
         if (queueFamilies[i] > queueFamilies[maxFamily])
@@ -179,7 +174,7 @@ void SubresStateStat::get(drv::PerSubresourceRangeTrackData& data) const {
     data.ownership = (maxFamily >= queueFamilies.size() || noFamily > queueFamilies[maxFamily])
                        ? drv::IGNORE_FAMILY
                        : maxFamily;
-    simpleStats.get(data);
+    simpleStats.get(data, tendTo);
 }
 
 SubresStateStat::SubresStateStat() : queueFamilies(0) {
@@ -198,7 +193,7 @@ void ImageSubresStateStat::append(const drv::ImageSubresourceTrackData& data) {
     layout.append(data.layout);
 }
 
-void ImageSubresStateStat::get(drv::ImageSubresourceTrackData& data) const {
-    subres.get(data);
+void ImageSubresStateStat::get(drv::ImageSubresourceTrackData& data, bool tendTo) const {
+    subres.get(data, tendTo);
     data.layout = layout.get();
 }

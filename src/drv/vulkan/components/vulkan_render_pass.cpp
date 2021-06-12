@@ -107,23 +107,46 @@ void VulkanRenderPass::build_impl() {
                 attachmentAssumedStates[i].usableStages |=
                   drv::get_image_usage_stages(globalAttachmentUsages[i]).stageFlags
                   & tendToTrue.usableStages;
-                if (attachmentAssumedStates[i].usableStages == 0)
-                    attachmentAssumedStates[i].usableStages |=
-                      drv::PipelineStages(tendToTrue.usableStages).getEarliestStage();
+
+                // Idea is to pick a stage, that's consistently usable, so that required stages can wait on it
+                // This stage should be a supported stage though
+                if (attachmentAssumedStates[i].usableStages == 0) {
+                    static drv::PipelineStages::PipelineStageFlagBits supportedStages[] = {
+                      drv::PipelineStages::TOP_OF_PIPE_BIT,
+                      drv::PipelineStages::VERTEX_INPUT_BIT,
+                      drv::PipelineStages::VERTEX_SHADER_BIT,
+                      drv::PipelineStages::FRAGMENT_SHADER_BIT,
+                      drv::PipelineStages::EARLY_FRAGMENT_TESTS_BIT,
+                      drv::PipelineStages::LATE_FRAGMENT_TESTS_BIT,
+                      drv::PipelineStages::COLOR_ATTACHMENT_OUTPUT_BIT,
+                      drv::PipelineStages::COMPUTE_SHADER_BIT,
+                      drv::PipelineStages::TRANSFER_BIT,
+                      drv::PipelineStages::BOTTOM_OF_PIPE_BIT};
+                    for (const auto& stage : supportedStages) {
+                        if (tendToTrue.usableStages & stage) {
+                            attachmentAssumedStates[i].usableStages |= stage;
+                            break;
+                        }
+                    }
+                }
+
+                // Check for accesses, that don't have a corresponding stage
+                for (uint32_t j = 0;
+                     j < drv::MemoryBarrier::get_access_count(attachmentAssumedStates[i].visible);
+                     ++j) {
+                    drv::MemoryBarrier::AccessFlagBits access =
+                      drv::MemoryBarrier::get_access(attachmentAssumedStates[i].visible, j);
+                    drv::PipelineStages::FlagType supportedStages =
+                      drv::MemoryBarrier::get_supported_stages(access);
+                    if ((supportedStages & attachmentAssumedStates[i].visible) == 0) {
+                        attachmentAssumedStates[i].usableStages |=
+                          drv::get_image_usage_stages(globalAttachmentUsages[i]).stageFlags;
+                        break;
+                    }
+                }
+
                 if (attachmentAssumedStates[i].usableStages == 0)
                     attachmentAssumedStates[i].usableStages |= drv::PipelineStages::TOP_OF_PIPE_BIT;
-
-                TODO;
-
-                // problems:
-                //  + what is assumed visibility requires access, that are not supported by dst stages?
-                //    -> use the same stuff as in submission correction
-                //  + can an invalid state be part of assumed usable stages?
-                //    -> separate stage order into a drvvulkan function and get the first stage from it, that tends to true
-                //    if no such stage, just go with top of pipe
-                //  + exp avg won't like very rare recordings...
-                //    -> replace render pass correction set in cache with a map that counts the number of corrections
-                //    -> in cmd buffer record, don't increment values, instead save what should be incremented and increment at usage
             }
         }
     }
@@ -467,21 +490,18 @@ void VulkanRenderPass::clear() {
     }
 }
 
-void VulkanRenderPass::beginRenderPass(drv::FramebufferPtr frameBuffer,
-                                       const drv::Rect2D& renderArea,
-                                       drv::DrvCmdBufferRecorder* cmdBuffer) const {
+drv::RenderPassStats VulkanRenderPass::beginRenderPass(drv::FramebufferPtr frameBuffer,
+                                                       const drv::Rect2D& renderArea,
+                                                       drv::DrvCmdBufferRecorder* cmdBuffer) const {
+    drv::RenderPassStats ret(attachmentIntputCacheHandle, attachments.size());
     for (uint32_t i = 0; i < attachments.size(); ++i) {
-        drv::PerSubresourceRangeTrackData state;
         if (!static_cast<VulkanCmdBufferRecorder*>(cmdBuffer)->cmdUseAsAttachment(
               attachmentImages[i].image, attachmentImages[i].subresource,
               attachments[i].initialLayout, attachments[i].finalLayout, globalAttachmentUsages[i],
-              attachmentAssumedStates[i], attachmentResultStates[i], state)) {
+              attachmentAssumedStates[i], attachmentResultStates[i],
+              ret.getAttachmentInputState(i))) {
             RuntimeStats::getSingleton()->corrigateAttachment(name.c_str(), cmdBuffer->getName(),
                                                               i);
-        }
-        {
-            StatsCacheWriter writer(attachmentIntputCacheHandle);
-            writer->renderpassExternalAttachmentInputs[i].append(state);
         }
     }
     applySync(0);
@@ -495,6 +515,7 @@ void VulkanRenderPass::beginRenderPass(drv::FramebufferPtr frameBuffer,
     beginInfo.pClearValues = clearValues.data();
     VkSubpassContents contents = VK_SUBPASS_CONTENTS_INLINE;  // TODO
     vkCmdBeginRenderPass(convertCommandBuffer(cmdBuffer->getCommandBuffer()), &beginInfo, contents);
+    return ret;
 }
 
 void VulkanRenderPass::endRenderPass(drv::DrvCmdBufferRecorder* cmdBuffer) const {

@@ -239,7 +239,7 @@ void RuntimeStats::corrigateAttachment(const char* renderpass, const char* submi
     data.renderpass = renderpass;
     data.submission = submission;
     data.attachmentId = attachmentId;
-    writer->lastExecution.attachmentCorrections.insert(std::move(data));
+    writer->lastExecution.attachmentCorrections[data]++;
 #endif
 }
 
@@ -291,9 +291,9 @@ void RuntimeStats::exportReport(const std::string& filename) const {
                 if (count > 0)
                     out << "Corrected submission: " << submission << ": " << count << " ("
                         << float(count) / float(frameCount) << " per frame)" << std::endl;
-            for (const auto& a : node->lastExecution.attachmentCorrections)
-                out << "Corrected attachment: " << a.renderpass << "/" << a.submission << "/"
-                    << a.attachmentId << std::endl;
+            for (const auto& [data, count] : node->lastExecution.attachmentCorrections)
+                out << "Corrected attachment: " << data.renderpass << "/" << data.submission << "/"
+                    << data.attachmentId << ": " << count << std::endl;
 
             for (const auto& [name, ptr] : node->subnodes)
                 nodes.push(ptr.get());

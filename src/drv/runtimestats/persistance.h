@@ -35,7 +35,7 @@ struct SingleExecutionData final : public IAutoSerializable<SingleExecutionData>
         (uint32_t) submissionCount,
         (uint32_t) allowedSubmissionCorrections,
         (std::unordered_map<std::string, uint32_t>) submissionCorrections,
-        (std::set<RenderpassCorrectionData>) attachmentCorrections
+        (std::map<RenderpassCorrectionData, uint32_t>) attachmentCorrections
     )
 
     void start();

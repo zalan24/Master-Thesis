@@ -595,7 +595,6 @@ class ISerializable
             if (!pair.is_array() || pair.size() != 2)
                 throw std::runtime_error("Input json is not a 2-sized array: " + pair.dump());
             K key;
-            V value;
             serialize(pair[0], key);
             serialize(pair[1], data[key]);
         }
