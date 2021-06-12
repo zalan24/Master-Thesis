@@ -25,6 +25,7 @@ class RenderPassStats
  public:
     RenderPassStats(StatsCache* _writer, size_t attachmentCount)
       : writer(_writer), attachmentInputStates(attachmentCount) {}
+    RenderPassStats() : RenderPassStats(nullptr, 0) {}
 
     void write();
 
@@ -37,7 +38,34 @@ class RenderPassStats
 
  private:
     StatsCache* writer = nullptr;
-    std::vector<drv::PerSubresourceRangeTrackData> attachmentInputStates;
+    FixedArray<drv::PerSubresourceRangeTrackData, 8> attachmentInputStates;
+};
+
+class RenderPassPostStats
+{
+ public:
+    RenderPassPostStats(StatsCache* _writer, size_t attachmentCount)
+      : writer(_writer), attachmentPostUsages(attachmentCount) {
+        for (uint32_t i = 0; i < attachmentPostUsages.size(); ++i)
+            attachmentPostUsages[i] = 0;
+    }
+    RenderPassPostStats() : RenderPassPostStats(nullptr, 0) {}
+
+    void write();
+
+    drv::ImageResourceUsageFlag& getAttachmentInputState(size_t i) {
+        return attachmentPostUsages[i];
+    }
+    const drv::ImageResourceUsageFlag& getAttachmentInputState(size_t i) const {
+        return attachmentPostUsages[i];
+    }
+
+    operator bool() const { return writer != nullptr; }
+
+ private:
+    StatsCache* writer = nullptr;
+    TODO;  // collect usages
+    FixedArray<drv::ImageResourceUsageFlag, 8> attachmentPostUsages;
 };
 
 class DrvCmdBufferRecorder
@@ -109,11 +137,17 @@ class DrvCmdBufferRecorder
 
     StatsCache* getStatsCacheHandle();
 
-    void setRenderPassStats(std::vector<drv::RenderPassStats>* _renderPassStats) {
+    void setRenderPassStats(FlexibleArray<drv::RenderPassStats, 1>* _renderPassStats) {
         renderPassStats = _renderPassStats;
     }
 
+    void setRenderPassPostStats(FlexibleArray<drv::RenderPassPostStats, 1>* _renderPassPostStats) {
+        renderPassPostStats = _renderPassPostStats;
+    }
+
     void addRenderPassStat(drv::RenderPassStats&& stat);
+
+    void setRenderPassPostStats(drv::RenderPassPostStats&& stat);
 
  protected:
     ImageTrackInfo& getImageState(drv::ImagePtr image, uint32_t ranges,
@@ -130,7 +164,9 @@ class DrvCmdBufferRecorder
     CommandBufferPtr cmdBufferPtr;
     ImageStates* imageStates;
     ImageRecordStates imageRecordStates;
-    std::vector<drv::RenderPassStats>* renderPassStats = nullptr;
+    RenderPassPostStats currentRenderPassPostStats;
+    FlexibleArray<drv::RenderPassStats, 1>* renderPassStats = nullptr;
+    FlexibleArray<drv::RenderPassPostStats, 1>* renderPassPostStats = nullptr;
     const char* name = nullptr;
 };
 
@@ -188,6 +224,7 @@ class DrvCmdBuffer
             recorder->setName(name.c_str());
             recorder->setImageStates(&imageStates);
             recorder->setRenderPassStats(&renderPassStats);
+            recorder->setRenderPassPostStats(&renderPassPostStats);
             recordCallback(currentData, recorder);
             numSubmissions = 0;
             statsCacheHandle = recorder->getStatsCacheHandle();
@@ -199,8 +236,10 @@ class DrvCmdBuffer
         if (needToPrepare)
             prepare(std::move(d));
         needToPrepare = true;
-        for (auto& stat : renderPassStats)
-            stat.write();
+        for (uint32_t i = 0; i < renderPassStats.size(); ++i)
+            renderPassStats[i].write();
+        for (uint32_t i = 0; i < renderPassPostStats.size(); ++i)
+            renderPassPostStats[i].write();
         return {cmdBufferPtr, {&imageStates}, ++numSubmissions, name.c_str(), statsCacheHandle};
     }
 
@@ -227,7 +266,8 @@ class DrvCmdBuffer
     CommandBufferPtr cmdBufferPtr = get_null_ptr<CommandBufferPtr>();
     DrvCmdBufferRecorder::ImageStates imageStates;
     StatsCache* statsCacheHandle = nullptr;
-    std::vector<drv::RenderPassStats> renderPassStats;
+    FlexibleArray<drv::RenderPassStats, 1> renderPassStats;
+    FlexibleArray<drv::RenderPassPostStats, 1> renderPassPostStats;
 
     bool needToPrepare = true;
     uint64_t numSubmissions = 0;

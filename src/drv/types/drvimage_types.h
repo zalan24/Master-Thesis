@@ -764,7 +764,22 @@ enum ImageResourceUsage : ImageResourceUsageFlag
     IMAGE_USAGE_COLOR_OUTPUT_WRITE = 1ull << 5,
     IMAGE_USAGE_DEPTH_STENCIL_READ = 1ull << 6,
     IMAGE_USAGE_DEPTH_STENCIL_WRITE = 1ull << 7,
+    // Increment get_image_usage_count if new usage is added
 };
+constexpr uint32_t get_image_usage_count() {
+    return 8;
+}
+
+constexpr ImageResourceUsage get_image_usage(uint32_t index) {
+    return static_cast<ImageResourceUsage>(index);
+}
+
+constexpr uint32_t get_index_of_image_usage(ImageResourceUsage usage) {
+    for (uint32_t i = 0; i < get_image_usage_count(); ++i)
+        if (get_image_usage(i) == usage)
+            return i;
+    return get_image_usage_count();
+}
 
 ImageLayoutMask get_accepted_image_layouts(ImageResourceUsageFlag usages);
 

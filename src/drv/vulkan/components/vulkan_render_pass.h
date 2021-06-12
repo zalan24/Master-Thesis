@@ -30,7 +30,7 @@ class VulkanRenderPass final : public drv::RenderPass
     drv::RenderPassStats beginRenderPass(drv::FramebufferPtr frameBuffer,
                                          const drv::Rect2D& renderArea,
                                          drv::DrvCmdBufferRecorder* cmdBuffer) const override;
-    void endRenderPass(drv::DrvCmdBufferRecorder* cmdBuffer) const override;
+    drv::RenderPassPostStats endRenderPass(drv::DrvCmdBufferRecorder* cmdBuffer) const override;
     void startNextSubpass(drv::DrvCmdBufferRecorder* cmdBuffer, drv::SubpassId id) const override;
     void clearAttachments(drv::DrvCmdBufferRecorder* cmdBuffer, uint32_t attachmentCount,
                           const uint32_t* attachmentId, const drv::ClearValue* clearValues,

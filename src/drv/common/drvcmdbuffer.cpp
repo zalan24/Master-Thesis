@@ -11,6 +11,10 @@ using namespace drv;
 
 DrvCmdBufferRecorder::~DrvCmdBufferRecorder() {
     if (!is_null_ptr(cmdBufferPtr)) {
+        if (currentRenderPassPostStats) {
+            renderPassPostStats->push_back(std::move(currentRenderPassPostStats));
+            currentRenderPassPostStats = {};
+        }
         for (uint32_t i = uint32_t(imageStates->size()); i > 0; --i) {
             bool used = false;
             for (uint32_t j = 0; j < imageRecordStates.size() && !used; ++j) {
@@ -227,4 +231,20 @@ void DrvCmdBufferRecorder::addRenderPassStat(drv::RenderPassStats&& stat) {
     drv::drv_assert(renderPassStats != nullptr);
     if (renderPassStats != nullptr)
         renderPassStats->push_back(std::move(stat));
+}
+
+void DrvCmdBufferRecorder::setRenderPassPostStats(drv::RenderPassPostStats&& stat) {
+    if (currentRenderPassPostStats)
+        renderPassPostStats->push_back(std::move(currentRenderPassPostStats));
+    currentRenderPassPostStats = std::move(stat);
+}
+
+void RenderPassPostStats::write() {
+    if (!writer)
+        return;
+    StatsCacheWriter cache(writer);
+    if (cache->renderpassAttachmentPostUsage.size() != attachmentPostUsages.size())
+        cache->renderpassAttachmentPostUsage.resize(attachmentPostUsages.size());
+    for (uint32_t i = 0; i < attachmentPostUsages.size(); ++i)
+        cache->renderpassAttachmentPostUsage[i].append(attachmentPostUsages[i]);
 }

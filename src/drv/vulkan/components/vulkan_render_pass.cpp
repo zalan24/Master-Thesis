@@ -280,7 +280,6 @@ void VulkanRenderPass::build_impl() {
         externalOutputDep.srcStageMask = 0;
         externalOutputDep.dstStageMask = 0;
         externalOutputDep.srcAccessMask = 0;
-        TODO;  // dstAccessMask is empty
         externalOutputDep.dstAccessMask = 0;
         externalOutputDep.dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
         for (uint32_t i = 0; i < attachments.size(); ++i) {
@@ -290,12 +289,25 @@ void VulkanRenderPass::build_impl() {
               drv::get_image_usage_accesses(attachmentUsages[src][i]);
             drv::PipelineStages srcStages = drv::get_image_usage_stages(attachmentUsages[src][i]);
             drv::PipelineStages usedStages = convertPipelineStages(srcStages.getEarliestStage());
+            drv::MemoryBarrier::AccessFlagBitType usedAccesses = 0;
             {
                 auto reader = STATS_CACHE_READER;
-                if (reader->renderpassAttachmentPostUsage.size() == attachments.size())
-                    usedStages = drv::PipelineStages(reader->renderpassAttachmentPostUsage[i].get(
-                      PipelineStagesStat::TEND_TO_FALSE));
-                usedStages.add(drv::PipelineStages::TOP_OF_PIPE_BIT);
+                if (reader->renderpassAttachmentPostUsage.size() == attachments.size()) {
+                    drv::ImageResourceUsageFlag postUsages =
+                      reader->renderpassAttachmentPostUsage[i].get(ImageUsageStat::TEND_TO_FALSE);
+                    usedStages = drv::get_image_usage_stages(postUsages);
+                    usedAccesses = drv::get_image_usage_accesses(postUsages);
+                }
+                if (usedStages.stageFlags == 0)
+                    usedStages = convertPipelineStages(srcStages.getEarliestStage());
+                for (uint32_t j = 0; j < drv::MemoryBarrier::get_access_count(usedAccesses); ++j) {
+                    drv::MemoryBarrier::AccessFlagBits access =
+                      drv::MemoryBarrier::get_access(usedAccesses, j);
+                    drv::PipelineStages::FlagType supportedStages =
+                      drv::MemoryBarrier::get_supported_stages(access);
+                    if ((supportedStages & usedStages.stageFlags) == 0)
+                        usedAccesses ^= access;
+                }
             }
             if (drv::MemoryBarrier::get_read_bits(srcAccess) != 0) {
                 attachmentResultStates[i].ongoingReads |= srcStages.stageFlags;
@@ -312,6 +324,7 @@ void VulkanRenderPass::build_impl() {
                 // Transitive dependencies can sync with these stages
                 externalOutputDep.srcStageMask |= convertPipelineStages(srcStages);
                 externalOutputDep.dstStageMask |= convertPipelineStages(usedStages);
+                externalOutputDep.dstAccessMask = static_cast<VkAccessFlags>(usedAccesses);
                 // attachmentResultStates[i].ongoingWrites.add(srcStages); -- it's synced
                 attachmentResultStates[i].usableStages = usedStages.stageFlags;
             }
@@ -518,8 +531,10 @@ drv::RenderPassStats VulkanRenderPass::beginRenderPass(drv::FramebufferPtr frame
     return ret;
 }
 
-void VulkanRenderPass::endRenderPass(drv::DrvCmdBufferRecorder* cmdBuffer) const {
+drv::RenderPassPostStats VulkanRenderPass::endRenderPass(
+  drv::DrvCmdBufferRecorder* cmdBuffer) const {
     vkCmdEndRenderPass(convertCommandBuffer(cmdBuffer->getCommandBuffer()));
+    return drv::RenderPassPostStats(attachmentIntputCacheHandle, attachments.size());
 }
 
 void VulkanRenderPass::startNextSubpass(drv::DrvCmdBufferRecorder* cmdBuffer,

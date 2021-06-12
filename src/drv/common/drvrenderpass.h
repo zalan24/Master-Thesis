@@ -153,7 +153,7 @@ class RenderPass
     virtual RenderPassStats beginRenderPass(FramebufferPtr frameBuffer,
                                             const drv::Rect2D& renderArea,
                                             drv::DrvCmdBufferRecorder* cmdBuffer) const = 0;
-    virtual void endRenderPass(drv::DrvCmdBufferRecorder* cmdBuffer) const = 0;
+    virtual RenderPassPostStats endRenderPass(drv::DrvCmdBufferRecorder* cmdBuffer) const = 0;
     virtual void startNextSubpass(drv::DrvCmdBufferRecorder* cmdBuffer,
                                   drv::SubpassId id) const = 0;
     virtual void clearAttachments(drv::DrvCmdBufferRecorder* cmdBuffer, uint32_t attachmentCount,

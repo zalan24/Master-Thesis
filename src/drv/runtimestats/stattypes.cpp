@@ -37,6 +37,44 @@ PipelineStagesStat::PipelineStagesStat() {
         stages[i] = 0.5f;
 }
 
+void ImageUsageStat::set(const drv::ImageResourceUsageFlag& _usages) {
+    for (uint32_t i = 0; i < usages.size(); ++i)
+        usages[i] = 0;
+    for (uint32_t i = 0; i < usages.size(); ++i)
+        if (drv::get_image_usage(i) & _usages)
+            usages[drv::get_index_of_image_usage(drv::get_image_usage(i))] = 1;
+}
+
+void ImageUsageStat::append(const drv::ImageResourceUsageFlag& _usages) {
+    for (uint32_t i = 0; i < usages.size(); ++i) {
+        usages[i] *= (1.f - EXP_AVG);
+        if (_usages & drv::get_image_usage(i))
+            usages[i] += EXP_AVG * 1.f;
+    }
+}
+
+drv::ImageResourceUsageFlag ImageUsageStat::get(ApproximationMode mode) const {
+    drv::ImageResourceUsageFlag ret = 0;
+    for (uint32_t i = 0; i < usages.size(); ++i) {
+        switch (mode) {
+            case TEND_TO_FALSE:
+                if (usages[i] > 1.f - THRESHOLD)
+                    ret |= drv::get_image_usage(i);
+                break;
+            case TEND_TO_TRUE:
+                if (usages[i] > THRESHOLD)
+                    ret |= drv::get_image_usage(i);
+                break;
+        }
+    }
+    return ret;
+}
+
+ImageUsageStat::ImageUsageStat() {
+    for (uint32_t i = 0; i < usages.size(); ++i)
+        usages[i] = 0.5f;
+}
+
 void MemoryAccessStat::set(const drv::MemoryBarrier::AccessFlagBitType& _mask) {
     for (uint32_t i = 0; i < mask.size(); ++i)
         mask[i] = (_mask & drv::MemoryBarrier::get_access(i)) > 0 ? 1.f : 0.f;

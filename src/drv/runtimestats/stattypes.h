@@ -6,6 +6,7 @@
 #include <drvtypes.h>
 #include <drvresourceptrs.hpp>
 #include <drvtracking.hpp>
+#include <drvimage_types.h>
 
 struct PipelineStagesStat final : public IAutoSerializable<PipelineStagesStat>
 {
@@ -28,6 +29,29 @@ struct PipelineStagesStat final : public IAutoSerializable<PipelineStagesStat>
     drv::PipelineStages get(ApproximationMode mode) const;
 
     PipelineStagesStat();
+};
+
+struct ImageUsageStat final : public IAutoSerializable<ImageUsageStat>
+{
+    static constexpr float EXP_AVG = 0.01f;
+    static constexpr float THRESHOLD = 0.01f;
+
+    enum ApproximationMode
+    {
+        TEND_TO_FALSE,
+        TEND_TO_TRUE
+    };
+
+    REFLECTABLE
+    (
+        (std::array<float, drv::get_image_usage_count()>) usages
+    )
+
+    void set(const drv::ImageResourceUsageFlag &usages);
+    void append(const drv::ImageResourceUsageFlag &usages);
+    drv::ImageResourceUsageFlag get(ApproximationMode mode) const;
+
+    ImageUsageStat();
 };
 
 struct MemoryAccessStat final : public IAutoSerializable<MemoryAccessStat>

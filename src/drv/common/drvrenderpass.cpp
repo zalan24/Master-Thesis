@@ -59,7 +59,7 @@ void CmdRenderPass::end() {
     if (!ended) {
         ended = true;
         drv::drv_assert(currentPass + 1 == subpassCount, "Not all subpasses were executed");
-        renderPass->endRenderPass(cmdBuffer);
+        cmdBuffer->setRenderPassPostStats(renderPass->endRenderPass(cmdBuffer));
     }
 }
 
