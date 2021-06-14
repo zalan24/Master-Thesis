@@ -531,6 +531,7 @@ struct ImageSubresourceRange
                     if (aspectMask & get_aspect_by_id(aspect))
                         f(layer, mip, get_aspect_by_id(aspect));
     }
+    bool has(uint32_t layer, uint32_t mip, drv::AspectFlagBits aspect) const;
 };
 
 struct ImageSubresourceSet
@@ -771,7 +772,7 @@ constexpr uint32_t get_image_usage_count() {
 }
 
 constexpr ImageResourceUsage get_image_usage(uint32_t index) {
-    return static_cast<ImageResourceUsage>(index);
+    return static_cast<ImageResourceUsage>(1 << index);
 }
 
 constexpr uint32_t get_index_of_image_usage(ImageResourceUsage usage) {

@@ -248,3 +248,53 @@ void RenderPassPostStats::write() {
     for (uint32_t i = 0; i < attachmentPostUsages.size(); ++i)
         cache->renderpassAttachmentPostUsage[i].append(attachmentPostUsages[i]);
 }
+
+bool RenderPassPostStats::use(drv::ImagePtr image, uint32_t layer, uint32_t mip,
+                              drv::AspectFlagBits aspect, drv::ImageResourceUsageFlag usages) {
+    uint32_t ind = 0;
+    while (ind < images.size() && images[ind] != image)
+        ind++;
+    if (ind == images.size())
+        return false;
+    if ((attachmentPostUsages[ind] & usages) == usages)
+        return true;
+    if (subresources[ind].has(layer, mip, aspect)) {
+        attachmentPostUsages[ind] |= usages;
+        return true;
+    }
+    return false;
+}
+
+void RenderPassPostStats::setAttachment(uint32_t ind, drv::ImagePtr image,
+                                        drv::ImageSubresourceRange subresource) {
+    images[ind] = image;
+    subresources[ind] = subresource;
+}
+
+void DrvCmdBufferRecorder::useResource(drv::ImagePtr image, uint32_t layer, uint32_t mip,
+                                       drv::AspectFlagBits aspect,
+                                       drv::ImageResourceUsageFlag usages) {
+    if (currentRenderPassPostStats) {
+        currentRenderPassPostStats.use(image, layer, mip, aspect, usages);
+    }
+}
+
+void DrvCmdBufferRecorder::useResource(drv::ImagePtr image, uint32_t rangeCount,
+                                       const drv::ImageSubresourceRange* ranges,
+                                       drv::ImageResourceUsageFlag usages) {
+    drv::TextureInfo info = driver->get_texture_info(image);
+    for (uint32_t i = 0; i < rangeCount; ++i) {
+        ranges[i].traverse(info.arraySize, info.numMips,
+                           [&, this](uint32_t layer, uint32_t mip, drv::AspectFlagBits aspect) {
+                               useResource(image, layer, mip, aspect, usages);
+                           });
+    }
+}
+
+void DrvCmdBufferRecorder::useResource(drv::ImagePtr image,
+                                       const drv::ImageSubresourceSet& subresources,
+                                       drv::ImageResourceUsageFlag usages) {
+    subresources.traverse([&, this](uint32_t layer, uint32_t mip, drv::AspectFlagBits aspect) {
+        useResource(image, layer, mip, aspect, usages);
+    });
+}

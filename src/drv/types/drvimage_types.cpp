@@ -407,3 +407,13 @@ ImageSubresourceRange TextureInfo::getSubresourceRange() const {
     ret.levelCount = numMips;
     return ret;
 }
+
+bool ImageSubresourceRange::has(uint32_t layer, uint32_t mip, drv::AspectFlagBits aspect) const {
+    if (layer < baseArrayLayer || mip < baseMipLevel || (aspectMask & aspect) == 0)
+        return false;
+    if (layerCount != REMAINING_ARRAY_LAYERS && layer >= baseArrayLayer + layerCount)
+        return false;
+    if (levelCount == REMAINING_MIP_LEVELS && mip >= baseMipLevel + levelCount)
+        return false;
+    return true;
+}

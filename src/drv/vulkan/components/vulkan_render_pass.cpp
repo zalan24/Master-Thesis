@@ -534,7 +534,11 @@ drv::RenderPassStats VulkanRenderPass::beginRenderPass(drv::FramebufferPtr frame
 drv::RenderPassPostStats VulkanRenderPass::endRenderPass(
   drv::DrvCmdBufferRecorder* cmdBuffer) const {
     vkCmdEndRenderPass(convertCommandBuffer(cmdBuffer->getCommandBuffer()));
-    return drv::RenderPassPostStats(attachmentIntputCacheHandle, attachments.size());
+    drv::RenderPassPostStats ret =
+      drv::RenderPassPostStats(attachmentIntputCacheHandle, attachments.size());
+    for (uint32_t i = 0; i < attachments.size(); ++i)
+        ret.setAttachment(i, attachmentImages[i].image, attachmentImages[i].subresource);
+    return ret;
 }
 
 void VulkanRenderPass::startNextSubpass(drv::DrvCmdBufferRecorder* cmdBuffer,

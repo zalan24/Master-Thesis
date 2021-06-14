@@ -89,6 +89,8 @@ void VulkanCmdBufferRecorder::cmdBlitImage(drv::ImagePtr srcImage, drv::ImagePtr
       drv::MemoryBarrier::AccessFlagBits::TRANSFER_WRITE_BIT, dstRequiredLayoutMask, true,
       &dstCurrentLayout, false, drv::ImageLayout::UNDEFINED);
 
+    useResource(srcImage, regionCount, srcRanges, drv::IMAGE_USAGE_TRANSFER_SOURCE);
+    useResource(dstImage, regionCount, dstRanges, drv::IMAGE_USAGE_TRANSFER_DESTINATION);
     vkCmdBlitImage(convertCommandBuffer(getCommandBuffer()), convertImage(srcImage)->image,
                    convertImageLayout(srcCurrentLayout), convertImage(dstImage)->image,
                    convertImageLayout(dstCurrentLayout), regionCount, regions,
@@ -148,6 +150,7 @@ void VulkanCmdBufferRecorder::cmd_clear_image(drv::ImagePtr image,
         vkValues[i] = convertClearColor(clearColors[i]);
     }
 
+    useResource(image, ranges, subresourceRanges, drv::IMAGE_USAGE_TRANSFER_DESTINATION);
     vkCmdClearColorImage(convertCommandBuffer(getCommandBuffer()), convertImage(image)->image,
                          convertImageLayout(currentLayout), vkValues, ranges, vkRanges);
 }
@@ -179,6 +182,8 @@ bool VulkanCmdBufferRecorder::cmdUseAsAttachment(
                                                 : static_cast<drv::ImageLayoutMask>(initialLayout);
     drv::CmdImageTrackingState& cmdState =
       getImageState(image, 1, &subresourceRange, initialLayout).cmdState;
+
+    useResource(image, 1, &subresourceRange, usages);
 
     subresourceRange.traverse(
       texInfo.arraySize, texInfo.numMips,

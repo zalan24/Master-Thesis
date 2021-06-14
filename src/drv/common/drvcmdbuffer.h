@@ -45,7 +45,10 @@ class RenderPassPostStats
 {
  public:
     RenderPassPostStats(StatsCache* _writer, size_t attachmentCount)
-      : writer(_writer), attachmentPostUsages(attachmentCount) {
+      : writer(_writer),
+        images(attachmentCount),
+        subresources(attachmentCount),
+        attachmentPostUsages(attachmentCount) {
         for (uint32_t i = 0; i < attachmentPostUsages.size(); ++i)
             attachmentPostUsages[i] = 0;
     }
@@ -62,9 +65,17 @@ class RenderPassPostStats
 
     operator bool() const { return writer != nullptr; }
 
+    // returns true if the subresources was already recorded
+    //  -> no need for more subresources in the same image
+    bool use(drv::ImagePtr image, uint32_t layer, uint32_t mip, drv::AspectFlagBits aspect,
+             drv::ImageResourceUsageFlag usages);
+
+    void setAttachment(uint32_t ind, drv::ImagePtr image, drv::ImageSubresourceRange subresource);
+
  private:
     StatsCache* writer = nullptr;
-    TODO;  // collect usages
+    FixedArray<drv::ImagePtr, 8> images;
+    FixedArray<drv::ImageSubresourceRange, 8> subresources;
     FixedArray<drv::ImageResourceUsageFlag, 8> attachmentPostUsages;
 };
 
@@ -153,6 +164,13 @@ class DrvCmdBufferRecorder
     ImageTrackInfo& getImageState(drv::ImagePtr image, uint32_t ranges,
                                   const drv::ImageSubresourceRange* subresourceRanges,
                                   drv::ImageLayout preferrefLayout);
+
+    void useResource(drv::ImagePtr image, uint32_t layer, uint32_t mip, drv::AspectFlagBits aspect,
+                     drv::ImageResourceUsageFlag usages);
+    void useResource(drv::ImagePtr image, uint32_t rangeCount,
+                     const drv::ImageSubresourceRange* ranges, drv::ImageResourceUsageFlag usages);
+    void useResource(drv::ImagePtr image, const drv::ImageSubresourceSet& subresources,
+                     drv::ImageResourceUsageFlag usages);
 
     IDriver* driver;
     LogicalDevicePtr device;

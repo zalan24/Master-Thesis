@@ -143,6 +143,12 @@ void Game::record_cmd_buffer_render(const RecordData& data, drv::DrvCmdBufferRec
     testPass.draw(3, 1, 0, 0);
 
     testPass.end();
+
+    // recorder->cmdImageBarrier({data.targetImage, drv::IMAGE_USAGE_TRANSFER_DESTINATION,
+    //                            drv::ImageMemoryBarrier::AUTO_TRANSITION, true,
+    //                            drv::get_queue_family(data.device, data.renderQueue)});
+    // drv::ClearColorValue clearValue(1.f, 1.f, 0.f, 1.f);
+    // recorder->cmdClearImage(data.targetImage, &clearValue);
 }
 
 void Game::record_cmd_buffer_blit(const RecordData& data, drv::DrvCmdBufferRecorder* recorder) {
