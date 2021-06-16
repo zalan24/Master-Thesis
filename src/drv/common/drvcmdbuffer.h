@@ -203,6 +203,18 @@ struct CommandBufferInfo
     StatsCache* statsCacheHandle;
 };
 
+using CmdBufferId = uint32_t;
+
+inline static CmdBufferId make_cmd_buffer_id(const char* file, uint32_t line) {
+    size_t h = std::hash<uint32_t>{}(line);
+    size_t len = strlen(file);
+    for (uint32_t i = 0; i < len; ++i)
+        h ^= std::hash<char>{}(file[i]);
+    return static_cast<CmdBufferId>(h);
+}
+
+#define CMD_BUFFER_ID() drv::make_cmd_buffer_id(__FILE__, __LINE__)
+
 template <typename D>
 class DrvCmdBuffer
 {
@@ -211,10 +223,11 @@ class DrvCmdBuffer
 
     using DrvRecordCallback = void (*)(const D&, DrvCmdBufferRecorder*);
 
-    explicit DrvCmdBuffer(std::string _name, IDriver* _driver, PhysicalDevicePtr _physicalDevice,
-                          LogicalDevicePtr _device, QueueFamilyPtr _queueFamily,
-                          DrvRecordCallback _recordCallback)
-      : name(std::move(_name)),
+    explicit DrvCmdBuffer(CmdBufferId _id, std::string _name, IDriver* _driver,
+                          PhysicalDevicePtr _physicalDevice, LogicalDevicePtr _device,
+                          QueueFamilyPtr _queueFamily, DrvRecordCallback _recordCallback)
+      : id(_id),
+        name(std::move(_name)),
         driver(_driver),
         physicalDevice(_physicalDevice),
         device(_device),
@@ -274,6 +287,7 @@ class DrvCmdBuffer
     LogicalDevicePtr getDevice() const { return device; }
 
  private:
+    CmdBufferId id;
     std::string name;
     IDriver* driver;
     D currentData;

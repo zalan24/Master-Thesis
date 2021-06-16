@@ -1,22 +1,4 @@
 Get a triangle on screen:
-    ✔ Rework command lanes @done (1/19/2021, 11:12:55 AM)
-        ✔ Command lane info contains queue infos (name, what's required, what's preferred, priority, etc.) @done (1/19/2021, 10:42:42 AM)
-        ✔ When using the same queue, use the highest priority @done (1/19/2021, 10:42:45 AM)
-        ✔ Try to use different queue families in a command lane @done (1/19/2021, 10:45:02 AM)
-        ✔ Command lane tries to get these queues separately if possible @done (1/19/2021, 10:45:21 AM)
-        ✔ Command lane will have a set of queues assigned to the names, which don't have to be unique (transfer and render queue can be the same) @done (1/19/2021, 10:45:28 AM)
-        ✔ Command lanes used in the engine: @done (1/19/2021, 10:45:36 AM)
-            ✔ Main @done (1/19/2021, 10:45:36 AM)
-                ✔ Render (graphics queue) @done (1/19/2021, 10:45:35 AM)
-                ✔ Compute (compute queue) @done (1/19/2021, 10:45:35 AM)
-                ✔ DtoH (transfer queue) @done (1/19/2021, 10:45:34 AM)
-                ✔ HtoD (transfer queue) @done (1/19/2021, 10:45:33 AM)
-            ✔ Input @done (1/19/2021, 10:45:33 AM)
-                ✔ HtoD (transfer queue) @done (1/19/2021, 10:45:32 AM)
-    ✔ Modify queue manager to work with command lanes @done (1/19/2021, 11:12:08 PM)
-        ✔ Have a mapping of CommandLane -> QueueName -> Queue @done (1/19/2021, 11:12:08 AM)
-        ✔ Acquired queues based on this @done (1/19/2021, 11:12:08 AM)
-        ✔ Remove hash based groupings (maybe some other stuff as well) @done (1/19/2021, 11:12:07 PM)
     ☐ Command buffer pool
         ✔ Initialize in engine @done (1/20/2021, 12:25:34 AM)
         ☐ CommandBuffer circulator:
@@ -40,36 +22,12 @@ Get a triangle on screen:
         ✔ Create a concurrent dequeue for this struct between recording and execution @done (1/27/2021, 10:20:34 PM)
         ✔ Execution is reading this pipe for instructions @done (1/27/2021, 10:20:36 PM)
         ✔ Execute command buffers @done (2/28/2021, 3:49:09 PM)
-    ✔ Create a frame memory allocator @done (3/28/2021, 12:40:16 PM)
-        ✔ It needs to support allocation on recording thread and release in the execution thread (multiple frame memory objects?) @done (3/28/2021, 12:40:08 PM)
-    ✔ Rework frame graph @done (2/28/2021, 3:49:29 PM)
-    ✔ Implement barriers @done (1/27/2021, 11:38:06 AM)
-    ✔ Implement timeline semaphores @done (2/28/2021, 3:49:41 PM)
-    ✔ Implement events @done (1/26/2021, 11:30:31 AM)
-    ☐ Implement render pass
-        ☐ Create an virtual object (api implementation) for render passes
-            ☐ This object is created using these declarations
-                ☐ Attachment distriptions (excluding layouts, format and samples) -> each gets an attachment id
-                ☐ List of subpasses in order
-                    ☐ Each subpass contains resource usages for all attachments + accepted layouts + result layout/layout unchanged
-                    ☐ Subpass dependencies are auto created based on resource usages
-            ☐ Render pass needs a begin command, which binds exacts images to the attachments, specifies the cmdBuffer and tracker
-                ☐ Re-create the render pass if needed (probably log this event)
-                ☐ Upon recreation calculate resource accesses based on subpass declarations
-                ☐ Upon beginning: record a memory barrier for the attachments
-                ☐ Upon subpasses record memory access using !!!Dependency flags!!!
-                ☐ The begin command should return on object for the current render pass (no async support)
-                    ☐ Explicitly give this object the currently used subpass id (::beginSubpass(id))
-                    ☐ The object needs to have an ::end() function, which is also called in the dtor if needed (log in this case?)
-    ☐ Implement graphical pipeline
     ☐ Command for reset command buffer
     ☐ Add a new thread for callbacks
         ☐ Pair of fences or events + std::function can be added to it
         ☐ Wait for fence/event execute function
     ☐ Shader manager
     ☐ Finish descriptors
-    ✔ Add an event pool @done (3/2/2021, 9:34:57 AM)
-        ✔ Use garbage system for recycling @done (3/2/2021, 9:34:57 AM)
     ☐ Resource tracking
         ☐ Image and buffer tracking info
             ✔ Images and buffers need a separate struct under vulkan api @done (3/13/2021, 8:48:37 PM)
@@ -182,38 +140,6 @@ Get a triangle on screen:
                         ✔ Resource needs to have a clear state regarding the selected usages @done (3/13/2021, 8:46:57 PM)
                         ✔ cmd pipeline barrier should not be exposed to the engine @done (3/12/2021, 9:58:50 AM)
                 ☐ When submitting the command buffer with semaphores, states might be changed??? or not
-            ☐ Create state objects for images and buffers to share state between tracking slots
-                ☐ Is resource readable/writable in this linear context? (use this info in validator later)
-                ☐ Object content
-                    ☐ full resource state
-                ☐ Have some simple initializers for this object
-                ☐ Object implementation should be hidden in driver api
-                ☐ Exposed initializers:
-                    ☐ A couple of simple ones (full flushed, fully visible, nothing to wait on, etc.)
-                    ☐ Have an initializer specifically to be used with semaphores (a signal semaphore and a wait semaphore version)
-                        ☐ In this case, add the semaphore to the submit info automatically (if it's not already added)
-                        ☐ If it's already added check the wait stages (in case of wait semaphore)
-                        ☐ This can be handled with command buffer recorder
-                        ☐ Remove manual semaphore placement???
-                    ☐ Initialize by current images state
-                    ☐ Have a modifier call, that can change state for a specific sub-resource range (to allow precise state definition)
-                ☐ Create an init_resource function in the tracker
-                    ☐ Explicit version without state info: use when resource state is not modified outside of this tracker (local resources)
-                    ☐ Version with incoming state and outgoing state
-                ☐ Validations
-                    ☐ Tracker checks resource state against outgoing state, if it was set with the init resource (exact match is not needed)
-                        ☐ Wait stage masks should be narrower than the required state probably
-                        ☐ Access masks should be narrower than teh required masks probably
-                        ☐ Check ownership (if resource was not actually used, it's not set...)
-                    ☐ Validate the init resource is called exactly once
-                    ☐ In debug mode
-                        ☐ Try to build a graph of resource usage?
-                        ☐ Graph could be built per resource
-                        ☐ Nodes are submissions (= cmd recorder) with in/out state objects; semaphores and events
-                        ☐ Edges could be built from semaphore and event usage
-                        ☐ Result needs to be a flow graph
-                        ☐ Edges can be checked to validate state object compatibility
-                        ☐ Validate the local resources (without in/out states) are actually not used with different tracking slots / on different queues
             ☐ Sync by framegraph (registered resources)
                 ✔ Try to reuse tracking ids as much as possible @done (3/18/2021, 9:25:33 AM)
                 ☐ For same tracking id usage, with cpu dependency, use empty resource initializers for shared resources (enq dep implied, tracking info ok)
@@ -224,19 +150,66 @@ Get a triangle on screen:
                     ☐ Declare basic states (layout only???)
                     ☐ Auto create semaphore based state objects and use them
                 ☐ In same queue and different queue case, one (partial) state is declared by the user, the in/out states are generated to be valid
-        ✔ Tracker settings @done (3/17/2021, 11:01:33 AM)
-            ✔ Verbosity / assertations @done (3/17/2021, 10:49:46 AM)
-                ✔ Silent fixes @done (3/17/2021, 10:49:28 AM)
-                ✔ Debug @done (3/17/2021, 10:49:40 AM)
-                ✔ Barrier focus (error on everything) @done (3/17/2021, 10:49:44 AM)
-            ✔ Sync options @done (3/17/2021, 11:01:32 AM)
-                ✔ Default: sync when needed only, as much as needed @done (3/17/2021, 10:51:21 AM)
-                ✔ Barriers are placed immediately instead of collecting and merging them @done (3/17/2021, 10:55:22 AM)
-                ✔ Sync all dst stages @done (3/17/2021, 10:56:25 AM)
-                    ✔ In addition Flush all @done (3/17/2021, 10:57:13 AM)
-                    ✔ In addition invalidate all @done (3/17/2021, 10:58:13 AM)
-                ✔ Sync all src stages @done (3/17/2021, 10:56:26 AM)
-                ✔ Place barrier before each command, regardless of state @done (3/17/2021, 11:01:30 AM)
+
+        ☐ Track resources globally
+            ☐ Two submissions (= single command buffer submission) are conflicting if
+                ☐ They have a common subresource usage
+                ☐ Either the usage is conflicting or submissions are done a separate families while the resource is not shared
+                ☐ If they don't have logical dependency, just mutual exclusion is required, then the no ordering is required
+                    ☐ There are 3 kinds of async usage modes: non-conflicting usage, exlusive usage, ordered usage
+            ☐ Submissions (= command buffers) will need an id inside the node they are submitted in
+            ☐ Create a new flag in features to enable submissions sync validation
+                ☐ Error on no sync
+                ☐ ??? warning on unnecessary sync ???
+            ☐ Execution queue needs to know which subresources are used for what in each submissions (layout transition = read/writer operation)
+            ☐ Add new stuff to subresource state
+                ☐ One writing queue
+                ☐ Several reading queues
+            ☐ Sync between submissions (semaphore or event) is required if they are not non-conflicting and they are not consecutive submissions on the same queue
+            ☐ A submission needs to know:
+                ☐ If other queues wait on it (if so, signal a semaphore at submission)
+                ☐ What subresources will need sync in later submissions on the same queue (create an event for these)
+                ☐ Which submissions to wait on (wait on there semaphore and assure consistency with their semaphore signalling)
+                ☐ What events to wait on for what subresources (wait on these when accessing the resource)
+            ☐ Resource tracking needs to handle signalled and waited semaphores and events
+            ☐ Execution queue detects two conflicting submissions: A, B (even if they are synced based on cache)
+                ☐ If A and B are order independent (conflict due to ownership)
+                    ☐ If they have enqueue order dep
+                        ☐ Save in cache, that they need sync (+ autosync if needed)
+                    ☐ If they don't have enqueue order dep
+                        ☐ Auto sync them in existing order
+                        ☐ Add a warning to have enqueue dependency between these submissions
+                ☐ If they are ordered (conflict due to conflicting usage)
+                    ☐ If the nodes don't have queue dependency and they are on different queues
+                        ☐ Error at least for debug mode. Otherwise assume current order to be correct and apply auto sync
+                    ☐ If they are in same order as dependency (B depends on A)
+                        ☐ Save in cache, that they need sync (+ autosync if needed)
+                    ☐ If they are not in order => they are on different queues (A depends on B)
+                        ☐ What now???????
+            ☐ Plan
+                ✘ Add auto enqueue order dep to any queue dependencies @cancelled (6/16/2021, 10:59:11 AM)
+                ✔ Add submission id (eg. hash of name) @done (6/16/2021, 11:41:18 AM)
+                    ✔ It's bound to a queue, it cannot be submitted anywhere else @done (6/16/2021, 11:01:21 AM)
+                ☐ Add new state data to res state
+                    ☐ Main queue + submission id + frame id + is_write
+                    ☐ Add a set of reading queue + submission id + frame id + reading stages
+                ☐ Command buffer needs to know if resource has been written (including layout transform)
+                ☐ Identify which submissions need sync objects
+                    ☐ Validate resource usage compared to framegraph too (framegraph queue can be resolved from queue + submission id)
+                        ☐ Framegraph needs to be able to decide this even if the dependency is transitive
+                    ☐ Semaphore is needed for conflicting usages on different queues
+                    ☐ Event is needed for conflicting usages on main queue only (on writing submission, the current queue is the main queue)
+                    ☐ Store where sync is needed in cache
+                        ☐ At most one semaphore is needed per submission, but there can be multiple events
+                    ☐ Create sync objects in submissions based on stats
+                ☐ Sync new states
+                    ☐ If the src submissions had signal, use it. Otherwise auto create new signal
+                    ☐ Auto creation of signals should be in the report file
+                    ☐ Need to implement syncing with event too. It could use cache to know what to use as dst stuff
+                ☐ Track new states
+                    ☐ When sync object is applied, update main queue / states on reader queues
+                    ☐ If no sync is needed, just update main queue normally, and update reading stages for reading queues
+                    ☐ Existing sumbissions should consider state of the resource on that specific queue
 
         ☐ Track resources globally
             ☐ Created resource ids in the framegraph

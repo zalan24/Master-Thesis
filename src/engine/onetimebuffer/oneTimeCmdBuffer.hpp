@@ -27,11 +27,11 @@ class OneTimeCmdBuffer final : public EngineCmdBuffer<T>
     //  void finishQueueWork();
 
     //  drv::CommandBufferPtr getCommandBuffer() const { return cmdBuffer.commandBufferPtr; }
-    OneTimeCmdBuffer(std::string _name, drv::PhysicalDevicePtr _physicalDevice,
+    OneTimeCmdBuffer(drv::CmdBufferId _id, std::string _name, drv::PhysicalDevicePtr _physicalDevice,
                      drv::LogicalDevicePtr _device, drv::QueuePtr _queue,
                      drv::CommandBufferBank* _bufferBank, GarbageSystem* _garbageSystem,
                      typename drv::DrvCmdBuffer<T>::DrvRecordCallback&& _callback)
-      : EngineCmdBuffer<T>(std::move(_name), _physicalDevice, _device,
+      : EngineCmdBuffer<T>(_id, std::move(_name), _physicalDevice, _device,
                            drv::get_queue_family(_device, _queue), std::move(_callback)),
         queue(_queue),
         bufferBank(_bufferBank),
@@ -40,24 +40,24 @@ class OneTimeCmdBuffer final : public EngineCmdBuffer<T>
     OneTimeCmdBuffer(const OneTimeCmdBuffer&) = delete;
     OneTimeCmdBuffer& operator=(const OneTimeCmdBuffer&) = delete;
 
-    OneTimeCmdBuffer(OneTimeCmdBuffer&& other)
-      : queue(other.queue),
-        bufferBank(other.bufferBank),
-        garbageSystem(other.garbageSystem),
-        cmdBuffer(std::move(other.cmdBuffer)) {
-        reset_ptr(other.queue);
-    }
+    // OneTimeCmdBuffer(OneTimeCmdBuffer&& other)
+    //   : queue(other.queue),
+    //     bufferBank(other.bufferBank),
+    //     garbageSystem(other.garbageSystem),
+    //     cmdBuffer(std::move(other.cmdBuffer)) {
+    //     reset_ptr(other.queue);
+    // }
 
-    OneTimeCmdBuffer& operator=(OneTimeCmdBuffer&& other) {
-        if (this == &other)
-            return *this;
-        queue = other.queue;
-        bufferBank = other.bufferBank;
-        garbageSystem = other.garbageSystem;
-        cmdBuffer = std::move(other.cmdBuffer);
-        reset_ptr(other.queue);
-        return *this;
-    }
+    // OneTimeCmdBuffer& operator=(OneTimeCmdBuffer&& other) {
+    //     if (this == &other)
+    //         return *this;
+    //     queue = other.queue;
+    //     bufferBank = other.bufferBank;
+    //     garbageSystem = other.garbageSystem;
+    //     cmdBuffer = std::move(other.cmdBuffer);
+    //     reset_ptr(other.queue);
+    //     return *this;
+    // }
     ~OneTimeCmdBuffer() { close(); }
 
  protected:
