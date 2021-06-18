@@ -89,6 +89,23 @@ struct DriverSupport
     uint8_t transformFeedback : 1;
 };
 
+class ResourceStateTransitionCallback
+{
+ public:
+    enum ConflictMode
+    {
+      NONE,
+        MUTEX,
+        ORDERED_ACCESS
+    };
+
+    virtual void requireSync(QueuePtr srcQueue, CmdBufferId srcSubmission, uint64_t srcFrameId,
+                             ConflictMode mode, PipelineStages::FlagType ongoingUsages) = 0;
+
+ protected:
+    ~ResourceStateTransitionCallback() {}
+};
+
 class IDriver
 {
  public:
@@ -230,9 +247,10 @@ class IDriver
       bool simultaneousUse) = 0;
     virtual size_t get_cmd_buffer_recorder_size() = 0;
 
-    virtual bool validate_and_apply_state_transitions(
+    virtual bool validate_and_apply_state_transitions(LogicalDevicePtr device, QueuePtr currentQueue,
       StateCorrectionData& correction, uint32_t imageCount,
-      const std::pair<drv::ImagePtr, ImageTrackInfo>* transitions, StatsCache* cacheHandle) = 0;
+      const std::pair<drv::ImagePtr, ImageTrackInfo>* transitions, StatsCache* cacheHandle,
+      ResourceStateTransitionCallback* cb) = 0;
 
     virtual DriverSupport get_support(LogicalDevicePtr device) = 0;
 

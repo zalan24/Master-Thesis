@@ -179,9 +179,10 @@ DriverSupport get_support(LogicalDevicePtr device);
 
 ShaderModulePtr create_shader_module(LogicalDevicePtr device, const ShaderCreateInfo* info);
 bool destroy_shader_module(LogicalDevicePtr device, ShaderModulePtr module);
-bool validate_and_apply_state_transitions(
+bool validate_and_apply_state_transitions(LogicalDevicePtr device, QueuePtr currentQueue,
   StateCorrectionData& correction, uint32_t imageCount,
-  const std::pair<drv::ImagePtr, ImageTrackInfo>* transitions, StatsCache* cacheHandle);
+  const std::pair<drv::ImagePtr, ImageTrackInfo>* transitions, StatsCache* cacheHandle,
+  ResourceStateTransitionCallback* cb);
 
 // std::unique_ptr<CmdTrackingRecordState> create_tracking_record_state();
 // PipelineStages cmd_image_barrier(drv::CmdTrackingRecordState *recordState, CmdImageTrackingState& state, CommandBufferPtr cmdBuffer,

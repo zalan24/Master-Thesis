@@ -55,7 +55,7 @@ struct EngineConfig final : public IAutoSerializable<EngineConfig>
     )
 };
 
-class Engine
+class Engine : private drv::ResourceStateTransitionCallback
 {
  public:
     struct Args
@@ -130,6 +130,10 @@ class Engine
     void createResource(res::GarbageResource<T>& resource, Args&&... args) {
         resource = res::GarbageResource<T>(getGarbageSystem(), std::forward<Args>(args)...);
     }
+
+    void requireSync(drv::QueuePtr srcQueue, drv::CmdBufferId srcSubmission, uint64_t srcFrameId,
+                     drv::ResourceStateTransitionCallback::ConflictMode mode,
+                     drv::PipelineStages::FlagType ongoingUsages) override;
 
  protected:
     // Needs to be called from game implementation after finishing the framegraph

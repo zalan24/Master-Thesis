@@ -204,6 +204,9 @@ Get a triangle on screen:
                     ☐ Create sync objects in submissions based on stats
                 ☐ Sync new states
                     ☐ If the src submissions had signal, use it. Otherwise auto create new signal
+                        ☐ Auto sync submissions needs a pipeline barrier that waits for all reading stages on the queue
+                        ☐ src submissions's signal needs a pipeline barrier with all reading stages recorded in that cmd buffer. If it's not sufficient, auto sync is still required
+                            ☐ Probably count these kinds of corrections in the report file separately from normal auto sync
                     ☐ Auto creation of signals should be in the report file
                     ☐ Need to implement syncing with event too. It could use cache to know what to use as dst stuff
                 ☐ Track new states

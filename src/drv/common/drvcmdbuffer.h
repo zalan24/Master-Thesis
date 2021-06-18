@@ -156,9 +156,13 @@ class DrvCmdBufferRecorder
         renderPassPostStats = _renderPassPostStats;
     }
 
+    void setSemaphore(TimelineSemaphorePtr** _semaphore) { semaphore = _semaphore; }
+
     void addRenderPassStat(drv::RenderPassStats&& stat);
 
     void setRenderPassPostStats(drv::RenderPassPostStats&& stat);
+
+    void init();
 
  protected:
     ImageTrackInfo& getImageState(drv::ImagePtr image, uint32_t ranges,
@@ -185,6 +189,7 @@ class DrvCmdBufferRecorder
     RenderPassPostStats currentRenderPassPostStats;
     FlexibleArray<drv::RenderPassStats, 1>* renderPassStats = nullptr;
     FlexibleArray<drv::RenderPassPostStats, 1>* renderPassPostStats = nullptr;
+    TimelineSemaphorePtr** semaphore = nullptr;
     const char* name = nullptr;
 };
 
@@ -254,6 +259,8 @@ class DrvCmdBuffer
             recorder->setImageStates(&imageStates);
             recorder->setRenderPassStats(&renderPassStats);
             recorder->setRenderPassPostStats(&renderPassPostStats);
+            recorder->setSemaphore(&semaphore);
+            recorder->init();
             recordCallback(currentData, recorder);
             numSubmissions = 0;
             statsCacheHandle = recorder->getStatsCacheHandle();
@@ -275,7 +282,12 @@ class DrvCmdBuffer
     const DrvCmdBufferRecorder::ImageStates* getImageStates() { return &imageStates; }
 
  protected:
-    ~DrvCmdBuffer() {}
+    ~DrvCmdBuffer() {
+        if (!is_null_ptr(semaphore)) {
+            driver->destroy_timeline_semaphore(device, semaphore);
+            reset_ptr(semaphore);
+        }
+    }
 
     virtual CommandBufferPtr acquireCommandBuffer() = 0;
     virtual void releaseCommandBuffer(CommandBufferPtr cmdBuffer) = 0;
@@ -298,6 +310,7 @@ class DrvCmdBuffer
     StatsCache* statsCacheHandle = nullptr;
     FlexibleArray<drv::RenderPassStats, 1> renderPassStats;
     FlexibleArray<drv::RenderPassPostStats, 1> renderPassPostStats;
+    TimelineSemaphorePtr* semaphore = get_null_ptr<TimelineSemaphore>();
 
     bool needToPrepare = true;
     uint64_t numSubmissions = 0;

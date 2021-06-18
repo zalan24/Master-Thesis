@@ -31,6 +31,8 @@ struct ReadingQueueState
     uint64_t frameId = 0;
     CmdBufferId submission = 0;
     drv::PipelineStages::FlagType readingStages = 0;
+
+    operator bool() const { return !is_null_ptr(queue) && readingStages != 0; }
 };
 
 struct MultiQueueTrackingState

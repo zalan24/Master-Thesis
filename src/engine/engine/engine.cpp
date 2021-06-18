@@ -135,6 +135,7 @@ Engine::Engine(int argc, char* argv[], const EngineConfig& cfg,
     deviceExtensions(true),
     physicalDevice(get_device_selection_info(drvInstance, deviceExtensions, shaderBin), window),
     commandLaneMgr(physicalDevice, window,
+
                    {{"main",
                      {{"render", 0.5, drv::CMD_TYPE_GRAPHICS, drv::CMD_TYPE_ALL, false, false},
                       {"present", 0.5, 0, drv::CMD_TYPE_ALL, true, false},
@@ -416,6 +417,17 @@ void Engine::recordCommandsLoop() {
       ExecutionPackage::MessagePackage{ExecutionPackage::Message::QUIT, 0, 0, nullptr}));
 }
 
+void Engine::requireSync(drv::QueuePtr srcQueue, drv::CmdBufferId srcSubmission,
+                         uint64_t srcFrameId,
+                         drv::ResourceStateTransitionCallback::ConflictMode mode, drv::PipelineStages::FlagType ongoingUsages) {
+                             // TODO check if the srcQueue == current queue
+                             //      else if (!previous_submission)
+                             //   cb->requireSync(rs.queue, rs.submission, rs.frameId, mode,
+                             //                   rs.readingStages);
+                             // TODO event is only an option, if the frame offset == 1 and the two submissions are guaranteed to happen in alternating order...
+                             // or when?
+}
+
 bool Engine::execute(ExecutionPackage&& package) {
     if (std::holds_alternative<ExecutionPackage::MessagePackage>(package.package)) {
         ExecutionPackage::MessagePackage& message =
@@ -491,11 +503,11 @@ bool Engine::execute(ExecutionPackage&& package) {
         executionInfo.waitStages = waitSemaphoresStages;
         {
             drv::StateCorrectionData correctionData;
-            if (!drv::validate_and_apply_state_transitions(
+            if (!drv::validate_and_apply_state_transitions(getDevice(), cmdBuffer.queue,
                   correctionData, uint32_t(cmdBuffer.cmdBufferData.imageStates.size()),
                   cmdBuffer.cmdBufferData.imageStates.data(),
                   cmdBuffer.cmdBufferData.stateValidation ? cmdBuffer.cmdBufferData.statsCacheHandle
-                                                          : nullptr)) {
+                                                          : nullptr, this)) {
                 if (cmdBuffer.cmdBufferData.stateValidation) {
                     // TODO turn breakpoint and log back on (in debug builds)
                     // LOG_F(ERROR, "Some resources are not in the expected state");

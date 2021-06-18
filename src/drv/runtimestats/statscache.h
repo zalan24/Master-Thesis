@@ -19,7 +19,9 @@ struct StatsCache final : public IAutoSerializable<StatsCache>
         (std::unordered_map<std::string, std::unique_ptr<StatsCache>>) subnodes,
         (std::map<drv::ImageId, ImageStateStat>) cmdBufferImageStates,
         (std::vector<ImageUsageStat>) renderpassAttachmentPostUsage,
-        (std::vector<SimpleSubresStateStat>) renderpassExternalAttachmentInputs
+        (std::vector<SimpleSubresStateStat>) renderpassExternalAttachmentInputs,
+        // (std::vector<EventSyncData>) events,
+        (SemaphoreSyncData) semaphore
     )
 
     StatsCache() = default;

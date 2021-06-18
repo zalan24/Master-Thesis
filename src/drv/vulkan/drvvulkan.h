@@ -384,9 +384,10 @@ class DrvVulkan final : public drv::IDriver
     }
 
     bool validate_and_apply_state_transitions(
+      drv::LogicalDevicePtr device, drv::QueuePtr currentQueue,
       drv::StateCorrectionData& correction, uint32_t imageCount,
-      const std::pair<drv::ImagePtr, drv::ImageTrackInfo>* transitions,
-      StatsCache* cacheHandle) override;
+      const std::pair<drv::ImagePtr, drv::ImageTrackInfo>* transitions, StatsCache* cacheHandle,
+      drv::ResourceStateTransitionCallback* cb) override;
 
  private:
     struct LogicalDeviceData

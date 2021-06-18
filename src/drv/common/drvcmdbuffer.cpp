@@ -45,6 +45,17 @@ DrvCmdBufferRecorder::DrvCmdBufferRecorder(IDriver* _driver, drv::PhysicalDevice
     imageStates(nullptr) {
 }
 
+void DrvCmdBufferRecorder::init() {
+    if (is_null_ptr(semaphore)) {
+        auto reader = STATS_CACHE_READER;
+        drv::PipelineStages semaphoreStage =
+          reader->semaphore.get(PipelineStagesStat::ApproximationMode::TEND_TO_FALSE);
+        if (semaphoreStage.stageFlags != 0)
+            *semaphore = driver->create_timeline_semaphore(device, );
+        // TODO semaphoreStage needs to be waited on at the end of the command buffer
+    }
+}
+
 void DrvCmdBufferRecorder::autoRegisterImage(ImagePtr image, drv::ImageLayout preferrefLayout) {
     TextureInfo texInfo = driver->get_texture_info(image);
     texInfo.getSubresourceRange().traverse(
