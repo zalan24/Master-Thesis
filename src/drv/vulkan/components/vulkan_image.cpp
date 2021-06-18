@@ -322,6 +322,7 @@ drv::PipelineStages VulkanCmdBufferRecorder::add_memory_sync(
         subresourceData.visible = accessMask;
         subresourceData.usableStages = stages;
         usage.preserveUsableStages = 0;
+        usage.written = true;
         if (resultLayout != drv::ImageLayout::UNDEFINED) {
             barrier.oldLayout =
               discardContent ? drv::ImageLayout::UNDEFINED : subresourceData.layout;

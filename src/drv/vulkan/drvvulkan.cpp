@@ -524,6 +524,9 @@ void VulkanCmdBufferRecorder::validate_memory_access(
     bool flush = false;
     bool needWait = 0;
 
+    if (write)
+        subresUsage.written = true;
+
     drv::QueueFamilyPtr currentFamily = getFamily();
     if (!sharedRes && subresourceData.ownership != currentFamily
         && subresourceData.ownership != drv::IGNORE_FAMILY) {

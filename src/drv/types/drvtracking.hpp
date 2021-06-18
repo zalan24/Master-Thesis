@@ -93,6 +93,7 @@ struct SubresourceUsageData
 {
     drv::PipelineStages::FlagType preserveUsableStages =
       drv::PipelineStages::get_all_bits(drv::CMD_TYPE_ALL);
+    bool written = false;
 };
 using ImageUsageData = ImagePerSubresourceData<SubresourceUsageData, 16>;
 
