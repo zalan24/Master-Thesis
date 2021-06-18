@@ -190,9 +190,9 @@ Get a triangle on screen:
                 ✘ Add auto enqueue order dep to any queue dependencies @cancelled (6/16/2021, 10:59:11 AM)
                 ✔ Add submission id (eg. hash of name) @done (6/16/2021, 11:41:18 AM)
                     ✔ It's bound to a queue, it cannot be submitted anywhere else @done (6/16/2021, 11:01:21 AM)
-                ☐ Add new state data to res state
-                    ☐ Main queue + submission id + frame id + is_write
-                    ☐ Add a set of reading queue + submission id + frame id + reading stages
+                ✔ Add new state data to res state @done (6/18/2021, 10:17:00 AM)
+                    ✔ Main queue + submission id + frame id + is_write @done (6/18/2021, 10:16:57 AM)
+                    ✔ Add a set of reading queue + submission id + frame id + reading stages @done (6/18/2021, 10:16:59 AM)
                 ☐ Command buffer needs to know if resource has been written (including layout transform)
                 ☐ Identify which submissions need sync objects
                     ☐ Validate resource usage compared to framegraph too (framegraph queue can be resolved from queue + submission id)

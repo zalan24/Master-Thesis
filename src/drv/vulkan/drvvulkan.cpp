@@ -708,7 +708,8 @@ bool DrvVulkan::validate_and_apply_state_transitions(
               drv::PipelineStages::FlagType preservedStages =
                 state.usableStages
                 & transitions[i].second.cmdState.usage.get(layer, mip, aspect).preserveUsableStages;
-              state = result;
+              static_cast<drv::ImageSubresourceTrackData&>(state) = result;
+              // TODO update global trackdata too
               state.usableStages = state.usableStages | preservedStages;
           });
     }

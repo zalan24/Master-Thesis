@@ -203,8 +203,6 @@ struct CommandBufferInfo
     StatsCache* statsCacheHandle;
 };
 
-using CmdBufferId = uint32_t;
-
 inline static CmdBufferId make_cmd_buffer_id(const char* file, uint32_t line) {
     size_t h = std::hash<uint32_t>{}(line);
     size_t len = strlen(file);

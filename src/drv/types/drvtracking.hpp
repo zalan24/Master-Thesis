@@ -1,12 +1,15 @@
 #pragma once
 
 #include <fixedarray.hpp>
+#include <flexiblearray.hpp>
 
 #include "drvimage_types.h"
 #include "drvresourceptrs.hpp"
 
 namespace drv
 {
+using CmdBufferId = uint32_t;
+
 struct PerSubresourceRangeTrackData
 {
     drv::QueueFamilyPtr ownership = drv::IGNORE_FAMILY;
@@ -22,9 +25,31 @@ struct PerSubresourceRangeTrackData
     drv::MemoryBarrier::AccessFlagBitType visible = drv::MemoryBarrier::get_all_bits();
 };
 
+struct ReadingQueueState
+{
+    QueuePtr queue = get_null_ptr<QueuePtr>();
+    uint64_t frameId = 0;
+    CmdBufferId submission = 0;
+    drv::PipelineStages::FlagType readingStages = 0;
+};
+
+struct MultiQueueTrackingState
+{
+    QueuePtr mainQueue = get_null_ptr<QueuePtr>();
+    uint64_t frameId : 63;
+    uint64_t isWrite : 1;
+    CmdBufferId submission = 0;
+    FlexibleArray<ReadingQueueState, 8> readingQueues;
+};
+
 struct ImageSubresourceTrackData : PerSubresourceRangeTrackData
 {
     drv::ImageLayout layout = drv::ImageLayout::UNDEFINED;
+};
+
+struct GlobalImageSubresourceTrackData : ImageSubresourceTrackData
+{
+    MultiQueueTrackingState multiQueueState;
 };
 
 template <typename T, size_t S>
@@ -63,6 +88,7 @@ struct ImagePerSubresourceData
 };
 
 using ImageTrackingState = ImagePerSubresourceData<ImageSubresourceTrackData, 16>;
+using GlobalImageTrackingState = ImagePerSubresourceData<GlobalImageSubresourceTrackData, 16>;
 struct SubresourceUsageData
 {
     drv::PipelineStages::FlagType preserveUsableStages =

@@ -23,7 +23,7 @@ struct Image
     drv::DeviceSize offset = 0;
 
     // This state is only valid during linear submission, not parallel recording
-    drv::ImageTrackingState linearTrackingState;
+    drv::GlobalImageTrackingState linearTrackingState;
 
     Image(drv::ImageId _imageId, VkImage _image, drv::Extent3D _extent, uint32_t _arraySize,
           uint32_t _numMipLevels, drv::ImageAspectBitType _aspects, bool _sharedResource,
