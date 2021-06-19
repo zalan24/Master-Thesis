@@ -20,7 +20,6 @@ struct StatsCache final : public IAutoSerializable<StatsCache>
         (std::map<drv::ImageId, ImageStateStat>) cmdBufferImageStates,
         (std::vector<ImageUsageStat>) renderpassAttachmentPostUsage,
         (std::vector<SimpleSubresStateStat>) renderpassExternalAttachmentInputs,
-        // (std::vector<EventSyncData>) events,
         (SemaphoreSyncData) semaphore
     )
 

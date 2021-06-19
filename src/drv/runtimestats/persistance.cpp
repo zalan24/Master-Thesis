@@ -24,6 +24,7 @@ void SingleExecutionData::start() {
     allowedSubmissionCorrections = 0;
     submissionCorrections.clear();
     attachmentCorrections.clear();
+    invalidSharedResourceUsage.clear();
 }
 
 void SingleExecutionData::stop() {

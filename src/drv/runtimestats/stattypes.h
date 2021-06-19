@@ -215,13 +215,6 @@ struct ImageSubresourcesData final : public ISerializable
     }
 };
 
-// struct EventSyncData final : public IAutoSerializable<EventSyncData> {
-//     REFLECTABLE(
-//         (drv::CmdBufferId) dstBuffer,
-//         (std::map<drv::ImageId, ImageSubresourcesData<bool>>) requiredSubresources
-//     )
-// };
-
 using SemaphoreSyncData = PipelineStagesStat;
 
 using ImageStateStat = ImageSubresourcesData<ImageSubresStateStat>;

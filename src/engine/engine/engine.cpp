@@ -135,7 +135,6 @@ Engine::Engine(int argc, char* argv[], const EngineConfig& cfg,
     deviceExtensions(true),
     physicalDevice(get_device_selection_info(drvInstance, deviceExtensions, shaderBin), window),
     commandLaneMgr(physicalDevice, window,
-
                    {{"main",
                      {{"render", 0.5, drv::CMD_TYPE_GRAPHICS, drv::CMD_TYPE_ALL, false, false},
                       {"present", 0.5, 0, drv::CMD_TYPE_ALL, true, false},
@@ -417,16 +416,58 @@ void Engine::recordCommandsLoop() {
       ExecutionPackage::MessagePackage{ExecutionPackage::Message::QUIT, 0, 0, nullptr}));
 }
 
-void Engine::requireSync(drv::QueuePtr srcQueue, drv::CmdBufferId srcSubmission,
-                         uint64_t srcFrameId,
-                         drv::ResourceStateTransitionCallback::ConflictMode mode, drv::PipelineStages::FlagType ongoingUsages) {
-                             // TODO check if the srcQueue == current queue
-                             //      else if (!previous_submission)
-                             //   cb->requireSync(rs.queue, rs.submission, rs.frameId, mode,
-                             //                   rs.readingStages);
-                             // TODO event is only an option, if the frame offset == 1 and the two submissions are guaranteed to happen in alternating order...
-                             // or when?
-}
+class AccessValidationCallback final : public drv::ResourceStateTransitionCallback
+{
+ public:
+    AccessValidationCallback(Engine* _engine, drv::QueuePtr _currentQueue,
+                             FrameGraph::NodeId _nodeId, FrameId _frame)
+      : engine(_engine),
+        currentQueue(_currentQueue),
+        nodeId(_nodeId),
+        frame(_frame) {}
+
+    void requireSync(drv::QueuePtr srcQueue, drv::CmdBufferId srcSubmission, uint64_t srcFrameId,
+                     drv::ResourceStateTransitionCallback::ConflictMode mode,
+                     drv::PipelineStages::FlagType ongoingUsages) override {
+        drv::drv_assert(srcFrameId <= frame);
+        if (srcQueue == currentQueue)
+            return;
+        FrameGraph::NodeId srcNode = engine->frameGraph.getNodeFromCmdBuffer(srcSubmission);
+        switch (mode) {
+            case drv::ResourceStateTransitionCallback::ConflictMode::NONE:
+                return;
+            case drv::ResourceStateTransitionCallback::ConflictMode::MUTEX: {
+                LOG_F(
+                  WARNING,
+                  "Two asynchronous submissions try to use an exclusive resource (nodes %s -> %s). Either make the resource shared, or synchronize them.",
+                  engine->frameGraph.getNode(srcNode)->getName().c_str(),
+                  engine->frameGraph.getNode(nodeId)->getName().c_str());
+                {
+                    RuntimeStatsWriter writer = RUNTIME_STATS_WRITER;
+                    writer->lastExecution
+                      .invalidSharedResourceUsage[engine->frameGraph.getNode(srcNode)->getName()]
+                      .push_back(engine->frameGraph.getNode(nodeId)->getName());
+                }
+                BREAK_POINT;
+                break;
+            }
+            case drv::ResourceStateTransitionCallback::ConflictMode::ORDERED_ACCESS:
+                drv::drv_assert(engine->frameGraph.hasEnqueueDependency(
+                                  srcNode, nodeId, static_cast<uint32_t>(frame - srcFrameId)),
+                                "Conflicting submissions have no enqueue dependency");
+                {
+                    StatsCacheWriter writer(engine->frameGraph.getStatsCacheHandle(srcSubmission));
+                    writer->semaphore.append(ongoingUsages);
+                }
+        }
+    }
+
+ private:
+    Engine* engine;
+    drv::QueuePtr currentQueue;
+    FrameGraph::NodeId nodeId;
+    FrameId frame;
+};
 
 bool Engine::execute(ExecutionPackage&& package) {
     if (std::holds_alternative<ExecutionPackage::MessagePackage>(package.package)) {
@@ -503,11 +544,17 @@ bool Engine::execute(ExecutionPackage&& package) {
         executionInfo.waitStages = waitSemaphoresStages;
         {
             drv::StateCorrectionData correctionData;
-            if (!drv::validate_and_apply_state_transitions(getDevice(), cmdBuffer.queue,
-                  correctionData, uint32_t(cmdBuffer.cmdBufferData.imageStates.size()),
+            AccessValidationCallback cb(
+              this, cmdBuffer.queue,
+              frameGraph.getNodeFromCmdBuffer(cmdBuffer.cmdBufferData.cmdBufferId),
+              cmdBuffer.frameId);
+            if (!drv::validate_and_apply_state_transitions(
+                  getDevice(), cmdBuffer.queue, correctionData,
+                  uint32_t(cmdBuffer.cmdBufferData.imageStates.size()),
                   cmdBuffer.cmdBufferData.imageStates.data(),
                   cmdBuffer.cmdBufferData.stateValidation ? cmdBuffer.cmdBufferData.statsCacheHandle
-                                                          : nullptr, this)) {
+                                                          : nullptr,
+                  &cb)) {
                 if (cmdBuffer.cmdBufferData.stateValidation) {
                     // TODO turn breakpoint and log back on (in debug builds)
                     // LOG_F(ERROR, "Some resources are not in the expected state");

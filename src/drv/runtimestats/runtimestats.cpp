@@ -295,6 +295,21 @@ void RuntimeStats::exportReport(const std::string& filename) const {
                 out << "Corrected attachment: " << data.renderpass << "/" << data.submission << "/"
                     << data.attachmentId << ": " << count << std::endl;
 
+            if (!node->lastExecution.invalidSharedResourceUsage.empty()) {
+                out << "Invalid async resource usage:\n";
+                for (const auto& [srcName, dstNames] : node->lastExecution.invalidSharedResourceUsage) {
+                    if (dstNames.empty())
+                        continue;
+                    if (dstNames.size() == 1)
+                        out << " " << srcName << " -> " << dstNames[0] << std::endl;
+                    else {
+                        out << " " << srcName << "\n";
+                        for (const auto& dstName : dstNames)
+                            out << "   -> " << dstName << std::endl;
+                    }
+                }
+            }
+
             for (const auto& [name, ptr] : node->subnodes)
                 nodes.push(ptr.get());
         }

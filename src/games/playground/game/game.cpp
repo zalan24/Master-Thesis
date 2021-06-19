@@ -256,8 +256,8 @@ Engine::AcquiredImageData Game::record(FrameId frameId) {
               queues.renderQueue.handle, getCommandBufferBank(), getGarbageSystem(),
               record_cmd_buffer_clear);
             ExecutionPackage::CommandBufferPackage submission = make_submission_package(
-              queues.renderQueue.handle, cmdBuffer.use(std::move(recordData)), getGarbageSystem(),
-              validation);
+              queues.renderQueue.handle, frameId, cmdBuffer.use(std::move(recordData)),
+              getGarbageSystem(), validation);
             submission.waitSemaphores.push_back(
               {swapChainData.imageAvailableSemaphore,
                drv::IMAGE_USAGE_COLOR_OUTPUT_WRITE | drv::IMAGE_USAGE_TRANSFER_DESTINATION});
@@ -269,8 +269,8 @@ Engine::AcquiredImageData Game::record(FrameId frameId) {
               queues.renderQueue.handle, getCommandBufferBank(), getGarbageSystem(),
               record_cmd_buffer_render);
             ExecutionPackage::CommandBufferPackage submission = make_submission_package(
-              queues.renderQueue.handle, cmdBuffer.use(std::move(recordData)), getGarbageSystem(),
-              validation);
+              queues.renderQueue.handle, frameId, cmdBuffer.use(std::move(recordData)),
+              getGarbageSystem(), validation);
             // submission.waitSemaphores.push_back(
             //   {swapChainData.imageAvailableSemaphore,
             //    drv::IMAGE_USAGE_COLOR_OUTPUT_WRITE | drv::IMAGE_USAGE_TRANSFER_DESTINATION});
@@ -282,8 +282,8 @@ Engine::AcquiredImageData Game::record(FrameId frameId) {
               queues.renderQueue.handle, getCommandBufferBank(), getGarbageSystem(),
               record_cmd_buffer_blit);
             ExecutionPackage::CommandBufferPackage submission = make_submission_package(
-              queues.renderQueue.handle, cmdBuffer.use(std::move(recordData)), getGarbageSystem(),
-              validation);
+              queues.renderQueue.handle, frameId, cmdBuffer.use(std::move(recordData)),
+              getGarbageSystem(), validation);
             submission.signalSemaphores.push_back(swapChainData.renderFinishedSemaphore);
             testDrawHandle.submit(queues.renderQueue.id, std::move(submission));
         }

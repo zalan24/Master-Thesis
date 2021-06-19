@@ -502,6 +502,35 @@ void FrameGraph::build() {
         // for (const QueueQueueDependency& dep : nodes[i].queQueDeps)
         //     nodes[dep.srcNode].checkAndCreateSemaphore(getQueue(dep.srcQueue));
     }
+    enqueueDependencyOffsets.resize(nodes.size() * nodes.size(),
+                                    std::numeric_limits<Offset>::max());
+    for (NodeId i = 0; i < nodes.size(); ++i) {
+        for (const EnqueueDependency& dep : nodes[i].enqDeps) {
+            uint32_t index = getEnqueueDependencyOffsetIndex(dep.srcNode, i);
+            enqueueDependencyOffsets[index] = std::min(enqueueDependencyOffsets[index], dep.offset);
+        }
+    }
+    bool changed = true;
+    do {
+        changed = false;
+        for (NodeId src = 0; src < nodes.size(); ++src) {
+            for (NodeId dst = 0; dst < nodes.size(); ++dst) {
+                uint32_t directIndex = getEnqueueDependencyOffsetIndex(src, dst);
+                if (enqueueDependencyOffsets[directIndex] == 0)
+                    continue;
+                for (NodeId mid = 0; mid < nodes.size(); ++mid) {
+                    uint32_t srcMid = getEnqueueDependencyOffsetIndex(src, mid);
+                    uint32_t midDst = getEnqueueDependencyOffsetIndex(mid, dst);
+                    Offset transitiveOffset =
+                      enqueueDependencyOffsets[srcMid] + enqueueDependencyOffsets[midDst];
+                    if (transitiveOffset < enqueueDependencyOffsets[directIndex]) {
+                        enqueueDependencyOffsets[directIndex] = transitiveOffset;
+                        changed = true;
+                    }
+                }
+            }
+        }
+    } while (changed);
 }
 
 FrameGraph::NodeHandle::NodeHandle() : frameGraph(nullptr) {
@@ -552,6 +581,8 @@ FrameGraph::NodeHandle::operator bool() const {
 
 void FrameGraph::NodeHandle::submit(QueueId queueId,
                                     ExecutionPackage::CommandBufferPackage&& submission) {
+    frameGraph->registerCmdBuffer(submission.cmdBufferData.cmdBufferId, node,
+                                  submission.cmdBufferData.statsCacheHandle);
     drv::drv_assert(frameGraph->getQueue(queueId) == submission.queue);
     useQueue(queueId);
 
@@ -921,7 +952,7 @@ void FrameGraph::NodeHandle::close() {
                     signalTimelineSemaphores.push_back(std::move(signal));
                     // TODO wait on semaphores to apply transitive dependencies
                     q->push(ExecutionPackage(ExecutionPackage::CommandBufferPackage{
-                      n.semaphores[i].queue,
+                      n.semaphores[i].queue, frameId,
                       CommandBufferData(frameGraph->garbageSystem, "signalCorrection"),
                       signalSemaphores, std::move(signalTimelineSemaphores), waitSemaphores,
                       waitTimelineSemaphores}));
@@ -938,4 +969,39 @@ void FrameGraph::NodeHandle::close() {
 
         frameGraph->release(*this);
     }
+}
+
+void FrameGraph::registerCmdBuffer(drv::CmdBufferId id, NodeId node, StatsCache* statsCacheHandle) {
+    std::unique_lock<std::shared_mutex> lock(cmdBufferToNodeMutex);
+    auto itr = cmdBufferToNode.find(id);
+    if (itr != cmdBufferToNode.end()) {
+        drv::drv_assert(itr->second.node == node, "Command buffer used from a different node");
+        itr->second.statsCacheHandle = statsCacheHandle;
+    }
+    else
+        cmdBufferToNode[id] = {node, statsCacheHandle};
+}
+
+FrameGraph::NodeId FrameGraph::getNodeFromCmdBuffer(drv::CmdBufferId id) const {
+    std::shared_lock<std::shared_mutex> lock(cmdBufferToNodeMutex);
+    auto itr = cmdBufferToNode.find(id);
+    drv::drv_assert(itr != cmdBufferToNode.end(), "Command buffer has not been registered yet");
+    return itr->second.node;
+}
+
+StatsCache* FrameGraph::getStatsCacheHandle(drv::CmdBufferId id) const {
+    std::shared_lock<std::shared_mutex> lock(cmdBufferToNodeMutex);
+    auto itr = cmdBufferToNode.find(id);
+    drv::drv_assert(itr != cmdBufferToNode.end(), "Command buffer has not been registered yet");
+    return itr->second.statsCacheHandle;
+}
+
+uint32_t FrameGraph::getEnqueueDependencyOffsetIndex(NodeId srcNode, NodeId dstNode) const {
+    return srcNode * uint32_t(nodes.size()) + dstNode;
+}
+
+bool FrameGraph::hasEnqueueDependency(NodeId srcNode, NodeId dstNode, uint32_t frameOffset) const {
+    uint32_t ind = getEnqueueDependencyOffsetIndex(srcNode, dstNode);
+    uint32_t offset = enqueueDependencyOffsets[ind];
+    return offset <= frameOffset;
 }

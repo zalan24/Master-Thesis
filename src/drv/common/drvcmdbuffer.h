@@ -156,7 +156,7 @@ class DrvCmdBufferRecorder
         renderPassPostStats = _renderPassPostStats;
     }
 
-    void setSemaphore(TimelineSemaphorePtr** _semaphore) { semaphore = _semaphore; }
+    void setSemaphore(TimelineSemaphorePtr* _semaphore) { semaphore = _semaphore; }
 
     void addRenderPassStat(drv::RenderPassStats&& stat);
 
@@ -189,7 +189,7 @@ class DrvCmdBufferRecorder
     RenderPassPostStats currentRenderPassPostStats;
     FlexibleArray<drv::RenderPassStats, 1>* renderPassStats = nullptr;
     FlexibleArray<drv::RenderPassPostStats, 1>* renderPassPostStats = nullptr;
-    TimelineSemaphorePtr** semaphore = nullptr;
+    TimelineSemaphorePtr* semaphore = nullptr;
     const char* name = nullptr;
 };
 
@@ -205,6 +205,7 @@ struct CommandBufferInfo
     StateTransition stateTransitions;
     uint64_t numUsages;
     const char* name;
+    CmdBufferId cmdBufferId;
     StatsCache* statsCacheHandle;
 };
 
@@ -276,7 +277,11 @@ class DrvCmdBuffer
             renderPassStats[i].write();
         for (uint32_t i = 0; i < renderPassPostStats.size(); ++i)
             renderPassPostStats[i].write();
-        return {cmdBufferPtr, {&imageStates}, ++numSubmissions, name.c_str(), statsCacheHandle};
+        {
+            StatsCacheWriter writer(statsCacheHandle);
+            writer->semaphore.append(0);
+        }
+        return {cmdBufferPtr, {&imageStates}, ++numSubmissions, name.c_str(), id, statsCacheHandle};
     }
 
     const DrvCmdBufferRecorder::ImageStates* getImageStates() { return &imageStates; }
@@ -310,7 +315,7 @@ class DrvCmdBuffer
     StatsCache* statsCacheHandle = nullptr;
     FlexibleArray<drv::RenderPassStats, 1> renderPassStats;
     FlexibleArray<drv::RenderPassPostStats, 1> renderPassPostStats;
-    TimelineSemaphorePtr* semaphore = get_null_ptr<TimelineSemaphore>();
+    TimelineSemaphorePtr semaphore = get_null_ptr<TimelineSemaphorePtr>();
 
     bool needToPrepare = true;
     uint64_t numSubmissions = 0;

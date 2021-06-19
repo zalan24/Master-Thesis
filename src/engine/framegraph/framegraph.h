@@ -107,6 +107,8 @@ class FrameGraph
 
         bool hasExecution() const;
 
+        const std::string &getName() const {return name;}
+
      private:
         std::string name;
         Stages stages = 0;
@@ -253,6 +255,13 @@ class FrameGraph
 
     uint32_t getMaxFramesInFlight() const { return maxFramesInFlight; }
 
+    // direct or indirect dependency
+    bool hasEnqueueDependency(NodeId srcNode, NodeId dstNode, uint32_t frameOffset) const;
+
+    void registerCmdBuffer(drv::CmdBufferId id, NodeId node, StatsCache* statsCacheHandle);
+    NodeId getNodeFromCmdBuffer(drv::CmdBufferId id) const;
+    StatsCache* getStatsCacheHandle(drv::CmdBufferId id) const;
+
  private:
     struct DependenceData
     {
@@ -275,11 +284,20 @@ class FrameGraph
     FlexibleArray<drv::QueuePtr, 8> queues;
     std::array<TagNodeId, NUM_STAGES> stageStartNodes;
     std::array<TagNodeId, NUM_STAGES> stageEndNodes;
+    std::vector<Offset> enqueueDependencyOffsets;
 
     mutable std::mutex enqueueMutex;
     mutable std::shared_mutex stopFrameMutex;
     std::atomic<FrameId> stopFrameId = INVALID_FRAME;
     std::atomic<FrameId> startedFrameId = 0;
+
+    struct CmdBufferInfo
+    {
+        NodeId node;
+        StatsCache* statsCacheHandle;
+    };
+    std::unordered_map<drv::CmdBufferId, CmdBufferInfo> cmdBufferToNode;
+    mutable std::shared_mutex cmdBufferToNodeMutex;
 
     void release(NodeHandle& handle);
     struct DependencyInfo
@@ -294,4 +312,5 @@ class FrameGraph
     FrameId calcMaxEnqueueFrame(NodeId nodeId, FrameId frameId) const;
     void checkAndEnqueue(NodeId nodeId, FrameId frameId, Stage stage, bool traverse);
     bool tryDoFrame(FrameId frameId);
+    uint32_t getEnqueueDependencyOffsetIndex(NodeId srcNode, NodeId dstNode) const;
 };

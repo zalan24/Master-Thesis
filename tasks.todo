@@ -194,21 +194,30 @@ Get a triangle on screen:
                     ✔ Main queue + submission id + frame id + is_write @done (6/18/2021, 10:16:57 AM)
                     ✔ Add a set of reading queue + submission id + frame id + reading stages @done (6/18/2021, 10:16:59 AM)
                 ✔ Command buffer needs to know if resource has been written (including layout transform) @done (6/18/2021, 10:32:02 AM)
-                ☐ Identify which submissions need sync objects
-                    ☐ Validate resource usage compared to framegraph too (framegraph queue can be resolved from queue + submission id)
-                        ☐ Framegraph needs to be able to decide this even if the dependency is transitive
-                    ☐ Semaphore is needed for conflicting usages on different queues
-                    ☐ Event is needed for conflicting usages on main queue only (on writing submission, the current queue is the main queue)
-                    ☐ Store where sync is needed in cache
-                        ☐ At most one semaphore is needed per submission, but there can be multiple events
-                    ☐ Create sync objects in submissions based on stats
+                ✔ Identify which submissions need sync objects @done (6/19/2021, 1:13:16 PM)
+                    ✔ Validate resource usage compared to framegraph too (framegraph queue can be resolved from queue + submission id) @done (6/19/2021, 1:13:12 PM)
+                        ✔ Framegraph needs to be able to decide this even if the dependency is transitive @done (6/19/2021, 1:13:14 PM)
+                    ✔ Semaphore is needed for conflicting usages on different queues @done (6/19/2021, 11:39:38 AM)
+                        ✔ At submission, append mask of 0 to required semaphore stages @done (6/19/2021, 11:21:33 AM)
+                        ✔ At dependency, append used mask to semaphore stages @done (6/19/2021, 11:39:36 AM)
+                        ✔ Use tend to true when reading the cache @done (6/19/2021, 11:19:52 AM)
+                        ✘ Cache should start at 0 @cancelled (6/19/2021, 11:02:32 AM)
+                    ✘ Event is needed for conflicting usages on main queue only (on writing submission, the current queue is the main queue) @cancelled (6/19/2021, 11:02:25 AM)
+                        ✘ If submissions doesn't happen consistently together, use semaphore instead (or nothing) @cancelled (6/19/2021, 11:02:28 AM)
+                    ✔ Store where sync is needed in cache @done (6/19/2021, 11:21:47 AM)
+                        ✔ At most one semaphore is needed per submission, but there can be multiple events @done (6/19/2021, 11:21:46 AM)
+                    ✔ Create sync objects in submissions based on stats @done (6/19/2021, 11:23:09 AM)
+                ☐ Deal with signal correction in framegraph
                 ☐ Sync new states
+                    ☐ Semaphore counter start from 0!!!!
                     ☐ If the src submissions had signal, use it. Otherwise auto create new signal
+                        ☐ Wait on semaphore stages at the end of the signalling cmd buffer
                         ☐ Auto sync submissions needs a pipeline barrier that waits for all reading stages on the queue
                         ☐ src submissions's signal needs a pipeline barrier with all reading stages recorded in that cmd buffer. If it's not sufficient, auto sync is still required
                             ☐ Probably count these kinds of corrections in the report file separately from normal auto sync
                     ☐ Auto creation of signals should be in the report file
                     ☐ Need to implement syncing with event too. It could use cache to know what to use as dst stuff
+                    ☐ Need to auto signal events, if they weren't signalled (what about unset?)
                 ☐ Track new states
                     ☐ When sync object is applied, update main queue / states on reader queues
                     ☐ If no sync is needed, just update main queue normally, and update reading stages for reading queues
