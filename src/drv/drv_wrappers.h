@@ -164,9 +164,7 @@ class ShaderModule
     void close();
 };
 
-class CommandPool
-  : public NoCopy
-  , private Exclusive
+class CommandPool : public NoCopy
 {
  public:
     CommandPool();
@@ -204,12 +202,11 @@ class CommandPoolSet
     std::unordered_map<QueueFamilyPtr, CommandPool> pools;
 };
 
-class CommandBuffer
-  : public NoCopy
-  , private Exclusive
+class CommandBuffer : public NoCopy
 {
  public:
     CommandBuffer();
+    CommandBuffer(LogicalDevicePtr device, CommandPoolPtr pool, CommandBufferPtr ptr);
     CommandBuffer(LogicalDevicePtr device, CommandPoolPtr pool,
                   const CommandBufferCreateInfo& createInfo);
     ~CommandBuffer() noexcept;

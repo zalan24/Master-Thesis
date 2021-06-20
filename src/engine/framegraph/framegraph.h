@@ -286,6 +286,16 @@ class FrameGraph
     std::array<TagNodeId, NUM_STAGES> stageEndNodes;
     std::vector<Offset> enqueueDependencyOffsets;
 
+    struct WaitAllCommandsData
+    {
+        drv::CommandPool pool;
+        drv::CommandBuffer buffer;
+        WaitAllCommandsData() = default;
+        WaitAllCommandsData(drv::LogicalDevicePtr device, drv::QueueFamilyPtr family);
+    };
+    std::unordered_map<drv::QueueFamilyPtr, WaitAllCommandsData> allWaitsCmdBuffers;
+    std::vector<drv::CommandBufferPtr> waitCmdBufferList;
+
     mutable std::mutex enqueueMutex;
     mutable std::shared_mutex stopFrameMutex;
     std::atomic<FrameId> stopFrameId = INVALID_FRAME;
@@ -313,4 +323,6 @@ class FrameGraph
     void checkAndEnqueue(NodeId nodeId, FrameId frameId, Stage stage, bool traverse);
     bool tryDoFrame(FrameId frameId);
     uint32_t getEnqueueDependencyOffsetIndex(NodeId srcNode, NodeId dstNode) const;
+
+    drv::ExecutionInfo getWaitAllSubmissionInfo() const;
 };

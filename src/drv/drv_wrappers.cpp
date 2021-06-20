@@ -330,7 +330,6 @@ CommandPool& CommandPool::operator=(CommandPool&& other) noexcept {
 }
 
 CommandPool::operator CommandPoolPtr() const {
-    CHECK_THREAD;
     return ptr;
 }
 
@@ -370,6 +369,10 @@ CommandBuffer::CommandBuffer(LogicalDevicePtr _device, CommandPoolPtr _pool,
     drv::drv_assert(!is_null_ptr(ptr), "Could not create command buffer");
 }
 
+CommandBuffer::CommandBuffer(LogicalDevicePtr _device, CommandPoolPtr _pool, CommandBufferPtr _ptr)
+  : device(_device), pool(_pool), ptr(_ptr) {
+}
+
 CommandBuffer::~CommandBuffer() noexcept {
     close();
 }
@@ -404,7 +407,6 @@ CommandBuffer& CommandBuffer::operator=(CommandBuffer&& other) noexcept {
 }
 
 CommandBuffer::operator CommandBufferPtr() const {
-    CHECK_THREAD;
     return ptr;
 }
 

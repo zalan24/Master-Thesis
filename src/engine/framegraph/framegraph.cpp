@@ -531,6 +531,26 @@ void FrameGraph::build() {
             }
         }
     } while (changed);
+
+    waitCmdBufferList.clear();
+    for (uint32_t i = 0; i < queues.size(); ++i) {
+        drv::QueueFamilyPtr family = drv::get_queue_family(device, queues[i]);
+        if (allWaitsCmdBuffers.find(family) == allWaitsCmdBuffers.end()) {
+            auto& data = allWaitsCmdBuffers[family] = WaitAllCommandsData(device, family);
+            waitCmdBufferList.push_back(data.buffer);
+        }
+    }
+}
+
+drv::ExecutionInfo FrameGraph::getWaitAllSubmissionInfo() const {
+    drv::ExecutionInfo ret;
+    ret.numCommandBuffers = static_cast<uint32_t>(waitCmdBufferList.size());
+    ret.commandBuffers = waitCmdBufferList.data();
+    ret.numSignalSemaphores = 0;
+    ret.numSignalTimelineSemaphores = 0;
+    ret.numWaitSemaphores = 0;
+    ret.numWaitTimelineSemaphores = 0;
+    return ret;
 }
 
 FrameGraph::NodeHandle::NodeHandle() : frameGraph(nullptr) {
@@ -1004,4 +1024,10 @@ bool FrameGraph::hasEnqueueDependency(NodeId srcNode, NodeId dstNode, uint32_t f
     uint32_t ind = getEnqueueDependencyOffsetIndex(srcNode, dstNode);
     uint32_t offset = enqueueDependencyOffsets[ind];
     return offset <= frameOffset;
+}
+
+FrameGraph::WaitAllCommandsData::WaitAllCommandsData(drv::LogicalDevicePtr _device,
+                                                     drv::QueueFamilyPtr family)
+  : pool(_device, family, drv::CommandPoolCreateInfo(false, false)),
+    buffer(_device, pool, drv::create_wait_all_command_buffer(_device, pool)) {
 }

@@ -208,6 +208,20 @@ Get a triangle on screen:
                         ✔ At most one semaphore is needed per submission, but there can be multiple events @done (6/19/2021, 11:21:46 AM)
                     ✔ Create sync objects in submissions based on stats @done (6/19/2021, 11:23:09 AM)
                 ☐ Deal with signal correction in framegraph
+                    ✔ Create a special reusable command buffer for every queue family that waits on all previous work @done (6/20/2021, 12:17:45 PM)
+                        ✔ Prepare a submission info struct that waits on everything (?in the engine?) @done (6/20/2021, 12:17:47 PM)
+                    ☐ Clearing, which requires all work to be done
+                        ☐ When a frame is fully done (all nodes finished), add the wait all cmd buffer to all used queues
+                        ☐ Framegraph should have a function to retrive all semaphores used for waiting all work done
+                        ☐ Clearing garbage node should wait on all of these
+                            ☐ Add a special dependency type for waiting on all work
+                    ☐ QueueCpu dep for queries
+                        ☐ QueueCpu dep implies dependency: submission -> cpu
+                        ☐ acquiring such a node will require a list of sub-resources to wait on
+                        ☐ Framegraph will need to acquire usages of the listed sub-resources and validate them
+                            ☐ All usages must refer to either one of the waited gpu works, or something that has an enqueue dependency to any waited node
+                        ☐ Record the need for a semaphore in the waited usages the same way as gpu-gpu work
+                        ☐ Wait on the semaphores associated with the retrived usages (use auto sync if no semaphore is present)
                 ☐ Sync new states
                     ☐ Semaphore counter start from 0!!!!
                     ☐ If the src submissions had signal, use it. Otherwise auto create new signal
@@ -222,6 +236,11 @@ Get a triangle on screen:
                     ☐ When sync object is applied, update main queue / states on reader queues
                     ☐ If no sync is needed, just update main queue normally, and update reading stages for reading queues
                     ☐ Existing sumbissions should consider state of the resource on that specific queue
+                ☐ Test
+                    ☐ Test queue->cpu dependency
+                    ☐ Test separate queue families
+                        ☐ with shared resources
+                        ☐ with exclusive resources
 
         ☐ Track resources globally
             ☐ Created resource ids in the framegraph

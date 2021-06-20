@@ -430,3 +430,8 @@ bool drv::validate_and_apply_state_transitions(LogicalDevicePtr device, QueuePtr
     return current_driver_interface->validate_and_apply_state_transitions(device, currentQueue,
       correction, imageCount, transitions, cacheHandle, cb);
 }
+
+drv::CommandBufferPtr drv::create_wait_all_command_buffer(LogicalDevicePtr device,
+                                                          CommandPoolPtr pool) {
+    return current_driver_interface->create_wait_all_command_buffer(device, pool);
+}

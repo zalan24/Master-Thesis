@@ -99,6 +99,8 @@ struct CommandPoolCreateInfo
     unsigned char transient : 1;
     unsigned char resetCommandBuffer : 1;
     CommandPoolCreateInfo() : transient(0), resetCommandBuffer(0) {}
+    CommandPoolCreateInfo(bool _transient, bool _resetable)
+      : transient(_transient), resetCommandBuffer(_resetable) {}
 };
 
 enum class CommandBufferType
@@ -187,18 +189,18 @@ struct PipelineStages
 
 struct ExecutionInfo
 {
-    unsigned int numWaitSemaphores = 0;
+    uint32_t numWaitSemaphores = 0;
     const SemaphorePtr* waitSemaphores = nullptr;
     PipelineStages::FlagType* waitStages = nullptr;
-    unsigned int numCommandBuffers = 0;
-    CommandBufferPtr* commandBuffers = nullptr;
-    unsigned int numSignalSemaphores = 0;
+    uint32_t numCommandBuffers = 0;
+    const CommandBufferPtr* commandBuffers = nullptr;
+    uint32_t numSignalSemaphores = 0;
     const SemaphorePtr* signalSemaphores = nullptr;
-    unsigned int numWaitTimelineSemaphores = 0;
+    uint32_t numWaitTimelineSemaphores = 0;
     const TimelineSemaphorePtr* waitTimelineSemaphores = nullptr;
     const uint64_t* timelineWaitValues = nullptr;
     PipelineStages::FlagType* timelineWaitStages = nullptr;
-    unsigned int numSignalTimelineSemaphores = 0;
+    uint32_t numSignalTimelineSemaphores = 0;
     const TimelineSemaphorePtr* signalTimelineSemaphores = nullptr;
     const uint64_t* timelineSignalValues = nullptr;
 };

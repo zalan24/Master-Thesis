@@ -29,8 +29,7 @@ drv::CommandBufferPtr DrvVulkan::create_command_buffer(drv::LogicalDevicePtr dev
 
     VkCommandBuffer commandBuffer;
 
-    VkResult result =
-      vkAllocateCommandBuffers(drv::resolve_ptr<VkDevice>(device), &allocInfo, &commandBuffer);
+    VkResult result = vkAllocateCommandBuffers(convertDevice(device), &allocInfo, &commandBuffer);
     drv::drv_assert(result == VK_SUCCESS, "Could not create command buffer");
     return drv::store_ptr<drv::CommandBufferPtr>(commandBuffer);
 }
@@ -164,7 +163,46 @@ bool DrvVulkan::free_command_buffer(drv::LogicalDevicePtr device, drv::CommandPo
     StackMemory::MemoryHandle<VkCommandBuffer> vkBuffers(count, TEMPMEM);
     for (uint32_t i = 0; i < count; ++i)
         vkBuffers[i] = drv::resolve_ptr<VkCommandBuffer>(buffers[i]);
-    vkFreeCommandBuffers(drv::resolve_ptr<VkDevice>(device), drv::resolve_ptr<VkCommandPool>(pool),
-                         count, vkBuffers);
+    vkFreeCommandBuffers(convertDevice(device), drv::resolve_ptr<VkCommandPool>(pool), count,
+                         vkBuffers);
     return true;
+}
+
+drv::CommandBufferPtr DrvVulkan::create_wait_all_command_buffer(drv::LogicalDevicePtr device,
+                                                                drv::CommandPoolPtr pool) {
+    VkCommandBufferAllocateInfo allocInfo = {};
+    allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+    allocInfo.commandPool = drv::resolve_ptr<VkCommandPool>(pool);
+    allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+    allocInfo.commandBufferCount = 1;
+
+    VkCommandBuffer commandBuffer;
+
+    VkResult result = vkAllocateCommandBuffers(convertDevice(device), &allocInfo, &commandBuffer);
+    drv::drv_assert(result == VK_SUCCESS, "Could not create command buffer");
+
+    VkCommandBufferBeginInfo info;
+    info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+    info.pNext = nullptr;
+    info.flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
+    info.pInheritanceInfo = nullptr;
+    result = vkBeginCommandBuffer(commandBuffer, &info);
+    if (result != VK_SUCCESS) {
+        vkFreeCommandBuffers(convertDevice(device), drv::resolve_ptr<VkCommandPool>(pool), 1,
+                             &commandBuffer);
+        drv::drv_assert(false, "Could not begin recording command buffer");
+    }
+
+    vkCmdPipelineBarrier(commandBuffer, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
+                         VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, 0, 0, nullptr, 0, nullptr, 0,
+                         nullptr);
+
+    result = vkEndCommandBuffer(commandBuffer);
+    if (result != VK_SUCCESS) {
+        vkFreeCommandBuffers(convertDevice(device), drv::resolve_ptr<VkCommandPool>(pool), 1,
+                             &commandBuffer);
+        drv::drv_assert(false, "Could not finish recording command buffer");
+    }
+
+    return drv::store_ptr<drv::CommandBufferPtr>(commandBuffer);
 }

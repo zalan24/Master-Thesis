@@ -371,6 +371,9 @@ class DrvVulkan final : public drv::IDriver
     bool destroy_framebuffer(drv::LogicalDevicePtr device,
                              drv::FramebufferPtr frameBuffer) override;
 
+    drv::CommandBufferPtr create_wait_all_command_buffer(drv::LogicalDevicePtr device,
+                                                         drv::CommandPoolPtr pool) override;
+
     drv::DriverSupport get_support(drv::LogicalDevicePtr device) override;
 
     size_t get_cmd_buffer_recorder_size() override { return sizeof(VulkanCmdBufferRecorder); }

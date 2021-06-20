@@ -241,6 +241,9 @@ class IDriver
 
     virtual bool destroy_framebuffer(LogicalDevicePtr device, FramebufferPtr frameBuffer) = 0;
 
+    virtual CommandBufferPtr create_wait_all_command_buffer(LogicalDevicePtr device,
+                                                            CommandPoolPtr pool) = 0;
+
     virtual PlacementPtr<drv::DrvCmdBufferRecorder> create_cmd_buffer_recorder(
       void* targetPtr, drv::PhysicalDevicePtr physicalDevice, drv::LogicalDevicePtr device,
       drv::QueueFamilyPtr family, drv::CommandBufferPtr cmdBufferPtr, bool singleTime,

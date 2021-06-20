@@ -177,6 +177,9 @@ DriverSupport get_support(LogicalDevicePtr device);
 // DescriptorSetLayoutPtr* get_shader_descriptor_set_layouts(LogicalDevicePtr device,
 //                                                           ShaderIdType shaderId);
 
+// creates a reusable simultaneous use command buffer that has a single pipeline barrier that waits on all commands
+CommandBufferPtr create_wait_all_command_buffer(LogicalDevicePtr device, CommandPoolPtr pool);
+
 ShaderModulePtr create_shader_module(LogicalDevicePtr device, const ShaderCreateInfo* info);
 bool destroy_shader_module(LogicalDevicePtr device, ShaderModulePtr module);
 bool validate_and_apply_state_transitions(LogicalDevicePtr device, QueuePtr currentQueue,
