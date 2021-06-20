@@ -95,11 +95,11 @@ FrameGraph::Node::Node(Node&& other)
     cpuDeps(std::move(other.cpuDeps)),
     enqDeps(std::move(other.enqDeps)),
     // cpuQueDeps(std::move(other.cpuQueDeps)),
-    queCpuDeps(std::move(other.queCpuDeps)),
+    gpuCompleteDeps(std::move(other.gpuCompleteDeps)),
+    gpuCpuDeps(std::move(other.gpuCpuDeps)),
     // queQueDeps(std::move(other.queQueDeps)),
     localExecutionQueue(std::move(other.localExecutionQueue)),
     enqIndirectChildren(std::move(other.enqIndirectChildren)),
-    semaphores(std::move(other.semaphores)),
     enqueuedFrame(other.enqueuedFrame.load()),
     enqueueFrameClearance(other.enqueueFrameClearance) {
     for (uint32_t i = 0; i < NUM_STAGES; ++i)
@@ -124,11 +124,11 @@ FrameGraph::Node& FrameGraph::Node::operator=(Node&& other) {
     cpuDeps = std::move(other.cpuDeps);
     enqDeps = std::move(other.enqDeps);
     // cpuQueDeps = std::move(other.cpuQueDeps);
-    queCpuDeps = std::move(other.queCpuDeps);
+    gpuCpuDeps = std::move(other.gpuCpuDeps);
+    gpuCompleteDeps = std::move(other.gpuCompleteDeps);
     // queQueDeps = std::move(other.queQueDeps);
     localExecutionQueue = std::move(other.localExecutionQueue);
     enqIndirectChildren = std::move(other.enqIndirectChildren);
-    semaphores = std::move(other.semaphores);
     for (uint32_t i = 0; i < NUM_STAGES; ++i)
         completedFrames[i].store(other.completedFrames[i].load());
     enqueuedFrame = other.enqueuedFrame.load();
@@ -148,8 +148,8 @@ void FrameGraph::Node::addDependency(EnqueueDependency dep) {
 //     cpuQueDeps.push_back(std::move(dep));
 // }
 
-void FrameGraph::Node::addDependency(QueueCpuDependency dep) {
-    queCpuDeps.push_back(std::move(dep));
+void FrameGraph::Node::addDependency(GpuCpuDependency dep) {
+    gpuCpuDeps.push_back(std::move(dep));
 }
 
 void FrameGraph::Node::addDependency(GpuCompleteDependency dep) {
@@ -228,8 +228,8 @@ FrameGraph::NodeId FrameGraph::addNode(Node&& node, bool applyTagDependencies) {
               [](const EnqueueDependency& lhs, const EnqueueDependency& rhs) {
                   return lhs.offset > rhs.offset;
               });
-    std::sort(node.queCpuDeps.begin(), node.queCpuDeps.end(),
-              [](const QueueCpuDependency& lhs, const QueueCpuDependency& rhs) {
+    std::sort(node.gpuCpuDeps.begin(), node.gpuCpuDeps.end(),
+              [](const GpuCpuDependency& lhs, const GpuCpuDependency& rhs) {
                   return lhs.offset > rhs.offset;
               });
     // std::sort(node.cpuQueDeps.begin(), node.cpuQueDeps.end(),
@@ -281,7 +281,7 @@ void FrameGraph::addDependency(NodeId target, EnqueueDependency dep) {
 // void FrameGraph::addDependency(NodeId target, CpuQueueDependency dep) {
 //     getNode(target)->addDependency(std::move(dep));
 // }
-void FrameGraph::addDependency(NodeId target, QueueCpuDependency dep) {
+void FrameGraph::addDependency(NodeId target, GpuCpuDependency dep) {
     getNode(target)->addDependency(std::move(dep));
 }
 
@@ -391,9 +391,11 @@ void FrameGraph::validateFlowGraph(
 void FrameGraph::build() {
     addAllGpuCompleteDependency(getStageEndNode(READBACK_STAGE), READBACK_STAGE, 0);
     for (NodeId i = 0; i < nodes.size(); ++i) {
-        for (const QueueCpuDependency& dep : nodes[i].queCpuDeps) {
-            addDependency(i, CpuDependency{dep.srcNode, EXECUTION_STAGE, dep.dstStage, dep.offset});
-        }
+        if (nodes[i].stages & EXECUTION_STAGE)
+            addDependency(i, CpuDependency{i, EXECUTION_STAGE, READBACK_STAGE, 0});
+        for (const GpuCpuDependency& dep : nodes[i].gpuCpuDeps)
+            addDependency(i,
+                          CpuDependency{dep.srcNode, EXECUTION_STAGE, READBACK_STAGE, dep.offset});
     }
     // TODO clear redundant cpu dependencies (same dependencies with different offsets, keep the lower, etc.)
     std::vector<uint32_t> cpuChildrenIndirect(nodes.size() * NUM_STAGES, 0);
@@ -519,12 +521,6 @@ void FrameGraph::build() {
     //       index -= node.queCpuDeps.size();
     //       return DependencyInfo{node.queQueDeps[index].srcNode, node.queQueDeps[index].offset};
     //   });
-    for (NodeId i = 0; i < nodes.size(); ++i) {
-        for (const QueueCpuDependency& dep : nodes[i].queCpuDeps)
-            nodes[dep.srcNode].checkAndCreateSemaphore(getQueue(dep.srcQueue));
-        // for (const QueueQueueDependency& dep : nodes[i].queQueDeps)
-        //     nodes[dep.srcNode].checkAndCreateSemaphore(getQueue(dep.srcQueue));
-    }
     enqueueDependencyOffsets.resize(nodes.size() * nodes.size(),
                                     std::numeric_limits<Offset>::max());
     for (NodeId i = 0; i < nodes.size(); ++i) {
@@ -569,8 +565,12 @@ FrameGraph::NodeHandle::NodeHandle() : frameGraph(nullptr) {
 }
 
 FrameGraph::NodeHandle::NodeHandle(FrameGraph* _frameGraph, FrameGraph::NodeId _node, Stage _stage,
-                                   FrameId _frameId)
-  : frameGraph(_frameGraph), node(_node), stage(_stage), frameId(_frameId) {
+                                   FrameId _frameId, uint32_t imageUsageCount,
+                                   const CpuImageResourceUsage* _imageUsages)
+  : frameGraph(_frameGraph), node(_node), stage(_stage), frameId(_frameId), imageUsages() {
+    imageUsages.resize(imageUsageCount);
+    for (uint32_t i = 0; i < imageUsageCount; ++i)
+        imageUsages[i] = _imageUsages[i];
 }
 
 FrameGraph::Node& FrameGraph::NodeHandle::getNode() const {
@@ -581,9 +581,7 @@ FrameGraph::NodeHandle::NodeHandle(NodeHandle&& other)
   : frameGraph(other.frameGraph),
     node(other.node),
     frameId(other.frameId),
-    semaphoresSignalled(other.semaphoresSignalled),
-    // semaphoresWaited(other.semaphoresWaited),
-    queuesUsed(other.queuesUsed),
+    imageUsages(std::move(other.imageUsages)),
     nodeExecutionData(std::move(other.nodeExecutionData)) {
     other.frameGraph = nullptr;
 }
@@ -595,9 +593,7 @@ FrameGraph::NodeHandle& FrameGraph::NodeHandle::operator=(NodeHandle&& other) {
     frameGraph = other.frameGraph;
     node = other.node;
     frameId = other.frameId;
-    semaphoresSignalled = other.semaphoresSignalled;
-    // semaphoresWaited = other.semaphoresWaited;
-    queuesUsed = other.queuesUsed;
+    imageUsages = std::move(other.imageUsages);
     nodeExecutionData = other.nodeExecutionData;
     other.frameGraph = nullptr;
     return *this;
@@ -616,9 +612,6 @@ void FrameGraph::NodeHandle::submit(QueueId queueId,
     frameGraph->registerCmdBuffer(submission.cmdBufferData.cmdBufferId, node,
                                   submission.cmdBufferData.statsCacheHandle);
     drv::drv_assert(frameGraph->getQueue(queueId) == submission.queue);
-    useQueue(queueId);
-
-    // TODO apply auto semaphores here
 
     ExecutionQueue* q = frameGraph->getExecutionQueue(*this);
     q->push(std::move(submission));
@@ -665,7 +658,9 @@ bool FrameGraph::tryWaitForNode(NodeId node, Stage stage, FrameId frame) {
     return true;
 }
 
-FrameGraph::NodeHandle FrameGraph::acquireNode(NodeId nodeId, Stage stage, FrameId frame) {
+FrameGraph::NodeHandle FrameGraph::acquireNode(NodeId nodeId, Stage stage, FrameId frame,
+                                               uint32_t imageUsageCount,
+                                               const CpuImageResourceUsage* imageUsages) {
     if (isStopped() || !tryDoFrame(frame))
         return NodeHandle();
     Node* node = getNode(nodeId);
@@ -678,18 +673,6 @@ FrameGraph::NodeHandle FrameGraph::acquireNode(NodeId nodeId, Stage stage, Frame
         if (dep.offset <= frame)
             if (!waitForNode(dep.srcNode, dep.srcStage, frame - dep.offset))
                 return NodeHandle();
-    }
-    for (const QueueCpuDependency& dep : node->queCpuDeps) {
-        if (dep.dstStage != stage)
-            continue;
-        if (dep.offset <= frame) {
-            FrameId requiredFrame = frame - dep.offset;
-            Node* sourceNode = getNode(dep.srcNode);
-            if (const drv::TimelineSemaphore* semaphore =
-                  sourceNode->getSemaphore(getQueue(dep.srcQueue));
-                semaphore)
-                semaphore->wait(get_semaphore_value(requiredFrame));
-        }
     }
     if (node->gpuCompleteDeps.size() > 0) {
         StackMemory::MemoryHandle<drv::TimelineSemaphorePtr> waitedSemaphores(
@@ -712,13 +695,29 @@ FrameGraph::NodeHandle FrameGraph::acquireNode(NodeId nodeId, Stage stage, Frame
             }
         }
     }
+    if (imageUsageCount > 0) {
+        // drv::drv_assert(stage == READBACK_STAGE, "Only readback stage can use gpu resources");
+        for (const QueueCpuDependency& dep : node->queCpuDeps) {
+        if (dep.dstStage != stage)
+            continue;
+        if (dep.offset <= frame) {
+            FrameId requiredFrame = frame - dep.offset;
+            Node* sourceNode = getNode(dep.srcNode);
+            if (const drv::TimelineSemaphore* semaphore =
+                  sourceNode->getSemaphore(getQueue(dep.srcQueue));
+                semaphore)
+                semaphore->wait(get_semaphore_value(requiredFrame));
+        }
+    }
+    }
     if (isStopped())
         return NodeHandle();
-    return NodeHandle(this, nodeId, stage, frame);
+    return NodeHandle(this, nodeId, stage, frame, imageUsageCount, imageUsages);
 }
 
 FrameGraph::NodeHandle FrameGraph::tryAcquireNode(NodeId nodeId, Stage stage, FrameId frame,
-                                                  uint64_t timeoutNsec) {
+                                                  uint64_t timeoutNsec, uint32_t imageUsageCount,
+                                                  const CpuImageResourceUsage* imageUsages) {
     const std::chrono::high_resolution_clock::time_point start =
       std::chrono::high_resolution_clock::now();
     std::chrono::nanoseconds maxDuration(timeoutNsec);
@@ -736,25 +735,6 @@ FrameGraph::NodeHandle FrameGraph::tryAcquireNode(NodeId nodeId, Stage stage, Fr
                 || !tryWaitForNode(dep.srcNode, dep.srcStage, frame - dep.offset,
                                    uint64_t((maxDuration - duration).count())))
                 return NodeHandle();
-        }
-    }
-    for (const QueueCpuDependency& dep : node->queCpuDeps) {
-        if (dep.dstStage != stage)
-            continue;
-        if (dep.offset <= frame) {
-            FrameId requiredFrame = frame - dep.offset;
-            Node* sourceNode = getNode(dep.srcNode);
-            const std::chrono::nanoseconds duration =
-              std::chrono::high_resolution_clock::now() - start;
-            if (duration >= maxDuration)
-                return NodeHandle();
-            if (const drv::TimelineSemaphore* semaphore =
-                  sourceNode->getSemaphore(getQueue(dep.srcQueue));
-                semaphore) {
-                if (!semaphore->wait(get_semaphore_value(requiredFrame),
-                                     static_cast<uint64_t>((maxDuration - duration).count())))
-                    return NodeHandle();
-            }
         }
     }
     if (node->gpuCompleteDeps.size() > 0) {
@@ -784,12 +764,35 @@ FrameGraph::NodeHandle FrameGraph::tryAcquireNode(NodeId nodeId, Stage stage, Fr
             }
         }
     }
+    if (imageUsageCount > 0) {
+        for (const QueueCpuDependency& dep : node->queCpuDeps) {
+            if (dep.dstStage != stage)
+                continue;
+            if (dep.offset <= frame) {
+                FrameId requiredFrame = frame - dep.offset;
+                Node* sourceNode = getNode(dep.srcNode);
+                const std::chrono::nanoseconds duration =
+                  std::chrono::high_resolution_clock::now() - start;
+                if (duration >= maxDuration)
+                    return NodeHandle();
+                if (const drv::TimelineSemaphore* semaphore =
+                      sourceNode->getSemaphore(getQueue(dep.srcQueue));
+                    semaphore) {
+                    if (!semaphore->wait(get_semaphore_value(requiredFrame),
+                                         static_cast<uint64_t>((maxDuration - duration).count())))
+                        return NodeHandle();
+                }
+            }
+            }
+    }
     if (isStopped())
         return NodeHandle();
-    return NodeHandle(this, nodeId, stage, frame);
+    return NodeHandle(this, nodeId, stage, frame, imageUsages, imageUsageCount);
 }
 
-FrameGraph::NodeHandle FrameGraph::tryAcquireNode(NodeId nodeId, Stage stage, FrameId frame) {
+FrameGraph::NodeHandle FrameGraph::tryAcquireNode(NodeId nodeId, Stage stage, FrameId frame,
+                                                  uint32_t imageUsageCount,
+                                                  const CpuImageResourceUsage* imageUsages) {
     if (isStopped() || !tryDoFrame(frame))
         return NodeHandle();
     Node* node = getNode(nodeId);
@@ -800,20 +803,6 @@ FrameGraph::NodeHandle FrameGraph::tryAcquireNode(NodeId nodeId, Stage stage, Fr
         if (dep.offset <= frame)
             if (!tryWaitForNode(dep.srcNode, dep.srcStage, frame - dep.offset))
                 return NodeHandle();
-    }
-    for (const QueueCpuDependency& dep : node->queCpuDeps) {
-        if (dep.dstStage != stage)
-            continue;
-        if (dep.offset <= frame) {
-            FrameId requiredFrame = frame - dep.offset;
-            Node* sourceNode = getNode(dep.srcNode);
-            if (const drv::TimelineSemaphore* semaphore =
-                  sourceNode->getSemaphore(getQueue(dep.srcQueue));
-                semaphore) {
-                if (semaphore->getValue() < get_semaphore_value(requiredFrame))
-                    return NodeHandle();
-            }
-        }
     }
     if (node->gpuCompleteDeps.size() > 0) {
         StackMemory::MemoryHandle<drv::TimelineSemaphorePtr> waitedSemaphores(
@@ -837,21 +826,40 @@ FrameGraph::NodeHandle FrameGraph::tryAcquireNode(NodeId nodeId, Stage stage, Fr
             }
         }
     }
+    if (imageUsageCount > 0) {
+        for (const QueueCpuDependency& dep : node->queCpuDeps) {
+        if (dep.dstStage != stage)
+            continue;
+        if (dep.offset <= frame) {
+            FrameId requiredFrame = frame - dep.offset;
+            Node* sourceNode = getNode(dep.srcNode);
+            if (const drv::TimelineSemaphore* semaphore =
+                  sourceNode->getSemaphore(getQueue(dep.srcQueue));
+                semaphore) {
+                if (semaphore->getValue() < get_semaphore_value(requiredFrame))
+                    return NodeHandle();
+            }
+        }
+    }
+    }
     if (isStopped())
         return NodeHandle();
-    return NodeHandle(this, nodeId, stage, frame);
+    return NodeHandle(this, nodeId, stage, frame, imageUsageCount, imageUsages);
 }
 
-bool FrameGraph::applyTag(TagNodeId node, Stage stage, FrameId frame) {
-    return acquireNode(node, stage, frame);
+bool FrameGraph::applyTag(TagNodeId node, Stage stage, FrameId frame, uint32_t imageUsageCount,
+                          const CpuImageResourceUsage* imageUsages) {
+    return acquireNode(node, stage, frame, imageUsageCount, imageUsages);
 }
 
-bool FrameGraph::tryApplyTag(TagNodeId node, Stage stage, FrameId frame, uint64_t timeoutNsec) {
-    return tryAcquireNode(node, stage, frame, timeoutNsec);
+bool FrameGraph::tryApplyTag(TagNodeId node, Stage stage, FrameId frame, uint64_t timeoutNsec,
+                             uint32_t imageUsageCount, const CpuImageResourceUsage* imageUsages) {
+    return tryAcquireNode(node, stage, frame, timeoutNsec, imageUsageCount, imageUsages);
 }
 
-bool FrameGraph::tryApplyTag(TagNodeId node, Stage stage, FrameId frame) {
-    return tryAcquireNode(node, stage, frame);
+bool FrameGraph::tryApplyTag(TagNodeId node, Stage stage, FrameId frame, uint32_t imageUsageCount,
+                             const CpuImageResourceUsage* imageUsages) {
+    return tryAcquireNode(node, stage, frame, imageUsageCount, imageUsages);
 }
 
 void FrameGraph::executionFinished(NodeId nodeId, FrameId frame) {
@@ -971,116 +979,13 @@ drv::QueuePtr FrameGraph::getQueue(QueueId queueId) const {
     return queues[queueId];
 }
 
-// FrameGraph::Node::SyncData::SyncData(drv::LogicalDevicePtr _device) : semaphore(_device, {0}) {
-// }
-
-FrameGraph::Node::SyncData::SyncData(drv::LogicalDevicePtr _device, drv::QueuePtr _queue)
-  : queue(_queue), semaphore(_device, {0}) {
-}
-
-void FrameGraph::Node::checkAndCreateSemaphore(drv::QueuePtr queue) {
-    for (const SyncData& d : semaphores)
-        if (d.queue == queue)
-            return;
-    semaphores.emplace_back(frameGraph->device, queue);
-}
-
-const drv::TimelineSemaphore* FrameGraph::Node::getSemaphore(drv::QueuePtr queue) {
-    for (const SyncData& d : semaphores)
-        if (d.queue == queue)
-            return &d.semaphore;
-    return nullptr;
-}
-
-void FrameGraph::NodeHandle::useQueue(QueueId queue) {
-    drv::drv_assert(queue < sizeof(queuesUsed) * 8);
-    queuesUsed |= 1 << (queue + 1);
-}
-
-bool FrameGraph::NodeHandle::wasQueueUsed(QueueId queue) const {
-    drv::drv_assert(queue < sizeof(queuesUsed) * 8);
-    return queuesUsed & (1 << (queue + 1));
-}
-
-bool FrameGraph::NodeHandle::wasQueueUsed(drv::QueuePtr queue) const {
-    QueueFlag used = queuesUsed;
-    QueueId id = 0;
-    while (used) {
-        if (used & 1) {
-            if (frameGraph->getQueue(id) == queue)
-                return true;
-        }
-        used >>= 1;
-        id++;
-    }
-    return false;
-}
-
-FrameGraph::NodeHandle::SignalInfo FrameGraph::NodeHandle::signalSemaphore(drv::QueuePtr queue) {
-    SemaphoreFlag flag = 1;
-    Node& n = *frameGraph->getNode(node);
-    drv::drv_assert(n.semaphores.size() <= sizeof(SemaphoreFlag),
-                    "There are too many semaphores for this node");
-    for (const Node::SyncData& semaphore : n.semaphores) {
-        if (semaphore.queue == queue) {
-            drv::drv_assert((semaphoresSignalled & flag) == 0, "Semaphore already signalled");
-            semaphoresSignalled |= flag;
-            return {static_cast<drv::TimelineSemaphorePtr>(semaphore.semaphore), getSignalValue()};
-        }
-        flag <<= 1;
-    }
-    drv::drv_assert(false, "Could not find semaphore");
-    return {drv::get_null_ptr<drv::TimelineSemaphorePtr>(), 0};
-}
-
 void FrameGraph::NodeHandle::close() {
     if (frameGraph) {
-        Node& n = *frameGraph->getNode(node);
-
-        if (stage == RECORD_STAGE && n.hasExecution()) {
-            auto signalSemaphores =
-              make_vector<ExecutionPackage::CommandBufferPackage::SemaphoreSignalInfo>(
-                frameGraph->garbageSystem);
-            auto waitSemaphores =
-              make_vector<ExecutionPackage::CommandBufferPackage::SemaphoreWaitInfo>(
-                frameGraph->garbageSystem);
-            auto waitTimelineSemaphores =
-              make_vector<ExecutionPackage::CommandBufferPackage::TimelineSemaphoreWaitInfo>(
-                frameGraph->garbageSystem);
-
-            SemaphoreFlag flag = 1;
-            bool clean = true;
-            for (uint32_t i = 0; i < n.semaphores.size(); ++i) {
-                if (!(semaphoresSignalled & flag)) {
-                    semaphoresSignalled |= flag;
-                    if (wasQueueUsed(n.semaphores[i].queue))
-                        clean = false;
-                    ExecutionQueue* q = frameGraph->getExecutionQueue(*this);
-                    ExecutionPackage::CommandBufferPackage::TimelineSemaphoreSignalInfo signal;
-                    signal.semaphore = n.semaphores[i].semaphore;
-                    signal.signalValue = getSignalValue();
-                    auto signalTimelineSemaphores = make_vector<
-                      ExecutionPackage::CommandBufferPackage::TimelineSemaphoreSignalInfo>(
-                      frameGraph->garbageSystem);
-                    signalTimelineSemaphores.push_back(std::move(signal));
-                    // TODO wait on semaphores to apply transitive dependencies
-                    q->push(ExecutionPackage(ExecutionPackage::CommandBufferPackage{
-                      n.semaphores[i].queue, frameId,
-                      CommandBufferData(frameGraph->garbageSystem, "signalCorrection"),
-                      signalSemaphores, std::move(signalTimelineSemaphores), waitSemaphores,
-                      waitTimelineSemaphores}));
-                }
-                flag <<= 1;
-            }
-            if (!clean) {
-                LOG_F(
-                  WARNING,
-                  "Some semaphores were not signalled in any command buffer. Use the finishQueueWork() to resolve this: <%s> frame: %d",
-                  n.name.c_str(), static_cast<int>(frameId));
-            }
-        }
-
+        if (!imageUsages.empty())
+            drv::drv_assert(getNode().checkResourceUsage(imageUsages.size(), imageUsages.data()),
+                            "Some resources were modified during a user node's lifetime");
         frameGraph->release(*this);
+        frameGraph = nullptr;
     }
 }
 

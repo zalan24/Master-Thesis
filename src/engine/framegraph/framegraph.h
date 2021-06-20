@@ -75,11 +75,9 @@ class FrameGraph
         Stage dstStage;
         Offset offset = 0;
     };
-    struct QueueCpuDependency
+    struct GpuCpuDependency
     {
         NodeId srcNode;
-        QueueId srcQueue;
-        Stage dstStage;
         Offset offset = 0;
     };
     // struct QueueQueueDependency
@@ -89,6 +87,12 @@ class FrameGraph
     //     QueueId dstQueue;
     //     Offset offset = 0;
     // };
+    // TODO do the same with buffers
+    struct CpuImageResourceUsage
+    {
+        drv::ImagePtr image;
+        drv::ImageSubresourceSet subresources;
+    };
     class Node
     {
      public:
@@ -102,10 +106,12 @@ class FrameGraph
 
         ~Node();
 
+        bool checkResourceUsage(uint32_t count, const CpuImageResourceUsage* resources) const;
+
         void addDependency(CpuDependency dep);
         void addDependency(EnqueueDependency dep);
         // void addDependency(CpuQueueDependency dep);
-        void addDependency(QueueCpuDependency dep);
+        void addDependency(GpuCpuDependency dep);
         void addDependency(GpuCompleteDependency dep);
         // void addDependency(QueueQueueDependency dep);
 
@@ -125,23 +131,11 @@ class FrameGraph
         std::vector<CpuDependency> cpuDeps;
         std::vector<EnqueueDependency> enqDeps;
         // std::vector<CpuQueueDependency> cpuQueDeps;
-        std::vector<QueueCpuDependency> queCpuDeps;
+        std::vector<GpuCpuDependency> gpuCpuDeps;
         std::vector<GpuCompleteDependency> gpuCompleteDeps;
         // std::vector<QueueQueueDependency> queQueDeps;
         std::unique_ptr<ExecutionQueue> localExecutionQueue;
         std::vector<NodeId> enqIndirectChildren;
-
-        struct SyncData
-        {
-            // static constexpr drv::QueuePtr CPU = drv::NULL_HANDLE;
-            drv::QueuePtr queue = drv::get_null_ptr<drv::QueuePtr>();
-            drv::TimelineSemaphore semaphore;
-            // bool cpu() const { return queue == CPU; }
-            // explicit SyncData(drv::LogicalDevicePtr device);
-            explicit SyncData(drv::LogicalDevicePtr device, drv::QueuePtr queue);
-        };
-
-        std::vector<SyncData> semaphores;
 
         std::array<std::atomic<FrameId>, NUM_STAGES> completedFrames;
         mutable std::mutex cpuMutex;
@@ -151,9 +145,6 @@ class FrameGraph
         FrameId enqueueFrameClearance = INVALID_FRAME;
         //   mutable std::mutex enqMutex;
         //   std::condition_variable enqCv;
-
-        void checkAndCreateSemaphore(drv::QueuePtr queue);
-        const drv::TimelineSemaphore* getSemaphore(drv::QueuePtr queue);
     };
 
     static uint64_t get_semaphore_value(FrameId frameId) { return frameId + 1; }
@@ -181,28 +172,19 @@ class FrameGraph
             uint64_t signalValue;
         };
 
-        void useQueue(QueueId queue);
-        bool wasQueueUsed(QueueId queue) const;
-        bool wasQueueUsed(drv::QueuePtr queue) const;
-        SignalInfo signalSemaphore(drv::QueuePtr queue);
-        // SignalInfo signalSemaphoreCpu();
-
         void submit(QueueId queueId, ExecutionPackage::CommandBufferPackage&& submission);
 
         FrameId getFrameId() const { return frameId; }
 
      private:
         NodeHandle();
-        NodeHandle(FrameGraph* frameGraph, FrameGraph::NodeId node, Stage stage, FrameId frameId);
+        NodeHandle(FrameGraph* frameGraph, FrameGraph::NodeId node, Stage stage, FrameId frameId,
+                   uint32_t imageUsageCount, const CpuImageResourceUsage* imageUsages);
         FrameGraph* frameGraph;
         FrameGraph::NodeId node;
         Stage stage;
         FrameId frameId;
-
-        using SemaphoreFlag = uint64_t;
-        SemaphoreFlag semaphoresSignalled = 0;
-        using QueueFlag = uint64_t;
-        QueueFlag queuesUsed = 0;
+        GarbageVector<CpuImageResourceUsage> imageUsages;
 
         struct NodeExecutionData
         {
@@ -218,7 +200,7 @@ class FrameGraph
     void addDependency(NodeId target, CpuDependency dep);
     void addDependency(NodeId target, EnqueueDependency dep);
     // void addDependency(NodeId target, CpuQueueDependency dep);
-    void addDependency(NodeId target, QueueCpuDependency dep);
+    void addDependency(NodeId target, GpuCpuDependency dep);
     void addDependency(NodeId target, GpuCompleteDependency dep);
     void addAllGpuCompleteDependency(NodeId target, Stage dstStage, Offset offset);
     // void addDependency(NodeId target, QueueQueueDependency dep);
@@ -230,15 +212,23 @@ class FrameGraph
     // no blocking, returns a handle if currently available
     bool tryWaitForNode(NodeId node, Stage stage, FrameId frame);
 
-    NodeHandle acquireNode(NodeId node, Stage stage, FrameId frame);
-    NodeHandle tryAcquireNode(NodeId node, Stage stage, FrameId frame, uint64_t timeoutNsec);
+    NodeHandle acquireNode(NodeId node, Stage stage, FrameId frame, uint32_t imageUsageCount = 0,
+                           const CpuImageResourceUsage* imageUsages = nullptr);
+    NodeHandle tryAcquireNode(NodeId node, Stage stage, FrameId frame, uint64_t timeoutNsec,
+                              uint32_t imageUsageCount = 0,
+                              const CpuImageResourceUsage* imageUsages = nullptr);
     // no blocking, returns a handle if currently available
-    NodeHandle tryAcquireNode(NodeId node, Stage stage, FrameId frame);
+    NodeHandle tryAcquireNode(NodeId node, Stage stage, FrameId frame, uint32_t imageUsageCount = 0,
+                              const CpuImageResourceUsage* imageUsages = nullptr);
 
-    bool applyTag(TagNodeId node, Stage stage, FrameId frame);
-    bool tryApplyTag(TagNodeId node, Stage stage, FrameId frame, uint64_t timeoutNsec);
+    bool applyTag(TagNodeId node, Stage stage, FrameId frame, uint32_t imageUsageCount = 0,
+                  const CpuImageResourceUsage* imageUsages = nullptr);
+    bool tryApplyTag(TagNodeId node, Stage stage, FrameId frame, uint64_t timeoutNsec,
+                     uint32_t imageUsageCount = 0,
+                     const CpuImageResourceUsage* imageUsages = nullptr);
     // no blocking, returns a handle if currently available
-    bool tryApplyTag(TagNodeId node, Stage stage, FrameId frame);
+    bool tryApplyTag(TagNodeId node, Stage stage, FrameId frame, uint32_t imageUsageCount = 0,
+                     const CpuImageResourceUsage* imageUsages = nullptr);
 
     void executionFinished(NodeId node, FrameId frame);
     void submitSignalFrameEnd(FrameId frame);
