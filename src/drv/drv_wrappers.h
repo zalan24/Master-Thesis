@@ -385,9 +385,9 @@ class Semaphore
 
 class TimelineSemaphore
   : public NoCopy
-  , private Exclusive
 {
  public:
+   TimelineSemaphore();
     TimelineSemaphore(LogicalDevicePtr device, const TimelineSemaphoreCreateInfo& info);
     ~TimelineSemaphore() noexcept;
 

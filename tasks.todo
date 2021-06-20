@@ -210,11 +210,11 @@ Get a triangle on screen:
                 ☐ Deal with signal correction in framegraph
                     ✔ Create a special reusable command buffer for every queue family that waits on all previous work @done (6/20/2021, 12:17:45 PM)
                         ✔ Prepare a submission info struct that waits on everything (?in the engine?) @done (6/20/2021, 12:17:47 PM)
-                    ☐ Clearing, which requires all work to be done
-                        ☐ When a frame is fully done (all nodes finished), add the wait all cmd buffer to all used queues
-                        ☐ Framegraph should have a function to retrive all semaphores used for waiting all work done
-                        ☐ Clearing garbage node should wait on all of these
-                            ☐ Add a special dependency type for waiting on all work
+                    ✔ Clearing, which requires all work to be done @done (6/20/2021, 2:20:00 PM)
+                        ✔ When a frame is fully done (all nodes finished), add the wait all cmd buffer to all used queues @done (6/20/2021, 2:19:35 PM)
+                        ✘ Framegraph should have a function to retrive all semaphores used for waiting all work done @cancelled (6/20/2021, 2:19:47 PM)
+                        ✔ Clearing garbage node should wait on all of these @done (6/20/2021, 2:19:54 PM)
+                            ✔ Add a special dependency type for waiting on all work @done (6/20/2021, 2:19:53 PM)
                     ☐ QueueCpu dep for queries
                         ☐ QueueCpu dep implies dependency: submission -> cpu
                         ☐ acquiring such a node will require a list of sub-resources to wait on
@@ -222,6 +222,7 @@ Get a triangle on screen:
                             ☐ All usages must refer to either one of the waited gpu works, or something that has an enqueue dependency to any waited node
                         ☐ Record the need for a semaphore in the waited usages the same way as gpu-gpu work
                         ☐ Wait on the semaphores associated with the retrived usages (use auto sync if no semaphore is present)
+                        ☐ Clean up old implementation (get rid of old semaphores used by it)
                 ☐ Sync new states
                     ☐ Semaphore counter start from 0!!!!
                     ☐ If the src submissions had signal, use it. Otherwise auto create new signal

@@ -199,19 +199,12 @@ Engine::Engine(int argc, char* argv[], const EngineConfig& cfg,
     const uint32_t presentDepOffset = static_cast<uint32_t>(config.maxFramesInFlight - 1);
     garbageSystem.resize(frameGraph.getMaxFramesInFlight());
 
-    // TODO this can't really auto wait now, because there is now command buffer that waits on the present...
-    frameGraph.addDependency(
-      presentFrameNode, FrameGraph::QueueCpuDependency{presentFrameNode, queueInfos.presentQueue.id,
-                                                       FrameGraph::RECORD_STAGE, presentDepOffset});
+    frameGraph.addAllGpuCompleteDependency(presentFrameNode, FrameGraph::RECORD_STAGE,
+                                           presentDepOffset);
 }
 
-void Engine::buildFrameGraph(FrameGraph::NodeId presentDepNode, FrameGraph::QueueId depQueueId) {
+void Engine::buildFrameGraph(FrameGraph::NodeId presentDepNode, FrameGraph::QueueId) {
     frameGraph.addDependency(presentFrameNode, FrameGraph::EnqueueDependency{presentDepNode, 0});
-    // TODO this should be done automatically
-    frameGraph.addDependency(
-      frameGraph.getStageEndNode(FrameGraph::READBACK_STAGE),
-      FrameGraph::QueueCpuDependency{presentDepNode, depQueueId, FrameGraph::READBACK_STAGE, 0});
-
     frameGraph.build();
 }
 
@@ -405,7 +398,15 @@ void Engine::recordCommandsLoop() {
                     swapchainData.swapchain}));
             }
         }
-        if (!frameGraph.endStage(FrameGraph::RECORD_STAGE, recordFrame)) {
+        if (auto endNode =
+              frameGraph.acquireNode(frameGraph.getStageEndNode(FrameGraph::RECORD_STAGE),
+                                     FrameGraph::RECORD_STAGE, recordFrame);
+            endNode) {
+            frameGraph.getGlobalExecutionQueue()->push(
+              ExecutionPackage(ExecutionPackage::MessagePackage{
+                ExecutionPackage::Message::FRAME_SUBMITTED, recordFrame, 0, nullptr}));
+        }
+        else {
             assert(frameGraph.isStopped());
             break;
         }
@@ -479,6 +480,11 @@ bool Engine::execute(ExecutionPackage&& package) {
                 FrameId frame = static_cast<FrameId>(message.value2);
                 frameGraph.executionFinished(nodeId, frame);
             } break;
+            case ExecutionPackage::Message::FRAME_SUBMITTED: {
+                FrameId frame = static_cast<FrameId>(message.value1);
+                frameGraph.submitSignalFrameEnd(frame);
+                break;
+            }
             case ExecutionPackage::Message::RECURSIVE_END_MARKER:
                 break;
             case ExecutionPackage::Message::QUIT:

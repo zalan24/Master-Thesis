@@ -135,6 +135,7 @@ struct ExecutionPackage
     enum class Message
     {
         FRAMEGRAPH_NODE_MARKER,
+        FRAME_SUBMITTED,
         RECURSIVE_END_MARKER,  // end of recursive command list
         QUIT
     };

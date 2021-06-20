@@ -69,6 +69,12 @@ class FrameGraph
     //     QueueId dstQueue;
     //     Offset offset = 0;
     // };
+    struct GpuCompleteDependency
+    {
+        QueueId srcQueue;
+        Stage dstStage;
+        Offset offset = 0;
+    };
     struct QueueCpuDependency
     {
         NodeId srcNode;
@@ -100,6 +106,7 @@ class FrameGraph
         void addDependency(EnqueueDependency dep);
         // void addDependency(CpuQueueDependency dep);
         void addDependency(QueueCpuDependency dep);
+        void addDependency(GpuCompleteDependency dep);
         // void addDependency(QueueQueueDependency dep);
 
         friend class FrameGraph;
@@ -119,6 +126,7 @@ class FrameGraph
         std::vector<EnqueueDependency> enqDeps;
         // std::vector<CpuQueueDependency> cpuQueDeps;
         std::vector<QueueCpuDependency> queCpuDeps;
+        std::vector<GpuCompleteDependency> gpuCompleteDeps;
         // std::vector<QueueQueueDependency> queQueDeps;
         std::unique_ptr<ExecutionQueue> localExecutionQueue;
         std::vector<NodeId> enqIndirectChildren;
@@ -211,6 +219,8 @@ class FrameGraph
     void addDependency(NodeId target, EnqueueDependency dep);
     // void addDependency(NodeId target, CpuQueueDependency dep);
     void addDependency(NodeId target, QueueCpuDependency dep);
+    void addDependency(NodeId target, GpuCompleteDependency dep);
+    void addAllGpuCompleteDependency(NodeId target, Stage dstStage, Offset offset);
     // void addDependency(NodeId target, QueueQueueDependency dep);
 
     TagNodeId addTagNode(const std::string& name, Stage stage);
@@ -231,6 +241,7 @@ class FrameGraph
     bool tryApplyTag(TagNodeId node, Stage stage, FrameId frame);
 
     void executionFinished(NodeId node, FrameId frame);
+    void submitSignalFrameEnd(FrameId frame);
 
     bool startStage(Stage stage, FrameId frame);
     bool endStage(Stage stage, FrameId frame);
@@ -282,6 +293,7 @@ class FrameGraph
     std::vector<Node> nodes;
     std::atomic<bool> quit = false;
     FlexibleArray<drv::QueuePtr, 8> queues;
+    FlexibleArray<drv::QueuePtr, 8> uniqueQueues;
     std::array<TagNodeId, NUM_STAGES> stageStartNodes;
     std::array<TagNodeId, NUM_STAGES> stageEndNodes;
     std::vector<Offset> enqueueDependencyOffsets;
@@ -294,7 +306,7 @@ class FrameGraph
         WaitAllCommandsData(drv::LogicalDevicePtr device, drv::QueueFamilyPtr family);
     };
     std::unordered_map<drv::QueueFamilyPtr, WaitAllCommandsData> allWaitsCmdBuffers;
-    std::vector<drv::CommandBufferPtr> waitCmdBufferList;
+    std::unordered_map<drv::QueuePtr, drv::TimelineSemaphore> frameEndSemaphores;
 
     mutable std::mutex enqueueMutex;
     mutable std::shared_mutex stopFrameMutex;
@@ -323,6 +335,4 @@ class FrameGraph
     void checkAndEnqueue(NodeId nodeId, FrameId frameId, Stage stage, bool traverse);
     bool tryDoFrame(FrameId frameId);
     uint32_t getEnqueueDependencyOffsetIndex(NodeId srcNode, NodeId dstNode) const;
-
-    drv::ExecutionInfo getWaitAllSubmissionInfo() const;
 };

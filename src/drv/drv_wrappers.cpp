@@ -888,6 +888,10 @@ Semaphore::operator SemaphorePtr() const {
     return ptr;
 }
 
+TimelineSemaphore::TimelineSemaphore()
+  : device(get_null_ptr<LogicalDevicePtr>()), ptr(get_null_ptr<TimelineSemaphorePtr>()) {
+}
+
 TimelineSemaphore::TimelineSemaphore(LogicalDevicePtr _device,
                                      const TimelineSemaphoreCreateInfo& info)
   : device(_device) {
@@ -900,7 +904,6 @@ TimelineSemaphore::~TimelineSemaphore() noexcept {
 }
 
 void TimelineSemaphore::close() {
-    CHECK_THREAD;
     if (!is_null_ptr(ptr)) {
         drv::drv_assert(destroy_timeline_semaphore(device, ptr),
                         "Could not destroy timeline semaphore");

@@ -152,6 +152,10 @@ void FrameGraph::Node::addDependency(QueueCpuDependency dep) {
     queCpuDeps.push_back(std::move(dep));
 }
 
+void FrameGraph::Node::addDependency(GpuCompleteDependency dep) {
+    gpuCompleteDeps.push_back(std::move(dep));
+}
+
 // void FrameGraph::Node::addDependency(QueueQueueDependency dep) {
 //     queQueDeps.push_back(std::move(dep));
 // }
@@ -280,6 +284,18 @@ void FrameGraph::addDependency(NodeId target, EnqueueDependency dep) {
 void FrameGraph::addDependency(NodeId target, QueueCpuDependency dep) {
     getNode(target)->addDependency(std::move(dep));
 }
+
+void FrameGraph::addDependency(NodeId target, GpuCompleteDependency dep) {
+    getNode(target)->addDependency(std::move(dep));
+}
+
+void FrameGraph::addAllGpuCompleteDependency(NodeId target, Stage dstStage, Offset offset) {
+    drv::drv_assert(queues.size() != 0);
+    Node* node = getNode(target);
+    for (uint32_t i = 0; i < queues.size(); ++i)
+        node->addDependency(GpuCompleteDependency{i, dstStage, offset});
+}
+
 // void FrameGraph::addDependency(NodeId target, QueueQueueDependency dep) {
 //     getNode(target)->addDependency(std::move(dep));
 // }
@@ -373,6 +389,7 @@ void FrameGraph::validateFlowGraph(
 }
 
 void FrameGraph::build() {
+    addAllGpuCompleteDependency(getStageEndNode(READBACK_STAGE), READBACK_STAGE, 0);
     std::vector<uint32_t> cpuChildrenIndirect(nodes.size() * NUM_STAGES, 0);
     for (NodeId i = 0; i < nodes.size(); ++i) {
         bool hasCpuIndirectDep = false;
@@ -532,25 +549,14 @@ void FrameGraph::build() {
         }
     } while (changed);
 
-    waitCmdBufferList.clear();
-    for (uint32_t i = 0; i < queues.size(); ++i) {
-        drv::QueueFamilyPtr family = drv::get_queue_family(device, queues[i]);
-        if (allWaitsCmdBuffers.find(family) == allWaitsCmdBuffers.end()) {
-            auto& data = allWaitsCmdBuffers[family] = WaitAllCommandsData(device, family);
-            waitCmdBufferList.push_back(data.buffer);
-        }
+    for (uint32_t i = 0; i < uniqueQueues.size(); ++i) {
+        drv::QueueFamilyPtr family = drv::get_queue_family(device, uniqueQueues[i]);
+        if (allWaitsCmdBuffers.find(family) == allWaitsCmdBuffers.end())
+            allWaitsCmdBuffers[family] = WaitAllCommandsData(device, family);
+        drv::TimelineSemaphoreCreateInfo createInfo;
+        createInfo.startValue = 0;
+        frameEndSemaphores[uniqueQueues[i]] = drv::TimelineSemaphore(device, createInfo);
     }
-}
-
-drv::ExecutionInfo FrameGraph::getWaitAllSubmissionInfo() const {
-    drv::ExecutionInfo ret;
-    ret.numCommandBuffers = static_cast<uint32_t>(waitCmdBufferList.size());
-    ret.commandBuffers = waitCmdBufferList.data();
-    ret.numSignalSemaphores = 0;
-    ret.numSignalTimelineSemaphores = 0;
-    ret.numWaitSemaphores = 0;
-    ret.numWaitTimelineSemaphores = 0;
-    return ret;
 }
 
 FrameGraph::NodeHandle::NodeHandle() : frameGraph(nullptr) {
@@ -668,6 +674,8 @@ FrameGraph::NodeHandle FrameGraph::acquireNode(NodeId nodeId, Stage stage, Frame
                 return NodeHandle();
     }
     for (const QueueCpuDependency& dep : node->queCpuDeps) {
+        if (dep.dstStage != stage)
+            continue;
         if (dep.offset <= frame) {
             FrameId requiredFrame = frame - dep.offset;
             Node* sourceNode = getNode(dep.srcNode);
@@ -675,6 +683,27 @@ FrameGraph::NodeHandle FrameGraph::acquireNode(NodeId nodeId, Stage stage, Frame
                   sourceNode->getSemaphore(getQueue(dep.srcQueue));
                 semaphore)
                 semaphore->wait(get_semaphore_value(requiredFrame));
+        }
+    }
+    if (node->gpuCompleteDeps.size() > 0) {
+        StackMemory::MemoryHandle<drv::TimelineSemaphorePtr> waitedSemaphores(
+          node->gpuCompleteDeps.size(), TEMPMEM);
+        uint32_t waitedCount = 0;
+        for (const GpuCompleteDependency& dep : node->gpuCompleteDeps) {
+            if (dep.dstStage != stage)
+                continue;
+            if (dep.offset <= frame) {
+                FrameId requiredFrame = frame - dep.offset;
+                bool found = false;
+                drv::QueuePtr queue = getQueue(dep.srcQueue);
+                const drv::TimelineSemaphore& semaphore = frameEndSemaphores.find(queue)->second;
+                for (uint32_t i = 0; i < waitedCount && !found; ++i)
+                    found = waitedSemaphores[i] == semaphore;
+                if (!found) {
+                    waitedSemaphores[waitedCount++] = semaphore;
+                    semaphore.wait(get_semaphore_value(requiredFrame));
+                }
+            }
         }
     }
     if (isStopped())
@@ -704,6 +733,8 @@ FrameGraph::NodeHandle FrameGraph::tryAcquireNode(NodeId nodeId, Stage stage, Fr
         }
     }
     for (const QueueCpuDependency& dep : node->queCpuDeps) {
+        if (dep.dstStage != stage)
+            continue;
         if (dep.offset <= frame) {
             FrameId requiredFrame = frame - dep.offset;
             Node* sourceNode = getNode(dep.srcNode);
@@ -717,6 +748,33 @@ FrameGraph::NodeHandle FrameGraph::tryAcquireNode(NodeId nodeId, Stage stage, Fr
                 if (!semaphore->wait(get_semaphore_value(requiredFrame),
                                      static_cast<uint64_t>((maxDuration - duration).count())))
                     return NodeHandle();
+            }
+        }
+    }
+    if (node->gpuCompleteDeps.size() > 0) {
+        StackMemory::MemoryHandle<drv::TimelineSemaphorePtr> waitedSemaphores(
+          node->gpuCompleteDeps.size(), TEMPMEM);
+        uint32_t waitedCount = 0;
+        for (const GpuCompleteDependency& dep : node->gpuCompleteDeps) {
+            if (dep.dstStage != stage)
+                continue;
+            if (dep.offset <= frame) {
+                FrameId requiredFrame = frame - dep.offset;
+                bool found = false;
+                drv::QueuePtr queue = getQueue(dep.srcQueue);
+                const drv::TimelineSemaphore& semaphore = frameEndSemaphores.find(queue)->second;
+                for (uint32_t i = 0; i < waitedCount && !found; ++i)
+                    found = waitedSemaphores[i] == semaphore;
+                if (!found) {
+                    waitedSemaphores[waitedCount++] = semaphore;
+                    const std::chrono::nanoseconds duration =
+                      std::chrono::high_resolution_clock::now() - start;
+                    if (duration >= maxDuration)
+                        return NodeHandle();
+                    if (!semaphore.wait(get_semaphore_value(requiredFrame),
+                                        static_cast<uint64_t>((maxDuration - duration).count())))
+                        return NodeHandle();
+                }
             }
         }
     }
@@ -738,6 +796,8 @@ FrameGraph::NodeHandle FrameGraph::tryAcquireNode(NodeId nodeId, Stage stage, Fr
                 return NodeHandle();
     }
     for (const QueueCpuDependency& dep : node->queCpuDeps) {
+        if (dep.dstStage != stage)
+            continue;
         if (dep.offset <= frame) {
             FrameId requiredFrame = frame - dep.offset;
             Node* sourceNode = getNode(dep.srcNode);
@@ -746,6 +806,28 @@ FrameGraph::NodeHandle FrameGraph::tryAcquireNode(NodeId nodeId, Stage stage, Fr
                 semaphore) {
                 if (semaphore->getValue() < get_semaphore_value(requiredFrame))
                     return NodeHandle();
+            }
+        }
+    }
+    if (node->gpuCompleteDeps.size() > 0) {
+        StackMemory::MemoryHandle<drv::TimelineSemaphorePtr> waitedSemaphores(
+          node->gpuCompleteDeps.size(), TEMPMEM);
+        uint32_t waitedCount = 0;
+        for (const GpuCompleteDependency& dep : node->gpuCompleteDeps) {
+            if (dep.dstStage != stage)
+                continue;
+            if (dep.offset <= frame) {
+                FrameId requiredFrame = frame - dep.offset;
+                bool found = false;
+                drv::QueuePtr queue = getQueue(dep.srcQueue);
+                const drv::TimelineSemaphore& semaphore = frameEndSemaphores.find(queue)->second;
+                for (uint32_t i = 0; i < waitedCount && !found; ++i)
+                    found = waitedSemaphores[i] == semaphore;
+                if (!found) {
+                    waitedSemaphores[waitedCount++] = semaphore;
+                    if (semaphore.getValue() < get_semaphore_value(requiredFrame))
+                        return NodeHandle();
+                }
             }
         }
     }
@@ -871,6 +953,11 @@ ExecutionQueue* FrameGraph::getGlobalExecutionQueue() {
 FrameGraph::QueueId FrameGraph::registerQueue(drv::QueuePtr queue) {
     FrameGraph::QueueId ret = safe_cast<FrameGraph::QueueId>(queues.size());
     queues.push_back(queue);
+    bool found = false;
+    for (uint32_t i = 0; i < uniqueQueues.size() && !found; ++i)
+        found = uniqueQueues[i] == queue;
+    if (!found)
+        uniqueQueues.push_back(queue);
     return ret;
 }
 
@@ -1030,4 +1117,26 @@ FrameGraph::WaitAllCommandsData::WaitAllCommandsData(drv::LogicalDevicePtr _devi
                                                      drv::QueueFamilyPtr family)
   : pool(_device, family, drv::CommandPoolCreateInfo(false, false)),
     buffer(_device, pool, drv::create_wait_all_command_buffer(_device, pool)) {
+}
+
+void FrameGraph::submitSignalFrameEnd(FrameId frame) {
+    for (uint32_t i = 0; i < uniqueQueues.size(); ++i) {
+        drv::QueueFamilyPtr family = drv::get_queue_family(device, uniqueQueues[i]);
+        auto itr = allWaitsCmdBuffers.find(family);
+        drv::drv_assert(itr != allWaitsCmdBuffers.end());
+        drv::CommandBufferPtr cmdBuffer = itr->second.buffer;
+        drv::TimelineSemaphorePtr signalSemaphore =
+          frameEndSemaphores.find(uniqueQueues[i])->second;
+        uint64_t signalValue = frame + 1;
+        drv::ExecutionInfo executionInfo;
+        executionInfo.numCommandBuffers = 1;
+        executionInfo.commandBuffers = &cmdBuffer;
+        executionInfo.numSignalSemaphores = 0;
+        executionInfo.numSignalTimelineSemaphores = 1;
+        executionInfo.signalTimelineSemaphores = &signalSemaphore;
+        executionInfo.timelineSignalValues = &signalValue;
+        executionInfo.numWaitSemaphores = 0;
+        executionInfo.numWaitTimelineSemaphores = 0;
+        drv::execute(uniqueQueues[i], 1, &executionInfo);
+    }
 }
