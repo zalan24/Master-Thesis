@@ -179,6 +179,10 @@ DriverSupport get_support(LogicalDevicePtr device);
 
 // creates a reusable simultaneous use command buffer that has a single pipeline barrier that waits on all commands
 CommandBufferPtr create_wait_all_command_buffer(LogicalDevicePtr device, CommandPoolPtr pool);
+uint32_t get_num_pending_usages(drv::ImagePtr image, uint32_t layer, uint32_t mip,
+                                AspectFlagBits aspect);
+PendingResourceUsage get_pending_usage(drv::ImagePtr image, uint32_t layer, uint32_t mip,
+                                       AspectFlagBits aspect, uint32_t usageIndex);
 
 ShaderModulePtr create_shader_module(LogicalDevicePtr device, const ShaderCreateInfo* info);
 bool destroy_shader_module(LogicalDevicePtr device, ShaderModulePtr module);

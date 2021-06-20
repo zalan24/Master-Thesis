@@ -106,6 +106,14 @@ class ResourceStateTransitionCallback
     ~ResourceStateTransitionCallback() {}
 };
 
+struct PendingResourceUsage
+{
+    QueuePtr queue;
+    CmdBufferId cmdBufferId;
+    uint64_t frameId;
+    bool hasWrite;
+};
+
 class IDriver
 {
  public:
@@ -243,6 +251,11 @@ class IDriver
 
     virtual CommandBufferPtr create_wait_all_command_buffer(LogicalDevicePtr device,
                                                             CommandPoolPtr pool) = 0;
+    virtual uint32_t get_num_pending_usages(drv::ImagePtr image, uint32_t layer, uint32_t mip,
+                                            AspectFlagBits aspect) = 0;
+    virtual PendingResourceUsage get_pending_usage(drv::ImagePtr image, uint32_t layer,
+                                                   uint32_t mip, AspectFlagBits aspect,
+                                                   uint32_t usageIndex) = 0;
 
     virtual PlacementPtr<drv::DrvCmdBufferRecorder> create_cmd_buffer_recorder(
       void* targetPtr, drv::PhysicalDevicePtr physicalDevice, drv::LogicalDevicePtr device,

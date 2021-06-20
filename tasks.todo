@@ -216,7 +216,7 @@ Get a triangle on screen:
                         ✔ Clearing garbage node should wait on all of these @done (6/20/2021, 2:19:54 PM)
                             ✔ Add a special dependency type for waiting on all work @done (6/20/2021, 2:19:53 PM)
                     ☐ QueueCpu dep for queries
-                        ☐ QueueCpu dep implies dependency: submission -> cpu
+                        ✔ QueueCpu dep implies dependency: submission -> cpu @done (6/20/2021, 2:31:27 PM)
                         ☐ acquiring such a node will require a list of sub-resources to wait on
                         ☐ Framegraph will need to acquire usages of the listed sub-resources and validate them
                             ☐ All usages must refer to either one of the waited gpu works, or something that has an enqueue dependency to any waited node

@@ -390,6 +390,12 @@ void FrameGraph::validateFlowGraph(
 
 void FrameGraph::build() {
     addAllGpuCompleteDependency(getStageEndNode(READBACK_STAGE), READBACK_STAGE, 0);
+    for (NodeId i = 0; i < nodes.size(); ++i) {
+        for (const QueueCpuDependency& dep : nodes[i].queCpuDeps) {
+            addDependency(i, CpuDependency{dep.srcNode, EXECUTION_STAGE, dep.dstStage, dep.offset});
+        }
+    }
+    // TODO clear redundant cpu dependencies (same dependencies with different offsets, keep the lower, etc.)
     std::vector<uint32_t> cpuChildrenIndirect(nodes.size() * NUM_STAGES, 0);
     for (NodeId i = 0; i < nodes.size(); ++i) {
         bool hasCpuIndirectDep = false;

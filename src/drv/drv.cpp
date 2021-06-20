@@ -435,3 +435,13 @@ drv::CommandBufferPtr drv::create_wait_all_command_buffer(LogicalDevicePtr devic
                                                           CommandPoolPtr pool) {
     return current_driver_interface->create_wait_all_command_buffer(device, pool);
 }
+
+uint32_t drv::get_num_pending_usages(drv::ImagePtr image, uint32_t layer, uint32_t mip,
+                                     AspectFlagBits aspect) {
+    return current_driver_interface->get_num_pending_usages(image, layer, mip, aspect);
+}
+
+drv::PendingResourceUsage drv::get_pending_usage(drv::ImagePtr image, uint32_t layer, uint32_t mip,
+                                                 AspectFlagBits aspect, uint32_t usageIndex) {
+    return current_driver_interface->get_pending_usage(image, layer, mip, aspect, usageIndex);
+}

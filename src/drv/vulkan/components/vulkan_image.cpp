@@ -345,3 +345,28 @@ drv::PipelineStages VulkanCmdBufferRecorder::add_memory_sync(
     appendBarrier(barrierSrcStages, barrierDstStages, std::move(barrier));
     return barrierSrcStages;
 }
+
+uint32_t DrvVulkan::get_num_pending_usages(drv::ImagePtr image, uint32_t layer, uint32_t mip,
+                                           drv::AspectFlagBits aspect) {
+    const auto& subresourceState = convertImage(image)->linearTrackingState.get(layer, mip, aspect);
+    uint32_t ret = static_cast<uint32_t>(subresourceState.multiQueueState.readingQueues.size());
+    if (!drv::is_null_ptr(subresourceState.multiQueueState.mainQueue))
+        ret++;
+    return ret;
+}
+
+drv::PendingResourceUsage DrvVulkan::get_pending_usage(drv::ImagePtr image, uint32_t layer,
+                                                       uint32_t mip, drv::AspectFlagBits aspect,
+                                                       uint32_t usageIndex) {
+    const auto& subresourceState = convertImage(image)->linearTrackingState.get(layer, mip, aspect);
+    if (usageIndex < subresourceState.multiQueueState.readingQueues.size())
+        return drv::PendingResourceUsage{
+          subresourceState.multiQueueState.readingQueues[usageIndex].queue,
+          subresourceState.multiQueueState.readingQueues[usageIndex].submission,
+          subresourceState.multiQueueState.readingQueues[usageIndex].frameId, false};
+    // main queue
+    return drv::PendingResourceUsage{subresourceState.multiQueueState.mainQueue,
+                                     subresourceState.multiQueueState.submission,
+                                     subresourceState.multiQueueState.frameId,
+                                     static_cast<bool>(subresourceState.multiQueueState.isWrite)};
+}

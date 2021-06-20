@@ -373,6 +373,11 @@ class DrvVulkan final : public drv::IDriver
 
     drv::CommandBufferPtr create_wait_all_command_buffer(drv::LogicalDevicePtr device,
                                                          drv::CommandPoolPtr pool) override;
+    uint32_t get_num_pending_usages(drv::ImagePtr image, uint32_t layer, uint32_t mip,
+                                    drv::AspectFlagBits aspect) override;
+    drv::PendingResourceUsage get_pending_usage(drv::ImagePtr image, uint32_t layer, uint32_t mip,
+                                                drv::AspectFlagBits aspect,
+                                                uint32_t usageIndex) override;
 
     drv::DriverSupport get_support(drv::LogicalDevicePtr device) override;
 
