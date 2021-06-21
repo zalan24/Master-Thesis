@@ -3,7 +3,7 @@ include(external)
 download_external(
     spirv_tools
     GIT_REPOSITORY https://github.com/KhronosGroup/SPIRV-Tools.git
-    GIT_TAG        v2021.1
+    # GIT_TAG        v2021.1
 )
 
 external(
