@@ -111,7 +111,8 @@ struct PendingResourceUsage
     QueuePtr queue;
     CmdBufferId cmdBufferId;
     uint64_t frameId;
-    bool hasWrite;
+    PipelineStages::FlagType ongoingReads = 0;
+    PipelineStages::FlagType ongoingWrites = 0;
 };
 
 class IDriver

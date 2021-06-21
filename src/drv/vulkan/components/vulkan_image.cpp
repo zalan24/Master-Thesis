@@ -363,10 +363,14 @@ drv::PendingResourceUsage DrvVulkan::get_pending_usage(drv::ImagePtr image, uint
         return drv::PendingResourceUsage{
           subresourceState.multiQueueState.readingQueues[usageIndex].queue,
           subresourceState.multiQueueState.readingQueues[usageIndex].submission,
-          subresourceState.multiQueueState.readingQueues[usageIndex].frameId, false};
+          subresourceState.multiQueueState.readingQueues[usageIndex].frameId,
+          subresourceState.multiQueueState.readingQueues[usageIndex].readingStages};
     // main queue
-    return drv::PendingResourceUsage{subresourceState.multiQueueState.mainQueue,
-                                     subresourceState.multiQueueState.submission,
-                                     subresourceState.multiQueueState.frameId,
-                                     static_cast<bool>(subresourceState.multiQueueState.isWrite)};
+    return drv::PendingResourceUsage{
+      subresourceState.multiQueueState.mainQueue, subresourceState.multiQueueState.submission,
+      subresourceState.multiQueueState.frameId,
+      subresourceState.usableStages | subresourceState.ongoingReads,
+      subresourceState.multiQueueState.isWrite
+        ? subresourceState.ongoingWrites | subresourceState.usableStages
+        : 0};
 }

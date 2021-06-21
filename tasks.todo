@@ -207,7 +207,7 @@ Get a triangle on screen:
                     ✔ Store where sync is needed in cache @done (6/19/2021, 11:21:47 AM)
                         ✔ At most one semaphore is needed per submission, but there can be multiple events @done (6/19/2021, 11:21:46 AM)
                     ✔ Create sync objects in submissions based on stats @done (6/19/2021, 11:23:09 AM)
-                ☐ Deal with signal correction in framegraph
+                ✔ Deal with signal correction in framegraph @done (6/21/2021, 11:51:20 AM)
                     ✔ Create a special reusable command buffer for every queue family that waits on all previous work @done (6/20/2021, 12:17:45 PM)
                         ✔ Prepare a submission info struct that waits on everything (?in the engine?) @done (6/20/2021, 12:17:47 PM)
                     ✔ Clearing, which requires all work to be done @done (6/20/2021, 2:20:00 PM)
@@ -215,20 +215,20 @@ Get a triangle on screen:
                         ✘ Framegraph should have a function to retrive all semaphores used for waiting all work done @cancelled (6/20/2021, 2:19:47 PM)
                         ✔ Clearing garbage node should wait on all of these @done (6/20/2021, 2:19:54 PM)
                             ✔ Add a special dependency type for waiting on all work @done (6/20/2021, 2:19:53 PM)
-                    ☐ QueueCpu dep for queries
+                    ✔ QueueCpu dep for queries @done (6/21/2021, 11:51:15 AM)
                         ✔ QueueCpu dep implies dependency: submission -> cpu @done (6/20/2021, 2:31:27 PM)
                         ✔ Remove queue from queueCpu depedency and rename it to GpuCpu dep @done (6/20/2021, 3:23:26 PM)
                         ✔ Every node with both a record and a readback stage has a gpu->readback dependency @done (6/20/2021, 3:36:13 PM)
-                        ☐ acquiring such a node will require a list of sub-resources to wait on
+                        ✔ acquiring such a node will require a list of sub-resources to wait on @done (6/21/2021, 10:21:04 AM)
                             ✔ List of (resourcePtr,subresourceSet) entries @done (6/20/2021, 3:37:26 PM)
-                            ☐ ???assert readback stage???
-                        ☐ Framegraph will need to acquire usages of the listed sub-resources and validate them
-                            ☐ All usages must refer to either one of the waited gpu works, or something that has an enqueue dependency to any waited node
-                        ☐ Record the need for a semaphore in the waited usages the same way as gpu-gpu work
-                        ☐ Wait for all resources / check state depending on node acquisition mode
-                            ☐ Wait on the semaphores associated with the retrived usages (use auto sync if no semaphore is present)
-                        ☐ When successfully returning a node handle, save used resources into a gargbage vector
-                        ✔ In debug mode: validate that recorded resources haven't been modified by execution during the node handle's lifetime @done (6/20/2021, 3:37:40 PM)
+                            ✘ ???assert readback stage??? @cancelled (6/21/2021, 10:21:02 AM)
+                        ✔ Framegraph will need to acquire usages of the listed sub-resources and validate them @done (6/21/2021, 11:19:20 AM)
+                            ✔ All usages must refer to either one of the waited gpu works, or something that has an enqueue dependency to any waited node @done (6/21/2021, 11:19:06 AM)
+                        ✔ Record the need for a semaphore in the waited usages the same way as gpu-gpu work @done (6/21/2021, 11:19:03 AM)
+                        ✔ Wait for all resources / check state depending on node acquisition mode @done (6/21/2021, 10:42:44 AM)
+                            ✔ Wait on the semaphores associated with the retrived usages @done (6/21/2021, 10:42:35 AM)
+                        ✔ When successfully returning a node handle, save used resources into a gargbage vector @done (6/21/2021, 10:43:06 AM)
+                        ✘ In debug mode: validate that recorded resources haven't been modified by execution during the node handle's lifetime @cancelled (6/21/2021, 11:51:09 AM)
                         ✔ Clean up old implementation (get rid of old semaphores used by it) @done (6/20/2021, 3:23:06 PM)
                 ☐ Sync new states
                     ☐ Semaphore counter start from 0!!!!
@@ -240,6 +240,8 @@ Get a triangle on screen:
                     ☐ Auto creation of signals should be in the report file
                     ☐ Need to implement syncing with event too. It could use cache to know what to use as dst stuff
                     ☐ Need to auto signal events, if they weren't signalled (what about unset?)
+                    ☐ Collect semaphores required by GpuCpu dependency
+                        ☐ Use auto sync if needed
                 ☐ Track new states
                     ☐ When sync object is applied, update main queue / states on reader queues
                     ☐ If no sync is needed, just update main queue normally, and update reading stages for reading queues
@@ -347,6 +349,7 @@ Get a triangle on screen:
         ☐ The engine will need to trigger the stage markers using the built in stuff instead of custom nodes
         ☐ The record stage should have a function that initializes a command buffer recorder with all known resources from prev nodes + earlier cmd buffers from the current node
     ☐ drv::drv_assert shouldn't use std::strings, because it causes dynamic memory allocations...
+    ☐ Add dynamic memory allocations to report file
 
 Cleanup & other:
     ☐ Remove useless common driver stuff (drv/common)

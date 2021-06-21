@@ -6,6 +6,7 @@
 #define ENABLE_RUNTIME_STATS_GENERATION 1
 // TODO requires boost stacktrace
 #define ENABLE_RESOURCE_STACKTRACES 0
+#define ENABLE_NODE_RESOURCE_VALIDATION 1
 
 namespace featureconfig
 {

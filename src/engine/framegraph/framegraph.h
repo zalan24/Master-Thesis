@@ -90,8 +90,11 @@ class FrameGraph
     // TODO do the same with buffers
     struct CpuImageResourceUsage
     {
-        drv::ImagePtr image;
+        drv::ImagePtr image = drv::get_null_ptr<drv::ImagePtr>();
         drv::ImageSubresourceSet subresources;
+        CpuImageResourceUsage() : subresources(0) {}
+        CpuImageResourceUsage(drv::ImagePtr _image, drv::ImageSubresourceSet _subresources)
+          : image(_image), subresources(std::move(_subresources)) {}
     };
     class Node
     {
@@ -184,7 +187,9 @@ class FrameGraph
         FrameGraph::NodeId node;
         Stage stage;
         FrameId frameId;
-        GarbageVector<CpuImageResourceUsage> imageUsages;
+#if ENABLE_NODE_RESOURCE_VALIDATION
+        FixedArray<CpuImageResourceUsage, 4> imageUsages;
+#endif
 
         struct NodeExecutionData
         {
@@ -325,4 +330,8 @@ class FrameGraph
     void checkAndEnqueue(NodeId nodeId, FrameId frameId, Stage stage, bool traverse);
     bool tryDoFrame(FrameId frameId);
     uint32_t getEnqueueDependencyOffsetIndex(NodeId srcNode, NodeId dstNode) const;
+    uint32_t checkResources(NodeId dstNode, Stage dstStage, FrameId frameId,
+                            uint32_t imageUsageCount, const CpuImageResourceUsage* imageUsages,
+                            uint32_t bufferElemCount, drv::TimelineSemaphorePtr* semaphores,
+                            uint64_t* waitValues) const;
 };

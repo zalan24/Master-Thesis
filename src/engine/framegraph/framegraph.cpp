@@ -95,8 +95,8 @@ FrameGraph::Node::Node(Node&& other)
     cpuDeps(std::move(other.cpuDeps)),
     enqDeps(std::move(other.enqDeps)),
     // cpuQueDeps(std::move(other.cpuQueDeps)),
-    gpuCompleteDeps(std::move(other.gpuCompleteDeps)),
     gpuCpuDeps(std::move(other.gpuCpuDeps)),
+    gpuCompleteDeps(std::move(other.gpuCompleteDeps)),
     // queQueDeps(std::move(other.queQueDeps)),
     localExecutionQueue(std::move(other.localExecutionQueue)),
     enqIndirectChildren(std::move(other.enqIndirectChildren)),
@@ -137,6 +137,7 @@ FrameGraph::Node& FrameGraph::Node::operator=(Node&& other) {
 }
 
 void FrameGraph::Node::addDependency(CpuDependency dep) {
+    drv::drv_assert((stages & dep.dstStage) == dep.dstStage, "Unsupported stage in node");
     cpuDeps.push_back(std::move(dep));
 }
 
@@ -391,7 +392,7 @@ void FrameGraph::validateFlowGraph(
 void FrameGraph::build() {
     addAllGpuCompleteDependency(getStageEndNode(READBACK_STAGE), READBACK_STAGE, 0);
     for (NodeId i = 0; i < nodes.size(); ++i) {
-        if (nodes[i].stages & EXECUTION_STAGE)
+        if ((nodes[i].stages & EXECUTION_STAGE) && (nodes[i].stages & READBACK_STAGE))
             addDependency(i, CpuDependency{i, EXECUTION_STAGE, READBACK_STAGE, 0});
         for (const GpuCpuDependency& dep : nodes[i].gpuCpuDeps)
             addDependency(i,
@@ -561,16 +562,25 @@ void FrameGraph::build() {
     }
 }
 
-FrameGraph::NodeHandle::NodeHandle() : frameGraph(nullptr) {
+FrameGraph::NodeHandle::NodeHandle() : frameGraph(nullptr), imageUsages(0) {
 }
 
 FrameGraph::NodeHandle::NodeHandle(FrameGraph* _frameGraph, FrameGraph::NodeId _node, Stage _stage,
                                    FrameId _frameId, uint32_t imageUsageCount,
                                    const CpuImageResourceUsage* _imageUsages)
-  : frameGraph(_frameGraph), node(_node), stage(_stage), frameId(_frameId), imageUsages() {
-    imageUsages.resize(imageUsageCount);
+  : frameGraph(_frameGraph),
+    node(_node),
+    stage(_stage),
+    frameId(_frameId)
+#if ENABLE_NODE_RESOURCE_VALIDATION
+    ,
+    imageUsages(imageUsageCount)
+#endif
+{
+#if ENABLE_NODE_RESOURCE_VALIDATION
     for (uint32_t i = 0; i < imageUsageCount; ++i)
         imageUsages[i] = _imageUsages[i];
+#endif
 }
 
 FrameGraph::Node& FrameGraph::NodeHandle::getNode() const {
@@ -581,7 +591,9 @@ FrameGraph::NodeHandle::NodeHandle(NodeHandle&& other)
   : frameGraph(other.frameGraph),
     node(other.node),
     frameId(other.frameId),
+#if ENABLE_NODE_RESOURCE_VALIDATION
     imageUsages(std::move(other.imageUsages)),
+#endif
     nodeExecutionData(std::move(other.nodeExecutionData)) {
     other.frameGraph = nullptr;
 }
@@ -593,7 +605,9 @@ FrameGraph::NodeHandle& FrameGraph::NodeHandle::operator=(NodeHandle&& other) {
     frameGraph = other.frameGraph;
     node = other.node;
     frameId = other.frameId;
+#if ENABLE_NODE_RESOURCE_VALIDATION
     imageUsages = std::move(other.imageUsages);
+#endif
     nodeExecutionData = other.nodeExecutionData;
     other.frameGraph = nullptr;
     return *this;
@@ -658,6 +672,67 @@ bool FrameGraph::tryWaitForNode(NodeId node, Stage stage, FrameId frame) {
     return true;
 }
 
+uint32_t FrameGraph::checkResources(NodeId dstNode, Stage dstStage, FrameId frameId,
+                                    uint32_t imageUsageCount,
+                                    const CpuImageResourceUsage* imageUsages,
+                                    uint32_t bufferElemCount, drv::TimelineSemaphorePtr* semaphores,
+                                    uint64_t* waitValues) const {
+    drv::drv_assert(dstStage == READBACK_STAGE, "Add dst stage param to gpuCpuDeps");
+    uint32_t ret = 0;
+    const Node* node = getNode(dstNode);
+    for (uint32_t i = 0; i < imageUsageCount; ++i) {
+        imageUsages[i].subresources.traverse([&](uint32_t layer, uint32_t mip,
+                                                 drv::AspectFlagBits aspect) {
+            uint32_t usageCount =
+              drv::get_num_pending_usages(imageUsages[i].image, layer, mip, aspect);
+            for (uint32_t j = 0; j < usageCount; ++j) {
+                drv::PendingResourceUsage usage =
+                  drv::get_pending_usage(imageUsages[i].image, layer, mip, aspect, j);
+                NodeId srcNode = getNodeFromCmdBuffer(usage.cmdBufferId);
+                FrameId srcFrame = usage.frameId;
+#if ENABLE_NODE_RESOURCE_VALIDATION
+                bool ok = false;
+                for (uint32_t k = 0; k < node->gpuCpuDeps.size() && !ok; ++k) {
+                    if (node->gpuCpuDeps[k].offset > frameId)
+                        continue;
+                    FrameId depFrame = frameId - node->gpuCpuDeps[k].offset;
+                    if (srcFrame <= depFrame)
+                        ok = hasEnqueueDependency(srcNode, node->gpuCpuDeps[k].srcNode,
+                                                  static_cast<uint32_t>(depFrame - srcFrame));
+                }
+                drv::drv_assert(ok, ("Node (" + node->getName() + ") tries to wait on a resource ("
+                                     + drv::get_texture_info(imageUsages[i].image).imageId->name
+                                     + ") has been written by an unsynced submission")
+                                      .c_str());
+#endif
+                {
+                    StatsCacheWriter writer(getStatsCacheHandle(usage.cmdBufferId));
+                    writer->semaphore.append(usage.ongoingReads | usage.ongoingWrites);
+                }
+                // TODO get semaphore
+                drv::TimelineSemaphorePtr semaphore =
+                  drv::get_null_ptr<drv::TimelineSemaphorePtr>();
+                uint64_t waitValue = get_semaphore_value(srcFrame);
+                if (!drv::is_null_ptr(semaphore)) {
+                    uint32_t ind = 0;
+                    while (ind < ret && semaphores[ind] != semaphore)
+                        ++ind;
+                    if (ind < ret)
+                        waitValues[ind] = std::max(waitValues[ind], waitValue);
+                    else {
+                        drv::drv_assert(ret < bufferElemCount,
+                                        "There are too many semaphores to wait on");
+                        semaphores[ret] = semaphore;
+                        waitValues[ret] = waitValue;
+                        ret++;
+                    }
+                }
+            }
+        });
+    }
+    return ret;
+}
+
 FrameGraph::NodeHandle FrameGraph::acquireNode(NodeId nodeId, Stage stage, FrameId frame,
                                                uint32_t imageUsageCount,
                                                const CpuImageResourceUsage* imageUsages) {
@@ -696,19 +771,11 @@ FrameGraph::NodeHandle FrameGraph::acquireNode(NodeId nodeId, Stage stage, Frame
         }
     }
     if (imageUsageCount > 0) {
-        // drv::drv_assert(stage == READBACK_STAGE, "Only readback stage can use gpu resources");
-        for (const QueueCpuDependency& dep : node->queCpuDeps) {
-        if (dep.dstStage != stage)
-            continue;
-        if (dep.offset <= frame) {
-            FrameId requiredFrame = frame - dep.offset;
-            Node* sourceNode = getNode(dep.srcNode);
-            if (const drv::TimelineSemaphore* semaphore =
-                  sourceNode->getSemaphore(getQueue(dep.srcQueue));
-                semaphore)
-                semaphore->wait(get_semaphore_value(requiredFrame));
-        }
-    }
+        StackMemory::MemoryHandle<drv::TimelineSemaphorePtr> semaphores(64, TEMPMEM);
+        StackMemory::MemoryHandle<uint64_t> waitValues(64, TEMPMEM);
+        uint32_t count = checkResources(nodeId, stage, frame, imageUsageCount, imageUsages, 64,
+                                        semaphores, waitValues);
+        drv::wait_on_timeline_semaphores(device, count, semaphores, waitValues, true);
     }
     if (isStopped())
         return NodeHandle();
@@ -765,29 +832,19 @@ FrameGraph::NodeHandle FrameGraph::tryAcquireNode(NodeId nodeId, Stage stage, Fr
         }
     }
     if (imageUsageCount > 0) {
-        for (const QueueCpuDependency& dep : node->queCpuDeps) {
-            if (dep.dstStage != stage)
-                continue;
-            if (dep.offset <= frame) {
-                FrameId requiredFrame = frame - dep.offset;
-                Node* sourceNode = getNode(dep.srcNode);
-                const std::chrono::nanoseconds duration =
-                  std::chrono::high_resolution_clock::now() - start;
-                if (duration >= maxDuration)
-                    return NodeHandle();
-                if (const drv::TimelineSemaphore* semaphore =
-                      sourceNode->getSemaphore(getQueue(dep.srcQueue));
-                    semaphore) {
-                    if (!semaphore->wait(get_semaphore_value(requiredFrame),
-                                         static_cast<uint64_t>((maxDuration - duration).count())))
-                        return NodeHandle();
-                }
-            }
-            }
+        StackMemory::MemoryHandle<drv::TimelineSemaphorePtr> semaphores(64, TEMPMEM);
+        StackMemory::MemoryHandle<uint64_t> waitValues(64, TEMPMEM);
+        const std::chrono::nanoseconds duration = std::chrono::high_resolution_clock::now() - start;
+        if (duration >= maxDuration)
+            return NodeHandle();
+        uint32_t count = checkResources(nodeId, stage, frame, imageUsageCount, imageUsages, 64,
+                                        semaphores, waitValues);
+        drv::wait_on_timeline_semaphores(device, count, semaphores, waitValues, true,
+                                         static_cast<uint64_t>((maxDuration - duration).count()));
     }
     if (isStopped())
         return NodeHandle();
-    return NodeHandle(this, nodeId, stage, frame, imageUsages, imageUsageCount);
+    return NodeHandle(this, nodeId, stage, frame, imageUsageCount, imageUsages);
 }
 
 FrameGraph::NodeHandle FrameGraph::tryAcquireNode(NodeId nodeId, Stage stage, FrameId frame,
@@ -827,20 +884,13 @@ FrameGraph::NodeHandle FrameGraph::tryAcquireNode(NodeId nodeId, Stage stage, Fr
         }
     }
     if (imageUsageCount > 0) {
-        for (const QueueCpuDependency& dep : node->queCpuDeps) {
-        if (dep.dstStage != stage)
-            continue;
-        if (dep.offset <= frame) {
-            FrameId requiredFrame = frame - dep.offset;
-            Node* sourceNode = getNode(dep.srcNode);
-            if (const drv::TimelineSemaphore* semaphore =
-                  sourceNode->getSemaphore(getQueue(dep.srcQueue));
-                semaphore) {
-                if (semaphore->getValue() < get_semaphore_value(requiredFrame))
-                    return NodeHandle();
-            }
-        }
-    }
+        StackMemory::MemoryHandle<drv::TimelineSemaphorePtr> semaphores(64, TEMPMEM);
+        StackMemory::MemoryHandle<uint64_t> waitValues(64, TEMPMEM);
+        uint32_t count = checkResources(nodeId, stage, frame, imageUsageCount, imageUsages, 64,
+                                        semaphores, waitValues);
+        for (uint32_t i = 0; i < count; ++i)
+            if (drv::get_timeline_semaphore_value(device, semaphores[i]) < waitValues[i])
+                return NodeHandle();
     }
     if (isStopped())
         return NodeHandle();
@@ -981,9 +1031,6 @@ drv::QueuePtr FrameGraph::getQueue(QueueId queueId) const {
 
 void FrameGraph::NodeHandle::close() {
     if (frameGraph) {
-        if (!imageUsages.empty())
-            drv::drv_assert(getNode().checkResourceUsage(imageUsages.size(), imageUsages.data()),
-                            "Some resources were modified during a user node's lifetime");
         frameGraph->release(*this);
         frameGraph = nullptr;
     }

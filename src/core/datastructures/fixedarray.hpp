@@ -27,6 +27,8 @@ class FixedArray
     T* data() { return &(*this)[0]; }
     const T* data() const { return &(*this)[0]; }
 
+    bool empty() const { return size() == 0; }
+
  private:
     struct LocalData
     {
