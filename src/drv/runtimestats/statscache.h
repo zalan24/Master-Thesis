@@ -23,7 +23,7 @@ struct StatsCache final : public IAutoSerializable<StatsCache>
         (SemaphoreSyncData) semaphore
     )
 
-    StatsCache() = default;
+    StatsCache();
     // StatsCache(const StatsCache& rhs)
     //   : subnodes(rhs.subnodes),
     //     cmdBufferImageStates(rhs.cmdBufferImageStates),
