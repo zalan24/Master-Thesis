@@ -10,6 +10,8 @@
 #include <unordered_set>
 #include <vector>
 
+#include <features.h>
+
 #include <drv_interface.h>
 #include <drv_wrappers.h>
 

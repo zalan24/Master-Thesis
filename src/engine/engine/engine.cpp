@@ -7,6 +7,8 @@
 #include <map>
 #include <sstream>
 
+#include <features.h>
+
 #include <corecontext.h>
 #include <util.hpp>
 
@@ -45,6 +47,18 @@ static void callback(const drv::CallbackData* data) {
             std::abort();
     }
 }
+
+#if ENABLE_DYNAMIC_ALLOCATION_DEBUG
+// TODO add to report file
+void* operator new(size_t size) {
+    void* p = std::malloc(size);
+    return p;
+}
+
+void operator delete(void* p) noexcept {
+    std::free(p);
+}
+#endif
 
 static drv::Driver get_driver(const std::string& name) {
     if (name == "Vulkan")

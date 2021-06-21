@@ -7,6 +7,7 @@
 // TODO requires boost stacktrace
 #define ENABLE_RESOURCE_STACKTRACES 0
 #define ENABLE_NODE_RESOURCE_VALIDATION 1
+#define ENABLE_DYNAMIC_ALLOCATION_DEBUG 1
 
 namespace featureconfig
 {
