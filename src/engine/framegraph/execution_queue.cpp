@@ -1,5 +1,7 @@
 #include "execution_queue.h"
 
+#include <framegraph.h>
+
 void ExecutionQueue::push(ExecutionPackage package) {
     q.enqueue(std::move(package));
     bool expected = true;
@@ -30,13 +32,18 @@ ExecutionPackage::CommandBufferPackage make_submission_package(
       validationMode == ResourceStateValidationMode::ALWAYS_VALIDATE
       || (validationMode == ResourceStateValidationMode::IGNORE_FIRST_SUBMISSION
           && info.numUsages > 1);
+    GarbageVector<ExecutionPackage::CommandBufferPackage::TimelineSemaphoreSignalInfo>
+      signalTimelineSemaphores(
+        garbageSystem
+          ->getAllocator<ExecutionPackage::CommandBufferPackage::TimelineSemaphoreSignalInfo>());
+    if (!drv::is_null_ptr(info.semaphore))
+        signalTimelineSemaphores.push_back(
+          {info.semaphore, FrameGraph::get_semaphore_value(frameId)});
     return ExecutionPackage::CommandBufferPackage(
       queue, frameId, CommandBufferData(garbageSystem, info, stateValidation),
       GarbageVector<ExecutionPackage::CommandBufferPackage::SemaphoreSignalInfo>(
         garbageSystem->getAllocator<ExecutionPackage::CommandBufferPackage::SemaphoreSignalInfo>()),
-      GarbageVector<ExecutionPackage::CommandBufferPackage::TimelineSemaphoreSignalInfo>(
-        garbageSystem
-          ->getAllocator<ExecutionPackage::CommandBufferPackage::TimelineSemaphoreSignalInfo>()),
+      std::move(signalTimelineSemaphores),
       GarbageVector<ExecutionPackage::CommandBufferPackage::SemaphoreWaitInfo>(
         garbageSystem->getAllocator<ExecutionPackage::CommandBufferPackage::SemaphoreWaitInfo>()),
       GarbageVector<ExecutionPackage::CommandBufferPackage::TimelineSemaphoreWaitInfo>(

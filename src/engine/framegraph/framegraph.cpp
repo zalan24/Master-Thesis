@@ -1085,7 +1085,7 @@ void FrameGraph::submitSignalFrameEnd(FrameId frame) {
         drv::CommandBufferPtr cmdBuffer = itr->second.buffer;
         drv::TimelineSemaphorePtr signalSemaphore =
           frameEndSemaphores.find(uniqueQueues[i])->second;
-        uint64_t signalValue = frame + 1;
+        uint64_t signalValue = get_semaphore_value(frame);
         drv::ExecutionInfo executionInfo;
         executionInfo.numCommandBuffers = 1;
         executionInfo.commandBuffers = &cmdBuffer;

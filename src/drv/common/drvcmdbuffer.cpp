@@ -54,8 +54,8 @@ void DrvCmdBufferRecorder::init() {
             drv::TimelineSemaphoreCreateInfo createInfo;
             createInfo.startValue = 0;
             *semaphore = driver->create_timeline_semaphore(device, &createInfo);
+            semaphoreStages = semaphoreStage.stageFlags;
         }
-        // TODO semaphoreStage needs to be waited on at the end of the command buffer
     }
 }
 

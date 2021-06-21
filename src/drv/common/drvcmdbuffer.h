@@ -176,6 +176,8 @@ class DrvCmdBufferRecorder
     void useResource(drv::ImagePtr image, const drv::ImageSubresourceSet& subresources,
                      drv::ImageResourceUsageFlag usages);
 
+    PipelineStages::FlagType getSemaphoreStages() const { return semaphoreStages; }
+
     IDriver* driver;
     LogicalDevicePtr device;
 
@@ -191,6 +193,7 @@ class DrvCmdBufferRecorder
     FlexibleArray<drv::RenderPassPostStats, 1>* renderPassPostStats = nullptr;
     TimelineSemaphorePtr* semaphore = nullptr;
     const char* name = nullptr;
+    PipelineStages::FlagType semaphoreStages = 0;
 };
 
 struct StateTransition
@@ -207,6 +210,7 @@ struct CommandBufferInfo
     const char* name;
     CmdBufferId cmdBufferId;
     StatsCache* statsCacheHandle;
+    TimelineSemaphorePtr semaphore = drv::get_null_ptr<TimelineSemaphorePtr>();
 };
 
 inline static CmdBufferId make_cmd_buffer_id(const char* file, uint32_t line) {
@@ -281,7 +285,8 @@ class DrvCmdBuffer
             StatsCacheWriter writer(statsCacheHandle);
             writer->semaphore.append(0);
         }
-        return {cmdBufferPtr, {&imageStates}, ++numSubmissions, name.c_str(), id, statsCacheHandle};
+        return {cmdBufferPtr, {&imageStates},   ++numSubmissions, name.c_str(),
+                id,           statsCacheHandle, semaphore};
     }
 
     const DrvCmdBufferRecorder::ImageStates* getImageStates() { return &imageStates; }

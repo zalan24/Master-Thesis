@@ -231,15 +231,19 @@ Get a triangle on screen:
                         ✘ In debug mode: validate that recorded resources haven't been modified by execution during the node handle's lifetime @cancelled (6/21/2021, 11:51:09 AM)
                         ✔ Clean up old implementation (get rid of old semaphores used by it) @done (6/20/2021, 3:23:06 PM)
                 ☐ Sync new states
-                    ☐ Semaphore counter start from 0!!!!
+                    ✔ Semaphore counter start from 0!!!! @done (6/21/2021, 12:28:05 PM)
                     ☐ If the src submissions had signal, use it. Otherwise auto create new signal
-                        ☐ Wait on semaphore stages at the end of the signalling cmd buffer
+                        ✔ Wait on semaphore stages at the end of the signalling cmd buffer @done (6/21/2021, 12:15:12 PM)
+                        ✔ Signal semaphores @done (6/21/2021, 12:27:46 PM)
+                        ☐ Don't wait on semaphores which might have been destructed by garbage system!!!
+                            ☐ Old src work might not need sync at all
+                            ☐ ??? Use smart pointer for semaphores???
                         ☐ Auto sync submissions needs a pipeline barrier that waits for all reading stages on the queue
                         ☐ src submissions's signal needs a pipeline barrier with all reading stages recorded in that cmd buffer. If it's not sufficient, auto sync is still required
                             ☐ Probably count these kinds of corrections in the report file separately from normal auto sync
                     ☐ Auto creation of signals should be in the report file
-                    ☐ Need to implement syncing with event too. It could use cache to know what to use as dst stuff
-                    ☐ Need to auto signal events, if they weren't signalled (what about unset?)
+                    ✘ Need to implement syncing with event too. It could use cache to know what to use as dst stuff @cancelled (6/21/2021, 12:07:38 PM)
+                    ✘ Need to auto signal events, if they weren't signalled (what about unset?) @cancelled (6/21/2021, 12:14:44 PM)
                     ☐ Collect semaphores required by GpuCpu dependency
                         ☐ Use auto sync if needed
                 ☐ Track new states

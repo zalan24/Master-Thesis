@@ -120,6 +120,10 @@ VulkanCmdBufferRecorder::~VulkanCmdBufferRecorder() {
     for (uint32_t i = 0; i < barriers.size(); ++i)
         if (barriers[i])
             flushBarrier(barriers[i]);
+    if (getSemaphoreStages())
+        vkCmdPipelineBarrier(
+          convertCommandBuffer(getCommandBuffer()), convertPipelineStages(getSemaphoreStages()),
+          VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, 0, 0, nullptr, 0, nullptr, 0, nullptr);
     VkResult result = vkEndCommandBuffer(convertCommandBuffer(getCommandBuffer()));
     drv::drv_assert(result == VK_SUCCESS, "Could not finish recording command buffer");
 }
