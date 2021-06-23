@@ -417,3 +417,79 @@ bool ImageSubresourceRange::has(uint32_t layer, uint32_t mip, drv::AspectFlagBit
         return false;
     return true;
 }
+
+PipelineStages drv::get_image_usage_stages(ImageResourceUsageFlag usages) {
+    ImageResourceUsageFlag usage = 1;
+    PipelineStages ret;
+    while (usages) {
+        if (usages & 1) {
+            switch (static_cast<ImageResourceUsage>(usage)) {
+                case IMAGE_USAGE_TRANSFER_DESTINATION:
+                    ret.add(PipelineStages::TRANSFER_BIT);
+                    break;
+                case IMAGE_USAGE_TRANSFER_SOURCE:
+                    ret.add(PipelineStages::TRANSFER_BIT);
+                    break;
+                case IMAGE_USAGE_PRESENT:
+                    ret.add(PipelineStages::BOTTOM_OF_PIPE_BIT);  // based on vulkan spec
+                    break;
+                case IMAGE_USAGE_ATTACHMENT_INPUT:
+                    ret.add(PipelineStages::FRAGMENT_SHADER_BIT);
+                    break;
+                case IMAGE_USAGE_COLOR_OUTPUT_READ:
+                    ret.add(PipelineStages::COLOR_ATTACHMENT_OUTPUT_BIT);
+                    break;
+                case IMAGE_USAGE_COLOR_OUTPUT_WRITE:
+                    ret.add(PipelineStages::COLOR_ATTACHMENT_OUTPUT_BIT);
+                    break;
+                case IMAGE_USAGE_DEPTH_STENCIL_READ:
+                    ret.add(PipelineStages::EARLY_FRAGMENT_TESTS_BIT);
+                    break;
+                case IMAGE_USAGE_DEPTH_STENCIL_WRITE:
+                    ret.add(PipelineStages::LATE_FRAGMENT_TESTS_BIT);
+                    break;
+            }
+        }
+        usages >>= 1;
+        usage <<= 1;
+    }
+    return ret;
+}
+
+MemoryBarrier::AccessFlagBitType drv::get_image_usage_accesses(ImageResourceUsageFlag usages) {
+    ImageResourceUsageFlag usage = 1;
+    MemoryBarrier::AccessFlagBitType ret = 0;
+    while (usages) {
+        if (usages & 1) {
+            switch (static_cast<ImageResourceUsage>(usage)) {
+                case IMAGE_USAGE_TRANSFER_DESTINATION:
+                    ret |= MemoryBarrier::AccessFlagBits::TRANSFER_WRITE_BIT;
+                    break;
+                case IMAGE_USAGE_TRANSFER_SOURCE:
+                    ret |= MemoryBarrier::AccessFlagBits::TRANSFER_READ_BIT;
+                    break;
+                case IMAGE_USAGE_PRESENT:
+                    ret |= 0;  // made visible automatically by presentation engine
+                    break;
+                case IMAGE_USAGE_ATTACHMENT_INPUT:
+                    ret |= MemoryBarrier::AccessFlagBits::INPUT_ATTACHMENT_READ_BIT;
+                    break;
+                case IMAGE_USAGE_COLOR_OUTPUT_READ:
+                    ret |= MemoryBarrier::AccessFlagBits::COLOR_ATTACHMENT_READ_BIT;
+                    break;
+                case IMAGE_USAGE_COLOR_OUTPUT_WRITE:
+                    ret |= MemoryBarrier::AccessFlagBits::COLOR_ATTACHMENT_WRITE_BIT;
+                    break;
+                case IMAGE_USAGE_DEPTH_STENCIL_READ:
+                    ret |= MemoryBarrier::AccessFlagBits::DEPTH_STENCIL_ATTACHMENT_READ_BIT;
+                    break;
+                case IMAGE_USAGE_DEPTH_STENCIL_WRITE:
+                    ret |= MemoryBarrier::AccessFlagBits::DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+                    break;
+            }
+        }
+        usages >>= 1;
+        usage <<= 1;
+    }
+    return ret;
+}

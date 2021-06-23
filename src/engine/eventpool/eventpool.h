@@ -4,19 +4,19 @@
 #include <shared_mutex>
 #include <vector>
 
+#include <asyncpool.hpp>
+
 #include <drv_wrappers.h>
 
-class EventPool
+struct EventPoolItem
+{
+    drv::Event event;
+};
+
+class EventPool final : public AsyncPool<EventPool, EventPoolItem>
 {
  public:
     explicit EventPool(drv::LogicalDevicePtr _device) : device(_device) {}
-
-    EventPool(const EventPool&) = delete;
-    EventPool& operator=(const EventPool&) = delete;
-    EventPool(EventPool&& other);
-    EventPool& operator=(EventPool&& other);
-
-    ~EventPool();
 
     class EventHandle
     {
@@ -37,31 +37,22 @@ class EventPool
      private:
         EventPool* eventPool;
         drv::EventPtr event;
-        size_t eventIndex;
+        ItemIndex eventIndex;
 
         friend class EventPool;
 
-        EventHandle(EventPool* pool, drv::EventPtr event, size_t eventIndex);
+        EventHandle(EventPool* pool, drv::EventPtr event, ItemIndex eventIndex);
         void close();
     };
 
     EventHandle tryAcquire() noexcept;
     EventHandle acquire();
 
- private:
-    struct Item
-    {
-        drv::Event event;
-        std::atomic<bool> used;
-        Item(drv::LogicalDevicePtr _device) : event(_device), used(false) {}
-        Item(Item&& other) : event(std::move(other.event)), used(other.used.load()) {}
-    };
-    drv::LogicalDevicePtr device;
-    std::atomic<size_t> currentIndex = 0;
-    std::atomic<size_t> acquiredCount = 0;
-    mutable std::shared_mutex vectorMutex;
-    std::vector<Item> items;
+    void releaseExt(EventPoolItem& item);
+    void acquireExt(EventPoolItem& item);
+    bool canAcquire(const EventPoolItem& item);
 
-    void close();
-    void release(size_t eventIndex);
+ private:
+    drv::LogicalDevicePtr device;
+
 };

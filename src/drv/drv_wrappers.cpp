@@ -1035,7 +1035,6 @@ Event::~Event() noexcept {
 }
 
 void Event::close() {
-    CHECK_THREAD;
     if (!is_null_ptr(ptr)) {
         drv::drv_assert(destroy_event(device, ptr), "Could not destroy Event");
         reset_ptr(ptr);
@@ -1059,7 +1058,6 @@ Event& Event::operator=(Event&& other) noexcept {
 }
 
 Event::operator EventPtr() const {
-    CHECK_THREAD;
     return ptr;
 }
 

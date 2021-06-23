@@ -15,6 +15,7 @@
 
 #include "drvres_types.h"
 #include "drvresourceptrs.hpp"
+#include "drvpipeline_types.h"
 
 namespace drv
 {
@@ -795,6 +796,10 @@ enum class ImageFilter
     // Provided by VK_EXT_filter_cubic
     // VK_FILTER_CUBIC_EXT = VK_FILTER_CUBIC_IMG,
 };
+
+
+PipelineStages get_image_usage_stages(ImageResourceUsageFlag usages);
+MemoryBarrier::AccessFlagBitType get_image_usage_accesses(ImageResourceUsageFlag usages);
 
 }  // namespace drv
 

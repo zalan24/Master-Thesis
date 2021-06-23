@@ -18,6 +18,7 @@
 #include <drvbarrier.h>
 #include <drvcmdbufferbank.h>
 #include <drvlane.h>
+#include <drvsemaphorepool.h>
 
 #include <eventpool.h>
 #include <framegraph.h>
@@ -190,6 +191,7 @@ class Engine
     drv::QueueManager::Queue HtoDQueue;
     drv::QueueManager::Queue inputQueue;
     drv::CommandBufferBank cmdBufferBank;
+    drv::TimelineSemaphorePool semaphorePool;
     drv::Swapchain swapchain;
     EventPool eventPool;
     SyncBlock syncBlock;

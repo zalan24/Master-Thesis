@@ -232,12 +232,27 @@ Get a triangle on screen:
                         ✔ Clean up old implementation (get rid of old semaphores used by it) @done (6/20/2021, 3:23:06 PM)
                 ☐ Sync new states
                     ✔ Semaphore counter start from 0!!!! @done (6/21/2021, 12:28:05 PM)
+                    ☐ Semaphore management system
+                        ✔ Create an abstract class for async pools @done (6/23/2021, 11:32:24 AM)
+                        ✔ Event pool should use it @done (6/23/2021, 12:22:12 PM)
+                        ✔ Command buffer pool should use it @done (6/23/2021, 12:52:26 PM)
+                        ☐ Create a timeline semaphore pool
+                            ✔ Internal semaphore struct @done (6/23/2021, 1:32:01 PM)
+                                ✔ drv::TimelineSemaphore @done (6/23/2021, 1:32:00 PM)
+                                ✔ signalled value (!= the current value of the semaphore, signal could reach it later) @done (6/23/2021, 1:31:59 PM)
+                                ✔ ref counter @done (6/23/2021, 1:31:57 PM)
+                            ✔ Semaphore handle @done (6/23/2021, 1:20:58 PM)
+                                ✔ TimelineSemaphorePtr @done (6/23/2021, 1:15:34 PM)
+                                ✔ ref to ref counter @done (6/23/2021, 1:20:55 PM)
+                                ✔ ref to signal value @done (6/23/2021, 1:15:36 PM)
+                            ✔ An item can be retrived if it has a lower signalled value, then requested and 0 refcount @done (6/23/2021, 2:03:22 PM)
+                            ☐ Currently release is not called on semaphores in the pool... Do something about it
+                        ☐ cmd buffer need to use a timeline semaphore handle
+                        ☐ image tracking states need a semaphore handle as well
+                        ☐ Warn if there are too many semaphores in the pool
                     ☐ If the src submissions had signal, use it. Otherwise auto create new signal
                         ✔ Wait on semaphore stages at the end of the signalling cmd buffer @done (6/21/2021, 12:15:12 PM)
                         ✔ Signal semaphores @done (6/21/2021, 12:27:46 PM)
-                        ☐ Don't wait on semaphores which might have been destructed by garbage system!!!
-                            ☐ Old src work might not need sync at all
-                            ☐ ??? Use smart pointer for semaphores???
                         ☐ Auto sync submissions needs a pipeline barrier that waits for all reading stages on the queue
                         ☐ src submissions's signal needs a pipeline barrier with all reading stages recorded in that cmd buffer. If it's not sufficient, auto sync is still required
                             ☐ Probably count these kinds of corrections in the report file separately from normal auto sync
@@ -256,54 +271,7 @@ Get a triangle on screen:
                         ☐ with shared resources
                         ☐ with exclusive resources
 
-        ☐ Track resources globally
-            ☐ Created resource ids in the framegraph
-                ☐ Resources are resolved in every frame (first usage of the res id)
-                    ☐ Multiple physical resources can be bound to a res id (eg. images from gbuffer)
-                ☐ Flag for last write (after which no sync is needed for read operations)???
-                    ☐ Command buffer recorder should call a command to mark the last write
-                    ☐ Intended to be used with Garbage system
-                ☐ Flag for different resource every frame
-                    ☐ No need to sync inter frame
-                    ☐ This basically means the signalling of sync objects intended for the next frame
-                ☐ Flag for global sub-resource range
-                    ☐ When set, the sub-resource range is also recorded at resource resolution
-                    ☐ Finer sync with events
-                    ☐ Extra validation is needed
-                ☐ No auto sync flag
-                ☐ Special semaphore supplier
-                    ☐ Instead of using the auto sync system, use a custom functor/something to know when and how to sync current resource usage
-                    ☐ Intended for resources that are written only once (textures, meshes) and other custom resources
-            ☐ Register the resource ids in the queue -> ... and ... -> queue dependencies
-                ☐ Res id
-                ☐ Read/write mask
-            ☐ Validate registered resource usage
-            ☐ Have a method in command buffer recorder for supplying a registered resource
-                ☐ supplyRegisteredResource(resId, resource, sub_resource_range, pipelineStageMask, accessMask)
-                ☐ signal semaphores and events based on dependencies in framegraph
-                ☐ The exact event and semaphore should be known in the waiter commands (they might be recorded earlier)
-            ☐ Have a method for demanding a registered resource
-                ☐ demandRegisteredResource(resId, resource, sub_resource_range, pipelineStageMask, accessMask)
-                ☐ This command buffer should wait on the proper semaphores and events
-                ☐ Signal events and semaphores for writing nodes
-            ☐ Maybe merge these two and add a mask for reading / writing???
-            ☐ In case of a recorded usage of the resource doesn't conflict, there is no need to wait
-            ☐ Once a resource is resolved by the supplier node, no sync is needed to different resource values (other image was used in the last frame)
-            ☐ When waiting for a registered resource by event, just add it to the local tracker and it should do the work
-            ☐ If there are no depending write operations for a resource, reads may not need to signal anything???
-                ☐ Later frame writes can wait on frame finish instead???
-            ☐ What about missing demand or supply operations???
-        ☐ Validate resource usage
-            ☐ Any resource
-            ☐ Only debug mode
-            ☐ Track resources globally in the framegraph (same way as in command buffer recorder)
-            ☐ Use a mutex for recording usage history
-            ☐ Find conflicting usages
-            ☐ Allowed conflicting usage:
-                ☐ Inside same node and same frame (need to register nodeId and frameId)
-                ☐ Usage in a node/frame which has an appropriate dependency and the resource is registered
-                    ☐ Need to check dependency offset and place of usage (cpu/queue)
-        ☐ Validate synchronization using the link in sources
+    ☐ Validate synchronization using the link in sources
     ☐ Create an api consts header file and put all const values there (barrier limits, tracker limits, etc.)
     ✔ Add logging @done (3/28/2021, 12:39:53 PM)
     ✔ Discard image data using undefined oldLayout in transition (add a cmd for this, or add this to the barrier struct???) @done (3/13/2021, 7:52:00 PM)
@@ -354,6 +322,8 @@ Get a triangle on screen:
         ☐ The record stage should have a function that initializes a command buffer recorder with all known resources from prev nodes + earlier cmd buffers from the current node
     ☐ drv::drv_assert shouldn't use std::strings, because it causes dynamic memory allocations...
     ☐ Add dynamic memory allocations to report file
+        ☐ Also add avg amount of memory in framemem
+        ☐ And maybe something about stackmem
 
 Cleanup & other:
     ☐ Remove useless common driver stuff (drv/common)

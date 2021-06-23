@@ -395,6 +395,7 @@ class TimelineSemaphore
     TimelineSemaphore& operator=(TimelineSemaphore&& other) noexcept;
 
     operator TimelineSemaphorePtr() const;
+    operator bool() const { return !is_null_ptr(device) && !is_null_ptr(ptr); }
 
     // returns false if timeout
     bool wait(uint64_t value, uint64_t timeoutNs = UINT64_MAX) const;
@@ -431,11 +432,10 @@ class Fence
     void close();
 };
 
-class Event
-  : public NoCopy
-  , private Exclusive
+class Event : public NoCopy
 {
  public:
+    Event() = default;
     Event(LogicalDevicePtr device, const EventCreateInfo& info = {});
     ~Event() noexcept;
 
@@ -443,6 +443,8 @@ class Event
     Event& operator=(Event&& other) noexcept;
 
     operator EventPtr() const;
+
+    operator bool() const { return !is_null_ptr(ptr) && !is_null_ptr(device); }
 
     void reset();
     void set();
@@ -453,8 +455,8 @@ class Event
     //  void cmdWait();
 
  private:
-    LogicalDevicePtr device;
-    EventPtr ptr;
+    LogicalDevicePtr device = get_null_ptr<LogicalDevicePtr>();
+    EventPtr ptr = get_null_ptr<EventPtr>();
 
     void close();
 };

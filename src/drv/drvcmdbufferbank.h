@@ -6,6 +6,8 @@
 #include <unordered_map>
 #include <vector>
 
+#include <asyncpool.hpp>
+
 #include "drv_wrappers.h"
 
 namespace drv
@@ -48,14 +50,24 @@ namespace drv
 // Ask for a cmd buffer
 // use the cmd buffer
 // give the cmd buffer back
-class CommandBufferCirculator
+struct CommandBufferCirculatorItem
+{
+    CommandBuffer commandBuffer;
+    CommandBufferCirculatorItem() = default;
+    CommandBufferCirculatorItem(CommandBuffer&& _commandBuffer)
+      : commandBuffer(std::move(_commandBuffer)) {}
+    CommandBufferCirculatorItem(CommandBufferCirculatorItem&&);
+    CommandBufferCirculatorItem& operator=(CommandBufferCirculatorItem&&);
+};
+class CommandBufferCirculator final
+  : public AsyncPool<CommandBufferCirculator, CommandBufferCirculatorItem>
 {
  public:
     struct CommandBufferHandle
     {
         CommandBufferCirculator* circulator = nullptr;
         QueueFamilyPtr family = IGNORE_FAMILY;
-        size_t bufferIndex = 0;
+        ItemIndex bufferIndex = 0;
         CommandBufferPtr commandBufferPtr;
         operator bool() const { return !is_null_ptr(commandBufferPtr); }
         CommandBufferHandle() : commandBufferPtr(get_null_ptr<CommandBufferPtr>()) {}
@@ -74,40 +86,20 @@ class CommandBufferCirculator
     CommandBufferHandle acquire();
     bool tryAcquire(CommandBufferHandle& handle);
 
-    // void startExecution(CommandBufferHandle& handle);
     void finished(CommandBufferHandle&& handle);
 
     static CommandPoolCreateInfo get_create_info();
 
- private:
-    enum CommandBufferState
-    {
-        READY = 0,
-        // RECORDING,
-        PENDING
-    };
-    struct CommandBufferData
-    {
-        CommandBuffer commandBuffer;
-        CommandBufferPtr commandBufferPtr;
-        std::atomic<CommandBufferState> state;
-        CommandBufferData(CommandBuffer&& _commandBuffer, CommandBufferPtr _commandBufferPtr,
-                          CommandBufferState _state)
-          : commandBuffer(std::move(_commandBuffer)),
-            commandBufferPtr(_commandBufferPtr),
-            state(_state) {}
-        CommandBufferData(CommandBufferData&&);
-        CommandBufferData& operator=(CommandBufferData&&);
-    };
+    void releaseExt(CommandBufferCirculatorItem& item);
+    void acquireExt(CommandBufferCirculatorItem& item);
+    bool canAcquire(const CommandBufferCirculatorItem& item);
 
+ private:
     LogicalDevicePtr device;
     QueueFamilyPtr family;
     CommandPool pool;
     drv::CommandBufferType type;
     bool render_pass_continueos;
-    std::vector<CommandBufferData> commandBuffers;
-    std::atomic<size_t> acquiredStates = 0;
-    mutable std::shared_mutex mutex;  // for releasing the command buffer from a different thread
 };
 
 class CommandBufferBank
