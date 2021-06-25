@@ -27,11 +27,11 @@ class OneTimeCmdBuffer final : public EngineCmdBuffer<T>
     //  void finishQueueWork();
 
     //  drv::CommandBufferPtr getCommandBuffer() const { return cmdBuffer.commandBufferPtr; }
-    OneTimeCmdBuffer(drv::CmdBufferId _id, std::string _name, drv::PhysicalDevicePtr _physicalDevice,
+    OneTimeCmdBuffer(drv::CmdBufferId _id, std::string _name, drv::TimelineSemaphorePool* _semaphorePool, drv::PhysicalDevicePtr _physicalDevice,
                      drv::LogicalDevicePtr _device, drv::QueuePtr _queue,
                      drv::CommandBufferBank* _bufferBank, GarbageSystem* _garbageSystem,
                      typename drv::DrvCmdBuffer<T>::DrvRecordCallback&& _callback)
-      : EngineCmdBuffer<T>(_id, std::move(_name), _physicalDevice, _device,
+      : EngineCmdBuffer<T>(_id, std::move(_name), _semaphorePool, _physicalDevice, _device,
                            drv::get_queue_family(_device, _queue), std::move(_callback)),
         queue(_queue),
         bufferBank(_bufferBank),

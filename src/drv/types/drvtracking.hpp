@@ -81,6 +81,9 @@ struct TimelineSemaphoreHandle
     }
 };
 
+extern TimelineSemaphoreHandle acquire_timeline_semaphore(TimelineSemaphorePool* pool,
+                                                          uint64_t firstSignalValue);
+
 struct PerSubresourceRangeTrackData
 {
     drv::QueueFamilyPtr ownership = drv::IGNORE_FAMILY;

@@ -236,7 +236,7 @@ Get a triangle on screen:
                         ✔ Create an abstract class for async pools @done (6/23/2021, 11:32:24 AM)
                         ✔ Event pool should use it @done (6/23/2021, 12:22:12 PM)
                         ✔ Command buffer pool should use it @done (6/23/2021, 12:52:26 PM)
-                        ☐ Create a timeline semaphore pool
+                        ✔ Create a timeline semaphore pool @done (6/25/2021, 10:43:45 AM)
                             ✔ Internal semaphore struct @done (6/23/2021, 1:32:01 PM)
                                 ✔ drv::TimelineSemaphore @done (6/23/2021, 1:32:00 PM)
                                 ✔ signalled value (!= the current value of the semaphore, signal could reach it later) @done (6/23/2021, 1:31:59 PM)
@@ -246,9 +246,9 @@ Get a triangle on screen:
                                 ✔ ref to ref counter @done (6/23/2021, 1:20:55 PM)
                                 ✔ ref to signal value @done (6/23/2021, 1:15:36 PM)
                             ✔ An item can be retrived if it has a lower signalled value, then requested and 0 refcount @done (6/23/2021, 2:03:22 PM)
-                            ☐ Currently release is not called on semaphores in the pool... Do something about it
+                            ✔ Currently release is not called on semaphores in the pool... Do something about it @done (6/25/2021, 10:43:42 AM)
                         ☐ cmd buffer need to use a timeline semaphore handle
-                        ☐ image tracking states need a semaphore handle as well
+                        ✔ image tracking states need a semaphore handle as well @done (6/25/2021, 10:43:54 AM)
                         ☐ Warn if there are too many semaphores in the pool
                     ☐ If the src submissions had signal, use it. Otherwise auto create new signal
                         ✔ Wait on semaphore stages at the end of the signalling cmd buffer @done (6/21/2021, 12:15:12 PM)

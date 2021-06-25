@@ -46,14 +46,14 @@ DrvCmdBufferRecorder::DrvCmdBufferRecorder(IDriver* _driver, drv::PhysicalDevice
 }
 
 void DrvCmdBufferRecorder::init() {
-    if (semaphore && is_null_ptr(*semaphore)) {
+    if (semaphore && !(*semaphore)) {
         auto reader = STATS_CACHE_READER;
         drv::PipelineStages semaphoreStage =
           reader->semaphore.get(PipelineStagesStat::ApproximationMode::TEND_TO_TRUE);
         if (semaphoreStage.stageFlags != 0) {
             drv::TimelineSemaphoreCreateInfo createInfo;
             createInfo.startValue = 0;
-            *semaphore = driver->create_timeline_semaphore(device, &createInfo);
+            *semaphore = acquire_timeline_semaphore(semaphorePool, );
             semaphoreStages = semaphoreStage.stageFlags;
         }
     }

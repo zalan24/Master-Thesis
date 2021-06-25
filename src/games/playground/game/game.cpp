@@ -252,8 +252,8 @@ Engine::AcquiredImageData Game::record(FrameId frameId) {
 
         {
             OneTimeCmdBuffer<RecordData> cmdBuffer(
-              CMD_BUFFER_ID(), "testcmdbuffer_clear", getPhysicalDevice(), getDevice(),
-              queues.renderQueue.handle, getCommandBufferBank(), getGarbageSystem(),
+              CMD_BUFFER_ID(), "testcmdbuffer_clear", getSemaphorePool(), getPhysicalDevice(),
+              getDevice(), queues.renderQueue.handle, getCommandBufferBank(), getGarbageSystem(),
               record_cmd_buffer_clear);
             ExecutionPackage::CommandBufferPackage submission = make_submission_package(
               queues.renderQueue.handle, frameId, cmdBuffer.use(std::move(recordData)),
@@ -265,8 +265,8 @@ Engine::AcquiredImageData Game::record(FrameId frameId) {
         }
         {
             OneTimeCmdBuffer<RecordData> cmdBuffer(
-              CMD_BUFFER_ID(), "testcmdbuffer_render", getPhysicalDevice(), getDevice(),
-              queues.renderQueue.handle, getCommandBufferBank(), getGarbageSystem(),
+              CMD_BUFFER_ID(), "testcmdbuffer_render", getSemaphorePool(), getPhysicalDevice(),
+              getDevice(), queues.renderQueue.handle, getCommandBufferBank(), getGarbageSystem(),
               record_cmd_buffer_render);
             ExecutionPackage::CommandBufferPackage submission = make_submission_package(
               queues.renderQueue.handle, frameId, cmdBuffer.use(std::move(recordData)),
@@ -278,8 +278,8 @@ Engine::AcquiredImageData Game::record(FrameId frameId) {
         }
         {
             OneTimeCmdBuffer<RecordData> cmdBuffer(
-              CMD_BUFFER_ID(), "testcmdbuffer_blit", getPhysicalDevice(), getDevice(),
-              queues.renderQueue.handle, getCommandBufferBank(), getGarbageSystem(),
+              CMD_BUFFER_ID(), "testcmdbuffer_blit", getSemaphorePool(), getPhysicalDevice(),
+              getDevice(), queues.renderQueue.handle, getCommandBufferBank(), getGarbageSystem(),
               record_cmd_buffer_blit);
             ExecutionPackage::CommandBufferPackage submission = make_submission_package(
               queues.renderQueue.handle, frameId, cmdBuffer.use(std::move(recordData)),

@@ -156,7 +156,10 @@ class DrvCmdBufferRecorder
         renderPassPostStats = _renderPassPostStats;
     }
 
-    void setSemaphore(TimelineSemaphorePtr* _semaphore) { semaphore = _semaphore; }
+    void setSemaphore(TimelineSemaphoreHandle* _semaphore) { semaphore = _semaphore; }
+    void setSemaphorePool(TimelineSemaphorePool* _semaphorePool) {
+        semaphorePool = _semaphorePool;
+    }
 
     void addRenderPassStat(drv::RenderPassStats&& stat);
 
@@ -185,13 +188,14 @@ class DrvCmdBufferRecorder
     drv::QueueFamilyPtr family;
     drv::CommandTypeMask queueSupport;
     std::unique_lock<std::mutex> queueFamilyLock;
+    TimelineSemaphorePool* semaphorePool;
     CommandBufferPtr cmdBufferPtr;
     ImageStates* imageStates;
     ImageRecordStates imageRecordStates;
     RenderPassPostStats currentRenderPassPostStats;
     FlexibleArray<drv::RenderPassStats, 1>* renderPassStats = nullptr;
     FlexibleArray<drv::RenderPassPostStats, 1>* renderPassPostStats = nullptr;
-    TimelineSemaphorePtr* semaphore = nullptr;
+    TimelineSemaphoreHandle* semaphore = nullptr;
     const char* name = nullptr;
     PipelineStages::FlagType semaphoreStages = 0;
 };
@@ -210,7 +214,7 @@ struct CommandBufferInfo
     const char* name;
     CmdBufferId cmdBufferId;
     StatsCache* statsCacheHandle;
-    TimelineSemaphorePtr semaphore = drv::get_null_ptr<TimelineSemaphorePtr>();
+    TimelineSemaphoreHandle semaphore;
 };
 
 inline static CmdBufferId make_cmd_buffer_id(const char* file, uint32_t line) {
@@ -232,11 +236,13 @@ class DrvCmdBuffer
     using DrvRecordCallback = void (*)(const D&, DrvCmdBufferRecorder*);
 
     explicit DrvCmdBuffer(CmdBufferId _id, std::string _name, IDriver* _driver,
+    TimelineSemaphorePool* _semaphorePool,
                           PhysicalDevicePtr _physicalDevice, LogicalDevicePtr _device,
                           QueueFamilyPtr _queueFamily, DrvRecordCallback _recordCallback)
       : id(_id),
         name(std::move(_name)),
         driver(_driver),
+        semaphorePool(_semaphorePool),
         physicalDevice(_physicalDevice),
         device(_device),
         queueFamily(_queueFamily),
@@ -265,6 +271,7 @@ class DrvCmdBuffer
             recorder->setRenderPassStats(&renderPassStats);
             recorder->setRenderPassPostStats(&renderPassPostStats);
             recorder->setSemaphore(&semaphore);
+            recorder->setSemaphorePool(semaphorePool);
             recorder->init();
             recordCallback(currentData, recorder);
             numSubmissions = 0;
@@ -292,12 +299,7 @@ class DrvCmdBuffer
     const DrvCmdBufferRecorder::ImageStates* getImageStates() { return &imageStates; }
 
  protected:
-    ~DrvCmdBuffer() {
-        if (!is_null_ptr(semaphore)) {
-            driver->destroy_timeline_semaphore(device, semaphore);
-            reset_ptr(semaphore);
-        }
-    }
+    ~DrvCmdBuffer() {}
 
     virtual CommandBufferPtr acquireCommandBuffer() = 0;
     virtual void releaseCommandBuffer(CommandBufferPtr cmdBuffer) = 0;
@@ -310,6 +312,7 @@ class DrvCmdBuffer
     CmdBufferId id;
     std::string name;
     IDriver* driver;
+    TimelineSemaphorePool* semaphorePool;
     D currentData;
     PhysicalDevicePtr physicalDevice;
     LogicalDevicePtr device;
@@ -320,7 +323,7 @@ class DrvCmdBuffer
     StatsCache* statsCacheHandle = nullptr;
     FlexibleArray<drv::RenderPassStats, 1> renderPassStats;
     FlexibleArray<drv::RenderPassPostStats, 1> renderPassPostStats;
-    TimelineSemaphorePtr semaphore = get_null_ptr<TimelineSemaphorePtr>();
+    TimelineSemaphoreHandle semaphore;
 
     bool needToPrepare = true;
     uint64_t numSubmissions = 0;

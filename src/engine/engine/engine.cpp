@@ -586,8 +586,8 @@ bool Engine::execute(ExecutionPackage&& package) {
                     runtimeStats.incrementAllowedSubmissionCorrections();
                 }
                 OneTimeCmdBuffer<const drv::StateCorrectionData*> correctionCmdBuffer(
-                  CMD_BUFFER_ID(), "correctionCmdBuffer", physicalDevice, device, cmdBuffer.queue,
-                  getCommandBufferBank(), getGarbageSystem(),
+                  CMD_BUFFER_ID(), "correctionCmdBuffer", getSemaphorePool(), physicalDevice,
+                  device, cmdBuffer.queue, getCommandBufferBank(), getGarbageSystem(),
                   [](const drv::StateCorrectionData* const& data,
                      drv::DrvCmdBufferRecorder* recorder) { recorder->corrigate(*data); });
                 commandBuffers[numCommandBuffers++] =

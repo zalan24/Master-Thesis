@@ -29,12 +29,12 @@ struct CommandBufferData
     GarbageVector<std::pair<drv::ImagePtr, drv::ImageTrackInfo>> imageStates;
     bool stateValidation;
     drv::CmdBufferId cmdBufferId = 0;
-    StatsCache *statsCacheHandle;
+    StatsCache* statsCacheHandle;
 #if USE_COMMAND_BUFFER_NAME
     Garbage::String commandBufferName;
 #endif
 
-    explicit CommandBufferData(GarbageSystem* garbageSystem, const char *name)
+    explicit CommandBufferData(GarbageSystem* garbageSystem, const char* name)
       : imageStates(garbageSystem->getAllocator<std::pair<drv::ImagePtr, drv::ImageTrackInfo>>()),
         stateValidation(false),
         statsCacheHandle(nullptr)
@@ -48,7 +48,8 @@ struct CommandBufferData
 
     CommandBufferData(GarbageSystem* garbageSystem, drv::CommandBufferPtr _cmdBufferPtr,
                       const drv::DrvCmdBufferRecorder::ImageStates* _imageStates,
-                      bool _stateValidation, const char* name, drv::CmdBufferId _cmdBufferId, StatsCache *_statsCacheHandle)
+                      bool _stateValidation, const char* name, drv::CmdBufferId _cmdBufferId,
+                      StatsCache* _statsCacheHandle)
       : cmdBufferPtr(_cmdBufferPtr),
         imageStates(garbageSystem->getAllocator<std::pair<drv::ImagePtr, drv::ImageTrackInfo>>()),
         stateValidation(_stateValidation),
@@ -111,12 +112,16 @@ struct ExecutionPackage
         drv::QueuePtr queue;
         FrameId frameId;
         CommandBufferData cmdBufferData;
+        uint64_t signaledManagedSemaphoreValue;
+        drv::TimelineSemaphoreHandle signalManagedSemaphore;
         GarbageVector<SemaphoreSignalInfo> signalSemaphores;
         GarbageVector<TimelineSemaphoreSignalInfo> signalTimelineSemaphores;
         GarbageVector<SemaphoreWaitInfo> waitSemaphores;
         GarbageVector<TimelineSemaphoreWaitInfo> waitTimelineSemaphores;
         CommandBufferPackage(drv::QueuePtr _queue, FrameId _frameId,
                              CommandBufferData _cmdBufferData,
+                             uint64_t _signaledManagedSemaphoreValue,
+                             drv::TimelineSemaphoreHandle _signalManagedSemaphore,
                              GarbageVector<SemaphoreSignalInfo> _signalSemaphores,
                              GarbageVector<TimelineSemaphoreSignalInfo> _signalTimelineSemaphores,
                              GarbageVector<SemaphoreWaitInfo> _waitSemaphores,
@@ -124,6 +129,8 @@ struct ExecutionPackage
           : queue(_queue),
             frameId(_frameId),
             cmdBufferData(std::move(_cmdBufferData)),
+            signaledManagedSemaphoreValue(_signaledManagedSemaphoreValue),
+            signalManagedSemaphore(std::move(_signalManagedSemaphore)),
             signalSemaphores(std::move(_signalSemaphores)),
             signalTimelineSemaphores(std::move(_signalTimelineSemaphores)),
             waitSemaphores(std::move(_waitSemaphores)),

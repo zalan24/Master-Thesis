@@ -38,12 +38,12 @@ class TimelineSemaphorePool final : public AsyncPool<TimelineSemaphorePool, Time
     explicit TimelineSemaphorePool(drv::LogicalDevicePtr _device, uint64_t _startValueOffset)
       : device(_device), startValueOffset(_startValueOffset) {}
 
-    TimelineSemaphoreHandle tryAcquire(uint64_t startingValue) noexcept;
-    TimelineSemaphoreHandle acquire(uint64_t startingValue);
+    TimelineSemaphoreHandle tryAcquire(uint64_t firstSignalValue) noexcept;
+    TimelineSemaphoreHandle acquire(uint64_t firstSignalValue);
 
     void releaseExt(TimelineSemaphoreItem& item);
-    void acquireExt(TimelineSemaphoreItem& item, uint64_t startingValue);
-    bool canAcquire(const TimelineSemaphoreItem& item, uint64_t startingValue);
+    void acquireExt(TimelineSemaphoreItem& item, uint64_t firstSignalValue);
+    bool canAcquire(const TimelineSemaphoreItem& item, uint64_t firstSignalValue);
 
  private:
     drv::LogicalDevicePtr device;

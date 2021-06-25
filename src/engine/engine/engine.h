@@ -146,6 +146,8 @@ class Engine
     virtual void releaseSwapchainResources() = 0;
     virtual void createSwapchainResources(const drv::Swapchain& swapchain) = 0;
 
+    drv::TimelineSemaphorePool* getSemaphorePool() { return &semaphorePool; }
+
  private:
     friend class AccessValidationCallback;
 
