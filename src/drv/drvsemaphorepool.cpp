@@ -10,27 +10,37 @@ TimelineSemaphoreHandle TimelineSemaphorePool::tryAcquire(uint64_t startingValue
         return TimelineSemaphoreHandle();
     std::shared_lock<std::shared_mutex> lock(vectorMutex);
     TimelineSemaphoreItem& item = getItem(ind);
-    return TimelineSemaphoreHandle(item.semaphore, &item.refs->signalValue, &item.refs->refCount);
+    return TimelineSemaphoreHandle(this, item.semaphore, &item.refs->signalValue,
+                                   &item.refs->refCount, ind);
 }
 
 TimelineSemaphoreHandle TimelineSemaphorePool::acquire(uint64_t startingValue) {
     ItemIndex ind = acquireIndex(startingValue);
     std::shared_lock<std::shared_mutex> lock(vectorMutex);
     TimelineSemaphoreItem& item = getItem(ind);
-    return TimelineSemaphoreHandle(item.semaphore, &item.refs->signalValue, &item.refs->refCount);
+    return TimelineSemaphoreHandle(this, item.semaphore, &item.refs->signalValue,
+                                   &item.refs->refCount, ind);
 }
 
-void TimelineSemaphorePool::releaseExt(TimelineSemaphoreItem& item, uint64_t) {
-    drv::drv_assert(item.refs->refCount.fetch_sub(1) > 0, "Semaphore refCount reached below 0");
+void TimelineSemaphorePool::releaseExt(TimelineSemaphoreItem& item) {
+    drv::drv_assert(item.refs->refCount.fetch_sub(1) == 1,
+                    "Semaphore refCount != 0 after release is called");
 }
 
 void TimelineSemaphorePool::acquireExt(TimelineSemaphoreItem& item, uint64_t) {
     if (!item.semaphore) {
         item = TimelineSemaphoreItem(device);
     }
-    item.refs->refCount.fetch_add(1);
+    uint32_t expected = 0;
+    drv::drv_assert(item.refs->refCount.compare_exchange_strong(expected, 1),
+                    "A semaphore was acquired with a refcout > 0");
 }
 
 bool TimelineSemaphorePool::canAcquire(const TimelineSemaphoreItem& item, uint64_t startingValue) {
-    return item.refs->signalValue.load() < startingValue && item.refs->refCount == 0;
+    return item.refs->signalValue.load() + startValueOffset < startingValue;
+}
+
+void drv::release_timeline_semaphore(TimelineSemaphorePool* pool, uint32_t index) {
+    if (pool)
+        pool->release(index);
 }

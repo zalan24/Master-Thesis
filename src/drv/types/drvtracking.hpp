@@ -13,15 +13,27 @@ namespace drv
 {
 using CmdBufferId = uint32_t;
 
+class TimelineSemaphorePool;
+
+extern void release_timeline_semaphore(TimelineSemaphorePool* pool, uint32_t index);
+
 struct TimelineSemaphoreHandle
 {
+    TimelineSemaphorePool* pool = nullptr;
     TimelineSemaphorePtr ptr = get_null_ptr<TimelineSemaphorePtr>();
     std::atomic<uint64_t>* signalledValue = nullptr;
     std::atomic<uint32_t>* refCount = nullptr;
+    uint32_t index = 0;
+
     TimelineSemaphoreHandle() = default;
-    TimelineSemaphoreHandle(TimelineSemaphorePtr _ptr, std::atomic<uint64_t>* _signalledValue,
-                            std::atomic<uint32_t>* _refCount)
-      : ptr(_ptr), signalledValue(_signalledValue), refCount(_refCount) {
+    TimelineSemaphoreHandle(TimelineSemaphorePool* _pool, TimelineSemaphorePtr _ptr,
+                            std::atomic<uint64_t>* _signalledValue,
+                            std::atomic<uint32_t>* _refCount, uint32_t _index)
+      : pool(_pool),
+        ptr(_ptr),
+        signalledValue(_signalledValue),
+        refCount(_refCount),
+        index(_index) {
         refCount->fetch_add(1);
     }
     ~TimelineSemaphoreHandle() { close(); }
@@ -59,7 +71,11 @@ struct TimelineSemaphoreHandle
 
     void close() {
         if (*this) {
-            refCount->fetch_sub(1);
+            uint32_t current = refCount->fetch_sub(1);
+            if (current == 1) {
+                // this was the last ref
+                release_timeline_semaphore(pool, index);
+            }
             reset_ptr(ptr);
         }
     }
@@ -82,6 +98,7 @@ struct PerSubresourceRangeTrackData
 
 struct ReadingQueueState
 {
+    TimelineSemaphoreHandle semaphore;
     QueuePtr queue = get_null_ptr<QueuePtr>();
     uint64_t frameId = 0;
     CmdBufferId submission = 0;
@@ -92,6 +109,7 @@ struct ReadingQueueState
 
 struct MultiQueueTrackingState
 {
+    TimelineSemaphoreHandle mainSemaphore;
     QueuePtr mainQueue = get_null_ptr<QueuePtr>();
     uint64_t frameId : 63;
     uint64_t isWrite : 1;

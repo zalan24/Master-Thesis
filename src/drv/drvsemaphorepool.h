@@ -32,20 +32,22 @@ struct TimelineSemaphoreItem
     TimelineSemaphoreItem& operator=(TimelineSemaphoreItem&&) = default;
 };
 
-class TimelineSemaphorePool final : public AsyncPool<TimelineSemaphorePool, TimelineSemaphoreItem, true>
+class TimelineSemaphorePool final : public AsyncPool<TimelineSemaphorePool, TimelineSemaphoreItem>
 {
  public:
-    explicit TimelineSemaphorePool(drv::LogicalDevicePtr _device) : device(_device) {}
+    explicit TimelineSemaphorePool(drv::LogicalDevicePtr _device, uint64_t _startValueOffset)
+      : device(_device), startValueOffset(_startValueOffset) {}
 
     TimelineSemaphoreHandle tryAcquire(uint64_t startingValue) noexcept;
     TimelineSemaphoreHandle acquire(uint64_t startingValue);
 
-    void releaseExt(TimelineSemaphoreItem& item, uint64_t startingValue);
+    void releaseExt(TimelineSemaphoreItem& item);
     void acquireExt(TimelineSemaphoreItem& item, uint64_t startingValue);
     bool canAcquire(const TimelineSemaphoreItem& item, uint64_t startingValue);
 
  private:
     drv::LogicalDevicePtr device;
+    uint64_t startValueOffset = 0;
 };
 
 }  // namespace drv
