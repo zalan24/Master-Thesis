@@ -15,6 +15,7 @@
 #include <drv_interface.h>
 #include <drv_wrappers.h>
 
+#include <drvsemaphorepool.h>
 #include <eventpool.h>
 
 #include "execution_queue.h"
@@ -257,7 +258,7 @@ class FrameGraph
     drv::QueuePtr getQueue(QueueId queueId) const;
 
     FrameGraph(drv::PhysicalDevice physicalDevice, drv::LogicalDevicePtr device,
-               GarbageSystem* garbageSystem, EventPool* eventPool,
+               GarbageSystem* garbageSystem, EventPool* eventPool, drv::TimelineSemaphorePool* semaphorePool,
                drv::StateTrackingConfig trackerConfig, uint32_t maxFramesInExecution,
                uint32_t maxFramesInFlight);
 
@@ -269,6 +270,12 @@ class FrameGraph
     void registerCmdBuffer(drv::CmdBufferId id, NodeId node, StatsCache* statsCacheHandle);
     NodeId getNodeFromCmdBuffer(drv::CmdBufferId id) const;
     StatsCache* getStatsCacheHandle(drv::CmdBufferId id) const;
+
+    struct QueueSyncData {
+        drv::TimelineSemaphoreHandle semaphore;
+        uint64_t waitValue;
+    };
+    QueueSyncData sync_queue(drv::QueuePtr queue, FrameId frame) const;
 
  private:
     struct DependenceData
@@ -284,6 +291,7 @@ class FrameGraph
     drv::LogicalDevicePtr device;
     GarbageSystem* garbageSystem;
     EventPool* eventPool;
+    drv::TimelineSemaphorePool* semaphorePool;
     drv::StateTrackingConfig trackerConfig;
     uint32_t maxFramesInFlight;
     ExecutionQueue executionQueue;
@@ -332,8 +340,8 @@ class FrameGraph
     void checkAndEnqueue(NodeId nodeId, FrameId frameId, Stage stage, bool traverse);
     bool tryDoFrame(FrameId frameId);
     uint32_t getEnqueueDependencyOffsetIndex(NodeId srcNode, NodeId dstNode) const;
-    uint32_t checkResources(NodeId dstNode, Stage dstStage, FrameId frameId,
+    void checkResources(NodeId dstNode, Stage dstStage, FrameId frameId,
                             uint32_t imageUsageCount, const CpuImageResourceUsage* imageUsages,
-                            uint32_t bufferElemCount, drv::TimelineSemaphorePtr* semaphores,
-                            uint64_t* waitValues) const;
+                            GarbageVector<drv::TimelineSemaphorePtr>& semaphores,
+                            GarbageVector<uint64_t>& waitValues) const;
 };

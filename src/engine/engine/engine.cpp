@@ -172,7 +172,7 @@ Engine::Engine(int argc, char* argv[], const EngineConfig& cfg,
     syncBlock(device, safe_cast<uint32_t>(config.maxFramesInFlight)),  // TODO why just 2?
     garbageSystem(safe_cast<size_t>(config.frameMemorySizeKb) << 10),
     // maxFramesInFlight + 1 for readback stage
-    frameGraph(physicalDevice, device, &garbageSystem, &eventPool, trackingConfig,
+    frameGraph(physicalDevice, device, &garbageSystem, &eventPool, &semaphorePool, trackingConfig,
                config.maxFramesInExecutionQueue, config.maxFramesInFlight + 1),
     runtimeStats(!launchArgs.clearRuntimeStats, launchArgs.runtimeStatsPersistanceBin,
                  launchArgs.runtimeStatsGameExportsBin, launchArgs.runtimeStatsCacheBin) {
@@ -529,9 +529,9 @@ bool Engine::execute(ExecutionPackage&& package) {
         ExecutionPackage::CommandBufferPackage& cmdBuffer =
           std::get<ExecutionPackage::CommandBufferPackage>(package.package);
         StackMemory::MemoryHandle<drv::TimelineSemaphorePtr> signalTimelineSemaphores(
-          cmdBuffer.signalTimelineSemaphores.size(), TEMPMEM);
+          cmdBuffer.signalTimelineSemaphores.size() + 1, TEMPMEM);
         StackMemory::MemoryHandle<uint64_t> signalTimelineSemaphoreValues(
-          cmdBuffer.signalTimelineSemaphores.size(), TEMPMEM);
+          cmdBuffer.signalTimelineSemaphores.size() + 1, TEMPMEM);
         StackMemory::MemoryHandle<drv::SemaphorePtr> waitSemaphores(cmdBuffer.waitSemaphores.size(),
                                                                     TEMPMEM);
         StackMemory::MemoryHandle<drv::PipelineStages::FlagType> waitSemaphoresStages(
@@ -545,6 +545,15 @@ bool Engine::execute(ExecutionPackage&& package) {
         for (uint32_t i = 0; i < cmdBuffer.signalTimelineSemaphores.size(); ++i) {
             signalTimelineSemaphores[i] = cmdBuffer.signalTimelineSemaphores[i].semaphore;
             signalTimelineSemaphoreValues[i] = cmdBuffer.signalTimelineSemaphores[i].signalValue;
+        }
+        uint32_t signalTimelineSemaphoreCount = uint32_t(cmdBuffer.signalTimelineSemaphores.size());
+        if (cmdBuffer.signalManagedSemaphore) {
+            cmdBuffer.signalManagedSemaphore.signal(cmdBuffer.signaledManagedSemaphoreValue);
+            signalTimelineSemaphores[signalTimelineSemaphoreCount] =
+              cmdBuffer.signalManagedSemaphore;
+            signalTimelineSemaphoreValues[signalTimelineSemaphoreCount] =
+              cmdBuffer.signaledManagedSemaphoreValue;
+            signalTimelineSemaphoreCount++;
         }
         for (uint32_t i = 0; i < cmdBuffer.waitSemaphores.size(); ++i) {
             waitSemaphores[i] = cmdBuffer.waitSemaphores[i].semaphore;
@@ -608,8 +617,7 @@ bool Engine::execute(ExecutionPackage&& package) {
         executionInfo.waitTimelineSemaphores = waitTimelineSemaphores;
         executionInfo.timelineWaitValues = waitTimelineSemaphoresValues;
         executionInfo.timelineWaitStages = waitTimelineSemaphoresStages;
-        executionInfo.numSignalTimelineSemaphores =
-          static_cast<unsigned int>(cmdBuffer.signalTimelineSemaphores.size());
+        executionInfo.numSignalTimelineSemaphores = signalTimelineSemaphoreCount;
         executionInfo.signalTimelineSemaphores = signalTimelineSemaphores;
         executionInfo.timelineSignalValues = signalTimelineSemaphoreValues;
         drv::execute(cmdBuffer.queue, 1, &executionInfo);

@@ -9,13 +9,14 @@
 #include <drverror.h>
 
 FrameGraph::FrameGraph(drv::PhysicalDevice _physicalDevice, drv::LogicalDevicePtr _device,
-                       GarbageSystem* _garbageSystem, EventPool* _eventPool,
+                       GarbageSystem* _garbageSystem, EventPool* _eventPool, drv::TimelineSemaphorePool* _semaphorePool,
                        drv::StateTrackingConfig _trackerConfig, uint32_t maxFramesInExecution,
                        uint32_t _maxFramesInFlight)
   : physicalDevice(_physicalDevice),
     device(_device),
     garbageSystem(_garbageSystem),
     eventPool(_eventPool),
+    semaphorePool(_semaphorePool),
     trackerConfig(_trackerConfig),
     maxFramesInFlight(_maxFramesInFlight) {
     for (uint32_t i = 0; i < NUM_STAGES; ++i) {
@@ -672,13 +673,14 @@ bool FrameGraph::tryWaitForNode(NodeId node, Stage stage, FrameId frame) {
     return true;
 }
 
-uint32_t FrameGraph::checkResources(NodeId dstNode, Stage dstStage, FrameId frameId,
+void FrameGraph::checkResources(NodeId dstNode, Stage dstStage, FrameId frameId,
                                     uint32_t imageUsageCount,
                                     const CpuImageResourceUsage* imageUsages,
-                                    uint32_t bufferElemCount, drv::TimelineSemaphorePtr* semaphores,
-                                    uint64_t* waitValues) const {
+                                    GarbageVector<drv::TimelineSemaphorePtr>& semaphores,
+                                    GarbageVector<uint64_t>& waitValues) const {
     drv::drv_assert(dstStage == READBACK_STAGE, "Add dst stage param to gpuCpuDeps");
-    uint32_t ret = 0;
+    StackMemory::MemoryHandle<drv::QueuePtr> syncedQueues(queues.size(), TEMPMEM);
+    uint32_t numSyncedQueues = 0;
     const Node* node = getNode(dstNode);
     for (uint32_t i = 0; i < imageUsageCount; ++i) {
         imageUsages[i].subresources.traverse([&](uint32_t layer, uint32_t mip,
@@ -709,28 +711,32 @@ uint32_t FrameGraph::checkResources(NodeId dstNode, Stage dstStage, FrameId fram
                     StatsCacheWriter writer(getStatsCacheHandle(usage.cmdBufferId));
                     writer->semaphore.append(usage.ongoingReads | usage.ongoingWrites);
                 }
-                // TODO get semaphore
-                drv::TimelineSemaphorePtr semaphore =
-                  drv::get_null_ptr<drv::TimelineSemaphorePtr>();
-                uint64_t waitValue = get_semaphore_value(srcFrame);
-                if (!drv::is_null_ptr(semaphore)) {
-                    uint32_t ind = 0;
-                    while (ind < ret && semaphores[ind] != semaphore)
-                        ++ind;
-                    if (ind < ret)
-                        waitValues[ind] = std::max(waitValues[ind], waitValue);
-                    else {
-                        drv::drv_assert(ret < bufferElemCount,
-                                        "There are too many semaphores to wait on");
-                        semaphores[ret] = semaphore;
-                        waitValues[ret] = waitValue;
-                        ret++;
+                uint64_t waitValue = usage.signalledValue;
+                drv::TimelineSemaphorePtr semaphore = usage.signalledSemaphore;
+                if (!usage.signalledSemaphore) {
+                    bool found = false;
+                    for (uint32_t k = 0; k < numSyncedQueues && !found; ++k)
+                        found = syncedQueues[k] == usage.queue;
+                    if (!found) { // queue not waited yet
+                        QueueSyncData data = sync_queue(usage.queue, frameId);
+                        semaphore = data.semaphore.ptr;
+                        waitValue = data.waitValue;
+                        syncedQueues[numSyncedQueues++] = usage.queue;
                     }
+                }
+                uint32_t ind = 0;
+                while (ind < semaphores.size()
+                        && semaphores[ind] != semaphore)
+                    ++ind;
+                if (ind < semaphores.size())
+                    waitValues[ind] = std::max(waitValues[ind], waitValue);
+                else {
+                    semaphores.push_back(semaphore);
+                    waitValues.push_back(waitValue);
                 }
             }
         });
     }
-    return ret;
 }
 
 FrameGraph::NodeHandle FrameGraph::acquireNode(NodeId nodeId, Stage stage, FrameId frame,
@@ -771,11 +777,11 @@ FrameGraph::NodeHandle FrameGraph::acquireNode(NodeId nodeId, Stage stage, Frame
         }
     }
     if (imageUsageCount > 0) {
-        StackMemory::MemoryHandle<drv::TimelineSemaphorePtr> semaphores(64, TEMPMEM);
-        StackMemory::MemoryHandle<uint64_t> waitValues(64, TEMPMEM);
-        uint32_t count = checkResources(nodeId, stage, frame, imageUsageCount, imageUsages, 64,
+        GarbageVector<drv::TimelineSemaphorePtr> semaphores = make_vector<drv::TimelineSemaphorePtr>(garbageSystem);
+        GarbageVector<uint64_t> waitValues = make_vector<uint64_t>(garbageSystem);
+        checkResources(nodeId, stage, frame, imageUsageCount, imageUsages,
                                         semaphores, waitValues);
-        drv::wait_on_timeline_semaphores(device, count, semaphores, waitValues, true);
+        drv::wait_on_timeline_semaphores(device, uint32_t(semaphores.size()), semaphores.data(), waitValues.data(), true);
     }
     if (isStopped())
         return NodeHandle();
@@ -832,14 +838,14 @@ FrameGraph::NodeHandle FrameGraph::tryAcquireNode(NodeId nodeId, Stage stage, Fr
         }
     }
     if (imageUsageCount > 0) {
-        StackMemory::MemoryHandle<drv::TimelineSemaphorePtr> semaphores(64, TEMPMEM);
-        StackMemory::MemoryHandle<uint64_t> waitValues(64, TEMPMEM);
         const std::chrono::nanoseconds duration = std::chrono::high_resolution_clock::now() - start;
         if (duration >= maxDuration)
             return NodeHandle();
-        uint32_t count = checkResources(nodeId, stage, frame, imageUsageCount, imageUsages, 64,
+        GarbageVector<drv::TimelineSemaphorePtr> semaphores = make_vector<drv::TimelineSemaphorePtr>(garbageSystem);
+        GarbageVector<uint64_t> waitValues = make_vector<uint64_t>(garbageSystem);
+        checkResources(nodeId, stage, frame, imageUsageCount, imageUsages,
                                         semaphores, waitValues);
-        drv::wait_on_timeline_semaphores(device, count, semaphores, waitValues, true,
+        drv::wait_on_timeline_semaphores(device, uint32_t(semaphores.size()), semaphores.data(), waitValues.data(), true,
                                          static_cast<uint64_t>((maxDuration - duration).count()));
     }
     if (isStopped())
@@ -884,11 +890,11 @@ FrameGraph::NodeHandle FrameGraph::tryAcquireNode(NodeId nodeId, Stage stage, Fr
         }
     }
     if (imageUsageCount > 0) {
-        StackMemory::MemoryHandle<drv::TimelineSemaphorePtr> semaphores(64, TEMPMEM);
-        StackMemory::MemoryHandle<uint64_t> waitValues(64, TEMPMEM);
-        uint32_t count = checkResources(nodeId, stage, frame, imageUsageCount, imageUsages, 64,
+        GarbageVector<drv::TimelineSemaphorePtr> semaphores = make_vector<drv::TimelineSemaphorePtr>(garbageSystem);
+        GarbageVector<uint64_t> waitValues = make_vector<uint64_t>(garbageSystem);
+        checkResources(nodeId, stage, frame, imageUsageCount, imageUsages,
                                         semaphores, waitValues);
-        for (uint32_t i = 0; i < count; ++i)
+        for (uint32_t i = 0; i < semaphores.size(); ++i)
             if (drv::get_timeline_semaphore_value(device, semaphores[i]) < waitValues[i])
                 return NodeHandle();
     }
@@ -1097,4 +1103,34 @@ void FrameGraph::submitSignalFrameEnd(FrameId frame) {
         executionInfo.numWaitTimelineSemaphores = 0;
         drv::execute(uniqueQueues[i], 1, &executionInfo);
     }
+}
+
+FrameGraph::QueueSyncData FrameGraph::sync_queue(drv::QueuePtr queue, FrameId frame) const
+{
+    FrameGraph::QueueSyncData ret;
+    ret.waitValue = get_semaphore_value(frame);
+    ret.semaphore = semaphorePool->acquire(ret.waitValue);
+
+    drv::QueueFamilyPtr family = drv::get_queue_family(device, queue);
+    auto itr = allWaitsCmdBuffers.find(family);
+    drv::drv_assert(itr != allWaitsCmdBuffers.end());
+    drv::CommandBufferPtr cmdBuffer = itr->second.buffer;
+    drv::TimelineSemaphorePtr signalSemaphore =
+        frameEndSemaphores.find(queue)->second;
+    uint64_t signalValue = ret.waitValue;
+    drv::ExecutionInfo executionInfo;
+    executionInfo.numCommandBuffers = 1;
+    executionInfo.commandBuffers = &cmdBuffer;
+    executionInfo.numSignalSemaphores = 0;
+    executionInfo.numSignalTimelineSemaphores = 1;
+    executionInfo.signalTimelineSemaphores = &signalSemaphore;
+    executionInfo.timelineSignalValues = &signalValue;
+    executionInfo.numWaitSemaphores = 0;
+    executionInfo.numWaitTimelineSemaphores = 0;
+    drv::execute(queue, 1, &executionInfo);
+
+    if (RuntimeStats::getSingleton())
+        RuntimeStats::getSingleton()->incrementAllowedSubmissionCorrections();
+
+    return ret;
 }

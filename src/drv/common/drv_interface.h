@@ -113,6 +113,8 @@ struct PendingResourceUsage
     uint64_t frameId;
     PipelineStages::FlagType ongoingReads = 0;
     PipelineStages::FlagType ongoingWrites = 0;
+    drv::TimelineSemaphoreHandle signalledSemaphore;
+    uint64_t signalledValue = 0;
 };
 
 class IDriver

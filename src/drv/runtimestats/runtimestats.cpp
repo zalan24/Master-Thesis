@@ -224,6 +224,13 @@ void RuntimeStats::incrementAllowedSubmissionCorrections() {
 #endif
 }
 
+void RuntimeStats::incrementNumCpuAutoSync() {
+#if ENABLE_RUNTIME_STATS_GENERATION
+    RuntimeStatsWriter writer(this);
+    writer->lastExecution.numCpuAutoSync++;
+#endif
+}
+
 void RuntimeStats::corrigateSubmission(const char* submissionName) {
 #if ENABLE_RUNTIME_STATS_GENERATION
     RuntimeStatsWriter writer(this);
@@ -253,6 +260,7 @@ void RuntimeStats::exportReport(const std::string& filename) const {
     uint32_t sampleInputCount = 0;
     uint32_t submissionCount = 0;
     uint32_t allowedSubmissionCorrections = 0;
+    uint32_t numCpuAutoSync = 0;
 
     std::stack<PersistanceNodeData*> nodes;
     nodes.push(rootNode.get()->getPersistance());
@@ -261,10 +269,11 @@ void RuntimeStats::exportReport(const std::string& filename) const {
         nodes.pop();
         if (node) {
             frameCount = std::max(frameCount, node->lastExecution.frameCount);
-            sampleInputCount = std::max(sampleInputCount, node->lastExecution.sampleInputCount);
-            submissionCount = std::max(submissionCount, node->lastExecution.submissionCount);
-            allowedSubmissionCorrections = std::max(
-              allowedSubmissionCorrections, node->lastExecution.allowedSubmissionCorrections);
+            sampleInputCount = sampleInputCount + node->lastExecution.sampleInputCount;
+            submissionCount = submissionCount + node->lastExecution.submissionCount;
+            allowedSubmissionCorrections =
+              allowedSubmissionCorrections + node->lastExecution.allowedSubmissionCorrections;
+            numCpuAutoSync = numCpuAutoSync + node->lastExecution.numCpuAutoSync;
             for (const auto& [name, ptr] : node->subnodes)
                 nodes.push(ptr.get());
         }
@@ -277,6 +286,9 @@ void RuntimeStats::exportReport(const std::string& filename) const {
         << float(submissionCount) / float(frameCount) << " per frame)" << std::endl;
     out << "Allowed corrections:    " << allowedSubmissionCorrections << " ("
         << float(allowedSubmissionCorrections) / float(frameCount) << " per frame)" << std::endl;
+    out << std::endl;
+    out << "Num auto sync on CPU:    " << numCpuAutoSync << " ("
+        << float(numCpuAutoSync) / float(frameCount) << " per frame)" << std::endl;
 
     nodes.push(rootNode.get()->getPersistance());
     while (!nodes.empty()) {

@@ -22,6 +22,7 @@ void SingleExecutionData::start() {
     sampleInputCount = 0;
     submissionCount = 0;
     allowedSubmissionCorrections = 0;
+    numCpuAutoSync = 0;
     submissionCorrections.clear();
     attachmentCorrections.clear();
     invalidSharedResourceUsage.clear();

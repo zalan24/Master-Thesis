@@ -70,6 +70,11 @@ struct TimelineSemaphoreHandle
     operator TimelineSemaphorePtr() const { return ptr; }
     operator bool() const { return !is_null_ptr(ptr); }
 
+    void signal(uint64_t value) {
+        if (*signalledValue < value)
+            *signalledValue = value;
+    }
+
     void close() {
         if (*this) {
             uint32_t current = refCount->fetch_sub(1);
