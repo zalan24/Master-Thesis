@@ -11,6 +11,7 @@ target_link_libraries(AnimationsIO PRIVATE
     base64_external
 )
 target_link_libraries(AnimationsIO PUBLIC
-    AnimationsTools
+    CoreTools
     SerializableLib
+    Logging
 )

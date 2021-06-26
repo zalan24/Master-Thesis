@@ -6,11 +6,13 @@
 #include <shared_mutex>
 #include <vector>
 
+#include <logger.h>
+
 template <typename Child, typename ItemExt>
 class AsyncPool
 {
  public:
-    AsyncPool() = default;
+    explicit AsyncPool(uint32_t _warnLimit = 0) : warnLimit(_warnLimit) {}
 
     AsyncPool(const AsyncPool&) = delete;
     AsyncPool& operator=(const AsyncPool&) = delete;
@@ -63,12 +65,14 @@ class AsyncPool
             return ret;
         std::unique_lock<std::shared_mutex> lock(vectorMutex);
         items.emplace_back();
-        items.back().used = true;
-        acquiredCount.fetch_add(1);
         ret = ItemIndex(items.size() - 1);
         if (!static_cast<Child*>(this)->canAcquire(items[ret].itmExt, args...))
             throw std::runtime_error("Newly created item is not suitable to be acquired");
         static_cast<Child*>(this)->acquireExt(items[ret].itmExt, args...);
+        if (items.size() == warnLimit)
+            LOG_F(WARNING, "There are too many items in this pool: %lld", items.size());
+        items.back().used = true;
+        acquiredCount.fetch_add(1);
         return ItemIndex(ret);
     }
 
@@ -98,4 +102,5 @@ class AsyncPool
     std::atomic<ItemIndex> currentIndex = 0;
     std::atomic<ItemIndex> acquiredCount = 0;
     std::vector<ItemImpl> items;
+    uint32_t warnLimit = 0;
 };

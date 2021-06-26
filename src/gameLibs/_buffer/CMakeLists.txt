@@ -7,4 +7,4 @@ set_target_properties(  AnimationsBuffer
                         COMPILE_FLAGS ${TARGETCOMPILEFLAGS}
                         LINK_OPTIONS "${TARGET_LINK_FLAGS}")
 target_include_directories(AnimationsBuffer PUBLIC . ${CMAKE_CURRENT_BINARY_DIR})
-target_link_libraries(AnimationsBuffer PUBLIC GLAD_LIB AnimationsTools AnimationsData)
+target_link_libraries(AnimationsBuffer PUBLIC GLAD_LIB CoreTools AnimationsData)

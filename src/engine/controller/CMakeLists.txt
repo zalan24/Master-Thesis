@@ -9,7 +9,7 @@ set_target_properties(  AnimationsController
 target_include_directories(AnimationsController PUBLIC . ${CMAKE_CURRENT_BINARY_DIR})
 target_link_libraries(AnimationsController PUBLIC
     glm_external
-    AnimationsTools
+    CoreTools
     SerializableLib
-    AnimationsMath
+    CoreMath
 )

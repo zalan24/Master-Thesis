@@ -254,7 +254,7 @@ Engine::AcquiredImageData Game::record(FrameId frameId) {
             OneTimeCmdBuffer<RecordData> cmdBuffer(
               CMD_BUFFER_ID(), "testcmdbuffer_clear", getSemaphorePool(), getPhysicalDevice(),
               getDevice(), queues.renderQueue.handle, getCommandBufferBank(), getGarbageSystem(),
-              record_cmd_buffer_clear);
+              record_cmd_buffer_clear, getFrameGraph().get_semaphore_value(frameId));
             ExecutionPackage::CommandBufferPackage submission = make_submission_package(
               queues.renderQueue.handle, frameId, cmdBuffer.use(std::move(recordData)),
               getGarbageSystem(), validation);
@@ -267,7 +267,7 @@ Engine::AcquiredImageData Game::record(FrameId frameId) {
             OneTimeCmdBuffer<RecordData> cmdBuffer(
               CMD_BUFFER_ID(), "testcmdbuffer_render", getSemaphorePool(), getPhysicalDevice(),
               getDevice(), queues.renderQueue.handle, getCommandBufferBank(), getGarbageSystem(),
-              record_cmd_buffer_render);
+              record_cmd_buffer_render, getFrameGraph().get_semaphore_value(frameId));
             ExecutionPackage::CommandBufferPackage submission = make_submission_package(
               queues.renderQueue.handle, frameId, cmdBuffer.use(std::move(recordData)),
               getGarbageSystem(), validation);
@@ -280,7 +280,7 @@ Engine::AcquiredImageData Game::record(FrameId frameId) {
             OneTimeCmdBuffer<RecordData> cmdBuffer(
               CMD_BUFFER_ID(), "testcmdbuffer_blit", getSemaphorePool(), getPhysicalDevice(),
               getDevice(), queues.renderQueue.handle, getCommandBufferBank(), getGarbageSystem(),
-              record_cmd_buffer_blit);
+              record_cmd_buffer_blit, getFrameGraph().get_semaphore_value(frameId));
             ExecutionPackage::CommandBufferPackage submission = make_submission_package(
               queues.renderQueue.handle, frameId, cmdBuffer.use(std::move(recordData)),
               getGarbageSystem(), validation);

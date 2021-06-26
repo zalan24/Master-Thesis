@@ -39,7 +39,8 @@ struct TimelineSemaphoreHandle
     ~TimelineSemaphoreHandle() { close(); }
     TimelineSemaphoreHandle(const TimelineSemaphoreHandle& other)
       : ptr(other.ptr), signalledValue(other.signalledValue), refCount(other.refCount) {
-        refCount->fetch_add(1);
+        if (*this)
+            refCount->fetch_add(1);
     }
     TimelineSemaphoreHandle& operator=(const TimelineSemaphoreHandle& other) {
         if (this == &other)

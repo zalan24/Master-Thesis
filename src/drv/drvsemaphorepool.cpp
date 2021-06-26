@@ -38,7 +38,8 @@ void TimelineSemaphorePool::acquireExt(TimelineSemaphoreItem& item, uint64_t) {
 
 bool TimelineSemaphorePool::canAcquire(const TimelineSemaphoreItem& item,
                                        uint64_t firstSignalValue) {
-    return item.refs->signalValue.load() + startValueOffset < firstSignalValue;
+    uint64_t signalValue = item.refs->signalValue.load();
+    return signalValue + startValueOffset < firstSignalValue || signalValue == 0;
 }
 
 void drv::release_timeline_semaphore(TimelineSemaphorePool* pool, uint32_t index) {

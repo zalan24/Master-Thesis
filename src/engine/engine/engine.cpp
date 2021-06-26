@@ -589,7 +589,8 @@ bool Engine::execute(ExecutionPackage&& package) {
                   CMD_BUFFER_ID(), "correctionCmdBuffer", getSemaphorePool(), physicalDevice,
                   device, cmdBuffer.queue, getCommandBufferBank(), getGarbageSystem(),
                   [](const drv::StateCorrectionData* const& data,
-                     drv::DrvCmdBufferRecorder* recorder) { recorder->corrigate(*data); });
+                     drv::DrvCmdBufferRecorder* recorder) { recorder->corrigate(*data); },
+                  frameGraph.get_semaphore_value(cmdBuffer.frameId));
                 commandBuffers[numCommandBuffers++] =
                   correctionCmdBuffer.use(&correctionData).cmdBufferPtr;
             }

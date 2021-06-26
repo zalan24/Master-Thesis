@@ -11,6 +11,6 @@ target_link_libraries(SerializableLib PRIVATE hashlib4cpp_external)
 target_link_libraries(SerializableLib PUBLIC
     json_external
     glm_external
-    AnimationsTools
+    CoreTools
     CoreDataStructures
 )

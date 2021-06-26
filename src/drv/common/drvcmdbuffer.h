@@ -165,7 +165,7 @@ class DrvCmdBufferRecorder
 
     void setRenderPassPostStats(drv::RenderPassPostStats&& stat);
 
-    void init();
+    void init(uint64_t firstSignalValue);
 
  protected:
     ImageTrackInfo& getImageState(drv::ImagePtr image, uint32_t ranges,
@@ -235,10 +235,9 @@ class DrvCmdBuffer
 
     using DrvRecordCallback = void (*)(const D&, DrvCmdBufferRecorder*);
 
-    explicit DrvCmdBuffer(CmdBufferId _id, std::string _name, IDriver* _driver,
-    TimelineSemaphorePool* _semaphorePool,
+    explicit DrvCmdBuffer(CmdBufferId _id, std::string _name, IDriver* _driver, TimelineSemaphorePool* _semaphorePool,
                           PhysicalDevicePtr _physicalDevice, LogicalDevicePtr _device,
-                          QueueFamilyPtr _queueFamily, DrvRecordCallback _recordCallback)
+                          QueueFamilyPtr _queueFamily, DrvRecordCallback _recordCallback, uint64_t _firstSignalValue)
       : id(_id),
         name(std::move(_name)),
         driver(_driver),
@@ -246,7 +245,8 @@ class DrvCmdBuffer
         physicalDevice(_physicalDevice),
         device(_device),
         queueFamily(_queueFamily),
-        recordCallback(_recordCallback) {}
+        recordCallback(_recordCallback),
+        firstSignalValue(_firstSignalValue) {}
 
     DrvCmdBuffer(const DrvCmdBuffer&) = delete;
     DrvCmdBuffer& operator=(const DrvCmdBuffer&) = delete;
@@ -272,7 +272,7 @@ class DrvCmdBuffer
             recorder->setRenderPassPostStats(&renderPassPostStats);
             recorder->setSemaphore(&semaphore);
             recorder->setSemaphorePool(semaphorePool);
-            recorder->init();
+            recorder->init(firstSignalValue);
             recordCallback(currentData, recorder);
             numSubmissions = 0;
             statsCacheHandle = recorder->getStatsCacheHandle();
@@ -324,6 +324,7 @@ class DrvCmdBuffer
     FlexibleArray<drv::RenderPassStats, 1> renderPassStats;
     FlexibleArray<drv::RenderPassPostStats, 1> renderPassPostStats;
     TimelineSemaphoreHandle semaphore;
+    uint64_t firstSignalValue;
 
     bool needToPrepare = true;
     uint64_t numSubmissions = 0;

@@ -18,7 +18,7 @@ if (Vulkan_FOUND)
     target_link_libraries(AnimationsDrvVulkan PUBLIC
         DrvCommon
         AnimationsInput
-        AnimationsTools
+        CoreTools
         CoreDataStructures
         FeaturesLib
     )

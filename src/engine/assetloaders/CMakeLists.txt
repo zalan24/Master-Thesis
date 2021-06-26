@@ -15,6 +15,6 @@ target_link_libraries(AnimationsAssetLoaders PRIVATE
 target_link_libraries(AnimationsAssetLoaders PUBLIC
     glm_external
     AnimationsData
-    AnimationsTools
+    CoreTools
     SerializableLib
 )

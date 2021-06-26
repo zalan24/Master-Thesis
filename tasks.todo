@@ -232,7 +232,7 @@ Get a triangle on screen:
                         ✔ Clean up old implementation (get rid of old semaphores used by it) @done (6/20/2021, 3:23:06 PM)
                 ☐ Sync new states
                     ✔ Semaphore counter start from 0!!!! @done (6/21/2021, 12:28:05 PM)
-                    ☐ Semaphore management system
+                    ✔ Semaphore management system @done (6/26/2021, 11:32:39 AM)
                         ✔ Create an abstract class for async pools @done (6/23/2021, 11:32:24 AM)
                         ✔ Event pool should use it @done (6/23/2021, 12:22:12 PM)
                         ✔ Command buffer pool should use it @done (6/23/2021, 12:52:26 PM)
@@ -247,9 +247,9 @@ Get a triangle on screen:
                                 ✔ ref to signal value @done (6/23/2021, 1:15:36 PM)
                             ✔ An item can be retrived if it has a lower signalled value, then requested and 0 refcount @done (6/23/2021, 2:03:22 PM)
                             ✔ Currently release is not called on semaphores in the pool... Do something about it @done (6/25/2021, 10:43:42 AM)
-                        ☐ cmd buffer need to use a timeline semaphore handle
+                        ✔ cmd buffer need to use a timeline semaphore handle @done (6/26/2021, 11:32:34 AM)
                         ✔ image tracking states need a semaphore handle as well @done (6/25/2021, 10:43:54 AM)
-                        ☐ Warn if there are too many semaphores in the pool
+                        ✔ Warn if there are too many semaphores in the pool @done (6/26/2021, 11:32:36 AM)
                     ☐ If the src submissions had signal, use it. Otherwise auto create new signal
                         ✔ Wait on semaphore stages at the end of the signalling cmd buffer @done (6/21/2021, 12:15:12 PM)
                         ✔ Signal semaphores @done (6/21/2021, 12:27:46 PM)

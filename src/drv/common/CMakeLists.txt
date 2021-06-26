@@ -16,7 +16,8 @@ target_link_libraries(DrvCommon PUBLIC
     CoreDataStructures
     DrvConfigs
     AnimationsDrvProfiler
-    AnimationsTools
+    CoreTools
     SerializableLib
     FeaturesLib
+    Logging
 )

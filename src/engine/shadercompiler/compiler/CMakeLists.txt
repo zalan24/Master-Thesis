@@ -12,8 +12,9 @@ target_link_libraries(ShaderCompilerLib PUBLIC
     AnimationsIO
     SerializableLib
     ShaderBin
-    AnimationsTools
+    CoreTools
     ShaderPreprocessorLib
+    Logging
     # ShaderCompilerLib
     # ShaderManager
     # FeaturesLib

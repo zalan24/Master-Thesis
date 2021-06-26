@@ -20,7 +20,7 @@ set_target_properties(  AnimationsDrv
                         LINK_OPTIONS "${TARGET_LINK_FLAGS}")
 target_link_libraries(AnimationsDrv PUBLIC
     DrvCommon
-    AnimationsTools
+    CoreTools
 )
 
 if (BUILD_DRV_VULKAN)
