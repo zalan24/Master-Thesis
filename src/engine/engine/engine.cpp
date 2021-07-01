@@ -440,11 +440,13 @@ class AccessValidationCallback final : public drv::ResourceStateTransitionCallba
       : engine(_engine),
         currentQueue(_currentQueue),
         nodeId(_nodeId),
-        frame(_frame) {}
+        frame(_frame),
+        semaphores(engine->garbageSystem.getAllocator<SemaphoreInfo>()),
+        queues(engine->garbageSystem.getAllocator<QueueInfo>()) {}
 
     void requireSync(drv::QueuePtr srcQueue, drv::CmdBufferId srcSubmission, uint64_t srcFrameId,
                      drv::ResourceStateTransitionCallback::ConflictMode mode,
-                     drv::PipelineStages::FlagType ongoingUsages) override {
+                     drv::PipelineStages::FlagType ongoingUsages) {
         drv::drv_assert(srcFrameId <= frame);
         if (srcQueue == currentQueue)
             return;
@@ -478,11 +480,89 @@ class AccessValidationCallback final : public drv::ResourceStateTransitionCallba
         }
     }
 
+    void registerSemaphore(drv::QueuePtr srcQueue, drv::CmdBufferId cmdBufferId,
+                           drv::TimelineSemaphoreHandle semaphore, uint64_t srcFrameId,
+                           uint64_t waitValue, drv::PipelineStages::FlagType waitMask,
+                           ConflictMode mode) override {
+        requireSync(srcQueue, cmdBufferId, srcFrameId, mode, waitMask);
+        drv::drv_assert(srcFrameId <= frame);
+        if (srcQueue == currentQueue)
+            return;
+        bool found = false;
+        for (uint32_t i = 0; i < semaphores.size() && !found; ++i) {
+            if (semaphores[i].semaphore.ptr == semaphore.ptr) {
+                semaphores[i].waitValue = std::max(semaphores[i].waitValue, waitValue);
+                drv::drv_assert(semaphores[i].queue == srcQueue);
+                found = true;
+            }
+        }
+        if (!found)
+            semaphores.push_back({semaphore, srcQueue, waitValue});
+    }
+
+    void requireAutoSync(drv::QueuePtr srcQueue, drv::CmdBufferId cmdBufferId, uint64_t srcFrameId,
+                         drv::PipelineStages::FlagType waitMask, ConflictMode mode,
+                         AutoSyncReason reason) override {
+        requireSync(srcQueue, cmdBufferId, srcFrameId, mode, waitMask);
+        drv::drv_assert(srcFrameId <= frame);
+        if (srcQueue == currentQueue)
+            return;
+        switch (reason) {
+            case NO_SEMAPHORE:
+                engine->runtimeStats.incrementNumGpuAutoSyncNoSemaphore();
+                break;
+            case INSUFFICIENT_SEMAPHORE:
+                engine->runtimeStats.incrementNumGpuAutoSyncInsufficientSemaphore();
+                break;
+        }
+        bool found = false;
+        for (uint32_t i = 0; i < queues.size() && !found; ++i) {
+            if (queues[i].queue == srcQueue) {
+                queues[i].waitValue =
+                  std::max(queues[i].waitValue, FrameGraph::get_semaphore_value(srcFrameId));
+                found = true;
+            }
+        }
+        if (!found) {
+            FrameGraph::QueueSyncData data = engine->frameGraph.sync_queue(srcQueue, srcFrameId);
+            queues.push_back({srcQueue, std::move(data.semaphore), data.waitValue});
+        }
+    }
+
+    void filterSemaphores() {
+        // erase semaphores, which from queues, which have auto sync
+        semaphores.erase(std::remove_if(semaphores.begin(), semaphores.end(),
+                                        [this](const SemaphoreInfo& info) {
+                                            return std::find_if(queues.begin(), queues.end(),
+                                                                [&](const QueueInfo& queueInfo) {
+                                                                    return info.queue
+                                                                           == queueInfo.queue;
+                                                                })
+                                                   != queues.end();
+                                        }),
+                         semaphores.end());
+    }
+
  private:
+    struct SemaphoreInfo
+    {
+        drv::TimelineSemaphoreHandle semaphore;
+        drv::QueuePtr queue;
+        uint64_t waitValue;
+    };
+    struct QueueInfo
+    {
+        drv::QueuePtr queue;
+        drv::TimelineSemaphoreHandle autoSemaphore;
+        uint64_t waitValue;
+    };
+
     Engine* engine;
     drv::QueuePtr currentQueue;
     FrameGraph::NodeId nodeId;
     FrameId frame;
+    GarbageVector<SemaphoreInfo> semaphores;
+    GarbageVector<QueueInfo> queues;
 };
 
 bool Engine::execute(ExecutionPackage&& package) {
@@ -525,9 +605,13 @@ bool Engine::execute(ExecutionPackage&& package) {
         runtimeStats.incrementSubmissionCount();
         drv::CommandBufferPtr commandBuffers[2];
         uint32_t numCommandBuffers = 0;
-
         ExecutionPackage::CommandBufferPackage& cmdBuffer =
           std::get<ExecutionPackage::CommandBufferPackage>(package.package);
+
+        AccessValidationCallback cb(
+          this, cmdBuffer.queue,
+          frameGraph.getNodeFromCmdBuffer(cmdBuffer.cmdBufferData.cmdBufferId), cmdBuffer.frameId);
+
         StackMemory::MemoryHandle<drv::TimelineSemaphorePtr> signalTimelineSemaphores(
           cmdBuffer.signalTimelineSemaphores.size() + 1, TEMPMEM);
         StackMemory::MemoryHandle<uint64_t> signalTimelineSemaphoreValues(
@@ -536,15 +620,10 @@ bool Engine::execute(ExecutionPackage&& package) {
                                                                     TEMPMEM);
         StackMemory::MemoryHandle<drv::PipelineStages::FlagType> waitSemaphoresStages(
           cmdBuffer.waitSemaphores.size(), TEMPMEM);
-        StackMemory::MemoryHandle<drv::TimelineSemaphorePtr> waitTimelineSemaphores(
-          cmdBuffer.waitTimelineSemaphores.size(), TEMPMEM);
-        StackMemory::MemoryHandle<drv::PipelineStages::FlagType> waitTimelineSemaphoresStages(
-          cmdBuffer.waitTimelineSemaphores.size(), TEMPMEM);
-        StackMemory::MemoryHandle<uint64_t> waitTimelineSemaphoresValues(
-          cmdBuffer.waitTimelineSemaphores.size(), TEMPMEM);
         for (uint32_t i = 0; i < cmdBuffer.signalTimelineSemaphores.size(); ++i) {
             signalTimelineSemaphores[i] = cmdBuffer.signalTimelineSemaphores[i].semaphore;
             signalTimelineSemaphoreValues[i] = cmdBuffer.signalTimelineSemaphores[i].signalValue;
+            runtimeStats.incrementNumTimelineSemaphores();
         }
         uint32_t signalTimelineSemaphoreCount = uint32_t(cmdBuffer.signalTimelineSemaphores.size());
         if (cmdBuffer.signalManagedSemaphore) {
@@ -560,13 +639,6 @@ bool Engine::execute(ExecutionPackage&& package) {
             waitSemaphoresStages[i] =
               drv::get_image_usage_stages(cmdBuffer.waitSemaphores[i].imageUsages).stageFlags;
         }
-        for (uint32_t i = 0; i < cmdBuffer.waitTimelineSemaphores.size(); ++i) {
-            waitTimelineSemaphores[i] = cmdBuffer.waitTimelineSemaphores[i].semaphore;
-            waitTimelineSemaphoresValues[i] = cmdBuffer.waitTimelineSemaphores[i].waitValue;
-            waitTimelineSemaphoresStages[i] =
-              drv::get_image_usage_stages(cmdBuffer.waitTimelineSemaphores[i].imageUsages)
-                .stageFlags;
-        }
         drv::ExecutionInfo executionInfo;
         executionInfo.numWaitSemaphores =
           static_cast<unsigned int>(cmdBuffer.waitSemaphores.size());
@@ -574,10 +646,6 @@ bool Engine::execute(ExecutionPackage&& package) {
         executionInfo.waitStages = waitSemaphoresStages;
         {
             drv::StateCorrectionData correctionData;
-            AccessValidationCallback cb(
-              this, cmdBuffer.queue,
-              frameGraph.getNodeFromCmdBuffer(cmdBuffer.cmdBufferData.cmdBufferId),
-              cmdBuffer.frameId);
             if (!drv::validate_and_apply_state_transitions(
                   getDevice(), cmdBuffer.queue, correctionData,
                   uint32_t(cmdBuffer.cmdBufferData.imageStates.size()),
@@ -606,6 +674,21 @@ bool Engine::execute(ExecutionPackage&& package) {
             if (!drv::is_null_ptr(cmdBuffer.cmdBufferData.cmdBufferPtr)) {
                 commandBuffers[numCommandBuffers++] = cmdBuffer.cmdBufferData.cmdBufferPtr;
             }
+        }
+        cb.filterSemaphores();
+        // TODO add semaphore from cb
+        StackMemory::MemoryHandle<drv::TimelineSemaphorePtr> waitTimelineSemaphores(
+          cmdBuffer.waitTimelineSemaphores.size(), TEMPMEM);
+        StackMemory::MemoryHandle<drv::PipelineStages::FlagType> waitTimelineSemaphoresStages(
+          cmdBuffer.waitTimelineSemaphores.size(), TEMPMEM);
+        StackMemory::MemoryHandle<uint64_t> waitTimelineSemaphoresValues(
+          cmdBuffer.waitTimelineSemaphores.size(), TEMPMEM);
+        for (uint32_t i = 0; i < cmdBuffer.waitTimelineSemaphores.size(); ++i) {
+            waitTimelineSemaphores[i] = cmdBuffer.waitTimelineSemaphores[i].semaphore;
+            waitTimelineSemaphoresValues[i] = cmdBuffer.waitTimelineSemaphores[i].waitValue;
+            waitTimelineSemaphoresStages[i] =
+              drv::get_image_usage_stages(cmdBuffer.waitTimelineSemaphores[i].imageUsages)
+                .stageFlags;
         }
         executionInfo.numCommandBuffers = numCommandBuffers;
         executionInfo.commandBuffers = commandBuffers;

@@ -364,13 +364,23 @@ drv::PendingResourceUsage DrvVulkan::get_pending_usage(drv::ImagePtr image, uint
           subresourceState.multiQueueState.readingQueues[usageIndex].queue,
           subresourceState.multiQueueState.readingQueues[usageIndex].submission,
           subresourceState.multiQueueState.readingQueues[usageIndex].frameId,
-          subresourceState.multiQueueState.readingQueues[usageIndex].readingStages};
+          subresourceState.multiQueueState.readingQueues[usageIndex].readingStages,
+          0,
+          subresourceState.multiQueueState.readingQueues[usageIndex].syncedStages,
+          subresourceState.multiQueueState.readingQueues[usageIndex].semaphore,
+          subresourceState.multiQueueState.readingQueues[usageIndex].signalledValue,
+          false};
     // main queue
     return drv::PendingResourceUsage{
-      subresourceState.multiQueueState.mainQueue, subresourceState.multiQueueState.submission,
+      subresourceState.multiQueueState.mainQueue,
+      subresourceState.multiQueueState.submission,
       subresourceState.multiQueueState.frameId,
       subresourceState.usableStages | subresourceState.ongoingReads,
       subresourceState.multiQueueState.isWrite
         ? subresourceState.ongoingWrites | subresourceState.usableStages
-        : 0};
+        : 0,
+        subresourceState.multiQueueState.syncedStages,
+        subresourceState.multiQueueState.mainSemaphore,
+        subresourceState.multiQueueState.signalledValue,
+      bool(subresourceState.multiQueueState.isWrite)};
 }

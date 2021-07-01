@@ -22,7 +22,11 @@ void SingleExecutionData::start() {
     sampleInputCount = 0;
     submissionCount = 0;
     allowedSubmissionCorrections = 0;
-    numCpuAutoSync = 0;
+    numTimelineSemaphores = 0;
+    numCpuAutoSyncNoSemaphore = 0;
+    numCpuAutoSyncInsufficientSemaphore = 0;
+    numGpuAutoSyncNoSemaphore = 0;
+    numGpuAutoSyncInsufficientSemaphore = 0;
     submissionCorrections.clear();
     attachmentCorrections.clear();
     invalidSharedResourceUsage.clear();

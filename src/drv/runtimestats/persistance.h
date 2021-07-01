@@ -34,7 +34,11 @@ struct SingleExecutionData final : public IAutoSerializable<SingleExecutionData>
         (uint32_t) sampleInputCount,
         (uint32_t) submissionCount,
         (uint32_t) allowedSubmissionCorrections,
-        (uint32_t) numCpuAutoSync,
+        (uint32_t) numTimelineSemaphores,
+        (uint32_t) numCpuAutoSyncNoSemaphore,
+        (uint32_t) numCpuAutoSyncInsufficientSemaphore,
+        (uint32_t) numGpuAutoSyncNoSemaphore,
+        (uint32_t) numGpuAutoSyncInsufficientSemaphore,
         (std::unordered_map<std::string, uint32_t>) submissionCorrections,
         (std::map<RenderpassCorrectionData, uint32_t>) attachmentCorrections,
         (std::map<std::string, std::vector<std::string>>) invalidSharedResourceUsage

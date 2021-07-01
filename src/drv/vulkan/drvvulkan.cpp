@@ -658,69 +658,114 @@ bool DrvVulkan::validate_and_apply_state_transitions(
         drv_vulkan::Image* image = convertImage(transitions[i].first);
 
         bool invalid = false;
-        transitions[i].second.cmdState.usageMask.traverse(
-          [&](uint32_t layer, uint32_t mip, drv::AspectFlagBits aspect) {
-              const auto& requirement = transitions[i].second.guarantee.get(layer, mip, aspect);
-              const auto& usage = transitions[i].second.cmdState.usage.get(layer, mip, aspect);
-              const auto& state = image->linearTrackingState.get(layer, mip, aspect);
-              if (requirement.ownership != state.ownership
-                  && requirement.ownership != drv::IGNORE_FAMILY
-                  && state.ownership != drv::IGNORE_FAMILY)
-                  invalid = true;
-              else if (requirement.layout != drv::ImageLayout::UNDEFINED
-                       && requirement.layout != state.layout)
-                  invalid = true;
-              else if ((state.usableStages & requirement.usableStages) != requirement.usableStages)
-                  invalid = true;
-              else if ((state.ongoingWrites & requirement.ongoingWrites) != state.ongoingWrites)
-                  invalid = true;
-              else if ((state.ongoingReads & requirement.ongoingReads) != state.ongoingReads)
-                  invalid = true;
-              else if ((state.dirtyMask & requirement.dirtyMask) != state.dirtyMask)
-                  invalid = true;
-              else if ((state.visible & requirement.visible) != requirement.visible)
-                  invalid = true;
-              if (cacheHandle) {
-                  StatsCacheWriter cacheWriter(cacheHandle);
-                  auto& imgData = cacheWriter->cmdBufferImageStates[image->imageId];
-                  if (!imgData.isCompatible(texInfo))
-                      imgData.init(texInfo);
-                  imgData.subresources.get(layer, mip, aspect).append(state);
-              }
-              if (!drv::is_null_ptr(state.multiQueueState.mainQueue)) {
-                  drv::ResourceStateTransitionCallback::ConflictMode mode =
-                    drv::ResourceStateTransitionCallback::NONE;
+        transitions[i].second.cmdState.usageMask.traverse([&](uint32_t layer, uint32_t mip,
+                                                              drv::AspectFlagBits aspect) {
+            const auto& requirement = transitions[i].second.guarantee.get(layer, mip, aspect);
+            const auto& usage = transitions[i].second.cmdState.usage.get(layer, mip, aspect);
 
-                  if (usage.written || state.multiQueueState.isWrite)
-                      mode = drv::ResourceStateTransitionCallback::ORDERED_ACCESS;
-                  else if (!image->sharedResource
-                           && get_queue_family(device, state.multiQueueState.mainQueue)
-                                != get_queue_family(device, currentQueue))
-                      mode = drv::ResourceStateTransitionCallback::MUTEX;
+            uint32_t numPendingUsages =
+              get_num_pending_usages(transitions[i].first, layer, mip, aspect);
+            bool dstWrite = usage.written;
+            for (uint32_t j = 0; j < numPendingUsages; ++j) {
+                drv::PendingResourceUsage pendingUsage =
+                  get_pending_usage(transitions[i].first, layer, mip, aspect, j);
+                //   if (pendingUsage.queue != currentQueue) {
+                bool srcWrite = pendingUsage.isWrite;
+                drv::PipelineStages::FlagType waitMask = 0;
+                drv::ResourceStateTransitionCallback::ConflictMode conflictMode =
+                  drv::ResourceStateTransitionCallback::NONE;
+                if (srcWrite || dstWrite) {
+                    // ordered sync
+                    waitMask = dstWrite ? (pendingUsage.ongoingReads | pendingUsage.ongoingWrites)
+                                        : pendingUsage.ongoingWrites;
+                    conflictMode = drv::ResourceStateTransitionCallback::ORDERED_ACCESS;
+                }
+                else if (!image->sharedResource
+                         && get_queue_family(device, pendingUsage.queue)
+                              != get_queue_family(device, currentQueue)) {
+                    waitMask = pendingUsage.ongoingReads | pendingUsage.ongoingWrites;
+                    conflictMode = drv::ResourceStateTransitionCallback::MUTEX;
+                }
+                if (waitMask != 0) {
+                    if (pendingUsage.signalledSemaphore) {
+                        if ((pendingUsage.syncedStages & waitMask) == waitMask)
+                            cb->registerSemaphore(pendingUsage.queue, pendingUsage.cmdBufferId,
+                                                  pendingUsage.signalledSemaphore,
+                                                  pendingUsage.frameId, pendingUsage.signalledValue,
+                                                  waitMask, conflictMode);
+                        else
+                            cb->requireAutoSync(
+                              pendingUsage.queue, pendingUsage.cmdBufferId, pendingUsage.frameId, waitMask, conflictMode,
+                              drv::ResourceStateTransitionCallback::INSUFFICIENT_SEMAPHORE);
+                    }
+                    else
+                        cb->requireAutoSync(pendingUsage.queue, pendingUsage.cmdBufferId,
+                                            pendingUsage.frameId,
+                                            waitMask, conflictMode,
+                                            drv::ResourceStateTransitionCallback::NO_SEMAPHORE);
+                }
+                //   }
+            }
 
-                  if (mode != drv::ResourceStateTransitionCallback::NONE)
-                      cb->requireSync(
-                        state.multiQueueState.mainQueue, state.multiQueueState.submission,
-                        state.multiQueueState.frameId, mode,
-                        state.ongoingReads | state.ongoingWrites | state.usableStages);
-              }
-              for (uint32_t j = 0; j < state.multiQueueState.readingQueues.size(); ++j) {
-                  const drv::ReadingQueueState& rs = state.multiQueueState.readingQueues[j];
-                  if (!rs)
-                      continue;
-                  drv::ResourceStateTransitionCallback::ConflictMode mode =
-                    drv::ResourceStateTransitionCallback::NONE;
-                  if (usage.written)
-                      mode = drv::ResourceStateTransitionCallback::ORDERED_ACCESS;
-                  else if (!image->sharedResource
-                           && get_queue_family(device, rs.queue)
-                                != get_queue_family(device, currentQueue))
-                      mode = drv::ResourceStateTransitionCallback::MUTEX;
+            const auto& state = image->linearTrackingState.get(layer, mip, aspect);
+            if (requirement.ownership != state.ownership
+                && requirement.ownership != drv::IGNORE_FAMILY
+                && state.ownership != drv::IGNORE_FAMILY)
+                invalid = true;
+            else if (requirement.layout != drv::ImageLayout::UNDEFINED
+                     && requirement.layout != state.layout)
+                invalid = true;
+            else if ((state.usableStages & requirement.usableStages) != requirement.usableStages)
+                invalid = true;
+            else if ((state.ongoingWrites & requirement.ongoingWrites) != state.ongoingWrites)
+                invalid = true;
+            else if ((state.ongoingReads & requirement.ongoingReads) != state.ongoingReads)
+                invalid = true;
+            else if ((state.dirtyMask & requirement.dirtyMask) != state.dirtyMask)
+                invalid = true;
+            else if ((state.visible & requirement.visible) != requirement.visible)
+                invalid = true;
+            if (cacheHandle) {
+                StatsCacheWriter cacheWriter(cacheHandle);
+                auto& imgData = cacheWriter->cmdBufferImageStates[image->imageId];
+                if (!imgData.isCompatible(texInfo))
+                    imgData.init(texInfo);
+                imgData.subresources.get(layer, mip, aspect).append(state);
+            }
+            // if (!drv::is_null_ptr(state.multiQueueState.mainQueue)) {
+            //     drv::ResourceStateTransitionCallback::ConflictMode mode =
+            //       drv::ResourceStateTransitionCallback::NONE;
 
-                  if (mode != drv::ResourceStateTransitionCallback::NONE)
-                      cb->requireSync(rs.queue, rs.submission, rs.frameId, mode, rs.readingStages);
-              }
-          });
+            //     if (usage.written || state.multiQueueState.isWrite)
+            //         mode = drv::ResourceStateTransitionCallback::ORDERED_ACCESS;
+            //     else if (!image->sharedResource
+            //              && get_queue_family(device, state.multiQueueState.mainQueue)
+            //                   != get_queue_family(device, currentQueue))
+            //         mode = drv::ResourceStateTransitionCallback::MUTEX;
+
+            //     if (mode != drv::ResourceStateTransitionCallback::NONE)
+            //         cb->requireSync(state.multiQueueState.mainQueue,
+            //                         state.multiQueueState.submission, state.multiQueueState.frameId,
+            //                         mode,
+            //                         state.ongoingReads | state.ongoingWrites | state.usableStages);
+            // }
+            // for (uint32_t j = 0; j < state.multiQueueState.readingQueues.size(); ++j) {
+            //     const drv::ReadingQueueState& rs = state.multiQueueState.readingQueues[j];
+            //     if (!rs)
+            //         continue;
+            //     drv::ResourceStateTransitionCallback::ConflictMode mode =
+            //       drv::ResourceStateTransitionCallback::NONE;
+            //     if (usage.written)
+            //         mode = drv::ResourceStateTransitionCallback::ORDERED_ACCESS;
+            //     else if (!image->sharedResource
+            //              && get_queue_family(device, rs.queue)
+            //                   != get_queue_family(device, currentQueue))
+            //         mode = drv::ResourceStateTransitionCallback::MUTEX;
+
+            //     if (mode != drv::ResourceStateTransitionCallback::NONE)
+            //         cb->requireSync(rs.queue, rs.submission, rs.frameId, mode, rs.readingStages);
+            // }
+        });
         if (invalid) {
             imageCorrections[correctedImageCount].first = transitions[i].first;
             imageCorrections[correctedImageCount].second =

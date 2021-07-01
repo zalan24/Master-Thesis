@@ -94,13 +94,27 @@ class ResourceStateTransitionCallback
  public:
     enum ConflictMode
     {
-      NONE,
+        NONE,
         MUTEX,
         ORDERED_ACCESS
     };
 
-    virtual void requireSync(QueuePtr srcQueue, CmdBufferId srcSubmission, uint64_t srcFrameId,
-                             ConflictMode mode, PipelineStages::FlagType ongoingUsages) = 0;
+    enum AutoSyncReason
+    {
+        NO_SEMAPHORE,
+        INSUFFICIENT_SEMAPHORE
+    };
+
+    // virtual void requireSync(QueuePtr srcQueue, CmdBufferId srcSubmission, uint64_t srcFrameId,
+    //                          ConflictMode mode, PipelineStages::FlagType ongoingUsages) = 0;
+
+    virtual void registerSemaphore(drv::QueuePtr srcQueue, CmdBufferId cmdBufferId,
+                                   TimelineSemaphoreHandle semaphore, uint64_t srcFrameId,
+                                   uint64_t waitValue, PipelineStages::FlagType waitMask,
+                                   ConflictMode mode) = 0;
+    virtual void requireAutoSync(QueuePtr srcQueue, CmdBufferId cmdBufferId, uint64_t srcFrameId,
+                                 PipelineStages::FlagType waitMask, ConflictMode mode,
+                                 AutoSyncReason reason) = 0;
 
  protected:
     ~ResourceStateTransitionCallback() {}
@@ -113,8 +127,10 @@ struct PendingResourceUsage
     uint64_t frameId;
     PipelineStages::FlagType ongoingReads = 0;
     PipelineStages::FlagType ongoingWrites = 0;
+    PipelineStages::FlagType syncedStages = 0;
     drv::TimelineSemaphoreHandle signalledSemaphore;
     uint64_t signalledValue = 0;
+    bool isWrite;
 };
 
 class IDriver

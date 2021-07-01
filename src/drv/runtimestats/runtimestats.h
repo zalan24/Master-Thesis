@@ -107,7 +107,11 @@ class RuntimeStats final : public Singleton<RuntimeStats>
     void incrementInputSample();
     void incrementSubmissionCount();
     void incrementAllowedSubmissionCorrections();
-    void incrementNumCpuAutoSync();
+    void incrementNumCpuAutoSyncNoSemaphore();
+    void incrementNumCpuAutoSyncInsufficientSemaphore();
+    void incrementNumGpuAutoSyncNoSemaphore();
+    void incrementNumGpuAutoSyncInsufficientSemaphore();
+    void incrementNumTimelineSemaphores();
     void corrigateSubmission(const char* submissionName);
     void corrigateAttachment(const char* renderpass, const char* submission, uint32_t attachmentId);
 

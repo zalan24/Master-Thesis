@@ -108,6 +108,8 @@ struct PerSubresourceRangeTrackData
 struct ReadingQueueState
 {
     TimelineSemaphoreHandle semaphore;
+    uint64_t signalledValue;
+    drv::PipelineStages::FlagType syncedStages = 0;
     QueuePtr queue = get_null_ptr<QueuePtr>();
     uint64_t frameId = 0;
     CmdBufferId submission = 0;
@@ -119,6 +121,8 @@ struct ReadingQueueState
 struct MultiQueueTrackingState
 {
     TimelineSemaphoreHandle mainSemaphore;
+    uint64_t signalledValue;
+    drv::PipelineStages::FlagType syncedStages = 0;
     QueuePtr mainQueue = get_null_ptr<QueuePtr>();
     uint64_t frameId : 63;
     uint64_t isWrite : 1;

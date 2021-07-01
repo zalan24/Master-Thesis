@@ -224,10 +224,35 @@ void RuntimeStats::incrementAllowedSubmissionCorrections() {
 #endif
 }
 
-void RuntimeStats::incrementNumCpuAutoSync() {
+void RuntimeStats::incrementNumTimelineSemaphores() {
 #if ENABLE_RUNTIME_STATS_GENERATION
     RuntimeStatsWriter writer(this);
-    writer->lastExecution.numCpuAutoSync++;
+    writer->lastExecution.numTimelineSemaphores++;
+#endif
+}
+
+void RuntimeStats::incrementNumCpuAutoSyncNoSemaphore() {
+#if ENABLE_RUNTIME_STATS_GENERATION
+    RuntimeStatsWriter writer(this);
+    writer->lastExecution.numCpuAutoSyncNoSemaphore++;
+#endif
+}
+void RuntimeStats::incrementNumCpuAutoSyncInsufficientSemaphore() {
+#if ENABLE_RUNTIME_STATS_GENERATION
+    RuntimeStatsWriter writer(this);
+    writer->lastExecution.numCpuAutoSyncInsufficientSemaphore++;
+#endif
+}
+void RuntimeStats::incrementNumGpuAutoSyncNoSemaphore() {
+#if ENABLE_RUNTIME_STATS_GENERATION
+    RuntimeStatsWriter writer(this);
+    writer->lastExecution.numGpuAutoSyncNoSemaphore++;
+#endif
+}
+void RuntimeStats::incrementNumGpuAutoSyncInsufficientSemaphore() {
+#if ENABLE_RUNTIME_STATS_GENERATION
+    RuntimeStatsWriter writer(this);
+    writer->lastExecution.numGpuAutoSyncInsufficientSemaphore++;
 #endif
 }
 
@@ -260,7 +285,11 @@ void RuntimeStats::exportReport(const std::string& filename) const {
     uint32_t sampleInputCount = 0;
     uint32_t submissionCount = 0;
     uint32_t allowedSubmissionCorrections = 0;
-    uint32_t numCpuAutoSync = 0;
+    uint32_t numTimelineSemaphores = 0;
+    uint32_t numCpuAutoSyncNoSemaphore = 0;
+    uint32_t numCpuAutoSyncInsufficientSemaphore = 0;
+    uint32_t numGpuAutoSyncNoSemaphore = 0;
+    uint32_t numGpuAutoSyncInsufficientSemaphore = 0;
 
     std::stack<PersistanceNodeData*> nodes;
     nodes.push(rootNode.get()->getPersistance());
@@ -269,13 +298,18 @@ void RuntimeStats::exportReport(const std::string& filename) const {
         nodes.pop();
         if (node) {
             frameCount = std::max(frameCount, node->lastExecution.frameCount);
-            sampleInputCount = sampleInputCount + node->lastExecution.sampleInputCount;
-            submissionCount = submissionCount + node->lastExecution.submissionCount;
-            allowedSubmissionCorrections =
-              allowedSubmissionCorrections + node->lastExecution.allowedSubmissionCorrections;
-            numCpuAutoSync = numCpuAutoSync + node->lastExecution.numCpuAutoSync;
+            sampleInputCount += node->lastExecution.sampleInputCount;
+            submissionCount += node->lastExecution.submissionCount;
+            allowedSubmissionCorrections += node->lastExecution.allowedSubmissionCorrections;
+            numCpuAutoSyncNoSemaphore += node->lastExecution.numCpuAutoSyncNoSemaphore;
+            numCpuAutoSyncInsufficientSemaphore +=
+              node->lastExecution.numCpuAutoSyncInsufficientSemaphore;
+            numGpuAutoSyncNoSemaphore += node->lastExecution.numGpuAutoSyncNoSemaphore;
+            numGpuAutoSyncInsufficientSemaphore +=
+              node->lastExecution.numGpuAutoSyncInsufficientSemaphore;
             for (const auto& [name, ptr] : node->subnodes)
                 nodes.push(ptr.get());
+            numTimelineSemaphores += node->lastExecution.numTimelineSemaphores;
         }
     }
 
@@ -286,9 +320,27 @@ void RuntimeStats::exportReport(const std::string& filename) const {
         << float(submissionCount) / float(frameCount) << " per frame)" << std::endl;
     out << "Allowed corrections:    " << allowedSubmissionCorrections << " ("
         << float(allowedSubmissionCorrections) / float(frameCount) << " per frame)" << std::endl;
+    out << "Signalled semaphores:   " << numTimelineSemaphores << " ("
+        << float(numTimelineSemaphores) / float(frameCount) << " per frame)" << std::endl;
     out << std::endl;
-    out << "Num auto sync on CPU:    " << numCpuAutoSync << " ("
-        << float(numCpuAutoSync) / float(frameCount) << " per frame)" << std::endl;
+    if (numCpuAutoSyncNoSemaphore > 0)
+        out << "Num auto sync on CPU due to lack of semaphore:         "
+            << numCpuAutoSyncNoSemaphore << " ("
+            << float(numCpuAutoSyncNoSemaphore) / float(frameCount) << " per frame)" << std::endl;
+    if (numCpuAutoSyncInsufficientSemaphore > 0)
+        out << "Num auto sync on CPU due to insufficient semaphore:    "
+            << numCpuAutoSyncInsufficientSemaphore << " ("
+            << float(numCpuAutoSyncInsufficientSemaphore) / float(frameCount) << " per frame)"
+            << std::endl;
+    if (numGpuAutoSyncNoSemaphore > 0)
+        out << "Num auto sync on GPU due to lack of semaphore:         "
+            << numGpuAutoSyncNoSemaphore << " ("
+            << float(numGpuAutoSyncNoSemaphore) / float(frameCount) << " per frame)" << std::endl;
+    if (numGpuAutoSyncInsufficientSemaphore > 0)
+        out << "Num auto sync on GPU due to insufficient semaphore:    "
+            << numGpuAutoSyncInsufficientSemaphore << " ("
+            << float(numGpuAutoSyncInsufficientSemaphore) / float(frameCount) << " per frame)"
+            << std::endl;
 
     nodes.push(rootNode.get()->getPersistance());
     while (!nodes.empty()) {

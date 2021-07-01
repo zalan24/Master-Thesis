@@ -707,13 +707,24 @@ void FrameGraph::checkResources(NodeId dstNode, Stage dstStage, FrameId frameId,
                                      + ") has been written by an unsynced submission")
                                       .c_str());
 #endif
+                const drv::PipelineStages::FlagType waitStages =
+                  usage.ongoingReads | usage.ongoingWrites;
                 {
                     StatsCacheWriter writer(getStatsCacheHandle(usage.cmdBufferId));
-                    writer->semaphore.append(usage.ongoingReads | usage.ongoingWrites);
+                    writer->semaphore.append(waitStages);
                 }
                 uint64_t waitValue = usage.signalledValue;
-                drv::TimelineSemaphorePtr semaphore = usage.signalledSemaphore;
+                drv::TimelineSemaphorePtr semaphore;
+                if ((usage.syncedStages & waitStages) != waitStages)
+                    semaphore = usage.signalledSemaphore;
                 if (!usage.signalledSemaphore) {
+                    if (RuntimeStats::getSingleton()) {
+                        if (usage.signalledSemaphore)
+                            RuntimeStats::getSingleton()
+                              ->incrementNumCpuAutoSyncInsufficientSemaphore();
+                        else
+                            RuntimeStats::getSingleton()->incrementNumCpuAutoSyncNoSemaphore();
+                    }
                     bool found = false;
                     for (uint32_t k = 0; k < numSyncedQueues && !found; ++k)
                         found = syncedQueues[k] == usage.queue;
