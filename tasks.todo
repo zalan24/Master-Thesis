@@ -264,6 +264,8 @@ Get a triangle on screen:
                     ✔ Collect semaphores required by GpuCpu dependency @done (6/26/2021, 12:43:04 PM)
                         ✔ Use auto sync if needed @done (6/26/2021, 12:43:00 PM)
                     ☐ What is the wait stage for timeline semaphores managed by resource tracking???
+                        ☐ Track which stages a resource is used on before the first barrier + the last stage of the first barrier
+                        ☐ These stages are the wait stages for the semaphores
                 ☐ Host side state
                     ☐ Resource state should have an extra "queue" for host side usage
                     ☐ Implement sync regarding this usage
