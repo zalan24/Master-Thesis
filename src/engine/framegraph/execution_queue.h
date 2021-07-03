@@ -27,6 +27,7 @@ struct CommandBufferData
 {
     drv::CommandBufferPtr cmdBufferPtr = drv::get_null_ptr<drv::CommandBufferPtr>();
     GarbageVector<std::pair<drv::ImagePtr, drv::ImageTrackInfo>> imageStates;
+    drv::ResourceLockerDescriptor resourceUsages;
     bool stateValidation;
     drv::CmdBufferId cmdBufferId = 0;
     StatsCache* statsCacheHandle;
@@ -36,6 +37,7 @@ struct CommandBufferData
 
     explicit CommandBufferData(GarbageSystem* garbageSystem, const char* name)
       : imageStates(garbageSystem->getAllocator<std::pair<drv::ImagePtr, drv::ImageTrackInfo>>()),
+        resourceUsages(),
         stateValidation(false),
         statsCacheHandle(nullptr)
 #if USE_COMMAND_BUFFER_NAME
@@ -48,10 +50,12 @@ struct CommandBufferData
 
     CommandBufferData(GarbageSystem* garbageSystem, drv::CommandBufferPtr _cmdBufferPtr,
                       const drv::DrvCmdBufferRecorder::ImageStates* _imageStates,
-                      bool _stateValidation, const char* name, drv::CmdBufferId _cmdBufferId,
+                      const drv::ResourceLockerDescriptor* _resourceUsages, bool _stateValidation,
+                      const char* name, drv::CmdBufferId _cmdBufferId,
                       StatsCache* _statsCacheHandle)
       : cmdBufferPtr(_cmdBufferPtr),
         imageStates(garbageSystem->getAllocator<std::pair<drv::ImagePtr, drv::ImageTrackInfo>>()),
+        resourceUsages(*_resourceUsages),
         stateValidation(_stateValidation),
         cmdBufferId(_cmdBufferId),
         statsCacheHandle(_statsCacheHandle)
@@ -70,7 +74,8 @@ struct CommandBufferData
     CommandBufferData(GarbageSystem* garbageSystem, const drv::CommandBufferInfo& info,
                       bool _stateValidation)
       : CommandBufferData(garbageSystem, info.cmdBufferPtr, info.stateTransitions.imageStates,
-                          _stateValidation, info.name, info.cmdBufferId, info.statsCacheHandle) {}
+                          info.resourceUsage, _stateValidation, info.name, info.cmdBufferId,
+                          info.statsCacheHandle) {}
 
     void setName(const char* name) {
 #if USE_COMMAND_BUFFER_NAME

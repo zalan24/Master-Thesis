@@ -15,6 +15,7 @@
 #include <drv_interface.h>
 #include <drv_wrappers.h>
 
+#include <drvresourcelocker.h>
 #include <drvsemaphorepool.h>
 #include <eventpool.h>
 
@@ -90,15 +91,6 @@ class FrameGraph
     //     QueueId dstQueue;
     //     Offset offset = 0;
     // };
-    // TODO do the same with buffers
-    struct CpuImageResourceUsage
-    {
-        drv::ImagePtr image = drv::get_null_ptr<drv::ImagePtr>();
-        drv::ImageSubresourceSet subresources;
-        CpuImageResourceUsage() : subresources(0) {}
-        CpuImageResourceUsage(drv::ImagePtr _image, drv::ImageSubresourceSet _subresources)
-          : image(_image), subresources(std::move(_subresources)) {}
-    };
     class Node
     {
      public:
@@ -111,8 +103,6 @@ class FrameGraph
         Node& operator=(const Node& other) = delete;
 
         ~Node();
-
-        bool checkResourceUsage(uint32_t count, const CpuImageResourceUsage* resources) const;
 
         void addDependency(CpuDependency dep);
         void addDependency(EnqueueDependency dep);
@@ -185,14 +175,12 @@ class FrameGraph
      private:
         NodeHandle();
         NodeHandle(FrameGraph* frameGraph, FrameGraph::NodeId node, Stage stage, FrameId frameId,
-                   uint32_t imageUsageCount, const CpuImageResourceUsage* imageUsages);
+                   drv::ResourceLocker::Lock&& lock);
         FrameGraph* frameGraph;
         FrameGraph::NodeId node;
         Stage stage;
         FrameId frameId;
-#if ENABLE_NODE_RESOURCE_VALIDATION
-        FixedArray<CpuImageResourceUsage, 4> imageUsages;
-#endif
+        drv::ResourceLocker::Lock lock;
 
         struct NodeExecutionData
         {
@@ -220,23 +208,26 @@ class FrameGraph
     // no blocking, returns a handle if currently available
     bool tryWaitForNode(NodeId node, Stage stage, FrameId frame);
 
-    NodeHandle acquireNode(NodeId node, Stage stage, FrameId frame, uint32_t imageUsageCount = 0,
-                           const CpuImageResourceUsage* imageUsages = nullptr);
-    NodeHandle tryAcquireNode(NodeId node, Stage stage, FrameId frame, uint64_t timeoutNsec,
-                              uint32_t imageUsageCount = 0,
-                              const CpuImageResourceUsage* imageUsages = nullptr);
+    NodeHandle acquireNode(
+      NodeId node, Stage stage, FrameId frame,
+      const drv::ResourceLockerDescriptor& resources = drv::ResourceLockerDescriptor());
+    NodeHandle tryAcquireNode(
+      NodeId node, Stage stage, FrameId frame, uint64_t timeoutNsec,
+      const drv::ResourceLockerDescriptor& resources = drv::ResourceLockerDescriptor());
     // no blocking, returns a handle if currently available
-    NodeHandle tryAcquireNode(NodeId node, Stage stage, FrameId frame, uint32_t imageUsageCount = 0,
-                              const CpuImageResourceUsage* imageUsages = nullptr);
+    NodeHandle tryAcquireNode(
+      NodeId node, Stage stage, FrameId frame,
+      const drv::ResourceLockerDescriptor& resources = drv::ResourceLockerDescriptor());
 
-    bool applyTag(TagNodeId node, Stage stage, FrameId frame, uint32_t imageUsageCount = 0,
-                  const CpuImageResourceUsage* imageUsages = nullptr);
-    bool tryApplyTag(TagNodeId node, Stage stage, FrameId frame, uint64_t timeoutNsec,
-                     uint32_t imageUsageCount = 0,
-                     const CpuImageResourceUsage* imageUsages = nullptr);
+    bool applyTag(TagNodeId node, Stage stage, FrameId frame,
+                  const drv::ResourceLockerDescriptor& resources = drv::ResourceLockerDescriptor());
+    bool tryApplyTag(
+      TagNodeId node, Stage stage, FrameId frame, uint64_t timeoutNsec,
+      const drv::ResourceLockerDescriptor& resources = drv::ResourceLockerDescriptor());
     // no blocking, returns a handle if currently available
-    bool tryApplyTag(TagNodeId node, Stage stage, FrameId frame, uint32_t imageUsageCount = 0,
-                     const CpuImageResourceUsage* imageUsages = nullptr);
+    bool tryApplyTag(
+      TagNodeId node, Stage stage, FrameId frame,
+      const drv::ResourceLockerDescriptor& resources = drv::ResourceLockerDescriptor());
 
     void executionFinished(NodeId node, FrameId frame);
     void submitSignalFrameEnd(FrameId frame);
@@ -258,7 +249,8 @@ class FrameGraph
     drv::QueuePtr getQueue(QueueId queueId) const;
 
     FrameGraph(drv::PhysicalDevice physicalDevice, drv::LogicalDevicePtr device,
-               GarbageSystem* garbageSystem, EventPool* eventPool, drv::TimelineSemaphorePool* semaphorePool,
+               GarbageSystem* garbageSystem, drv::ResourceLocker* resourceLocker,
+               EventPool* eventPool, drv::TimelineSemaphorePool* semaphorePool,
                drv::StateTrackingConfig trackerConfig, uint32_t maxFramesInExecution,
                uint32_t maxFramesInFlight);
 
@@ -290,6 +282,7 @@ class FrameGraph
     drv::PhysicalDevice physicalDevice;
     drv::LogicalDevicePtr device;
     GarbageSystem* garbageSystem;
+    drv::ResourceLocker* resourceLocker;
     EventPool* eventPool;
     drv::TimelineSemaphorePool* semaphorePool;
     drv::StateTrackingConfig trackerConfig;
@@ -341,7 +334,7 @@ class FrameGraph
     bool tryDoFrame(FrameId frameId);
     uint32_t getEnqueueDependencyOffsetIndex(NodeId srcNode, NodeId dstNode) const;
     void checkResources(NodeId dstNode, Stage dstStage, FrameId frameId,
-                            uint32_t imageUsageCount, const CpuImageResourceUsage* imageUsages,
-                            GarbageVector<drv::TimelineSemaphorePtr>& semaphores,
-                            GarbageVector<uint64_t>& waitValues) const;
+                        const drv::ResourceLockerDescriptor& resources,
+                        GarbageVector<drv::TimelineSemaphorePtr>& semaphores,
+                        GarbageVector<uint64_t>& waitValues) const;
 };

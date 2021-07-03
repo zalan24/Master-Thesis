@@ -28,6 +28,19 @@ DrvCmdBufferRecorder::~DrvCmdBufferRecorder() {
                 imageStates->pop_back();
             }
         }
+        if (resourceUsage != nullptr) {
+            resourceUsage->clear();
+            for (uint32_t i = 0; i < imageStates->size(); ++i) {
+                (*imageStates)[i].second.cmdState.usageMask.traverse(
+                  [&, this](uint32_t layer, uint32_t mip, drv::AspectFlagBits aspect) {
+                      bool written =
+                        (*imageStates)[i].second.cmdState.usage.get(layer, mip, aspect).written;
+                      resourceUsage->addImage((*imageStates)[i].first, layer, mip, aspect,
+                                              written ? ResourceLockerDescriptor::READ_WRITE
+                                                      : ResourceLockerDescriptor::READ);
+                  });
+            }
+        }
         reset_ptr(cmdBufferPtr);
         queueFamilyLock = {};
     }

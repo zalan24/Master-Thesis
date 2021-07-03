@@ -172,8 +172,8 @@ Engine::Engine(int argc, char* argv[], const EngineConfig& cfg,
     syncBlock(device, safe_cast<uint32_t>(config.maxFramesInFlight)),  // TODO why just 2?
     garbageSystem(safe_cast<size_t>(config.frameMemorySizeKb) << 10),
     // maxFramesInFlight + 1 for readback stage
-    frameGraph(physicalDevice, device, &garbageSystem, &eventPool, &semaphorePool, trackingConfig,
-               config.maxFramesInExecutionQueue, config.maxFramesInFlight + 1),
+    frameGraph(physicalDevice, device, &garbageSystem, &resourceLocker, &eventPool, &semaphorePool,
+               trackingConfig, config.maxFramesInExecutionQueue, config.maxFramesInFlight + 1),
     runtimeStats(!launchArgs.clearRuntimeStats, launchArgs.runtimeStatsPersistanceBin,
                  launchArgs.runtimeStatsGameExportsBin, launchArgs.runtimeStatsCacheBin) {
     json configJson = ISerializable::serialize(config);
@@ -667,6 +667,20 @@ bool Engine::execute(ExecutionPackage&& package) {
           static_cast<unsigned int>(cmdBuffer.waitSemaphores.size());
         executionInfo.waitSemaphores = waitSemaphores;
         executionInfo.waitStages = waitSemaphoresStages;
+        drv::ResourceLocker::Lock resourceLock = {};
+        if (!cmdBuffer.cmdBufferData.resourceUsages.empty()) {
+            auto lock = resourceLocker.tryLock(cmdBuffer.cmdBufferData.resourceUsages);
+            if (lock.get() == drv::ResourceLocker::TryLockResult::SUCCESS)
+                resourceLock = std::move(lock).getLock();
+            else {
+#ifdef DEBUG
+                LOG_F(WARNING, "Execution queue waits on CPU resource usage: %s",
+                      cmdBuffer.cmdBufferData.getName());
+#endif
+                resourceLock =
+                  resourceLocker.lock(cmdBuffer.cmdBufferData.resourceUsages).getLock();
+            }
+        }
         {
             drv::StateCorrectionData correctionData;
             if (!drv::validate_and_apply_state_transitions(

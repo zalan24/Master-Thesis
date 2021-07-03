@@ -12,6 +12,7 @@
 #include <runtimestats.h>
 
 #include "drvbarrier.h"
+#include "drvresourcelocker.h"
 
 namespace drv
 {
@@ -93,7 +94,6 @@ class DrvCmdBufferRecorder
         RecordImageInfo() : used(false), initMask(0) {}
     };
 
-    // TODO apply user stages to this
     using ImageStates =
       FlexibleArray<std::pair<drv::ImagePtr, ImageTrackInfo>, NUM_CACHED_IMAGE_STATES>;
     using ImageRecordStates =
@@ -162,6 +162,10 @@ class DrvCmdBufferRecorder
         semaphorePool = _semaphorePool;
     }
 
+    void setResourceDescriptor(ResourceLockerDescriptor* _resourceUsage) {
+        resourceUsage = _resourceUsage;
+    }
+
     void addRenderPassStat(drv::RenderPassStats&& stat);
 
     void setRenderPassPostStats(drv::RenderPassPostStats&& stat);
@@ -193,6 +197,7 @@ class DrvCmdBufferRecorder
     TimelineSemaphorePool* semaphorePool;
     CommandBufferPtr cmdBufferPtr;
     ImageStates* imageStates;
+    ResourceLockerDescriptor* resourceUsage;
     ImageRecordStates imageRecordStates;
     RenderPassPostStats currentRenderPassPostStats;
     FlexibleArray<drv::RenderPassStats, 1>* renderPassStats = nullptr;
@@ -212,6 +217,7 @@ struct CommandBufferInfo
 {
     CommandBufferPtr cmdBufferPtr;
     StateTransition stateTransitions;
+    const ResourceLockerDescriptor* resourceUsage;
     uint64_t numUsages;
     const char* name;
     CmdBufferId cmdBufferId;
@@ -274,6 +280,7 @@ class DrvCmdBuffer
             recorder->setRenderPassPostStats(&renderPassPostStats);
             recorder->setSemaphore(&semaphore);
             recorder->setSemaphorePool(semaphorePool);
+            recorder->setResourceDescriptor(&resourceUsage);
             recorder->init(firstSignalValue);
             recordCallback(currentData, recorder);
             numSubmissions = 0;
@@ -294,7 +301,7 @@ class DrvCmdBuffer
             StatsCacheWriter writer(statsCacheHandle);
             writer->semaphore.append(0);
         }
-        return {cmdBufferPtr, {&imageStates},   ++numSubmissions, name.c_str(),
+        return {cmdBufferPtr, {&imageStates},   &resourceUsage, ++numSubmissions, name.c_str(),
                 id,           statsCacheHandle, semaphore};
     }
 
@@ -322,6 +329,7 @@ class DrvCmdBuffer
     DrvRecordCallback recordCallback;
     CommandBufferPtr cmdBufferPtr = get_null_ptr<CommandBufferPtr>();
     DrvCmdBufferRecorder::ImageStates imageStates;
+    ResourceLockerDescriptor resourceUsage;
     StatsCache* statsCacheHandle = nullptr;
     FlexibleArray<drv::RenderPassStats, 1> renderPassStats;
     FlexibleArray<drv::RenderPassPostStats, 1> renderPassPostStats;

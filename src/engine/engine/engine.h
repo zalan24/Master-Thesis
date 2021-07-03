@@ -18,6 +18,7 @@
 #include <drvbarrier.h>
 #include <drvcmdbufferbank.h>
 #include <drvlane.h>
+#include <drvresourcelocker.h>
 #include <drvsemaphorepool.h>
 
 #include <eventpool.h>
@@ -200,6 +201,7 @@ class Engine
     // ResourceManager resourceMgr;
     // EntityManager entityManager;
     GarbageSystem garbageSystem;
+    drv::ResourceLocker resourceLocker;
     FrameGraph frameGraph;
     RuntimeStats runtimeStats;
 

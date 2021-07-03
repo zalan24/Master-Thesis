@@ -9,12 +9,14 @@
 #include <drverror.h>
 
 FrameGraph::FrameGraph(drv::PhysicalDevice _physicalDevice, drv::LogicalDevicePtr _device,
-                       GarbageSystem* _garbageSystem, EventPool* _eventPool, drv::TimelineSemaphorePool* _semaphorePool,
+                       GarbageSystem* _garbageSystem, drv::ResourceLocker* _resourceLocker,
+                       EventPool* _eventPool, drv::TimelineSemaphorePool* _semaphorePool,
                        drv::StateTrackingConfig _trackerConfig, uint32_t maxFramesInExecution,
                        uint32_t _maxFramesInFlight)
   : physicalDevice(_physicalDevice),
     device(_device),
     garbageSystem(_garbageSystem),
+    resourceLocker(_resourceLocker),
     eventPool(_eventPool),
     semaphorePool(_semaphorePool),
     trackerConfig(_trackerConfig),
@@ -563,25 +565,12 @@ void FrameGraph::build() {
     }
 }
 
-FrameGraph::NodeHandle::NodeHandle() : frameGraph(nullptr), imageUsages(0) {
+FrameGraph::NodeHandle::NodeHandle() : frameGraph(nullptr) {
 }
 
 FrameGraph::NodeHandle::NodeHandle(FrameGraph* _frameGraph, FrameGraph::NodeId _node, Stage _stage,
-                                   FrameId _frameId, uint32_t imageUsageCount,
-                                   const CpuImageResourceUsage* _imageUsages)
-  : frameGraph(_frameGraph),
-    node(_node),
-    stage(_stage),
-    frameId(_frameId)
-#if ENABLE_NODE_RESOURCE_VALIDATION
-    ,
-    imageUsages(imageUsageCount)
-#endif
-{
-#if ENABLE_NODE_RESOURCE_VALIDATION
-    for (uint32_t i = 0; i < imageUsageCount; ++i)
-        imageUsages[i] = _imageUsages[i];
-#endif
+                                   FrameId _frameId, drv::ResourceLocker::Lock&& _lock)
+  : frameGraph(_frameGraph), node(_node), stage(_stage), frameId(_frameId), lock(std::move(_lock)) {
 }
 
 FrameGraph::Node& FrameGraph::NodeHandle::getNode() const {
@@ -592,9 +581,7 @@ FrameGraph::NodeHandle::NodeHandle(NodeHandle&& other)
   : frameGraph(other.frameGraph),
     node(other.node),
     frameId(other.frameId),
-#if ENABLE_NODE_RESOURCE_VALIDATION
-    imageUsages(std::move(other.imageUsages)),
-#endif
+    lock(std::move(other.lock)),
     nodeExecutionData(std::move(other.nodeExecutionData)) {
     other.frameGraph = nullptr;
 }
@@ -606,9 +593,7 @@ FrameGraph::NodeHandle& FrameGraph::NodeHandle::operator=(NodeHandle&& other) {
     frameGraph = other.frameGraph;
     node = other.node;
     frameId = other.frameId;
-#if ENABLE_NODE_RESOURCE_VALIDATION
-    imageUsages = std::move(other.imageUsages);
-#endif
+    lock = std::move(other.lock);
     nodeExecutionData = other.nodeExecutionData;
     other.frameGraph = nullptr;
     return *this;
@@ -674,85 +659,96 @@ bool FrameGraph::tryWaitForNode(NodeId node, Stage stage, FrameId frame) {
 }
 
 void FrameGraph::checkResources(NodeId dstNode, Stage dstStage, FrameId frameId,
-                                    uint32_t imageUsageCount,
-                                    const CpuImageResourceUsage* imageUsages,
-                                    GarbageVector<drv::TimelineSemaphorePtr>& semaphores,
-                                    GarbageVector<uint64_t>& waitValues) const {
+                                const drv::ResourceLockerDescriptor& resources,
+                                GarbageVector<drv::TimelineSemaphorePtr>& semaphores,
+                                GarbageVector<uint64_t>& waitValues) const {
     drv::drv_assert(dstStage == READBACK_STAGE, "Add dst stage param to gpuCpuDeps");
     StackMemory::MemoryHandle<drv::QueuePtr> syncedQueues(queues.size(), TEMPMEM);
     uint32_t numSyncedQueues = 0;
     const Node* node = getNode(dstNode);
-    for (uint32_t i = 0; i < imageUsageCount; ++i) {
-        imageUsages[i].subresources.traverse([&](uint32_t layer, uint32_t mip,
-                                                 drv::AspectFlagBits aspect) {
-            uint32_t usageCount =
-              drv::get_num_pending_usages(imageUsages[i].image, layer, mip, aspect);
-            for (uint32_t j = 0; j < usageCount; ++j) {
-                drv::PendingResourceUsage usage =
-                  drv::get_pending_usage(imageUsages[i].image, layer, mip, aspect, j);
-                NodeId srcNode = getNodeFromCmdBuffer(usage.cmdBufferId);
-                FrameId srcFrame = usage.frameId;
+
+    auto accessImage = [&, this](drv::ImagePtr image, uint32_t layer, uint32_t mip,
+                                 drv::AspectFlagBits aspect, bool write) {
+        uint32_t usageCount = drv::get_num_pending_usages(image, layer, mip, aspect);
+        for (uint32_t j = 0; j < usageCount; ++j) {
+            drv::PendingResourceUsage usage = drv::get_pending_usage(image, layer, mip, aspect, j);
+            NodeId srcNode = getNodeFromCmdBuffer(usage.cmdBufferId);
+            FrameId srcFrame = usage.frameId;
+            if (!usage.isWrite && !write)
+                continue;
 #if ENABLE_NODE_RESOURCE_VALIDATION
-                bool ok = false;
-                for (uint32_t k = 0; k < node->gpuCpuDeps.size() && !ok; ++k) {
-                    if (node->gpuCpuDeps[k].offset > frameId)
-                        continue;
-                    FrameId depFrame = frameId - node->gpuCpuDeps[k].offset;
-                    if (srcFrame <= depFrame)
-                        ok = hasEnqueueDependency(srcNode, node->gpuCpuDeps[k].srcNode,
-                                                  static_cast<uint32_t>(depFrame - srcFrame));
-                }
-                drv::drv_assert(ok, ("Node (" + node->getName() + ") tries to wait on a resource ("
-                                     + drv::get_texture_info(imageUsages[i].image).imageId->name
-                                     + ") has been written by an unsynced submission")
-                                      .c_str());
+            bool ok = false;
+            for (uint32_t k = 0; k < node->gpuCpuDeps.size() && !ok; ++k) {
+                if (node->gpuCpuDeps[k].offset > frameId)
+                    continue;
+                FrameId depFrame = frameId - node->gpuCpuDeps[k].offset;
+                if (srcFrame <= depFrame)
+                    ok = hasEnqueueDependency(srcNode, node->gpuCpuDeps[k].srcNode,
+                                              static_cast<uint32_t>(depFrame - srcFrame));
+            }
+            drv::drv_assert(ok, ("Node (" + node->getName() + ") tries to wait on a resource ("
+                                 + drv::get_texture_info(image).imageId->name
+                                 + ") has been written by an unsynced submission")
+                                  .c_str());
 #endif
-                const drv::PipelineStages::FlagType waitStages =
-                  usage.ongoingReads | usage.ongoingWrites;
-                {
-                    StatsCacheWriter writer(getStatsCacheHandle(usage.cmdBufferId));
-                    writer->semaphore.append(waitStages);
+            const drv::PipelineStages::FlagType waitStages =
+              write ? (usage.ongoingReads | usage.ongoingWrites) : usage.ongoingWrites;
+            {
+                StatsCacheWriter writer(getStatsCacheHandle(usage.cmdBufferId));
+                writer->semaphore.append(waitStages);
+            }
+            uint64_t waitValue = usage.signalledValue;
+            drv::TimelineSemaphorePtr semaphore;
+            if ((usage.syncedStages & waitStages) != waitStages)
+                semaphore = usage.signalledSemaphore;
+            if (!usage.signalledSemaphore) {
+                if (RuntimeStats::getSingleton()) {
+                    if (usage.signalledSemaphore)
+                        RuntimeStats::getSingleton()
+                          ->incrementNumCpuAutoSyncInsufficientSemaphore();
+                    else
+                        RuntimeStats::getSingleton()->incrementNumCpuAutoSyncNoSemaphore();
                 }
-                uint64_t waitValue = usage.signalledValue;
-                drv::TimelineSemaphorePtr semaphore;
-                if ((usage.syncedStages & waitStages) != waitStages)
-                    semaphore = usage.signalledSemaphore;
-                if (!usage.signalledSemaphore) {
-                    if (RuntimeStats::getSingleton()) {
-                        if (usage.signalledSemaphore)
-                            RuntimeStats::getSingleton()
-                              ->incrementNumCpuAutoSyncInsufficientSemaphore();
-                        else
-                            RuntimeStats::getSingleton()->incrementNumCpuAutoSyncNoSemaphore();
-                    }
-                    bool found = false;
-                    for (uint32_t k = 0; k < numSyncedQueues && !found; ++k)
-                        found = syncedQueues[k] == usage.queue;
-                    if (!found) { // queue not waited yet
-                        QueueSyncData data = sync_queue(usage.queue, frameId);
-                        semaphore = data.semaphore.ptr;
-                        waitValue = data.waitValue;
-                        syncedQueues[numSyncedQueues++] = usage.queue;
-                    }
-                }
-                uint32_t ind = 0;
-                while (ind < semaphores.size()
-                        && semaphores[ind] != semaphore)
-                    ++ind;
-                if (ind < semaphores.size())
-                    waitValues[ind] = std::max(waitValues[ind], waitValue);
-                else {
-                    semaphores.push_back(semaphore);
-                    waitValues.push_back(waitValue);
+                bool found = false;
+                for (uint32_t k = 0; k < numSyncedQueues && !found; ++k)
+                    found = syncedQueues[k] == usage.queue;
+                if (!found) {  // queue not waited yet
+                    QueueSyncData data = sync_queue(usage.queue, frameId);
+                    semaphore = data.semaphore.ptr;
+                    waitValue = data.waitValue;
+                    syncedQueues[numSyncedQueues++] = usage.queue;
                 }
             }
-        });
+            uint32_t ind = 0;
+            while (ind < semaphores.size() && semaphores[ind] != semaphore)
+                ++ind;
+            if (ind < semaphores.size())
+                waitValues[ind] = std::max(waitValues[ind], waitValue);
+            else {
+                semaphores.push_back(semaphore);
+                waitValues.push_back(waitValue);
+            }
+        }
+    };
+
+    for (uint32_t i = 0; i < resources.getImageCount(); ++i) {
+        resources.getReadSubresources(i).traverse(
+          [&](uint32_t layer, uint32_t mip, drv::AspectFlagBits aspect) {
+              // only consider read only subresources
+              if (resources.getImageUsage(resources.getImage(i), layer, mip, aspect)
+                  != drv::ResourceLockerDescriptor::UsageMode::READ)
+                  return;
+              accessImage(resources.getImage(i), layer, mip, aspect, false);
+          });
+        resources.getWriteSubresources(i).traverse(
+          [&](uint32_t layer, uint32_t mip, drv::AspectFlagBits aspect) {
+              accessImage(resources.getImage(i), layer, mip, aspect, true);
+          });
     }
 }
 
 FrameGraph::NodeHandle FrameGraph::acquireNode(NodeId nodeId, Stage stage, FrameId frame,
-                                               uint32_t imageUsageCount,
-                                               const CpuImageResourceUsage* imageUsages) {
+                                               const drv::ResourceLockerDescriptor& resources) {
     if (isStopped() || !tryDoFrame(frame))
         return NodeHandle();
     Node* node = getNode(nodeId);
@@ -787,21 +783,25 @@ FrameGraph::NodeHandle FrameGraph::acquireNode(NodeId nodeId, Stage stage, Frame
             }
         }
     }
-    if (imageUsageCount > 0) {
-        GarbageVector<drv::TimelineSemaphorePtr> semaphores = make_vector<drv::TimelineSemaphorePtr>(garbageSystem);
+    drv::ResourceLocker::Lock resourceLock = {};
+    if (!resources.empty()) {
+        auto lock = resourceLocker->lock(resources);
+        resourceLock = std::move(lock).getLock();
+        GarbageVector<drv::TimelineSemaphorePtr> semaphores =
+          make_vector<drv::TimelineSemaphorePtr>(garbageSystem);
         GarbageVector<uint64_t> waitValues = make_vector<uint64_t>(garbageSystem);
-        checkResources(nodeId, stage, frame, imageUsageCount, imageUsages,
-                                        semaphores, waitValues);
-        drv::wait_on_timeline_semaphores(device, uint32_t(semaphores.size()), semaphores.data(), waitValues.data(), true);
+        checkResources(nodeId, stage, frame, resources, semaphores, waitValues);
+        drv::wait_on_timeline_semaphores(device, uint32_t(semaphores.size()), semaphores.data(),
+                                         waitValues.data(), true);
     }
     if (isStopped())
         return NodeHandle();
-    return NodeHandle(this, nodeId, stage, frame, imageUsageCount, imageUsages);
+    return NodeHandle(this, nodeId, stage, frame, std::move(resourceLock));
 }
 
 FrameGraph::NodeHandle FrameGraph::tryAcquireNode(NodeId nodeId, Stage stage, FrameId frame,
-                                                  uint64_t timeoutNsec, uint32_t imageUsageCount,
-                                                  const CpuImageResourceUsage* imageUsages) {
+                                                  uint64_t timeoutNsec,
+                                                  const drv::ResourceLockerDescriptor& resources) {
     const std::chrono::high_resolution_clock::time_point start =
       std::chrono::high_resolution_clock::now();
     std::chrono::nanoseconds maxDuration(timeoutNsec);
@@ -848,25 +848,36 @@ FrameGraph::NodeHandle FrameGraph::tryAcquireNode(NodeId nodeId, Stage stage, Fr
             }
         }
     }
-    if (imageUsageCount > 0) {
-        const std::chrono::nanoseconds duration = std::chrono::high_resolution_clock::now() - start;
+    drv::ResourceLocker::Lock resourceLock = {};
+    if (!resources.empty()) {
+        std::chrono::nanoseconds duration = std::chrono::high_resolution_clock::now() - start;
         if (duration >= maxDuration)
             return NodeHandle();
-        GarbageVector<drv::TimelineSemaphorePtr> semaphores = make_vector<drv::TimelineSemaphorePtr>(garbageSystem);
+        auto lock = resourceLocker->lockTimeout(
+          resources, static_cast<uint64_t>((maxDuration - duration).count()));
+        if (lock.get() == drv::ResourceLocker::LockTimeResult::TIMEOUT)
+            return NodeHandle();
+        resourceLock = std::move(lock).getLock();
+        GarbageVector<drv::TimelineSemaphorePtr> semaphores =
+          make_vector<drv::TimelineSemaphorePtr>(garbageSystem);
         GarbageVector<uint64_t> waitValues = make_vector<uint64_t>(garbageSystem);
-        checkResources(nodeId, stage, frame, imageUsageCount, imageUsages,
-                                        semaphores, waitValues);
-        drv::wait_on_timeline_semaphores(device, uint32_t(semaphores.size()), semaphores.data(), waitValues.data(), true,
+        checkResources(nodeId, stage, frame, resources, semaphores, waitValues);
+
+        duration = std::chrono::high_resolution_clock::now() - start;
+        if (duration >= maxDuration)
+            return NodeHandle();
+
+        drv::wait_on_timeline_semaphores(device, uint32_t(semaphores.size()), semaphores.data(),
+                                         waitValues.data(), true,
                                          static_cast<uint64_t>((maxDuration - duration).count()));
     }
     if (isStopped())
         return NodeHandle();
-    return NodeHandle(this, nodeId, stage, frame, imageUsageCount, imageUsages);
+    return NodeHandle(this, nodeId, stage, frame, std::move(resourceLock));
 }
 
 FrameGraph::NodeHandle FrameGraph::tryAcquireNode(NodeId nodeId, Stage stage, FrameId frame,
-                                                  uint32_t imageUsageCount,
-                                                  const CpuImageResourceUsage* imageUsages) {
+                                                  const drv::ResourceLockerDescriptor& resources) {
     if (isStopped() || !tryDoFrame(frame))
         return NodeHandle();
     Node* node = getNode(nodeId);
@@ -900,33 +911,38 @@ FrameGraph::NodeHandle FrameGraph::tryAcquireNode(NodeId nodeId, Stage stage, Fr
             }
         }
     }
-    if (imageUsageCount > 0) {
-        GarbageVector<drv::TimelineSemaphorePtr> semaphores = make_vector<drv::TimelineSemaphorePtr>(garbageSystem);
+    drv::ResourceLocker::Lock resourceLock = {};
+    if (!resources.empty()) {
+        auto lock = resourceLocker->tryLock(resources);
+        if (lock.get() == drv::ResourceLocker::TryLockResult::FAILURE)
+            return NodeHandle();
+        resourceLock = std::move(lock).getLock();
+        GarbageVector<drv::TimelineSemaphorePtr> semaphores =
+          make_vector<drv::TimelineSemaphorePtr>(garbageSystem);
         GarbageVector<uint64_t> waitValues = make_vector<uint64_t>(garbageSystem);
-        checkResources(nodeId, stage, frame, imageUsageCount, imageUsages,
-                                        semaphores, waitValues);
+        checkResources(nodeId, stage, frame, resources, semaphores, waitValues);
         for (uint32_t i = 0; i < semaphores.size(); ++i)
             if (drv::get_timeline_semaphore_value(device, semaphores[i]) < waitValues[i])
                 return NodeHandle();
     }
     if (isStopped())
         return NodeHandle();
-    return NodeHandle(this, nodeId, stage, frame, imageUsageCount, imageUsages);
+    return NodeHandle(this, nodeId, stage, frame, std::move(resourceLock));
 }
 
-bool FrameGraph::applyTag(TagNodeId node, Stage stage, FrameId frame, uint32_t imageUsageCount,
-                          const CpuImageResourceUsage* imageUsages) {
-    return acquireNode(node, stage, frame, imageUsageCount, imageUsages);
+bool FrameGraph::applyTag(TagNodeId node, Stage stage, FrameId frame,
+                          const drv::ResourceLockerDescriptor& resources) {
+    return acquireNode(node, stage, frame, resources);
 }
 
 bool FrameGraph::tryApplyTag(TagNodeId node, Stage stage, FrameId frame, uint64_t timeoutNsec,
-                             uint32_t imageUsageCount, const CpuImageResourceUsage* imageUsages) {
-    return tryAcquireNode(node, stage, frame, timeoutNsec, imageUsageCount, imageUsages);
+                             const drv::ResourceLockerDescriptor& resources) {
+    return tryAcquireNode(node, stage, frame, timeoutNsec, resources);
 }
 
-bool FrameGraph::tryApplyTag(TagNodeId node, Stage stage, FrameId frame, uint32_t imageUsageCount,
-                             const CpuImageResourceUsage* imageUsages) {
-    return tryAcquireNode(node, stage, frame, imageUsageCount, imageUsages);
+bool FrameGraph::tryApplyTag(TagNodeId node, Stage stage, FrameId frame,
+                             const drv::ResourceLockerDescriptor& resources) {
+    return tryAcquireNode(node, stage, frame, resources);
 }
 
 void FrameGraph::executionFinished(NodeId nodeId, FrameId frame) {
@@ -1116,8 +1132,7 @@ void FrameGraph::submitSignalFrameEnd(FrameId frame) {
     }
 }
 
-FrameGraph::QueueSyncData FrameGraph::sync_queue(drv::QueuePtr queue, FrameId frame) const
-{
+FrameGraph::QueueSyncData FrameGraph::sync_queue(drv::QueuePtr queue, FrameId frame) const {
     FrameGraph::QueueSyncData ret;
     ret.waitValue = get_semaphore_value(frame);
     ret.semaphore = semaphorePool->acquire(ret.waitValue);
@@ -1126,8 +1141,7 @@ FrameGraph::QueueSyncData FrameGraph::sync_queue(drv::QueuePtr queue, FrameId fr
     auto itr = allWaitsCmdBuffers.find(family);
     drv::drv_assert(itr != allWaitsCmdBuffers.end());
     drv::CommandBufferPtr cmdBuffer = itr->second.buffer;
-    drv::TimelineSemaphorePtr signalSemaphore =
-        frameEndSemaphores.find(queue)->second;
+    drv::TimelineSemaphorePtr signalSemaphore = frameEndSemaphores.find(queue)->second;
     uint64_t signalValue = ret.waitValue;
     drv::ExecutionInfo executionInfo;
     executionInfo.numCommandBuffers = 1;
