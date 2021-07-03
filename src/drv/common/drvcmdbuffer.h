@@ -88,14 +88,12 @@ class DrvCmdBufferRecorder
     {
         bool used = false;
         ImageSubresourceSet initMask;
-        // everything before the first barrier + last stage of the first barrier
-        // it can be used as wait stage for semaphores
-        ImagePerSubresourceData<drv::PipelineStages::FlagType, 16> userStages;
         RecordImageInfo(bool _used, ImageSubresourceSet _initMask)
           : used(_used), initMask(std::move(_initMask)) {}
         RecordImageInfo() : used(false), initMask(0) {}
     };
 
+    // TODO apply user stages to this
     using ImageStates =
       FlexibleArray<std::pair<drv::ImagePtr, ImageTrackInfo>, NUM_CACHED_IMAGE_STATES>;
     using ImageRecordStates =
@@ -173,7 +171,8 @@ class DrvCmdBufferRecorder
  protected:
     ImageTrackInfo& getImageState(drv::ImagePtr image, uint32_t ranges,
                                   const drv::ImageSubresourceRange* subresourceRanges,
-                                  drv::ImageLayout preferrefLayout);
+                                  drv::ImageLayout preferrefLayout,
+                                  const drv::PipelineStages& stages);
 
     void useResource(drv::ImagePtr image, uint32_t layer, uint32_t mip, drv::AspectFlagBits aspect,
                      drv::ImageResourceUsageFlag usages);

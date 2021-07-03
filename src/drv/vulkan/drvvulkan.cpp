@@ -662,6 +662,8 @@ bool DrvVulkan::validate_and_apply_state_transitions(
                                                               drv::AspectFlagBits aspect) {
             const auto& requirement = transitions[i].second.guarantee.get(layer, mip, aspect);
             const auto& usage = transitions[i].second.cmdState.usage.get(layer, mip, aspect);
+            const auto& usedStages =
+              transitions[i].second.cmdState.userStages.get(layer, mip, aspect);
 
             uint32_t numPendingUsages =
               get_num_pending_usages(transitions[i].first, layer, mip, aspect);
@@ -692,16 +694,17 @@ bool DrvVulkan::validate_and_apply_state_transitions(
                             cb->registerSemaphore(pendingUsage.queue, pendingUsage.cmdBufferId,
                                                   pendingUsage.signalledSemaphore,
                                                   pendingUsage.frameId, pendingUsage.signalledValue,
-                                                  waitMask, conflictMode);
+                                                  usedStages, waitMask, conflictMode);
                         else
                             cb->requireAutoSync(
-                              pendingUsage.queue, pendingUsage.cmdBufferId, pendingUsage.frameId, waitMask, conflictMode,
+                              pendingUsage.queue, pendingUsage.cmdBufferId, pendingUsage.frameId,
+                              usedStages, waitMask, conflictMode,
                               drv::ResourceStateTransitionCallback::INSUFFICIENT_SEMAPHORE);
                     }
                     else
                         cb->requireAutoSync(pendingUsage.queue, pendingUsage.cmdBufferId,
-                                            pendingUsage.frameId,
-                                            waitMask, conflictMode,
+                                            pendingUsage.frameId, usedStages, waitMask,
+                                            conflictMode,
                                             drv::ResourceStateTransitionCallback::NO_SEMAPHORE);
                 }
                 //   }

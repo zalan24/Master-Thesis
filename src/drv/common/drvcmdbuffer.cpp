@@ -105,7 +105,7 @@ void DrvCmdBufferRecorder::autoRegisterImage(ImagePtr image, uint32_t layer, uin
 
 ImageTrackInfo& DrvCmdBufferRecorder::getImageState(
   drv::ImagePtr image, uint32_t ranges, const drv::ImageSubresourceRange* subresourceRanges,
-  drv::ImageLayout preferrefLayout) {
+  drv::ImageLayout preferrefLayout, const drv::PipelineStages& stages) {
     TextureInfo texInfo = driver->get_texture_info(image);
     bool found = false;
     for (uint32_t i = 0; i < imageRecordStates.size() && !found; ++i) {
@@ -119,6 +119,10 @@ ImageTrackInfo& DrvCmdBufferRecorder::getImageState(
                           return;
                       if (!imageRecordStates[i].second.initMask.has(layer, mip, aspect))
                           autoRegisterImage(image, layer, mip, aspect, preferrefLayout);
+                      drv::drv_assert((*imageStates)[i].first == image,
+                                      "Image state and record state use different indices");
+                      (*imageStates)[i].second.cmdState.addStage(layer, mip, aspect,
+                                                                 stages.stageFlags);
                   });
             found = true;
         }

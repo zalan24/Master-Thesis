@@ -201,12 +201,19 @@ struct CmdImageTrackingState
 {
     ImageUsageData usage;
     ImageTrackingState state;
+    ImagePerSubresourceData<drv::PipelineStages::FlagType, 16> userStages;  // including barriers
     ImageSubresourceSet usageMask;
     explicit CmdImageTrackingState(uint32_t layerCount, uint32_t mipCount,
                                    drv::ImageAspectBitType aspects)
       : usage(layerCount, mipCount, aspects),
         state(layerCount, mipCount, aspects),
+        userStages(layerCount, mipCount, aspects),
         usageMask(layerCount) {}
+
+    void addStage(uint32_t layer, uint32_t mip, drv::AspectFlagBits aspect,
+                  drv::PipelineStages::FlagType stages) {
+        userStages.get(layer, mip, aspect) |= stages;
+    }
 };
 
 struct ImageStateCorrection

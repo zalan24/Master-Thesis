@@ -13,7 +13,7 @@
 
 void VulkanCmdBufferRecorder::cmdImageBarrier(const drv::ImageMemoryBarrier& barrier) {
     cmd_image_barrier(getImageState(barrier.image, barrier.numSubresourceRanges,
-                                    barrier.getRanges(), barrier.resultLayout)
+                                    barrier.getRanges(), barrier.resultLayout, barrier.stages)
                         .cmdState,
                       barrier);
 }
@@ -76,18 +76,18 @@ void VulkanCmdBufferRecorder::cmdBlitImage(drv::ImagePtr srcImage, drv::ImagePtr
     drv::PipelineStages stages(drv::PipelineStages::TRANSFER_BIT);
     drv::ImageLayout srcCurrentLayout = drv::ImageLayout::UNDEFINED;
     drv::ImageLayout dstCurrentLayout = drv::ImageLayout::UNDEFINED;
-    add_memory_access(
-      getImageState(srcImage, regionCount, srcRanges, drv::ImageLayout::TRANSFER_SRC_OPTIMAL)
-        .cmdState,
-      srcImage, regionCount, srcRanges, true, false, stages,
-      drv::MemoryBarrier::AccessFlagBits::TRANSFER_READ_BIT, srcRequiredLayoutMask, true,
-      &srcCurrentLayout, false, drv::ImageLayout::UNDEFINED);
-    add_memory_access(
-      getImageState(dstImage, regionCount, dstRanges, drv::ImageLayout::TRANSFER_DST_OPTIMAL)
-        .cmdState,
-      dstImage, regionCount, dstRanges, false, true, stages,
-      drv::MemoryBarrier::AccessFlagBits::TRANSFER_WRITE_BIT, dstRequiredLayoutMask, true,
-      &dstCurrentLayout, false, drv::ImageLayout::UNDEFINED);
+    add_memory_access(getImageState(srcImage, regionCount, srcRanges,
+                                    drv::ImageLayout::TRANSFER_SRC_OPTIMAL, stages)
+                        .cmdState,
+                      srcImage, regionCount, srcRanges, true, false, stages,
+                      drv::MemoryBarrier::AccessFlagBits::TRANSFER_READ_BIT, srcRequiredLayoutMask,
+                      true, &srcCurrentLayout, false, drv::ImageLayout::UNDEFINED);
+    add_memory_access(getImageState(dstImage, regionCount, dstRanges,
+                                    drv::ImageLayout::TRANSFER_DST_OPTIMAL, stages)
+                        .cmdState,
+                      dstImage, regionCount, dstRanges, false, true, stages,
+                      drv::MemoryBarrier::AccessFlagBits::TRANSFER_WRITE_BIT, dstRequiredLayoutMask,
+                      true, &dstCurrentLayout, false, drv::ImageLayout::UNDEFINED);
 
     useResource(srcImage, regionCount, srcRanges, drv::IMAGE_USAGE_TRANSFER_SOURCE);
     useResource(dstImage, regionCount, dstRanges, drv::IMAGE_USAGE_TRANSFER_DESTINATION);
@@ -142,12 +142,12 @@ void VulkanCmdBufferRecorder::cmd_clear_image(drv::ImagePtr image,
 
     drv::ImageLayout currentLayout = drv::ImageLayout::UNDEFINED;
     drv::PipelineStages stages(drv::PipelineStages::TRANSFER_BIT);
-    add_memory_access(
-      getImageState(image, ranges, subresourceRanges, drv::ImageLayout::TRANSFER_DST_OPTIMAL)
-        .cmdState,
-      image, ranges, subresourceRanges, false, true, stages,
-      drv::MemoryBarrier::AccessFlagBits::TRANSFER_WRITE_BIT, requiredLayoutMask, true,
-      &currentLayout, false, drv::ImageLayout::TRANSFER_DST_OPTIMAL);
+    add_memory_access(getImageState(image, ranges, subresourceRanges,
+                                    drv::ImageLayout::TRANSFER_DST_OPTIMAL, stages)
+                        .cmdState,
+                      image, ranges, subresourceRanges, false, true, stages,
+                      drv::MemoryBarrier::AccessFlagBits::TRANSFER_WRITE_BIT, requiredLayoutMask,
+                      true, &currentLayout, false, drv::ImageLayout::TRANSFER_DST_OPTIMAL);
 
     for (uint32_t i = 0; i < ranges; ++i) {
         vkRanges[i] = convertSubresourceRange(subresourceRanges[i]);
@@ -185,7 +185,7 @@ bool VulkanCmdBufferRecorder::cmdUseAsAttachment(
                                                 ? drv::get_all_layouts_mask()
                                                 : static_cast<drv::ImageLayoutMask>(initialLayout);
     drv::CmdImageTrackingState& cmdState =
-      getImageState(image, 1, &subresourceRange, initialLayout).cmdState;
+      getImageState(image, 1, &subresourceRange, initialLayout, stages).cmdState;
 
     useResource(image, 1, &subresourceRange, usages);
 
@@ -350,7 +350,8 @@ void VulkanCmdBufferRecorder::corrigate(const drv::StateCorrectionData& data) {
                 }
             }
             add_memory_sync(
-              getImageState(data.imageCorrections[i].first, 1, &range, subres.layout).cmdState,
+              getImageState(data.imageCorrections[i].first, 1, &range, subres.layout, dstStages)
+                .cmdState,
               data.imageCorrections[i].first, mip, layer, aspect, !discardContent, dstStages,
               subres.visible, !convertImage(data.imageCorrections[i].first)->sharedResource,
               subres.ownership != drv::IGNORE_FAMILY ? subres.ownership : getFamily(), true,

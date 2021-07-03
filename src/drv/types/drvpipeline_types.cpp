@@ -8,6 +8,10 @@ PipelineStages::PipelineStageFlagBits PipelineStages::getEarliestStage() const {
     return getStage(0);
 }
 
+PipelineStages::PipelineStageFlagBits PipelineStages::getLastStage() const {
+    return getStage(getStageCount() - 1);
+}
+
 PipelineStages::PipelineStages(FlagType flags) : stageFlags(flags) {
 }
 PipelineStages::PipelineStages(PipelineStageFlagBits stage) : stageFlags(stage) {

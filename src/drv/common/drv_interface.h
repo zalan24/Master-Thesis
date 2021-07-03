@@ -110,9 +110,10 @@ class ResourceStateTransitionCallback
 
     virtual void registerSemaphore(drv::QueuePtr srcQueue, CmdBufferId cmdBufferId,
                                    TimelineSemaphoreHandle semaphore, uint64_t srcFrameId,
-                                   uint64_t waitValue, PipelineStages::FlagType waitMask,
-                                   ConflictMode mode) = 0;
+                                   uint64_t waitValue, PipelineStages::FlagType semaphoreWaitStages,
+                                   PipelineStages::FlagType waitMask, ConflictMode mode) = 0;
     virtual void requireAutoSync(QueuePtr srcQueue, CmdBufferId cmdBufferId, uint64_t srcFrameId,
+                                 PipelineStages::FlagType semaphoreWaitStages,
                                  PipelineStages::FlagType waitMask, ConflictMode mode,
                                  AutoSyncReason reason) = 0;
 

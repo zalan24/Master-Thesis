@@ -274,7 +274,7 @@ drv::Swapchain::OldSwapchinData Engine::recreateSwapchain() {
 
 void Engine::present(drv::SwapchainPtr swapchainPtr, FrameId frameId, uint32_t imageIndex,
                      uint32_t semaphoreIndex) {
-    if (drv::is_null_ptr(swapchainPtr))
+    if (drv::is_null_ptr(swapchainPtr) || frameGraph.isStopped())
         return;
     if (firstPresentableFrame > frameId)
         LOG_F(WARNING,
@@ -482,8 +482,8 @@ class AccessValidationCallback final : public drv::ResourceStateTransitionCallba
 
     void registerSemaphore(drv::QueuePtr srcQueue, drv::CmdBufferId cmdBufferId,
                            drv::TimelineSemaphoreHandle semaphore, uint64_t srcFrameId,
-                           uint64_t waitValue, drv::PipelineStages::FlagType waitMask,
-                           ConflictMode mode) override {
+                           uint64_t waitValue, drv::PipelineStages::FlagType semaphoreWaitStages,
+                           drv::PipelineStages::FlagType waitMask, ConflictMode mode) override {
         requireSync(srcQueue, cmdBufferId, srcFrameId, mode, waitMask);
         drv::drv_assert(srcFrameId <= frame);
         if (srcQueue == currentQueue)
@@ -492,15 +492,17 @@ class AccessValidationCallback final : public drv::ResourceStateTransitionCallba
         for (uint32_t i = 0; i < semaphores.size() && !found; ++i) {
             if (semaphores[i].semaphore.ptr == semaphore.ptr) {
                 semaphores[i].waitValue = std::max(semaphores[i].waitValue, waitValue);
+                semaphores[i].semaphoreWaitStages |= semaphoreWaitStages;
                 drv::drv_assert(semaphores[i].queue == srcQueue);
                 found = true;
             }
         }
         if (!found)
-            semaphores.push_back({semaphore, srcQueue, waitValue});
+            semaphores.push_back({semaphore, srcQueue, waitValue, semaphoreWaitStages});
     }
 
     void requireAutoSync(drv::QueuePtr srcQueue, drv::CmdBufferId cmdBufferId, uint64_t srcFrameId,
+                         drv::PipelineStages::FlagType semaphoreWaitStages,
                          drv::PipelineStages::FlagType waitMask, ConflictMode mode,
                          AutoSyncReason reason) override {
         requireSync(srcQueue, cmdBufferId, srcFrameId, mode, waitMask);
@@ -520,12 +522,14 @@ class AccessValidationCallback final : public drv::ResourceStateTransitionCallba
             if (queues[i].queue == srcQueue) {
                 queues[i].waitValue =
                   std::max(queues[i].waitValue, FrameGraph::get_semaphore_value(srcFrameId));
+                queues[i].semaphoreWaitStages |= semaphoreWaitStages;
                 found = true;
             }
         }
         if (!found) {
             FrameGraph::QueueSyncData data = engine->frameGraph.sync_queue(srcQueue, srcFrameId);
-            queues.push_back({srcQueue, std::move(data.semaphore), data.waitValue});
+            queues.push_back(
+              {srcQueue, std::move(data.semaphore), data.waitValue, semaphoreWaitStages});
         }
     }
 
@@ -543,18 +547,37 @@ class AccessValidationCallback final : public drv::ResourceStateTransitionCallba
                          semaphores.end());
     }
 
+    uint32_t getNumSemaphores() const { return uint32_t(semaphores.size() + queues.size()); }
+    drv::TimelineSemaphorePtr getSemaphore(uint32_t index) const {
+        if (index < semaphores.size())
+            return semaphores[index].semaphore.ptr;
+        return queues[index - semaphores.size()].autoSemaphore.ptr;
+    }
+    uint64_t getWaitValue(uint32_t index) const {
+        if (index < semaphores.size())
+            return semaphores[index].waitValue;
+        return queues[index - semaphores.size()].waitValue;
+    }
+    drv::PipelineStages::FlagType getWaitStages(uint32_t index) const {
+        if (index < semaphores.size())
+            return semaphores[index].semaphoreWaitStages;
+        return queues[index - semaphores.size()].semaphoreWaitStages;
+    }
+
  private:
     struct SemaphoreInfo
     {
         drv::TimelineSemaphoreHandle semaphore;
         drv::QueuePtr queue;
         uint64_t waitValue;
+        drv::PipelineStages::FlagType semaphoreWaitStages;
     };
     struct QueueInfo
     {
         drv::QueuePtr queue;
         drv::TimelineSemaphoreHandle autoSemaphore;
         uint64_t waitValue;
+        drv::PipelineStages::FlagType semaphoreWaitStages;
     };
 
     Engine* engine;
@@ -676,19 +699,24 @@ bool Engine::execute(ExecutionPackage&& package) {
             }
         }
         cb.filterSemaphores();
-        // TODO add semaphore from cb
         StackMemory::MemoryHandle<drv::TimelineSemaphorePtr> waitTimelineSemaphores(
-          cmdBuffer.waitTimelineSemaphores.size(), TEMPMEM);
+          cmdBuffer.waitTimelineSemaphores.size() + cb.getNumSemaphores(), TEMPMEM);
         StackMemory::MemoryHandle<drv::PipelineStages::FlagType> waitTimelineSemaphoresStages(
-          cmdBuffer.waitTimelineSemaphores.size(), TEMPMEM);
+          cmdBuffer.waitTimelineSemaphores.size() + cb.getNumSemaphores(), TEMPMEM);
         StackMemory::MemoryHandle<uint64_t> waitTimelineSemaphoresValues(
-          cmdBuffer.waitTimelineSemaphores.size(), TEMPMEM);
+          cmdBuffer.waitTimelineSemaphores.size() + cb.getNumSemaphores(), TEMPMEM);
         for (uint32_t i = 0; i < cmdBuffer.waitTimelineSemaphores.size(); ++i) {
             waitTimelineSemaphores[i] = cmdBuffer.waitTimelineSemaphores[i].semaphore;
             waitTimelineSemaphoresValues[i] = cmdBuffer.waitTimelineSemaphores[i].waitValue;
             waitTimelineSemaphoresStages[i] =
               drv::get_image_usage_stages(cmdBuffer.waitTimelineSemaphores[i].imageUsages)
                 .stageFlags;
+        }
+        for (uint32_t i = 0; i < cb.getNumSemaphores(); ++i) {
+            uint32_t ind = i + uint32_t(cmdBuffer.waitTimelineSemaphores.size());
+            waitTimelineSemaphores[ind] = cb.getSemaphore(i);
+            waitTimelineSemaphoresStages[ind] = cb.getWaitStages(i);
+            waitTimelineSemaphoresValues[ind] = cb.getWaitValue(i);
         }
         executionInfo.numCommandBuffers = numCommandBuffers;
         executionInfo.commandBuffers = commandBuffers;

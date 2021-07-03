@@ -93,6 +93,7 @@ struct PipelineStages
         throw std::runtime_error("Unkown stage: " + std::to_string(stage));
     }
     PipelineStageFlagBits getEarliestStage() const;
+    PipelineStageFlagBits getLastStage() const;
 };
 
 namespace ShaderStage
