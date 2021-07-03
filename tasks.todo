@@ -267,13 +267,22 @@ Get a triangle on screen:
                         ✔ Track which stages a resource is used on before the first barrier + the last stage of the first barrier @done (7/3/2021, 10:01:52 AM)
                         ✔ These stages are the wait stages for the semaphores @done (7/3/2021, 9:55:54 AM)
                 ☐ Host side state
-                    ☐ Resource state should have an extra "queue" for host side usage
-                    ☐ Implement sync regarding this usage
-                        ☐ In submission
-                        ☐ In readback
-                    ☐ Add read/write flags to readback resource queries (framegraph, acquire node resources)
-                        ☐ Since these are not the actual usages, just promises, they should be validated when actually used
-                    ☐ Resource should know if it uses coherent memory or not (if so, no need to call flush and invalidate memory function in vulkan)
+                    ☐ Create a resource usage object (stores set of resources -> set of subresources -> read/write)
+                        ☐ Set of resources must be an ordered list
+                    ☐ Acquire node needs an object like this
+                    ☐ Execution queue needs to create an object like this as well
+                        ☐ Such objects should be created during recording and stored with the command buffer
+                    ☐ Sync resource usage objects if they have a conflicting usage
+                        ☐ Create a manager class for resource usage objects
+                        ☐ This class should have a list of active locks (set of resource objects)
+                        ☐ Create lock, lock_timeout, try_lock functions
+                        ☐ Blocking locks should count how many resource objects are blocking them
+                            ☐ have an unlock counter in the manager class
+                            ☐ When unlocking an object (removing from manager list), increment the counter and notify a CV
+                            ☐ locking function should only recheck if resource is free to use, if the counter has reached a sufficient vaule (as many objects were unlock as it was blocked by)
+                            ☐ locking function should recount locking objects when it checks for availability
+                    ☐ Validate usages on cpu side (compare to promised resource usage object)
+                    ☐ Deal with memory coherency in vulkan...
                 ☐ Track new states
                     ☐ Clear resource states after wait on semaphore (usable stages probably = semaphore wait stages)
                     ☐ When sync object is applied, update main queue / states on reader queues
