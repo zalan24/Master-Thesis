@@ -8,6 +8,7 @@
 #include <drvtypes.h>
 #include <drvtracking.hpp>
 
+#include "drvresourcelocker.h"
 #include "hardwareconfig.h"
 
 class IWindow;
@@ -289,6 +290,8 @@ class IDriver
       ResourceStateTransitionCallback* cb) = 0;
 
     virtual DriverSupport get_support(LogicalDevicePtr device) = 0;
+    virtual void perform_cpu_access(const ResourceLockerDescriptor* resources,
+                                    const ResourceLocker::Lock& lock) = 0;
 
     // virtual void cmd_flush_waits_on(CommandBufferPtr cmdBuffer, EventPtr event) = 0;
 };

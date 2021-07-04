@@ -188,12 +188,9 @@ void ResourceLockerDescriptor::copyFrom(const ResourceLockerDescriptor* other) {
 }
 
 ResourceLockerDescriptor::UsageMode ResourceLockerDescriptor::getImageUsage(
-  drv::ImagePtr image, uint32_t layer, uint32_t mip, drv::AspectFlagBits aspect) const {
-    uint32_t ind = findImage(image);
-    if (ind == getImageCount())
-        return UsageMode::NONE;
-    bool read = getReadSubresources(ind).has(layer, mip, aspect);
-    bool write = getWriteSubresources(ind).has(layer, mip, aspect);
+  uint32_t index, uint32_t layer, uint32_t mip, drv::AspectFlagBits aspect) const {
+    bool read = getReadSubresources(index).has(layer, mip, aspect);
+    bool write = getWriteSubresources(index).has(layer, mip, aspect);
     if (!read && !write)
         return UsageMode::NONE;
     if (!write)
@@ -201,6 +198,14 @@ ResourceLockerDescriptor::UsageMode ResourceLockerDescriptor::getImageUsage(
     if (!read)
         return UsageMode::WRITE;
     return UsageMode::READ_WRITE;
+}
+
+ResourceLockerDescriptor::UsageMode ResourceLockerDescriptor::getImageUsage(
+  drv::ImagePtr image, uint32_t layer, uint32_t mip, drv::AspectFlagBits aspect) const {
+    uint32_t ind = findImage(image);
+    if (ind == getImageCount())
+        return UsageMode::NONE;
+    return getImageUsage(ind, layer, mip, aspect);
 }
 
 ResourceLockerDescriptor::ConflictType ResourceLockerDescriptor::findConflict(

@@ -796,6 +796,8 @@ FrameGraph::NodeHandle FrameGraph::acquireNode(NodeId nodeId, Stage stage, Frame
     }
     if (isStopped())
         return NodeHandle();
+    if (!resources.empty())
+        drv::perform_cpu_access(&resources, resourceLock);
     return NodeHandle(this, nodeId, stage, frame, std::move(resourceLock));
 }
 
@@ -873,6 +875,8 @@ FrameGraph::NodeHandle FrameGraph::tryAcquireNode(
     }
     if (isStopped())
         return NodeHandle();
+    if (!resources.empty())
+        drv::perform_cpu_access(&resources, resourceLock);
     return NodeHandle(this, nodeId, stage, frame, std::move(resourceLock));
 }
 
@@ -927,6 +931,8 @@ FrameGraph::NodeHandle FrameGraph::tryAcquireNode(
     }
     if (isStopped())
         return NodeHandle();
+    if (!resources.empty())
+        drv::perform_cpu_access(&resources, resourceLock);
     return NodeHandle(this, nodeId, stage, frame, std::move(resourceLock));
 }
 

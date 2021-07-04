@@ -190,6 +190,8 @@ bool validate_and_apply_state_transitions(LogicalDevicePtr device, QueuePtr curr
   StateCorrectionData& correction, uint32_t imageCount,
   const std::pair<drv::ImagePtr, ImageTrackInfo>* transitions, StatsCache* cacheHandle,
   ResourceStateTransitionCallback* cb);
+void perform_cpu_access(const ResourceLockerDescriptor* resources,
+                        const ResourceLocker::Lock& lock);
 
 // std::unique_ptr<CmdTrackingRecordState> create_tracking_record_state();
 // PipelineStages cmd_image_barrier(drv::CmdTrackingRecordState *recordState, CmdImageTrackingState& state, CommandBufferPtr cmdBuffer,

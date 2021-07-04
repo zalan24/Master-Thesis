@@ -445,3 +445,8 @@ drv::PendingResourceUsage drv::get_pending_usage(drv::ImagePtr image, uint32_t l
                                                  AspectFlagBits aspect, uint32_t usageIndex) {
     return current_driver_interface->get_pending_usage(image, layer, mip, aspect, usageIndex);
 }
+
+void drv::perform_cpu_access(const ResourceLockerDescriptor* resources,
+                             const ResourceLocker::Lock& lock) {
+    return current_driver_interface->perform_cpu_access(resources, lock);
+}

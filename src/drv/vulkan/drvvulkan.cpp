@@ -11,6 +11,7 @@
 #include <logger.h>
 
 #include <drverror.h>
+#include <drvresourcelocker.h>
 
 #include "components/vulkan_conversions.h"
 #include "components/vulkan_render_pass.h"
@@ -818,4 +819,53 @@ drv::PipelineStages::FlagType VulkanCmdBufferRecorder::getAvailableStages() cons
     if (!support.geometry)
         ret &= ~drv::PipelineStages::GEOMETRY_SHADER_BIT;
     return ret;
+}
+
+void DrvVulkan::perform_cpu_access(const drv::ResourceLockerDescriptor* resources,
+                                   const drv::ResourceLocker::Lock&) {
+    uint32_t imageCount = resources->getImageCount();
+    for (uint32_t i = 0; i < imageCount; ++i) {
+        drv_vulkan::Image* image = convertImage(resources->getImage(i));
+        resources->getWriteSubresources(i).traverse(
+          [&](uint32_t layer, uint32_t mip, drv::AspectFlagBits aspect) {
+              auto& state = image->linearTrackingState.get(layer, mip, aspect);
+              bool hasRead = resources->getImageUsage(i, layer, mip, aspect)
+                             == drv::ResourceLockerDescriptor::READ_WRITE;
+              state.multiQueueState.mainSemaphore = {};
+              state.multiQueueState.signalledValue = 0;
+              state.multiQueueState.syncedStages = 0;
+              state.multiQueueState.mainQueue = drv::get_null_ptr<drv::QueuePtr>();
+              state.multiQueueState.frameId = 0;
+              state.multiQueueState.isWrite = false;
+              state.multiQueueState.submission = 0;
+              state.multiQueueState.readingQueues.clear();
+
+              state.ongoingReads = 0;
+              state.ongoingWrites = 0;
+              state.usableStages = drv::PipelineStages::get_all_bits(drv::CMD_TYPE_ALL);
+              //   state.dirtyMask = 0;
+              //   state.visible = drv::MemoryBarrier::AccessFlagBits::HOST_WRITE_BIT;
+              //   if (hasRead)
+              //       state.visible |= drv::MemoryBarrier::AccessFlagBits::HOST_READ_BIT;
+          });
+        resources->getReadSubresources(i).traverse(
+          [&](uint32_t layer, uint32_t mip, drv::AspectFlagBits aspect) {
+              if (resources->getImageUsage(i, layer, mip, aspect)
+                  == drv::ResourceLockerDescriptor::READ_WRITE)
+                  return;
+              auto& state = image->linearTrackingState.get(layer, mip, aspect);
+              if (!state.multiQueueState.isWrite)
+                  return;
+
+              state.multiQueueState.mainSemaphore = {};
+              state.multiQueueState.signalledValue = 0;
+              state.multiQueueState.syncedStages = 0;
+
+              state.ongoingReads = 0;
+              state.ongoingWrites = 0;
+              state.usableStages = drv::PipelineStages::get_all_bits(drv::CMD_TYPE_ALL);
+              //   state.dirtyMask = 0;
+              //   state.visible |= drv::MemoryBarrier::AccessFlagBits::HOST_READ_BIT;
+          });
+    }
 }

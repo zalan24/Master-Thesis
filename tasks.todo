@@ -82,7 +82,7 @@ Get a triangle on screen:
                 ✔ What is the wait stage for timeline semaphores managed by resource tracking??? @done (7/3/2021, 10:01:54 AM)
                     ✔ Track which stages a resource is used on before the first barrier + the last stage of the first barrier @done (7/3/2021, 10:01:52 AM)
                     ✔ These stages are the wait stages for the semaphores @done (7/3/2021, 9:55:54 AM)
-            ☐ Host side state
+            ✔ Host side state @done (7/4/2021, 4:07:04 PM)
                 ✔ Create a resource usage object (stores set of resources -> set of subresources -> read/write) @done (7/4/2021, 1:02:23 PM)
                     ✔ Set of resources must be an ordered list @done (7/4/2021, 1:02:20 PM)
                 ✔ Acquire node needs an object like this @done (7/3/2021, 3:36:40 PM)
@@ -97,28 +97,11 @@ Get a triangle on screen:
                         ✔ When unlocking an object (removing from manager list), increment the counter and notify a CV @done (7/4/2021, 11:31:20 AM)
                         ✔ locking function should only recheck if resource is free to use, if the counter has reached a sufficient vaule (as many objects were unlock as it was blocked by) @done (7/4/2021, 11:33:50 AM)
                         ✔ locking function should recount locking objects when it checks for availability @done (7/4/2021, 11:33:55 AM)
-                ☐ Validate usages on cpu side (compare to promised resource usage object)
             ☐ Track new states
-                ☐ On CPU usage
-                    ☐ CPU Read
-                        ☐ Wait on and flush the writing operations
-                            ☐ Flush memory and invalidate memory for CPU
-                        ☐ If main queue was writing, it will have
-                            ☐ no dirty memory
-                            ☐ Memory visible on CPU
-                            ☐ no ongoing writes
-                            ☐ ???usable stages???
-                    ☐ CPU write only
-                        ☐ Wait on everything, no flush needed
-                        ☐ Flush CPU write after node
-                        ☐ dirty state = 0
-                        ☐ no ongoing anything
-                        ☐ reset usable stages
-                        ☐ Memory won't be visible anywhere (except cpu)
-                    ☐ CPU read write
-                        ☐ wait on everything
-                        ☐ Flush and invalidate for cpu (if needed)
-                        ☐ same as cpu write only otherwise
+                ✔ On CPU usage @done (7/4/2021, 4:08:36 PM)
+                    ✔ CPU Read @done (7/4/2021, 4:08:35 PM)
+                    ✔ CPU write only @done (7/4/2021, 4:08:34 PM)
+                    ✔ CPU read write @done (7/4/2021, 4:08:32 PM)
                 ☐ On execution queue
                     ☐ ...
 
@@ -128,6 +111,12 @@ Get a triangle on screen:
                 ☐ Existing sumbissions should consider state of the resource on that specific queue
                 ☐ Track state on CPU usage (checkResources, sync_queue)
                 ☐ Track signalled value and synced stages on multiqueue tracking info
+            ☐ Map memory
+                ☐ Create an upload only version (data is passed to a single drv command)
+                ☐ Create a map, unmap version with const and non const data for read and read/write accesses
+                ☐ These functions will require a resource lock
+                ☐ Update resources states: apply memory flushes and invalidations performed by the memory map commands
+                ☐ Check if the mapped memory is actually locked by the resource lock (with an appropriate mode)
             ☐ Test
                 ☐ Test queue->cpu dependency
                     ☐ Try reading and writing from CPU

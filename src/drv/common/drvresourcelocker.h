@@ -31,6 +31,8 @@ class ResourceLockerDescriptor
 
     UsageMode getImageUsage(drv::ImagePtr image, uint32_t layer, uint32_t mip,
                             drv::AspectFlagBits aspect) const;
+    UsageMode getImageUsage(uint32_t index, uint32_t layer, uint32_t mip,
+                            drv::AspectFlagBits aspect) const;
 
     enum ConflictType
     {

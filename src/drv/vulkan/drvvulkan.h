@@ -397,6 +397,9 @@ class DrvVulkan final : public drv::IDriver
       const std::pair<drv::ImagePtr, drv::ImageTrackInfo>* transitions, StatsCache* cacheHandle,
       drv::ResourceStateTransitionCallback* cb) override;
 
+    void perform_cpu_access(const drv::ResourceLockerDescriptor* resources,
+                            const drv::ResourceLocker::Lock& lock) override;
+
  private:
     struct LogicalDeviceData
     {
