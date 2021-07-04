@@ -46,3 +46,29 @@ ExecutionPackage::CommandBufferPackage make_submission_package(
         garbageSystem
           ->getAllocator<ExecutionPackage::CommandBufferPackage::TimelineSemaphoreWaitInfo>()));
 }
+
+GarbageResourceLockerDescriptor::GarbageResourceLockerDescriptor(GarbageSystem* garbageSystem)
+  : imageData(garbageSystem->getAllocator<drv::ResourceLockerDescriptor::ImageData>()) {
+}
+
+uint32_t GarbageResourceLockerDescriptor::getImageCount() const {
+    return uint32_t(imageData.size());
+}
+void GarbageResourceLockerDescriptor::clear() {
+    imageData.clear();
+}
+void GarbageResourceLockerDescriptor::push_back(ImageData&& data) {
+    imageData.push_back(std::move(data));
+}
+void GarbageResourceLockerDescriptor::reserve(uint32_t count) {
+    imageData.reserve(count);
+}
+
+drv::ResourceLockerDescriptor::ImageData& GarbageResourceLockerDescriptor::getImageData(
+  uint32_t index) {
+    return imageData[index];
+}
+const drv::ResourceLockerDescriptor::ImageData& GarbageResourceLockerDescriptor::getImageData(
+  uint32_t index) const {
+    return imageData[index];
+}

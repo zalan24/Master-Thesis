@@ -659,7 +659,7 @@ bool FrameGraph::tryWaitForNode(NodeId node, Stage stage, FrameId frame) {
 }
 
 void FrameGraph::checkResources(NodeId dstNode, Stage dstStage, FrameId frameId,
-                                const drv::ResourceLockerDescriptor& resources,
+                                const TemporalResourceLockerDescriptor& resources,
                                 GarbageVector<drv::TimelineSemaphorePtr>& semaphores,
                                 GarbageVector<uint64_t>& waitValues) const {
     drv::drv_assert(dstStage == READBACK_STAGE, "Add dst stage param to gpuCpuDeps");
@@ -748,7 +748,7 @@ void FrameGraph::checkResources(NodeId dstNode, Stage dstStage, FrameId frameId,
 }
 
 FrameGraph::NodeHandle FrameGraph::acquireNode(NodeId nodeId, Stage stage, FrameId frame,
-                                               const drv::ResourceLockerDescriptor& resources) {
+                                               const TemporalResourceLockerDescriptor& resources) {
     if (isStopped() || !tryDoFrame(frame))
         return NodeHandle();
     Node* node = getNode(nodeId);
@@ -785,7 +785,7 @@ FrameGraph::NodeHandle FrameGraph::acquireNode(NodeId nodeId, Stage stage, Frame
     }
     drv::ResourceLocker::Lock resourceLock = {};
     if (!resources.empty()) {
-        auto lock = resourceLocker->lock(resources);
+        auto lock = resourceLocker->lock(&resources);
         resourceLock = std::move(lock).getLock();
         GarbageVector<drv::TimelineSemaphorePtr> semaphores =
           make_vector<drv::TimelineSemaphorePtr>(garbageSystem);
@@ -799,9 +799,9 @@ FrameGraph::NodeHandle FrameGraph::acquireNode(NodeId nodeId, Stage stage, Frame
     return NodeHandle(this, nodeId, stage, frame, std::move(resourceLock));
 }
 
-FrameGraph::NodeHandle FrameGraph::tryAcquireNode(NodeId nodeId, Stage stage, FrameId frame,
-                                                  uint64_t timeoutNsec,
-                                                  const drv::ResourceLockerDescriptor& resources) {
+FrameGraph::NodeHandle FrameGraph::tryAcquireNode(
+  NodeId nodeId, Stage stage, FrameId frame, uint64_t timeoutNsec,
+  const TemporalResourceLockerDescriptor& resources) {
     const std::chrono::high_resolution_clock::time_point start =
       std::chrono::high_resolution_clock::now();
     std::chrono::nanoseconds maxDuration(timeoutNsec);
@@ -854,7 +854,7 @@ FrameGraph::NodeHandle FrameGraph::tryAcquireNode(NodeId nodeId, Stage stage, Fr
         if (duration >= maxDuration)
             return NodeHandle();
         auto lock = resourceLocker->lockTimeout(
-          resources, static_cast<uint64_t>((maxDuration - duration).count()));
+          &resources, static_cast<uint64_t>((maxDuration - duration).count()));
         if (lock.get() == drv::ResourceLocker::LockTimeResult::TIMEOUT)
             return NodeHandle();
         resourceLock = std::move(lock).getLock();
@@ -876,8 +876,8 @@ FrameGraph::NodeHandle FrameGraph::tryAcquireNode(NodeId nodeId, Stage stage, Fr
     return NodeHandle(this, nodeId, stage, frame, std::move(resourceLock));
 }
 
-FrameGraph::NodeHandle FrameGraph::tryAcquireNode(NodeId nodeId, Stage stage, FrameId frame,
-                                                  const drv::ResourceLockerDescriptor& resources) {
+FrameGraph::NodeHandle FrameGraph::tryAcquireNode(
+  NodeId nodeId, Stage stage, FrameId frame, const TemporalResourceLockerDescriptor& resources) {
     if (isStopped() || !tryDoFrame(frame))
         return NodeHandle();
     Node* node = getNode(nodeId);
@@ -913,7 +913,7 @@ FrameGraph::NodeHandle FrameGraph::tryAcquireNode(NodeId nodeId, Stage stage, Fr
     }
     drv::ResourceLocker::Lock resourceLock = {};
     if (!resources.empty()) {
-        auto lock = resourceLocker->tryLock(resources);
+        auto lock = resourceLocker->tryLock(&resources);
         if (lock.get() == drv::ResourceLocker::TryLockResult::FAILURE)
             return NodeHandle();
         resourceLock = std::move(lock).getLock();
@@ -931,17 +931,17 @@ FrameGraph::NodeHandle FrameGraph::tryAcquireNode(NodeId nodeId, Stage stage, Fr
 }
 
 bool FrameGraph::applyTag(TagNodeId node, Stage stage, FrameId frame,
-                          const drv::ResourceLockerDescriptor& resources) {
+                          const TemporalResourceLockerDescriptor& resources) {
     return acquireNode(node, stage, frame, resources);
 }
 
 bool FrameGraph::tryApplyTag(TagNodeId node, Stage stage, FrameId frame, uint64_t timeoutNsec,
-                             const drv::ResourceLockerDescriptor& resources) {
+                             const TemporalResourceLockerDescriptor& resources) {
     return tryAcquireNode(node, stage, frame, timeoutNsec, resources);
 }
 
 bool FrameGraph::tryApplyTag(TagNodeId node, Stage stage, FrameId frame,
-                             const drv::ResourceLockerDescriptor& resources) {
+                             const TemporalResourceLockerDescriptor& resources) {
     return tryAcquireNode(node, stage, frame, resources);
 }
 
@@ -1158,4 +1158,26 @@ FrameGraph::QueueSyncData FrameGraph::sync_queue(drv::QueuePtr queue, FrameId fr
         RuntimeStats::getSingleton()->incrementAllowedSubmissionCorrections();
 
     return ret;
+}
+
+uint32_t TemporalResourceLockerDescriptor::getImageCount() const {
+    return uint32_t(imageData.size());
+}
+void TemporalResourceLockerDescriptor::clear() {
+    imageData.clear();
+}
+void TemporalResourceLockerDescriptor::push_back(ImageData&& data) {
+    imageData.push_back(std::move(data));
+}
+void TemporalResourceLockerDescriptor::reserve(uint32_t count) {
+    imageData.reserve(count);
+}
+
+drv::ResourceLockerDescriptor::ImageData& TemporalResourceLockerDescriptor::getImageData(
+  uint32_t index) {
+    return imageData[index];
+}
+const drv::ResourceLockerDescriptor::ImageData& TemporalResourceLockerDescriptor::getImageData(
+  uint32_t index) const {
+    return imageData[index];
 }

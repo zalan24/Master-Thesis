@@ -669,7 +669,7 @@ bool Engine::execute(ExecutionPackage&& package) {
         executionInfo.waitStages = waitSemaphoresStages;
         drv::ResourceLocker::Lock resourceLock = {};
         if (!cmdBuffer.cmdBufferData.resourceUsages.empty()) {
-            auto lock = resourceLocker.tryLock(cmdBuffer.cmdBufferData.resourceUsages);
+            auto lock = resourceLocker.tryLock(&cmdBuffer.cmdBufferData.resourceUsages);
             if (lock.get() == drv::ResourceLocker::TryLockResult::SUCCESS)
                 resourceLock = std::move(lock).getLock();
             else {
@@ -678,7 +678,7 @@ bool Engine::execute(ExecutionPackage&& package) {
                       cmdBuffer.cmdBufferData.getName());
 #endif
                 resourceLock =
-                  resourceLocker.lock(cmdBuffer.cmdBufferData.resourceUsages).getLock();
+                  resourceLocker.lock(&cmdBuffer.cmdBufferData.resourceUsages).getLock();
             }
         }
         {

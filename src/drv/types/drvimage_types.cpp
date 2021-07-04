@@ -52,7 +52,7 @@ void ImageSubresourceSet::add(uint32_t layer, uint32_t mip, AspectFlagBits aspec
     mipBits[layer][get_aspect_id(aspect)] |= 1 << mip;
 }
 
-bool ImageSubresourceSet::has(uint32_t layer, uint32_t mip, AspectFlagBits aspect) {
+bool ImageSubresourceSet::has(uint32_t layer, uint32_t mip, AspectFlagBits aspect) const {
     if (layer > mipBits.size())
         return false;
     // if (!(usedLayers & (1 << layer)))

@@ -569,7 +569,7 @@ struct ImageSubresourceSet
     void set(const ImageSubresourceRange& range, uint32_t imageLayers, uint32_t imageMips);
 
     void add(uint32_t layer, uint32_t mip, AspectFlagBits aspect);
-    bool has(uint32_t layer, uint32_t mip, AspectFlagBits aspect);
+    bool has(uint32_t layer, uint32_t mip, AspectFlagBits aspect) const;
 
     bool overlap(const ImageSubresourceSet& b) const;
     bool operator==(const ImageSubresourceSet& b) const;

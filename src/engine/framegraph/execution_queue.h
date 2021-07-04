@@ -23,11 +23,30 @@
 
 class ExecutionQueue;
 
+class GarbageResourceLockerDescriptor final : public drv::ResourceLockerDescriptor
+{
+ public:
+    explicit GarbageResourceLockerDescriptor(GarbageSystem* garbageSystem);
+
+    uint32_t getImageCount() const override;
+    void clear() override;
+
+ protected:
+    void push_back(ImageData&& data) override;
+    void reserve(uint32_t count) override;
+
+    ImageData& getImageData(uint32_t index) override;
+    const ImageData& getImageData(uint32_t index) const override;
+
+ private:
+    GarbageVector<ImageData> imageData;
+};
+
 struct CommandBufferData
 {
     drv::CommandBufferPtr cmdBufferPtr = drv::get_null_ptr<drv::CommandBufferPtr>();
     GarbageVector<std::pair<drv::ImagePtr, drv::ImageTrackInfo>> imageStates;
-    drv::ResourceLockerDescriptor resourceUsages;
+    GarbageResourceLockerDescriptor resourceUsages;
     bool stateValidation;
     drv::CmdBufferId cmdBufferId = 0;
     StatsCache* statsCacheHandle;
@@ -37,7 +56,7 @@ struct CommandBufferData
 
     explicit CommandBufferData(GarbageSystem* garbageSystem, const char* name)
       : imageStates(garbageSystem->getAllocator<std::pair<drv::ImagePtr, drv::ImageTrackInfo>>()),
-        resourceUsages(),
+        resourceUsages(garbageSystem),
         stateValidation(false),
         statsCacheHandle(nullptr)
 #if USE_COMMAND_BUFFER_NAME
@@ -55,7 +74,7 @@ struct CommandBufferData
                       StatsCache* _statsCacheHandle)
       : cmdBufferPtr(_cmdBufferPtr),
         imageStates(garbageSystem->getAllocator<std::pair<drv::ImagePtr, drv::ImageTrackInfo>>()),
-        resourceUsages(*_resourceUsages),
+        resourceUsages(garbageSystem),
         stateValidation(_stateValidation),
         cmdBufferId(_cmdBufferId),
         statsCacheHandle(_statsCacheHandle)
@@ -69,6 +88,7 @@ struct CommandBufferData
         for (size_t i = 0; i < _imageStates->size(); ++i)
             imageStates.push_back((*_imageStates)[i]);
         setName(name);
+        resourceUsages.copyFrom(_resourceUsages);
     }
 
     CommandBufferData(GarbageSystem* garbageSystem, const drv::CommandBufferInfo& info,

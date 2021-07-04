@@ -23,6 +23,25 @@
 #include "framegraphDecl.h"
 #include "garbagesystem.h"
 
+class TemporalResourceLockerDescriptor final : public drv::ResourceLockerDescriptor
+{
+ public:
+    TemporalResourceLockerDescriptor() = default;
+
+    uint32_t getImageCount() const override;
+    void clear() override;
+
+ protected:
+    void push_back(ImageData&& data) override;
+    void reserve(uint32_t count) override;
+
+    ImageData& getImageData(uint32_t index) override;
+    const ImageData& getImageData(uint32_t index) const override;
+
+ private:
+    FlexibleArray<ImageData, 4> imageData;
+};
+
 class FrameGraph
 {
  public:
@@ -208,26 +227,21 @@ class FrameGraph
     // no blocking, returns a handle if currently available
     bool tryWaitForNode(NodeId node, Stage stage, FrameId frame);
 
-    NodeHandle acquireNode(
-      NodeId node, Stage stage, FrameId frame,
-      const drv::ResourceLockerDescriptor& resources = drv::ResourceLockerDescriptor());
-    NodeHandle tryAcquireNode(
-      NodeId node, Stage stage, FrameId frame, uint64_t timeoutNsec,
-      const drv::ResourceLockerDescriptor& resources = drv::ResourceLockerDescriptor());
+    NodeHandle acquireNode(NodeId node, Stage stage, FrameId frame,
+                           const TemporalResourceLockerDescriptor& resources = {});
+    NodeHandle tryAcquireNode(NodeId node, Stage stage, FrameId frame, uint64_t timeoutNsec,
+                              const TemporalResourceLockerDescriptor& resources = {});
     // no blocking, returns a handle if currently available
-    NodeHandle tryAcquireNode(
-      NodeId node, Stage stage, FrameId frame,
-      const drv::ResourceLockerDescriptor& resources = drv::ResourceLockerDescriptor());
+    NodeHandle tryAcquireNode(NodeId node, Stage stage, FrameId frame,
+                              const TemporalResourceLockerDescriptor& resources = {});
 
     bool applyTag(TagNodeId node, Stage stage, FrameId frame,
-                  const drv::ResourceLockerDescriptor& resources = drv::ResourceLockerDescriptor());
-    bool tryApplyTag(
-      TagNodeId node, Stage stage, FrameId frame, uint64_t timeoutNsec,
-      const drv::ResourceLockerDescriptor& resources = drv::ResourceLockerDescriptor());
+                  const TemporalResourceLockerDescriptor& resources = {});
+    bool tryApplyTag(TagNodeId node, Stage stage, FrameId frame, uint64_t timeoutNsec,
+                     const TemporalResourceLockerDescriptor& resources = {});
     // no blocking, returns a handle if currently available
-    bool tryApplyTag(
-      TagNodeId node, Stage stage, FrameId frame,
-      const drv::ResourceLockerDescriptor& resources = drv::ResourceLockerDescriptor());
+    bool tryApplyTag(TagNodeId node, Stage stage, FrameId frame,
+                     const TemporalResourceLockerDescriptor& resources = {});
 
     void executionFinished(NodeId node, FrameId frame);
     void submitSignalFrameEnd(FrameId frame);
@@ -334,7 +348,7 @@ class FrameGraph
     bool tryDoFrame(FrameId frameId);
     uint32_t getEnqueueDependencyOffsetIndex(NodeId srcNode, NodeId dstNode) const;
     void checkResources(NodeId dstNode, Stage dstStage, FrameId frameId,
-                        const drv::ResourceLockerDescriptor& resources,
+                        const TemporalResourceLockerDescriptor& resources,
                         GarbageVector<drv::TimelineSemaphorePtr>& semaphores,
                         GarbageVector<uint64_t>& waitValues) const;
 };

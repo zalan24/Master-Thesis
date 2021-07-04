@@ -235,6 +235,23 @@ inline static CmdBufferId make_cmd_buffer_id(const char* file, uint32_t line) {
 
 #define CMD_BUFFER_ID() drv::make_cmd_buffer_id(__FILE__, __LINE__)
 
+class PersistentResourceLockerDescriptor final : public ResourceLockerDescriptor
+{
+ public:
+    uint32_t getImageCount() const override;
+    void clear() override;
+
+ protected:
+    void push_back(ImageData&& data) override;
+    void reserve(uint32_t count) override;
+
+    ImageData& getImageData(uint32_t index) override;
+    const ImageData& getImageData(uint32_t index) const override;
+
+ private:
+    std::vector<ImageData> imageData;
+};
+
 template <typename D>
 class DrvCmdBuffer
 {
@@ -329,7 +346,7 @@ class DrvCmdBuffer
     DrvRecordCallback recordCallback;
     CommandBufferPtr cmdBufferPtr = get_null_ptr<CommandBufferPtr>();
     DrvCmdBufferRecorder::ImageStates imageStates;
-    ResourceLockerDescriptor resourceUsage;
+    PersistentResourceLockerDescriptor resourceUsage;
     StatsCache* statsCacheHandle = nullptr;
     FlexibleArray<drv::RenderPassStats, 1> renderPassStats;
     FlexibleArray<drv::RenderPassPostStats, 1> renderPassPostStats;

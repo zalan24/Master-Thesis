@@ -2,6 +2,9 @@
 
 #include <condition_variable>
 #include <mutex>
+#include <vector>
+
+#include <flexiblearray.hpp>
 
 #include <drvimage_types.h>
 #include <drvresourceptrs.hpp>
@@ -13,9 +16,6 @@ class ResourceLocker;
 class ResourceLockerDescriptor
 {
  public:
-    explicit ResourceLockerDescriptor() {}
-    explicit ResourceLockerDescriptor(ResourceLocker* resource_locker);
-
     enum UsageMode
     {
         NONE = 0,
@@ -24,16 +24,13 @@ class ResourceLockerDescriptor
         READ_WRITE = 3
     };
 
-    void addImage(drv::ImagePtr image, uint32_t layer, uint32_t mip, drv::AspectFlagBits aspect,
-                  UsageMode usage);
+    void addImage(drv::ImagePtr image, uint32_t layerCount, uint32_t layer, uint32_t mip,
+                  drv::AspectFlagBits aspect, UsageMode usage) noexcept;
     void addImage(drv::ImagePtr image, const drv::ImageSubresourceSet& subresources,
-                  UsageMode usage);
-    void addImage(drv::ImagePtr image, UsageMode usage);  // all subresources
+                  UsageMode usage) noexcept;
 
     UsageMode getImageUsage(drv::ImagePtr image, uint32_t layer, uint32_t mip,
                             drv::AspectFlagBits aspect) const;
-
-    void clear();
 
     enum ConflictType
     {
@@ -42,15 +39,49 @@ class ResourceLockerDescriptor
         CONFLICT_WRITE
     };
 
-    ConflictType findConflict(const ResourceLockerDescriptor& other) const;
+    ConflictType findConflict(const ResourceLockerDescriptor* other) const;
 
     bool empty() const;
-    uint32_t getImageCount() const;
     ImagePtr getImage(uint32_t index) const;
     const ImageSubresourceSet& getReadSubresources(uint32_t index) const&;
     const ImageSubresourceSet& getWriteSubresources(uint32_t index) const&;
 
+    void copyFrom(const ResourceLockerDescriptor* other);
+
+    virtual uint32_t getImageCount() const = 0;
+    virtual void clear() = 0;
+
+    ResourceLockerDescriptor() = default;
+    ResourceLockerDescriptor(const ResourceLockerDescriptor&) = delete;
+    ResourceLockerDescriptor& operator=(const ResourceLockerDescriptor&) = delete;
+    ResourceLockerDescriptor(ResourceLockerDescriptor&&) = default;
+    ResourceLockerDescriptor& operator=(ResourceLockerDescriptor&&) = default;
+
+ protected:
+    ~ResourceLockerDescriptor() {}
+
+    struct ImageData
+    {
+        drv::ImagePtr image = drv::get_null_ptr<drv::ImagePtr>();
+        drv::ImageSubresourceSet reads;
+        drv::ImageSubresourceSet writes;
+        ImageData() : reads(0), writes(0) {}
+        ImageData(drv::ImagePtr _image, uint32_t layerCount)
+          : image(_image), reads(layerCount), writes(layerCount) {}
+    };
+
+    // TODO when buffer count is added, add it ot empty() function
+    virtual void push_back(ImageData&& data) = 0;
+    virtual void reserve(uint32_t count) = 0;
+
+    virtual ImageData& getImageData(uint32_t index) = 0;
+    virtual const ImageData& getImageData(uint32_t index) const = 0;
+
  private:
+    uint32_t findImage(ImagePtr image) const;
+
+    ImageSubresourceSet& getReadSubresources(uint32_t index) &;
+    ImageSubresourceSet& getWriteSubresources(uint32_t index) &;
 };
 
 class ResourceLocker
@@ -115,7 +146,7 @@ class ResourceLocker
         SUCCESS_IMMEDIATE,
         SUCCESS_BLOCKED
     };
-    ResultLock<LockResult> lock(const ResourceLockerDescriptor& locker);
+    ResultLock<LockResult> lock(const ResourceLockerDescriptor* locker);
 
     enum class LockTimeResult
     {
@@ -123,7 +154,7 @@ class ResourceLocker
         SUCCESS_BLOCKED,
         TIMEOUT
     };
-    ResultLock<LockTimeResult> lockTimeout(const ResourceLockerDescriptor& locker,
+    ResultLock<LockTimeResult> lockTimeout(const ResourceLockerDescriptor* locker,
                                            uint64_t timeoutNSec);
 
     enum class TryLockResult
@@ -131,13 +162,23 @@ class ResourceLocker
         SUCCESS,
         FAILURE
     };
-    ResultLock<TryLockResult> tryLock(const ResourceLockerDescriptor& locker);
+    ResultLock<TryLockResult> tryLock(const ResourceLockerDescriptor* locker);
+
+    ResourceLocker() = default;
+
+    ResourceLocker(const ResourceLocker&) = delete;
+    ResourceLocker& operator=(const ResourceLocker&) = delete;
+
+    ~ResourceLocker();
 
  private:
     std::mutex mutex;
     std::condition_variable cv;
     uint64_t unlockCounter = 0;
+    std::vector<const ResourceLockerDescriptor*> locks;
+    LockId prevFree = 0;
 
     void unlock(LockId lockId);
+    uint32_t getLockCount(const ResourceLockerDescriptor* lock) const;
 };
 }  // namespace drv

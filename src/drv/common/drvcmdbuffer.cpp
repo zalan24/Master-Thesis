@@ -31,11 +31,13 @@ DrvCmdBufferRecorder::~DrvCmdBufferRecorder() {
         if (resourceUsage != nullptr) {
             resourceUsage->clear();
             for (uint32_t i = 0; i < imageStates->size(); ++i) {
+                uint32_t numLayers = driver->get_texture_info((*imageStates)[i].first).arraySize;
                 (*imageStates)[i].second.cmdState.usageMask.traverse(
                   [&, this](uint32_t layer, uint32_t mip, drv::AspectFlagBits aspect) {
                       bool written =
                         (*imageStates)[i].second.cmdState.usage.get(layer, mip, aspect).written;
-                      resourceUsage->addImage((*imageStates)[i].first, layer, mip, aspect,
+                      resourceUsage->addImage((*imageStates)[i].first, numLayers, layer, mip,
+                                              aspect,
                                               written ? ResourceLockerDescriptor::READ_WRITE
                                                       : ResourceLockerDescriptor::READ);
                   });
@@ -328,4 +330,26 @@ void DrvCmdBufferRecorder::useResource(drv::ImagePtr image,
     subresources.traverse([&, this](uint32_t layer, uint32_t mip, drv::AspectFlagBits aspect) {
         useResource(image, layer, mip, aspect, usages);
     });
+}
+
+uint32_t PersistentResourceLockerDescriptor::getImageCount() const {
+    return uint32_t(imageData.size());
+}
+void PersistentResourceLockerDescriptor::clear() {
+    imageData.clear();
+}
+void PersistentResourceLockerDescriptor::push_back(ImageData&& data) {
+    imageData.push_back(std::move(data));
+}
+void PersistentResourceLockerDescriptor::reserve(uint32_t count) {
+    imageData.reserve(count);
+}
+
+ResourceLockerDescriptor::ImageData& PersistentResourceLockerDescriptor::getImageData(
+  uint32_t index) {
+    return imageData[index];
+}
+const ResourceLockerDescriptor::ImageData& PersistentResourceLockerDescriptor::getImageData(
+  uint32_t index) const {
+    return imageData[index];
 }
