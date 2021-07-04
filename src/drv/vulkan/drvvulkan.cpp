@@ -658,7 +658,15 @@ bool DrvVulkan::validate_and_apply_state_transitions(
         drv::TextureInfo texInfo = get_texture_info(transitions[i].first);
         drv_vulkan::Image* image = convertImage(transitions[i].first);
 
-        bool invalid = false;
+        if (correctedImageCount < imageCount
+            && imageCorrections[correctedImageCount].first != transitions[i].first) {
+            imageCorrections[correctedImageCount].first = transitions[i].first;
+            imageCorrections[correctedImageCount].second =
+              drv::ImageStateCorrection(image->arraySize, image->numMipLevels, image->aspects);
+        }
+
+        bool hadInvalid = false;
+
         transitions[i].second.cmdState.usageMask.traverse([&](uint32_t layer, uint32_t mip,
                                                               drv::AspectFlagBits aspect) {
             const auto& requirement = transitions[i].second.guarantee.get(layer, mip, aspect);
@@ -711,7 +719,66 @@ bool DrvVulkan::validate_and_apply_state_transitions(
                 //   }
             }
 
-            const auto& state = image->linearTrackingState.get(layer, mip, aspect);
+            auto& state = image->linearTrackingState.get(layer, mip, aspect);
+
+            if (usage.written) {
+                state.multiQueueState.isWrite = true;
+                // TODO get these from outide (from execution queue)
+                state.multiQueueState.mainSemaphore = ;
+                state.multiQueueState.signalledValue = ;
+                state.multiQueueState.submission = ;
+                state.multiQueueState.syncedStages = ;
+                state.multiQueueState.frameId = ;
+                if (currentQueue != state.multiQueueState.mainQueue) {
+                    uint32_t queueId = 0;
+                    while (queueId < state.multiQueueState.readingQueues.size()
+                           && state.multiQueueState.readingQueues[queueId].queue != currentQueue)
+                        queueId++;
+                    if (queueId < state.multiQueueState.readingQueues.size()) {
+                        state.ongoingReads =
+                          state.multiQueueState.readingQueues[queueId].readingStages;
+                        state.ongoingWrites = 0;
+                        state.dirtyMask = 0;
+                        state.visible = drv::MemoryBarrier::get_all_bits();
+                        state.usableStages =
+                          ;  // ??? wait stages from main queue ??? something like that
+                    }
+                    else {
+                        state.ongoingReads = 0;
+                        state.ongoingWrites = 0;
+                        state.dirtyMask = 0;
+                        state.visible = drv::MemoryBarrier::get_all_bits();
+                        state.usableStages = ;
+                    }
+                }
+                state.multiQueueState.readingQueues.clear();
+            }
+            else {
+                if (currentQueue != state.multiQueueState.mainQueue) {
+                    uint32_t queueId = 0;
+                    while (queueId < state.multiQueueState.readingQueues.size()
+                           && state.multiQueueState.readingQueues[queueId].queue != currentQueue)
+                        queueId++;
+                    if (queueId == state.multiQueueState.readingQueues.size()) {
+                        state.multiQueueState.readingQueues.emplace_back();
+                        state.multiQueueState.readingQueues.back().queue = currentQueue;
+                        state.multiQueueState.readingQueues.back().readingStages = 0;
+                    }
+                    // TODO get from outside
+                    state.multiQueueState.readingQueues[queueId].frameId = ;
+                    state.multiQueueState.readingQueues[queueId].semaphore = ;
+                    state.multiQueueState.readingQueues[queueId].signalledValue = ;
+                    state.multiQueueState.readingQueues[queueId].submission = ;
+                    state.multiQueueState.readingQueues[queueId].syncedStages = ;
+                    TODO;
+                    // validate reading queue state instead of main queue state....
+                }
+            }
+
+            TODO;  // layout correct is done in a separate correction submissions. That needs to be tracked as well...
+
+            bool invalid = false;
+
             if (requirement.ownership != state.ownership
                 && requirement.ownership != drv::IGNORE_FAMILY
                 && state.ownership != drv::IGNORE_FAMILY)
@@ -736,69 +803,26 @@ bool DrvVulkan::validate_and_apply_state_transitions(
                     imgData.init(texInfo);
                 imgData.subresources.get(layer, mip, aspect).append(state);
             }
-            // if (!drv::is_null_ptr(state.multiQueueState.mainQueue)) {
-            //     drv::ResourceStateTransitionCallback::ConflictMode mode =
-            //       drv::ResourceStateTransitionCallback::NONE;
+            if (invalid) {
+                auto& oldState =
+                  imageCorrections[correctedImageCount].second.oldState.get(layer, mip, aspect);
+                auto& newState =
+                  imageCorrections[correctedImageCount].second.newState.get(layer, mip, aspect);
+                imageCorrections[correctedImageCount].second.usageMask.add(layer, mip, aspect);
+                oldState = state;
+                newState = requirement;
+                hadInvalid = true;
+            }
 
-            //     if (usage.written || state.multiQueueState.isWrite)
-            //         mode = drv::ResourceStateTransitionCallback::ORDERED_ACCESS;
-            //     else if (!image->sharedResource
-            //              && get_queue_family(device, state.multiQueueState.mainQueue)
-            //                   != get_queue_family(device, currentQueue))
-            //         mode = drv::ResourceStateTransitionCallback::MUTEX;
-
-            //     if (mode != drv::ResourceStateTransitionCallback::NONE)
-            //         cb->requireSync(state.multiQueueState.mainQueue,
-            //                         state.multiQueueState.submission, state.multiQueueState.frameId,
-            //                         mode,
-            //                         state.ongoingReads | state.ongoingWrites | state.usableStages);
-            // }
-            // for (uint32_t j = 0; j < state.multiQueueState.readingQueues.size(); ++j) {
-            //     const drv::ReadingQueueState& rs = state.multiQueueState.readingQueues[j];
-            //     if (!rs)
-            //         continue;
-            //     drv::ResourceStateTransitionCallback::ConflictMode mode =
-            //       drv::ResourceStateTransitionCallback::NONE;
-            //     if (usage.written)
-            //         mode = drv::ResourceStateTransitionCallback::ORDERED_ACCESS;
-            //     else if (!image->sharedResource
-            //              && get_queue_family(device, rs.queue)
-            //                   != get_queue_family(device, currentQueue))
-            //         mode = drv::ResourceStateTransitionCallback::MUTEX;
-
-            //     if (mode != drv::ResourceStateTransitionCallback::NONE)
-            //         cb->requireSync(rs.queue, rs.submission, rs.frameId, mode, rs.readingStages);
-            // }
+            const auto& result = transitions[i].second.cmdState.state.get(layer, mip, aspect);
+            drv::PipelineStages::FlagType preservedStages =
+              state.usableStages
+              & transitions[i].second.cmdState.usage.get(layer, mip, aspect).preserveUsableStages;
+            static_cast<drv::ImageSubresourceTrackData&>(state) = result;
+            state.usableStages = state.usableStages | preservedStages;
         });
-        if (invalid) {
-            imageCorrections[correctedImageCount].first = transitions[i].first;
-            imageCorrections[correctedImageCount].second =
-              drv::ImageStateCorrection(image->arraySize, image->numMipLevels, image->aspects);
-            transitions[i].second.cmdState.usageMask.traverse(
-              [&](uint32_t layer, uint32_t mip, drv::AspectFlagBits aspect) {
-                  const auto& requirement = transitions[i].second.guarantee.get(layer, mip, aspect);
-                  const auto& state = image->linearTrackingState.get(layer, mip, aspect);
-                  auto& oldState =
-                    imageCorrections[correctedImageCount].second.oldState.get(layer, mip, aspect);
-                  auto& newState =
-                    imageCorrections[correctedImageCount].second.newState.get(layer, mip, aspect);
-                  imageCorrections[correctedImageCount].second.usageMask.add(layer, mip, aspect);
-                  oldState = state;
-                  newState = requirement;
-              });
+        if (hadInvalid)
             correctedImageCount++;
-        }
-        transitions[i].second.cmdState.usageMask.traverse(
-          [&](uint32_t layer, uint32_t mip, drv::AspectFlagBits aspect) {
-              const auto& result = transitions[i].second.cmdState.state.get(layer, mip, aspect);
-              auto& state = image->linearTrackingState.get(layer, mip, aspect);
-              drv::PipelineStages::FlagType preservedStages =
-                state.usableStages
-                & transitions[i].second.cmdState.usage.get(layer, mip, aspect).preserveUsableStages;
-              static_cast<drv::ImageSubresourceTrackData&>(state) = result;
-              // TODO update global trackdata too
-              state.usableStages = state.usableStages | preservedStages;
-          });
     }
     if (correctedImageCount > 0) {
         correction.imageCorrections =
@@ -843,10 +867,6 @@ void DrvVulkan::perform_cpu_access(const drv::ResourceLockerDescriptor* resource
               state.ongoingReads = 0;
               state.ongoingWrites = 0;
               state.usableStages = drv::PipelineStages::get_all_bits(drv::CMD_TYPE_ALL);
-              //   state.dirtyMask = 0;
-              //   state.visible = drv::MemoryBarrier::AccessFlagBits::HOST_WRITE_BIT;
-              //   if (hasRead)
-              //       state.visible |= drv::MemoryBarrier::AccessFlagBits::HOST_READ_BIT;
           });
         resources->getReadSubresources(i).traverse(
           [&](uint32_t layer, uint32_t mip, drv::AspectFlagBits aspect) {
@@ -864,8 +884,6 @@ void DrvVulkan::perform_cpu_access(const drv::ResourceLockerDescriptor* resource
               state.ongoingReads = 0;
               state.ongoingWrites = 0;
               state.usableStages = drv::PipelineStages::get_all_bits(drv::CMD_TYPE_ALL);
-              //   state.dirtyMask = 0;
-              //   state.visible |= drv::MemoryBarrier::AccessFlagBits::HOST_READ_BIT;
           });
     }
 }

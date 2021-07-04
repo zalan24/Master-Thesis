@@ -103,13 +103,7 @@ Get a triangle on screen:
                     ✔ CPU write only @done (7/4/2021, 4:08:34 PM)
                     ✔ CPU read write @done (7/4/2021, 4:08:32 PM)
                 ☐ On execution queue
-                    ☐ ...
-
-                ☐ Clear resource states after wait on semaphore (usable stages probably = semaphore wait stages)
-                ☐ When sync object is applied, update main queue / states on reader queues
-                ☐ If no sync is needed, just update main queue normally, and update reading stages for reading queues
-                ☐ Existing sumbissions should consider state of the resource on that specific queue
-                ☐ Track state on CPU usage (checkResources, sync_queue)
+                    ☐ When sync object is applied, update main queue / states on reader queues
                 ☐ Track signalled value and synced stages on multiqueue tracking info
             ☐ Map memory
                 ☐ Create an upload only version (data is passed to a single drv command)
