@@ -684,7 +684,10 @@ bool Engine::execute(ExecutionPackage&& package) {
         {
             drv::StateCorrectionData correctionData;
             if (!drv::validate_and_apply_state_transitions(
-                  getDevice(), cmdBuffer.queue, correctionData,
+                  getDevice(), cmdBuffer.queue, cmdBuffer.frameId,
+                  cmdBuffer.cmdBufferData.cmdBufferId, cmdBuffer.signalManagedSemaphore,
+                  cmdBuffer.signaledManagedSemaphoreValue,
+                  cmdBuffer.cmdBufferData.semaphoreSrcStages, correctionData,
                   uint32_t(cmdBuffer.cmdBufferData.imageStates.size()),
                   cmdBuffer.cmdBufferData.imageStates.data(),
                   cmdBuffer.cmdBufferData.stateValidation ? cmdBuffer.cmdBufferData.statsCacheHandle

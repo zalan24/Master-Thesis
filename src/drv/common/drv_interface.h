@@ -284,10 +284,12 @@ class IDriver
       bool simultaneousUse) = 0;
     virtual size_t get_cmd_buffer_recorder_size() = 0;
 
-    virtual bool validate_and_apply_state_transitions(LogicalDevicePtr device, QueuePtr currentQueue,
-      StateCorrectionData& correction, uint32_t imageCount,
-      const std::pair<drv::ImagePtr, ImageTrackInfo>* transitions, StatsCache* cacheHandle,
-      ResourceStateTransitionCallback* cb) = 0;
+    virtual bool validate_and_apply_state_transitions(
+      LogicalDevicePtr device, QueuePtr currentQueue, uint64_t frameId, CmdBufferId cmdBufferId,
+      const TimelineSemaphoreHandle& timelineSemaphore, uint64_t semaphoreSignalValue,
+      PipelineStages::FlagType semaphoreSrcStages, StateCorrectionData& correction,
+      uint32_t imageCount, const std::pair<drv::ImagePtr, ImageTrackInfo>* transitions,
+      StatsCache* cacheHandle, ResourceStateTransitionCallback* cb) = 0;
 
     virtual DriverSupport get_support(LogicalDevicePtr device) = 0;
     virtual void perform_cpu_access(const ResourceLockerDescriptor* resources,

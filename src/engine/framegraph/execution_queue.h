@@ -48,6 +48,7 @@ struct CommandBufferData
     GarbageVector<std::pair<drv::ImagePtr, drv::ImageTrackInfo>> imageStates;
     GarbageResourceLockerDescriptor resourceUsages;
     bool stateValidation;
+    drv::PipelineStages::FlagType semaphoreSrcStages = 0;
     drv::CmdBufferId cmdBufferId = 0;
     StatsCache* statsCacheHandle;
 #if USE_COMMAND_BUFFER_NAME
@@ -58,6 +59,7 @@ struct CommandBufferData
       : imageStates(garbageSystem->getAllocator<std::pair<drv::ImagePtr, drv::ImageTrackInfo>>()),
         resourceUsages(garbageSystem),
         stateValidation(false),
+        semaphoreSrcStages(0),
         statsCacheHandle(nullptr)
 #if USE_COMMAND_BUFFER_NAME
         ,
@@ -69,13 +71,14 @@ struct CommandBufferData
 
     CommandBufferData(GarbageSystem* garbageSystem, drv::CommandBufferPtr _cmdBufferPtr,
                       const drv::DrvCmdBufferRecorder::ImageStates* _imageStates,
-                      const drv::ResourceLockerDescriptor* _resourceUsages, bool _stateValidation,
+                      const drv::ResourceLockerDescriptor* _resourceUsages, bool _stateValidation, drv::PipelineStages::FlagType _semaphoreSrcStages,
                       const char* name, drv::CmdBufferId _cmdBufferId,
                       StatsCache* _statsCacheHandle)
       : cmdBufferPtr(_cmdBufferPtr),
         imageStates(garbageSystem->getAllocator<std::pair<drv::ImagePtr, drv::ImageTrackInfo>>()),
         resourceUsages(garbageSystem),
         stateValidation(_stateValidation),
+        semaphoreSrcStages(_semaphoreSrcStages),
         cmdBufferId(_cmdBufferId),
         statsCacheHandle(_statsCacheHandle)
 #if USE_COMMAND_BUFFER_NAME
@@ -94,7 +97,7 @@ struct CommandBufferData
     CommandBufferData(GarbageSystem* garbageSystem, const drv::CommandBufferInfo& info,
                       bool _stateValidation)
       : CommandBufferData(garbageSystem, info.cmdBufferPtr, info.stateTransitions.imageStates,
-                          info.resourceUsage, _stateValidation, info.name, info.cmdBufferId,
+                          info.resourceUsage, _stateValidation, info.semaphoreSrcStages, info.name, info.cmdBufferId,
                           info.statsCacheHandle) {}
 
     void setName(const char* name) {

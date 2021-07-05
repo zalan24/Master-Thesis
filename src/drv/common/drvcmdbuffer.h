@@ -172,6 +172,8 @@ class DrvCmdBufferRecorder
 
     void init(uint64_t firstSignalValue);
 
+    PipelineStages::FlagType getSemaphoreStages() const { return semaphoreStages; }
+
  protected:
     ImageTrackInfo& getImageState(drv::ImagePtr image, uint32_t ranges,
                                   const drv::ImageSubresourceRange* subresourceRanges,
@@ -184,8 +186,6 @@ class DrvCmdBufferRecorder
                      const drv::ImageSubresourceRange* ranges, drv::ImageResourceUsageFlag usages);
     void useResource(drv::ImagePtr image, const drv::ImageSubresourceSet& subresources,
                      drv::ImageResourceUsageFlag usages);
-
-    PipelineStages::FlagType getSemaphoreStages() const { return semaphoreStages; }
 
     IDriver* driver;
     LogicalDevicePtr device;
@@ -223,6 +223,7 @@ struct CommandBufferInfo
     CmdBufferId cmdBufferId;
     StatsCache* statsCacheHandle;
     TimelineSemaphoreHandle semaphore;
+    PipelineStages::FlagType semaphoreSrcStages;  // pipeline waits on these
 };
 
 inline static CmdBufferId make_cmd_buffer_id(const char* file, uint32_t line) {
@@ -302,6 +303,7 @@ class DrvCmdBuffer
             recordCallback(currentData, recorder);
             numSubmissions = 0;
             statsCacheHandle = recorder->getStatsCacheHandle();
+            semaphoreSrcStages = recorder->getSemaphoreStages();
         }
         needToPrepare = false;
     }
@@ -318,8 +320,8 @@ class DrvCmdBuffer
             StatsCacheWriter writer(statsCacheHandle);
             writer->semaphore.append(0);
         }
-        return {cmdBufferPtr, {&imageStates},   &resourceUsage, ++numSubmissions, name.c_str(),
-                id,           statsCacheHandle, semaphore};
+        return {cmdBufferPtr, {&imageStates},   &resourceUsage, ++numSubmissions,  name.c_str(),
+                id,           statsCacheHandle, semaphore,      semaphoreSrcStages};
     }
 
     const DrvCmdBufferRecorder::ImageStates* getImageStates() { return &imageStates; }
@@ -352,6 +354,7 @@ class DrvCmdBuffer
     FlexibleArray<drv::RenderPassPostStats, 1> renderPassPostStats;
     TimelineSemaphoreHandle semaphore;
     uint64_t firstSignalValue;
+    PipelineStages::FlagType semaphoreSrcStages = 0;  // pipeline waits on these
 
     bool needToPrepare = true;
     uint64_t numSubmissions = 0;

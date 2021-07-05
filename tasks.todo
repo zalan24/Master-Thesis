@@ -97,14 +97,14 @@ Get a triangle on screen:
                         ✔ When unlocking an object (removing from manager list), increment the counter and notify a CV @done (7/4/2021, 11:31:20 AM)
                         ✔ locking function should only recheck if resource is free to use, if the counter has reached a sufficient vaule (as many objects were unlock as it was blocked by) @done (7/4/2021, 11:33:50 AM)
                         ✔ locking function should recount locking objects when it checks for availability @done (7/4/2021, 11:33:55 AM)
-            ☐ Track new states
+            ✔ Track new states @done (7/5/2021, 12:07:22 PM)
                 ✔ On CPU usage @done (7/4/2021, 4:08:36 PM)
                     ✔ CPU Read @done (7/4/2021, 4:08:35 PM)
                     ✔ CPU write only @done (7/4/2021, 4:08:34 PM)
                     ✔ CPU read write @done (7/4/2021, 4:08:32 PM)
-                ☐ On execution queue
-                    ☐ When sync object is applied, update main queue / states on reader queues
-                ☐ Track signalled value and synced stages on multiqueue tracking info
+                ✔ On execution queue @done (7/5/2021, 12:07:19 PM)
+                    ✔ When sync object is applied, update main queue / states on reader queues @done (7/5/2021, 12:07:17 PM)
+                ✔ Track signalled value and synced stages on multiqueue tracking info @done (7/5/2021, 12:07:24 PM)
             ☐ Map memory
                 ☐ Create an upload only version (data is passed to a single drv command)
                 ☐ Create a map, unmap version with const and non const data for read and read/write accesses
@@ -121,6 +121,22 @@ Get a triangle on screen:
                     ☐ Upload an image to gpu
                     ☐ Render something to it
                     ☐ read it back and save it
+                ☐ Pressure testing
+                    ☐ Create an uploading node for render/compute/transfer families
+                    ☐ Continously acquire node and upload data (something read from file)
+                    ☐ Create N threads, which are assigned (deterministic) randomly to 3 render queues including the main queue
+                    ☐ Each thread should have a (deterministic) randomly assigned image layout from the usable set (probably {genenar, present khr, transfer src optimal / transfer dst optimal})
+                        ☐ Do this for the src image, that they use, and the target image
+                    ☐ Each thread should blit the image to a tile on the screen
+                    ☐ They should depend on each other from left to right, top to bottom
+                    ☐ They need to depend on uploading work
+                    ☐ present needs to wait on them
+                    ☐ Download the generated image every frame (save it too once in a run to a file)
+                    ☐ If this works, repleace the 3 uploaded textures with on 3-layered texture
+                    ☐ Expected result:
+                        ☐ It should produce the expected images
+                        ☐ After running for a while, runtime stats should get rid of all corrections
+                        ☐ After the 1st run, no auto semaphores should be used at all
 
         ☐ Buffer????
                 ☐ Have a small history of sub+resource ranges + an extra fix slot for the entire buffer (instead of arrays and mip levels)

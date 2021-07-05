@@ -423,12 +423,15 @@ bool drv::destroy_framebuffer(LogicalDevicePtr device, FramebufferPtr frameBuffe
     return current_driver_interface->destroy_framebuffer(device, frameBuffer);
 }
 
-bool drv::validate_and_apply_state_transitions(LogicalDevicePtr device, QueuePtr currentQueue,
-  StateCorrectionData& correction, uint32_t imageCount,
+bool drv::validate_and_apply_state_transitions(
+  LogicalDevicePtr device, QueuePtr currentQueue, uint64_t frameId, CmdBufferId cmdBufferId,
+  const TimelineSemaphoreHandle& timelineSemaphore, uint64_t semaphoreSignalValue,
+  PipelineStages::FlagType semaphoreSrcStages, StateCorrectionData& correction, uint32_t imageCount,
   const std::pair<drv::ImagePtr, ImageTrackInfo>* transitions, StatsCache* cacheHandle,
   ResourceStateTransitionCallback* cb) {
-    return current_driver_interface->validate_and_apply_state_transitions(device, currentQueue,
-      correction, imageCount, transitions, cacheHandle, cb);
+    return current_driver_interface->validate_and_apply_state_transitions(
+      device, currentQueue, frameId, cmdBufferId, timelineSemaphore, semaphoreSignalValue,
+      semaphoreSrcStages, correction, imageCount, transitions, cacheHandle, cb);
 }
 
 drv::CommandBufferPtr drv::create_wait_all_command_buffer(LogicalDevicePtr device,

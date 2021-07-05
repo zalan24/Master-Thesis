@@ -648,7 +648,9 @@ void VulkanCmdBufferRecorder::add_memory_sync(
 }
 
 bool DrvVulkan::validate_and_apply_state_transitions(
-  drv::LogicalDevicePtr device, drv::QueuePtr currentQueue, drv::StateCorrectionData& correction,
+  drv::LogicalDevicePtr, drv::QueuePtr currentQueue, uint64_t frameId, drv::CmdBufferId cmdBufferId,
+  const drv::TimelineSemaphoreHandle& timelineSemaphore, uint64_t semaphoreSignalValue,
+  drv::PipelineStages::FlagType semaphoreSrcStages, drv::StateCorrectionData& correction,
   uint32_t imageCount, const std::pair<drv::ImagePtr, drv::ImageTrackInfo>* transitions,
   StatsCache* cacheHandle, drv::ResourceStateTransitionCallback* cb) {
     uint32_t correctedImageCount = 0;
@@ -673,15 +675,34 @@ bool DrvVulkan::validate_and_apply_state_transitions(
             const auto& usage = transitions[i].second.cmdState.usage.get(layer, mip, aspect);
             const auto& usedStages =
               transitions[i].second.cmdState.userStages.get(layer, mip, aspect);
+            auto& state = image->linearTrackingState.get(layer, mip, aspect);
+
+            bool invalid = false;
+
+            bool requireLayoutTransition = requirement.layout != drv::ImageLayout::UNDEFINED
+                                           && requirement.layout != state.layout;
+            bool requireOwnershipTransfer = !image->sharedResource
+                                            && requirement.ownership != state.ownership
+                                            && requirement.ownership != drv::IGNORE_FAMILY
+                                            && state.ownership != drv::IGNORE_FAMILY;
+
+            uint32_t queueId = 0;
+            while (queueId < state.multiQueueState.readingQueues.size()
+                   && state.multiQueueState.readingQueues[queueId].queue != currentQueue)
+                queueId++;
 
             uint32_t numPendingUsages =
               get_num_pending_usages(transitions[i].first, layer, mip, aspect);
-            bool dstWrite = usage.written;
+            bool dstWrite = usage.written || requireLayoutTransition;
+            bool hadSemaphore = false;
             for (uint32_t j = 0; j < numPendingUsages; ++j) {
                 drv::PendingResourceUsage pendingUsage =
                   get_pending_usage(transitions[i].first, layer, mip, aspect, j);
-                //   if (pendingUsage.queue != currentQueue) {
-                bool srcWrite = pendingUsage.isWrite;
+                if (pendingUsage.queue == currentQueue)
+                    continue;
+                // if this is an existing queue, a former sync is guaranteed -> assume no write
+                bool srcWrite =
+                  pendingUsage.isWrite && queueId == state.multiQueueState.readingQueues.size();
                 drv::PipelineStages::FlagType waitMask = 0;
                 drv::ResourceStateTransitionCallback::ConflictMode conflictMode =
                   drv::ResourceStateTransitionCallback::NONE;
@@ -691,13 +712,14 @@ bool DrvVulkan::validate_and_apply_state_transitions(
                                         : pendingUsage.ongoingWrites;
                     conflictMode = drv::ResourceStateTransitionCallback::ORDERED_ACCESS;
                 }
-                else if (!image->sharedResource
-                         && get_queue_family(device, pendingUsage.queue)
-                              != get_queue_family(device, currentQueue)) {
+                else if (requireOwnershipTransfer) {
+                    // synchronize everything for simplicity
+                    // when a new family is used, all existing usages should be on a different family
                     waitMask = pendingUsage.ongoingReads | pendingUsage.ongoingWrites;
                     conflictMode = drv::ResourceStateTransitionCallback::MUTEX;
                 }
                 if (waitMask != 0) {
+                    hadSemaphore = true;
                     if (pendingUsage.signalledSemaphore) {
                         if ((pendingUsage.syncedStages & waitMask) == waitMask)
                             cb->registerSemaphore(pendingUsage.queue, pendingUsage.cmdBufferId,
@@ -716,110 +738,149 @@ bool DrvVulkan::validate_and_apply_state_transitions(
                                             conflictMode,
                                             drv::ResourceStateTransitionCallback::NO_SEMAPHORE);
                 }
-                //   }
             }
 
-            auto& state = image->linearTrackingState.get(layer, mip, aspect);
-
-            if (usage.written) {
-                state.multiQueueState.isWrite = true;
-                // TODO get these from outide (from execution queue)
-                state.multiQueueState.mainSemaphore = ;
-                state.multiQueueState.signalledValue = ;
-                state.multiQueueState.submission = ;
-                state.multiQueueState.syncedStages = ;
-                state.multiQueueState.frameId = ;
+            if (dstWrite || requireOwnershipTransfer) {
                 if (currentQueue != state.multiQueueState.mainQueue) {
-                    uint32_t queueId = 0;
-                    while (queueId < state.multiQueueState.readingQueues.size()
-                           && state.multiQueueState.readingQueues[queueId].queue != currentQueue)
-                        queueId++;
                     if (queueId < state.multiQueueState.readingQueues.size()) {
                         state.ongoingReads =
                           state.multiQueueState.readingQueues[queueId].readingStages;
                         state.ongoingWrites = 0;
                         state.dirtyMask = 0;
                         state.visible = drv::MemoryBarrier::get_all_bits();
-                        state.usableStages =
-                          ;  // ??? wait stages from main queue ??? something like that
                     }
                     else {
                         state.ongoingReads = 0;
                         state.ongoingWrites = 0;
                         state.dirtyMask = 0;
                         state.visible = drv::MemoryBarrier::get_all_bits();
-                        state.usableStages = ;
                     }
                 }
+                if (hadSemaphore)
+                    state.usableStages = usedStages;
+                else if (drv::is_null_ptr(state.multiQueueState.mainQueue))
+                    state.usableStages = drv::PipelineStages::get_all_bits(drv::CMD_TYPE_ALL);
+                state.multiQueueState.mainSemaphore = timelineSemaphore;
+                state.multiQueueState.signalledValue = semaphoreSignalValue;
+                state.multiQueueState.submission = cmdBufferId;
+                state.multiQueueState.syncedStages = semaphoreSrcStages;
+                state.multiQueueState.frameId = frameId;
                 state.multiQueueState.readingQueues.clear();
+                state.multiQueueState.mainQueue = currentQueue;
             }
             else {
                 if (currentQueue != state.multiQueueState.mainQueue) {
-                    uint32_t queueId = 0;
-                    while (queueId < state.multiQueueState.readingQueues.size()
-                           && state.multiQueueState.readingQueues[queueId].queue != currentQueue)
-                        queueId++;
                     if (queueId == state.multiQueueState.readingQueues.size()) {
                         state.multiQueueState.readingQueues.emplace_back();
                         state.multiQueueState.readingQueues.back().queue = currentQueue;
-                        state.multiQueueState.readingQueues.back().readingStages = 0;
+                        state.multiQueueState.readingQueues.back().readingStages = usedStages;
                     }
-                    // TODO get from outside
-                    state.multiQueueState.readingQueues[queueId].frameId = ;
-                    state.multiQueueState.readingQueues[queueId].semaphore = ;
-                    state.multiQueueState.readingQueues[queueId].signalledValue = ;
-                    state.multiQueueState.readingQueues[queueId].submission = ;
-                    state.multiQueueState.readingQueues[queueId].syncedStages = ;
-                    TODO;
-                    // validate reading queue state instead of main queue state....
+                    state.multiQueueState.readingQueues[queueId].frameId = frameId;
+                    state.multiQueueState.readingQueues[queueId].semaphore = timelineSemaphore;
+                    state.multiQueueState.readingQueues[queueId].signalledValue =
+                      semaphoreSignalValue;
+                    state.multiQueueState.readingQueues[queueId].submission = cmdBufferId;
+                    state.multiQueueState.readingQueues[queueId].syncedStages = semaphoreSrcStages;
                 }
             }
 
-            TODO;  // layout correct is done in a separate correction submissions. That needs to be tracked as well...
+            queueId = 0;
+            while (queueId < state.multiQueueState.readingQueues.size()
+                   && state.multiQueueState.readingQueues[queueId].queue != currentQueue)
+                queueId++;
 
-            bool invalid = false;
+            if (queueId == state.multiQueueState.readingQueues.size()) {
+                // main queue
+                if (requireOwnershipTransfer)
+                    invalid = true;
+                else if (requireLayoutTransition)
+                    invalid = true;
+                else if ((state.usableStages & requirement.usableStages)
+                         != requirement.usableStages)
+                    invalid = true;
+                else if ((state.ongoingWrites & requirement.ongoingWrites) != state.ongoingWrites)
+                    invalid = true;
+                else if ((state.ongoingReads & requirement.ongoingReads) != state.ongoingReads)
+                    invalid = true;
+                else if ((state.dirtyMask & requirement.dirtyMask) != state.dirtyMask)
+                    invalid = true;
+                else if ((state.visible & requirement.visible) != requirement.visible)
+                    invalid = true;
+                if (cacheHandle) {
+                    StatsCacheWriter cacheWriter(cacheHandle);
+                    auto& imgData = cacheWriter->cmdBufferImageStates[image->imageId];
+                    if (!imgData.isCompatible(texInfo))
+                        imgData.init(texInfo);
+                    imgData.subresources.get(layer, mip, aspect).append(state);
+                }
+                if (invalid) {
+                    auto& oldState =
+                      imageCorrections[correctedImageCount].second.oldState.get(layer, mip, aspect);
+                    auto& newState =
+                      imageCorrections[correctedImageCount].second.newState.get(layer, mip, aspect);
+                    imageCorrections[correctedImageCount].second.usageMask.add(layer, mip, aspect);
+                    oldState = state;
+                    newState = requirement;
+                    hadInvalid = true;
+                }
 
-            if (requirement.ownership != state.ownership
-                && requirement.ownership != drv::IGNORE_FAMILY
-                && state.ownership != drv::IGNORE_FAMILY)
-                invalid = true;
-            else if (requirement.layout != drv::ImageLayout::UNDEFINED
-                     && requirement.layout != state.layout)
-                invalid = true;
-            else if ((state.usableStages & requirement.usableStages) != requirement.usableStages)
-                invalid = true;
-            else if ((state.ongoingWrites & requirement.ongoingWrites) != state.ongoingWrites)
-                invalid = true;
-            else if ((state.ongoingReads & requirement.ongoingReads) != state.ongoingReads)
-                invalid = true;
-            else if ((state.dirtyMask & requirement.dirtyMask) != state.dirtyMask)
-                invalid = true;
-            else if ((state.visible & requirement.visible) != requirement.visible)
-                invalid = true;
-            if (cacheHandle) {
-                StatsCacheWriter cacheWriter(cacheHandle);
-                auto& imgData = cacheWriter->cmdBufferImageStates[image->imageId];
-                if (!imgData.isCompatible(texInfo))
-                    imgData.init(texInfo);
-                imgData.subresources.get(layer, mip, aspect).append(state);
+                const auto& result = transitions[i].second.cmdState.state.get(layer, mip, aspect);
+                drv::PipelineStages::FlagType preservedStages =
+                  state.usableStages
+                  & transitions[i]
+                      .second.cmdState.usage.get(layer, mip, aspect)
+                      .preserveUsableStages;
+                if (hadSemaphore)
+                    preservedStages &= usedStages;  // this is used as a dst stage for semaphores
+                static_cast<drv::ImageSubresourceTrackData&>(state) = result;
+                state.usableStages = state.usableStages | preservedStages;
             }
-            if (invalid) {
-                auto& oldState =
-                  imageCorrections[correctedImageCount].second.oldState.get(layer, mip, aspect);
-                auto& newState =
-                  imageCorrections[correctedImageCount].second.newState.get(layer, mip, aspect);
-                imageCorrections[correctedImageCount].second.usageMask.add(layer, mip, aspect);
-                oldState = state;
-                newState = requirement;
-                hadInvalid = true;
-            }
+            else {
+                drv::drv_assert(!requireOwnershipTransfer);
+                drv::drv_assert(!requireLayoutTransition);
+                if ((state.multiQueueState.readingQueues[queueId].readingStages
+                     & requirement.usableStages)
+                    != requirement.usableStages)
+                    invalid = true;
+                else if ((state.multiQueueState.readingQueues[queueId].readingStages
+                          & requirement.ongoingReads)
+                         != state.multiQueueState.readingQueues[queueId].readingStages)
+                    invalid = true;
+                drv::ImageSubresourceTrackData originalState;
+                originalState.dirtyMask = 0;
+                originalState.layout = state.layout;
+                originalState.ongoingReads =
+                  state.multiQueueState.readingQueues[queueId].readingStages;
+                originalState.ongoingWrites = 0;
+                originalState.ownership = state.ownership;
+                originalState.usableStages =
+                  state.multiQueueState.readingQueues[queueId].readingStages;
+                originalState.visible = drv::MemoryBarrier::get_all_bits();
+                if (cacheHandle) {
+                    StatsCacheWriter cacheWriter(cacheHandle);
+                    auto& imgData = cacheWriter->cmdBufferImageStates[image->imageId];
+                    if (!imgData.isCompatible(texInfo))
+                        imgData.init(texInfo);
+                    imgData.subresources.get(layer, mip, aspect).append(originalState);
+                }
+                if (invalid) {
+                    auto& oldState =
+                      imageCorrections[correctedImageCount].second.oldState.get(layer, mip, aspect);
+                    auto& newState =
+                      imageCorrections[correctedImageCount].second.newState.get(layer, mip, aspect);
+                    imageCorrections[correctedImageCount].second.usageMask.add(layer, mip, aspect);
+                    oldState = originalState;
+                    newState = requirement;
+                    hadInvalid = true;
+                }
 
-            const auto& result = transitions[i].second.cmdState.state.get(layer, mip, aspect);
-            drv::PipelineStages::FlagType preservedStages =
-              state.usableStages
-              & transitions[i].second.cmdState.usage.get(layer, mip, aspect).preserveUsableStages;
-            static_cast<drv::ImageSubresourceTrackData&>(state) = result;
-            state.usableStages = state.usableStages | preservedStages;
+                const auto& result = transitions[i].second.cmdState.state.get(layer, mip, aspect);
+                drv::drv_assert(result.dirtyMask == 0);
+                drv::drv_assert(result.ongoingWrites == 0);
+                // this is used as a dst stage for semaphores
+                state.multiQueueState.readingQueues[queueId].readingStages =
+                  result.ongoingReads | result.usableStages;
+            }
         });
         if (hadInvalid)
             correctedImageCount++;
@@ -853,14 +914,11 @@ void DrvVulkan::perform_cpu_access(const drv::ResourceLockerDescriptor* resource
         resources->getWriteSubresources(i).traverse(
           [&](uint32_t layer, uint32_t mip, drv::AspectFlagBits aspect) {
               auto& state = image->linearTrackingState.get(layer, mip, aspect);
-              bool hasRead = resources->getImageUsage(i, layer, mip, aspect)
-                             == drv::ResourceLockerDescriptor::READ_WRITE;
               state.multiQueueState.mainSemaphore = {};
               state.multiQueueState.signalledValue = 0;
               state.multiQueueState.syncedStages = 0;
               state.multiQueueState.mainQueue = drv::get_null_ptr<drv::QueuePtr>();
               state.multiQueueState.frameId = 0;
-              state.multiQueueState.isWrite = false;
               state.multiQueueState.submission = 0;
               state.multiQueueState.readingQueues.clear();
 
@@ -874,12 +932,16 @@ void DrvVulkan::perform_cpu_access(const drv::ResourceLockerDescriptor* resource
                   == drv::ResourceLockerDescriptor::READ_WRITE)
                   return;
               auto& state = image->linearTrackingState.get(layer, mip, aspect);
-              if (!state.multiQueueState.isWrite)
+              if (drv::is_null_ptr(state.multiQueueState.mainQueue))
                   return;
 
               state.multiQueueState.mainSemaphore = {};
               state.multiQueueState.signalledValue = 0;
               state.multiQueueState.syncedStages = 0;
+              state.multiQueueState.syncedStages = 0;
+              state.multiQueueState.mainQueue = drv::get_null_ptr<drv::QueuePtr>();
+              state.multiQueueState.frameId = 0;
+              state.multiQueueState.submission = 0;
 
               state.ongoingReads = 0;
               state.ongoingWrites = 0;

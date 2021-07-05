@@ -124,8 +124,7 @@ struct MultiQueueTrackingState
     uint64_t signalledValue;
     drv::PipelineStages::FlagType syncedStages = 0;
     QueuePtr mainQueue = get_null_ptr<QueuePtr>();
-    uint64_t frameId : 63;
-    uint64_t isWrite : 1;
+    uint64_t frameId = 0;
     CmdBufferId submission = 0;
     FlexibleArray<ReadingQueueState, 8> readingQueues;
 };

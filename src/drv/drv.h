@@ -186,8 +186,10 @@ PendingResourceUsage get_pending_usage(drv::ImagePtr image, uint32_t layer, uint
 
 ShaderModulePtr create_shader_module(LogicalDevicePtr device, const ShaderCreateInfo* info);
 bool destroy_shader_module(LogicalDevicePtr device, ShaderModulePtr module);
-bool validate_and_apply_state_transitions(LogicalDevicePtr device, QueuePtr currentQueue,
-  StateCorrectionData& correction, uint32_t imageCount,
+bool validate_and_apply_state_transitions(
+  LogicalDevicePtr device, QueuePtr currentQueue, uint64_t frameId, CmdBufferId cmdBufferId,
+  const TimelineSemaphoreHandle& timelineSemaphore, uint64_t semaphoreSignalValue,
+  PipelineStages::FlagType semaphoreSrcStages, StateCorrectionData& correction, uint32_t imageCount,
   const std::pair<drv::ImagePtr, ImageTrackInfo>* transitions, StatsCache* cacheHandle,
   ResourceStateTransitionCallback* cb);
 void perform_cpu_access(const ResourceLockerDescriptor* resources,

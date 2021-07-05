@@ -392,7 +392,9 @@ class DrvVulkan final : public drv::IDriver
     }
 
     bool validate_and_apply_state_transitions(
-      drv::LogicalDevicePtr device, drv::QueuePtr currentQueue,
+      drv::LogicalDevicePtr device, drv::QueuePtr currentQueue, uint64_t frameId,
+      drv::CmdBufferId cmdBufferId, const drv::TimelineSemaphoreHandle& timelineSemaphore,
+      uint64_t semaphoreSignalValue, drv::PipelineStages::FlagType semaphoreSrcStages,
       drv::StateCorrectionData& correction, uint32_t imageCount,
       const std::pair<drv::ImagePtr, drv::ImageTrackInfo>* transitions, StatsCache* cacheHandle,
       drv::ResourceStateTransitionCallback* cb) override;
