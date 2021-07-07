@@ -513,10 +513,10 @@ BufferSet::BufferSet(PhysicalDevicePtr _physicalDevice, LogicalDevicePtr _device
     std::vector<DeviceSize> offsets;
     const auto createMemory = [&, this] {
         DeviceMemoryPtr* mem = nullptr;
-        if (memory == nullptr)
+        if (is_null_ptr(memory))
             mem = &memory;
         else {
-            extraMemories.push_back(nullptr);
+            extraMemories.push_back(drv::get_null_ptr<drv::DeviceMemoryPtr>());
             mem = &extraMemories.back();
         }
         MemoryAllocationInfo allocInfo;
@@ -524,7 +524,7 @@ BufferSet::BufferSet(PhysicalDevicePtr _physicalDevice, LogicalDevicePtr _device
                    "Could not pick any acceptable memory");
         allocInfo.size = size;
         *mem = allocate_memory(device, &allocInfo);
-        drv_assert(*mem != nullptr, "Could not allocate memory");
+        drv_assert(!is_null_ptr(*mem), "Could not allocate memory");
         for (unsigned int i = 0; i < offsets.size(); ++i)
             drv_assert(bind_buffer_memory(device, buffers[bufferInd + i], *mem, offsets[i]),
                        "Could not bind buffer");
@@ -705,10 +705,10 @@ ImageSet::ImageSet(PhysicalDevicePtr _physicalDevice, LogicalDevicePtr _device, 
     std::vector<DeviceSize> offsets;
     const auto createMemory = [&, this] {
         DeviceMemoryPtr* mem = nullptr;
-        if (memory == nullptr)
+        if (is_null_ptr(memory))
             mem = &memory;
         else {
-            extraMemories.push_back(nullptr);
+            extraMemories.push_back(drv::get_null_ptr<drv::DeviceMemoryPtr>());
             mem = &extraMemories.back();
         }
         MemoryAllocationInfo allocInfo;
@@ -716,9 +716,10 @@ ImageSet::ImageSet(PhysicalDevicePtr _physicalDevice, LogicalDevicePtr _device, 
                    "Could not pick any acceptable memory");
         allocInfo.size = size;
         *mem = allocate_memory(device, &allocInfo);
-        drv_assert(*mem != nullptr, "Could not allocate memory");
+        drv_assert(!is_null_ptr(*mem), "Could not allocate memory");
         for (unsigned int i = 0; i < offsets.size(); ++i)
-            drv_assert(bind_image_memory(device, images[imageInd + i], *mem, offsets[i]),
+            drv_assert(bind_image_memory(device, images[imageInd + i], *mem, offsets[i],
+                                         props.memoryTypes[allocInfo.memoryType]),
                        "Could not bind buffer");
     };
     for (unsigned int i = 0; i < count; ++i) {

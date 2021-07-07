@@ -8,6 +8,7 @@
 #include <loguru.hpp>
 
 #include <corecontext.h>
+#include <features.h>
 #include <logger.h>
 
 #include <drverror.h>
@@ -948,4 +949,142 @@ void DrvVulkan::perform_cpu_access(const drv::ResourceLockerDescriptor* resource
               state.usableStages = drv::PipelineStages::get_all_bits(drv::CMD_TYPE_ALL);
           });
     }
+}
+
+// (x,y,z,layer) are in texel coordinates
+// address(x,y,z,layer) = layer*arrayPitch + z*depthPitch + y*rowPitch + x*elementSize + offset
+bool DrvVulkan::get_image_memory_data(drv::LogicalDevicePtr device, drv::ImagePtr _image,
+                                      uint32_t layer, uint32_t mip, drv::DeviceSize& offset,
+                                      drv::DeviceSize& size, drv::DeviceSize& rowPitch,
+                                      drv::DeviceSize& arrayPitch, drv::DeviceSize& depthPitch) {
+    drv_vulkan::Image* image = convertImage(_image);
+    if (drv::is_null_ptr(image->memoryPtr))
+        return false;
+    VkImageSubresource subres;
+    subres.arrayLayer = layer;
+    subres.mipLevel = mip;
+    subres.aspectMask = image->aspects;
+    VkSubresourceLayout layout;
+    vkGetImageSubresourceLayout(convertDevice(device), image->image, &subres, &layout);
+    offset = layout.offset;
+    size = layout.size;
+    arrayPitch = layout.arrayPitch;
+    rowPitch = layout.rowPitch;
+    depthPitch = layout.depthPitch;
+    return true;
+}
+
+void DrvVulkan::write_image_memory(drv::LogicalDevicePtr device, drv::ImagePtr _image,
+                                   uint32_t layer, uint32_t mip,
+                                   const drv::ResourceLocker::Lock& lock, const void* srcMem) {
+    drv_vulkan::Image* image = convertImage(_image);
+#if ENABLE_NODE_RESOURCE_VALIDATION
+    for (uint32_t i = 0; i < drv::ASPECTS_COUNT; ++i) {
+        if (image->aspects & drv::get_aspect_by_id(i)) {
+            drv::ResourceLockerDescriptor::UsageMode usage =
+              lock.getDescriptor()->getImageUsage(_image, layer, mip, drv::get_aspect_by_id(i));
+            drv::drv_assert(usage == drv::ResourceLockerDescriptor::UsageMode::WRITE
+                            || usage == drv::ResourceLockerDescriptor::UsageMode::READ_WRITE);
+        }
+    }
+#endif
+
+    drv::drv_assert(!drv::is_null_ptr(image->memoryPtr), "Image has no bound memory");
+
+    drv::DeviceSize offset;
+    drv::DeviceSize size;
+    drv::DeviceSize rowPitch;
+    drv::DeviceSize arrayPitch;
+    drv::DeviceSize depthPitch;
+    drv::drv_assert(get_image_memory_data(device, _image, layer, mip, offset, size, rowPitch,
+                                          arrayPitch, depthPitch));
+
+    alignas(16) void* pData;
+    VkResult result =
+      vkMapMemory(convertDevice(device), convertMemory(image->memoryPtr),
+                  static_cast<VkDeviceSize>(offset), static_cast<VkDeviceSize>(size), 0, &pData);
+    drv::drv_assert(result == VK_SUCCESS, "Could not map memory");
+
+    std::memcpy(pData, srcMem, size);
+
+    vkUnmapMemory(convertDevice(device), convertMemory(image->memoryPtr));
+
+    if (!(image->memoryType.properties & drv::MemoryType::HOST_COHERENT_BIT)) {
+        for (uint32_t i = 0; i < drv::ASPECTS_COUNT; ++i) {
+            if (image->aspects & drv::get_aspect_by_id(i)) {
+                VkMappedMemoryRange range;
+                range.memory = convertMemory(image->memoryPtr);
+                range.offset = offset;
+                range.pNext = nullptr;
+                range.size = size;
+                range.sType = VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE;
+                result = vkFlushMappedMemoryRanges(convertDevice(device), 1, &range);
+                drv::drv_assert(result == VK_SUCCESS, "Could not flush memory");
+                auto& state = image->linearTrackingState.get(layer, mip, drv::get_aspect_by_id(i));
+                state.visible = drv::MemoryBarrier::HOST_WRITE_BIT;
+                state.dirtyMask = 0;
+                // Host actions are implicitly synchronized
+                state.ongoingReads = 0;
+                state.ongoingWrites = 0;
+                state.usableStages = drv::PipelineStages::get_all_bits(drv::CMD_TYPE_ALL);
+            }
+        }
+    }
+}
+
+void DrvVulkan::read_image_memory(drv::LogicalDevicePtr device, drv::ImagePtr _image,
+                                  uint32_t layer, uint32_t mip,
+                                  const drv::ResourceLocker::Lock& lock, void* dstMem) {
+    drv_vulkan::Image* image = convertImage(_image);
+
+#if ENABLE_NODE_RESOURCE_VALIDATION
+    for (uint32_t i = 0; i < drv::ASPECTS_COUNT; ++i) {
+        if (image->aspects & drv::get_aspect_by_id(i)) {
+            drv::ResourceLockerDescriptor::UsageMode usage =
+              lock.getDescriptor()->getImageUsage(_image, layer, mip, drv::get_aspect_by_id(i));
+            drv::drv_assert(usage == drv::ResourceLockerDescriptor::UsageMode::READ
+                            || usage == drv::ResourceLockerDescriptor::UsageMode::READ_WRITE);
+        }
+    }
+#endif
+
+    drv::drv_assert(!drv::is_null_ptr(image->memoryPtr), "Image has no bound memory");
+
+    drv::DeviceSize offset;
+    drv::DeviceSize size;
+    drv::DeviceSize rowPitch;
+    drv::DeviceSize arrayPitch;
+    drv::DeviceSize depthPitch;
+    drv::drv_assert(get_image_memory_data(device, _image, layer, mip, offset, size, rowPitch,
+                                          arrayPitch, depthPitch));
+
+    if (!(image->memoryType.properties & drv::MemoryType::HOST_COHERENT_BIT)) {
+        for (uint32_t i = 0; i < drv::aspect_count(image->aspects); ++i) {
+            if (image->aspects & drv::get_aspect_by_id(i)) {
+                auto& state = image->linearTrackingState.get(layer, mip, drv::get_aspect_by_id(i));
+                if (!(state.visible & drv::MemoryBarrier::HOST_READ_BIT)) {
+                    VkMappedMemoryRange range;
+                    range.memory = convertMemory(image->memoryPtr);
+                    range.offset = offset;
+                    range.pNext = nullptr;
+                    range.size = size;
+                    range.sType = VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE;
+                    VkResult result =
+                      vkInvalidateMappedMemoryRanges(convertDevice(device), 1, &range);
+                    drv::drv_assert(result == VK_SUCCESS, "Could not invalidate memory");
+                    state.visible |= drv::MemoryBarrier::HOST_READ_BIT;
+                }
+            }
+        }
+    }
+
+    alignas(16) void* pData;
+    VkResult result =
+      vkMapMemory(convertDevice(device), convertMemory(image->memoryPtr),
+                  static_cast<VkDeviceSize>(offset), static_cast<VkDeviceSize>(size), 0, &pData);
+    drv::drv_assert(result == VK_SUCCESS, "Could not map memory");
+
+    std::memcpy(dstMem, pData, size);
+
+    vkUnmapMemory(convertDevice(device), convertMemory(image->memoryPtr));
 }

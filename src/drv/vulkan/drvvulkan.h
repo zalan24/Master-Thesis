@@ -122,6 +122,8 @@ class VulkanCmdBufferRecorder final : public drv::DrvCmdBufferRecorder
                        const drv::ImageSubresourceRange* subresourceRanges = nullptr) override;
     void cmdBlitImage(drv::ImagePtr srcImage, drv::ImagePtr dstImage, uint32_t regionCount,
                       const drv::ImageBlit* pRegions, drv::ImageFilter filter) override;
+    void cmdCopyImage(drv::ImagePtr srcImage, drv::ImagePtr dstImage, uint32_t regionCount,
+                      const drv::ImageCopyRegion* pRegions) override;
 
     drv::PipelineStages cmd_image_barrier(drv::CmdImageTrackingState& state,
                                           const drv::ImageMemoryBarrier& barrier);
@@ -352,7 +354,8 @@ class DrvVulkan final : public drv::IDriver
                                const drv::ImageCreateInfo* info) override;
     bool destroy_image(drv::LogicalDevicePtr device, drv::ImagePtr image) override;
     bool bind_image_memory(drv::LogicalDevicePtr device, drv::ImagePtr image,
-                           drv::DeviceMemoryPtr memory, drv::DeviceSize offset) override;
+                           drv::DeviceMemoryPtr memory, drv::DeviceSize offset,
+                           drv::MemoryType memoryType) override;
     bool get_image_memory_requirements(drv::LogicalDevicePtr device, drv::ImagePtr image,
                                        drv::MemoryRequirements& memoryRequirements) override;
     drv::ImageViewPtr create_image_view(drv::LogicalDevicePtr device,
@@ -401,6 +404,16 @@ class DrvVulkan final : public drv::IDriver
 
     void perform_cpu_access(const drv::ResourceLockerDescriptor* resources,
                             const drv::ResourceLocker::Lock& lock) override;
+
+    bool get_image_memory_data(drv::LogicalDevicePtr device, drv::ImagePtr image, uint32_t layer, uint32_t mip,
+                               drv::DeviceSize& offset, drv::DeviceSize& size, drv::DeviceSize& rowPitch, drv::DeviceSize& arrayPitch,
+                                      drv::DeviceSize& depthPitch) override;
+    void write_image_memory(drv::LogicalDevicePtr device, drv::ImagePtr image, uint32_t layer,
+                            uint32_t mip, const drv::ResourceLocker::Lock& lock,
+                            const void* srcMem) override;
+    void read_image_memory(drv::LogicalDevicePtr device, drv::ImagePtr image, uint32_t layer,
+                           uint32_t mip, const drv::ResourceLocker::Lock& lock,
+                           void* dstMem) override;
 
  private:
     struct LogicalDeviceData

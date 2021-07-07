@@ -95,16 +95,21 @@ class ResourceLocker
     {
      public:
         Lock() = default;
-        Lock(ResourceLocker* _locker, LockId _lockId) : locker(_locker), lockId(_lockId) {}
+        Lock(ResourceLocker* _locker, const ResourceLockerDescriptor* _descriptor, LockId _lockId)
+          : locker(_locker), descriptor(_descriptor), lockId(_lockId) {}
 
         Lock(const Lock&) = delete;
         Lock& operator=(const Lock&) = delete;
-        Lock(Lock&& other) : locker(other.locker), lockId(other.lockId) { other.locker = nullptr; }
+        Lock(Lock&& other)
+          : locker(other.locker), descriptor(other.descriptor), lockId(other.lockId) {
+            other.locker = nullptr;
+        }
         Lock& operator=(Lock&& other) {
             if (this == &other)
                 return *this;
             close();
             locker = other.locker;
+            descriptor = other.descriptor;
             lockId = other.lockId;
             other.locker = nullptr;
             return *this;
@@ -112,10 +117,13 @@ class ResourceLocker
 
         friend class ResourceLocker;
 
+        const ResourceLockerDescriptor* getDescriptor() const { return descriptor; }
+
         ~Lock() { close(); }
 
      private:
         ResourceLocker* locker = nullptr;
+        const ResourceLockerDescriptor* descriptor = nullptr;
         LockId lockId;
 
         void close() {
@@ -130,8 +138,9 @@ class ResourceLocker
     class ResultLock
     {
      public:
-        ResultLock(ResourceLocker* _locker, LockId _lockId, R _result)
-          : lock(_locker, _lockId), result(std::move(_result)) {}
+        ResultLock(ResourceLocker* _locker, const ResourceLockerDescriptor* _descriptor,
+                   LockId _lockId, R _result)
+          : lock(_locker, _descriptor, _lockId), result(std::move(_result)) {}
 
         const R& get() const { return result; }
         operator R() const { return get(); }

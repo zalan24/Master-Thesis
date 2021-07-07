@@ -158,7 +158,7 @@ uint64_t get_timeline_semaphore_value(LogicalDevicePtr device, TimelineSemaphore
 ImagePtr create_image(LogicalDevicePtr device, const ImageCreateInfo* info);
 bool destroy_image(LogicalDevicePtr device, ImagePtr image);
 bool bind_image_memory(LogicalDevicePtr device, ImagePtr image, DeviceMemoryPtr memory,
-                       DeviceSize offset);
+                       DeviceSize offset, drv::MemoryType memoryType);
 bool get_image_memory_requirements(LogicalDevicePtr device, ImagePtr image,
                                    MemoryRequirements& memoryRequirements);
 ImageViewPtr create_image_view(LogicalDevicePtr device, const ImageViewCreateInfo* info);
@@ -196,6 +196,15 @@ void perform_cpu_access(const ResourceLockerDescriptor* resources,
                         const ResourceLocker::Lock& lock);
 
 Extent3D get_mip_extent(const Extent3D& extent, uint32_t mip);
+
+bool get_image_memory_data(drv::LogicalDevicePtr device, drv::ImagePtr image, uint32_t layer,
+                           uint32_t mip, drv::DeviceSize& offset, DeviceSize& size,
+                           drv::DeviceSize& rowPitch, drv::DeviceSize& arrayPitch,
+                           drv::DeviceSize& depthPitch);
+void write_image_memory(LogicalDevicePtr device, drv::ImagePtr image, uint32_t layer, uint32_t mip,
+                        const ResourceLocker::Lock& lock, const void* srcMem);
+void read_image_memory(LogicalDevicePtr device, drv::ImagePtr image, uint32_t layer,
+                             uint32_t mip, const ResourceLocker::Lock& lock, void* dstMem);
 
 // std::unique_ptr<CmdTrackingRecordState> create_tracking_record_state();
 // PipelineStages cmd_image_barrier(drv::CmdTrackingRecordState *recordState, CmdImageTrackingState& state, CommandBufferPtr cmdBuffer,

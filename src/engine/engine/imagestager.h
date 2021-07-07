@@ -48,8 +48,13 @@ class ImageStager
 
     void clear();
 
-    void setData(const void* srcData, uint32_t layer, uint32_t mip, StagerId stager);
-    void getData(void* dstData, uint32_t layer, uint32_t mip, StagerId stager);
+    void getMemoryData(StagerId stager, uint32_t layer, uint32_t mip, drv::DeviceSize& size,
+                       drv::DeviceSize& rowPitch, drv::DeviceSize& arrayPitch,
+                       drv::DeviceSize& depthPitch) const;
+    void setData(const void* srcData, uint32_t layer, uint32_t mip, StagerId stager,
+                 const drv::ResourceLocker::Lock& lock);
+    void getData(void* dstData, uint32_t layer, uint32_t mip, StagerId stager,
+                 const drv::ResourceLocker::Lock& lock);
 
     StagerId getStagerId(FrameId frame) const;
     void lockResource(drv::ResourceLockerDescriptor& descriptor, Usage usage,
@@ -62,6 +67,7 @@ class ImageStager
     operator bool() const { return !drv::is_null_ptr(image); }
 
  private:
+    drv::LogicalDevicePtr device;
     drv::ImagePtr image = drv::get_null_ptr<drv::ImagePtr>();
     res::ImageSet stagers;
     drv::ImageSubresourceRange subresource;
@@ -70,6 +76,9 @@ class ImageStager
     uint32_t layerOffset = 0;
     uint32_t mipCount = 0;
     uint32_t layerCount = 0;
+
+    bool checkSubres(const drv::ImageSubresourceRange& subres, uint32_t& subresMipCount,
+                     uint32_t& subresLayerCount) const;
 
     void close();
 };

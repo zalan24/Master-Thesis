@@ -379,8 +379,8 @@ bool drv::destroy_image(LogicalDevicePtr device, ImagePtr image) {
 }
 
 bool drv::bind_image_memory(LogicalDevicePtr device, ImagePtr image, DeviceMemoryPtr memory,
-                            DeviceSize offset) {
-    return current_driver_interface->bind_image_memory(device, image, memory, offset);
+                            DeviceSize offset, drv::MemoryType memoryType) {
+    return current_driver_interface->bind_image_memory(device, image, memory, offset, memoryType);
 }
 
 bool drv::get_image_memory_requirements(LogicalDevicePtr device, ImagePtr image,
@@ -456,4 +456,23 @@ void drv::perform_cpu_access(const ResourceLockerDescriptor* resources,
 
 drv::Extent3D drv::get_mip_extent(const Extent3D& extent, uint32_t mip) {
     return {extent.width >> mip, extent.height >> mip, extent.depth >> mip};
+}
+
+void drv::write_image_memory(LogicalDevicePtr device, drv::ImagePtr image, uint32_t layer,
+                             uint32_t mip, const ResourceLocker::Lock& lock, const void* srcMem) {
+    return current_driver_interface->write_image_memory(device, image, layer, mip, lock, srcMem);
+}
+
+void drv::read_image_memory(LogicalDevicePtr device, drv::ImagePtr image, uint32_t layer,
+                                       uint32_t mip, const ResourceLocker::Lock& lock,
+                                       void* dstMem) {
+    return current_driver_interface->read_image_memory(device, image, layer, mip, lock, dstMem);
+}
+
+bool drv::get_image_memory_data(drv::LogicalDevicePtr device, drv::ImagePtr image, uint32_t layer,
+                                uint32_t mip, drv::DeviceSize& offset, DeviceSize& size,
+                                drv::DeviceSize& rowPitch, drv::DeviceSize& arrayPitch,
+                                drv::DeviceSize& depthPitch) {
+    return current_driver_interface->get_image_memory_data(device, image, layer, mip, offset, size,
+                                                           rowPitch, arrayPitch, depthPitch);
 }

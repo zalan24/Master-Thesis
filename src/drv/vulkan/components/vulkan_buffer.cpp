@@ -70,11 +70,12 @@ drv::DeviceMemoryPtr DrvVulkan::allocate_memory(drv::LogicalDevicePtr device,
     VkResult result =
       vkAllocateMemory(drv::resolve_ptr<VkDevice>(device), &allocInfo, nullptr, &memory);
     drv::drv_assert(result == VK_SUCCESS, "Could not allocate memory");
-    return static_cast<drv::DeviceMemoryPtr>(memory);
+    return drv::store_ptr<drv::DeviceMemoryPtr>(memory);
 }
 
 bool DrvVulkan::free_memory(drv::LogicalDevicePtr device, drv::DeviceMemoryPtr memory) {
-    vkFreeMemory(drv::resolve_ptr<VkDevice>(device), static_cast<VkDeviceMemory>(memory), nullptr);
+    vkFreeMemory(drv::resolve_ptr<VkDevice>(device), drv::resolve_ptr<VkDeviceMemory>(memory),
+                 nullptr);
     return true;
 }
 
@@ -84,7 +85,7 @@ bool DrvVulkan::bind_buffer_memory(drv::LogicalDevicePtr device, drv::BufferPtr 
     buffer->memoryPtr = memory;
     buffer->offset = offset;
     VkResult result = vkBindBufferMemory(drv::resolve_ptr<VkDevice>(device), buffer->buffer,
-                                         static_cast<VkDeviceMemory>(memory), offset);
+                                         drv::resolve_ptr<VkDeviceMemory>(memory), offset);
     return result == VK_SUCCESS;
 }
 
@@ -116,12 +117,12 @@ bool DrvVulkan::get_buffer_memory_requirements(drv::LogicalDevicePtr device, drv
 bool DrvVulkan::map_memory(drv::LogicalDevicePtr device, drv::DeviceMemoryPtr memory,
                            drv::DeviceSize offset, drv::DeviceSize size, void** data) {
     VkResult result = vkMapMemory(drv::resolve_ptr<VkDevice>(device),
-                                  static_cast<VkDeviceMemory>(memory), offset, size, 0, data);
+                                  drv::resolve_ptr<VkDeviceMemory>(memory), offset, size, 0, data);
     return result == VK_SUCCESS;
 }
 
 bool DrvVulkan::unmap_memory(drv::LogicalDevicePtr device, drv::DeviceMemoryPtr memory) {
-    vkUnmapMemory(drv::resolve_ptr<VkDevice>(device), static_cast<VkDeviceMemory>(memory));
+    vkUnmapMemory(drv::resolve_ptr<VkDevice>(device), drv::resolve_ptr<VkDeviceMemory>(memory));
     return true;
 }
 

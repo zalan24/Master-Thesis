@@ -254,7 +254,7 @@ class IDriver
     virtual ImagePtr create_image(LogicalDevicePtr device, const ImageCreateInfo* info) = 0;
     virtual bool destroy_image(LogicalDevicePtr device, ImagePtr image) = 0;
     virtual bool bind_image_memory(LogicalDevicePtr device, ImagePtr image, DeviceMemoryPtr memory,
-                                   DeviceSize offset) = 0;
+                                   DeviceSize offset, drv::MemoryType memoryType) = 0;
     virtual bool get_image_memory_requirements(LogicalDevicePtr device, ImagePtr image,
                                                MemoryRequirements& memoryRequirements) = 0;
     virtual ImageViewPtr create_image_view(LogicalDevicePtr device,
@@ -294,6 +294,18 @@ class IDriver
     virtual DriverSupport get_support(LogicalDevicePtr device) = 0;
     virtual void perform_cpu_access(const ResourceLockerDescriptor* resources,
                                     const ResourceLocker::Lock& lock) = 0;
+
+    virtual bool get_image_memory_data(drv::LogicalDevicePtr device, drv::ImagePtr image,
+                                       uint32_t layer, uint32_t mip, drv::DeviceSize& offset,
+                                       DeviceSize& size, drv::DeviceSize& rowPitch,
+                                       drv::DeviceSize& arrayPitch,
+                                       drv::DeviceSize& depthPitch) = 0;
+    virtual void write_image_memory(LogicalDevicePtr device, drv::ImagePtr image, uint32_t layer,
+                                    uint32_t mip, const ResourceLocker::Lock& lock,
+                                    const void* srcMem) = 0;
+    virtual void read_image_memory(LogicalDevicePtr device, drv::ImagePtr image, uint32_t layer,
+                                   uint32_t mip, const ResourceLocker::Lock& lock,
+                                   void* dstMem) = 0;
 
     // virtual void cmd_flush_waits_on(CommandBufferPtr cmdBuffer, EventPtr event) = 0;
 };

@@ -47,7 +47,7 @@ ResourceLocker::ResultLock<ResourceLocker::LockResult> ResourceLocker::lock(
     if (prevFree == locks.size())
         locks.push_back(nullptr);  // not prevFree is valid
     locks[prevFree] = locker;
-    return ResultLock<LockResult>(this, prevFree, ret);
+    return ResultLock<LockResult>(this, locker, prevFree, ret);
 }
 
 ResourceLocker::ResultLock<ResourceLocker::LockTimeResult> ResourceLocker::lockTimeout(
@@ -61,7 +61,7 @@ ResourceLocker::ResultLock<ResourceLocker::LockTimeResult> ResourceLocker::lockT
     while (lockCount > 0) {
         std::chrono::nanoseconds dur = std::chrono::high_resolution_clock::now() - startTime;
         if (uint64_t(dur.count()) >= timeoutNSec)
-            return ResultLock<LockTimeResult>(this, 0, LockTimeResult::TIMEOUT);
+            return ResultLock<LockTimeResult>(this, nullptr, 0, LockTimeResult::TIMEOUT);
         std::chrono::nanoseconds durLeft = std::chrono::nanoseconds(timeoutNSec) - dur;
         uint64_t originalCount = unlockCounter;  // if lockCount overflows
         uint64_t requiredUnlockCount = unlockCounter + lockCount;
@@ -78,7 +78,7 @@ ResourceLocker::ResultLock<ResourceLocker::LockTimeResult> ResourceLocker::lockT
     if (prevFree == locks.size())
         locks.push_back(nullptr);  // not prevFree is valid
     locks[prevFree] = locker;
-    return ResultLock<LockTimeResult>(this, prevFree, ret);
+    return ResultLock<LockTimeResult>(this, locker, prevFree, ret);
 }
 
 ResourceLocker::ResultLock<ResourceLocker::TryLockResult> ResourceLocker::tryLock(
@@ -86,7 +86,7 @@ ResourceLocker::ResultLock<ResourceLocker::TryLockResult> ResourceLocker::tryLoc
     std::unique_lock<std::mutex> lock(mutex);
     uint32_t lockCount = getLockCount(locker);
     if (lockCount > 0)
-        return ResultLock<TryLockResult>(this, 0, TryLockResult::FAILURE);
+        return ResultLock<TryLockResult>(this, nullptr, 0, TryLockResult::FAILURE);
     if (prevFree >= locks.size() || locks[prevFree] != nullptr) {
         prevFree = 0;
         while (prevFree < locks.size() && locks[prevFree] == nullptr)
@@ -95,7 +95,7 @@ ResourceLocker::ResultLock<ResourceLocker::TryLockResult> ResourceLocker::tryLoc
     if (prevFree == locks.size())
         locks.push_back(nullptr);  // not prevFree is valid
     locks[prevFree] = locker;
-    return ResultLock<TryLockResult>(this, prevFree, TryLockResult::SUCCESS);
+    return ResultLock<TryLockResult>(this, locker, prevFree, TryLockResult::SUCCESS);
 }
 
 void ResourceLocker::unlock(LockId lockId) {

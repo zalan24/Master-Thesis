@@ -35,6 +35,66 @@ void VulkanCmdBufferRecorder::cmdClearImage(drv::ImagePtr image,
     cmd_clear_image(image, clearColors, ranges, subresourceRanges);
 }
 
+void VulkanCmdBufferRecorder::cmdCopyImage(drv::ImagePtr srcImage, drv::ImagePtr dstImage,
+                                           uint32_t regionCount,
+                                           const drv::ImageCopyRegion* pRegions) {
+    if (regionCount == 0)
+        return;
+    StackMemory::MemoryHandle<VkImageCopy> regions(regionCount, TEMPMEM);
+    StackMemory::MemoryHandle<drv::ImageSubresourceRange> srcRanges(regionCount, TEMPMEM);
+    StackMemory::MemoryHandle<drv::ImageSubresourceRange> dstRanges(regionCount, TEMPMEM);
+    for (uint32_t i = 0; i < regionCount; ++i) {
+        regions[i].srcSubresource = convertImageSubresourceLayers(pRegions[i].srcSubresource);
+        regions[i].dstSubresource = convertImageSubresourceLayers(pRegions[i].dstSubresource);
+        regions[i].srcOffset = convertOffset3D(pRegions[i].srcOffset);
+        regions[i].dstOffset = convertOffset3D(pRegions[i].dstOffset);
+        regions[i].extent = convertExtent(pRegions[i].extent);
+
+        srcRanges[i].aspectMask = pRegions[i].srcSubresource.aspectMask;
+        srcRanges[i].baseArrayLayer = pRegions[i].srcSubresource.baseArrayLayer;
+        srcRanges[i].layerCount = pRegions[i].srcSubresource.layerCount;
+        srcRanges[i].baseMipLevel = pRegions[i].srcSubresource.mipLevel;
+        srcRanges[i].levelCount = 1;
+
+        dstRanges[i].aspectMask = pRegions[i].dstSubresource.aspectMask;
+        dstRanges[i].baseArrayLayer = pRegions[i].dstSubresource.baseArrayLayer;
+        dstRanges[i].layerCount = pRegions[i].dstSubresource.layerCount;
+        dstRanges[i].baseMipLevel = pRegions[i].dstSubresource.mipLevel;
+        dstRanges[i].levelCount = 1;
+    }
+
+    drv::ImageLayoutMask srcRequiredLayoutMask =
+      static_cast<drv::ImageLayoutMask>(drv::ImageLayout::SHARED_PRESENT_KHR)
+      | static_cast<drv::ImageLayoutMask>(drv::ImageLayout::GENERAL)
+      | static_cast<drv::ImageLayoutMask>(drv::ImageLayout::TRANSFER_SRC_OPTIMAL);
+    drv::ImageLayoutMask dstRequiredLayoutMask =
+      static_cast<drv::ImageLayoutMask>(drv::ImageLayout::SHARED_PRESENT_KHR)
+      | static_cast<drv::ImageLayoutMask>(drv::ImageLayout::GENERAL)
+      | static_cast<drv::ImageLayoutMask>(drv::ImageLayout::TRANSFER_DST_OPTIMAL);
+
+    drv::PipelineStages stages(drv::PipelineStages::TRANSFER_BIT);
+    drv::ImageLayout srcCurrentLayout = drv::ImageLayout::UNDEFINED;
+    drv::ImageLayout dstCurrentLayout = drv::ImageLayout::UNDEFINED;
+    add_memory_access(getImageState(srcImage, regionCount, srcRanges,
+                                    drv::ImageLayout::TRANSFER_SRC_OPTIMAL, stages)
+                        .cmdState,
+                      srcImage, regionCount, srcRanges, true, false, stages,
+                      drv::MemoryBarrier::AccessFlagBits::TRANSFER_READ_BIT, srcRequiredLayoutMask,
+                      true, &srcCurrentLayout, false, drv::ImageLayout::UNDEFINED);
+    add_memory_access(getImageState(dstImage, regionCount, dstRanges,
+                                    drv::ImageLayout::TRANSFER_DST_OPTIMAL, stages)
+                        .cmdState,
+                      dstImage, regionCount, dstRanges, false, true, stages,
+                      drv::MemoryBarrier::AccessFlagBits::TRANSFER_WRITE_BIT, dstRequiredLayoutMask,
+                      true, &dstCurrentLayout, false, drv::ImageLayout::UNDEFINED);
+
+    useResource(srcImage, regionCount, srcRanges, drv::IMAGE_USAGE_TRANSFER_SOURCE);
+    useResource(dstImage, regionCount, dstRanges, drv::IMAGE_USAGE_TRANSFER_DESTINATION);
+    vkCmdCopyImage(convertCommandBuffer(getCommandBuffer()), convertImage(srcImage)->image,
+                   convertImageLayout(srcCurrentLayout), convertImage(dstImage)->image,
+                   convertImageLayout(dstCurrentLayout), regionCount, regions);
+}
+
 void VulkanCmdBufferRecorder::cmdBlitImage(drv::ImagePtr srcImage, drv::ImagePtr dstImage,
                                            uint32_t regionCount, const drv::ImageBlit* pRegions,
                                            drv::ImageFilter filter) {

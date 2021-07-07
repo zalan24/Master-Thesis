@@ -45,6 +45,10 @@ inline VkDevice convertDevice(drv::LogicalDevicePtr device) {
     return drv::resolve_ptr<VkDevice>(device);
 }
 
+inline VkDeviceMemory convertMemory(drv::DeviceMemoryPtr memory) {
+    return drv::resolve_ptr<VkDeviceMemory>(memory);
+}
+
 inline VkQueue convertQueue(drv::QueuePtr queue) {
     return drv::resolve_ptr<VkQueue>(queue);
 }

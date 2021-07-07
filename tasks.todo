@@ -105,12 +105,10 @@ Get a triangle on screen:
                 ✔ On execution queue @done (7/5/2021, 12:07:19 PM)
                     ✔ When sync object is applied, update main queue / states on reader queues @done (7/5/2021, 12:07:17 PM)
                 ✔ Track signalled value and synced stages on multiqueue tracking info @done (7/5/2021, 12:07:24 PM)
-            ☐ Map memory
-                ☐ Create an upload only version (data is passed to a single drv command)
-                ☐ Create a map, unmap version with const and non const data for read and read/write accesses
-                ☐ These functions will require a resource lock
-                ☐ Update resources states: apply memory flushes and invalidations performed by the memory map commands
-                ☐ Check if the mapped memory is actually locked by the resource lock (with an appropriate mode)
+            ✔ Map memory @done (7/7/2021, 10:17:54 PM)
+                ✔ These functions will require a resource lock @done (7/7/2021, 10:17:36 PM)
+                ✔ Update resources states: apply memory flushes and invalidations performed by the memory map commands @done (7/7/2021, 10:17:34 PM)
+                ✔ Check if the mapped memory is actually locked by the resource lock (with an appropriate mode) @done (7/7/2021, 10:17:29 PM)
             ☐ Test
                 ☐ Test queue->cpu dependency
                     ☐ Try reading and writing from CPU

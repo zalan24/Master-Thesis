@@ -281,7 +281,7 @@ class BufferSet : private Exclusive
 
     PhysicalDevicePtr physicalDevice = get_null_ptr<PhysicalDevicePtr>();
     LogicalDevicePtr device = get_null_ptr<LogicalDevicePtr>();
-    DeviceMemoryPtr memory = nullptr;
+    DeviceMemoryPtr memory = drv::get_null_ptr<drv::DeviceMemoryPtr>();
     std::vector<BufferPtr> buffers;
     // if not all buffers are compatible, they will allocate new memory
     std::vector<DeviceMemoryPtr> extraMemories;
@@ -352,7 +352,7 @@ class ImageSet
 
     PhysicalDevicePtr physicalDevice = get_null_ptr<PhysicalDevicePtr>();
     LogicalDevicePtr device = get_null_ptr<LogicalDevicePtr>();
-    DeviceMemoryPtr memory = nullptr;
+    DeviceMemoryPtr memory = drv::get_null_ptr<drv::DeviceMemoryPtr>();
     std::vector<ImagePtr> images;
     // if not all buffers are compatible, they will allocate new memory
     std::vector<DeviceMemoryPtr> extraMemories;
@@ -502,7 +502,7 @@ class MemoryMapper : private Exclusive
  private:
     void* data = nullptr;
     LogicalDevicePtr device = get_null_ptr<LogicalDevicePtr>();
-    DeviceMemoryPtr memory = nullptr;
+    DeviceMemoryPtr memory = drv::get_null_ptr<drv::DeviceMemoryPtr>();
 
     void close();
 };

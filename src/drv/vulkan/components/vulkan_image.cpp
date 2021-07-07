@@ -59,11 +59,13 @@ bool DrvVulkan::destroy_image(drv::LogicalDevicePtr device, drv::ImagePtr image)
 }
 
 bool DrvVulkan::bind_image_memory(drv::LogicalDevicePtr device, drv::ImagePtr image,
-                                  drv::DeviceMemoryPtr memory, drv::DeviceSize offset) {
+                                  drv::DeviceMemoryPtr memory, drv::DeviceSize offset,
+                                  drv::MemoryType memoryType) {
     VkResult result = vkBindImageMemory(convertDevice(device), convertImage(image)->image,
-                                        static_cast<VkDeviceMemory>(memory), offset);
+                                        drv::resolve_ptr<VkDeviceMemory>(memory), offset);
     convertImage(image)->memoryPtr = memory;
     convertImage(image)->offset = offset;
+    convertImage(image)->memoryType = memoryType;
     return result == VK_SUCCESS;
 }
 

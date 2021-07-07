@@ -615,6 +615,15 @@ struct ImageBlit
     Offset3D dstOffsets[2];
 };
 
+struct ImageCopyRegion
+{
+    ImageSubresourceLayers srcSubresource;
+    Offset3D srcOffset;
+    ImageSubresourceLayers dstSubresource;
+    Offset3D dstOffset;
+    Extent3D extent;
+};
+
 struct ImageCreateInfo
 {
     ImageId imageId;

@@ -20,8 +20,9 @@ struct Image
     drv::ImageFormat format;
     drv::ImageCreateInfo::Type type;
     bool swapchainImage = false;
-    drv::DeviceMemoryPtr memoryPtr = nullptr;
+    drv::DeviceMemoryPtr memoryPtr = drv::get_null_ptr<drv::DeviceMemoryPtr>();
     drv::DeviceSize offset = 0;
+    drv::MemoryType memoryType;
 
     // This state is only valid during linear submission, not parallel recording
     drv::GlobalImageTrackingState linearTrackingState;

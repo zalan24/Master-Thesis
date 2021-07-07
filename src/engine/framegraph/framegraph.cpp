@@ -398,8 +398,7 @@ void FrameGraph::build() {
         if ((nodes[i].stages & EXECUTION_STAGE) && (nodes[i].stages & READBACK_STAGE))
             addDependency(i, CpuDependency{i, EXECUTION_STAGE, READBACK_STAGE, 0});
         for (const GpuCpuDependency& dep : nodes[i].gpuCpuDeps)
-            addDependency(i,
-                          CpuDependency{dep.srcNode, EXECUTION_STAGE, READBACK_STAGE, dep.offset});
+            addDependency(i, CpuDependency{dep.srcNode, EXECUTION_STAGE, dep.dstStage, dep.offset});
     }
     // TODO clear redundant cpu dependencies (same dependencies with different offsets, keep the lower, etc.)
     std::vector<uint32_t> cpuChildrenIndirect(nodes.size() * NUM_STAGES, 0);
@@ -658,11 +657,10 @@ bool FrameGraph::tryWaitForNode(NodeId node, Stage stage, FrameId frame) {
     return true;
 }
 
-void FrameGraph::checkResources(NodeId dstNode, Stage dstStage, FrameId frameId,
+void FrameGraph::checkResources(NodeId dstNode, Stage, FrameId frameId,
                                 const TemporalResourceLockerDescriptor& resources,
                                 GarbageVector<drv::TimelineSemaphorePtr>& semaphores,
                                 GarbageVector<uint64_t>& waitValues) const {
-    drv::drv_assert(dstStage == READBACK_STAGE, "Add dst stage param to gpuCpuDeps");
     StackMemory::MemoryHandle<drv::QueuePtr> syncedQueues(queues.size(), TEMPMEM);
     uint32_t numSyncedQueues = 0;
     const Node* node = getNode(dstNode);
@@ -791,8 +789,9 @@ FrameGraph::NodeHandle FrameGraph::acquireNode(NodeId nodeId, Stage stage, Frame
           make_vector<drv::TimelineSemaphorePtr>(garbageSystem);
         GarbageVector<uint64_t> waitValues = make_vector<uint64_t>(garbageSystem);
         checkResources(nodeId, stage, frame, resources, semaphores, waitValues);
-        drv::wait_on_timeline_semaphores(device, uint32_t(semaphores.size()), semaphores.data(),
-                                         waitValues.data(), true);
+        if (!semaphores.empty())
+            drv::wait_on_timeline_semaphores(device, uint32_t(semaphores.size()), semaphores.data(),
+                                             waitValues.data(), true);
     }
     if (isStopped())
         return NodeHandle();
@@ -865,13 +864,15 @@ FrameGraph::NodeHandle FrameGraph::tryAcquireNode(
         GarbageVector<uint64_t> waitValues = make_vector<uint64_t>(garbageSystem);
         checkResources(nodeId, stage, frame, resources, semaphores, waitValues);
 
-        duration = std::chrono::high_resolution_clock::now() - start;
-        if (duration >= maxDuration)
-            return NodeHandle();
+        if (!semaphores.empty()) {
+            duration = std::chrono::high_resolution_clock::now() - start;
+            if (duration >= maxDuration)
+                return NodeHandle();
 
-        drv::wait_on_timeline_semaphores(device, uint32_t(semaphores.size()), semaphores.data(),
-                                         waitValues.data(), true,
-                                         static_cast<uint64_t>((maxDuration - duration).count()));
+            drv::wait_on_timeline_semaphores(
+              device, uint32_t(semaphores.size()), semaphores.data(), waitValues.data(), true,
+              static_cast<uint64_t>((maxDuration - duration).count()));
+        }
     }
     if (isStopped())
         return NodeHandle();

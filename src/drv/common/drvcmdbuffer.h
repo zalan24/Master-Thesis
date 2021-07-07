@@ -112,6 +112,8 @@ class DrvCmdBufferRecorder
                                const ImageSubresourceRange* subresourceRanges = nullptr) = 0;
     virtual void cmdBlitImage(ImagePtr srcImage, ImagePtr dstImage, uint32_t regionCount,
                               const ImageBlit* pRegions, ImageFilter filter) = 0;
+    virtual void cmdCopyImage(ImagePtr srcImage, ImagePtr dstImage, uint32_t regionCount,
+                              const ImageCopyRegion* pRegions) = 0;
 
     CommandBufferPtr getCommandBuffer() const { return cmdBufferPtr; }
     drv::QueueFamilyPtr getFamily() const { return family; }

@@ -101,6 +101,7 @@ class FrameGraph
     struct GpuCpuDependency
     {
         NodeId srcNode;
+        Stage dstStage;
         Offset offset = 0;
     };
     // struct QueueQueueDependency
