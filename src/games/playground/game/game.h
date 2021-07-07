@@ -6,6 +6,7 @@
 
 #include <3dgame.h>
 #include <engine.h>
+#include <imagestager.h>
 #include <shaderregistry.h>
 
 #include <shader_inputatchm.h>
@@ -48,6 +49,9 @@ class Game final : public Game3D
     std::vector<res::Framebuffer> swapchainFrameBuffers;
     res::ImageSet renderTarget;
     res::ImageView renderTargetView;
+
+    res::ImageSet transferTexture;
+    ImageStager testImageStager;
 
     // TODO automatize this kind of thing + check resource states
     struct RecordData

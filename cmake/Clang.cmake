@@ -8,6 +8,7 @@ set(WARNINGFLAGS "${WARNINGFLAGS}   -Weverything \
                                     -Werror-reorder-ctor \
                                     -Werror-shadow \
                                     -Werror-format \
+                                    -Werror-infinite-recursion \
                                     -Wno-c++98-compat \
                                     -Wno-c++98-c++11-compat-binary-literal \
                                     -Wno-c++98-compat-pedantic \

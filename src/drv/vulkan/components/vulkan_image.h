@@ -18,6 +18,7 @@ struct Image
     bool sharedResource = true;
     drv::SampleCount sampleCount;
     drv::ImageFormat format;
+    drv::ImageCreateInfo::Type type;
     bool swapchainImage = false;
     drv::DeviceMemoryPtr memoryPtr = nullptr;
     drv::DeviceSize offset = 0;
@@ -27,7 +28,8 @@ struct Image
 
     Image(drv::ImageId _imageId, VkImage _image, drv::Extent3D _extent, uint32_t _arraySize,
           uint32_t _numMipLevels, drv::ImageAspectBitType _aspects, bool _sharedResource,
-          drv::SampleCount _sampleCount, drv::ImageFormat _format, bool _swapchainImage)
+          drv::SampleCount _sampleCount, drv::ImageFormat _format, drv::ImageCreateInfo::Type _type,
+          bool _swapchainImage)
       : imageId(std::move(_imageId)),
         image(_image),
         extent(_extent),
@@ -37,6 +39,7 @@ struct Image
         sharedResource(_sharedResource),
         sampleCount(_sampleCount),
         format(_format),
+        type(_type),
         swapchainImage(_swapchainImage),
         linearTrackingState(arraySize, numMipLevels, aspects) {}
 };

@@ -43,7 +43,7 @@ drv::ImagePtr DrvVulkan::create_image(drv::LogicalDevicePtr device,
         drv_vulkan::Image* ret = new drv_vulkan::Image(
           info->imageId, vkImage, info->extent, info->arrayLayers, info->mipLevels,
           drv::get_format_aspects(info->format), info->sharingType == drv::SharingType::CONCURRENT,
-          info->sampleCount, info->format, false);
+          info->sampleCount, info->format, info->type, false);
         return drv::store_ptr<drv::ImagePtr>(ret);
     }
     catch (...) {
@@ -129,6 +129,7 @@ drv::TextureInfo DrvVulkan::get_texture_info(drv::ImagePtr _image) {
     ret.format = image->format;
     ret.samples = image->sampleCount;
     ret.aspects = image->aspects;
+    ret.type = image->type;
     return ret;
 }
 

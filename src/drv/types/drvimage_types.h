@@ -599,18 +599,6 @@ struct ImageSubresourceSet
     }
 };
 
-struct TextureInfo
-{
-    const drv::ImageId* imageId;
-    Extent3D extent;
-    uint32_t numMips;
-    uint32_t arraySize;
-    ImageFormat format;
-    SampleCount samples;
-    ImageAspectBitType aspects;
-    ImageSubresourceRange getSubresourceRange() const;
-};
-
 struct ImageSubresourceLayers
 {
     ImageAspectBitType aspectMask;
@@ -670,6 +658,19 @@ struct ImageCreateInfo
     unsigned int familyCount = 0;
     QueueFamilyPtr* families = nullptr;
     ImageLayout initialLayout = ImageLayout::UNDEFINED;
+};
+
+struct TextureInfo
+{
+    const drv::ImageId* imageId;
+    Extent3D extent;
+    uint32_t numMips;
+    uint32_t arraySize;
+    ImageFormat format;
+    SampleCount samples;
+    ImageAspectBitType aspects;
+    ImageCreateInfo::Type type;
+    ImageSubresourceRange getSubresourceRange() const;
 };
 
 struct ImageViewCreateInfo

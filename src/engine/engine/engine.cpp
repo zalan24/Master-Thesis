@@ -129,6 +129,10 @@ static void log_queue(const char* name, const drv::QueueManager::Queue& queue) {
                queue.info.priority, queue.info.queueIndex, queue.info.familyPtr);
 }
 
+uint32_t Engine::getMaxFramesInFlight() const {
+    return frameGraph.getMaxFramesInFlight();
+}
+
 Engine::Engine(int argc, char* argv[], const EngineConfig& cfg,
                const drv::StateTrackingConfig& trackingConfig, const std::string& shaderbinFile,
                Args _args)

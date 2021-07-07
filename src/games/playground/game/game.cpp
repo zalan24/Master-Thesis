@@ -54,8 +54,9 @@ Game::Game(int argc, char* argv[], const EngineConfig& config,
     swapchainSubpass = testRenderPass->createSubpass(std::move(subpassInfo2));
     testRenderPass->build();
 
-    testDraw = getFrameGraph().addNode(
-      FrameGraph::Node("testDraw", FrameGraph::RECORD_STAGE | FrameGraph::EXECUTION_STAGE));
+    testDraw = getFrameGraph().addNode(FrameGraph::Node(
+      "testDraw",
+      FrameGraph::RECORD_STAGE | FrameGraph::EXECUTION_STAGE | FrameGraph::READBACK_STAGE));
 
     // TODO present node could be inside of record end node???
     buildFrameGraph(testDraw, getQueues().renderQueue.id);
@@ -197,8 +198,11 @@ void Game::record_cmd_buffer_blit(const RecordData& data, drv::DrvCmdBufferRecor
 Engine::AcquiredImageData Game::record(FrameId frameId) {
     // std::cout << "Record: " << frameId << std::endl;
     Engine::QueueInfo queues = getQueues();
+    TemporalResourceLockerDescriptor resourceDesc;
+    ImageStager::StagerId stagerId = testImageStager.getStagerId(frameId);
+    testImageStager.lockResource(resourceDesc, ImageStager::UPLOAD, stagerId);
     if (FrameGraph::NodeHandle testDrawHandle =
-          getFrameGraph().acquireNode(testDraw, FrameGraph::RECORD_STAGE, frameId);
+          getFrameGraph().acquireNode(testDraw, FrameGraph::RECORD_STAGE, frameId, resourceDesc);
         testDrawHandle) {
         std::this_thread::sleep_for(std::chrono::milliseconds(4));
         Engine::AcquiredImageData swapChainData = acquiredSwapchainImage(testDrawHandle);
@@ -302,7 +306,14 @@ void Game::simulate(FrameId frameId) {
 void Game::beforeDraw(FrameId) {
 }
 
-void Game::readback(FrameId) {
+void Game::readback(FrameId frameId) {
+    TemporalResourceLockerDescriptor resourceDesc;
+    ImageStager::StagerId stagerId = testImageStager.getStagerId(frameId);
+    testImageStager.lockResource(resourceDesc, ImageStager::DOWNLOAD, stagerId);
+    if (FrameGraph::NodeHandle testDrawHandle =
+          getFrameGraph().acquireNode(testDraw, FrameGraph::READBACK_STAGE, frameId, resourceDesc);
+        testDrawHandle) {
+    }
 }
 
 void Game::releaseSwapchainResources() {
@@ -312,6 +323,8 @@ void Game::releaseSwapchainResources() {
     });
     renderTargetView.close();
     renderTarget.close();
+    testImageStager.clear();
+    transferTexture.close();
     swapchainFrameBuffers.clear();
     attachments.clear();
     imageViews.clear();
@@ -357,6 +370,28 @@ void Game::createSwapchainResources(const drv::Swapchain& swapchain) {
         createInfo.subresourceRange.levelCount = 1;
         renderTargetView = createResource<drv::ImageView>(getDevice(), createInfo);
     }
+
+    drv::ImageSet::ImageInfo transferImageInfo;
+    transferImageInfo.imageId = drv::ImageId("transferTex");
+    transferImageInfo.format = drv::ImageFormat::B8G8R8A8_SRGB;
+    transferImageInfo.extent = {128, 128, 1};
+    transferImageInfo.mipLevels = 1;
+    transferImageInfo.arrayLayers = 1;
+    transferImageInfo.sampleCount = drv::SampleCount::SAMPLE_COUNT_1;
+    // transferImageInfo.initialLayout = ;
+    // transferImageInfo.familyCount = 0;
+    transferImageInfo.usage =
+      drv::ImageCreateInfo::TRANSFER_DST_BIT | drv::ImageCreateInfo::TRANSFER_SRC_BIT;
+    transferImageInfo.type = drv::ImageCreateInfo::TYPE_2D;
+    // transferImageInfo.tiling = ;
+    // transferImageInfo.sharingType = ;
+    transferTexture = createResource<drv::ImageSet>(
+      getPhysicalDevice(), getDevice(), std::vector<drv::ImageSet::ImageInfo>{transferImageInfo},
+      drv::ImageSet::PreferenceSelector(drv::MemoryType::DEVICE_LOCAL_BIT,
+                                        drv::MemoryType::DEVICE_LOCAL_BIT));
+    testImageStager =
+      ImageStager(this, transferTexture.get().getImage(0), drv::ImageFormat::R8G8B8A8_UNORM,
+                  getMaxFramesInFlight(), ImageStager::BOTH);
 
     drv::RenderPass::AttachmentData colorTargetAttachment;
     colorTargetAttachment.image = renderTarget.get().getImage();

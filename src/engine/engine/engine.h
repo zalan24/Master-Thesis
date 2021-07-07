@@ -133,6 +133,8 @@ class Engine
         resource = res::GarbageResource<T>(getGarbageSystem(), std::forward<Args>(args)...);
     }
 
+    uint32_t getMaxFramesInFlight() const;
+
  protected:
     // Needs to be called from game implementation after finishing the framegraph
     void buildFrameGraph(FrameGraph::NodeId presentDepNode, FrameGraph::QueueId depQueueId);

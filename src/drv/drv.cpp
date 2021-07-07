@@ -453,3 +453,7 @@ void drv::perform_cpu_access(const ResourceLockerDescriptor* resources,
                              const ResourceLocker::Lock& lock) {
     return current_driver_interface->perform_cpu_access(resources, lock);
 }
+
+drv::Extent3D drv::get_mip_extent(const Extent3D& extent, uint32_t mip) {
+    return {extent.width >> mip, extent.height >> mip, extent.depth >> mip};
+}

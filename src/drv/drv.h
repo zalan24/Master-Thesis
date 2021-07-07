@@ -195,6 +195,8 @@ bool validate_and_apply_state_transitions(
 void perform_cpu_access(const ResourceLockerDescriptor* resources,
                         const ResourceLocker::Lock& lock);
 
+Extent3D get_mip_extent(const Extent3D& extent, uint32_t mip);
+
 // std::unique_ptr<CmdTrackingRecordState> create_tracking_record_state();
 // PipelineStages cmd_image_barrier(drv::CmdTrackingRecordState *recordState, CmdImageTrackingState& state, CommandBufferPtr cmdBuffer,
 //                                  const ImageMemoryBarrier& barrier);

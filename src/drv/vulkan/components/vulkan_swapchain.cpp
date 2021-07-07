@@ -140,7 +140,7 @@ bool DrvVulkan::get_swapchain_images(drv::LogicalDevicePtr device, drv::Swapchai
                convertSwapchain(swapchain)->extent.height, 1},
               1, 1, drv::get_format_aspects(convertSwapchain(swapchain)->format),
               convertSwapchain(swapchain)->sharedImages, drv::SampleCount::SAMPLE_COUNT_1,
-              convertSwapchain(swapchain)->format, true));
+              convertSwapchain(swapchain)->format, drv::ImageCreateInfo::TYPE_2D, true));
         }
     }
     return true;
