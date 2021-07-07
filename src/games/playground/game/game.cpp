@@ -7,6 +7,10 @@
 #include <drverror.h>
 #include <renderpass.h>
 
+#define STB_IMAGE_WRITE_IMPLEMENTATION
+
+#include <stb_image_write.h>
+
 Game::Game(int argc, char* argv[], const EngineConfig& config,
            const drv::StateTrackingConfig& trackingConfig, const std::string& shaderbinFile,
            const Args& args)
@@ -54,9 +58,9 @@ Game::Game(int argc, char* argv[], const EngineConfig& config,
     swapchainSubpass = testRenderPass->createSubpass(std::move(subpassInfo2));
     testRenderPass->build();
 
-    testDraw = getFrameGraph().addNode(FrameGraph::Node(
-      "testDraw",
-      FrameGraph::RECORD_STAGE | FrameGraph::EXECUTION_STAGE | FrameGraph::READBACK_STAGE));
+    testDraw = getFrameGraph().addNode(
+      FrameGraph::Node("testDraw", FrameGraph::BEFORE_DRAW_STAGE | FrameGraph::RECORD_STAGE
+                                     | FrameGraph::EXECUTION_STAGE | FrameGraph::READBACK_STAGE));
 
     // TODO present node could be inside of record end node???
     buildFrameGraph(testDraw, getQueues().renderQueue.id);
@@ -303,7 +307,28 @@ void Game::simulate(FrameId frameId) {
     // std::cout << "Simulate: " << frameId << std::endl;
 }
 
-void Game::beforeDraw(FrameId) {
+void Game::beforeDraw(FrameId frameId) {
+    TemporalResourceLockerDescriptor resourceDesc;
+    ImageStager::StagerId stagerId = testImageStager.getStagerId(frameId);
+    testImageStager.lockResource(resourceDesc, ImageStager::UPLOAD, stagerId);
+    if (FrameGraph::NodeHandle testDrawHandle = getFrameGraph().acquireNode(
+          testDraw, FrameGraph::BEFORE_DRAW_STAGE, frameId, resourceDesc);
+        testDrawHandle) {
+        drv::DeviceSize size;
+        drv::DeviceSize rowPitch;
+        drv::DeviceSize arrayPitch;
+        drv::DeviceSize depthPitch;
+        testImageStager.getMemoryData(stagerId, 0, 0, size, rowPitch, arrayPitch, depthPitch);
+        StackMemory::MemoryHandle<uint32_t> pixels(size / 4, TEMPMEM);
+        drv::TextureInfo texInfo = drv::get_texture_info(transferTexture.get().getImage(0));
+        for (uint32_t y = 0; y < texInfo.extent.height; ++y)
+            for (uint32_t x = 0; x < texInfo.extent.width; ++x)
+                pixels[StackMemory::size_t(x + y * rowPitch / 4)] =
+                  x * x + y * y < texInfo.extent.height * texInfo.extent.width / 4 ? 0xFF0000FF
+                                                                                   : 0x00FF00FF;
+        // layer*arrayPitch + z*depthPitch + y*rowPitch + x*elementSize + offset
+        testImageStager.setData(pixels, 0, 0, stagerId, testDrawHandle.getLock());
+    }
 }
 
 void Game::readback(FrameId frameId) {
@@ -313,6 +338,18 @@ void Game::readback(FrameId frameId) {
     if (FrameGraph::NodeHandle testDrawHandle =
           getFrameGraph().acquireNode(testDraw, FrameGraph::READBACK_STAGE, frameId, resourceDesc);
         testDrawHandle) {
+        drv::DeviceSize size;
+        drv::DeviceSize rowPitch;
+        drv::DeviceSize arrayPitch;
+        drv::DeviceSize depthPitch;
+        testImageStager.getMemoryData(stagerId, 0, 0, size, rowPitch, arrayPitch, depthPitch);
+        StackMemory::MemoryHandle<uint32_t> pixels(size / 4, TEMPMEM);
+        testImageStager.getData(pixels, 0, 0, stagerId, testDrawHandle.getLock());
+        if (frameId == 20) {
+            drv::TextureInfo texInfo = drv::get_texture_info(transferTexture.get().getImage(0));
+            stbi_write_png("test_image_out.png", int(texInfo.extent.width),
+                           int(texInfo.extent.height), 8, pixels, int(rowPitch));
+        }
     }
 }
 
@@ -374,7 +411,7 @@ void Game::createSwapchainResources(const drv::Swapchain& swapchain) {
     drv::ImageSet::ImageInfo transferImageInfo;
     transferImageInfo.imageId = drv::ImageId("transferTex");
     transferImageInfo.format = drv::ImageFormat::B8G8R8A8_SRGB;
-    transferImageInfo.extent = {128, 128, 1};
+    transferImageInfo.extent = {256, 256, 1};
     transferImageInfo.mipLevels = 1;
     transferImageInfo.arrayLayers = 1;
     transferImageInfo.sampleCount = drv::SampleCount::SAMPLE_COUNT_1;

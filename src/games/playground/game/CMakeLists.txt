@@ -10,4 +10,5 @@ target_include_directories(PlaygroundLib PUBLIC . ${CMAKE_CURRENT_BINARY_DIR})
 target_link_libraries(PlaygroundLib PUBLIC
     Game3D
     playgroundShaders
+    stb_external
 )

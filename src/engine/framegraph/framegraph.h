@@ -192,6 +192,8 @@ class FrameGraph
 
         FrameId getFrameId() const { return frameId; }
 
+        const drv::ResourceLocker::Lock& getLock() const {return lock;}
+
      private:
         NodeHandle();
         NodeHandle(FrameGraph* frameGraph, FrameGraph::NodeId node, Stage stage, FrameId frameId,
