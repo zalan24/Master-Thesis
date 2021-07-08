@@ -72,7 +72,7 @@
         "-m../data/resources/models.json",
         "-d../data/",
         // "--gfx",
-        "--api_dump",
+        // "--api_dump",
         "--renderdoc",
         // "--no_persistance",
         "--runtime_stats_persistance",

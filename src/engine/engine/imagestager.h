@@ -23,10 +23,9 @@ class ImageStager
     };
 
     ImageStager() = default;
-    ImageStager(Engine* engine, drv::ImagePtr image, drv::ImageFormat format,
-                const drv::ImageSubresourceRange& subres, uint32_t numStagers, Usage usage);
-    ImageStager(Engine* engine, drv::ImagePtr image, drv::ImageFormat format, uint32_t numStagers,
-                Usage usage);
+    ImageStager(Engine* engine, drv::ImagePtr image, const drv::ImageSubresourceRange& subres,
+                uint32_t numStagers, Usage usage);
+    ImageStager(Engine* engine, drv::ImagePtr image, uint32_t numStagers, Usage usage);
 
     ImageStager(const ImageStager&) = delete;
     ImageStager& operator=(const ImageStager&) = delete;

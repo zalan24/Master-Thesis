@@ -744,8 +744,8 @@ bool Engine::execute(ExecutionPackage&& package) {
         executionInfo.numSignalSemaphores =
           static_cast<unsigned int>(cmdBuffer.signalSemaphores.size());
         executionInfo.signalSemaphores = cmdBuffer.signalSemaphores.data();
-        executionInfo.numWaitTimelineSemaphores =
-          static_cast<unsigned int>(cmdBuffer.waitTimelineSemaphores.size());
+        executionInfo.numWaitTimelineSemaphores = static_cast<unsigned int>(
+          cmdBuffer.waitTimelineSemaphores.size() + cb.getNumSemaphores());
         executionInfo.waitTimelineSemaphores = waitTimelineSemaphores;
         executionInfo.timelineWaitValues = waitTimelineSemaphoresValues;
         executionInfo.timelineWaitStages = waitTimelineSemaphoresStages;

@@ -60,6 +60,7 @@ class Game final : public Game3D
         drv::ImagePtr targetImage;
         drv::ImageViewPtr targetView;
         drv::ImagePtr renderTarget;
+        drv::ImagePtr transferImage;
         drv::ImageViewPtr renderTargetView;
         drv::AttachmentId swapchainColorAttachment;
         drv::AttachmentId colorTagretColorAttachment;
@@ -76,6 +77,8 @@ class Game final : public Game3D
         shader_global_descriptor* shaderGlobalDesc;
         shader_inputatchm* inputShader;
         shader_inputatchm_descriptor* shaderInputAttachmentDesc;
+        ImageStager::StagerId stagerId;
+        ImageStager *testImageStager;
         bool doBlit;
         bool operator==(const RecordData& rhs) const {
             return device == rhs.device && targetImage == rhs.targetImage
@@ -90,7 +93,7 @@ class Game final : public Game3D
                    && testShader == rhs.testShader && shaderTestDesc == rhs.shaderTestDesc
                    && shaderGlobalDesc == rhs.shaderGlobalDesc && inputShader == rhs.inputShader
                    && shaderInputAttachmentDesc == rhs.shaderInputAttachmentDesc
-                   && doBlit == rhs.doBlit;
+                   && doBlit == rhs.doBlit && stagerId == rhs.stagerId && transferImage == rhs.transferImage && testImageStager == rhs.testImageStager;
         }
         bool operator!=(const RecordData& rhs) const { return !(*this == rhs); }
     };

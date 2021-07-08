@@ -999,26 +999,30 @@ void DrvVulkan::write_image_memory(drv::LogicalDevicePtr device, drv::ImagePtr _
     drv::drv_assert(get_image_memory_data(device, _image, layer, mip, offset, size, rowPitch,
                                           arrayPitch, depthPitch));
 
-    alignas(16) void* pData;
-    VkResult result =
-      vkMapMemory(convertDevice(device), convertMemory(image->memoryPtr),
-                  static_cast<VkDeviceSize>(offset), static_cast<VkDeviceSize>(size), 0, &pData);
-    drv::drv_assert(result == VK_SUCCESS, "Could not map memory");
+    {
+        std::unique_lock<std::mutex> memoryLock(convertMemory(image->memoryPtr)->mapMutex);
 
-    std::memcpy(pData, srcMem, size);
+        alignas(16) void* pData;
+        VkResult result = vkMapMemory(
+          convertDevice(device), convertMemory(image->memoryPtr)->memory,
+          static_cast<VkDeviceSize>(offset), static_cast<VkDeviceSize>(size), 0, &pData);
+        drv::drv_assert(result == VK_SUCCESS, "Could not map memory");
 
-    vkUnmapMemory(convertDevice(device), convertMemory(image->memoryPtr));
+        std::memcpy(pData, srcMem, size);
+
+        vkUnmapMemory(convertDevice(device), convertMemory(image->memoryPtr)->memory);
+    }
 
     if (!(image->memoryType.properties & drv::MemoryType::HOST_COHERENT_BIT)) {
         for (uint32_t i = 0; i < drv::ASPECTS_COUNT; ++i) {
             if (image->aspects & drv::get_aspect_by_id(i)) {
                 VkMappedMemoryRange range;
-                range.memory = convertMemory(image->memoryPtr);
+                range.memory = convertMemory(image->memoryPtr)->memory;
                 range.offset = offset;
                 range.pNext = nullptr;
                 range.size = size;
                 range.sType = VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE;
-                result = vkFlushMappedMemoryRanges(convertDevice(device), 1, &range);
+                VkResult result = vkFlushMappedMemoryRanges(convertDevice(device), 1, &range);
                 drv::drv_assert(result == VK_SUCCESS, "Could not flush memory");
                 auto& state = image->linearTrackingState.get(layer, mip, drv::get_aspect_by_id(i));
                 state.visible = drv::MemoryBarrier::HOST_WRITE_BIT;
@@ -1064,7 +1068,7 @@ void DrvVulkan::read_image_memory(drv::LogicalDevicePtr device, drv::ImagePtr _i
                 auto& state = image->linearTrackingState.get(layer, mip, drv::get_aspect_by_id(i));
                 if (!(state.visible & drv::MemoryBarrier::HOST_READ_BIT)) {
                     VkMappedMemoryRange range;
-                    range.memory = convertMemory(image->memoryPtr);
+                    range.memory = convertMemory(image->memoryPtr)->memory;
                     range.offset = offset;
                     range.pNext = nullptr;
                     range.size = size;
@@ -1078,13 +1082,17 @@ void DrvVulkan::read_image_memory(drv::LogicalDevicePtr device, drv::ImagePtr _i
         }
     }
 
-    alignas(16) void* pData;
-    VkResult result =
-      vkMapMemory(convertDevice(device), convertMemory(image->memoryPtr),
-                  static_cast<VkDeviceSize>(offset), static_cast<VkDeviceSize>(size), 0, &pData);
-    drv::drv_assert(result == VK_SUCCESS, "Could not map memory");
+    {
+        std::unique_lock<std::mutex> memoryLock(convertMemory(image->memoryPtr)->mapMutex);
 
-    std::memcpy(dstMem, pData, size);
+        alignas(16) void* pData;
+        VkResult result = vkMapMemory(
+          convertDevice(device), convertMemory(image->memoryPtr)->memory,
+          static_cast<VkDeviceSize>(offset), static_cast<VkDeviceSize>(size), 0, &pData);
+        drv::drv_assert(result == VK_SUCCESS, "Could not map memory");
 
-    vkUnmapMemory(convertDevice(device), convertMemory(image->memoryPtr));
+        std::memcpy(dstMem, pData, size);
+
+        vkUnmapMemory(convertDevice(device), convertMemory(image->memoryPtr)->memory);
+    }
 }

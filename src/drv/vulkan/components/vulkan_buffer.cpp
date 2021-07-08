@@ -9,7 +9,7 @@
 #include "vulkan_buffer.h"
 #include "vulkan_conversions.h"
 #include "vulkan_enum_compare.h"
-
+#include "vulkan_memory.h"
 using namespace drv_vulkan;
 
 drv::BufferPtr DrvVulkan::create_buffer(drv::LogicalDevicePtr device,
@@ -70,12 +70,12 @@ drv::DeviceMemoryPtr DrvVulkan::allocate_memory(drv::LogicalDevicePtr device,
     VkResult result =
       vkAllocateMemory(drv::resolve_ptr<VkDevice>(device), &allocInfo, nullptr, &memory);
     drv::drv_assert(result == VK_SUCCESS, "Could not allocate memory");
-    return drv::store_ptr<drv::DeviceMemoryPtr>(memory);
+    return drv::store_ptr<drv::DeviceMemoryPtr>(new drv_vulkan::DeviceMemory(memory, info->size));
 }
 
 bool DrvVulkan::free_memory(drv::LogicalDevicePtr device, drv::DeviceMemoryPtr memory) {
-    vkFreeMemory(drv::resolve_ptr<VkDevice>(device), drv::resolve_ptr<VkDeviceMemory>(memory),
-                 nullptr);
+    vkFreeMemory(drv::resolve_ptr<VkDevice>(device), convertMemory(memory)->memory, nullptr);
+    delete convertMemory(memory);
     return true;
 }
 
@@ -85,7 +85,7 @@ bool DrvVulkan::bind_buffer_memory(drv::LogicalDevicePtr device, drv::BufferPtr 
     buffer->memoryPtr = memory;
     buffer->offset = offset;
     VkResult result = vkBindBufferMemory(drv::resolve_ptr<VkDevice>(device), buffer->buffer,
-                                         drv::resolve_ptr<VkDeviceMemory>(memory), offset);
+                                         convertMemory(memory)->memory, offset);
     return result == VK_SUCCESS;
 }
 
@@ -116,13 +116,13 @@ bool DrvVulkan::get_buffer_memory_requirements(drv::LogicalDevicePtr device, drv
 
 bool DrvVulkan::map_memory(drv::LogicalDevicePtr device, drv::DeviceMemoryPtr memory,
                            drv::DeviceSize offset, drv::DeviceSize size, void** data) {
-    VkResult result = vkMapMemory(drv::resolve_ptr<VkDevice>(device),
-                                  drv::resolve_ptr<VkDeviceMemory>(memory), offset, size, 0, data);
+    VkResult result = vkMapMemory(drv::resolve_ptr<VkDevice>(device), convertMemory(memory)->memory,
+                                  offset, size, 0, data);
     return result == VK_SUCCESS;
 }
 
 bool DrvVulkan::unmap_memory(drv::LogicalDevicePtr device, drv::DeviceMemoryPtr memory) {
-    vkUnmapMemory(drv::resolve_ptr<VkDevice>(device), drv::resolve_ptr<VkDeviceMemory>(memory));
+    vkUnmapMemory(drv::resolve_ptr<VkDevice>(device), convertMemory(memory)->memory);
     return true;
 }
 

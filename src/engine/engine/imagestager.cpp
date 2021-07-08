@@ -2,13 +2,13 @@
 
 #include "engine.h"
 
-ImageStager::ImageStager(Engine* engine, drv::ImagePtr _image, drv::ImageFormat format,
+ImageStager::ImageStager(Engine* engine, drv::ImagePtr _image,
                          uint32_t _numStagers, Usage usage)
-  : ImageStager(engine, _image, format, drv::get_texture_info(_image).getSubresourceRange(),
+  : ImageStager(engine, _image, drv::get_texture_info(_image).getSubresourceRange(),
                 _numStagers, usage) {
 }
 
-ImageStager::ImageStager(Engine* engine, drv::ImagePtr _image, drv::ImageFormat format,
+ImageStager::ImageStager(Engine* engine, drv::ImagePtr _image,
                          const drv::ImageSubresourceRange& subres, uint32_t _numStagers,
                          Usage usage)
   : device(engine->getDevice()),
@@ -27,7 +27,7 @@ ImageStager::ImageStager(Engine* engine, drv::ImagePtr _image, drv::ImageFormat 
     for (uint32_t i = 0; i < infos.size(); ++i) {
         infos[i].imageId =
           drv::ImageId(texInfo.imageId->name + "_stager", texInfo.imageId->subId * numStagers + i);
-        infos[i].format = format;
+        infos[i].format = texInfo.format;
         infos[i].extent = drv::get_mip_extent(texInfo.extent, mipOffset);
         infos[i].mipLevels = mipCount;
         infos[i].arrayLayers = layerCount;

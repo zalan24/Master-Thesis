@@ -62,7 +62,7 @@ bool DrvVulkan::bind_image_memory(drv::LogicalDevicePtr device, drv::ImagePtr im
                                   drv::DeviceMemoryPtr memory, drv::DeviceSize offset,
                                   drv::MemoryType memoryType) {
     VkResult result = vkBindImageMemory(convertDevice(device), convertImage(image)->image,
-                                        drv::resolve_ptr<VkDeviceMemory>(memory), offset);
+                                        convertMemory(memory)->memory, offset);
     convertImage(image)->memoryPtr = memory;
     convertImage(image)->offset = offset;
     convertImage(image)->memoryType = memoryType;
