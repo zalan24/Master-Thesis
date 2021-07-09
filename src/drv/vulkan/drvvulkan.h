@@ -268,7 +268,7 @@ class DrvVulkan final : public drv::IDriver
                                                 const drv::CommandBufferCreateInfo* info) override;
     bool free_command_buffer(drv::LogicalDevicePtr device, drv::CommandPoolPtr pool,
                              unsigned int count, drv::CommandBufferPtr* buffers) override;
-    bool execute(drv::QueuePtr queue, unsigned int count, const drv::ExecutionInfo* infos,
+    bool execute(drv::LogicalDevicePtr device, drv::QueuePtr queue, unsigned int count, const drv::ExecutionInfo* infos,
                  drv::FencePtr fence) override;
     drv::BufferPtr create_buffer(drv::LogicalDevicePtr device,
                                  const drv::BufferCreateInfo* info) override;
@@ -325,7 +325,7 @@ class DrvVulkan final : public drv::IDriver
                                        drv::LogicalDevicePtr device, IWindow* window,
                                        const drv::SwapchainCreateInfo* info) override;
     bool destroy_swapchain(drv::LogicalDevicePtr device, drv::SwapchainPtr swapchain) override;
-    drv::PresentResult present(drv::QueuePtr queue, drv::SwapchainPtr swapchain,
+    drv::PresentResult present(drv::LogicalDevicePtr device, drv::QueuePtr queue, drv::SwapchainPtr swapchain,
                                const drv::PresentInfo& info, uint32_t imageIndex) override;
     bool get_swapchain_images(drv::LogicalDevicePtr device, drv::SwapchainPtr swapchain,
                               uint32_t* count, drv::ImagePtr* images) override;
@@ -420,9 +420,9 @@ class DrvVulkan final : public drv::IDriver
     {
         std::unordered_map<drv::QueuePtr, drv::QueueFamilyPtr> queueToFamily;
         std::unordered_map<drv::QueueFamilyPtr, std::mutex> queueFamilyMutexes;
+        std::unordered_map<drv::QueuePtr, std::mutex> queueMutexes;
     };
     std::mutex devicesDataMutex;
-    std::mutex submitMutex;
     std::unordered_map<drv::LogicalDevicePtr, LogicalDeviceData> devicesData;
     drv::StateTrackingConfig trackingConfig;
 };

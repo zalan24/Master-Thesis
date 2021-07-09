@@ -100,6 +100,7 @@ drv::QueuePtr DrvVulkan::get_queue(drv::LogicalDevicePtr device, drv::QueueFamil
         auto itr = devicesData.find(device);
         drv::drv_assert(itr != devicesData.end());
         itr->second.queueToFamily[drv::store_ptr<drv::QueuePtr>(queue)] = family;
+        itr->second.queueMutexes[drv::store_ptr<drv::QueuePtr>(queue)];
     }
     return drv::store_ptr<drv::QueuePtr>(queue);
 }

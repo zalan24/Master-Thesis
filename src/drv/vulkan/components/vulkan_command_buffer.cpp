@@ -34,8 +34,8 @@ drv::CommandBufferPtr DrvVulkan::create_command_buffer(drv::LogicalDevicePtr dev
     return drv::store_ptr<drv::CommandBufferPtr>(commandBuffer);
 }
 
-bool DrvVulkan::execute(drv::QueuePtr queue, unsigned int count, const drv::ExecutionInfo* infos,
-                        drv::FencePtr fence) {
+bool DrvVulkan::execute(drv::LogicalDevicePtr device, drv::QueuePtr queue, unsigned int count,
+                        const drv::ExecutionInfo* infos, drv::FencePtr fence) {
     uint32_t waitSemaphoreCount = 0;
     uint32_t signalSemaphoreCount = 0;
     uint32_t commandBufferCount = 0;
@@ -151,7 +151,14 @@ bool DrvVulkan::execute(drv::QueuePtr queue, unsigned int count, const drv::Exec
         if (infos[i].numSignalTimelineSemaphores > 0 || infos[i].numWaitTimelineSemaphores > 0)
             submitInfos[i].pNext = &submitTimelineInfos[i];
     }
-    std::unique_lock<std::mutex> lock(submitMutex);
+
+    std::unique_lock<std::mutex> lock(devicesDataMutex);
+    auto itr = devicesData.find(device);
+    drv::drv_assert(itr != devicesData.end());
+    auto mutexItr = itr->second.queueMutexes.find(queue);
+    drv::drv_assert(mutexItr != itr->second.queueMutexes.end());
+    std::unique_lock<std::mutex> queueLock(mutexItr->second);
+
     VkResult result = vkQueueSubmit(drv::resolve_ptr<VkQueue>(queue), count, submitInfos,
                                     drv::resolve_ptr<VkFence>(fence));
     drv::drv_assert(result == VK_SUCCESS, "Could not execute command buffer");

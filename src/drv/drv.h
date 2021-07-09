@@ -82,7 +82,7 @@ bool reset_fences(LogicalDevicePtr device, unsigned int count, FencePtr* fences)
 FenceWaitResult wait_for_fence(LogicalDevicePtr device, unsigned int count, const FencePtr* fences,
                                bool waitAll, unsigned long long int timeOut);
 
-bool execute(QueuePtr queue, unsigned int count, const ExecutionInfo* infos,
+bool execute(drv::LogicalDevicePtr device, QueuePtr queue, unsigned int count, const ExecutionInfo* infos,
              FencePtr fence = get_null_ptr<FencePtr>());
 
 BufferPtr create_buffer(LogicalDevicePtr device, const BufferCreateInfo* info);
@@ -135,7 +135,7 @@ DeviceExtensions get_supported_extensions(PhysicalDevicePtr physicalDevice);
 SwapchainPtr create_swapchain(PhysicalDevicePtr physicalDevice, LogicalDevicePtr device,
                               IWindow* window, const SwapchainCreateInfo* info);
 bool destroy_swapchain(LogicalDevicePtr device, SwapchainPtr swapchain);
-PresentResult present(drv::QueuePtr queue, drv::SwapchainPtr swapchain, const PresentInfo& info,
+PresentResult present(drv::LogicalDevicePtr device, drv::QueuePtr queue, drv::SwapchainPtr swapchain, const PresentInfo& info,
                       uint32_t imageIndex);
 bool get_swapchain_images(LogicalDevicePtr device, SwapchainPtr swapchain, uint32_t* count,
                           drv::ImagePtr* images);

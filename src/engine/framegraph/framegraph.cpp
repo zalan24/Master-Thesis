@@ -1137,7 +1137,7 @@ void FrameGraph::submitSignalFrameEnd(FrameId frame) {
         executionInfo.timelineSignalValues = &signalValue;
         executionInfo.numWaitSemaphores = 0;
         executionInfo.numWaitTimelineSemaphores = 0;
-        drv::execute(uniqueQueues[i], 1, &executionInfo);
+        drv::execute(device, uniqueQueues[i], 1, &executionInfo);
     }
 }
 
@@ -1162,7 +1162,7 @@ FrameGraph::QueueSyncData FrameGraph::sync_queue(drv::QueuePtr queue, FrameId fr
     executionInfo.timelineSignalValues = &signalValue;
     executionInfo.numWaitSemaphores = 0;
     executionInfo.numWaitTimelineSemaphores = 0;
-    drv::execute(queue, 1, &executionInfo);
+    drv::execute(device, queue, 1, &executionInfo);
 
     if (RuntimeStats::getSingleton())
         RuntimeStats::getSingleton()->incrementAllowedSubmissionCorrections();

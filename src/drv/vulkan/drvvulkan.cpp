@@ -1003,9 +1003,10 @@ void DrvVulkan::write_image_memory(drv::LogicalDevicePtr device, drv::ImagePtr _
         std::unique_lock<std::mutex> memoryLock(convertMemory(image->memoryPtr)->mapMutex);
 
         alignas(16) void* pData;
-        VkResult result = vkMapMemory(
-          convertDevice(device), convertMemory(image->memoryPtr)->memory,
-          static_cast<VkDeviceSize>(offset), static_cast<VkDeviceSize>(size), 0, &pData);
+        VkResult result =
+          vkMapMemory(convertDevice(device), convertMemory(image->memoryPtr)->memory,
+                      static_cast<VkDeviceSize>(offset + image->offset),
+                      static_cast<VkDeviceSize>(size), 0, &pData);
         drv::drv_assert(result == VK_SUCCESS, "Could not map memory");
 
         std::memcpy(pData, srcMem, size);
@@ -1018,7 +1019,7 @@ void DrvVulkan::write_image_memory(drv::LogicalDevicePtr device, drv::ImagePtr _
             if (image->aspects & drv::get_aspect_by_id(i)) {
                 VkMappedMemoryRange range;
                 range.memory = convertMemory(image->memoryPtr)->memory;
-                range.offset = offset;
+                range.offset = offset + image->offset;
                 range.pNext = nullptr;
                 range.size = size;
                 range.sType = VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE;
@@ -1069,7 +1070,7 @@ void DrvVulkan::read_image_memory(drv::LogicalDevicePtr device, drv::ImagePtr _i
                 if (!(state.visible & drv::MemoryBarrier::HOST_READ_BIT)) {
                     VkMappedMemoryRange range;
                     range.memory = convertMemory(image->memoryPtr)->memory;
-                    range.offset = offset;
+                    range.offset = offset + image->offset;
                     range.pNext = nullptr;
                     range.size = size;
                     range.sType = VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE;
@@ -1086,9 +1087,10 @@ void DrvVulkan::read_image_memory(drv::LogicalDevicePtr device, drv::ImagePtr _i
         std::unique_lock<std::mutex> memoryLock(convertMemory(image->memoryPtr)->mapMutex);
 
         alignas(16) void* pData;
-        VkResult result = vkMapMemory(
-          convertDevice(device), convertMemory(image->memoryPtr)->memory,
-          static_cast<VkDeviceSize>(offset), static_cast<VkDeviceSize>(size), 0, &pData);
+        VkResult result =
+          vkMapMemory(convertDevice(device), convertMemory(image->memoryPtr)->memory,
+                      static_cast<VkDeviceSize>(offset + image->offset),
+                      static_cast<VkDeviceSize>(size), 0, &pData);
         drv::drv_assert(result == VK_SUCCESS, "Could not map memory");
 
         std::memcpy(dstMem, pData, size);

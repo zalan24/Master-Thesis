@@ -1274,7 +1274,7 @@ AcquireResult Swapchain::acquire(uint32_t& index, SemaphorePtr semaphore, FenceP
 PresentResult Swapchain::present(QueuePtr queue, SwapchainPtr swapchain, const PresentInfo& info,
                                  uint32_t imageIndex) {
     drv::drv_assert(imageIndex != INVALID_INDEX, "Present called without acquiring an image");
-    return drv::present(queue, swapchain, info, imageIndex);
+    return drv::present(device, queue, swapchain, info, imageIndex);
 }
 
 Swapchain::OldSwapchinData::OldSwapchinData(LogicalDevicePtr _device, SwapchainPtr _swapchain,

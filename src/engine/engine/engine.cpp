@@ -752,7 +752,7 @@ bool Engine::execute(ExecutionPackage&& package) {
         executionInfo.numSignalTimelineSemaphores = signalTimelineSemaphoreCount;
         executionInfo.signalTimelineSemaphores = signalTimelineSemaphores;
         executionInfo.timelineSignalValues = signalTimelineSemaphoreValues;
-        drv::execute(cmdBuffer.queue, 1, &executionInfo);
+        drv::execute(getDevice(), cmdBuffer.queue, 1, &executionInfo);
     }
     else if (std::holds_alternative<ExecutionPackage::RecursiveQueue>(package.package)) {
         ExecutionPackage::RecursiveQueue& queue =

@@ -168,8 +168,9 @@ drv::FenceWaitResult drv::wait_for_fence(LogicalDevicePtr device, unsigned int c
     return current_driver_interface->wait_for_fence(device, count, fences, waitAll, timeOut);
 }
 
-bool drv::execute(QueuePtr queue, unsigned int count, const ExecutionInfo* infos, FencePtr fence) {
-    return current_driver_interface->execute(queue, count, infos, fence);
+bool drv::execute(drv::LogicalDevicePtr device, QueuePtr queue, unsigned int count,
+                  const ExecutionInfo* infos, FencePtr fence) {
+    return current_driver_interface->execute(device, queue, count, infos, fence);
 }
 
 drv::BufferPtr drv::create_buffer(LogicalDevicePtr device, const BufferCreateInfo* info) {
@@ -297,9 +298,10 @@ bool drv::destroy_swapchain(LogicalDevicePtr device, SwapchainPtr swapchain) {
     return current_driver_interface->destroy_swapchain(device, swapchain);
 }
 
-drv::PresentResult drv::present(drv::QueuePtr queue, drv::SwapchainPtr swapchain,
-                                const PresentInfo& info, uint32_t imageIndex) {
-    return current_driver_interface->present(queue, swapchain, info, imageIndex);
+drv::PresentResult drv::present(drv::LogicalDevicePtr device, drv::QueuePtr queue,
+                                drv::SwapchainPtr swapchain, const PresentInfo& info,
+                                uint32_t imageIndex) {
+    return current_driver_interface->present(device, queue, swapchain, info, imageIndex);
 }
 
 bool drv::get_swapchain_images(LogicalDevicePtr device, SwapchainPtr swapchain, uint32_t* count,

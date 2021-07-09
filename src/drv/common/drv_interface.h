@@ -178,8 +178,8 @@ class IDriver
                                                    const CommandBufferCreateInfo* info) = 0;
     virtual bool free_command_buffer(LogicalDevicePtr device, CommandPoolPtr pool,
                                      unsigned int count, CommandBufferPtr* buffers) = 0;
-    virtual bool execute(QueuePtr queue, unsigned int count, const ExecutionInfo* infos,
-                         FencePtr fence) = 0;
+    virtual bool execute(drv::LogicalDevicePtr device, QueuePtr queue, unsigned int count,
+                         const ExecutionInfo* infos, FencePtr fence) = 0;
     virtual BufferPtr create_buffer(LogicalDevicePtr device, const BufferCreateInfo* info) = 0;
     virtual bool destroy_buffer(LogicalDevicePtr device, BufferPtr buffer) = 0;
     virtual DeviceMemoryPtr allocate_memory(LogicalDevicePtr device,
@@ -224,7 +224,8 @@ class IDriver
     virtual SwapchainPtr create_swapchain(PhysicalDevicePtr physicalDevice, LogicalDevicePtr device,
                                           IWindow* window, const SwapchainCreateInfo* info) = 0;
     virtual bool destroy_swapchain(LogicalDevicePtr device, SwapchainPtr swapchain) = 0;
-    virtual PresentResult present(QueuePtr queue, SwapchainPtr swapchain, const PresentInfo& info,
+    virtual PresentResult present(drv::LogicalDevicePtr device, QueuePtr queue,
+                                  SwapchainPtr swapchain, const PresentInfo& info,
                                   uint32_t imageIndex) = 0;
     virtual bool get_swapchain_images(LogicalDevicePtr device, SwapchainPtr swapchain,
                                       uint32_t* count, drv::ImagePtr* images) = 0;

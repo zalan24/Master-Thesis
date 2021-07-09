@@ -95,8 +95,9 @@ bool DrvVulkan::destroy_swapchain(drv::LogicalDevicePtr device, drv::SwapchainPt
     return true;
 }
 
-drv::PresentResult DrvVulkan::present(drv::QueuePtr queue, drv::SwapchainPtr swapchain,
-                                      const drv::PresentInfo& info, uint32_t imageIndex) {
+drv::PresentResult DrvVulkan::present(drv::LogicalDevicePtr device, drv::QueuePtr queue,
+                                      drv::SwapchainPtr swapchain, const drv::PresentInfo& info,
+                                      uint32_t imageIndex) {
     StackMemory::MemoryHandle<VkSemaphore> vkSemaphores(info.semaphoreCount, TEMPMEM);
     for (uint32_t i = 0; i < info.semaphoreCount; ++i)
         vkSemaphores[i] = convertSemaphore(info.waitSemaphores[i]);
@@ -109,6 +110,14 @@ drv::PresentResult DrvVulkan::present(drv::QueuePtr queue, drv::SwapchainPtr swa
     presentInfo.pSwapchains = &convertSwapchain(swapchain)->swapchain;
     presentInfo.pImageIndices = &imageIndex;
     presentInfo.pResults = nullptr;
+
+    std::unique_lock<std::mutex> lock(devicesDataMutex);
+    auto itr = devicesData.find(device);
+    drv::drv_assert(itr != devicesData.end());
+    auto mutexItr = itr->second.queueMutexes.find(queue);
+    drv::drv_assert(mutexItr != itr->second.queueMutexes.end());
+    std::unique_lock<std::mutex> queueLock(mutexItr->second);
+
     VkResult result = vkQueuePresentKHR(drv::resolve_ptr<VkQueue>(queue), &presentInfo);
     if (result == VK_SUCCESS)
         return drv::PresentResult::SUCCESS;
