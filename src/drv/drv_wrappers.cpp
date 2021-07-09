@@ -704,6 +704,8 @@ ImageSet::ImageSet(PhysicalDevicePtr _physicalDevice, LogicalDevicePtr _device, 
     MaskType mask = defaultMask;
     std::vector<DeviceSize> offsets;
     const auto createMemory = [&, this] {
+        if (offsets.size() == 0)
+            return;
         DeviceMemoryPtr* mem = nullptr;
         if (is_null_ptr(memory))
             mem = &memory;

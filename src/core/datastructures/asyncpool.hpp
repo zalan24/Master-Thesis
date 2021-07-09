@@ -33,7 +33,10 @@ class AsyncPool
 
     void clearItems() {
         std::unique_lock<std::shared_mutex> lock(vectorMutex);
-        assert(acquiredCount.load() == 0);
+        ItemIndex count = acquiredCount.load();
+        if (count > 0)
+            LOG_F(ERROR, "Not all items were freed. Remaining: %d", count);
+        assert(count == 0);
         items.clear();
         currentIndex = 0;
     }

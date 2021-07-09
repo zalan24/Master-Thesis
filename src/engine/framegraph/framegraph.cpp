@@ -277,6 +277,8 @@ const FrameGraph::Node* FrameGraph::getNode(NodeId id) const {
 }
 
 void FrameGraph::addDependency(NodeId target, CpuDependency dep) {
+    if (dep.srcNode == target && dep.dstStage == dep.srcStage)
+        drv::drv_assert(dep.offset > 0, "Self dependency detected");
     getNode(target)->addDependency(std::move(dep));
 }
 void FrameGraph::addDependency(NodeId target, EnqueueDependency dep) {

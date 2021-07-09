@@ -396,23 +396,23 @@ void Game::beforeDraw(FrameId frameId) {
 
 void Game::readback(FrameId frameId) {
     TemporalResourceLockerDescriptor resourceDesc;
-    ImageStager::StagerId stagerId = testImageStager.getStagerId(frameId);
-    testImageStager.lockResource(resourceDesc, ImageStager::DOWNLOAD, stagerId);
+    // ImageStager::StagerId stagerId = testImageStager.getStagerId(frameId);
+    // testImageStager.lockResource(resourceDesc, ImageStager::DOWNLOAD, stagerId);
     if (FrameGraph::NodeHandle testDrawHandle =
           getFrameGraph().acquireNode(testDraw, FrameGraph::READBACK_STAGE, frameId, resourceDesc);
         testDrawHandle) {
-        drv::DeviceSize size;
-        drv::DeviceSize rowPitch;
-        drv::DeviceSize arrayPitch;
-        drv::DeviceSize depthPitch;
-        testImageStager.getMemoryData(stagerId, 0, 0, size, rowPitch, arrayPitch, depthPitch);
-        StackMemory::MemoryHandle<uint32_t> pixels(size / 4, TEMPMEM);
-        testImageStager.getData(pixels, 0, 0, stagerId, testDrawHandle.getLock());
-        if (frameId == 20) {
-            drv::TextureInfo texInfo = drv::get_texture_info(transferTexture.get().getImage(0));
-            stbi_write_png("test_image_out.png", int(texInfo.extent.width),
-                           int(texInfo.extent.height), 4, pixels, int(rowPitch));
-        }
+        // drv::DeviceSize size;
+        // drv::DeviceSize rowPitch;
+        // drv::DeviceSize arrayPitch;
+        // drv::DeviceSize depthPitch;
+        // testImageStager.getMemoryData(stagerId, 0, 0, size, rowPitch, arrayPitch, depthPitch);
+        // StackMemory::MemoryHandle<uint32_t> pixels(size / 4, TEMPMEM);
+        // testImageStager.getData(pixels, 0, 0, stagerId, testDrawHandle.getLock());
+        // if (frameId == 19) {
+        //     drv::TextureInfo texInfo = drv::get_texture_info(transferTexture.get().getImage(0));
+        //     stbi_write_png("test_image_out.png", int(texInfo.extent.width),
+        //                    int(texInfo.extent.height), 4, pixels, int(rowPitch));
+        // }
     }
 }
 

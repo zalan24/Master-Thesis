@@ -23,7 +23,7 @@ TimelineSemaphoreHandle TimelineSemaphorePool::acquire(uint64_t firstSignalValue
 }
 
 void TimelineSemaphorePool::releaseExt(TimelineSemaphoreItem& item) {
-    drv::drv_assert(item.refs->refCount.fetch_sub(1) == 1,
+    drv::drv_assert(item.refs->refCount.load() == 0,
                     "Semaphore refCount != 0 after release is called");
 }
 
@@ -31,9 +31,7 @@ void TimelineSemaphorePool::acquireExt(TimelineSemaphoreItem& item, uint64_t) {
     if (!item.semaphore) {
         item = TimelineSemaphoreItem(device);
     }
-    uint32_t expected = 0;
-    drv::drv_assert(item.refs->refCount.compare_exchange_strong(expected, 1),
-                    "A semaphore was acquired with a refcout > 0");
+    drv::drv_assert(item.refs->refCount.load() == 0, "A semaphore was acquired with a refcout > 0");
 }
 
 bool TimelineSemaphorePool::canAcquire(const TimelineSemaphoreItem& item,

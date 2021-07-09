@@ -38,7 +38,11 @@ struct TimelineSemaphoreHandle
     }
     ~TimelineSemaphoreHandle() { close(); }
     TimelineSemaphoreHandle(const TimelineSemaphoreHandle& other)
-      : ptr(other.ptr), signalledValue(other.signalledValue), refCount(other.refCount) {
+      : pool(other.pool),
+        ptr(other.ptr),
+        signalledValue(other.signalledValue),
+        refCount(other.refCount),
+        index(other.index) {
         if (*this)
             refCount->fetch_add(1);
     }
@@ -46,24 +50,32 @@ struct TimelineSemaphoreHandle
         if (this == &other)
             return *this;
         close();
+        pool = other.pool;
         ptr = other.ptr;
         signalledValue = other.signalledValue;
         refCount = other.refCount;
+        index = other.index;
         if (*this)
             refCount->fetch_add(1);
         return *this;
     }
     TimelineSemaphoreHandle(TimelineSemaphoreHandle&& other)
-      : ptr(other.ptr), signalledValue(other.signalledValue), refCount(other.refCount) {
+      : pool(other.pool),
+        ptr(other.ptr),
+        signalledValue(other.signalledValue),
+        refCount(other.refCount),
+        index(other.index) {
         reset_ptr(other.ptr);
     }
     TimelineSemaphoreHandle& operator=(TimelineSemaphoreHandle&& other) {
         if (this == &other)
             return *this;
         close();
+        pool = other.pool;
         ptr = other.ptr;
         signalledValue = other.signalledValue;
         refCount = other.refCount;
+        index = other.index;
         reset_ptr(other.ptr);
         return *this;
     }
@@ -77,8 +89,8 @@ struct TimelineSemaphoreHandle
 
     void close() {
         if (*this) {
-            uint32_t current = refCount->fetch_sub(1);
-            if (current == 1) {
+            refCount->fetch_sub(1);
+            if (refCount->load() == 0) {
                 // this was the last ref
                 release_timeline_semaphore(pool, index);
             }
