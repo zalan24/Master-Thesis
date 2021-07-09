@@ -38,6 +38,8 @@ void TimelineSemaphorePool::acquireExt(TimelineSemaphoreItem& item, uint64_t) {
 
 bool TimelineSemaphorePool::canAcquire(const TimelineSemaphoreItem& item,
                                        uint64_t firstSignalValue) {
+    if (item.refs == nullptr)
+        return true;
     uint64_t signalValue = item.refs->signalValue.load();
     return signalValue + startValueOffset < firstSignalValue || signalValue == 0;
 }

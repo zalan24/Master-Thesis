@@ -11,4 +11,5 @@ target_link_libraries(PlaygroundLib PUBLIC
     Game3D
     playgroundShaders
     stb_external
+    cimg_external
 )

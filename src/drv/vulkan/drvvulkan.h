@@ -422,6 +422,7 @@ class DrvVulkan final : public drv::IDriver
         std::unordered_map<drv::QueueFamilyPtr, std::mutex> queueFamilyMutexes;
     };
     std::mutex devicesDataMutex;
+    std::mutex submitMutex;
     std::unordered_map<drv::LogicalDevicePtr, LogicalDeviceData> devicesData;
     drv::StateTrackingConfig trackingConfig;
 };

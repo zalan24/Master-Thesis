@@ -375,16 +375,13 @@ drv::PendingResourceUsage DrvVulkan::get_pending_usage(drv::ImagePtr image, uint
           false};
     // main queue
     bool isWrite = !drv::is_null_ptr(subresourceState.multiQueueState.mainQueue);
-    return drv::PendingResourceUsage{
-      subresourceState.multiQueueState.mainQueue,
-      subresourceState.multiQueueState.submission,
-      subresourceState.multiQueueState.frameId,
-      subresourceState.usableStages | subresourceState.ongoingReads,
-      isWrite
-        ? subresourceState.ongoingWrites | subresourceState.usableStages
-        : 0,
-      subresourceState.multiQueueState.syncedStages,
-      subresourceState.multiQueueState.mainSemaphore,
-      subresourceState.multiQueueState.signalledValue,
-      isWrite};
+    return drv::PendingResourceUsage{subresourceState.multiQueueState.mainQueue,
+                                     subresourceState.multiQueueState.submission,
+                                     subresourceState.multiQueueState.frameId,
+                                     subresourceState.ongoingReads,
+                                     isWrite ? subresourceState.ongoingWrites : 0,
+                                     subresourceState.multiQueueState.syncedStages,
+                                     subresourceState.multiQueueState.mainSemaphore,
+                                     subresourceState.multiQueueState.signalledValue,
+                                     isWrite};
 }

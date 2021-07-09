@@ -6,6 +6,7 @@ add_subdirectory(ThreadPool)
 add_subdirectory(cli11)
 add_subdirectory(hash_library)
 add_subdirectory(mapbox)
+add_subdirectory(cimg)
 # add_subdirectory(buildbloat) # TODO
 add_subdirectory(glm)
 add_subdirectory(glfw)

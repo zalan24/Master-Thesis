@@ -9,6 +9,7 @@
 
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 
+#include <CImg.h>
 #include <stb_image_write.h>
 
 Game::Game(int argc, char* argv[], const EngineConfig& config,
@@ -110,11 +111,11 @@ void Game::record_cmd_buffer_render(const RecordData& data, drv::DrvCmdBufferRec
     recorder->cmdImageBarrier({data.transferImage, drv::IMAGE_USAGE_TRANSFER_DESTINATION,
                                drv::ImageMemoryBarrier::AUTO_TRANSITION});
 
-    // data.testImageStager->transferFromStager(recorder, data.stagerId);
-    {
-        drv::ClearColorValue clearValue(1.f, 1.f, 0.f, 1.f);
-        recorder->cmdClearImage(data.transferImage, &clearValue);
-    }
+    data.testImageStager->transferFromStager(recorder, data.stagerId);
+    // {
+    //     drv::ClearColorValue clearValue(1.f, 1.f, 0.f, 1.f);
+    //     recorder->cmdClearImage(data.transferImage, &clearValue);
+    // }
 
     drv::ClearValue clearValues[2];
     clearValues[data.swapchainColorAttachment].type = drv::ClearValue::COLOR;
@@ -343,7 +344,7 @@ Engine::AcquiredImageData Game::record(FrameId frameId) {
 
 void Game::simulate(FrameId frameId) {
     UNUSED(frameId);
-    std::this_thread::sleep_for(std::chrono::milliseconds(4));
+    std::this_thread::sleep_for(std::chrono::milliseconds(64));
     // std::cout << "Simulate: " << frameId << std::endl;
 }
 
@@ -359,19 +360,28 @@ void Game::beforeDraw(FrameId frameId) {
         drv::DeviceSize arrayPitch;
         drv::DeviceSize depthPitch;
         testImageStager.getMemoryData(stagerId, 0, 0, size, rowPitch, arrayPitch, depthPitch);
-        StackMemory::MemoryHandle<uint32_t> pixels(size / 4, TEMPMEM);
         drv::TextureInfo texInfo = drv::get_texture_info(transferTexture.get().getImage(0));
-        for (uint32_t y = 0; y < texInfo.extent.height; ++y)
-            for (uint32_t x = 0; x < texInfo.extent.width; ++x)
-                pixels[StackMemory::size_t(x + y * rowPitch / 4)] =
-                  x * x + y * y < texInfo.extent.height * texInfo.extent.width / 4 ? 0xFF0000FF
-                                                                                   : 0xFF00FF00;
+        drv::drv_assert(rowPitch == texInfo.extent.width * 4, "Text write will not work...");
+        // StackMemory::MemoryHandle<uint32_t> pixels(size / 4, TEMPMEM);
+        // for (uint32_t y = 0; y < texInfo.extent.height; ++y)
+        //     for (uint32_t x = 0; x < texInfo.extent.width; ++x)
+        //         pixels[StackMemory::size_t(x + y * rowPitch / 4)] =
+        //           x * x + y * y < texInfo.extent.height * texInfo.extent.width / 4 ? 0xFF0000FF
+        //                                                                            : 0xFF00FF00;
+        cimg_library::CImg<unsigned char> textImage(texInfo.extent.width, texInfo.extent.height, 1,
+                                                    4, 255);
+        unsigned char black[] = {0, 0, 0, 255};
+        unsigned char white[] = {255, 255, 255, 255};
+
+        // Draw black text on cyan
+        textImage.draw_text(0, 0, "Test text", white, black, 1, 16);
         if (frameId == 0) {
             stbi_write_png("test_image_out_generated.png", int(texInfo.extent.width),
-                           int(texInfo.extent.height), 4, pixels, int(rowPitch));
+                           int(texInfo.extent.height), 4, textImage.data(), int(rowPitch));
+            textImage.save_bmp("test_image_out_gen_cimg.bmp");
         }
         // layer*arrayPitch + z*depthPitch + y*rowPitch + x*elementSize + offset
-        testImageStager.setData(pixels, 0, 0, stagerId, testDrawHandle.getLock());
+        testImageStager.setData(textImage.data(), 0, 0, stagerId, testDrawHandle.getLock());
     }
 }
 

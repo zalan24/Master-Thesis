@@ -151,7 +151,7 @@ bool DrvVulkan::execute(drv::QueuePtr queue, unsigned int count, const drv::Exec
         if (infos[i].numSignalTimelineSemaphores > 0 || infos[i].numWaitTimelineSemaphores > 0)
             submitInfos[i].pNext = &submitTimelineInfos[i];
     }
-
+    std::unique_lock<std::mutex> lock(submitMutex);
     VkResult result = vkQueueSubmit(drv::resolve_ptr<VkQueue>(queue), count, submitInfos,
                                     drv::resolve_ptr<VkFence>(fence));
     drv::drv_assert(result == VK_SUCCESS, "Could not execute command buffer");

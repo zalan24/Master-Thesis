@@ -396,7 +396,7 @@ void FrameGraph::build() {
     addAllGpuCompleteDependency(getStageEndNode(READBACK_STAGE), READBACK_STAGE, 0);
     for (NodeId i = 0; i < nodes.size(); ++i) {
         if ((nodes[i].stages & EXECUTION_STAGE) && (nodes[i].stages & READBACK_STAGE))
-            addDependency(i, CpuDependency{i, EXECUTION_STAGE, READBACK_STAGE, 0});
+            addDependency(i, GpuCpuDependency{i, READBACK_STAGE, 0});
         for (const GpuCpuDependency& dep : nodes[i].gpuCpuDeps)
             addDependency(i, CpuDependency{dep.srcNode, EXECUTION_STAGE, dep.dstStage, dep.offset});
     }
@@ -675,7 +675,7 @@ void FrameGraph::checkResources(NodeId dstNode, Stage, FrameId frameId,
             if (!usage.isWrite && !write)
                 continue;
 #if ENABLE_NODE_RESOURCE_VALIDATION
-            bool ok = false;
+            bool ok = srcNode == dstNode;
             for (uint32_t k = 0; k < node->gpuCpuDeps.size() && !ok; ++k) {
                 if (node->gpuCpuDeps[k].offset > frameId)
                     continue;
@@ -696,10 +696,10 @@ void FrameGraph::checkResources(NodeId dstNode, Stage, FrameId frameId,
                 writer->semaphore.append(waitStages);
             }
             uint64_t waitValue = usage.signalledValue;
-            drv::TimelineSemaphorePtr semaphore;
+            drv::TimelineSemaphorePtr semaphore = drv::get_null_ptr<drv::TimelineSemaphorePtr>();
             if ((usage.syncedStages & waitStages) != waitStages)
                 semaphore = usage.signalledSemaphore;
-            if (!usage.signalledSemaphore) {
+            if (drv::is_null_ptr(semaphore)) {
                 if (RuntimeStats::getSingleton()) {
                     if (usage.signalledSemaphore)
                         RuntimeStats::getSingleton()
@@ -1143,12 +1143,13 @@ FrameGraph::QueueSyncData FrameGraph::sync_queue(drv::QueuePtr queue, FrameId fr
     FrameGraph::QueueSyncData ret;
     ret.waitValue = get_semaphore_value(frame);
     ret.semaphore = semaphorePool->acquire(ret.waitValue);
+    ret.semaphore.signal(ret.waitValue);
 
     drv::QueueFamilyPtr family = drv::get_queue_family(device, queue);
     auto itr = allWaitsCmdBuffers.find(family);
     drv::drv_assert(itr != allWaitsCmdBuffers.end());
     drv::CommandBufferPtr cmdBuffer = itr->second.buffer;
-    drv::TimelineSemaphorePtr signalSemaphore = frameEndSemaphores.find(queue)->second;
+    drv::TimelineSemaphorePtr signalSemaphore = ret.semaphore;
     uint64_t signalValue = ret.waitValue;
     drv::ExecutionInfo executionInfo;
     executionInfo.numCommandBuffers = 1;
