@@ -2,6 +2,8 @@
 
 #include "drvvulkan.h"
 
+#include <logger.h>
+
 #include <vulkan/vulkan.h>
 #include <drvtracking.hpp>
 
@@ -42,7 +44,20 @@ struct Image
         format(_format),
         type(_type),
         swapchainImage(_swapchainImage),
-        linearTrackingState(arraySize, numMipLevels, aspects) {}
+        linearTrackingState(arraySize, numMipLevels, aspects) {
+        if constexpr (featureconfig::get_params().logResourcesCreations)
+            LOG_DRIVER_API("[RES] Vulkan image created: %s/%d <%p>: %dx%dx%d layers: %d, mip: %d",
+                           imageId.name.c_str(), imageId.subId,
+                           reinterpret_cast<const void*>(image), extent.width, extent.height,
+                           extent.depth, arraySize, numMipLevels);
+    }
+    Image(const Image&) = delete;
+    Image& operator=(const Image&) = delete;
+    ~Image() {
+        if constexpr (featureconfig::get_params().logResourcesCreations)
+            LOG_DRIVER_API("[RES] Vulkan image destroyed: %s/%d <%p>", imageId.name.c_str(),
+                           imageId.subId, reinterpret_cast<const void*>(image));
+    }
 };
 
 struct ImageView

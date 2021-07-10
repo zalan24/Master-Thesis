@@ -14,6 +14,7 @@ inline constexpr Params get_params() {
     Params ret = {};
     ret.debugLevel = DEBUGGING_NONE;
     ret.shaderPrint = false;
+    ret.logResourcesCreations = false;
     return ret;
 }
 static constexpr Params params = get_params();

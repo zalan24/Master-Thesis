@@ -15,6 +15,7 @@ inline constexpr Params get_params() {
     Params ret = {};
     ret.debugLevel = DEBUGGING_EXTRA_VALIDATION;
     ret.shaderPrint = false;
+    ret.logResourcesCreations = true;
     return ret;
 }
 static constexpr Params params = get_params();
