@@ -141,6 +141,7 @@ Engine::Engine(int argc, char* argv[], const EngineConfig& cfg,
     logger(argc, argv, config.logs),
     coreContext(std::make_unique<CoreContext>(
       CoreContext::Config{safe_cast<size_t>(config.stackMemorySizeKb << 10)})),
+    garbageSystem(safe_cast<size_t>(config.frameMemorySizeKb) << 10),
     shaderBin(shaderbinFile),
     input(safe_cast<size_t>(config.inputBufferSize)),
     driver(trackingConfig, {get_driver(cfg.driver)}),
@@ -174,7 +175,6 @@ Engine::Engine(int argc, char* argv[], const EngineConfig& cfg,
               get_swapchain_create_info(config, presentQueue.queue, renderQueue.queue)),
     eventPool(device),
     syncBlock(device, safe_cast<uint32_t>(config.maxFramesInFlight)),  // TODO why just 2?
-    garbageSystem(safe_cast<size_t>(config.frameMemorySizeKb) << 10),
     // maxFramesInFlight + 1 for readback stage
     frameGraph(physicalDevice, device, &garbageSystem, &resourceLocker, &eventPool, &semaphorePool,
                trackingConfig, config.maxFramesInExecutionQueue, config.maxFramesInFlight + 1),
@@ -660,6 +660,7 @@ bool Engine::execute(ExecutionPackage&& package) {
             signalTimelineSemaphoreValues[signalTimelineSemaphoreCount] =
               cmdBuffer.signaledManagedSemaphoreValue;
             signalTimelineSemaphoreCount++;
+            runtimeStats.incrementNumTimelineSemaphores();
         }
         for (uint32_t i = 0; i < cmdBuffer.waitSemaphores.size(); ++i) {
             waitSemaphores[i] = cmdBuffer.waitSemaphores[i].semaphore;

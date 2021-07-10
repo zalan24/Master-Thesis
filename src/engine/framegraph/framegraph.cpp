@@ -699,7 +699,7 @@ void FrameGraph::checkResources(NodeId dstNode, Stage, FrameId frameId,
             }
             uint64_t waitValue = usage.signalledValue;
             drv::TimelineSemaphorePtr semaphore = drv::get_null_ptr<drv::TimelineSemaphorePtr>();
-            if ((usage.syncedStages & waitStages) != waitStages)
+            if ((usage.syncedStages & waitStages) == waitStages)
                 semaphore = usage.signalledSemaphore;
             if (drv::is_null_ptr(semaphore)) {
                 if (RuntimeStats::getSingleton()) {
@@ -791,9 +791,14 @@ FrameGraph::NodeHandle FrameGraph::acquireNode(NodeId nodeId, Stage stage, Frame
           make_vector<drv::TimelineSemaphorePtr>(garbageSystem);
         GarbageVector<uint64_t> waitValues = make_vector<uint64_t>(garbageSystem);
         checkResources(nodeId, stage, frame, resources, semaphores, waitValues);
-        if (!semaphores.empty())
-            drv::wait_on_timeline_semaphores(device, uint32_t(semaphores.size()), semaphores.data(),
-                                             waitValues.data(), true);
+        if (!semaphores.empty()) {
+            uint64_t waitTime = 16 * 1000 * 1000;  // 16 ms
+            bool waited = false;
+            while (!waited && !isStopped())
+                waited = drv::wait_on_timeline_semaphores(device, uint32_t(semaphores.size()),
+                                                          semaphores.data(), waitValues.data(),
+                                                          true, waitTime);
+        }
     }
     if (isStopped())
         return NodeHandle();

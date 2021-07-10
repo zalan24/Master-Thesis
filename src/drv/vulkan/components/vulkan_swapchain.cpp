@@ -128,28 +128,29 @@ drv::PresentResult DrvVulkan::present(drv::LogicalDevicePtr device, drv::QueuePt
     return drv::PresentResult::ERROR;
 }
 
-bool DrvVulkan::get_swapchain_images(drv::LogicalDevicePtr device, drv::SwapchainPtr swapchain,
+bool DrvVulkan::get_swapchain_images(drv::LogicalDevicePtr device, drv::SwapchainPtr _swapchain,
                                      uint32_t* count, drv::ImagePtr* images) {
-    VkResult result = vkGetSwapchainImagesKHR(
-      convertDevice(device), convertSwapchain(swapchain)->swapchain, count, nullptr);
+    drv_vulkan::Swapchain* swapchain = convertSwapchain(_swapchain);
+    VkResult result =
+      vkGetSwapchainImagesKHR(convertDevice(device), swapchain->swapchain, count, nullptr);
     if (result != VK_SUCCESS && result != VK_INCOMPLETE)
         return false;
     StackMemory::MemoryHandle<VkImage> imageMem(*count, TEMPMEM);
     VkImage* vkImages = imageMem.get();
     drv::drv_assert(vkImages != nullptr || *count == 0);
-    result = vkGetSwapchainImagesKHR(convertDevice(device), convertSwapchain(swapchain)->swapchain,
-                                     count, vkImages);
+    result = vkGetSwapchainImagesKHR(convertDevice(device), swapchain->swapchain, count, vkImages);
     if (result != VK_SUCCESS && (result != VK_INCOMPLETE || images != nullptr))
         return false;
     if (images) {
+        swapchain->images.resize(*count);
         for (uint32_t i = 0; i < *count; ++i) {
-            images[i] = drv::store_ptr<drv::ImagePtr>(new drv_vulkan::Image(
-              drv::ImageId("swapchain", i), vkImages[i],
-              {convertSwapchain(swapchain)->extent.width,
-               convertSwapchain(swapchain)->extent.height, 1},
-              1, 1, drv::get_format_aspects(convertSwapchain(swapchain)->format),
-              convertSwapchain(swapchain)->sharedImages, drv::SampleCount::SAMPLE_COUNT_1,
-              convertSwapchain(swapchain)->format, drv::ImageCreateInfo::TYPE_2D, true));
+            swapchain->images[i].reset(
+              new drv_vulkan::Image(drv::ImageId("swapchain", i), vkImages[i],
+                                    {swapchain->extent.width, swapchain->extent.height, 1}, 1, 1,
+                                    drv::get_format_aspects(swapchain->format),
+                                    swapchain->sharedImages, drv::SampleCount::SAMPLE_COUNT_1,
+                                    swapchain->format, drv::ImageCreateInfo::TYPE_2D, true));
+            images[i] = drv::store_ptr<drv::ImagePtr>(swapchain->images[i].get());
         }
     }
     return true;

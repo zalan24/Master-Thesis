@@ -177,6 +177,7 @@ class Engine
     Logger logger;
     ErrorCallback callback;
     std::unique_ptr<CoreContext> coreContext;
+    GarbageSystem garbageSystem;
     ShaderBin shaderBin;
     Input input;
     InputManager inputManager;
@@ -202,7 +203,6 @@ class Engine
     SyncBlock syncBlock;
     // ResourceManager resourceMgr;
     // EntityManager entityManager;
-    GarbageSystem garbageSystem;
     drv::ResourceLocker resourceLocker;
     FrameGraph frameGraph;
     RuntimeStats runtimeStats;

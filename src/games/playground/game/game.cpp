@@ -198,6 +198,9 @@ void Game::record_cmd_buffer_blit(const RecordData& data, drv::DrvCmdBufferRecor
         recorder->cmdImageBarrier({data.targetImage, drv::IMAGE_USAGE_TRANSFER_DESTINATION,
                                    drv::ImageMemoryBarrier::AUTO_TRANSITION});
 
+        recorder->cmdImageBarrier({data.transferImage, drv::IMAGE_USAGE_TRANSFER_DESTINATION,
+                                   drv::ImageMemoryBarrier::AUTO_TRANSITION});
+
         drv::ImageBlit region;
         region.srcSubresource.aspectMask = drv::COLOR_BIT;
         region.srcSubresource.baseArrayLayer = 0;
@@ -217,6 +220,17 @@ void Game::record_cmd_buffer_blit(const RecordData& data, drv::DrvCmdBufferRecor
             region.dstOffsets[1].y = 100;
         recorder->cmdBlitImage(data.renderTarget, data.targetImage, 1, &region,
                                drv::ImageFilter::NEAREST);
+
+        drv::TextureInfo texInfo = drv::get_texture_info(data.transferImage);
+        region.dstOffsets[0] = drv::Offset3D{0, 0, 0};
+        region.dstOffsets[1] =
+          drv::Offset3D{int(texInfo.extent.width), int(texInfo.extent.height), 1};
+        recorder->cmdBlitImage(data.renderTarget, data.transferImage, 1, &region,
+                               drv::ImageFilter::LINEAR);
+
+        recorder->cmdImageBarrier({data.transferImage, drv::IMAGE_USAGE_TRANSFER_SOURCE,
+                                   drv::ImageMemoryBarrier::AUTO_TRANSITION});
+        data.testImageStager->transferToStager(recorder, data.stagerId);
     }
 
     // recorder->cmdImageBarrier(
@@ -340,7 +354,7 @@ Engine::AcquiredImageData Game::record(FrameId frameId) {
 
 void Game::simulate(FrameId frameId) {
     UNUSED(frameId);
-    std::this_thread::sleep_for(std::chrono::milliseconds(64));
+    std::this_thread::sleep_for(std::chrono::milliseconds(16));
     // std::cout << "Simulate: " << frameId << std::endl;
 }
 
