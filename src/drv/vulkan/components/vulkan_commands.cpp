@@ -391,9 +391,12 @@ void VulkanCmdBufferRecorder::corrigate(const drv::StateCorrectionData& data) {
             const auto& subres = data.imageCorrections[i].second.newState.get(layer, mip, aspect);
             bool discardContent = subres.layout == drv::ImageLayout::UNDEFINED;
             drv::PipelineStages::FlagType dstStages = subres.usableStages;
-            for (uint32_t j = 0; j < drv::MemoryBarrier::get_access_count(subres.visible); ++j) {
+            drv::MemoryBarrier::AccessFlagBitType missingVisibility =
+              subres.visible
+              & ~data.imageCorrections[i].second.oldState.get(layer, mip, aspect).visible;
+            for (uint32_t j = 0; j < drv::MemoryBarrier::get_access_count(missingVisibility); ++j) {
                 drv::MemoryBarrier::AccessFlagBits access =
-                  drv::MemoryBarrier::get_access(subres.visible, j);
+                  drv::MemoryBarrier::get_access(missingVisibility, j);
                 drv::PipelineStages::FlagType supportedStages =
                   drv::MemoryBarrier::get_supported_stages(access);
                 if ((supportedStages & dstStages) == 0) {

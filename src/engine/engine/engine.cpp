@@ -909,7 +909,8 @@ void Engine::mainLoopKernel() {
     }
 }
 
-void Engine::transferFromStager(ImageStager& stager, FrameGraph::QueueId queue, FrameId frame,
+void Engine::transferFromStager(drv::CmdBufferId cmdBufferId, ImageStager& stager,
+                                FrameGraph::QueueId queue, FrameId frame,
                                 FrameGraph::NodeHandle& nodeHandle,
                                 ImageStager::StagerId stagerId) {
     struct Data
@@ -927,7 +928,7 @@ void Engine::transferFromStager(ImageStager& stager, FrameGraph::QueueId queue, 
             data.stager->transferFromStager(recorder, data.stagerId);
         }
     } data = {&stager, stagerId};
-    OneTimeCmdBuffer<Data> cmdBuffer(CMD_BUFFER_ID(), "engine_stager", getSemaphorePool(),
+    OneTimeCmdBuffer<Data> cmdBuffer(cmdBufferId, "engine_stager", getSemaphorePool(),
                                      getPhysicalDevice(), getDevice(), frameGraph.getQueue(queue),
                                      getCommandBufferBank(), getGarbageSystem(), Data::record,
                                      getFrameGraph().get_semaphore_value(frame));
@@ -936,7 +937,8 @@ void Engine::transferFromStager(ImageStager& stager, FrameGraph::QueueId queue, 
                               getGarbageSystem(), ResourceStateValidationMode::NEVER_VALIDATE);
     nodeHandle.submit(queue, std::move(submission));
 }
-void Engine::transferFromStager(ImageStager& stager, FrameGraph::QueueId queue, FrameId frame,
+void Engine::transferFromStager(drv::CmdBufferId cmdBufferId, ImageStager& stager,
+                                FrameGraph::QueueId queue, FrameId frame,
                                 FrameGraph::NodeHandle& nodeHandle, ImageStager::StagerId stagerId,
                                 uint32_t layer, uint32_t mip) {
     struct Data
@@ -957,7 +959,7 @@ void Engine::transferFromStager(ImageStager& stager, FrameGraph::QueueId queue, 
             data.stager->transferFromStager(recorder, data.stagerId, data.layer, data.mip);
         }
     } data = {&stager, stagerId, layer, mip};
-    OneTimeCmdBuffer<Data> cmdBuffer(CMD_BUFFER_ID(), "engine_stager", getSemaphorePool(),
+    OneTimeCmdBuffer<Data> cmdBuffer(cmdBufferId, "engine_stager", getSemaphorePool(),
                                      getPhysicalDevice(), getDevice(), frameGraph.getQueue(queue),
                                      getCommandBufferBank(), getGarbageSystem(), Data::record,
                                      getFrameGraph().get_semaphore_value(frame));
@@ -966,7 +968,8 @@ void Engine::transferFromStager(ImageStager& stager, FrameGraph::QueueId queue, 
                               getGarbageSystem(), ResourceStateValidationMode::NEVER_VALIDATE);
     nodeHandle.submit(queue, std::move(submission));
 }
-void Engine::transferFromStager(ImageStager& stager, FrameGraph::QueueId queue, FrameId frame,
+void Engine::transferFromStager(drv::CmdBufferId cmdBufferId, ImageStager& stager,
+                                FrameGraph::QueueId queue, FrameId frame,
                                 FrameGraph::NodeHandle& nodeHandle, ImageStager::StagerId stagerId,
                                 const drv::ImageSubresourceRange& subres) {
     struct Data
@@ -985,7 +988,7 @@ void Engine::transferFromStager(ImageStager& stager, FrameGraph::QueueId queue, 
             data.stager->transferFromStager(recorder, data.stagerId, *data.subres);
         }
     } data = {&stager, stagerId, &subres};
-    OneTimeCmdBuffer<Data> cmdBuffer(CMD_BUFFER_ID(), "engine_stager", getSemaphorePool(),
+    OneTimeCmdBuffer<Data> cmdBuffer(cmdBufferId, "engine_stager", getSemaphorePool(),
                                      getPhysicalDevice(), getDevice(), frameGraph.getQueue(queue),
                                      getCommandBufferBank(), getGarbageSystem(), Data::record,
                                      getFrameGraph().get_semaphore_value(frame));
@@ -994,7 +997,8 @@ void Engine::transferFromStager(ImageStager& stager, FrameGraph::QueueId queue, 
                               getGarbageSystem(), ResourceStateValidationMode::NEVER_VALIDATE);
     nodeHandle.submit(queue, std::move(submission));
 }
-void Engine::transferToStager(ImageStager& stager, FrameGraph::QueueId queue, FrameId frame,
+void Engine::transferToStager(drv::CmdBufferId cmdBufferId, ImageStager& stager,
+                              FrameGraph::QueueId queue, FrameId frame,
                               FrameGraph::NodeHandle& nodeHandle, ImageStager::StagerId stagerId) {
     struct Data
     {
@@ -1010,7 +1014,7 @@ void Engine::transferToStager(ImageStager& stager, FrameGraph::QueueId queue, Fr
             data.stager->transferToStager(recorder, data.stagerId);
         }
     } data = {&stager, stagerId};
-    OneTimeCmdBuffer<Data> cmdBuffer(CMD_BUFFER_ID(), "engine_stager", getSemaphorePool(),
+    OneTimeCmdBuffer<Data> cmdBuffer(cmdBufferId, "engine_stager", getSemaphorePool(),
                                      getPhysicalDevice(), getDevice(), frameGraph.getQueue(queue),
                                      getCommandBufferBank(), getGarbageSystem(), Data::record,
                                      getFrameGraph().get_semaphore_value(frame));
@@ -1019,7 +1023,8 @@ void Engine::transferToStager(ImageStager& stager, FrameGraph::QueueId queue, Fr
                               getGarbageSystem(), ResourceStateValidationMode::NEVER_VALIDATE);
     nodeHandle.submit(queue, std::move(submission));
 }
-void Engine::transferToStager(ImageStager& stager, FrameGraph::QueueId queue, FrameId frame,
+void Engine::transferToStager(drv::CmdBufferId cmdBufferId, ImageStager& stager,
+                              FrameGraph::QueueId queue, FrameId frame,
                               FrameGraph::NodeHandle& nodeHandle, ImageStager::StagerId stagerId,
                               uint32_t layer, uint32_t mip) {
     struct Data
@@ -1039,7 +1044,7 @@ void Engine::transferToStager(ImageStager& stager, FrameGraph::QueueId queue, Fr
             data.stager->transferToStager(recorder, data.stagerId, data.layer, data.mip);
         }
     } data = {&stager, stagerId, layer, mip};
-    OneTimeCmdBuffer<Data> cmdBuffer(CMD_BUFFER_ID(), "engine_stager", getSemaphorePool(),
+    OneTimeCmdBuffer<Data> cmdBuffer(cmdBufferId, "engine_stager", getSemaphorePool(),
                                      getPhysicalDevice(), getDevice(), frameGraph.getQueue(queue),
                                      getCommandBufferBank(), getGarbageSystem(), Data::record,
                                      getFrameGraph().get_semaphore_value(frame));
@@ -1048,7 +1053,8 @@ void Engine::transferToStager(ImageStager& stager, FrameGraph::QueueId queue, Fr
                               getGarbageSystem(), ResourceStateValidationMode::NEVER_VALIDATE);
     nodeHandle.submit(queue, std::move(submission));
 }
-void Engine::transferToStager(ImageStager& stager, FrameGraph::QueueId queue, FrameId frame,
+void Engine::transferToStager(drv::CmdBufferId cmdBufferId, ImageStager& stager,
+                              FrameGraph::QueueId queue, FrameId frame,
                               FrameGraph::NodeHandle& nodeHandle, ImageStager::StagerId stagerId,
                               const drv::ImageSubresourceRange& subres) {
     struct Data
@@ -1066,7 +1072,7 @@ void Engine::transferToStager(ImageStager& stager, FrameGraph::QueueId queue, Fr
             data.stager->transferToStager(recorder, data.stagerId, *data.subres);
         }
     } data = {&stager, stagerId, &subres};
-    OneTimeCmdBuffer<Data> cmdBuffer(CMD_BUFFER_ID(), "engine_stager", getSemaphorePool(),
+    OneTimeCmdBuffer<Data> cmdBuffer(cmdBufferId, "engine_stager", getSemaphorePool(),
                                      getPhysicalDevice(), getDevice(), frameGraph.getQueue(queue),
                                      getCommandBufferBank(), getGarbageSystem(), Data::record,
                                      getFrameGraph().get_semaphore_value(frame));

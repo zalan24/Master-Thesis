@@ -322,8 +322,9 @@ Engine::AcquiredImageData Game::record(FrameId frameId) {
                drv::IMAGE_USAGE_COLOR_OUTPUT_WRITE | drv::IMAGE_USAGE_TRANSFER_DESTINATION});
             testDrawHandle.submit(queues.renderQueue.id, std::move(submission));
         }
-        transferFromStager(testImageStager, queues.renderQueue.id, frameId, testDrawHandle,
+        transferFromStager(CMD_BUFFER_ID(), testImageStager, queues.renderQueue.id, frameId, testDrawHandle,
                            stagerId);
+        // transferFromStager(testImageStager, queues.HtoDQueue.id, frameId, testDrawHandle, stagerId);
         {
             OneTimeCmdBuffer<RecordData> cmdBuffer(
               CMD_BUFFER_ID(), "testcmdbuffer_render", getSemaphorePool(), getPhysicalDevice(),
@@ -345,7 +346,7 @@ Engine::AcquiredImageData Game::record(FrameId frameId) {
             submission.signalSemaphores.push_back(swapChainData.renderFinishedSemaphore);
             testDrawHandle.submit(queues.renderQueue.id, std::move(submission));
         }
-        transferToStager(testImageStager, queues.renderQueue.id, frameId, testDrawHandle, stagerId);
+        transferToStager(CMD_BUFFER_ID(), testImageStager, queues.renderQueue.id, frameId, testDrawHandle, stagerId);
         return swapChainData;
     }
     return {};
