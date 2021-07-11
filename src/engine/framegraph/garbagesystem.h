@@ -22,6 +22,9 @@ class GarbageSystem
     }
 
     explicit GarbageSystem(size_t memorySize);
+    GarbageSystem(const GarbageSystem&) = delete;
+    GarbageSystem& operator=(const GarbageSystem&) = delete;
+    ~GarbageSystem() { releaseAll(); }
 
     void startGarbage(FrameId frameId);
     void releaseGarbage(FrameId frameId);

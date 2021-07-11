@@ -32,10 +32,10 @@ ResourceLocker::ResultLock<ResourceLocker::LockResult> ResourceLocker::lock(
     uint32_t lockCount = getLockCount(locker);
     LockResult ret = lockCount > 0 ? LockResult::SUCCESS_BLOCKED : LockResult::SUCCESS_IMMEDIATE;
     while (lockCount > 0) {
-        uint64_t originalCount = unlockCounter;  // if lockCount overflows
+        uint64_t originalCounter = unlockCounter;  // if lockCount overflows
         uint64_t requiredUnlockCount = unlockCounter + lockCount;
         cv.wait(lock, [&, this] {
-            return unlockCounter >= requiredUnlockCount || lockCount < originalCount;
+            return unlockCounter >= requiredUnlockCount || unlockCounter < originalCounter;
         });
         lockCount = getLockCount(locker);
     }

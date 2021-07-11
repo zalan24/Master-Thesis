@@ -228,6 +228,7 @@ void Engine::buildFrameGraph(FrameGraph::NodeId presentDepNode, FrameGraph::Queu
 }
 
 Engine::~Engine() {
+    garbageSystem.releaseAll();
     LOG_ENGINE("Engine closed");
 }
 
