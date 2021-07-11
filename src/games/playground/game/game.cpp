@@ -111,7 +111,7 @@ void Game::record_cmd_buffer_render(const RecordData& data, drv::DrvCmdBufferRec
     recorder->cmdImageBarrier({data.transferImage, drv::IMAGE_USAGE_TRANSFER_DESTINATION,
                                drv::ImageMemoryBarrier::AUTO_TRANSITION});
 
-    data.testImageStager->transferFromStager(recorder, data.stagerId);
+    // data.testImageStager->transferFromStager(recorder, data.stagerId);
 
     drv::ClearValue clearValues[2];
     clearValues[data.swapchainColorAttachment].type = drv::ClearValue::COLOR;
@@ -228,9 +228,9 @@ void Game::record_cmd_buffer_blit(const RecordData& data, drv::DrvCmdBufferRecor
         recorder->cmdBlitImage(data.renderTarget, data.transferImage, 1, &region,
                                drv::ImageFilter::LINEAR);
 
-        recorder->cmdImageBarrier({data.transferImage, drv::IMAGE_USAGE_TRANSFER_SOURCE,
-                                   drv::ImageMemoryBarrier::AUTO_TRANSITION});
-        data.testImageStager->transferToStager(recorder, data.stagerId);
+        // recorder->cmdImageBarrier({data.transferImage, drv::IMAGE_USAGE_TRANSFER_SOURCE,
+        //                            drv::ImageMemoryBarrier::AUTO_TRANSITION});
+        // data.testImageStager->transferToStager(recorder, data.stagerId);
     }
 
     // recorder->cmdImageBarrier(
@@ -322,6 +322,8 @@ Engine::AcquiredImageData Game::record(FrameId frameId) {
                drv::IMAGE_USAGE_COLOR_OUTPUT_WRITE | drv::IMAGE_USAGE_TRANSFER_DESTINATION});
             testDrawHandle.submit(queues.renderQueue.id, std::move(submission));
         }
+        transferFromStager(testImageStager, queues.renderQueue.id, frameId, testDrawHandle,
+                           stagerId);
         {
             OneTimeCmdBuffer<RecordData> cmdBuffer(
               CMD_BUFFER_ID(), "testcmdbuffer_render", getSemaphorePool(), getPhysicalDevice(),
@@ -330,9 +332,6 @@ Engine::AcquiredImageData Game::record(FrameId frameId) {
             ExecutionPackage::CommandBufferPackage submission = make_submission_package(
               queues.renderQueue.handle, frameId, cmdBuffer.use(std::move(recordData)),
               getGarbageSystem(), validation);
-            // submission.waitSemaphores.push_back(
-            //   {swapChainData.imageAvailableSemaphore,
-            //    drv::IMAGE_USAGE_COLOR_OUTPUT_WRITE | drv::IMAGE_USAGE_TRANSFER_DESTINATION});
             testDrawHandle.submit(queues.renderQueue.id, std::move(submission));
         }
         {
@@ -346,7 +345,7 @@ Engine::AcquiredImageData Game::record(FrameId frameId) {
             submission.signalSemaphores.push_back(swapChainData.renderFinishedSemaphore);
             testDrawHandle.submit(queues.renderQueue.id, std::move(submission));
         }
-        //   acquireCommandRecorder(testDrawHandle, frameId, queues.renderQueue.id);
+        transferToStager(testImageStager, queues.renderQueue.id, frameId, testDrawHandle, stagerId);
         return swapChainData;
     }
     return {};

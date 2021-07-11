@@ -65,7 +65,9 @@ class ImageStager
 
     operator bool() const { return !drv::is_null_ptr(image); }
 
-    uint32_t getNumStagers() const {return numStagers;}
+    uint32_t getNumStagers() const { return numStagers; }
+
+    drv::ImagePtr getImage() const { return image; }
 
  private:
     drv::LogicalDevicePtr device;

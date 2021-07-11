@@ -19,6 +19,7 @@
 #include <namethreads.h>
 
 #include "execution_queue.h"
+#include "imagestager.h"
 
 static void callback(const drv::CallbackData* data) {
     switch (data->type) {
@@ -906,4 +907,171 @@ void Engine::mainLoopKernel() {
             }
         }
     }
+}
+
+void Engine::transferFromStager(ImageStager& stager, FrameGraph::QueueId queue, FrameId frame,
+                                FrameGraph::NodeHandle& nodeHandle,
+                                ImageStager::StagerId stagerId) {
+    struct Data
+    {
+        ImageStager* stager;
+        ImageStager::StagerId stagerId;
+        bool operator==(const Data& rhs) const {
+            return stager == rhs.stager && stagerId == rhs.stagerId;
+        }
+        bool operator!=(const Data& rhs) const { return !(*this == rhs); }
+        static void record(const Data& data, drv::DrvCmdBufferRecorder* recorder) {
+            recorder->cmdImageBarrier({data.stager->getImage(),
+                                       drv::IMAGE_USAGE_TRANSFER_DESTINATION,
+                                       drv::ImageMemoryBarrier::AUTO_TRANSITION});
+            data.stager->transferFromStager(recorder, data.stagerId);
+        }
+    } data = {&stager, stagerId};
+    OneTimeCmdBuffer<Data> cmdBuffer(CMD_BUFFER_ID(), "engine_stager", getSemaphorePool(),
+                                     getPhysicalDevice(), getDevice(), frameGraph.getQueue(queue),
+                                     getCommandBufferBank(), getGarbageSystem(), Data::record,
+                                     getFrameGraph().get_semaphore_value(frame));
+    ExecutionPackage::CommandBufferPackage submission =
+      make_submission_package(frameGraph.getQueue(queue), frame, cmdBuffer.use(std::move(data)),
+                              getGarbageSystem(), ResourceStateValidationMode::NEVER_VALIDATE);
+    nodeHandle.submit(queue, std::move(submission));
+}
+void Engine::transferFromStager(ImageStager& stager, FrameGraph::QueueId queue, FrameId frame,
+                                FrameGraph::NodeHandle& nodeHandle, ImageStager::StagerId stagerId,
+                                uint32_t layer, uint32_t mip) {
+    struct Data
+    {
+        ImageStager* stager;
+        ImageStager::StagerId stagerId;
+        uint32_t layer;
+        uint32_t mip;
+        bool operator==(const Data& rhs) const {
+            return stager == rhs.stager && stagerId == rhs.stagerId && layer == rhs.layer
+                   && mip == rhs.mip;
+        }
+        bool operator!=(const Data& rhs) const { return !(*this == rhs); }
+        static void record(const Data& data, drv::DrvCmdBufferRecorder* recorder) {
+            recorder->cmdImageBarrier({data.stager->getImage(),
+                                       drv::IMAGE_USAGE_TRANSFER_DESTINATION,
+                                       drv::ImageMemoryBarrier::AUTO_TRANSITION});
+            data.stager->transferFromStager(recorder, data.stagerId, data.layer, data.mip);
+        }
+    } data = {&stager, stagerId, layer, mip};
+    OneTimeCmdBuffer<Data> cmdBuffer(CMD_BUFFER_ID(), "engine_stager", getSemaphorePool(),
+                                     getPhysicalDevice(), getDevice(), frameGraph.getQueue(queue),
+                                     getCommandBufferBank(), getGarbageSystem(), Data::record,
+                                     getFrameGraph().get_semaphore_value(frame));
+    ExecutionPackage::CommandBufferPackage submission =
+      make_submission_package(frameGraph.getQueue(queue), frame, cmdBuffer.use(std::move(data)),
+                              getGarbageSystem(), ResourceStateValidationMode::NEVER_VALIDATE);
+    nodeHandle.submit(queue, std::move(submission));
+}
+void Engine::transferFromStager(ImageStager& stager, FrameGraph::QueueId queue, FrameId frame,
+                                FrameGraph::NodeHandle& nodeHandle, ImageStager::StagerId stagerId,
+                                const drv::ImageSubresourceRange& subres) {
+    struct Data
+    {
+        ImageStager* stager;
+        ImageStager::StagerId stagerId;
+        const drv::ImageSubresourceRange* subres;
+        bool operator==(const Data& rhs) const {
+            return stager == rhs.stager && stagerId == rhs.stagerId && subres == rhs.subres;
+        }
+        bool operator!=(const Data& rhs) const { return !(*this == rhs); }
+        static void record(const Data& data, drv::DrvCmdBufferRecorder* recorder) {
+            recorder->cmdImageBarrier({data.stager->getImage(),
+                                       drv::IMAGE_USAGE_TRANSFER_DESTINATION,
+                                       drv::ImageMemoryBarrier::AUTO_TRANSITION});
+            data.stager->transferFromStager(recorder, data.stagerId, *data.subres);
+        }
+    } data = {&stager, stagerId, &subres};
+    OneTimeCmdBuffer<Data> cmdBuffer(CMD_BUFFER_ID(), "engine_stager", getSemaphorePool(),
+                                     getPhysicalDevice(), getDevice(), frameGraph.getQueue(queue),
+                                     getCommandBufferBank(), getGarbageSystem(), Data::record,
+                                     getFrameGraph().get_semaphore_value(frame));
+    ExecutionPackage::CommandBufferPackage submission =
+      make_submission_package(frameGraph.getQueue(queue), frame, cmdBuffer.use(std::move(data)),
+                              getGarbageSystem(), ResourceStateValidationMode::NEVER_VALIDATE);
+    nodeHandle.submit(queue, std::move(submission));
+}
+void Engine::transferToStager(ImageStager& stager, FrameGraph::QueueId queue, FrameId frame,
+                              FrameGraph::NodeHandle& nodeHandle, ImageStager::StagerId stagerId) {
+    struct Data
+    {
+        ImageStager* stager;
+        ImageStager::StagerId stagerId;
+        bool operator==(const Data& rhs) const {
+            return stager == rhs.stager && stagerId == rhs.stagerId;
+        }
+        bool operator!=(const Data& rhs) const { return !(*this == rhs); }
+        static void record(const Data& data, drv::DrvCmdBufferRecorder* recorder) {
+            recorder->cmdImageBarrier({data.stager->getImage(), drv::IMAGE_USAGE_TRANSFER_SOURCE,
+                                       drv::ImageMemoryBarrier::AUTO_TRANSITION});
+            data.stager->transferToStager(recorder, data.stagerId);
+        }
+    } data = {&stager, stagerId};
+    OneTimeCmdBuffer<Data> cmdBuffer(CMD_BUFFER_ID(), "engine_stager", getSemaphorePool(),
+                                     getPhysicalDevice(), getDevice(), frameGraph.getQueue(queue),
+                                     getCommandBufferBank(), getGarbageSystem(), Data::record,
+                                     getFrameGraph().get_semaphore_value(frame));
+    ExecutionPackage::CommandBufferPackage submission =
+      make_submission_package(frameGraph.getQueue(queue), frame, cmdBuffer.use(std::move(data)),
+                              getGarbageSystem(), ResourceStateValidationMode::NEVER_VALIDATE);
+    nodeHandle.submit(queue, std::move(submission));
+}
+void Engine::transferToStager(ImageStager& stager, FrameGraph::QueueId queue, FrameId frame,
+                              FrameGraph::NodeHandle& nodeHandle, ImageStager::StagerId stagerId,
+                              uint32_t layer, uint32_t mip) {
+    struct Data
+    {
+        ImageStager* stager;
+        ImageStager::StagerId stagerId;
+        uint32_t layer;
+        uint32_t mip;
+        bool operator==(const Data& rhs) const {
+            return stager == rhs.stager && stagerId == rhs.stagerId && layer == rhs.layer
+                   && mip == rhs.mip;
+        }
+        bool operator!=(const Data& rhs) const { return !(*this == rhs); }
+        static void record(const Data& data, drv::DrvCmdBufferRecorder* recorder) {
+            recorder->cmdImageBarrier({data.stager->getImage(), drv::IMAGE_USAGE_TRANSFER_SOURCE,
+                                       drv::ImageMemoryBarrier::AUTO_TRANSITION});
+            data.stager->transferToStager(recorder, data.stagerId, data.layer, data.mip);
+        }
+    } data = {&stager, stagerId, layer, mip};
+    OneTimeCmdBuffer<Data> cmdBuffer(CMD_BUFFER_ID(), "engine_stager", getSemaphorePool(),
+                                     getPhysicalDevice(), getDevice(), frameGraph.getQueue(queue),
+                                     getCommandBufferBank(), getGarbageSystem(), Data::record,
+                                     getFrameGraph().get_semaphore_value(frame));
+    ExecutionPackage::CommandBufferPackage submission =
+      make_submission_package(frameGraph.getQueue(queue), frame, cmdBuffer.use(std::move(data)),
+                              getGarbageSystem(), ResourceStateValidationMode::NEVER_VALIDATE);
+    nodeHandle.submit(queue, std::move(submission));
+}
+void Engine::transferToStager(ImageStager& stager, FrameGraph::QueueId queue, FrameId frame,
+                              FrameGraph::NodeHandle& nodeHandle, ImageStager::StagerId stagerId,
+                              const drv::ImageSubresourceRange& subres) {
+    struct Data
+    {
+        ImageStager* stager;
+        ImageStager::StagerId stagerId;
+        const drv::ImageSubresourceRange* subres;
+        bool operator==(const Data& rhs) const {
+            return stager == rhs.stager && stagerId == rhs.stagerId && subres == rhs.subres;
+        }
+        bool operator!=(const Data& rhs) const { return !(*this == rhs); }
+        static void record(const Data& data, drv::DrvCmdBufferRecorder* recorder) {
+            recorder->cmdImageBarrier({data.stager->getImage(), drv::IMAGE_USAGE_TRANSFER_SOURCE,
+                                       drv::ImageMemoryBarrier::AUTO_TRANSITION});
+            data.stager->transferToStager(recorder, data.stagerId, *data.subres);
+        }
+    } data = {&stager, stagerId, &subres};
+    OneTimeCmdBuffer<Data> cmdBuffer(CMD_BUFFER_ID(), "engine_stager", getSemaphorePool(),
+                                     getPhysicalDevice(), getDevice(), frameGraph.getQueue(queue),
+                                     getCommandBufferBank(), getGarbageSystem(), Data::record,
+                                     getFrameGraph().get_semaphore_value(frame));
+    ExecutionPackage::CommandBufferPackage submission =
+      make_submission_package(frameGraph.getQueue(queue), frame, cmdBuffer.use(std::move(data)),
+                              getGarbageSystem(), ResourceStateValidationMode::NEVER_VALIDATE);
+    nodeHandle.submit(queue, std::move(submission));
 }

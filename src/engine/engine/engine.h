@@ -36,6 +36,7 @@
 #include <oneTimeCmdBuffer.hpp>
 
 #include "resources.hpp"
+#include "imagestager.h"
 
 struct ExecutionPackage;
 
@@ -150,6 +151,19 @@ class Engine
     virtual void createSwapchainResources(const drv::Swapchain& swapchain) = 0;
 
     drv::TimelineSemaphorePool* getSemaphorePool() { return &semaphorePool; }
+
+    void transferFromStager(ImageStager& stager, FrameGraph::QueueId queue, FrameId frame, FrameGraph::NodeHandle& nodeHandle,
+                            ImageStager::StagerId stagerId);
+    void transferFromStager(ImageStager& stager, FrameGraph::QueueId queue, FrameId frame, FrameGraph::NodeHandle& nodeHandle,
+                            ImageStager::StagerId stagerId, uint32_t layer, uint32_t mip);
+    void transferFromStager(ImageStager& stager, FrameGraph::QueueId queue, FrameId frame, FrameGraph::NodeHandle& nodeHandle,
+                            ImageStager::StagerId stagerId, const drv::ImageSubresourceRange& subres);
+    void transferToStager(ImageStager& stager, FrameGraph::QueueId queue, FrameId frame, FrameGraph::NodeHandle& nodeHandle,
+                          ImageStager::StagerId stagerId);
+    void transferToStager(ImageStager& stager, FrameGraph::QueueId queue, FrameId frame, FrameGraph::NodeHandle& nodeHandle,
+                          ImageStager::StagerId stagerId, uint32_t layer, uint32_t mip);
+    void transferToStager(ImageStager& stager, FrameGraph::QueueId queue, FrameId frame, FrameGraph::NodeHandle& nodeHandle,
+                          ImageStager::StagerId stagerId, const drv::ImageSubresourceRange& subres);
 
  private:
     friend class AccessValidationCallback;
