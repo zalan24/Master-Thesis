@@ -21,6 +21,7 @@
 #include <drvresourcelocker.h>
 #include <drvsemaphorepool.h>
 
+#include <entitymanager.h>
 #include <eventpool.h>
 #include <framegraph.h>
 
@@ -216,10 +217,10 @@ class Engine
     EventPool eventPool;
     SyncBlock syncBlock;
     // ResourceManager resourceMgr;
-    // EntityManager entityManager;
     drv::ResourceLocker resourceLocker;
     FrameGraph frameGraph;
     RuntimeStats runtimeStats;
+    EntityManager entityManager;
 
     FrameGraph::NodeId inputSampleNode;
     FrameGraph::NodeId presentFrameNode;

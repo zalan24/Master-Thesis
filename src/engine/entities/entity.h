@@ -1,6 +1,8 @@
 #pragma once
 
 #include <functional>
+#include <limits>
+#include <string>
 #include <vector>
 
 #define GLM_FORCE_RADIANS
@@ -9,51 +11,33 @@
 
 #include <serializable.h>
 
-class Entity  // : public ISerializable
+struct Entity final : public IAutoSerializable<Entity>
 {
- public:
-    using AffineTransform = glm::mat4x4;
-    struct UpdateData
-    {
-        float time;
-        float dt;
-    };
-    using UpdateFunctor = std::function<void(Entity* entity, const UpdateData&)>;
-    using StartFunctor = std::function<void(Entity*)>;
+    using EntityId = uint32_t;
+    static constexpr EntityId INVALID_ENTITY = std::numeric_limits<EntityId>::max();
 
-    Entity(Entity* parent = nullptr, const AffineTransform& localTm = AffineTransform(1.f));
-    virtual ~Entity();
+    Entity()
+      : name(""),
+        parent(INVALID_ENTITY),
+        position(glm::vec2(0, 0)),
+        scale(glm::vec2(1, 1)),
+        speed(glm::vec2(0, 0)),
+        textureName(""),
+        mass(0),
+        engineBehaviour(0),
+        gameBehaviour(0),
+        zPos(0) {}
 
-    Entity(const Entity&) = delete;
-    Entity& operator=(const Entity&) = delete;
-
-    virtual void update(const UpdateData& data);
-    virtual void start();
-
-    void setUpdateFunctor(const UpdateFunctor& functor);
-    void setUpdateFunctor(UpdateFunctor&& functor);
-    void setStartFunctor(const StartFunctor& functor);
-    void setStartFunctor(StartFunctor&& functor);
-
-    AffineTransform getWorldTransform() const;
-    void setWorldTransform(const AffineTransform& tm);
-    AffineTransform getLocalTransform() const;
-    void setLocalTransform(const AffineTransform& tm);
-
-    const std::vector<Entity*>& getChildren() const { return children; }
-
-    Entity* getParent() { return parent; }
-    const Entity* getParent() const { return parent; }
-
- private:
-    Entity* parent = nullptr;
-    AffineTransform localTransform;
-    std::vector<Entity*> children;
-
-    void addChild(Entity* c);
-    void removeChild(Entity* c);
-
-    // These are used if the update and start methods are not overridden
-    std::function<void(Entity* entity, const UpdateData&)> updateFunctor;
-    std::function<void(Entity*)> startFunctor;
+    REFLECTABLE(
+        (std::string) name,
+        (EntityId) parent,
+        (glm::vec2) position,
+        (glm::vec2) scale,
+        (glm::vec2) speed,
+        (std::string) textureName,
+        (float) mass,
+        (uint64_t) engineBehaviour,
+        (uint64_t) gameBehaviour,
+        (float) zPos
+    );
 };

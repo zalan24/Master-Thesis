@@ -24,4 +24,5 @@ target_link_libraries(EngineLib PUBLIC
     RuntimeStats
     concurrent_queue_external
     loguru_external
+    Entities
 )

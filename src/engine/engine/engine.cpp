@@ -180,7 +180,8 @@ Engine::Engine(int argc, char* argv[], const EngineConfig& cfg,
     frameGraph(physicalDevice, device, &garbageSystem, &resourceLocker, &eventPool, &semaphorePool,
                trackingConfig, config.maxFramesInExecutionQueue, config.maxFramesInFlight + 1),
     runtimeStats(!launchArgs.clearRuntimeStats, launchArgs.runtimeStatsPersistanceBin,
-                 launchArgs.runtimeStatsGameExportsBin, launchArgs.runtimeStatsCacheBin) {
+                 launchArgs.runtimeStatsGameExportsBin, launchArgs.runtimeStatsCacheBin),
+    entityManager() {
     json configJson = ISerializable::serialize(config);
     std::stringstream ss;
     ss << configJson;
@@ -225,6 +226,7 @@ Engine::Engine(int argc, char* argv[], const EngineConfig& cfg,
 
 void Engine::buildFrameGraph(FrameGraph::NodeId presentDepNode, FrameGraph::QueueId) {
     frameGraph.addDependency(presentFrameNode, FrameGraph::EnqueueDependency{presentDepNode, 0});
+    entityManager.initFrameGraph(frameGraph);
     frameGraph.build();
 }
 
