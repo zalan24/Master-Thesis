@@ -136,8 +136,9 @@ uint32_t Engine::getMaxFramesInFlight() const {
 
 Engine::Engine(int argc, char* argv[], const EngineConfig& cfg,
                const drv::StateTrackingConfig& trackingConfig, const std::string& shaderbinFile,
-               Args _args)
+               const Resources& _resources, Args _args)
   : config(cfg),
+    resourceFolders(_resources),
     launchArgs(std::move(_args)),
     logger(argc, argv, config.logs),
     coreContext(std::make_unique<CoreContext>(
@@ -181,7 +182,7 @@ Engine::Engine(int argc, char* argv[], const EngineConfig& cfg,
                trackingConfig, config.maxFramesInExecutionQueue, config.maxFramesInFlight + 1),
     runtimeStats(!launchArgs.clearRuntimeStats, launchArgs.runtimeStatsPersistanceBin,
                  launchArgs.runtimeStatsGameExportsBin, launchArgs.runtimeStatsCacheBin),
-    entityManager() {
+    entityManager(&frameGraph, resourceFolders.textures) {
     json configJson = ISerializable::serialize(config);
     std::stringstream ss;
     ss << configJson;
@@ -226,8 +227,24 @@ Engine::Engine(int argc, char* argv[], const EngineConfig& cfg,
 
 void Engine::buildFrameGraph(FrameGraph::NodeId presentDepNode, FrameGraph::QueueId) {
     frameGraph.addDependency(presentFrameNode, FrameGraph::EnqueueDependency{presentDepNode, 0});
-    entityManager.initFrameGraph(frameGraph);
+
+    drv::drv_assert(renderEntitySystem.flag != 0, "Render entity system was not registered ");
+    drv::drv_assert(physicsEntitySystem.flag != 0, "Render entity system was not registered ");
+
+    entityManager.initFrameGraph();
     frameGraph.build();
+}
+
+void Engine::initPhysicsEntitySystem() {
+    physicsEntitySystem =
+      entityManager.addEntitySystem("entityPhysics", FrameGraph::SIMULATION_STAGE,
+                                    {EntityManager::EntitySystemInfo::ENGINE_SYSTEM, false});
+}
+
+void Engine::initRenderEntitySystem() {
+    renderEntitySystem =
+      entityManager.addEntitySystem("entityRender", FrameGraph::BEFORE_DRAW_STAGE,
+                                    {EntityManager::EntitySystemInfo::ENGINE_SYSTEM, true});
 }
 
 Engine::~Engine() {
@@ -791,7 +808,7 @@ void Engine::executeCommandsLoop() {
     }
 }
 
-void Engine::readbackLoop() {
+void Engine::readbackLoop(volatile bool* finished) {
     RUNTIME_STAT_SCOPE(readbackLoop);
     loguru::set_thread_name("readback");
     FrameId readbackFrame = 0;
@@ -811,6 +828,7 @@ void Engine::readbackLoop() {
         }
         readbackFrame++;
     }
+    *finished = true;
     {
         // wait for execution queue to finish
         std::unique_lock<std::mutex> executionLock(executionMutex);
@@ -824,11 +842,13 @@ void Engine::gameLoop() {
 
     createSwapchainResources(swapchain);
 
+    volatile bool readbackFinished = false;
+
     std::thread simulationThread(&Engine::simulationLoop, this);
     std::thread beforeDrawThread(&Engine::beforeDrawLoop, this);
     std::thread recordThread(&Engine::recordCommandsLoop, this);
     std::thread executeThread(&Engine::executeCommandsLoop, this);
-    std::thread readbackThread(&Engine::readbackLoop, this);
+    std::thread readbackThread(&Engine::readbackLoop, this, &readbackFinished);
 
     try {
         runtimeStats.initExecution();
@@ -839,11 +859,16 @@ void Engine::gameLoop() {
         set_thread_name(&executeThread, "execute");
         set_thread_name(&readbackThread, "readback");
 
+        entityManager.startFrameGraph(this);
+
         IWindow* w = window;
         while (!w->shouldClose()) {
             mainLoopKernel();
         }
         frameGraph.stopExecution(false);
+        while (!readbackFinished) {
+            mainLoopKernel();
+        }
         simulationThread.join();
         beforeDrawThread.join();
         recordThread.join();

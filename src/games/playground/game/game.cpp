@@ -14,8 +14,8 @@
 
 Game::Game(int argc, char* argv[], const EngineConfig& config,
            const drv::StateTrackingConfig& trackingConfig, const std::string& shaderbinFile,
-           const Args& args)
-  : Game3D(argc, argv, config, trackingConfig, shaderbinFile, args),
+           const Resources& _resources, const Args& args)
+  : Game3D(argc, argv, config, trackingConfig, shaderbinFile, _resources, args),
     shaderHeaders(getDevice()),
     shaderObjects(getDevice(), *getShaderBin(), shaderHeaders),
     dynamicStates(drv::DrvShader::DynamicStates::FIXED_SCISSOR,
@@ -62,6 +62,9 @@ Game::Game(int argc, char* argv[], const EngineConfig& config,
     testDraw = getFrameGraph().addNode(
       FrameGraph::Node("testDraw", FrameGraph::BEFORE_DRAW_STAGE | FrameGraph::RECORD_STAGE
                                      | FrameGraph::EXECUTION_STAGE | FrameGraph::READBACK_STAGE));
+
+    initPhysicsEntitySystem();
+    initRenderEntitySystem();
 
     // TODO present node could be inside of record end node???
     buildFrameGraph(testDraw, getQueues().renderQueue.id);

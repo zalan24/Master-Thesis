@@ -433,22 +433,22 @@ void FrameGraph::build() {
             cpuChildrenIndirect[get_graph_id(dep.srcNode, dep.srcStage)]++;
             hasCpuIndirectDep = true;
         }
-        // erase some redundant dependencies
-        for (uint32_t stageId = 0; stageId < NUM_STAGES; ++stageId) {
-            Stage stage = get_stage(stageId);
-            if (stage == EXECUTION_STAGE)
-                continue;
-            if ((nodes[i].stages & stage) == 0)
-                continue;
-            if (hasDepInStage[stageId]) {
-                auto itr = std::find_if(nodes[i].cpuDeps.begin(), nodes[i].cpuDeps.end(),
-                                        [&](const CpuDependency& dep) {
-                                            return dep.srcNode == getStageStartNode(stage);
-                                        });
-                if (itr != nodes[i].cpuDeps.end())
-                    nodes[i].cpuDeps.erase(itr);
-            }
-        }
+        // // erase some redundant dependencies
+        // for (uint32_t stageId = 0; stageId < NUM_STAGES; ++stageId) {
+        //     Stage stage = get_stage(stageId);
+        //     if (stage == EXECUTION_STAGE)
+        //         continue;
+        //     if ((nodes[i].stages & stage) == 0)
+        //         continue;
+        //     if (hasDepInStage[stageId]) {
+        //         auto itr = std::find_if(nodes[i].cpuDeps.begin(), nodes[i].cpuDeps.end(),
+        //                                 [&](const CpuDependency& dep) {
+        //                                     return dep.srcNode == getStageStartNode(stage);
+        //                                 });
+        //         if (itr != nodes[i].cpuDeps.end())
+        //             nodes[i].cpuDeps.erase(itr);
+        //     }
+        // }
         drv::drv_assert(hasCpuIndirectDep,
                         ("A node <" + nodes[i].name
                          + "> doesn't have any cpu-cpu dependencies (direct or indirect)")
@@ -467,28 +467,28 @@ void FrameGraph::build() {
                                          + nodes[dep.srcNode].name + ">, which has no execution");
         }
     }
-    for (NodeId i = 0; i < nodes.size(); ++i) {
-        for (uint32_t j = 0; j < NUM_STAGES; ++j) {
-            Stage stage = get_stage(j);
-            if (stage == EXECUTION_STAGE)
-                continue;
-            if ((nodes[i].stages & stage) == 0)
-                continue;
-            drv::drv_assert(cpuChildrenIndirect[get_graph_id(i, stage)] > 0,
-                            ("A node <" + nodes[i].name
-                             + "> doesn't have any cpu-cpu children on stage: " + std::to_string(j))
-                              .c_str());
-            if (cpuChildrenIndirect[get_graph_id(i, stage)] > 1) {
-                // erase some redundant dependencies
-                TagNodeId endNode = getStageEndNode(stage);
-                auto itr =
-                  std::find_if(nodes[endNode].cpuDeps.begin(), nodes[endNode].cpuDeps.end(),
-                               [&](const CpuDependency& dep) { return dep.srcNode == i; });
-                if (itr != nodes[endNode].cpuDeps.end())
-                    nodes[endNode].cpuDeps.erase(itr);
-            }
-        }
-    }
+    // for (NodeId i = 0; i < nodes.size(); ++i) {
+    //     for (uint32_t j = 0; j < NUM_STAGES; ++j) {
+    //         Stage stage = get_stage(j);
+    //         if (stage == EXECUTION_STAGE)
+    //             continue;
+    //         if ((nodes[i].stages & stage) == 0)
+    //             continue;
+    //         drv::drv_assert(cpuChildrenIndirect[get_graph_id(i, stage)] > 0,
+    //                         ("A node <" + nodes[i].name
+    //                          + "> doesn't have any cpu-cpu children on stage: " + std::to_string(j))
+    //                           .c_str());
+    //         if (cpuChildrenIndirect[get_graph_id(i, stage)] > 1) {
+    //             // erase some redundant dependencies
+    //             TagNodeId endNode = getStageEndNode(stage);
+    //             auto itr =
+    //               std::find_if(nodes[endNode].cpuDeps.begin(), nodes[endNode].cpuDeps.end(),
+    //                            [&](const CpuDependency& dep) { return dep.srcNode == i; });
+    //             if (itr != nodes[endNode].cpuDeps.end())
+    //                 nodes[endNode].cpuDeps.erase(itr);
+    //         }
+    //     }
+    // }
     validateFlowGraph(
       [](const Node& node, Stage s) {
           uint32_t count = 0;

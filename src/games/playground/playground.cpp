@@ -66,6 +66,8 @@ int main(int argc, char* argv[]) {
 
         // std::vector<std::string> files;
         // app.add_option("-f,--files,files", files, "Files or folders to open");
+        Engine::Resources resources;
+
         std::string config = "";
         app.add_option("-c,--config", config, "Path to the engine config file");
         std::string trackingConfig = "";
@@ -74,8 +76,8 @@ int main(int argc, char* argv[]) {
         app.add_option("-s,--shaderbin", shaderbin, "Path to the shader bin file");
         std::string modelResources = "";
         app.add_option("-m,--models", modelResources, "Path to the model resources json file");
-        std::string resourceFolder = "";
-        app.add_option("-d,--data", resourceFolder, "Path to the data folder");
+        app.add_option("-d,--data", resources.assets, "Path to the data folder");
+        resources.textures = (fs::path{resources.assets} / fs::path{"textures"}).string();
         Engine::Args args;
         app.add_flag("-r,--renderdoc", args.renderdocEnabled, "Enable renderdoc layer");
         app.add_flag("-g,--gfx", args.gfxCaptureEnabled, "Enable gfx capture layer");
@@ -119,8 +121,8 @@ int main(int argc, char* argv[]) {
         // ResourceManager::ResourceInfos resourceInfos;
         // resourceInfos.resourceFolder = resourceFolder;
         // resourceInfos.modelResourcesJson = modelResources;
-        std::unique_ptr<Game> game =
-          std::make_unique<Game>(argc, argv, engineCfg, trackingCfg, shaderbin, std::move(args));
+        std::unique_ptr<Game> game = std::make_unique<Game>(argc, argv, engineCfg, trackingCfg,
+                                                            shaderbin, resources, std::move(args));
         // engine.getRenderer()->getCamera().lookAt(glm::vec3{0, 3, -5}, glm::vec3{0, 1, 0},
         //                                          glm::vec3{0, 1, 0});
 

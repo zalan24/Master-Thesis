@@ -17,7 +17,7 @@ class Game final : public Game3D
  public:
     Game(int argc, char* argv[], const EngineConfig& config,
          const drv::StateTrackingConfig& trackingConfig, const std::string& shaderbinFile,
-         const Args& args);
+         const Resources& resources, const Args& args);
     ~Game() override;
 
  protected:

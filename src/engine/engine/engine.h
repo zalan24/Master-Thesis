@@ -74,9 +74,16 @@ class Engine
         bool clearRuntimeStats = false;
     };
 
+    struct Resources
+    {
+        // folders
+        std::string assets;
+        std::string textures;
+    };
+
     Engine(int argc, char* argv[], const EngineConfig& config,
            const drv::StateTrackingConfig& trackingConfig, const std::string& shaderbinFile,
-           Args args);
+           const Resources& resources, Args args);
     virtual ~Engine();
 
     Engine(const Engine&) = delete;
@@ -166,6 +173,10 @@ class Engine
     void transferToStager(drv::CmdBufferId cmdBufferId, ImageStager& stager, FrameGraph::QueueId queue, FrameId frame, FrameGraph::NodeHandle& nodeHandle,
                           ImageStager::StagerId stagerId, const drv::ImageSubresourceRange& subres);
 
+    void initPhysicsEntitySystem();
+    void initRenderEntitySystem();
+    void initBeforeDrawEntitySystem();
+
  private:
     friend class AccessValidationCallback;
 
@@ -187,6 +198,7 @@ class Engine
     };
 
     EngineConfig config;
+    Resources resourceFolders;
     Args launchArgs;
 
     Logger logger;
@@ -225,6 +237,8 @@ class Engine
     FrameGraph::NodeId inputSampleNode;
     FrameGraph::NodeId presentFrameNode;
     QueueInfo queueInfos;
+    EntityManager::EntitySystemInfo physicsEntitySystem;
+    EntityManager::EntitySystemInfo renderEntitySystem;
 
     uint32_t acquireImageSemaphoreId = 0;
     FrameId firstPresentableFrame = 0;
@@ -251,7 +265,7 @@ class Engine
     void beforeDrawLoop();
     void recordCommandsLoop();
     void executeCommandsLoop();
-    void readbackLoop();
+    void readbackLoop(volatile bool *finished);
     void mainLoopKernel();
     bool execute(ExecutionPackage&& package);
     void present(drv::SwapchainPtr swapchain, FrameId frame, uint32_t imageIndex,
