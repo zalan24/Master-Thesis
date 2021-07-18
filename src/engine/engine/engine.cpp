@@ -231,20 +231,47 @@ void Engine::buildFrameGraph(FrameGraph::NodeId presentDepNode, FrameGraph::Queu
     drv::drv_assert(renderEntitySystem.flag != 0, "Render entity system was not registered ");
     drv::drv_assert(physicsEntitySystem.flag != 0, "Render entity system was not registered ");
 
+    entityManager.addEntityTemplate("static",
+                                    {physicsEntitySystem.flag | renderEntitySystem.flag, 0});
+
     entityManager.initFrameGraph();
     frameGraph.build();
+
+    // Entity entity;
+    // entity.name = "colorTest";
+    // entity.templateName = "static";
+    // entity.parent = Entity::INVALID_ENTITY;
+    // entity.position = {0, 0};
+    // entity.scale = {0.5f, 0.5f};
+    // entity.speed = {0, 0};
+    // entity.textureName = "test.png";
+    // entity.mass = 1.f;
+    // entity.zPos = 0;
+    // entityManager.addEntity(std::move(entity));
+    entityManager.importFromFile(fs::path{launchArgs.sceneToLoad});
+}
+
+void Engine::esPhysics(EntityManager*, Engine*, FrameGraph::NodeHandle*, FrameGraph::Stage,
+                       Entity* entity) {
+    float dt = 0.016;  // TODO
+    entity->position += entity->speed * dt;
+}
+
+void Engine::esBeforeDraw(EntityManager* entityManager, Engine* engine,
+                          FrameGraph::NodeHandle* nodeHandle, FrameGraph::Stage stage,
+                          Entity* entity) {
 }
 
 void Engine::initPhysicsEntitySystem() {
-    physicsEntitySystem =
-      entityManager.addEntitySystem("entityPhysics", FrameGraph::SIMULATION_STAGE,
-                                    {EntityManager::EntitySystemInfo::ENGINE_SYSTEM, false});
+    physicsEntitySystem = entityManager.addEntitySystem(
+      "entityPhysics", FrameGraph::SIMULATION_STAGE,
+      {EntityManager::EntitySystemInfo::ENGINE_SYSTEM, false}, esPhysics);
 }
 
 void Engine::initRenderEntitySystem() {
-    renderEntitySystem =
-      entityManager.addEntitySystem("entityRender", FrameGraph::BEFORE_DRAW_STAGE,
-                                    {EntityManager::EntitySystemInfo::ENGINE_SYSTEM, true});
+    renderEntitySystem = entityManager.addEntitySystem(
+      "entityRender", FrameGraph::BEFORE_DRAW_STAGE,
+      {EntityManager::EntitySystemInfo::ENGINE_SYSTEM, true}, esBeforeDraw);
 }
 
 Engine::~Engine() {
@@ -275,7 +302,9 @@ void Engine::simulationLoop() {
             startNode) {
             garbageSystem.startGarbage(simulationFrame);
         }
+
         else
+
             break;
         runtimeStats.incrementFrame();
         if (!sampleInput(simulationFrame)) {
@@ -874,6 +903,8 @@ void Engine::gameLoop() {
         recordThread.join();
         executeThread.join();
         readbackThread.join();
+
+        entityManager.exportToFile(fs::path{"prev_scene.json"});
 
         runtimeStats.stopExecution();
         runtimeStats.exportReport(launchArgs.reportFile);

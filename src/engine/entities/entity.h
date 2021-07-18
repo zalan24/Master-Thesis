@@ -14,8 +14,8 @@
 
 struct Entity final : public IAutoSerializable<Entity>
 {
-    using EntityId = uint32_t;
-    static constexpr EntityId INVALID_ENTITY = std::numeric_limits<EntityId>::max();
+    using EntityId = int32_t;
+    static constexpr EntityId INVALID_ENTITY = -1;
 
     Entity()
       : name(""),

@@ -97,11 +97,11 @@ EntityManager::EntityManager(drv::PhysicalDevicePtr _physicalDevice, drv::Logica
 }
 
 Entity* EntityManager::getById(Entity::EntityId id) {
-    return &entities[id];
+    return &entities[size_t(id)];
 }
 
 const Entity* EntityManager::getById(Entity::EntityId id) const {
-    return &entities[id];
+    return &entities[size_t(id)];
 }
 
 const std::string& EntityManager::getEntityName(Entity::EntityId id) const {
@@ -162,7 +162,7 @@ bool EntityManager::writeBin(std::ostream& out) const {
     for (const auto& itr : entities)
         if (itr.engineBehaviour != 0 || itr.gameBehaviour != 0)
             entityCopies.push_back(itr);
-    return ISerializable::serializeBin(out, entityCopies);
+    return ISerializable::serializeBin(out, const_cast<const std::vector<Entity>&>(entityCopies));
 }
 
 bool EntityManager::readBin(std::istream& in) {
@@ -182,7 +182,7 @@ void EntityManager::writeJson(json& out) const {
     for (const auto& itr : entities)
         if (itr.engineBehaviour != 0 || itr.gameBehaviour != 0)
             entityCopies.push_back(itr);
-    ISerializable::serialize(out, entityCopies);
+    out = ISerializable::serialize(entityCopies);
 }
 
 void EntityManager::readJson(const json& in) {
@@ -208,7 +208,7 @@ Entity::EntityId EntityManager::addEntity(Entity&& entity) {
         drv::drv_assert(textureItr != textureId.end(), "Could not find a texture for an entity");
         entity.textureId = textureItr->second;
     }
-    for (Entity::EntityId i = 0; i < entities.size(); ++i) {
+    for (Entity::EntityId i = 0; i < Entity::EntityId(entities.size()); ++i) {
         Entity* itr = getById(i);
         std::unique_lock<std::shared_mutex> entityLock(itr->mutex);
         if (itr->gameBehaviour == 0 && itr->engineBehaviour == 0) {
@@ -224,7 +224,8 @@ Entity::EntityId EntityManager::addEntity(Entity&& entity) {
 
 EntityManager::EntitySystemInfo EntityManager::addEntitySystem(std::string name,
                                                                FrameGraph::Stages stages,
-                                                               EntitySystemSignature signature) {
+                                                               EntitySystemSignature signature,
+                                                               EntitySystemCb entitySystemCb) {
     EntitySystemInfo info;
     info.type = signature.type;
     info.id = info.type == EntitySystemInfo::ENGINE_SYSTEM ? (numEngineEs++) : (numGameEs++);
@@ -232,6 +233,7 @@ EntityManager::EntitySystemInfo EntityManager::addEntitySystem(std::string name,
     info.stages = stages;
     info.constSystem = signature.constSystem;
     info.nodeId = frameGraph->addNode(FrameGraph::Node(std::move(name), stages));
+    info.entitySystemCb = entitySystemCb;
     esSignatures.push_back(info);
     return info;
 }
@@ -248,6 +250,9 @@ void EntityManager::node_loop(EntityManager* entityManager, Engine* engine, Fram
             if (FrameGraph::NodeHandle nodeHandle =
                   frameGraph->acquireNode(info->nodeId, stage, frameId);
                 nodeHandle) {
+                entityManager->performES(*info, [&](Entity* entity) {
+                    info->entitySystemCb(entityManager, engine, &nodeHandle, stage, entity);
+                });
             }
             else
                 return;
@@ -271,4 +276,8 @@ void EntityManager::startFrameGraph(Engine* engine) {
           {std::thread(&EntityManager::node_loop, this, engine, frameGraph, &itr)});
         set_thread_name(&esSystems.back().thr, frameGraph->getNode(itr.nodeId)->getName().c_str());
     }
+}
+
+void EntityManager::addEntityTemplate(std::string name, EntityTemplate entityTemplate) {
+    esTemplates[name] = entityTemplate;
 }

@@ -21,6 +21,8 @@ class Engine;
 class EntityManager final : public ISerializable
 {
  public:
+    using EntitySystemCb = void (*)(EntityManager*, Engine*, FrameGraph::NodeHandle*,
+                                    FrameGraph::Stage stage, Entity*);
     struct EntityTemplate
     {
         uint64_t engineBehaviour = 0;
@@ -39,6 +41,7 @@ class EntityManager final : public ISerializable
         FrameGraph::Stages stages;
         bool constSystem;
         FrameGraph::NodeId nodeId;
+        EntitySystemCb entitySystemCb;
     };
 
     struct EntitySystemSignature
@@ -55,7 +58,8 @@ class EntityManager final : public ISerializable
     ~EntityManager();
 
     EntitySystemInfo addEntitySystem(std::string name, FrameGraph::Stages stages,
-                                     EntitySystemSignature signature);
+                                     EntitySystemSignature signature,
+                                     EntitySystemCb entitySystemCb);
     void addEntityTemplate(std::string name, EntityTemplate entityTemplate);
 
     void initFrameGraph() const;
@@ -69,7 +73,19 @@ class EntityManager final : public ISerializable
     const std::string& getEntityName(Entity::EntityId id) const;
 
     template <typename F>
-    void performES(const EntitySystemInfo& system, F&& functor);
+    void performES(const EntitySystemInfo& system, F&& functor) {
+        std::shared_lock<std::shared_mutex> lock(entitiesMutex);
+        for (auto& entity : entities) {
+            if (system.constSystem) {
+                std::shared_lock<std::shared_mutex> entityLock(entity.mutex);
+                functor(&entity);
+            }
+            else {
+                std::unique_lock<std::shared_mutex> entityLock(entity.mutex);
+                functor(&entity);
+            }
+        }
+    }
 
     template <typename F>
     void performQuery(const std::string& templateName, bool constQuery, F&& functor);

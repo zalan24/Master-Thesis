@@ -71,6 +71,7 @@ class Engine
         std::string runtimeStatsGameExportsBin;
         std::string runtimeStatsCacheBin;
         std::string reportFile;
+        std::string sceneToLoad;
         bool clearRuntimeStats = false;
     };
 
@@ -279,4 +280,7 @@ class Engine
                                                                 drv::QueuePtr present_queue,
                                                                 drv::QueuePtr render_queue);
     drv::Swapchain::OldSwapchinData recreateSwapchain();
+
+    static void esPhysics(EntityManager* entityManager, Engine* engine, FrameGraph::NodeHandle* nodeHandle, FrameGraph::Stage stage, Entity* entity);
+    static void esBeforeDraw(EntityManager* entityManager, Engine* engine,FrameGraph::NodeHandle* nodeHandle, FrameGraph::Stage stage, Entity* entity);
 };
