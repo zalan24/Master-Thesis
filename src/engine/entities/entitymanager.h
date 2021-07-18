@@ -22,7 +22,7 @@ class EntityManager final : public ISerializable
 {
  public:
     using EntitySystemCb = void (*)(EntityManager*, Engine*, FrameGraph::NodeHandle*,
-                                    FrameGraph::Stage stage, Entity*);
+                                    FrameGraph::Stage, FrameId, Entity*);
     struct EntityTemplate
     {
         uint64_t engineBehaviour = 0;
@@ -98,6 +98,8 @@ class EntityManager final : public ISerializable
 
     void clearEntities();
 
+    void prepareTexture(uint32_t textureId, drv::DrvCmdBufferRecorder* recorder);
+
  private:
     using Clock = std::chrono::high_resolution_clock;
     using Duration = std::chrono::duration<double>;
@@ -127,6 +129,8 @@ class EntityManager final : public ISerializable
     Clock::time_point startTime;
     drv::ImageSet textures;
     drv::ImageSet textureStager;
+    mutable std::mutex dirtyTextureMutex;
+    std::set<uint32_t> dirtyTextures;
 
     mutable std::shared_mutex entitiesMutex;  // used when clearing
 };

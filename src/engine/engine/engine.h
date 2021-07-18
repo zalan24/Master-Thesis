@@ -198,6 +198,14 @@ class Engine
         SyncBlock(drv::LogicalDevicePtr device, uint32_t maxFramesInFlight);
     };
 
+    struct EntityRenderData
+    {
+        glm::vec2 relBottomLeft;
+        glm::vec2 relTopRight;
+        uint32_t textureId;
+        float z;
+    };
+
     EngineConfig config;
     Resources resourceFolders;
     Args launchArgs;
@@ -236,6 +244,7 @@ class Engine
     EntityManager entityManager;
 
     FrameGraph::NodeId inputSampleNode;
+    FrameGraph::NodeId drawEntitiesNode;
     FrameGraph::NodeId presentFrameNode;
     QueueInfo queueInfos;
     EntityManager::EntitySystemInfo physicsEntitySystem;
@@ -262,6 +271,8 @@ class Engine
     std::atomic<bool> swapchainRecreationRequired = {false};
     std::atomic<bool> swapchainRecreationPossible = {false};
 
+    std::vector<EntityRenderData> entitiesToDraw;
+
     void simulationLoop();
     void beforeDrawLoop();
     void recordCommandsLoop();
@@ -272,6 +283,7 @@ class Engine
     void present(drv::SwapchainPtr swapchain, FrameId frame, uint32_t imageIndex,
                  uint32_t semaphoreIndex);
     bool sampleInput(FrameId frameId);
+    void drawEntities(FrameId);
 
     static drv::PhysicalDevice::SelectionInfo get_device_selection_info(
       drv::InstancePtr instance, const drv::DeviceExtensions& deviceExtensions,
@@ -281,6 +293,10 @@ class Engine
                                                                 drv::QueuePtr render_queue);
     drv::Swapchain::OldSwapchinData recreateSwapchain();
 
-    static void esPhysics(EntityManager* entityManager, Engine* engine, FrameGraph::NodeHandle* nodeHandle, FrameGraph::Stage stage, Entity* entity);
-    static void esBeforeDraw(EntityManager* entityManager, Engine* engine,FrameGraph::NodeHandle* nodeHandle, FrameGraph::Stage stage, Entity* entity);
+    static void esPhysics(EntityManager* entityManager, Engine* engine,
+                          FrameGraph::NodeHandle* nodeHandle, FrameGraph::Stage stage,
+                          FrameId frameId, Entity* entity);
+    static void esBeforeDraw(EntityManager* entityManager, Engine* engine,
+                             FrameGraph::NodeHandle* nodeHandle, FrameGraph::Stage stage,
+                             FrameId frameId, Entity* entity);
 };

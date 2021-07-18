@@ -212,6 +212,8 @@ Engine::Engine(int argc, char* argv[], const EngineConfig& cfg,
       frameGraph.addNode(FrameGraph::Node("sample_input", FrameGraph::SIMULATION_STAGE));
     presentFrameNode = frameGraph.addNode(
       FrameGraph::Node("presentFrame", FrameGraph::RECORD_STAGE | FrameGraph::EXECUTION_STAGE));
+    drawEntitiesNode = frameGraph.addNode(
+      FrameGraph::Node("drawEntities", FrameGraph::RECORD_STAGE | FrameGraph::EXECUTION_STAGE));
 
     drv::drv_assert(config.maxFramesInExecutionQueue >= 1,
                     "maxFramesInExecutionQueue must be at least 1");
@@ -234,32 +236,42 @@ void Engine::buildFrameGraph(FrameGraph::NodeId presentDepNode, FrameGraph::Queu
     entityManager.addEntityTemplate("static",
                                     {physicsEntitySystem.flag | renderEntitySystem.flag, 0});
 
+    frameGraph.addDependency(
+      drawEntitiesNode,
+      FrameGraph::CpuDependency{renderEntitySystem.nodeId, FrameGraph::BEFORE_DRAW_STAGE,
+                                FrameGraph::RECORD_STAGE, 0});
+    frameGraph.addDependency(renderEntitySystem.nodeId,
+                             FrameGraph::CpuDependency{drawEntitiesNode, FrameGraph::RECORD_STAGE,
+                                                       FrameGraph::BEFORE_DRAW_STAGE, 1});
+
     entityManager.initFrameGraph();
     frameGraph.build();
 
-    // Entity entity;
-    // entity.name = "colorTest";
-    // entity.templateName = "static";
-    // entity.parent = Entity::INVALID_ENTITY;
-    // entity.position = {0, 0};
-    // entity.scale = {0.5f, 0.5f};
-    // entity.speed = {0, 0};
-    // entity.textureName = "test.png";
-    // entity.mass = 1.f;
-    // entity.zPos = 0;
-    // entityManager.addEntity(std::move(entity));
     entityManager.importFromFile(fs::path{launchArgs.sceneToLoad});
 }
 
-void Engine::esPhysics(EntityManager*, Engine*, FrameGraph::NodeHandle*, FrameGraph::Stage,
+void Engine::esPhysics(EntityManager*, Engine*, FrameGraph::NodeHandle*, FrameGraph::Stage, FrameId,
                        Entity* entity) {
     float dt = 0.016;  // TODO
     entity->position += entity->speed * dt;
 }
 
-void Engine::esBeforeDraw(EntityManager* entityManager, Engine* engine,
-                          FrameGraph::NodeHandle* nodeHandle, FrameGraph::Stage stage,
-                          Entity* entity) {
+void Engine::esBeforeDraw(EntityManager*, Engine* engine, FrameGraph::NodeHandle*,
+                          FrameGraph::Stage, FrameId, Entity* entity) {
+    EntityRenderData data;
+    glm::vec2 camPos = {0, 0};
+    glm::vec2 camSize = {10, 10};
+    data.relBottomLeft = (entity->position - entity->scale - camPos);
+    data.relBottomLeft.x /= camSize.x;
+    data.relBottomLeft.y /= camSize.y;
+    data.relTopRight = (entity->position + entity->scale - camPos);
+    data.relTopRight.x /= camSize.x;
+    data.relTopRight.y /= camSize.y;
+    data.z = entity->zPos;
+    data.textureId = entity->textureId;
+    if (data.relBottomLeft.x < 1 && data.relTopRight.x > -1 && data.relBottomLeft.y < 1
+        && data.relTopRight.y > -1)
+        engine->entitiesToDraw.push_back(std::move(data));
 }
 
 void Engine::initPhysicsEntitySystem() {
@@ -453,6 +465,7 @@ void Engine::recordCommandsLoop() {
         if (!frameGraph.startStage(FrameGraph::RECORD_STAGE, recordFrame))
             break;
         AcquiredImageData swapchainData = record(recordFrame);
+        drawEntities(recordFrame);
         {
             FrameGraph::NodeHandle presentHandle =
               frameGraph.acquireNode(presentFrameNode, FrameGraph::RECORD_STAGE, recordFrame);
@@ -1138,4 +1151,41 @@ void Engine::transferToStager(drv::CmdBufferId cmdBufferId, ImageStager& stager,
       make_submission_package(frameGraph.getQueue(queue), frame, cmdBuffer.use(std::move(data)),
                               getGarbageSystem(), ResourceStateValidationMode::NEVER_VALIDATE);
     nodeHandle.submit(queue, std::move(submission));
+}
+
+void Engine::drawEntities(FrameId frameId) {
+    if (FrameGraph::NodeHandle nodeHandle =
+          getFrameGraph().acquireNode(drawEntitiesNode, FrameGraph::RECORD_STAGE, frameId);
+        nodeHandle) {
+        if (!entitiesToDraw.empty()) {
+            struct RecordData
+            {
+                Engine* engine;
+                static void record(const RecordData& data, drv::DrvCmdBufferRecorder* recorder) {
+                    for (const auto& entity : data.engine->entitiesToDraw) {
+                        data.engine->entityManager.prepareTexture(entity.textureId, recorder);
+                    }
+                }
+                bool operator==(const RecordData& other) { return engine == other.engine; }
+                bool operator!=(const RecordData& other) { return !(*this == other); }
+            } recordData{this};
+            std::sort(entitiesToDraw.begin(), entitiesToDraw.end(),
+                      [](const EntityRenderData& lhs, const EntityRenderData& rhs) {
+                          return lhs.z < rhs.z;
+                      });
+            {
+                OneTimeCmdBuffer<RecordData> cmdBuffer(
+                  CMD_BUFFER_ID(), "draw_entities", getSemaphorePool(), getPhysicalDevice(),
+                  getDevice(), queueInfos.renderQueue.handle, getCommandBufferBank(),
+                  getGarbageSystem(), RecordData::record,
+                  getFrameGraph().get_semaphore_value(frameId));
+                ExecutionPackage::CommandBufferPackage submission = make_submission_package(
+                  queueInfos.renderQueue.handle, frameId, cmdBuffer.use(std::move(recordData)),
+                  getGarbageSystem(), ResourceStateValidationMode::NEVER_VALIDATE);
+                nodeHandle.submit(queueInfos.renderQueue.id, std::move(submission));
+            }
+
+            entitiesToDraw.clear();
+        }
+    }
 }

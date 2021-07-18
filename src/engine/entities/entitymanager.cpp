@@ -44,6 +44,7 @@ EntityManager::EntityManager(drv::PhysicalDevicePtr _physicalDevice, drv::Logica
         imageInfo.tiling = imageInfo.TILING_LINEAR;
         imageInfo.usage = imageInfo.TRANSFER_DST_BIT | imageInfo.TRANSFER_SRC_BIT;
         textureId[p.path().filename().string()] = uint32_t(imageInfos.size());
+        dirtyTextures.insert(uint32_t(imageInfos.size()));
         imageInfos.push_back(imageInfo);
         imageStagerInfos.push_back(imageInfo);
         LOG_F(INFO, "Texture loaded in entity manager: %s", p.path().filename().string().c_str());
@@ -251,7 +252,8 @@ void EntityManager::node_loop(EntityManager* entityManager, Engine* engine, Fram
                   frameGraph->acquireNode(info->nodeId, stage, frameId);
                 nodeHandle) {
                 entityManager->performES(*info, [&](Entity* entity) {
-                    info->entitySystemCb(entityManager, engine, &nodeHandle, stage, entity);
+                    info->entitySystemCb(entityManager, engine, &nodeHandle, stage, frameId,
+                                         entity);
                 });
             }
             else
@@ -280,4 +282,29 @@ void EntityManager::startFrameGraph(Engine* engine) {
 
 void EntityManager::addEntityTemplate(std::string name, EntityTemplate entityTemplate) {
     esTemplates[name] = entityTemplate;
+}
+
+void EntityManager::prepareTexture(uint32_t texId, drv::DrvCmdBufferRecorder* recorder) {
+    std::unique_lock<std::mutex> lock(dirtyTextureMutex);
+    if (dirtyTextures.count(texId)) {
+        dirtyTextures.extract(texId);
+
+        recorder->cmdImageBarrier({textureStager.getImage(texId), drv::IMAGE_USAGE_TRANSFER_SOURCE,
+                                   drv::ImageMemoryBarrier::AUTO_TRANSITION, false});
+        recorder->cmdImageBarrier({textures.getImage(texId), drv::IMAGE_USAGE_TRANSFER_DESTINATION,
+                                   drv::ImageMemoryBarrier::AUTO_TRANSITION, true});
+        drv::ImageCopyRegion region;
+        region.srcSubresource.aspectMask = drv::COLOR_BIT;
+        region.srcSubresource.baseArrayLayer = 0;
+        region.srcSubresource.layerCount = 1;
+        region.srcSubresource.mipLevel = 0;
+        region.srcOffset = {0, 0, 0};
+        region.dstSubresource.aspectMask = drv::COLOR_BIT;
+        region.dstSubresource.baseArrayLayer = 0;
+        region.dstSubresource.layerCount = 1;
+        region.dstSubresource.mipLevel = 0;
+        region.dstOffset = {0, 0, 0};
+        region.extent = drv::get_texture_info(textureStager.getImage(texId)).extent;
+        recorder->cmdCopyImage(textureStager.getImage(texId), textures.getImage(texId), 1, &region);
+    }
 }
