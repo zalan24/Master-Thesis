@@ -1,14 +1,99 @@
 #include "entitymanager.h"
 
 #include <algorithm>
+#include <filesystem>
+
+#define STB_IMAGE_IMPLEMENTATION
+#include <stb_image.h>
 
 #include <namethreads.h>
 
+#include <framegraph.h>
+#include <logger.h>
+
 #include "entity.h"
 
-EntityManager::EntityManager(FrameGraph* _frameGraph, const std::string& textureFolder)
-  : frameGraph(_frameGraph) {
-    // TODO load textures
+namespace fs = std::filesystem;
+
+EntityManager::EntityManager(drv::PhysicalDevicePtr _physicalDevice, drv::LogicalDevicePtr _device,
+                             FrameGraph* _frameGraph, const std::string& textureFolder)
+  : physicalDevice(_physicalDevice), device(_device), frameGraph(_frameGraph) {
+    std::vector<drv::ImageSet::ImageInfo> imageInfos;
+    std::vector<drv::ImageSet::ImageInfo> imageStagerInfos;
+    std::vector<unsigned char*> imageData;
+    std::vector<int> imageChannels;
+    drv::drv_assert(fs::exists(fs::path{textureFolder}), "Textures folders does not exist");
+    for (auto& p : fs::directory_iterator(fs::path{textureFolder})) {
+        const std::string filename = p.path().filename().string();
+        const std::string ext = p.path().extension().string();
+        if (ext != ".png" && ext != ".jpg" && ext != ".bmp")
+            continue;
+        int width, height, channels;
+        unsigned char* image = stbi_load(p.path().string().c_str(), &width, &height, &channels, 0);
+        drv::drv_assert(image != nullptr, "Could not load image");
+        imageData.push_back(image);
+        imageChannels.push_back(channels);
+        drv::ImageSet::ImageInfo imageInfo;
+        imageInfo.imageId = drv::ImageId(p.path().filename().string());
+        imageInfo.type = imageInfo.TYPE_2D;
+        imageInfo.format = drv::ImageFormat::R8G8B8A8_UNORM;
+        imageInfo.extent = {uint32_t(width), uint32_t(height), 1};
+        imageInfo.mipLevels = 1;
+        imageInfo.arrayLayers = 1;
+        imageInfo.sampleCount = drv::SampleCount::SAMPLE_COUNT_1;
+        imageInfo.tiling = imageInfo.TILING_LINEAR;
+        imageInfo.usage = imageInfo.TRANSFER_DST_BIT | imageInfo.TRANSFER_SRC_BIT;
+        textureId[p.path().filename().string()] = uint32_t(imageInfos.size());
+        imageInfos.push_back(imageInfo);
+        imageStagerInfos.push_back(imageInfo);
+        LOG_F(INFO, "Texture loaded in entity manager: %s", p.path().filename().string().c_str());
+    }
+    textures = drv::ImageSet(physicalDevice, device, std::move(imageInfos),
+                             drv::ImageSet::PreferenceSelector(drv::MemoryType::DEVICE_LOCAL_BIT,
+                                                               drv::MemoryType::DEVICE_LOCAL_BIT));
+    textureStager =
+      drv::ImageSet(physicalDevice, device, std::move(imageInfos),
+                    drv::ImageSet::PreferenceSelector(drv::MemoryType::HOST_COHERENT_BIT
+                                                        | drv::MemoryType::HOST_CACHED_BIT
+                                                        | drv::MemoryType::HOST_VISIBLE_BIT,
+                                                      drv::MemoryType::HOST_VISIBLE_BIT));
+    for (uint32_t i = 0; i < imageData.size(); ++i) {
+        drv::TextureInfo texInfo = drv::get_texture_info(textureStager.getImage(i));
+
+        drv::DeviceSize offset;
+        drv::DeviceSize size;
+        drv::DeviceSize rowPitch;
+        drv::DeviceSize arrayPitch;
+        drv::DeviceSize depthPitch;
+        drv::drv_assert(drv::get_image_memory_data(device, textureStager.getImage(i), 0, 0, offset,
+                                                   size, rowPitch, arrayPitch, depthPitch),
+                        "Could not get image memory data");
+
+        StackMemory::MemoryHandle<uint32_t> srcData(size, TEMPMEM);
+        for (uint32_t y = 0; y < texInfo.extent.height; ++y) {
+            for (uint32_t x = 0; x < texInfo.extent.width; ++x) {
+                uint32_t r, g, b, a;
+                r = g = b = 0;
+                a = 255;
+                uint32_t numChannels = uint32_t(imageChannels[i]);
+                r = imageData[i][(x + texInfo.extent.width * y) * numChannels + 0];
+                if (numChannels > 1)
+                    g = imageData[i][(x + texInfo.extent.width * y) * numChannels + 1];
+                if (numChannels > 2)
+                    b = imageData[i][(x + texInfo.extent.width * y) * numChannels + 2];
+                if (numChannels > 3)
+                    a = imageData[i][(x + texInfo.extent.width * y) * numChannels + 3];
+                srcData[StackMemory::size_t(x + y * rowPitch / 4)] =
+                  (a << 24) + (b << 16) + (g << 8) + r;
+            }
+        }
+        TemporalResourceLockerDescriptor resourceDesc;
+        resourceDesc.addImage(textureStager.getImage(i), 1, 0, 0, drv::AspectFlagBits::COLOR_BIT,
+                              drv::ResourceLockerDescriptor::WRITE);
+        auto lock = frameGraph->getResourceLocker()->lock(&resourceDesc).getLock();
+        drv::write_image_memory(device, textureStager.getImage(i), 0, 0, lock, srcData);
+        stbi_image_free(imageData[i]);
+    }
 }
 
 Entity* EntityManager::getById(Entity::EntityId id) {
@@ -118,6 +203,11 @@ Entity::EntityId EntityManager::addEntity(Entity&& entity) {
     drv::drv_assert(templateItr != esTemplates.end(), "Unknown entity template");
     entity.gameBehaviour = templateItr->second.gameBehaviour;
     entity.engineBehaviour = templateItr->second.engineBehaviour;
+    if (entity.textureName != "") {
+        auto textureItr = textureId.find(entity.textureName);
+        drv::drv_assert(textureItr != textureId.end(), "Could not find a texture for an entity");
+        entity.textureId = textureItr->second;
+    }
     for (Entity::EntityId i = 0; i < entities.size(); ++i) {
         Entity* itr = getById(i);
         std::unique_lock<std::shared_mutex> entityLock(itr->mutex);

@@ -77,7 +77,6 @@ int main(int argc, char* argv[]) {
         std::string modelResources = "";
         app.add_option("-m,--models", modelResources, "Path to the model resources json file");
         app.add_option("-d,--data", resources.assets, "Path to the data folder");
-        resources.textures = (fs::path{resources.assets} / fs::path{"textures"}).string();
         Engine::Args args;
         app.add_flag("-r,--renderdoc", args.renderdocEnabled, "Enable renderdoc layer");
         app.add_flag("-g,--gfx", args.gfxCaptureEnabled, "Enable gfx capture layer");
@@ -93,6 +92,8 @@ int main(int argc, char* argv[]) {
         app.add_option("--report", args.reportFile, "Txt file, where the report will be generated");
 
         CLI11_PARSE(app, argc, argv)
+
+        resources.textures = (fs::path{resources.assets} / "textures").string();
 
         if (config == "") {
             std::cout << "No config file given. Exiting..." << std::endl;

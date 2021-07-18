@@ -182,7 +182,7 @@ Engine::Engine(int argc, char* argv[], const EngineConfig& cfg,
                trackingConfig, config.maxFramesInExecutionQueue, config.maxFramesInFlight + 1),
     runtimeStats(!launchArgs.clearRuntimeStats, launchArgs.runtimeStatsPersistanceBin,
                  launchArgs.runtimeStatsGameExportsBin, launchArgs.runtimeStatsCacheBin),
-    entityManager(&frameGraph, resourceFolders.textures) {
+    entityManager(physicalDevice, device, &frameGraph, resourceFolders.textures) {
     json configJson = ISerializable::serialize(config);
     std::stringstream ss;
     ss << configJson;

@@ -11,5 +11,6 @@ target_link_libraries(Entities PUBLIC
     EngineFramegraph
     glm_external
     SerializableLib
+    stb_external
 )
 

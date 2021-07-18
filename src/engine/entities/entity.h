@@ -42,6 +42,7 @@ struct Entity final : public IAutoSerializable<Entity>
 
     uint64_t engineBehaviour = 0;
     uint64_t gameBehaviour = 0;
+    uint32_t textureId = 0;
     mutable std::shared_mutex mutex;
 
     Entity(const Entity& other)

@@ -286,6 +286,8 @@ class FrameGraph
     };
     QueueSyncData sync_queue(drv::QueuePtr queue, FrameId frame) const;
 
+    drv::ResourceLocker* getResourceLocker() const {return resourceLocker; }
+
  private:
     struct DependenceData
     {

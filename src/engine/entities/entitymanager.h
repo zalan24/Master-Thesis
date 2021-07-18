@@ -10,6 +10,8 @@
 #include <unordered_map>
 #include <vector>
 
+#include <drv_wrappers.h>
+
 #include <framegraph.h>
 
 #include "entity.h"
@@ -45,7 +47,8 @@ class EntityManager final : public ISerializable
         bool constSystem = false;
     };
 
-    EntityManager(FrameGraph* frameGraph, const std::string& textureFolder);
+    EntityManager(drv::PhysicalDevicePtr physicalDevice, drv::LogicalDevicePtr device,
+                  FrameGraph* frameGraph, const std::string& textureFolder);
     EntityManager(const EntityManager&) = delete;
     EntityManager& operator=(const EntityManager&) = delete;
 
@@ -83,6 +86,8 @@ class EntityManager final : public ISerializable
     using Clock = std::chrono::high_resolution_clock;
     using Duration = std::chrono::duration<double>;
 
+    drv::PhysicalDevicePtr physicalDevice;
+    drv::LogicalDevicePtr device;
     FrameGraph* frameGraph;
 
     std::deque<Entity> entities;
@@ -98,11 +103,14 @@ class EntityManager final : public ISerializable
                           const EntitySystemInfo* info);
 
     std::unordered_map<std::string, EntityTemplate> esTemplates;
+    std::unordered_map<std::string, uint32_t> textureId;
     std::vector<EntitySystemInfo> esSignatures;
     std::vector<EntitySystemData> esSystems;
     uint32_t numGameEs = 0;
     uint32_t numEngineEs = 0;
     Clock::time_point startTime;
+    drv::ImageSet textures;
+    drv::ImageSet textureStager;
 
     mutable std::shared_mutex entitiesMutex;  // used when clearing
 };
