@@ -76,6 +76,10 @@ class EntityManager final : public ISerializable
     void performES(const EntitySystemInfo& system, F&& functor) {
         std::shared_lock<std::shared_mutex> lock(entitiesMutex);
         for (auto& entity : entities) {
+            if (!((system.type == system.ENGINE_SYSTEM ? entity.engineBehaviour
+                                                       : entity.gameBehaviour)
+                  & system.flag))
+                continue;
             if (system.constSystem) {
                 std::shared_lock<std::shared_mutex> entityLock(entity.mutex);
                 functor(&entity);
