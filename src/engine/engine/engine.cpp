@@ -1152,8 +1152,76 @@ void Engine::transferToStager(drv::CmdBufferId cmdBufferId, ImageStager& stager,
     nodeHandle.submit(queue, std::move(submission));
 }
 
-void Engine::drawEntities(drv::DrvCmdBufferRecorder* recorder) {
+void Engine::drawEntities(drv::DrvCmdBufferRecorder* recorder, drv::ImagePtr targetImage) {
+    drv::TextureInfo targetInfo = drv::get_texture_info(targetImage);
+    if (targetInfo.extent.width == 0 || targetInfo.extent.height == 0)
+        return;
     for (const auto& entity : entitiesToDraw) {
+        drv::TextureInfo textureInfo =
+          drv::get_texture_info(entityManager.getTexture(entity.textureId));
+
+        glm::vec2 clampedMin = glm::clamp(entity.relBottomLeft, glm::vec2(-1, -1), glm::vec2(1, 1));
+        glm::vec2 clampedMax = glm::clamp(entity.relTopRight, glm::vec2(-1, -1), glm::vec2(1, 1));
+
+        glm::vec2 size = entity.relTopRight - entity.relBottomLeft;
+
+        glm::vec2 relMin = clampedMin - entity.relBottomLeft;
+        relMin.x /= size.x;
+        relMin.y /= size.y;
+        glm::vec2 relMax = clampedMax - entity.relBottomLeft;
+        relMax.x /= size.x;
+        relMax.y /= size.y;
+
+        drv::ImageBlit region;
+        region.srcSubresource.aspectMask = drv::COLOR_BIT;
+        region.srcSubresource.baseArrayLayer = 0;
+        region.srcSubresource.layerCount = 1;
+        region.srcSubresource.mipLevel = 0;
+        region.dstSubresource.aspectMask = drv::COLOR_BIT;
+        region.dstSubresource.baseArrayLayer = 0;
+        region.dstSubresource.layerCount = 1;
+        region.dstSubresource.mipLevel = 0;
+        region.srcOffsets[0] = drv::Offset3D{int(relMin.x * textureInfo.extent.width),
+                                             int(relMin.y * textureInfo.extent.height), 0};
+        region.srcOffsets[1] = drv::Offset3D{int(relMax.x * textureInfo.extent.width),
+                                             int(relMax.y * textureInfo.extent.height), 1};
+        region.dstOffsets[0] =
+          drv::Offset3D{int(((clampedMin.x * 0.5f) + 0.5f) * targetInfo.extent.width),
+                        int(((clampedMin.y * 0.5f) + 0.5f) * targetInfo.extent.height), 0};
+        region.dstOffsets[1] =
+          drv::Offset3D{int(((clampedMax.x * 0.5f) + 0.5f) * targetInfo.extent.width),
+                        int(((clampedMax.y * 0.5f) + 0.5f) * targetInfo.extent.height), 1};
+        for (uint32_t i : {0u, 1u}) {
+            if (region.dstOffsets[i].x < 0)
+                region.dstOffsets[i].x = 0;
+            if (region.dstOffsets[i].y < 0)
+                region.dstOffsets[i].y = 0;
+            if (region.dstOffsets[i].x > int(targetInfo.extent.width))
+                region.dstOffsets[i].x = int(targetInfo.extent.width);
+            if (region.dstOffsets[i].y > int(targetInfo.extent.height))
+                region.dstOffsets[i].y = int(targetInfo.extent.height);
+            if (region.srcOffsets[i].x < 0)
+                region.srcOffsets[i].x = 0;
+            if (region.srcOffsets[i].y < 0)
+                region.srcOffsets[i].y = 0;
+            if (region.srcOffsets[i].x > int(textureInfo.extent.width))
+                region.srcOffsets[i].x = int(textureInfo.extent.width);
+            if (region.srcOffsets[i].y > int(textureInfo.extent.height))
+                region.srcOffsets[i].y = int(textureInfo.extent.height);
+        }
+
+        if (region.srcOffsets[0].x < region.srcOffsets[1].x
+            && region.srcOffsets[0].y < region.srcOffsets[1].y
+            && region.dstOffsets[0].x < region.dstOffsets[1].x
+            && region.dstOffsets[0].y < region.dstOffsets[1].y) {
+            recorder->cmdImageBarrier({entityManager.getTexture(entity.textureId),
+                                       drv::IMAGE_USAGE_TRANSFER_SOURCE,
+                                       drv::ImageMemoryBarrier::AUTO_TRANSITION});
+            recorder->cmdImageBarrier({targetImage, drv::IMAGE_USAGE_TRANSFER_DESTINATION,
+                                       drv::ImageMemoryBarrier::AUTO_TRANSITION});
+            recorder->cmdBlitImage(entityManager.getTexture(entity.textureId), targetImage, 1,
+                                   &region, drv::ImageFilter::LINEAR);
+        }
     }
 }
 

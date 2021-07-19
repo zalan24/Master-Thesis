@@ -308,3 +308,7 @@ void EntityManager::prepareTexture(uint32_t texId, drv::DrvCmdBufferRecorder* re
         recorder->cmdCopyImage(textureStager.getImage(texId), textures.getImage(texId), 1, &region);
     }
 }
+
+drv::ImagePtr EntityManager::getTexture(uint32_t texId) const {
+    return textureStager.getImage(texId);
+}

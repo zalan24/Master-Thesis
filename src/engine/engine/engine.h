@@ -181,7 +181,7 @@ class Engine
     void initRenderEntitySystem();
     void initBeforeDrawEntitySystem();
 
-    void drawEntities(drv::DrvCmdBufferRecorder* recorder);
+    void drawEntities(drv::DrvCmdBufferRecorder* recorder, drv::ImagePtr targetImage);
 
     FrameGraph::NodeId getMainRecordNode() const {return  mainRecordNode;}
 

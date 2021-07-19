@@ -103,6 +103,7 @@ class EntityManager final : public ISerializable
     void clearEntities();
 
     void prepareTexture(uint32_t textureId, drv::DrvCmdBufferRecorder* recorder);
+    drv::ImagePtr getTexture(uint32_t textureId) const;
 
  private:
     using Clock = std::chrono::high_resolution_clock;

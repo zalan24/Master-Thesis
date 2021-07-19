@@ -282,7 +282,7 @@ void Game::record(const AcquiredImageData& swapchainData, drv::DrvCmdBufferRecor
     testImageStager.transferFromStager(recorder, stagerId);
     recordCmdBufferRender(swapchainData, recorder, frameId);
     recordCmdBufferBlit(swapchainData, recorder, frameId);
-    drawEntities(recorder);
+    drawEntities(recorder, swapchainData.image);
     recorder->cmdImageBarrier({transferTexture.get().getImage(0), drv::IMAGE_USAGE_TRANSFER_SOURCE,
                                drv::ImageMemoryBarrier::AUTO_TRANSITION});
     testImageStager.transferToStager(recorder, stagerId);
@@ -292,7 +292,7 @@ void Game::record(const AcquiredImageData& swapchainData, drv::DrvCmdBufferRecor
 
 void Game::simulate(FrameId frameId) {
     UNUSED(frameId);
-    std::this_thread::sleep_for(std::chrono::milliseconds(16));
+    std::this_thread::sleep_for(std::chrono::milliseconds(4));
     // std::cout << "Simulate: " << frameId << std::endl;
 }
 
