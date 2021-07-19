@@ -18,6 +18,7 @@
 #include <drvbarrier.h>
 #include <drvcmdbufferbank.h>
 #include <drvlane.h>
+#include <drvrenderpass.h>
 #include <drvresourcelocker.h>
 #include <drvsemaphorepool.h>
 
@@ -147,14 +148,16 @@ class Engine
 
  protected:
     // Needs to be called from game implementation after finishing the framegraph
-    void buildFrameGraph(FrameGraph::NodeId presentDepNode, FrameGraph::QueueId depQueueId);
+    void buildFrameGraph();
 
     FrameGraph& getFrameGraph() { return frameGraph; }
     const FrameGraph& getFrameGraph() const { return frameGraph; }
 
     virtual void simulate(FrameId frameId) = 0;
     virtual void beforeDraw(FrameId frameId) = 0;
-    virtual AcquiredImageData record(FrameId frameId) = 0;
+    virtual void record(const AcquiredImageData& swapchainData, drv::DrvCmdBufferRecorder* recorder,
+                        FrameId frameId) = 0;
+    virtual void lockResources(TemporalResourceLockerDescriptor& resourceDesc, FrameId frameId) = 0;
     virtual void readback(FrameId frameId) = 0;
     virtual void releaseSwapchainResources() = 0;
     virtual void createSwapchainResources(const drv::Swapchain& swapchain) = 0;
@@ -177,6 +180,10 @@ class Engine
     void initPhysicsEntitySystem();
     void initRenderEntitySystem();
     void initBeforeDrawEntitySystem();
+
+    void drawEntities(drv::DrvCmdBufferRecorder* recorder);
+
+    FrameGraph::NodeId getMainRecordNode() const {return  mainRecordNode;}
 
  private:
     friend class AccessValidationCallback;
@@ -244,7 +251,7 @@ class Engine
     EntityManager entityManager;
 
     FrameGraph::NodeId inputSampleNode;
-    FrameGraph::NodeId drawEntitiesNode;
+    FrameGraph::NodeId mainRecordNode;
     FrameGraph::NodeId presentFrameNode;
     QueueInfo queueInfos;
     EntityManager::EntitySystemInfo physicsEntitySystem;
@@ -283,7 +290,7 @@ class Engine
     void present(drv::SwapchainPtr swapchain, FrameId frame, uint32_t imageIndex,
                  uint32_t semaphoreIndex);
     bool sampleInput(FrameId frameId);
-    void drawEntities(FrameId);
+    AcquiredImageData mainRecord(FrameId frameId);
 
     static drv::PhysicalDevice::SelectionInfo get_device_selection_info(
       drv::InstancePtr instance, const drv::DeviceExtensions& deviceExtensions,

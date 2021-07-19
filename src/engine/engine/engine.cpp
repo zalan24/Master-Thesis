@@ -212,8 +212,8 @@ Engine::Engine(int argc, char* argv[], const EngineConfig& cfg,
       frameGraph.addNode(FrameGraph::Node("sample_input", FrameGraph::SIMULATION_STAGE));
     presentFrameNode = frameGraph.addNode(
       FrameGraph::Node("presentFrame", FrameGraph::RECORD_STAGE | FrameGraph::EXECUTION_STAGE));
-    drawEntitiesNode = frameGraph.addNode(
-      FrameGraph::Node("drawEntities", FrameGraph::RECORD_STAGE | FrameGraph::EXECUTION_STAGE));
+    mainRecordNode = frameGraph.addNode(
+      FrameGraph::Node("mainRecord", FrameGraph::RECORD_STAGE | FrameGraph::EXECUTION_STAGE));
 
     drv::drv_assert(config.maxFramesInExecutionQueue >= 1,
                     "maxFramesInExecutionQueue must be at least 1");
@@ -227,8 +227,8 @@ Engine::Engine(int argc, char* argv[], const EngineConfig& cfg,
                                            presentDepOffset);
 }
 
-void Engine::buildFrameGraph(FrameGraph::NodeId presentDepNode, FrameGraph::QueueId) {
-    frameGraph.addDependency(presentFrameNode, FrameGraph::EnqueueDependency{presentDepNode, 0});
+void Engine::buildFrameGraph() {
+    frameGraph.addDependency(presentFrameNode, FrameGraph::EnqueueDependency{mainRecordNode, 0});
 
     drv::drv_assert(renderEntitySystem.flag != 0, "Render entity system was not registered ");
     drv::drv_assert(physicsEntitySystem.flag != 0, "Render entity system was not registered ");
@@ -237,11 +237,11 @@ void Engine::buildFrameGraph(FrameGraph::NodeId presentDepNode, FrameGraph::Queu
                                     {physicsEntitySystem.flag | renderEntitySystem.flag, 0});
 
     frameGraph.addDependency(
-      drawEntitiesNode,
+      mainRecordNode,
       FrameGraph::CpuDependency{renderEntitySystem.nodeId, FrameGraph::BEFORE_DRAW_STAGE,
                                 FrameGraph::RECORD_STAGE, 0});
     frameGraph.addDependency(renderEntitySystem.nodeId,
-                             FrameGraph::CpuDependency{drawEntitiesNode, FrameGraph::RECORD_STAGE,
+                             FrameGraph::CpuDependency{mainRecordNode, FrameGraph::RECORD_STAGE,
                                                        FrameGraph::BEFORE_DRAW_STAGE, 1});
 
     entityManager.initFrameGraph();
@@ -464,8 +464,7 @@ void Engine::recordCommandsLoop() {
         mainKernelCv.notify_one();
         if (!frameGraph.startStage(FrameGraph::RECORD_STAGE, recordFrame))
             break;
-        AcquiredImageData swapchainData = record(recordFrame);
-        drawEntities(recordFrame);
+        AcquiredImageData swapchainData = mainRecord(recordFrame);
         {
             FrameGraph::NodeHandle presentHandle =
               frameGraph.acquireNode(presentFrameNode, FrameGraph::RECORD_STAGE, recordFrame);
@@ -1153,39 +1152,56 @@ void Engine::transferToStager(drv::CmdBufferId cmdBufferId, ImageStager& stager,
     nodeHandle.submit(queue, std::move(submission));
 }
 
-void Engine::drawEntities(FrameId frameId) {
-    if (FrameGraph::NodeHandle nodeHandle =
-          getFrameGraph().acquireNode(drawEntitiesNode, FrameGraph::RECORD_STAGE, frameId);
-        nodeHandle) {
-        if (!entitiesToDraw.empty()) {
-            struct RecordData
-            {
-                Engine* engine;
-                static void record(const RecordData& data, drv::DrvCmdBufferRecorder* recorder) {
-                    for (const auto& entity : data.engine->entitiesToDraw) {
-                        data.engine->entityManager.prepareTexture(entity.textureId, recorder);
-                    }
-                }
-                bool operator==(const RecordData& other) { return engine == other.engine; }
-                bool operator!=(const RecordData& other) { return !(*this == other); }
-            } recordData{this};
-            std::sort(entitiesToDraw.begin(), entitiesToDraw.end(),
-                      [](const EntityRenderData& lhs, const EntityRenderData& rhs) {
-                          return lhs.z < rhs.z;
-                      });
-            {
-                OneTimeCmdBuffer<RecordData> cmdBuffer(
-                  CMD_BUFFER_ID(), "draw_entities", getSemaphorePool(), getPhysicalDevice(),
-                  getDevice(), queueInfos.renderQueue.handle, getCommandBufferBank(),
-                  getGarbageSystem(), RecordData::record,
-                  getFrameGraph().get_semaphore_value(frameId));
-                ExecutionPackage::CommandBufferPackage submission = make_submission_package(
-                  queueInfos.renderQueue.handle, frameId, cmdBuffer.use(std::move(recordData)),
-                  getGarbageSystem(), ResourceStateValidationMode::NEVER_VALIDATE);
-                nodeHandle.submit(queueInfos.renderQueue.id, std::move(submission));
-            }
-
-            entitiesToDraw.clear();
-        }
+void Engine::drawEntities(drv::DrvCmdBufferRecorder* recorder) {
+    for (const auto& entity : entitiesToDraw) {
     }
+}
+
+Engine::AcquiredImageData Engine::mainRecord(FrameId frameId) {
+    TemporalResourceLockerDescriptor resourceDesc;
+    lockResources(resourceDesc, frameId);
+    if (FrameGraph::NodeHandle nodeHandle = getFrameGraph().acquireNode(
+          mainRecordNode, FrameGraph::RECORD_STAGE, frameId, resourceDesc);
+        nodeHandle) {
+        struct RecordData
+        {
+            Engine* engine;
+            AcquiredImageData* swapChainData;
+            FrameId frameId;
+            static void record(const RecordData& data, drv::DrvCmdBufferRecorder* recorder) {
+                for (const auto& entity : data.engine->entitiesToDraw)
+                    data.engine->entityManager.prepareTexture(entity.textureId, recorder);
+                data.engine->record(*data.swapChainData, recorder, data.frameId);
+            }
+            bool operator==(const RecordData& other) {
+                return engine == other.engine && swapChainData == other.swapChainData;
+            }
+            bool operator!=(const RecordData& other) { return !(*this == other); }
+        };
+        std::sort(
+          entitiesToDraw.begin(), entitiesToDraw.end(),
+          [](const EntityRenderData& lhs, const EntityRenderData& rhs) { return lhs.z < rhs.z; });
+        AcquiredImageData swapChainData = acquiredSwapchainImage(nodeHandle);
+        if (!swapChainData)
+            return swapChainData;
+        RecordData recordData{this, &swapChainData, frameId};
+        {
+            OneTimeCmdBuffer<RecordData> cmdBuffer(
+              CMD_BUFFER_ID(), "main_draw", getSemaphorePool(), getPhysicalDevice(), getDevice(),
+              queueInfos.renderQueue.handle, getCommandBufferBank(), getGarbageSystem(),
+              RecordData::record, getFrameGraph().get_semaphore_value(frameId));
+            ExecutionPackage::CommandBufferPackage submission = make_submission_package(
+              queueInfos.renderQueue.handle, frameId, cmdBuffer.use(std::move(recordData)),
+              getGarbageSystem(), ResourceStateValidationMode::NEVER_VALIDATE);
+            submission.waitSemaphores.push_back(
+              {swapChainData.imageAvailableSemaphore,
+               drv::IMAGE_USAGE_COLOR_OUTPUT_WRITE | drv::IMAGE_USAGE_TRANSFER_DESTINATION});
+            submission.signalSemaphores.push_back(swapChainData.renderFinishedSemaphore);
+            nodeHandle.submit(queueInfos.renderQueue.id, std::move(submission));
+        }
+
+        entitiesToDraw.clear();
+        return swapChainData;
+    }
+    return {};
 }

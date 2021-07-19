@@ -59,15 +59,18 @@ Game::Game(int argc, char* argv[], const EngineConfig& config,
     swapchainSubpass = testRenderPass->createSubpass(std::move(subpassInfo2));
     testRenderPass->build();
 
-    testDraw = getFrameGraph().addNode(
-      FrameGraph::Node("testDraw", FrameGraph::BEFORE_DRAW_STAGE | FrameGraph::RECORD_STAGE
-                                     | FrameGraph::EXECUTION_STAGE | FrameGraph::READBACK_STAGE));
+    transferNode = getFrameGraph().addNode(
+      FrameGraph::Node("transfer", FrameGraph::BEFORE_DRAW_STAGE | FrameGraph::READBACK_STAGE));
+
+    getFrameGraph().addDependency(getMainRecordNode(), FrameGraph::CpuDependency{transferNode, FrameGraph::BEFORE_DRAW_STAGE, FrameGraph::RECORD_STAGE, 0});
+    getFrameGraph().addDependency(transferNode, FrameGraph::GpuCpuDependency{getMainRecordNode(), FrameGraph::READBACK_STAGE, 0});
+
 
     initPhysicsEntitySystem();
     initRenderEntitySystem();
 
     // TODO present node could be inside of record end node???
-    buildFrameGraph(testDraw, getQueues().renderQueue.id);
+    buildFrameGraph();
 }
 
 Game::~Game() {
@@ -86,85 +89,86 @@ static ShaderObject::DynamicState get_dynamic_states(drv::Extent2D extent) {
     return ret;
 }
 
-void Game::record_cmd_buffer_clear(const RecordData& data, drv::DrvCmdBufferRecorder* recorder) {
-    recorder->cmdImageBarrier({data.targetImage, drv::IMAGE_USAGE_TRANSFER_DESTINATION,
-                               drv::ImageMemoryBarrier::AUTO_TRANSITION, true,
-                               drv::get_queue_family(data.device, data.renderQueue)});
+void Game::recordCmdBufferClear(const AcquiredImageData& swapchainData,
+                                drv::DrvCmdBufferRecorder* recorder, FrameId frameId) {
+    recorder->cmdImageBarrier({swapchainData.image, drv::IMAGE_USAGE_TRANSFER_DESTINATION,
+                               drv::ImageMemoryBarrier::AUTO_TRANSITION, true});
     drv::ClearColorValue clearValue(1.f, 1.f, 0.f, 1.f);
-    if (data.variant == 0) {
+    if ((frameId / 100) % 2 == 0) {
         clearValue = drv::ClearColorValue(1.f, 1.f, 0.f, 1.f);
-        data.shaderTestDesc->setVariant_Color(shader_test_descriptor::Color::BLUE);
+        shaderTestDesc.setVariant_Color(shader_test_descriptor::Color::BLUE);
     }
     else {
         clearValue = drv::ClearColorValue(0.f, 1.f, 1.f, 1.f);
-        data.shaderTestDesc->setVariant_Color(shader_test_descriptor::Color::RED);
+        shaderTestDesc.setVariant_Color(shader_test_descriptor::Color::RED);
     }
 
-    recorder->cmdClearImage(data.targetImage, &clearValue);
+    recorder->cmdClearImage(swapchainData.image, &clearValue);
 
-    recorder->cmdImageBarrier({data.targetImage, drv::IMAGE_USAGE_COLOR_OUTPUT_WRITE,
-                               drv::ImageLayout::COLOR_ATTACHMENT_OPTIMAL, false,
-                               drv::get_queue_family(data.device, data.renderQueue)});
-    recorder->cmdImageBarrier({data.renderTarget, drv::IMAGE_USAGE_COLOR_OUTPUT_WRITE,
-                               drv::ImageLayout::COLOR_ATTACHMENT_OPTIMAL, false,
-                               drv::get_queue_family(data.device, data.renderQueue)});
+    recorder->cmdImageBarrier({swapchainData.image, drv::IMAGE_USAGE_COLOR_OUTPUT_WRITE,
+                               drv::ImageLayout::COLOR_ATTACHMENT_OPTIMAL, false});
+    recorder->cmdImageBarrier({renderTarget.get().getImage(), drv::IMAGE_USAGE_COLOR_OUTPUT_WRITE,
+                               drv::ImageLayout::COLOR_ATTACHMENT_OPTIMAL, false});
 }
 
-void Game::record_cmd_buffer_render(const RecordData& data, drv::DrvCmdBufferRecorder* recorder) {
-    recorder->cmdImageBarrier({data.transferImage, drv::IMAGE_USAGE_TRANSFER_DESTINATION,
+void Game::recordCmdBufferRender(const AcquiredImageData& swapchainData,
+                                 drv::DrvCmdBufferRecorder* recorder, FrameId frameId) {
+    recorder->cmdImageBarrier({transferTexture.get().getImage(0),
+                               drv::IMAGE_USAGE_TRANSFER_DESTINATION,
                                drv::ImageMemoryBarrier::AUTO_TRANSITION});
 
-    // data.testImageStager->transferFromStager(recorder, data.stagerId);
+    // testImageStager->transferFromStager(recorder, stagerId);
 
     drv::ClearValue clearValues[2];
-    clearValues[data.swapchainColorAttachment].type = drv::ClearValue::COLOR;
-    clearValues[data.colorTagretColorAttachment].type = drv::ClearValue::COLOR;
-    clearValues[data.swapchainColorAttachment].value.color =
-      drv::ClearColorValue(0.2f, 0.2f, 0.2f, 1.f);
-    if (data.variant == 0)
-        clearValues[data.colorTagretColorAttachment].value.color =
+    clearValues[swapchainColorAttachment].type = drv::ClearValue::COLOR;
+    clearValues[colorTagretColorAttachment].type = drv::ClearValue::COLOR;
+    clearValues[swapchainColorAttachment].value.color = drv::ClearColorValue(0.2f, 0.2f, 0.2f, 1.f);
+    if ((frameId / 100) % 2 == 0)
+        clearValues[colorTagretColorAttachment].value.color =
           drv::ClearColorValue(0.1f, 0.8f, 0.1f, 1.f);
     else
-        clearValues[data.colorTagretColorAttachment].value.color =
+        clearValues[colorTagretColorAttachment].value.color =
           drv::ClearColorValue(0.8f, 0.1f, 0.1f, 1.f);
-    // clearValues[data.testColorAttachment].value.color = drv::ClearColorValue(255, 255, 255, 255);
+    // clearValues[testColorAttachment].value.color = drv::ClearColorValue(255, 255, 255, 255);
     drv::Rect2D renderArea;
-    renderArea.extent = data.extent;
+    renderArea.extent = swapchainData.extent;
     renderArea.offset = {0, 0};
-    EngineRenderPass testPass(data.renderPass, recorder, renderArea, data.frameBuffer, clearValues);
+    EngineRenderPass testPass(testRenderPass.get(), recorder, renderArea,
+                              swapchainFrameBuffers[swapchainData.imageIndex].get(), clearValues);
 
-    testPass.beginSubpass(data.colorSubpass);
+    testPass.beginSubpass(colorSubpass);
     drv::ClearRect clearRect;
     clearRect.rect.offset = {100, 100};
-    clearRect.rect.extent = {data.extent.width - 200, data.extent.height - 200};
+    clearRect.rect.extent = {swapchainData.extent.width - 200, swapchainData.extent.height - 200};
     clearRect.baseLayer = 0;
     clearRect.layerCount = 1;
-    testPass.clearColorAttachment(data.colorTagretColorAttachment,
+    testPass.clearColorAttachment(colorTagretColorAttachment,
                                   drv::ClearColorValue(0.f, 0.7f, 0.7f, 1.f), 1, &clearRect);
-    testPass.bindGraphicsShader(get_dynamic_states(data.extent), {}, *data.testShader,
-                                data.shaderGlobalDesc, data.shaderTestDesc);
+    testPass.bindGraphicsShader(get_dynamic_states(swapchainData.extent), {}, testShader,
+                                &shaderGlobalDesc, &shaderTestDesc);
     // testShader.bindGraphicsInfo(ShaderObject::NORMAL_USAGE, testPass,
-    //                             get_dynamic_states(swapChainData.extent), &shaderGlobalDesc,
-    //                             &data.shaderTestDesc);
+    //                             get_dynamic_states(swapChainextent), &shaderGlobalDesc,
+    //                             &shaderTestDesc);
     testPass.draw(3, 1, 0, 0);
 
-    testPass.beginSubpass(data.swapchainSubpass);
-    testPass.bindGraphicsShader(get_dynamic_states(data.extent), {}, *data.inputShader,
-                                data.shaderGlobalDesc, data.shaderInputAttachmentDesc);
+    testPass.beginSubpass(swapchainSubpass);
+    testPass.bindGraphicsShader(get_dynamic_states(swapchainData.extent), {}, inputAttachmentShader,
+                                &shaderGlobalDesc, &shaderInputAttachmentDesc);
     // testShader.bindGraphicsInfo(ShaderObject::NORMAL_USAGE, testPass,
-    //                             get_dynamic_states(swapChainData.extent), &shaderGlobalDesc,
-    //                             &data.shaderTestDesc);
+    //                             get_dynamic_states(swapChainextent), &shaderGlobalDesc,
+    //                             &shaderTestDesc);
     testPass.draw(3, 1, 0, 0);
 
     testPass.end();
 
-    drv::TextureInfo texInfo = drv::get_texture_info(data.transferImage);
-    if (data.extent.height >= 100 + texInfo.extent.height
-        && data.extent.width >= 100 + texInfo.extent.width) {
-        recorder->cmdImageBarrier({data.transferImage, drv::IMAGE_USAGE_TRANSFER_SOURCE,
+    drv::TextureInfo texInfo = drv::get_texture_info(transferTexture.get().getImage(0));
+    if (swapchainData.extent.height >= 100 + texInfo.extent.height
+        && swapchainData.extent.width >= 100 + texInfo.extent.width) {
+        recorder->cmdImageBarrier({transferTexture.get().getImage(0),
+                                   drv::IMAGE_USAGE_TRANSFER_SOURCE,
                                    drv::ImageMemoryBarrier::AUTO_TRANSITION});
 
-        recorder->cmdImageBarrier({data.targetImage, drv::IMAGE_USAGE_TRANSFER_DESTINATION,
+        recorder->cmdImageBarrier({swapchainData.image, drv::IMAGE_USAGE_TRANSFER_DESTINATION,
                                    drv::ImageMemoryBarrier::AUTO_TRANSITION});
 
         drv::ImageBlit region;
@@ -182,177 +186,108 @@ void Game::record_cmd_buffer_render(const RecordData& data, drv::DrvCmdBufferRec
         region.dstOffsets[0] = drv::Offset3D{100, 0, 0};
         region.dstOffsets[1] =
           drv::Offset3D{int(texInfo.extent.width) + 100, int(texInfo.extent.height), 1};
-        recorder->cmdBlitImage(data.transferImage, data.targetImage, 1, &region,
+        recorder->cmdBlitImage(transferTexture.get().getImage(0), swapchainData.image, 1, &region,
                                drv::ImageFilter::NEAREST);
     }
 
-    // recorder->cmdImageBarrier({data.targetImage, drv::IMAGE_USAGE_TRANSFER_DESTINATION,
+    // recorder->cmdImageBarrier({swapchainData.image, drv::IMAGE_USAGE_TRANSFER_DESTINATION,
     //                            drv::ImageMemoryBarrier::AUTO_TRANSITION, true,
-    //                            drv::get_queue_family(data.device, data.renderQueue)});
+    //                            drv::get_queue_family(device, renderQueue)});
     // drv::ClearColorValue clearValue(1.f, 1.f, 0.f, 1.f);
-    // recorder->cmdClearImage(data.targetImage, &clearValue);
+    // recorder->cmdClearImage(swapchainData.image, &clearValue);
 }
 
-void Game::record_cmd_buffer_blit(const RecordData& data, drv::DrvCmdBufferRecorder* recorder) {
-    if (data.doBlit) {
-        recorder->cmdImageBarrier({data.renderTarget, drv::IMAGE_USAGE_TRANSFER_SOURCE,
-                                   drv::ImageMemoryBarrier::AUTO_TRANSITION});
+void Game::recordCmdBufferBlit(const AcquiredImageData& swapchainData,
+                               drv::DrvCmdBufferRecorder* recorder, FrameId) {
+    recorder->cmdImageBarrier({renderTarget.get().getImage(), drv::IMAGE_USAGE_TRANSFER_SOURCE,
+                               drv::ImageMemoryBarrier::AUTO_TRANSITION});
 
-        recorder->cmdImageBarrier({data.targetImage, drv::IMAGE_USAGE_TRANSFER_DESTINATION,
-                                   drv::ImageMemoryBarrier::AUTO_TRANSITION});
+    recorder->cmdImageBarrier({swapchainData.image, drv::IMAGE_USAGE_TRANSFER_DESTINATION,
+                               drv::ImageMemoryBarrier::AUTO_TRANSITION});
 
-        recorder->cmdImageBarrier({data.transferImage, drv::IMAGE_USAGE_TRANSFER_DESTINATION,
-                                   drv::ImageMemoryBarrier::AUTO_TRANSITION});
+    recorder->cmdImageBarrier({transferTexture.get().getImage(0),
+                               drv::IMAGE_USAGE_TRANSFER_DESTINATION,
+                               drv::ImageMemoryBarrier::AUTO_TRANSITION});
 
-        drv::ImageBlit region;
-        region.srcSubresource.aspectMask = drv::COLOR_BIT;
-        region.srcSubresource.baseArrayLayer = 0;
-        region.srcSubresource.layerCount = 1;
-        region.srcSubresource.mipLevel = 0;
-        region.dstSubresource.aspectMask = drv::COLOR_BIT;
-        region.dstSubresource.baseArrayLayer = 0;
-        region.dstSubresource.layerCount = 1;
-        region.dstSubresource.mipLevel = 0;
-        region.srcOffsets[0] = drv::Offset3D{0, 0, 0};
-        region.srcOffsets[1] = drv::Offset3D{int(data.extent.width), int(data.extent.height), 1};
-        region.dstOffsets[0] = drv::Offset3D{0, 0, 0};
-        region.dstOffsets[1] = drv::Offset3D{int(data.extent.width), int(data.extent.height), 1};
-        if (region.dstOffsets[1].x > 100)
-            region.dstOffsets[1].x = 100;
-        if (region.dstOffsets[1].y > 100)
-            region.dstOffsets[1].y = 100;
-        recorder->cmdBlitImage(data.renderTarget, data.targetImage, 1, &region,
-                               drv::ImageFilter::NEAREST);
+    drv::ImageBlit region;
+    region.srcSubresource.aspectMask = drv::COLOR_BIT;
+    region.srcSubresource.baseArrayLayer = 0;
+    region.srcSubresource.layerCount = 1;
+    region.srcSubresource.mipLevel = 0;
+    region.dstSubresource.aspectMask = drv::COLOR_BIT;
+    region.dstSubresource.baseArrayLayer = 0;
+    region.dstSubresource.layerCount = 1;
+    region.dstSubresource.mipLevel = 0;
+    region.srcOffsets[0] = drv::Offset3D{0, 0, 0};
+    region.srcOffsets[1] =
+      drv::Offset3D{int(swapchainData.extent.width), int(swapchainData.extent.height), 1};
+    region.dstOffsets[0] = drv::Offset3D{0, 0, 0};
+    region.dstOffsets[1] =
+      drv::Offset3D{int(swapchainData.extent.width), int(swapchainData.extent.height), 1};
+    if (region.dstOffsets[1].x > 100)
+        region.dstOffsets[1].x = 100;
+    if (region.dstOffsets[1].y > 100)
+        region.dstOffsets[1].y = 100;
+    recorder->cmdBlitImage(renderTarget.get().getImage(), swapchainData.image, 1, &region,
+                           drv::ImageFilter::NEAREST);
 
-        drv::TextureInfo texInfo = drv::get_texture_info(data.transferImage);
-        region.dstOffsets[0] = drv::Offset3D{0, 0, 0};
-        region.dstOffsets[1] =
-          drv::Offset3D{int(texInfo.extent.width), int(texInfo.extent.height), 1};
-        recorder->cmdBlitImage(data.renderTarget, data.transferImage, 1, &region,
-                               drv::ImageFilter::LINEAR);
+    drv::TextureInfo texInfo = drv::get_texture_info(transferTexture.get().getImage(0));
+    region.dstOffsets[0] = drv::Offset3D{0, 0, 0};
+    region.dstOffsets[1] = drv::Offset3D{int(texInfo.extent.width), int(texInfo.extent.height), 1};
+    recorder->cmdBlitImage(renderTarget.get().getImage(), transferTexture.get().getImage(0), 1,
+                           &region, drv::ImageFilter::LINEAR);
 
-        // recorder->cmdImageBarrier({data.transferImage, drv::IMAGE_USAGE_TRANSFER_SOURCE,
-        //                            drv::ImageMemoryBarrier::AUTO_TRANSITION});
-        // data.testImageStager->transferToStager(recorder, data.stagerId);
-    }
+    // recorder->cmdImageBarrier({transferTexture.get().getImage(0), drv::IMAGE_USAGE_TRANSFER_SOURCE,
+    //                            drv::ImageMemoryBarrier::AUTO_TRANSITION});
+    // testImageStager->transferToStager(recorder, stagerId);
 
     // recorder->cmdImageBarrier(
-    //   {data.targetImage, drv::IMAGE_USAGE_PRESENT, drv::ImageMemoryBarrier::AUTO_TRANSITION});
+    //   {swapchainData.image, drv::IMAGE_USAGE_PRESENT, drv::ImageMemoryBarrier::AUTO_TRANSITION});
 
     // drv::ClearColorValue clearValue(1.f, 1.f, 0.f, 1.f);
-    // recorder->cmdClearImage(swapChainData.image, &clearValue);
+    // recorder->cmdClearImage(swapChainimage, &clearValue);
     // /// --- clear ---
-
-    recorder->cmdImageBarrier({data.targetImage, drv::IMAGE_USAGE_PRESENT,
-                               drv::ImageMemoryBarrier::AUTO_TRANSITION, false,
-                               drv::get_queue_family(data.device, data.presentQueue)});
     // TODO according to vulkan spec https://khronos.org/registry/vulkan/specs/1.2-extensions/man/html/vkQueuePresentKHR.html
     // memory is made visible to all read operations (add this to tracker?) -- only available memory
 }
 
-Engine::AcquiredImageData Game::record(FrameId frameId) {
-    // std::cout << "Record: " << frameId << std::endl;
-    Engine::QueueInfo queues = getQueues();
-    TemporalResourceLockerDescriptor resourceDesc;
+void Game::lockResources(TemporalResourceLockerDescriptor& resourceDesc, FrameId frameId) {
     ImageStager::StagerId stagerId = testImageStager.getStagerId(frameId);
     testImageStager.lockResource(resourceDesc, ImageStager::UPLOAD, stagerId);
-    if (FrameGraph::NodeHandle testDrawHandle =
-          getFrameGraph().acquireNode(testDraw, FrameGraph::RECORD_STAGE, frameId, resourceDesc);
-        testDrawHandle) {
-        std::this_thread::sleep_for(std::chrono::milliseconds(4));
-        Engine::AcquiredImageData swapChainData = acquiredSwapchainImage(testDrawHandle);
-        if (!swapChainData)
-            return swapChainData;
-        // LOG_F(INFO, "Frame %lld  Swapchain image: %d Image: %p", frameId, swapChainData.imageIndex,
-        //       static_cast<const void*>(swapChainData.image));
+}
 
-        // drv::RenderPass::AttachmentData testImageInfo[1];
-        // testImageInfo[testColorAttachment].image = swapChainData.image;
-        // testImageInfo[testColorAttachment].view = imageViews[swapChainData.imageIndex].get();
-        // if (testRenderPass->needRecreation(testImageInfo)) {
-        //     for (auto& framebuffer : frameBuffers)
-        //         framebuffer = {};
-        //     testRenderPass->recreate(testImageInfo);
-        //     initShader(swapChainData.extent);
-        // }
-        // if (!frameBuffers[swapChainData.imageIndex]
-        //     || !frameBuffers[swapChainData.imageIndex].get())
-        //     frameBuffers[swapChainData.imageIndex] = createResource<drv::Framebuffer>(
-        //       getDevice(), testRenderPass->createFramebuffer(testImageInfo));
-        testRenderPass->attach(attachments[swapChainData.imageIndex].data());
+void Game::record(const AcquiredImageData& swapchainData, drv::DrvCmdBufferRecorder* recorder,
+                  FrameId frameId) {
+    ImageStager::StagerId stagerId = testImageStager.getStagerId(frameId);
+    // std::cout << "Record: " << frameId << std::endl;
+    // LOG_F(INFO, "Frame %lld  Swapchain image: %d Image: %p", frameId, swapchainData.imageIndex,
+    //       static_cast<const void*>(swapchainData.image));
 
-        RecordData recordData;
-        recordData.device = getDevice();
-        recordData.targetImage = swapChainData.image;
-        recordData.targetView = imageViews[swapChainData.imageIndex].get();
-        recordData.renderTarget = renderTarget.get().getImage();
-        recordData.renderTargetView = renderTargetView.get();
-        recordData.colorTagretColorAttachment = colorTagretColorAttachment;
-        recordData.swapchainColorAttachment = swapchainColorAttachment;
-        recordData.variant = (frameId / 100) % 2;
-        recordData.extent = swapChainData.extent;
-        recordData.renderQueue = queues.renderQueue.handle;
-        recordData.presentQueue = queues.presentQueue.handle;
-        recordData.renderPass = testRenderPass.get();
-        recordData.testShader = &testShader;
-        recordData.shaderTestDesc = &shaderTestDesc;
-        recordData.inputShader = &inputAttachmentShader;
-        recordData.shaderInputAttachmentDesc = &shaderInputAttachmentDesc;
-        recordData.frameBuffer = swapchainFrameBuffers[swapChainData.imageIndex].get();
-        recordData.colorSubpass = colorSubpass;
-        recordData.swapchainSubpass = swapchainSubpass;
-        recordData.shaderGlobalDesc = &shaderGlobalDesc;
-        recordData.doBlit = (frameId % 200) > 0;
-        recordData.stagerId = testImageStager.getStagerId(frameId);
-        recordData.transferImage = transferTexture.get().getImage(0);
-        recordData.testImageStager = &testImageStager;
+    // drv::RenderPass::AttachmentData testImageInfo[1];
+    // testImageInfo[testColorAttachment].image = swapchainData.image;
+    // testImageInfo[testColorAttachment].view = imageViews[swapchainData.imageIndex].get();
+    // if (testRenderPass->needRecreation(testImageInfo)) {
+    //     for (auto& framebuffer : frameBuffers)
+    //         framebuffer = {};
+    //     testRenderPass->recreate(testImageInfo);
+    //     initShader(swapchainData.extent);
+    // }
+    // if (!frameBuffers[swapchainData.imageIndex]
+    //     || !frameBuffers[swapchainData.imageIndex].get())
+    //     frameBuffers[swapchainData.imageIndex] = createResource<drv::Framebuffer>(
+    //       getDevice(), testRenderPass->createFramebuffer(testImageInfo));
+    testRenderPass->attach(attachments[swapchainData.imageIndex].data());
 
-        // Just for testing with one-time-submit command buffers
-        ResourceStateValidationMode validation = frameId < swapChainData.imageCount
-                                                   ? ResourceStateValidationMode::NEVER_VALIDATE
-                                                   : ResourceStateValidationMode::ALWAYS_VALIDATE;
-
-        {
-            OneTimeCmdBuffer<RecordData> cmdBuffer(
-              CMD_BUFFER_ID(), "testcmdbuffer_clear", getSemaphorePool(), getPhysicalDevice(),
-              getDevice(), queues.renderQueue.handle, getCommandBufferBank(), getGarbageSystem(),
-              record_cmd_buffer_clear, getFrameGraph().get_semaphore_value(frameId));
-            ExecutionPackage::CommandBufferPackage submission = make_submission_package(
-              queues.renderQueue.handle, frameId, cmdBuffer.use(std::move(recordData)),
-              getGarbageSystem(), validation);
-            submission.waitSemaphores.push_back(
-              {swapChainData.imageAvailableSemaphore,
-               drv::IMAGE_USAGE_COLOR_OUTPUT_WRITE | drv::IMAGE_USAGE_TRANSFER_DESTINATION});
-            testDrawHandle.submit(queues.renderQueue.id, std::move(submission));
-        }
-        transferFromStager(CMD_BUFFER_ID(), testImageStager, queues.renderQueue.id, frameId, testDrawHandle,
-                           stagerId);
-        // transferFromStager(testImageStager, queues.HtoDQueue.id, frameId, testDrawHandle, stagerId);
-        {
-            OneTimeCmdBuffer<RecordData> cmdBuffer(
-              CMD_BUFFER_ID(), "testcmdbuffer_render", getSemaphorePool(), getPhysicalDevice(),
-              getDevice(), queues.renderQueue.handle, getCommandBufferBank(), getGarbageSystem(),
-              record_cmd_buffer_render, getFrameGraph().get_semaphore_value(frameId));
-            ExecutionPackage::CommandBufferPackage submission = make_submission_package(
-              queues.renderQueue.handle, frameId, cmdBuffer.use(std::move(recordData)),
-              getGarbageSystem(), validation);
-            testDrawHandle.submit(queues.renderQueue.id, std::move(submission));
-        }
-        {
-            OneTimeCmdBuffer<RecordData> cmdBuffer(
-              CMD_BUFFER_ID(), "testcmdbuffer_blit", getSemaphorePool(), getPhysicalDevice(),
-              getDevice(), queues.renderQueue.handle, getCommandBufferBank(), getGarbageSystem(),
-              record_cmd_buffer_blit, getFrameGraph().get_semaphore_value(frameId));
-            ExecutionPackage::CommandBufferPackage submission = make_submission_package(
-              queues.renderQueue.handle, frameId, cmdBuffer.use(std::move(recordData)),
-              getGarbageSystem(), validation);
-            submission.signalSemaphores.push_back(swapChainData.renderFinishedSemaphore);
-            testDrawHandle.submit(queues.renderQueue.id, std::move(submission));
-        }
-        transferToStager(CMD_BUFFER_ID(), testImageStager, queues.renderQueue.id, frameId, testDrawHandle, stagerId);
-        return swapChainData;
-    }
-    return {};
+    recordCmdBufferClear(swapchainData, recorder, frameId);
+    testImageStager.transferFromStager(recorder, stagerId);
+    recordCmdBufferRender(swapchainData, recorder, frameId);
+    recordCmdBufferBlit(swapchainData, recorder, frameId);
+    drawEntities(recorder);
+    recorder->cmdImageBarrier({transferTexture.get().getImage(0), drv::IMAGE_USAGE_TRANSFER_SOURCE,
+                               drv::ImageMemoryBarrier::AUTO_TRANSITION});
+    testImageStager.transferToStager(recorder, stagerId);
+    recorder->cmdImageBarrier({swapchainData.image, drv::IMAGE_USAGE_PRESENT,
+                               drv::ImageMemoryBarrier::AUTO_TRANSITION, false});
 }
 
 void Game::simulate(FrameId frameId) {
@@ -366,7 +301,7 @@ void Game::beforeDraw(FrameId frameId) {
     ImageStager::StagerId stagerId = testImageStager.getStagerId(frameId);
     testImageStager.lockResource(resourceDesc, ImageStager::UPLOAD, stagerId);
     if (FrameGraph::NodeHandle testDrawHandle = getFrameGraph().acquireNode(
-          testDraw, FrameGraph::BEFORE_DRAW_STAGE, frameId, resourceDesc);
+          transferNode, FrameGraph::BEFORE_DRAW_STAGE, frameId, resourceDesc);
         testDrawHandle) {
         drv::DeviceSize size;
         drv::DeviceSize rowPitch;
@@ -411,8 +346,8 @@ void Game::readback(FrameId frameId) {
     TemporalResourceLockerDescriptor resourceDesc;
     ImageStager::StagerId stagerId = testImageStager.getStagerId(frameId);
     testImageStager.lockResource(resourceDesc, ImageStager::DOWNLOAD, stagerId);
-    if (FrameGraph::NodeHandle testDrawHandle =
-          getFrameGraph().acquireNode(testDraw, FrameGraph::READBACK_STAGE, frameId, resourceDesc);
+    if (FrameGraph::NodeHandle testDrawHandle = getFrameGraph().acquireNode(
+          transferNode, FrameGraph::READBACK_STAGE, frameId, resourceDesc);
         testDrawHandle) {
         drv::DeviceSize size;
         drv::DeviceSize rowPitch;

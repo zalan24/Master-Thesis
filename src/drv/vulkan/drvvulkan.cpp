@@ -129,9 +129,10 @@ bool VulkanCmdBufferRecorder::merge(BarrierInfo& barrier0, BarrierInfo& barrier)
     while (i < barrier0.numImageRanges && j < barrier.numImageRanges) {
         if (barrier0.imageBarriers[i].image < barrier.imageBarriers[j].image)
             i++;
-        else if (barrier0.imageBarriers[j].image < barrier.imageBarriers[i].image)
+        else if (barrier.imageBarriers[j].image < barrier0.imageBarriers[i].image)
             j++;
         else {  // equals
+            drv::drv_assert(barrier0.imageBarriers[j].image == barrier.imageBarriers[i].image);
             commonImages++;
             // image dependent data
             if (barrier0.imageBarriers[i].srcFamily != barrier.imageBarriers[j].srcFamily)

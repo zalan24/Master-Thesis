@@ -315,7 +315,7 @@ bool FrameGraph::startStage(Stage stage, FrameId frame) {
 }
 
 bool FrameGraph::endStage(Stage stage, FrameId frame) {
-    return tryApplyTag(stageEndNodes[get_stage_id(stage)], stage, frame);
+    return applyTag(stageEndNodes[get_stage_id(stage)], stage, frame);
 }
 
 bool FrameGraph::tryDoFrame(FrameId frameId) {
@@ -676,21 +676,22 @@ void FrameGraph::checkResources(NodeId dstNode, Stage, FrameId frameId,
             FrameId srcFrame = usage.frameId;
             if (!usage.isWrite && !write)
                 continue;
-#if ENABLE_NODE_RESOURCE_VALIDATION
-            bool ok = srcNode == dstNode;
-            for (uint32_t k = 0; k < node->gpuCpuDeps.size() && !ok; ++k) {
-                if (node->gpuCpuDeps[k].offset > frameId)
-                    continue;
-                FrameId depFrame = frameId - node->gpuCpuDeps[k].offset;
-                if (srcFrame <= depFrame)
-                    ok = hasEnqueueDependency(srcNode, node->gpuCpuDeps[k].srcNode,
-                                              static_cast<uint32_t>(depFrame - srcFrame));
-            }
-            drv::drv_assert(ok, ("Node (" + node->getName() + ") tries to wait on a resource ("
-                                 + drv::get_texture_info(image).imageId->name
-                                 + ") has been written by an unsynced submission")
-                                  .c_str());
-#endif
+            // TODO this does not work
+            // #if ENABLE_NODE_RESOURCE_VALIDATION
+            //             bool ok = srcNode == dstNode;
+            //             for (uint32_t k = 0; k < node->gpuCpuDeps.size() && !ok; ++k) {
+            //                 if (node->gpuCpuDeps[k].offset > frameId)
+            //                     continue;
+            //                 FrameId depFrame = frameId - node->gpuCpuDeps[k].offset;
+            //                 if (srcFrame <= depFrame)
+            //                     ok = hasEnqueueDependency(srcNode, node->gpuCpuDeps[k].srcNode,
+            //                                               static_cast<uint32_t>(depFrame - srcFrame));
+            //             }
+            //             drv::drv_assert(ok, ("Node (" + node->getName() + ") tries to wait on a resource ("
+            //                                  + drv::get_texture_info(image).imageId->name
+            //                                  + ") has been written by an unsynced submission")
+            //                                   .c_str());
+            // #endif
             const drv::PipelineStages::FlagType waitStages =
               write ? (usage.ongoingReads | usage.ongoingWrites) : usage.ongoingWrites;
             {
