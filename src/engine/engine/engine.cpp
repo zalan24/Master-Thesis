@@ -318,10 +318,15 @@ void Engine::esBeforeDraw(EntityManager* entityManager, Engine* engine, FrameGra
     if (entity->hidden)
         return;
     EntityRenderData data;
-    const Entity* camEntity = entityManager->getById(entityManager->getByName("camera"));
-    glm::vec2 camPos = camEntity->position;
-    glm::vec2 camSize = camEntity->scale;
-    camSize.y *= camEntity->extra.find("ratio")->second;
+    glm::vec2 camPos;
+    glm::vec2 camSize;
+    {
+        const Entity* camEntity = entityManager->getById(entityManager->getByName("camera"));
+        std::shared_lock<std::shared_mutex> camLock(camEntity->mutex);
+        camPos = camEntity->position;
+        camSize = camEntity->scale;
+        camSize.y *= camEntity->extra.find("ratio")->second;
+    }
     data.z = entity->zPos;
     data.textureId = entity->textureId;
     Entity::EntityId parentId = entity->parent;
@@ -355,6 +360,7 @@ void Engine::esLatencyFlash(EntityManager*, Engine* engine, FrameGraph::NodeHand
 void Engine::esCursor(EntityManager* entityManager, Engine* engine, FrameGraph::NodeHandle*,
                       FrameGraph::Stage, const EntityManager::EntitySystemParams&, Entity* entity) {
     const Entity* camEntity = entityManager->getById(entityManager->getByName("camera"));
+    std::shared_lock<std::shared_mutex> camLock(camEntity->mutex);
     entity->position = engine->mouseListener.getMousePos() * 2.f - 1.f;
     if (auto itr = camEntity->extra.find("ratio"); itr != camEntity->extra.end())
         entity->position.y *= itr->second;
