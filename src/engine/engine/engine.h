@@ -60,6 +60,30 @@ struct EngineConfig final : public IAutoSerializable<EngineConfig>
     )
 };
 
+class EngineMouseInputListener final : public InputListener
+{
+ public:
+ EngineMouseInputListener() : InputListener(false) {}
+    // EngineMouseInputListener(Renderer* _renderer) : InputListener(false), renderer(_renderer) {}
+    ~EngineMouseInputListener() override {}
+
+    CursorMode getCursorMode() override final { return DONT_CARE; }
+
+    bool isClicking() const { return clicking; }
+    glm::vec2 getMousePos() const { return {mX, mY}; }
+
+ protected:
+    // bool processKeyboard(const Input::KeyboardEvent&) override;
+    bool processMouseButton(const Input::MouseButtenEvent&) override;
+    bool processMouseMove(const Input::MouseMoveEvent&) override;
+    // bool processScroll(const Input::ScrollEvent&) override;
+
+ private:
+    bool clicking = false;
+    double mX;
+    double mY;
+};
+
 class Engine
 {
  public:
@@ -179,6 +203,7 @@ class Engine
 
     void initPhysicsEntitySystem();
     void initRenderEntitySystem();
+    void initCursorEntitySystem();
     void initBeforeDrawEntitySystem();
 
     void drawEntities(drv::DrvCmdBufferRecorder* recorder, drv::ImagePtr targetImage);
@@ -224,6 +249,7 @@ class Engine
     ShaderBin shaderBin;
     Input input;
     InputManager inputManager;
+    EngineMouseInputListener mouseListener;
     drv::DriverWrapper driver;
     drv::Window window;
     drv::Instance drvInstance;
@@ -256,6 +282,9 @@ class Engine
     QueueInfo queueInfos;
     EntityManager::EntitySystemInfo physicsEntitySystem;
     EntityManager::EntitySystemInfo renderEntitySystem;
+    EntityManager::EntitySystemInfo cursorEntitySystem;
+    EntityManager::EntitySystemInfo latencyFlashEntitySystem;
+    EntityManager::EntitySystemInfo cameraEntitySystem;
 
     uint32_t acquireImageSemaphoreId = 0;
     FrameId firstPresentableFrame = 0;
@@ -302,8 +331,17 @@ class Engine
 
     static void esPhysics(EntityManager* entityManager, Engine* engine,
                           FrameGraph::NodeHandle* nodeHandle, FrameGraph::Stage stage,
-                          FrameId frameId, Entity* entity);
+                          const EntityManager::EntitySystemParams& params, Entity* entity);
     static void esBeforeDraw(EntityManager* entityManager, Engine* engine,
                              FrameGraph::NodeHandle* nodeHandle, FrameGraph::Stage stage,
-                             FrameId frameId, Entity* entity);
+                             const EntityManager::EntitySystemParams& params, Entity* entity);
+    static void esCursor(EntityManager* entityManager, Engine* engine,
+                         FrameGraph::NodeHandle* nodeHandle, FrameGraph::Stage stage,
+                         const EntityManager::EntitySystemParams& params, Entity* entity);
+    static void esLatencyFlash(EntityManager* entityManager, Engine* engine,
+                               FrameGraph::NodeHandle* nodeHandle, FrameGraph::Stage stage,
+                               const EntityManager::EntitySystemParams& params, Entity* entity);
+    static void esCamera(EntityManager* entityManager, Engine* engine,
+                               FrameGraph::NodeHandle* nodeHandle, FrameGraph::Stage stage,
+                               const EntityManager::EntitySystemParams& params, Entity* entity);
 };

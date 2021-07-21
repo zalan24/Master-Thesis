@@ -209,12 +209,19 @@ Entity::EntityId EntityManager::addEntity(Entity&& entity) {
         drv::drv_assert(textureItr != textureId.end(), "Could not find a texture for an entity");
         entity.textureId = textureItr->second;
     }
-    for (Entity::EntityId i = 0; i < Entity::EntityId(entities.size()); ++i) {
-        Entity* itr = getById(i);
-        std::unique_lock<std::shared_mutex> entityLock(itr->mutex);
-        if (itr->gameBehaviour == 0 && itr->engineBehaviour == 0) {
-            *itr = std::move(entity);
-            return i;
+    if (entity.parentName != "") {
+        entity.parent = getByName(entity.parentName);
+        drv::drv_assert(entity.parent != Entity::INVALID_ENTITY, "Could not find parent entity");
+    }
+    {
+        std::shared_lock<std::shared_mutex> lock(entitiesMutex);
+        for (Entity::EntityId i = 0; i < Entity::EntityId(entities.size()); ++i) {
+            Entity* itr = getById(i);
+            std::unique_lock<std::shared_mutex> entityLock(itr->mutex);
+            if (itr->gameBehaviour == 0 && itr->engineBehaviour == 0) {
+                *itr = std::move(entity);
+                return i;
+            }
         }
     }
     std::unique_lock<std::shared_mutex> lock(entitiesMutex);
@@ -243,6 +250,8 @@ void EntityManager::node_loop(EntityManager* entityManager, Engine* engine, Fram
                               const EntitySystemInfo* info) {
     // std::unique_lock<std::mutex> nodeLock();
     FrameId frameId = 0;
+    Clock::time_point startTime = Clock::now();
+    Clock::time_point prevTime[FrameGraph::NUM_STAGES] = {startTime};
     while (true) {
         for (uint32_t stageId = 0; stageId < FrameGraph::NUM_STAGES; ++stageId) {
             FrameGraph::Stage stage = FrameGraph::get_stage(stageId);
@@ -251,9 +260,19 @@ void EntityManager::node_loop(EntityManager* entityManager, Engine* engine, Fram
             if (FrameGraph::NodeHandle nodeHandle =
                   frameGraph->acquireNode(info->nodeId, stage, frameId);
                 nodeHandle) {
+                EntitySystemParams params;
+                Clock::time_point currTime = Clock::now();
+                params.frameId = frameId;
+                params.uptime =
+                  float(std::chrono::duration_cast<Duration>(currTime - startTime).count());
+                params.dt =
+                  float(std::chrono::duration_cast<Duration>(currTime - prevTime[stageId]).count());
+                // Avoid huge jumps on freezes and debug breaks
+                if (params.dt > 0.5f)
+                    params.dt = 0.016f;
+                prevTime[stageId] = currTime;
                 entityManager->performES(*info, [&](Entity* entity) {
-                    info->entitySystemCb(entityManager, engine, &nodeHandle, stage, frameId,
-                                         entity);
+                    info->entitySystemCb(entityManager, engine, &nodeHandle, stage, params, entity);
                 });
             }
             else
@@ -311,4 +330,13 @@ void EntityManager::prepareTexture(uint32_t texId, drv::DrvCmdBufferRecorder* re
 
 drv::ImagePtr EntityManager::getTexture(uint32_t texId) const {
     return textureStager.getImage(texId);
+}
+
+Entity::EntityId EntityManager::getByName(const std::string& name) const {
+    std::shared_lock<std::shared_mutex> lock(entitiesMutex);
+    for (size_t id = 0; id < entities.size(); ++id)
+        if ((entities[id].gameBehaviour != 0 || entities[id].engineBehaviour != 0)
+            && entities[id].name == name)
+            return Entity::EntityId(id);
+    return Entity::INVALID_ENTITY;
 }

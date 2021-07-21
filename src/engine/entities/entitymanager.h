@@ -21,8 +21,15 @@ class Engine;
 class EntityManager final : public ISerializable
 {
  public:
+    struct EntitySystemParams
+    {
+        float uptime;
+        float dt;
+        FrameId frameId;
+    };
+
     using EntitySystemCb = void (*)(EntityManager*, Engine*, FrameGraph::NodeHandle*,
-                                    FrameGraph::Stage, FrameId, Entity*);
+                                    FrameGraph::Stage, const EntitySystemParams&, Entity*);
     struct EntityTemplate
     {
         uint64_t engineBehaviour = 0;

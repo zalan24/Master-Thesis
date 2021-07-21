@@ -1,8 +1,74 @@
 [
     {
         "mass": 1.0,
+        "name": "camera",
+        "parentName": "",
+        "position": [
+            0,
+            0.0
+        ],
+        "scale": [
+            10,
+            10
+        ],
+        "speed": [
+            0.0,
+            0.0
+        ],
+        "templateName": "camera",
+        "textureName": "",
+        "zPos": 0,
+        "hidden": false,
+        "extra": {}
+    },
+    {
+        "mass": 1.0,
+        "name": "cursor",
+        "parentName": "camera",
+        "position": [
+            0.0,
+            0.0
+        ],
+        "scale": [
+            0.02,
+            0.02
+        ],
+        "speed": [
+            0.0,
+            0.0
+        ],
+        "templateName": "cursor",
+        "textureName": "cursor.png",
+        "zPos": -1.0,
+        "hidden": false,
+        "extra": {}
+    },
+    {
+        "mass": 1.0,
+        "name": "latencyFlash",
+        "parentName": "camera",
+        "position": [
+            -0.9,
+            0.0
+        ],
+        "scale": [
+            0.1,
+            0.1
+        ],
+        "speed": [
+            0.0,
+            0.0
+        ],
+        "templateName": "latencyFlash",
+        "textureName": "white.png",
+        "zPos": -2.0,
+        "hidden": false,
+        "extra": {}
+    },
+    {
+        "mass": 1.0,
         "name": "colorTest",
-        "parent": -1,
+        "parentName": "",
         "position": [
             0.0,
             0.0
@@ -17,6 +83,8 @@
         ],
         "templateName": "static",
         "textureName": "test.png",
-        "zPos": 0.0
+        "zPos": 0.0,
+        "hidden": false,
+        "extra": {}
     }
 ]

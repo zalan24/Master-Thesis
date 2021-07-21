@@ -21,6 +21,22 @@
 #include "execution_queue.h"
 #include "imagestager.h"
 
+bool EngineMouseInputListener::processMouseButton(const Input::MouseButtenEvent& event) {
+    if (event.buttonId == 0) {
+        if (event.type == event.PRESS)
+            clicking = true;
+        else
+            clicking = false;
+    }
+    return false;
+}
+
+bool EngineMouseInputListener::processMouseMove(const Input::MouseMoveEvent& event) {
+    mX = event.relX;
+    mY = event.relY;
+    return false;
+}
+
 static void callback(const drv::CallbackData* data) {
     switch (data->type) {
         case drv::CallbackData::Type::VERBOSE:
@@ -225,17 +241,52 @@ Engine::Engine(int argc, char* argv[], const EngineConfig& cfg,
 
     frameGraph.addAllGpuCompleteDependency(presentFrameNode, FrameGraph::RECORD_STAGE,
                                            presentDepOffset);
+    inputManager.registerListener(&mouseListener, 100);
 }
 
 void Engine::buildFrameGraph() {
     frameGraph.addDependency(presentFrameNode, FrameGraph::EnqueueDependency{mainRecordNode, 0});
 
     drv::drv_assert(renderEntitySystem.flag != 0, "Render entity system was not registered ");
-    drv::drv_assert(physicsEntitySystem.flag != 0, "Render entity system was not registered ");
+    drv::drv_assert(physicsEntitySystem.flag != 0, "Physics entity system was not registered ");
+    drv::drv_assert(cursorEntitySystem.flag != 0, "Cursor entity system was not registered ");
+    drv::drv_assert(latencyFlashEntitySystem.flag != 0,
+                    "Latency flash entity system was not registered ");
+    drv::drv_assert(cameraEntitySystem.flag != 0, "Camera flash entity system was not registered ");
 
     entityManager.addEntityTemplate("static",
                                     {physicsEntitySystem.flag | renderEntitySystem.flag, 0});
+    entityManager.addEntityTemplate("cursor",
+                                    {cursorEntitySystem.flag | renderEntitySystem.flag, 0});
+    entityManager.addEntityTemplate("latencyFlash",
+                                    {latencyFlashEntitySystem.flag | renderEntitySystem.flag, 0});
+    entityManager.addEntityTemplate("camera",
+                                    {physicsEntitySystem.flag | cameraEntitySystem.flag, 0});
 
+    frameGraph.addDependency(
+      renderEntitySystem.nodeId,
+      FrameGraph::CpuDependency{latencyFlashEntitySystem.nodeId, FrameGraph::SIMULATION_STAGE,
+                                FrameGraph::BEFORE_DRAW_STAGE, 0});
+    frameGraph.addDependency(
+      renderEntitySystem.nodeId,
+      FrameGraph::CpuDependency{cursorEntitySystem.nodeId, FrameGraph::SIMULATION_STAGE,
+                                FrameGraph::BEFORE_DRAW_STAGE, 0});
+    frameGraph.addDependency(
+      renderEntitySystem.nodeId,
+      FrameGraph::CpuDependency{cameraEntitySystem.nodeId, FrameGraph::SIMULATION_STAGE,
+                                FrameGraph::BEFORE_DRAW_STAGE, 0});
+    frameGraph.addDependency(
+      cameraEntitySystem.nodeId,
+      FrameGraph::CpuDependency{inputSampleNode, FrameGraph::SIMULATION_STAGE,
+                                FrameGraph::SIMULATION_STAGE, 0});
+    frameGraph.addDependency(
+      cursorEntitySystem.nodeId,
+      FrameGraph::CpuDependency{inputSampleNode, FrameGraph::SIMULATION_STAGE,
+                                FrameGraph::SIMULATION_STAGE, 0});
+    frameGraph.addDependency(
+      latencyFlashEntitySystem.nodeId,
+      FrameGraph::CpuDependency{inputSampleNode, FrameGraph::SIMULATION_STAGE,
+                                FrameGraph::SIMULATION_STAGE, 0});
     frameGraph.addDependency(
       mainRecordNode,
       FrameGraph::CpuDependency{renderEntitySystem.nodeId, FrameGraph::BEFORE_DRAW_STAGE,
@@ -250,28 +301,77 @@ void Engine::buildFrameGraph() {
     entityManager.importFromFile(fs::path{launchArgs.sceneToLoad});
 }
 
-void Engine::esPhysics(EntityManager*, Engine*, FrameGraph::NodeHandle*, FrameGraph::Stage, FrameId,
-                       Entity* entity) {
-    float dt = 0.016;  // TODO
-    entity->position += entity->speed * dt;
+void Engine::esCamera(EntityManager*, Engine* engine, FrameGraph::NodeHandle*, FrameGraph::Stage,
+                      const EntityManager::EntitySystemParams&, Entity* entity) {
+    drv::Extent2D extent = engine->window->getResolution();
+    entity->extra["ratio"] = float(extent.height) / float(extent.width);
 }
 
-void Engine::esBeforeDraw(EntityManager*, Engine* engine, FrameGraph::NodeHandle*,
-                          FrameGraph::Stage, FrameId, Entity* entity) {
+void Engine::esPhysics(EntityManager*, Engine*, FrameGraph::NodeHandle*, FrameGraph::Stage,
+                       const EntityManager::EntitySystemParams& params, Entity* entity) {
+    entity->position += entity->speed * params.dt;
+}
+
+void Engine::esBeforeDraw(EntityManager* entityManager, Engine* engine, FrameGraph::NodeHandle*,
+                          FrameGraph::Stage, const EntityManager::EntitySystemParams&,
+                          Entity* entity) {
+    if (entity->hidden)
+        return;
     EntityRenderData data;
-    glm::vec2 camPos = {0, 0};
-    glm::vec2 camSize = {10, 10};
-    data.relBottomLeft = (entity->position - entity->scale - camPos);
-    data.relBottomLeft.x /= camSize.x;
-    data.relBottomLeft.y /= camSize.y;
-    data.relTopRight = (entity->position + entity->scale - camPos);
-    data.relTopRight.x /= camSize.x;
-    data.relTopRight.y /= camSize.y;
+    const Entity* camEntity = entityManager->getById(entityManager->getByName("camera"));
+    glm::vec2 camPos = camEntity->position;
+    glm::vec2 camSize = camEntity->scale;
+    camSize.y *= camEntity->extra.find("ratio")->second;
     data.z = entity->zPos;
     data.textureId = entity->textureId;
+    Entity::EntityId parentId = entity->parent;
+    glm::vec2 pos = entity->position;
+    glm::vec2 scale = entity->scale;
+    while (parentId != Entity::INVALID_ENTITY) {
+        const Entity* parentEntity = entityManager->getById(parentId);
+        pos = parentEntity->scale * pos + parentEntity->position;
+        scale = scale * parentEntity->scale;
+        parentId = parentEntity->parent;
+    }
+    data.relBottomLeft = (pos - scale - camPos);
+    data.relBottomLeft.x /= camSize.x;
+    data.relBottomLeft.y /= camSize.y;
+    data.relTopRight = (pos + scale - camPos);
+    data.relTopRight.x /= camSize.x;
+    data.relTopRight.y /= camSize.y;
     if (data.relBottomLeft.x < 1 && data.relTopRight.x > -1 && data.relBottomLeft.y < 1
         && data.relTopRight.y > -1)
         engine->entitiesToDraw.push_back(std::move(data));
+}
+
+void Engine::esLatencyFlash(EntityManager*, Engine* engine, FrameGraph::NodeHandle*,
+                            FrameGraph::Stage, const EntityManager::EntitySystemParams& params,
+                            Entity* entity) {
+    if (engine->mouseListener.isClicking())
+        entity->extra["visibleTime"] = params.uptime + 0.3f;
+    entity->hidden = !(params.uptime < entity->extra["visibleTime"]);
+}
+
+void Engine::esCursor(EntityManager* entityManager, Engine* engine, FrameGraph::NodeHandle*,
+                      FrameGraph::Stage, const EntityManager::EntitySystemParams&, Entity* entity) {
+    const Entity* camEntity = entityManager->getById(entityManager->getByName("camera"));
+    entity->position = engine->mouseListener.getMousePos() * 2.f - 1.f;
+    if (auto itr = camEntity->extra.find("ratio"); itr != camEntity->extra.end())
+        entity->position.y *= itr->second;
+    // EntityRenderData data;
+    // glm::vec2 camPos = {0, 0};
+    // glm::vec2 camSize = {10, 10};
+    // data.relBottomLeft = (entity->position - entity->scale - camPos);
+    // data.relBottomLeft.x /= camSize.x;
+    // data.relBottomLeft.y /= camSize.y;
+    // data.relTopRight = (entity->position + entity->scale - camPos);
+    // data.relTopRight.x /= camSize.x;
+    // data.relTopRight.y /= camSize.y;
+    // data.z = entity->zPos;
+    // data.textureId = entity->textureId;
+    // if (data.relBottomLeft.x < 1 && data.relTopRight.x > -1 && data.relBottomLeft.y < 1
+    //     && data.relTopRight.y > -1)
+    //     engine->entitiesToDraw.push_back(std::move(data));
 }
 
 void Engine::initPhysicsEntitySystem() {
@@ -286,8 +386,21 @@ void Engine::initRenderEntitySystem() {
       {EntityManager::EntitySystemInfo::ENGINE_SYSTEM, true}, esBeforeDraw);
 }
 
+void Engine::initCursorEntitySystem() {
+    cursorEntitySystem = entityManager.addEntitySystem(
+      "cursorES", FrameGraph::SIMULATION_STAGE,
+      {EntityManager::EntitySystemInfo::ENGINE_SYSTEM, false}, esCursor);
+    latencyFlashEntitySystem = entityManager.addEntitySystem(
+      "latencyFlashES", FrameGraph::SIMULATION_STAGE,
+      {EntityManager::EntitySystemInfo::ENGINE_SYSTEM, false}, esLatencyFlash);
+    cameraEntitySystem = entityManager.addEntitySystem(
+      "cameraES", FrameGraph::SIMULATION_STAGE,
+      {EntityManager::EntitySystemInfo::ENGINE_SYSTEM, false}, esCamera);
+}
+
 Engine::~Engine() {
     garbageSystem.releaseAll();
+    inputManager.unregisterListener(&mouseListener);
     LOG_ENGINE("Engine closed");
 }
 
@@ -314,9 +427,7 @@ void Engine::simulationLoop() {
             startNode) {
             garbageSystem.startGarbage(simulationFrame);
         }
-
         else
-
             break;
         runtimeStats.incrementFrame();
         if (!sampleInput(simulationFrame)) {
@@ -740,10 +851,10 @@ bool Engine::execute(ExecutionPackage&& package) {
             if (lock.get() == drv::ResourceLocker::TryLockResult::SUCCESS)
                 resourceLock = std::move(lock).getLock();
             else {
-#ifdef DEBUG
-                LOG_F(WARNING, "Execution queue waits on CPU resource usage: %s",
-                      cmdBuffer.cmdBufferData.getName());
-#endif
+                // #ifdef DEBUG
+                //                 LOG_F(WARNING, "Execution queue waits on CPU resource usage: %s",
+                //                       cmdBuffer.cmdBufferData.getName());
+                // #endif
                 resourceLock =
                   resourceLocker.lock(&cmdBuffer.cmdBufferData.resourceUsages).getLock();
             }
@@ -1181,16 +1292,16 @@ void Engine::drawEntities(drv::DrvCmdBufferRecorder* recorder, drv::ImagePtr tar
         region.dstSubresource.baseArrayLayer = 0;
         region.dstSubresource.layerCount = 1;
         region.dstSubresource.mipLevel = 0;
-        region.srcOffsets[0] = drv::Offset3D{int(relMin.x * textureInfo.extent.width),
-                                             int(relMin.y * textureInfo.extent.height), 0};
-        region.srcOffsets[1] = drv::Offset3D{int(relMax.x * textureInfo.extent.width),
-                                             int(relMax.y * textureInfo.extent.height), 1};
+        region.srcOffsets[0] = drv::Offset3D{int(floorf(relMin.x * textureInfo.extent.width)),
+                                             int(floorf(relMin.y * textureInfo.extent.height)), 0};
+        region.srcOffsets[1] = drv::Offset3D{int(ceil(relMax.x * textureInfo.extent.width)),
+                                             int(ceil(relMax.y * textureInfo.extent.height)), 1};
         region.dstOffsets[0] =
-          drv::Offset3D{int(((clampedMin.x * 0.5f) + 0.5f) * targetInfo.extent.width),
-                        int(((clampedMin.y * 0.5f) + 0.5f) * targetInfo.extent.height), 0};
+          drv::Offset3D{int(floorf(((clampedMin.x * 0.5f) + 0.5f) * targetInfo.extent.width)),
+                        int(floorf(((clampedMin.y * 0.5f) + 0.5f) * targetInfo.extent.height)), 0};
         region.dstOffsets[1] =
-          drv::Offset3D{int(((clampedMax.x * 0.5f) + 0.5f) * targetInfo.extent.width),
-                        int(((clampedMax.y * 0.5f) + 0.5f) * targetInfo.extent.height), 1};
+          drv::Offset3D{int(ceil(((clampedMax.x * 0.5f) + 0.5f) * targetInfo.extent.width)),
+                        int(ceil(((clampedMax.y * 0.5f) + 0.5f) * targetInfo.extent.height)), 1};
         for (uint32_t i : {0u, 1u}) {
             if (region.dstOffsets[i].x < 0)
                 region.dstOffsets[i].x = 0;
@@ -1248,7 +1359,7 @@ Engine::AcquiredImageData Engine::mainRecord(FrameId frameId) {
         };
         std::sort(
           entitiesToDraw.begin(), entitiesToDraw.end(),
-          [](const EntityRenderData& lhs, const EntityRenderData& rhs) { return lhs.z < rhs.z; });
+          [](const EntityRenderData& lhs, const EntityRenderData& rhs) { return lhs.z > rhs.z; });
         AcquiredImageData swapChainData = acquiredSwapchainImage(nodeHandle);
         if (!swapChainData)
             return swapChainData;

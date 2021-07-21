@@ -67,6 +67,7 @@ Game::Game(int argc, char* argv[], const EngineConfig& config,
 
 
     initPhysicsEntitySystem();
+    initCursorEntitySystem();
     initRenderEntitySystem();
 
     // TODO present node could be inside of record end node???
