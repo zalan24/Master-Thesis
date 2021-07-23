@@ -23,6 +23,8 @@ Game::Game(int argc, char* argv[], const EngineConfig& config,
     shaderGlobalDesc(getDevice(), &shaderHeaders.global),
     shaderTestDesc(getDevice(), &shaderHeaders.test),
     testShader(getDevice(), &shaderObjects.test, dynamicStates),
+    mandelbrotDesc(getDevice(), &shaderHeaders.mandelbrot),
+    mandelbrotShader(getDevice(), &shaderObjects.mandelbrot, dynamicStates),
     shaderInputAttachmentDesc(getDevice(), &shaderHeaders.inputatchm),
     inputAttachmentShader(getDevice(), &shaderObjects.inputatchm, dynamicStates) {
     // shader_obj_test::Descriptor descriptor;
@@ -103,6 +105,7 @@ void Game::recordCmdBufferClear(const AcquiredImageData& swapchainData,
         clearValue = drv::ClearColorValue(0.f, 1.f, 1.f, 1.f);
         shaderTestDesc.setVariant_Color(shader_test_descriptor::Color::RED);
     }
+    mandelbrotDesc.setVariant_Quality(shader_mandelbrot_descriptor::Quality::QUALITY10);
 
     recorder->cmdClearImage(swapchainData.image, &clearValue);
 
@@ -145,6 +148,7 @@ void Game::recordCmdBufferRender(const AcquiredImageData& swapchainData,
     clearRect.layerCount = 1;
     testPass.clearColorAttachment(colorTagretColorAttachment,
                                   drv::ClearColorValue(0.f, 0.7f, 0.7f, 1.f), 1, &clearRect);
+
     testPass.bindGraphicsShader(get_dynamic_states(swapchainData.extent), {}, testShader,
                                 &shaderGlobalDesc, &shaderTestDesc);
     // testShader.bindGraphicsInfo(ShaderObject::NORMAL_USAGE, testPass,
@@ -153,12 +157,15 @@ void Game::recordCmdBufferRender(const AcquiredImageData& swapchainData,
     testPass.draw(3, 1, 0, 0);
 
     testPass.beginSubpass(swapchainSubpass);
-    testPass.bindGraphicsShader(get_dynamic_states(swapchainData.extent), {}, inputAttachmentShader,
-                                &shaderGlobalDesc, &shaderInputAttachmentDesc);
-    // testShader.bindGraphicsInfo(ShaderObject::NORMAL_USAGE, testPass,
-    //                             get_dynamic_states(swapChainextent), &shaderGlobalDesc,
-    //                             &shaderTestDesc);
-    testPass.draw(3, 1, 0, 0);
+    // testPass.bindGraphicsShader(get_dynamic_states(swapchainData.extent), {}, inputAttachmentShader,
+    //                             &shaderGlobalDesc, &shaderInputAttachmentDesc);
+    // // testShader.bindGraphicsInfo(ShaderObject::NORMAL_USAGE, testPass,
+    // //                             get_dynamic_states(swapChainextent), &shaderGlobalDesc,
+    // //                             &shaderTestDesc);
+    // testPass.draw(3, 1, 0, 0);
+    testPass.bindGraphicsShader(get_dynamic_states(swapchainData.extent), {}, mandelbrotShader,
+                                &shaderGlobalDesc, &mandelbrotDesc);
+    testPass.draw(6, 1, 0, 0);
 
     testPass.end();
 
@@ -369,6 +376,7 @@ void Game::releaseSwapchainResources() {
     getGarbageSystem()->useGarbage([this](Garbage* trashBin) {
         testShader.clear(trashBin);
         inputAttachmentShader.clear(trashBin);
+        mandelbrotShader.clear(trashBin);
     });
     renderTargetView.close();
     renderTarget.close();

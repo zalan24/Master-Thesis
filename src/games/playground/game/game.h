@@ -10,6 +10,7 @@
 #include <shaderregistry.h>
 
 #include <shader_inputatchm.h>
+#include <shader_mandelbrot.h>
 #include <shader_test.h>
 
 class Game final : public Game3D
@@ -37,6 +38,8 @@ class Game final : public Game3D
     shader_global_descriptor shaderGlobalDesc;
     shader_test_descriptor shaderTestDesc;
     shader_test testShader;
+    shader_mandelbrot_descriptor mandelbrotDesc;
+    shader_mandelbrot mandelbrotShader;
     shader_inputatchm_descriptor shaderInputAttachmentDesc;
     shader_inputatchm inputAttachmentShader;
 
