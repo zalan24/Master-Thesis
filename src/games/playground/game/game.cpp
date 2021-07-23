@@ -61,12 +61,11 @@ Game::Game(int argc, char* argv[], const EngineConfig& config,
     swapchainSubpass = testRenderPass->createSubpass(std::move(subpassInfo2));
     testRenderPass->build();
 
-    transferNode = getFrameGraph().addNode(
-      FrameGraph::Node("transfer", FrameGraph::BEFORE_DRAW_STAGE | FrameGraph::READBACK_STAGE));
+    transferNode = getFrameGraph().addNode(FrameGraph::Node(
+      "transfer", FrameGraph::BEFORE_DRAW_STAGE /* | FrameGraph::READBACK_STAGE*/));
 
     getFrameGraph().addDependency(getMainRecordNode(), FrameGraph::CpuDependency{transferNode, FrameGraph::BEFORE_DRAW_STAGE, FrameGraph::RECORD_STAGE, 0});
-    getFrameGraph().addDependency(transferNode, FrameGraph::GpuCpuDependency{getMainRecordNode(), FrameGraph::READBACK_STAGE, 0});
-
+    // getFrameGraph().addDependency(transferNode, FrameGraph::GpuCpuDependency{getMainRecordNode(), FrameGraph::READBACK_STAGE, 0});
 
     initPhysicsEntitySystem();
     initCursorEntitySystem();
@@ -351,25 +350,25 @@ void Game::beforeDraw(FrameId frameId) {
 }
 
 void Game::readback(FrameId frameId) {
-    TemporalResourceLockerDescriptor resourceDesc;
-    ImageStager::StagerId stagerId = testImageStager.getStagerId(frameId);
-    testImageStager.lockResource(resourceDesc, ImageStager::DOWNLOAD, stagerId);
-    if (FrameGraph::NodeHandle testDrawHandle = getFrameGraph().acquireNode(
-          transferNode, FrameGraph::READBACK_STAGE, frameId, resourceDesc);
-        testDrawHandle) {
-        drv::DeviceSize size;
-        drv::DeviceSize rowPitch;
-        drv::DeviceSize arrayPitch;
-        drv::DeviceSize depthPitch;
-        testImageStager.getMemoryData(stagerId, 0, 0, size, rowPitch, arrayPitch, depthPitch);
-        StackMemory::MemoryHandle<uint32_t> pixels(size / 4, TEMPMEM);
-        testImageStager.getData(pixels, 0, 0, stagerId, testDrawHandle.getLock());
-        if (frameId == 19) {
-            drv::TextureInfo texInfo = drv::get_texture_info(transferTexture.get().getImage(0));
-            stbi_write_png("test_image_out.png", int(texInfo.extent.width),
-                           int(texInfo.extent.height), 4, pixels, int(rowPitch));
-        }
-    }
+    // TemporalResourceLockerDescriptor resourceDesc;
+    // ImageStager::StagerId stagerId = testImageStager.getStagerId(frameId);
+    // testImageStager.lockResource(resourceDesc, ImageStager::DOWNLOAD, stagerId);
+    // if (FrameGraph::NodeHandle testDrawHandle = getFrameGraph().acquireNode(
+    //       transferNode, FrameGraph::READBACK_STAGE, frameId, resourceDesc);
+    //     testDrawHandle) {
+    //     drv::DeviceSize size;
+    //     drv::DeviceSize rowPitch;
+    //     drv::DeviceSize arrayPitch;
+    //     drv::DeviceSize depthPitch;
+    //     testImageStager.getMemoryData(stagerId, 0, 0, size, rowPitch, arrayPitch, depthPitch);
+    //     StackMemory::MemoryHandle<uint32_t> pixels(size / 4, TEMPMEM);
+    //     testImageStager.getData(pixels, 0, 0, stagerId, testDrawHandle.getLock());
+    //     if (frameId == 19) {
+    //         drv::TextureInfo texInfo = drv::get_texture_info(transferTexture.get().getImage(0));
+    //         stbi_write_png("test_image_out.png", int(texInfo.extent.width),
+    //                        int(texInfo.extent.height), 4, pixels, int(rowPitch));
+    //     }
+    // }
 }
 
 void Game::releaseSwapchainResources() {
