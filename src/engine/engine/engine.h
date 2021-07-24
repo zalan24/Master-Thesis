@@ -37,8 +37,9 @@
 #include <cmdBuffer.hpp>
 #include <oneTimeCmdBuffer.hpp>
 
-#include "resources.hpp"
+#include "bufferstager.h"
 #include "imagestager.h"
+#include "resources.hpp"
 
 struct ExecutionPackage;
 

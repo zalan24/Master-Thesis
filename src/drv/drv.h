@@ -168,6 +168,7 @@ std::unique_lock<std::mutex> lock_queue_family(LogicalDevicePtr device, QueueFam
 QueueFamilyPtr get_queue_family(LogicalDevicePtr device, QueuePtr queue);
 bool device_wait_idle(LogicalDevicePtr device);
 TextureInfo get_texture_info(drv::ImagePtr image);
+BufferInfo get_buffer_info(drv::BufferPtr buffer);
 bool destroy_framebuffer(LogicalDevicePtr device, FramebufferPtr frameBuffer);
 
 DriverSupport get_support(LogicalDevicePtr device);

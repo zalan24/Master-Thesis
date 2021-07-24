@@ -117,7 +117,7 @@ struct ExecutionInfo
 struct BufferCreateInfo
 {
     unsigned long size = 0;
-    SharingType sharingType;
+    SharingType sharingType = SharingType::EXCLUSIVE;
     unsigned int familyCount = 0;
     QueueFamilyPtr* families = nullptr;
     using UsageType = unsigned int;

@@ -510,6 +510,12 @@ static_assert(get_aspect_by_id(get_aspect_id(DEPTH_BIT)) == DEPTH_BIT);
 static_assert(get_aspect_by_id(get_aspect_id(STENCIL_BIT)) == STENCIL_BIT);
 static_assert(get_aspect_by_id(get_aspect_id(METADATA_BIT)) == METADATA_BIT);
 
+struct BufferSubresourceRange
+{
+    DeviceSize offset;
+    DeviceSize size;
+};
+
 struct ImageSubresourceRange
 {
     static constexpr uint32_t REMAINING_MIP_LEVELS = std::numeric_limits<uint32_t>::max();
@@ -680,6 +686,12 @@ struct TextureInfo
     ImageAspectBitType aspects;
     ImageCreateInfo::Type type;
     ImageSubresourceRange getSubresourceRange() const;
+};
+
+struct BufferInfo
+{
+    DeviceSize size;
+    BufferSubresourceRange getSubresourceRange() const;
 };
 
 struct ImageViewCreateInfo

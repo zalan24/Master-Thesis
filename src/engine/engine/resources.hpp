@@ -53,6 +53,7 @@ class GarbageResource
 };
 
 using ImageSet = GarbageResource<drv::ImageSet>;
+using BufferSet = GarbageResource<drv::BufferSet>;
 using ImageView = GarbageResource<drv::ImageView>;
 using Framebuffer = GarbageResource<drv::Framebuffer>;
 
