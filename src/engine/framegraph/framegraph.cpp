@@ -107,6 +107,7 @@ FrameGraph::Node::Node(Node&& other)
     // queQueDeps(std::move(other.queQueDeps)),
     localExecutionQueue(std::move(other.localExecutionQueue)),
     enqIndirectChildren(std::move(other.enqIndirectChildren)),
+    workLoads(std::move(other.workLoads)),
     timingInfos(std::move(other.timingInfos)),
     executionTiming(std::move(other.executionTiming)),
     enqueuedFrame(other.enqueuedFrame.load()),
@@ -138,6 +139,7 @@ FrameGraph::Node& FrameGraph::Node::operator=(Node&& other) {
     // queQueDeps = std::move(other.queQueDeps);
     localExecutionQueue = std::move(other.localExecutionQueue);
     enqIndirectChildren = std::move(other.enqIndirectChildren);
+    workLoads = std::move(other.workLoads);
     timingInfos = std::move(other.timingInfos);
     executionTiming = std::move(other.executionTiming);
     for (uint32_t i = 0; i < NUM_STAGES; ++i)
@@ -587,6 +589,10 @@ FrameGraph::NodeHandle::NodeHandle(FrameGraph* _frameGraph, FrameGraph::NodeId _
           ExecutionPackage(ExecutionPackage::MessagePackage{
             ExecutionPackage::Message::FRAMEGRAPH_NODE_START_MARKER, node, frameId, nullptr}));
     }
+    float startWorkLoad = nodePtr->getWorkLoad(stage).preLoad;
+    uint64_t usec = static_cast<uint64_t>(startWorkLoad * 1000);
+    if (usec > 0)
+        busy_sleep(std::chrono::microseconds(usec));
 }
 
 FrameGraph::Node& FrameGraph::NodeHandle::getNode() const {
@@ -1097,6 +1103,10 @@ drv::QueuePtr FrameGraph::getQueue(QueueId queueId) const {
 
 void FrameGraph::NodeHandle::close() {
     if (frameGraph) {
+        float finishWorkLoad = frameGraph->getNode(node)->getWorkLoad(stage).postLoad;
+        uint64_t usec = static_cast<uint64_t>(finishWorkLoad * 1000);
+        if (usec > 0)
+            busy_sleep(std::chrono::microseconds(usec));
         frameGraph->getNode(node)->registerFinish(stage, frameId);
         frameGraph->release(*this);
         frameGraph = nullptr;
@@ -1246,4 +1256,51 @@ void FrameGraph::Node::registerExecutionStart(FrameId frameId) {
 void FrameGraph::Node::registerExecutionFinish(FrameId frameId) {
     auto& entry = executionTiming[frameId % TIMING_HISTORY_SIZE];
     entry.finish = Clock::now();
+}
+
+ArtificialFrameGraphWorkLoad FrameGraph::getWorkLoad() const {
+    ArtificialFrameGraphWorkLoad ret;
+    for (const auto& node : nodes) {
+        auto& nodeLoad = ret.nodeLoad[node.getName()];
+        for (uint32_t stage_id = 0; stage_id < NUM_STAGES; ++stage_id) {
+            Stage stage = get_stage(stage_id);
+            if (!(node.stages & stage))
+                continue;
+            nodeLoad.cpuWorkLoad[get_stage_name(stage)] = node.getWorkLoad(stage);
+        }
+    }
+    return ret;
+}
+
+void FrameGraph::setWorkLoad(const ArtificialFrameGraphWorkLoad& workLoad) {
+    for (const auto& [nodeName, nodeWorkLoad] : workLoad.nodeLoad) {
+        Node* node = getNode(getNodeId(nodeName));
+        for (const auto& [stageName, stageWorkLoad] : nodeWorkLoad.cpuWorkLoad) {
+            Stage stage = get_stage_by_name(stageName.c_str());
+            node->setWorkLoad(stage, stageWorkLoad);
+        }
+    }
+}
+
+FrameGraph::NodeId FrameGraph::getNodeId(const std::string& name) const {
+    for (uint32_t i = 0; i < nodes.size(); ++i)
+        if (nodes[i].getName() == name)
+            return i;
+    return INVALID_NODE;
+}
+
+void FrameGraph::Node::setWorkLoad(Stage stage, const ArtificialWorkLoad& workLoad) {
+    std::unique_lock<std::shared_mutex> lock(workLoadMutex);
+    workLoads[get_stage_id(stage)] = workLoad;
+}
+
+ArtificialWorkLoad FrameGraph::Node::getWorkLoad(Stage stage) const {
+    std::shared_lock<std::shared_mutex> lock(workLoadMutex);
+    return workLoads[get_stage_id(stage)];
+}
+
+void FrameGraph::NodeHandle::busy_sleep(std::chrono::microseconds duration) {
+    FrameGraph::Node::Clock::time_point startTime = FrameGraph::Node::Clock::now();
+    while (FrameGraph::Node::Clock::now() - startTime < duration)
+        ;
 }

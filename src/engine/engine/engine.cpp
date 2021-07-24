@@ -156,6 +156,7 @@ Engine::Engine(int argc, char* argv[], const EngineConfig& cfg,
   : config(cfg),
     resourceFolders(_resources),
     launchArgs(std::move(_args)),
+    workLoadFile("workLoad.json"),
     logger(argc, argv, config.logs),
     coreContext(std::make_unique<CoreContext>(
       CoreContext::Config{safe_cast<size_t>(config.stackMemorySizeKb << 10)})),
@@ -298,6 +299,20 @@ void Engine::buildFrameGraph() {
     entityManager.initFrameGraph();
     frameGraph.build();
 
+    if (!fs::exists(fs::path{workLoadFile})) {
+        ArtificialFrameGraphWorkLoad workLoad = frameGraph.getWorkLoad();
+        drv::drv_assert(workLoad.exportToFile(fs::path{workLoadFile}),
+                        "Could not generate work load file");
+        LOG_ENGINE("Work load file generated: %s", workLoadFile.c_str());
+    }
+    else {
+        ArtificialFrameGraphWorkLoad workLoad;
+        drv::drv_assert(workLoad.importFromFile(fs::path{workLoadFile}),
+                        "Could not import artificial work load");
+        frameGraph.setWorkLoad(workLoad);
+    }
+    workLoadFileModificationDate = fs::last_write_time(fs::path{workLoadFile});
+
     entityManager.importFromFile(fs::path{launchArgs.sceneToLoad});
 }
 
@@ -427,6 +442,24 @@ void Engine::simulationLoop() {
     FrameId simulationFrame = 0;
     while (!frameGraph.isStopped()) {
         mainKernelCv.notify_one();
+
+        auto modificationDate = fs::last_write_time(fs::path{workLoadFile});
+        if (workLoadFileModificationDate != modificationDate) {
+            workLoadFileModificationDate = modificationDate;
+            ArtificialFrameGraphWorkLoad workLoad;
+            try {
+                if (workLoad.importFromFile(fs::path{workLoadFile})) {
+                    frameGraph.setWorkLoad(workLoad);
+                    LOG_ENGINE("Work load file reloaded");
+                }
+                else
+                    LOG_F(ERROR, "Could not reload work load file");
+            }
+            catch (const nlohmann::detail::parse_error&) {
+                LOG_F(ERROR, "Could not reload work load file");
+            }
+        }
+
         if (auto startNode =
               frameGraph.acquireNode(frameGraph.getStageStartNode(FrameGraph::SIMULATION_STAGE),
                                      FrameGraph::SIMULATION_STAGE, simulationFrame);

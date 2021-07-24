@@ -241,6 +241,7 @@ class Engine
     EngineConfig config;
     Resources resourceFolders;
     Args launchArgs;
+    std::string workLoadFile;
 
     Logger logger;
     ErrorCallback callback;
@@ -306,6 +307,7 @@ class Engine
     std::condition_variable beforeDrawSwapchainCv;
     std::atomic<bool> swapchainRecreationRequired = {false};
     std::atomic<bool> swapchainRecreationPossible = {false};
+    std::filesystem::file_time_type workLoadFileModificationDate;
 
     std::vector<EntityRenderData> entitiesToDraw;
 

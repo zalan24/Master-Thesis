@@ -7,11 +7,13 @@
 #include <limits>
 #include <memory>
 #include <mutex>
+#include <shared_mutex>
 #include <string>
 #include <unordered_set>
 #include <vector>
 
 #include <features.h>
+#include <serializable.h>
 
 #include <drv_interface.h>
 #include <drv_wrappers.h>
@@ -23,6 +25,34 @@
 #include "execution_queue.h"
 #include "framegraphDecl.h"
 #include "garbagesystem.h"
+
+struct ArtificialWorkLoad final : public IAutoSerializable<ArtificialWorkLoad>
+{
+    // measured in milliseconds
+
+    REFLECTABLE(
+        (float) preLoad,
+        // (float) minLoad,  // of actual work
+        (float) postLoad
+    )
+
+    ArtificialWorkLoad() : preLoad(0), /* minLoad(0),*/ postLoad(0) {}
+};
+
+struct ArtificialNodeWorkLoad final : public IAutoSerializable<ArtificialNodeWorkLoad>
+{
+    REFLECTABLE(
+        (std::map<std::string, ArtificialWorkLoad>) cpuWorkLoad
+        // (ArtificialWorkLoad) executionWorkLoad
+    )
+};
+
+struct ArtificialFrameGraphWorkLoad final : public IAutoSerializable<ArtificialFrameGraphWorkLoad>
+{
+    REFLECTABLE(
+        (std::map<std::string, ArtificialNodeWorkLoad>) nodeLoad
+    )
+};
 
 class TemporalResourceLockerDescriptor final : public drv::ResourceLockerDescriptor
 {
@@ -73,6 +103,12 @@ class FrameGraph
     static const char* get_stage_name(Stage stage) {
         const char* names[] = {"simulation", "beforeDraw", "record", "execution", "readback"};
         return names[get_stage_id(stage)];
+    }
+    static Stage get_stage_by_name(const char* name) {
+        for (uint32_t stageId = 0; stageId < NUM_STAGES; ++stageId)
+            if (strcmp(name, get_stage_name(get_stage(stageId))) == 0)
+                return get_stage(stageId);
+        return SIMULATION_STAGE;
     }
 
     struct CpuDependency
@@ -161,6 +197,9 @@ class FrameGraph
         void registerExecutionStart(FrameId frameId);
         void registerExecutionFinish(FrameId frameId);
 
+        void setWorkLoad(Stage stage, const ArtificialWorkLoad& workLoad);
+        ArtificialWorkLoad getWorkLoad(Stage stage) const;
+
      private:
         static constexpr uint32_t TIMING_HISTORY_SIZE = 16;
 
@@ -178,10 +217,13 @@ class FrameGraph
         std::unique_ptr<ExecutionQueue> localExecutionQueue;
         std::vector<NodeId> enqIndirectChildren;
 
+        std::array<ArtificialWorkLoad, NUM_STAGES> workLoads;
+
         std::array<std::atomic<FrameId>, NUM_STAGES> completedFrames;
         std::array<std::vector<NodeTiming>, NUM_STAGES> timingInfos;
         std::vector<ExecutionTiming> executionTiming;
         mutable std::mutex cpuMutex;
+        mutable std::shared_mutex workLoadMutex;
         std::condition_variable cpuCv;
 
         std::atomic<FrameId> enqueuedFrame = INVALID_FRAME;
@@ -221,6 +263,8 @@ class FrameGraph
 
         const drv::ResourceLocker::Lock& getLock() const {return lock;}
 
+        static void busy_sleep(std::chrono::microseconds duration);
+
      private:
         NodeHandle();
         NodeHandle(FrameGraph* frameGraph, FrameGraph::NodeId node, Stage stage, FrameId frameId,
@@ -241,6 +285,7 @@ class FrameGraph
 
     NodeId addNode(Node&& node, bool applyTagDependencies = true);
     Node* getNode(NodeId id);
+    NodeId getNodeId(const std::string& name) const;
     const Node* getNode(NodeId id) const;
     void addDependency(NodeId target, CpuDependency dep);
     void addDependency(NodeId target, EnqueueDependency dep);
@@ -314,6 +359,9 @@ class FrameGraph
     QueueSyncData sync_queue(drv::QueuePtr queue, FrameId frame) const;
 
     drv::ResourceLocker* getResourceLocker() const {return resourceLocker; }
+
+    ArtificialFrameGraphWorkLoad getWorkLoad() const;
+    void setWorkLoad(const ArtificialFrameGraphWorkLoad& workLoad);
 
  private:
     struct DependenceData
