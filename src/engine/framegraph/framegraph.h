@@ -1,6 +1,7 @@
 #pragma once
 
 #include <atomic>
+#include <chrono>
 #include <condition_variable>
 #include <functional>
 #include <limits>
@@ -138,7 +139,31 @@ class FrameGraph
 
         const std::string &getName() const {return name;}
 
+        using Clock = std::chrono::high_resolution_clock;
+
+        struct NodeTiming
+        {
+            FrameId frameId = INVALID_FRAME;
+            Clock::time_point ready;
+            Clock::time_point start;
+            Clock::time_point finish;
+        };
+        struct ExecutionTiming
+        {
+            FrameId frameId = INVALID_FRAME;
+            Clock::time_point start;
+            Clock::time_point finish;
+        };
+
+        void registerAcquireAttempt(Stage stage, FrameId frameId);
+        void registerStart(Stage stage, FrameId frameId);
+        void registerFinish(Stage stage, FrameId frameId);
+        void registerExecutionStart(FrameId frameId);
+        void registerExecutionFinish(FrameId frameId);
+
      private:
+        static constexpr uint32_t TIMING_HISTORY_SIZE = 16;
+
         std::string name;
         Stages stages = 0;
         bool tagNode;
@@ -154,6 +179,8 @@ class FrameGraph
         std::vector<NodeId> enqIndirectChildren;
 
         std::array<std::atomic<FrameId>, NUM_STAGES> completedFrames;
+        std::array<std::vector<NodeTiming>, NUM_STAGES> timingInfos;
+        std::vector<ExecutionTiming> executionTiming;
         mutable std::mutex cpuMutex;
         std::condition_variable cpuCv;
 

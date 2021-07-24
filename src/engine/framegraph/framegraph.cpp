@@ -75,6 +75,7 @@ FrameGraph::TagNodeId FrameGraph::getStageEndNode(Stage stage) const {
 FrameGraph::Node::Node(const std::string& _name, Stages _stages, bool _tagNode)
   : name(_name), stages(_stages), tagNode(_tagNode) {
     if (stages & EXECUTION_STAGE) {
+        executionTiming.resize(TIMING_HISTORY_SIZE);
         localExecutionQueue = std::make_unique<ExecutionQueue>();
         drv::drv_assert(
           stages & RECORD_STAGE,
@@ -84,6 +85,9 @@ FrameGraph::Node::Node(const std::string& _name, Stages _stages, bool _tagNode)
     else
         drv::drv_assert((stages & RECORD_STAGE) == 0,
                         ("A node has a record stage, but not execution stage: " + name).c_str());
+    for (uint32_t i = 0; i < NUM_STAGES; ++i)
+        if (stages & get_stage(i))
+            timingInfos[i].resize(TIMING_HISTORY_SIZE);
     for (auto& frameId : completedFrames)
         frameId = INVALID_FRAME;
     drv::drv_assert(stages != 0, "Nodes must have at least one stage");
@@ -103,6 +107,8 @@ FrameGraph::Node::Node(Node&& other)
     // queQueDeps(std::move(other.queQueDeps)),
     localExecutionQueue(std::move(other.localExecutionQueue)),
     enqIndirectChildren(std::move(other.enqIndirectChildren)),
+    timingInfos(std::move(other.timingInfos)),
+    executionTiming(std::move(other.executionTiming)),
     enqueuedFrame(other.enqueuedFrame.load()),
     enqueueFrameClearance(other.enqueueFrameClearance) {
     for (uint32_t i = 0; i < NUM_STAGES; ++i)
@@ -132,6 +138,8 @@ FrameGraph::Node& FrameGraph::Node::operator=(Node&& other) {
     // queQueDeps = std::move(other.queQueDeps);
     localExecutionQueue = std::move(other.localExecutionQueue);
     enqIndirectChildren = std::move(other.enqIndirectChildren);
+    timingInfos = std::move(other.timingInfos);
+    executionTiming = std::move(other.executionTiming);
     for (uint32_t i = 0; i < NUM_STAGES; ++i)
         completedFrames[i].store(other.completedFrames[i].load());
     enqueuedFrame = other.enqueuedFrame.load();
@@ -572,6 +580,13 @@ FrameGraph::NodeHandle::NodeHandle() : frameGraph(nullptr) {
 FrameGraph::NodeHandle::NodeHandle(FrameGraph* _frameGraph, FrameGraph::NodeId _node, Stage _stage,
                                    FrameId _frameId, drv::ResourceLocker::Lock&& _lock)
   : frameGraph(_frameGraph), node(_node), stage(_stage), frameId(_frameId), lock(std::move(_lock)) {
+    Node* nodePtr = frameGraph->getNode(node);
+    nodePtr->registerStart(stage, frameId);
+    if (stage == RECORD_STAGE && nodePtr->hasExecution()) {
+        frameGraph->getExecutionQueue(*this)->push(
+          ExecutionPackage(ExecutionPackage::MessagePackage{
+            ExecutionPackage::Message::FRAMEGRAPH_NODE_START_MARKER, node, frameId, nullptr}));
+    }
 }
 
 FrameGraph::Node& FrameGraph::NodeHandle::getNode() const {
@@ -659,21 +674,21 @@ bool FrameGraph::tryWaitForNode(NodeId node, Stage stage, FrameId frame) {
     return true;
 }
 
-void FrameGraph::checkResources(NodeId dstNode, Stage, FrameId frameId,
+void FrameGraph::checkResources(NodeId /*gdstNode*/, Stage, FrameId frameId,
                                 const TemporalResourceLockerDescriptor& resources,
                                 GarbageVector<drv::TimelineSemaphorePtr>& semaphores,
                                 GarbageVector<uint64_t>& waitValues) const {
     StackMemory::MemoryHandle<drv::QueuePtr> syncedQueues(queues.size(), TEMPMEM);
     uint32_t numSyncedQueues = 0;
-    const Node* node = getNode(dstNode);
+    // const Node* node = getNode(dstNode);
 
     auto accessImage = [&, this](drv::ImagePtr image, uint32_t layer, uint32_t mip,
                                  drv::AspectFlagBits aspect, bool write) {
         uint32_t usageCount = drv::get_num_pending_usages(image, layer, mip, aspect);
         for (uint32_t j = 0; j < usageCount; ++j) {
             drv::PendingResourceUsage usage = drv::get_pending_usage(image, layer, mip, aspect, j);
-            NodeId srcNode = getNodeFromCmdBuffer(usage.cmdBufferId);
-            FrameId srcFrame = usage.frameId;
+            // NodeId srcNode = getNodeFromCmdBuffer(usage.cmdBufferId);
+            // FrameId srcFrame = usage.frameId;
             if (!usage.isWrite && !write)
                 continue;
             // TODO this does not work
@@ -753,6 +768,7 @@ FrameGraph::NodeHandle FrameGraph::acquireNode(NodeId nodeId, Stage stage, Frame
     if (isStopped() || !tryDoFrame(frame))
         return NodeHandle();
     Node* node = getNode(nodeId);
+    node->registerAcquireAttempt(stage, frame);
     assert(node->completedFrames[get_stage_id(stage)] + 1 == frame
            || frame == 0 && node->completedFrames[get_stage_id(stage)] == INVALID_FRAME);
     assert(node->stages & stage);
@@ -817,6 +833,7 @@ FrameGraph::NodeHandle FrameGraph::tryAcquireNode(
     if (isStopped() || !tryDoFrame(frame))
         return NodeHandle();
     Node* node = getNode(nodeId);
+    node->registerAcquireAttempt(stage, frame);
     assert(node->stages & stage);
     for (const CpuDependency& dep : node->cpuDeps) {
         if (dep.dstStage != stage)
@@ -894,6 +911,7 @@ FrameGraph::NodeHandle FrameGraph::tryAcquireNode(
     if (isStopped() || !tryDoFrame(frame))
         return NodeHandle();
     Node* node = getNode(nodeId);
+    node->registerAcquireAttempt(stage, frame);
     assert(node->stages & stage);
     for (const CpuDependency& dep : node->cpuDeps) {
         if (dep.dstStage != stage)
@@ -974,7 +992,7 @@ void FrameGraph::release(NodeHandle& handle) {
     Node* node = getNode(handle.node);
     if (handle.stage == RECORD_STAGE && node->hasExecution()) {
         getExecutionQueue(handle)->push(ExecutionPackage(
-          ExecutionPackage::MessagePackage{ExecutionPackage::Message::FRAMEGRAPH_NODE_MARKER,
+          ExecutionPackage::MessagePackage{ExecutionPackage::Message::FRAMEGRAPH_NODE_FINISH_MARKER,
                                            handle.node, handle.frameId, nullptr}));
     }
 
@@ -1079,6 +1097,7 @@ drv::QueuePtr FrameGraph::getQueue(QueueId queueId) const {
 
 void FrameGraph::NodeHandle::close() {
     if (frameGraph) {
+        frameGraph->getNode(node)->registerFinish(stage, frameId);
         frameGraph->release(*this);
         frameGraph = nullptr;
     }
@@ -1196,4 +1215,35 @@ drv::ResourceLockerDescriptor::ImageData& TemporalResourceLockerDescriptor::getI
 const drv::ResourceLockerDescriptor::ImageData& TemporalResourceLockerDescriptor::getImageData(
   uint32_t index) const {
     return imageData[index];
+}
+
+void FrameGraph::Node::registerAcquireAttempt(Stage stage, FrameId frameId) {
+    auto& entry = timingInfos[get_stage_id(stage)][frameId % TIMING_HISTORY_SIZE];
+    if (entry.frameId != frameId) {
+        entry.frameId = frameId;
+        entry.ready = Clock::now();
+        entry.finish = entry.start = {};
+    }
+}
+
+void FrameGraph::Node::registerStart(Stage stage, FrameId frameId) {
+    auto& entry = timingInfos[get_stage_id(stage)][frameId % TIMING_HISTORY_SIZE];
+    entry.start = Clock::now();
+}
+
+void FrameGraph::Node::registerFinish(Stage stage, FrameId frameId) {
+    auto& entry = timingInfos[get_stage_id(stage)][frameId % TIMING_HISTORY_SIZE];
+    entry.finish = Clock::now();
+}
+
+void FrameGraph::Node::registerExecutionStart(FrameId frameId) {
+    auto& entry = executionTiming[frameId % TIMING_HISTORY_SIZE];
+    entry.frameId = frameId;
+    entry.start = Clock::now();
+    entry.finish = {};
+}
+
+void FrameGraph::Node::registerExecutionFinish(FrameId frameId) {
+    auto& entry = executionTiming[frameId % TIMING_HISTORY_SIZE];
+    entry.finish = Clock::now();
 }

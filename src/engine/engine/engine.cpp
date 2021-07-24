@@ -776,9 +776,15 @@ bool Engine::execute(ExecutionPackage&& package) {
         ExecutionPackage::MessagePackage& message =
           std::get<ExecutionPackage::MessagePackage>(package.package);
         switch (message.msg) {
-            case ExecutionPackage::Message::FRAMEGRAPH_NODE_MARKER: {
+            case ExecutionPackage::Message::FRAMEGRAPH_NODE_START_MARKER: {
                 FrameGraph::NodeId nodeId = static_cast<FrameGraph::NodeId>(message.value1);
                 FrameId frame = static_cast<FrameId>(message.value2);
+                frameGraph.getNode(nodeId)->registerExecutionStart(frame);
+            } break;
+            case ExecutionPackage::Message::FRAMEGRAPH_NODE_FINISH_MARKER: {
+                FrameGraph::NodeId nodeId = static_cast<FrameGraph::NodeId>(message.value1);
+                FrameId frame = static_cast<FrameId>(message.value2);
+                frameGraph.getNode(nodeId)->registerExecutionFinish(frame);
                 frameGraph.executionFinished(nodeId, frame);
             } break;
             case ExecutionPackage::Message::FRAME_SUBMITTED: {
