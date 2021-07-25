@@ -381,8 +381,8 @@ bool drv::destroy_image(LogicalDevicePtr device, ImagePtr image) {
 }
 
 bool drv::bind_image_memory(LogicalDevicePtr device, ImagePtr image, DeviceMemoryPtr memory,
-                            DeviceSize offset, drv::MemoryType memoryType) {
-    return current_driver_interface->bind_image_memory(device, image, memory, offset, memoryType);
+                            DeviceSize offset) {
+    return current_driver_interface->bind_image_memory(device, image, memory, offset);
 }
 
 bool drv::get_image_memory_requirements(LogicalDevicePtr device, ImagePtr image,
@@ -429,11 +429,13 @@ bool drv::validate_and_apply_state_transitions(
   LogicalDevicePtr device, QueuePtr currentQueue, uint64_t frameId, CmdBufferId cmdBufferId,
   const TimelineSemaphoreHandle& timelineSemaphore, uint64_t semaphoreSignalValue,
   PipelineStages::FlagType semaphoreSrcStages, StateCorrectionData& correction, uint32_t imageCount,
-  const std::pair<drv::ImagePtr, ImageTrackInfo>* transitions, StatsCache* cacheHandle,
+  const std::pair<drv::ImagePtr, ImageTrackInfo>* imageTransitions, uint32_t bufferCount,
+  const std::pair<drv::BufferPtr, BufferTrackInfo>* bufferTransitions, StatsCache* cacheHandle,
   ResourceStateTransitionCallback* cb) {
     return current_driver_interface->validate_and_apply_state_transitions(
       device, currentQueue, frameId, cmdBufferId, timelineSemaphore, semaphoreSignalValue,
-      semaphoreSrcStages, correction, imageCount, transitions, cacheHandle, cb);
+      semaphoreSrcStages, correction, imageCount, imageTransitions, bufferCount, bufferTransitions,
+      cacheHandle, cb);
 }
 
 drv::CommandBufferPtr drv::create_wait_all_command_buffer(LogicalDevicePtr device,

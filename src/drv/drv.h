@@ -158,7 +158,7 @@ uint64_t get_timeline_semaphore_value(LogicalDevicePtr device, TimelineSemaphore
 ImagePtr create_image(LogicalDevicePtr device, const ImageCreateInfo* info);
 bool destroy_image(LogicalDevicePtr device, ImagePtr image);
 bool bind_image_memory(LogicalDevicePtr device, ImagePtr image, DeviceMemoryPtr memory,
-                       DeviceSize offset, drv::MemoryType memoryType);
+                       DeviceSize offset);
 bool get_image_memory_requirements(LogicalDevicePtr device, ImagePtr image,
                                    MemoryRequirements& memoryRequirements);
 ImageViewPtr create_image_view(LogicalDevicePtr device, const ImageViewCreateInfo* info);
@@ -191,7 +191,8 @@ bool validate_and_apply_state_transitions(
   LogicalDevicePtr device, QueuePtr currentQueue, uint64_t frameId, CmdBufferId cmdBufferId,
   const TimelineSemaphoreHandle& timelineSemaphore, uint64_t semaphoreSignalValue,
   PipelineStages::FlagType semaphoreSrcStages, StateCorrectionData& correction, uint32_t imageCount,
-  const std::pair<drv::ImagePtr, ImageTrackInfo>* transitions, StatsCache* cacheHandle,
+  const std::pair<drv::ImagePtr, ImageTrackInfo>* imageTransitions, uint32_t bufferCount,
+  const std::pair<drv::BufferPtr, BufferTrackInfo>* bufferTransitions, StatsCache* cacheHandle,
   ResourceStateTransitionCallback* cb);
 void perform_cpu_access(const ResourceLockerDescriptor* resources,
                         const ResourceLocker::Lock& lock);

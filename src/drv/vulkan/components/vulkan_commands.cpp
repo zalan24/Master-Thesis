@@ -421,4 +421,39 @@ void VulkanCmdBufferRecorder::corrigate(const drv::StateCorrectionData& data) {
               discardContent, subres.layout);
         });
     }
+    for (uint32_t i = 0; i < data.bufferCorrections.size(); ++i) {
+        BufferStartingState state = data.bufferCorrections[i].second.oldState;
+        registerBuffer(data.bufferCorrections[i].first, state);
+        drv::BufferSubresourceRange range;
+        range.offset = ;
+        range.size = ;
+        const auto& subres = data.bufferCorrections[i].second.newState;
+        bool discardContent = false;
+        drv::PipelineStages::FlagType dstStages = subres.usableStages;
+        drv::MemoryBarrier::AccessFlagBitType missingVisibility =
+          subres.visible & ~data.bufferCorrections[i].second.oldState.visible;
+        for (uint32_t j = 0; j < drv::MemoryBarrier::get_access_count(missingVisibility); ++j) {
+            drv::MemoryBarrier::AccessFlagBits access =
+              drv::MemoryBarrier::get_access(missingVisibility, j);
+            drv::PipelineStages::FlagType supportedStages =
+              drv::MemoryBarrier::get_supported_stages(access);
+            if ((supportedStages & dstStages) == 0) {
+                bool found = false;
+                for (const auto& stage : supportedStageOrder) {
+                    if ((stage & supportedStages)) {
+                        dstStages |= stage;
+                        found = true;
+                        break;
+                    }
+                }
+                drv::drv_assert(found,
+                                "Could not find any supported stage for the given access type");
+            }
+        }
+        add_memory_sync(
+          getBufferState(data.bufferCorrections[i].first, 1, &range, dstStages).cmdState,
+          data.bufferCorrections[i].first, !discardContent, dstStages, subres.visible,
+          !convertBuffer(data.bufferCorrections[i].first)->sharedResource,
+          subres.ownership != drv::IGNORE_FAMILY ? subres.ownership : getFamily(), discardContent);
+    }
 }

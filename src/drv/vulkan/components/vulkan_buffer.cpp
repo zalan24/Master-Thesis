@@ -14,11 +14,7 @@ using namespace drv_vulkan;
 
 drv::BufferPtr DrvVulkan::create_buffer(drv::LogicalDevicePtr device,
                                         const drv::BufferCreateInfo* info) {
-    Buffer* buffer = new Buffer;
-    if (buffer == nullptr)
-        return drv::get_null_ptr<drv::BufferPtr>();
     try {
-        buffer->size = info->size;
         VkBufferCreateInfo bufferCreateInfo;
         bufferCreateInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
         bufferCreateInfo.pNext = nullptr;
@@ -42,10 +38,11 @@ drv::BufferPtr DrvVulkan::create_buffer(drv::LogicalDevicePtr device,
         }
         bufferCreateInfo.usage = static_cast<VkBufferUsageFlags>(info->usage);
 
-        VkResult result = vkCreateBuffer(drv::resolve_ptr<VkDevice>(device), &bufferCreateInfo,
-                                         nullptr, &buffer->buffer);
+        VkBuffer vkBuffer;
+        VkResult result =
+          vkCreateBuffer(drv::resolve_ptr<VkDevice>(device), &bufferCreateInfo, nullptr, &vkBuffer);
         drv::drv_assert(result == VK_SUCCESS, "Could not create buffer");
-        return drv::store_ptr<drv::BufferPtr>(buffer);
+        return drv::store_ptr<drv::BufferPtr>(new Buffer(info->bufferId, info->size, vkBuffer));
     }
     catch (...) {
         delete buffer;
@@ -84,6 +81,7 @@ bool DrvVulkan::bind_buffer_memory(drv::LogicalDevicePtr device, drv::BufferPtr 
     Buffer* buffer = drv::resolve_ptr<Buffer*>(_buffer);
     buffer->memoryPtr = memory;
     buffer->offset = offset;
+    buffer->memoryType = convertMemory(memory)->memoryType;
     VkResult result = vkBindBufferMemory(drv::resolve_ptr<VkDevice>(device), buffer->buffer,
                                          convertMemory(memory)->memory, offset);
     return result == VK_SUCCESS;

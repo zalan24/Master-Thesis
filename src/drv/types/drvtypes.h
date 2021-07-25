@@ -116,6 +116,7 @@ struct ExecutionInfo
 
 struct BufferCreateInfo
 {
+    BufferId bufferId;
     unsigned long size = 0;
     SharingType sharingType = SharingType::EXCLUSIVE;
     unsigned int familyCount = 0;

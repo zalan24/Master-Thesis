@@ -60,6 +60,8 @@ struct ImageId final : public IAutoSerializable<ImageId>
     }
 };
 
+using BufferId = ImageId;
+
 enum class ImageFormat
 {
     UNDEFINED = 0,
@@ -690,6 +692,7 @@ struct TextureInfo
 
 struct BufferInfo
 {
+    const drv::BufferId* bufferId;
     DeviceSize size;
     BufferSubresourceRange getSubresourceRange() const;
 };

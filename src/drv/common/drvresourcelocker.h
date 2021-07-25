@@ -45,12 +45,14 @@ class ResourceLockerDescriptor
 
     bool empty() const;
     ImagePtr getImage(uint32_t index) const;
+    BufferPtr getBuffer(uint32_t index) const;
     const ImageSubresourceSet& getReadSubresources(uint32_t index) const&;
     const ImageSubresourceSet& getWriteSubresources(uint32_t index) const&;
 
     void copyFrom(const ResourceLockerDescriptor* other);
 
     virtual uint32_t getImageCount() const = 0;
+    virtual uint32_t getBufferCount() const = 0;
     virtual void clear() = 0;
 
     ResourceLockerDescriptor() = default;
@@ -62,6 +64,14 @@ class ResourceLockerDescriptor
  protected:
     ~ResourceLockerDescriptor() {}
 
+    struct BufferData
+    {
+        drv::BufferPtr buffer = drv::get_null_ptr<drv::BufferPtr>();
+        bool reads;
+        bool writes;
+        BufferData() : reads(false), writes(true) {}
+        BufferData(drv::BufferPtr _buffer) : buffer(_buffer), reads(false), writes(false) {}
+    };
     struct ImageData
     {
         drv::ImagePtr image = drv::get_null_ptr<drv::ImagePtr>();
@@ -73,14 +83,21 @@ class ResourceLockerDescriptor
     };
 
     // TODO when buffer count is added, add it ot empty() function
+    virtual void push_back(BufferData&& data) = 0;
+    virtual void reserveBuffers(uint32_t count) = 0;
+
+    virtual BufferData& getBufferData(uint32_t index) = 0;
+    virtual const BufferData& getBufferData(uint32_t index) const = 0;
+
     virtual void push_back(ImageData&& data) = 0;
-    virtual void reserve(uint32_t count) = 0;
+    virtual void reserveImages(uint32_t count) = 0;
 
     virtual ImageData& getImageData(uint32_t index) = 0;
     virtual const ImageData& getImageData(uint32_t index) const = 0;
 
  private:
     uint32_t findImage(ImagePtr image) const;
+    uint32_t findBuffer(BufferPtr image) const;
 
     ImageSubresourceSet& getReadSubresources(uint32_t index) &;
     ImageSubresourceSet& getWriteSubresources(uint32_t index) &;

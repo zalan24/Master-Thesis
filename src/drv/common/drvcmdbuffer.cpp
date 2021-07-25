@@ -99,6 +99,7 @@ void DrvCmdBufferRecorder::autoRegisterImage(ImagePtr image, uint32_t layer, uin
 
     {
         auto reader = STATS_CACHE_READER;
+        TODO;
         if (auto imageItr = reader->cmdBufferImageStates.find(*texInfo.imageId);
             imageItr != reader->cmdBufferImageStates.end()
             && imageItr->second.isCompatible(texInfo)) {

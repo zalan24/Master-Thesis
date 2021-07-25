@@ -180,6 +180,7 @@ uint32_t ResourceLockerDescriptor::findImage(ImagePtr image) const {
 }
 
 void ResourceLockerDescriptor::copyFrom(const ResourceLockerDescriptor* other) {
+    TODO;
     clear();
     uint32_t count = other->getImageCount();
     reserve(count);

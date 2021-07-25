@@ -15,32 +15,9 @@ BufferStager::BufferStager(Engine* engine, drv::BufferPtr _buffer,
     std::vector<drv::BufferSet::BufferInfo> infos(numStagers);
 
     drv::BufferInfo bufInfo = drv::get_buffer_info(buffer);
-
-    // unsigned long size = 0;
-    // SharingType sharingType;
-    // unsigned int familyCount = 0;
-    // QueueFamilyPtr* families = nullptr;
-    // using UsageType = unsigned int;
-    // enum UsageFlagBits : UsageType
-    // {
-    //     TRANSFER_SRC_BIT = 0x00000001,
-    //     TRANSFER_DST_BIT = 0x00000002,
-    //     UNIFORM_TEXEL_BUFFER_BIT = 0x00000004,
-    //     STORAGE_TEXEL_BUFFER_BIT = 0x00000008,
-    //     UNIFORM_BUFFER_BIT = 0x00000010,
-    //     STORAGE_BUFFER_BIT = 0x00000020,
-    //     INDEX_BUFFER_BIT = 0x00000040,
-    //     VERTEX_BUFFER_BIT = 0x00000080,
-    //     INDIRECT_BUFFER_BIT = 0x00000100,
-    //     // SHADER_DEVICE_ADDRESS_BIT = 0x00020000,
-    //     // TRANSFORM_FEEDBACK_BUFFER_BIT_EXT = 0x00000800,
-    //     // TRANSFORM_FEEDBACK_COUNTER_BUFFER_BIT_EXT = 0x00001000,
-    //     // CONDITIONAL_RENDERING_BIT_EXT = 0x00000200,
-    //     RAY_TRACING_BIT_NV = 0x00000400,
-    // };
-    // UsageType usage = 0;
-
     for (uint32_t i = 0; i < infos.size(); ++i) {
+        infos[i].bufferId = drv::BufferId(bufInfo.bufferId->name + "_stager",
+                                          bufInfo.bufferId->subId * numStagers + i);
         infos[i].size = bufInfo.size;
         infos[i].usages = drv::BufferSet::BufferInfo::TRANSFER_SRC_BIT
                           | drv::BufferSet::BufferInfo::TRANSFER_DST_BIT;

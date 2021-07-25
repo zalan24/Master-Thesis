@@ -127,6 +127,7 @@ class DrvCmdBufferRecorder
                              (*buffer.getImageStates())[i].second);
     }
     using ImageStartingState = ImageTrackingState;
+    using BufferStartingState = BufferTrackingState;
     void registerImage(ImagePtr image, const ImageStartingState& state,
                        const ImageSubresourceSet& initMask);
     void registerImage(ImagePtr image, ImageLayout layout,
@@ -349,6 +350,7 @@ class DrvCmdBuffer
     QueueFamilyPtr queueFamily;
     DrvRecordCallback recordCallback;
     CommandBufferPtr cmdBufferPtr = get_null_ptr<CommandBufferPtr>();
+    TODO;
     DrvCmdBufferRecorder::ImageStates imageStates;
     PersistentResourceLockerDescriptor resourceUsage;
     StatsCache* statsCacheHandle = nullptr;

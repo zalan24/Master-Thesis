@@ -108,8 +108,21 @@ bool VulkanCmdBufferRecorder::requireFlush(const BarrierInfo& barrier0,
         else if (barrier0.imageBarriers[j].image < barrier0.imageBarriers[i].image)
             j++;
         else {  // equals
-            if (barrier0.imageBarriers[i].subresourceSet.overlap(
-                  barrier1.imageBarriers[j].subresourceSet))
+            if (barrier0.imageBarriers[i].subresource.overlap(
+                  barrier1.imageBarriers[j].subresource))
+                return true;
+        }
+    }
+    i = 0;
+    j = 0;
+    while (i < barrier0.numBufferRanges && j < barrier0.numBufferRanges) {
+        if (barrier0.bufferBarriers[i].buffer < barrier0.bufferBarriers[j].buffer)
+            i++;
+        else if (barrier0.bufferBarriers[j].buffer < barrier0.bufferBarriers[i].buffer)
+            j++;
+        else {  // equals
+            if (barrier0.bufferBarriers[i].subresourceSet.overlap(
+                  barrier1.bufferBarriers[j].subresourceSet))
                 return true;
         }
     }
@@ -151,14 +164,44 @@ bool VulkanCmdBufferRecorder::merge(BarrierInfo& barrier0, BarrierInfo& barrier)
             j++;
         }
     }
+    i = 0;
+    j = 0;
+    uint32_t commonBuffers = 0;
+    while (i < barrier0.numBufferRanges && j < barrier.numBufferRanges) {
+        if (barrier0.bufferBarriers[i].buffer < barrier.bufferBarriers[j].buffer)
+            i++;
+        else if (barrier.bufferBarriers[j].buffer < barrier0.bufferBarriers[i].buffer)
+            j++;
+        else {  // equals
+            drv::drv_assert(barrier0.bufferBarriers[j].buffer == barrier.bufferBarriers[i].buffer);
+            commonBuffers++;
+            // image dependent data
+            if (barrier0.bufferBarriers[i].srcFamily != barrier.bufferBarriers[j].srcFamily)
+                return false;
+            if (barrier0.bufferBarriers[i].dstFamily != barrier.bufferBarriers[j].dstFamily)
+                return false;
+            if (barrier0.bufferBarriers[i].srcAccessFlags
+                != barrier.bufferBarriers[j].srcAccessFlags)
+                return false;
+            if (barrier0.bufferBarriers[i].dstAccessFlags
+                != barrier.bufferBarriers[j].dstAccessFlags)
+                return false;
+            i++;
+            j++;
+        }
+    }
+    const uint32_t totalBufferCount =
+      barrier0.numBufferRanges + barrier.numBufferRanges - commonBuffers;
     const uint32_t totalImageCount =
       barrier0.numImageRanges + barrier.numImageRanges - commonImages;
+    if (totalBufferCount > drv_vulkan::MAX_NUM_RESOURCES_IN_BARRIER)
+        return false;
     if (totalImageCount > drv_vulkan::MAX_NUM_RESOURCES_IN_BARRIER)
         return false;
-    i = barrier0.numImageRanges;
-    j = barrier.numImageRanges;
     barrier.srcStages.add(barrier0.srcStages);
     barrier.dstStages.add(barrier0.dstStages);
+    i = barrier0.numImageRanges;
+    j = barrier.numImageRanges;
     barrier.numImageRanges = totalImageCount;
     for (uint32_t k = totalImageCount; k > 0; --k) {
         if (i > 0 && j > 0
@@ -189,9 +232,43 @@ bool VulkanCmdBufferRecorder::merge(BarrierInfo& barrier0, BarrierInfo& barrier)
             j--;
         }
     }
+    i = barrier0.numBufferRanges;
+    j = barrier.numBufferRanges;
+    barrier.numBufferRanges = totalBufferCount;
+    for (uint32_t k = totalBufferCount; k > 0; --k) {
+        if (i > 0 && j > 0
+            && barrier0.bufferBarriers[i - 1].buffer == barrier.bufferBarriers[j - 1].buffer) {
+            drv::drv_assert(k >= j);
+            if (k != j)
+                barrier.bufferBarriers[k - 1] = std::move(barrier.bufferBarriers[j - 1]);
+            barrier.bufferBarriers[k - 1].subresource.merge(
+              barrier0.bufferBarriers[i - 1].subresource);
+            barrier.bufferBarriers[k - 1].srcAccessFlags |=
+              barrier0.bufferBarriers[i - 1].srcAccessFlags;
+            barrier.bufferBarriers[k - 1].dstAccessFlags |=
+              barrier0.bufferBarriers[i - 1].dstAccessFlags;
+            i--;
+            j--;
+        }
+        else if (j == 0
+                 || (i > 0
+                     && barrier.bufferBarriers[j - 1].buffer
+                          < barrier0.bufferBarriers[i - 1].buffer)) {
+            drv::drv_assert(k > j);
+            barrier.bufferBarriers[k - 1] = std::move(barrier0.bufferBarriers[i - 1]);
+            i--;
+        }
+        else {
+            drv::drv_assert(k >= j);
+            if (k != j)
+                barrier.bufferBarriers[k - 1] = std::move(barrier.bufferBarriers[j - 1]);
+            j--;
+        }
+    }
     barrier0.srcStages = 0;
     barrier0.dstStages = 0;
     barrier0.numImageRanges = 0;
+    barrier0.numBufferRanges = 0;
     return true;
 }
 
@@ -215,7 +292,11 @@ void VulkanCmdBufferRecorder::flushBarrier(BarrierInfo& barrier) {
                 mipCount++;
         maxImageSubresCount += mipCount * layerCount;
     }
+    uint32_t bufferRangeCount = 0;
+    uint32_t maxBufferSubresCount = barrier.numBufferRanges;
     StackMemory::MemoryHandle<VkImageMemoryBarrier> vkImageBarriers(maxImageSubresCount, TEMPMEM);
+    StackMemory::MemoryHandle<VkBufferMemoryBarrier> vkBufferBarriers(maxBufferSubresCount,
+                                                                      TEMPMEM);
 
     for (uint32_t i = 0; i < barrier.numImageRanges; ++i) {
         if ((barrier.imageBarriers[i].dstFamily == barrier.imageBarriers[i].srcFamily
@@ -323,6 +404,35 @@ void VulkanCmdBufferRecorder::flushBarrier(BarrierInfo& barrier) {
             }
         }
     }
+    for (uint32_t i = 0; i < barrier.numBufferRanges; ++i) {
+        if ((barrier.bufferBarriers[i].dstFamily == barrier.bufferBarriers[i].srcFamily
+             && barrier.numBufferRanges[i].dstAccessFlags == 0
+             && barrier.numBufferRanges[i].srcAccessFlags == 0)
+            || !barrier.numBufferRanges[i].subresource.empty())
+            continue;
+
+        vkBufferBarriers[bufferRangeCount].sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
+        vkBufferBarriers[bufferRangeCount].pNext = nullptr;
+        vkBufferBarriers[bufferRangeCount].srcAccessMask =
+          static_cast<VkAccessFlags>(barrier.bufferBarriers[i].srcAccessFlags);
+        vkBufferBarriers[bufferRangeCount].dstAccessMask =
+          static_cast<VkAccessFlags>(barrier.bufferBarriers[i].dstAccessFlags);
+        vkBufferBarriers[bufferRangeCount].srcQueueFamilyIndex =
+          barrier.bufferBarriers[i].srcFamily != drv::IGNORE_FAMILY
+            ? convertFamilyToVk(barrier.bufferBarriers[i].srcFamily)
+            : VK_QUEUE_FAMILY_IGNORED;
+        vkBufferBarriers[bufferRangeCount].dstQueueFamilyIndex =
+          barrier.bufferBarriers[i].dstFamily != drv::IGNORE_FAMILY
+            ? convertFamilyToVk(barrier.bufferBarriers[i].dstFamily)
+            : VK_QUEUE_FAMILY_IGNORED;
+        vkBufferBarriers[bufferRangeCount].buffer =
+          convertBuffer(barrier.bufferBarriers[i].buffer)->buffer;
+        vkBufferBarriers[bufferRangeCount].offset =
+          static_cast<VkDeviceSize>(barrier.bufferBarriers[i].subresource.offset);
+        vkBufferBarriers[bufferRangeCount].size =
+          static_cast<VkDeviceSize>(barrier.bufferBarriers[i].subresource.size);
+        bufferRangeCount++;
+    }
 
     //     for (uint32_t i = 0; i < memoryBarrierCount; ++i) {
     //         barriers[i].sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER;
@@ -353,12 +463,11 @@ void VulkanCmdBufferRecorder::flushBarrier(BarrierInfo& barrier) {
     //       imageRangeCount, vkImageBarriers);
     // }
     // else {
-    vkCmdPipelineBarrier(convertCommandBuffer(getCommandBuffer()),
-                         convertPipelineStages(barrier.srcStages),
-                         convertPipelineStages(barrier.dstStages), 0,
-                         //  static_cast<VkDependencyFlags>(dependencyFlags),  // TODO
-                         0, nullptr, 0, nullptr,  // TODO add buffers here
-                         imageRangeCount, vkImageBarriers);
+    vkCmdPipelineBarrier(
+      convertCommandBuffer(getCommandBuffer()), convertPipelineStages(barrier.srcStages),
+      convertPipelineStages(barrier.dstStages), 0,
+      //  static_cast<VkDependencyFlags>(dependencyFlags),  // TODO
+      0, nullptr, bufferRangeCount, vkBufferBarriers, imageRangeCount, vkImageBarriers);
     // }
 
     // if (!drv::is_null_ptr<drv::EventPtr>(barrier.event) && barrier.eventCallback) {
@@ -653,30 +762,34 @@ bool DrvVulkan::validate_and_apply_state_transitions(
   drv::LogicalDevicePtr, drv::QueuePtr currentQueue, uint64_t frameId, drv::CmdBufferId cmdBufferId,
   const drv::TimelineSemaphoreHandle& timelineSemaphore, uint64_t semaphoreSignalValue,
   drv::PipelineStages::FlagType semaphoreSrcStages, drv::StateCorrectionData& correction,
-  uint32_t imageCount, const std::pair<drv::ImagePtr, drv::ImageTrackInfo>* transitions,
+  uint32_t imageCount, const std::pair<drv::ImagePtr, drv::ImageTrackInfo>* imageTransitions,
+  uint32_t bufferCount, const std::pair<drv::BufferPtr, drv::BufferTrackInfo>* bufferTransitions,
   StatsCache* cacheHandle, drv::ResourceStateTransitionCallback* cb) {
     uint32_t correctedImageCount = 0;
     StackMemory::MemoryHandle<std::pair<drv::ImagePtr, drv::ImageStateCorrection>> imageCorrections(
       imageCount, TEMPMEM);
+    uint32_t correctedBufferCount = 0;
+    StackMemory::MemoryHandle<std::pair<drv::BufferPtr, drv::BufferStateCorrection>>
+      bufferCorrections(bufferCount, TEMPMEM);
     for (uint32_t i = 0; i < imageCount; ++i) {
-        drv::TextureInfo texInfo = get_texture_info(transitions[i].first);
-        drv_vulkan::Image* image = convertImage(transitions[i].first);
+        drv::TextureInfo texInfo = get_texture_info(imageTransitions[i].first);
+        drv_vulkan::Image* image = convertImage(imageTransitions[i].first);
 
         if (correctedImageCount < imageCount
-            && imageCorrections[correctedImageCount].first != transitions[i].first) {
-            imageCorrections[correctedImageCount].first = transitions[i].first;
+            && imageCorrections[correctedImageCount].first != imageTransitions[i].first) {
+            imageCorrections[correctedImageCount].first = imageTransitions[i].first;
             imageCorrections[correctedImageCount].second =
               drv::ImageStateCorrection(image->arraySize, image->numMipLevels, image->aspects);
         }
 
         bool hadInvalid = false;
 
-        transitions[i].second.cmdState.usageMask.traverse([&](uint32_t layer, uint32_t mip,
-                                                              drv::AspectFlagBits aspect) {
-            const auto& requirement = transitions[i].second.guarantee.get(layer, mip, aspect);
-            const auto& usage = transitions[i].second.cmdState.usage.get(layer, mip, aspect);
+        imageTransitions[i].second.cmdState.usageMask.traverse([&](uint32_t layer, uint32_t mip,
+                                                                   drv::AspectFlagBits aspect) {
+            const auto& requirement = imageTransitions[i].second.guarantee.get(layer, mip, aspect);
+            const auto& usage = imageTransitions[i].second.cmdState.usage.get(layer, mip, aspect);
             const auto& usedStages =
-              transitions[i].second.cmdState.userStages.get(layer, mip, aspect);
+              imageTransitions[i].second.cmdState.userStages.get(layer, mip, aspect);
             auto& state = image->linearTrackingState.get(layer, mip, aspect);
 
             bool invalid = false;
@@ -694,12 +807,12 @@ bool DrvVulkan::validate_and_apply_state_transitions(
                 queueId++;
 
             uint32_t numPendingUsages =
-              get_num_pending_usages(transitions[i].first, layer, mip, aspect);
+              get_num_pending_usages(imageTransitions[i].first, layer, mip, aspect);
             bool dstWrite = usage.written || requireLayoutTransition;
             bool hadSemaphore = false;
             for (uint32_t j = 0; j < numPendingUsages; ++j) {
                 drv::PendingResourceUsage pendingUsage =
-                  get_pending_usage(transitions[i].first, layer, mip, aspect, j);
+                  get_pending_usage(imageTransitions[i].first, layer, mip, aspect, j);
                 if (pendingUsage.queue == currentQueue)
                     continue;
                 // if this is an existing queue, a former sync is guaranteed -> assume no write
@@ -826,10 +939,11 @@ bool DrvVulkan::validate_and_apply_state_transitions(
                     hadInvalid = true;
                 }
 
-                const auto& result = transitions[i].second.cmdState.state.get(layer, mip, aspect);
+                const auto& result =
+                  imageTransitions[i].second.cmdState.state.get(layer, mip, aspect);
                 drv::PipelineStages::FlagType preservedStages =
                   state.usableStages
-                  & transitions[i]
+                  & imageTransitions[i]
                       .second.cmdState.usage.get(layer, mip, aspect)
                       .preserveUsableStages;
                 if (hadSemaphore)
@@ -876,7 +990,8 @@ bool DrvVulkan::validate_and_apply_state_transitions(
                     hadInvalid = true;
                 }
 
-                const auto& result = transitions[i].second.cmdState.state.get(layer, mip, aspect);
+                const auto& result =
+                  imageTransitions[i].second.cmdState.state.get(layer, mip, aspect);
                 drv::drv_assert(result.dirtyMask == 0);
                 drv::drv_assert(result.ongoingWrites == 0);
                 // this is used as a dst stage for semaphores
@@ -887,13 +1002,231 @@ bool DrvVulkan::validate_and_apply_state_transitions(
         if (hadInvalid)
             correctedImageCount++;
     }
+    for (uint32_t i = 0; i < bufferCount; ++i) {
+        drv::BufferInfo bufInfo = get_buffer_info(bufferTransitions[i].first);
+        drv_vulkan::Buffer* buffer = convertBuffer(bufferTransitions[i].first);
+
+        if (correctedBufferCount < bufferCount
+            && bufferCorrections[correctedBufferCount].first != bufferTransitions[i].first) {
+            bufferCorrections[correctedBufferCount].first = bufferTransitions[i].first;
+            bufferCorrections[correctedBufferCount].second = {};
+        }
+
+        bool hadInvalid = false;
+
+        const auto& requirement = bufferTransitions[i].second.guarantee;
+        const auto& usage = bufferTransitions[i].second.cmdState.usage;
+        const auto& usedStages = bufferTransitions[i].second.cmdState.userStages;
+        auto& state = buffer->linearTrackingState;
+
+        bool invalid = false;
+
+        bool requireOwnershipTransfer =
+          !buffer->sharedResource && requirement.ownership != state.ownership
+          && requirement.ownership != drv::IGNORE_FAMILY && state.ownership != drv::IGNORE_FAMILY;
+
+        uint32_t queueId = 0;
+        while (queueId < state.multiQueueState.readingQueues.size()
+               && state.multiQueueState.readingQueues[queueId].queue != currentQueue)
+            queueId++;
+
+        uint32_t numPendingUsages = get_num_pending_usages(bufferTransitions[i].first);
+        bool dstWrite = usage.written;
+        bool hadSemaphore = false;
+        for (uint32_t j = 0; j < numPendingUsages; ++j) {
+            drv::PendingResourceUsage pendingUsage =
+              get_pending_usage(bufferTransitions[i].first, j);
+            if (pendingUsage.queue == currentQueue)
+                continue;
+            // if this is an existing queue, a former sync is guaranteed -> assume no write
+            bool srcWrite =
+              pendingUsage.isWrite && queueId == state.multiQueueState.readingQueues.size();
+            drv::PipelineStages::FlagType waitMask = 0;
+            drv::ResourceStateTransitionCallback::ConflictMode conflictMode =
+              drv::ResourceStateTransitionCallback::NONE;
+            if (srcWrite || dstWrite) {
+                // ordered sync
+                waitMask = dstWrite ? (pendingUsage.ongoingReads | pendingUsage.ongoingWrites)
+                                    : pendingUsage.ongoingWrites;
+                conflictMode = drv::ResourceStateTransitionCallback::ORDERED_ACCESS;
+            }
+            else if (requireOwnershipTransfer) {
+                // synchronize everything for simplicity
+                // when a new family is used, all existing usages should be on a different family
+                waitMask = pendingUsage.ongoingReads | pendingUsage.ongoingWrites;
+                conflictMode = drv::ResourceStateTransitionCallback::MUTEX;
+            }
+            if (waitMask != 0) {
+                hadSemaphore = true;
+                if (pendingUsage.signalledSemaphore) {
+                    if ((pendingUsage.syncedStages & waitMask) == waitMask)
+                        cb->registerSemaphore(pendingUsage.queue, pendingUsage.cmdBufferId,
+                                              pendingUsage.signalledSemaphore, pendingUsage.frameId,
+                                              pendingUsage.signalledValue, usedStages, waitMask,
+                                              conflictMode);
+                    else
+                        cb->requireAutoSync(
+                          pendingUsage.queue, pendingUsage.cmdBufferId, pendingUsage.frameId,
+                          usedStages, waitMask, conflictMode,
+                          drv::ResourceStateTransitionCallback::INSUFFICIENT_SEMAPHORE);
+                }
+                else
+                    cb->requireAutoSync(pendingUsage.queue, pendingUsage.cmdBufferId,
+                                        pendingUsage.frameId, usedStages, waitMask, conflictMode,
+                                        drv::ResourceStateTransitionCallback::NO_SEMAPHORE);
+            }
+        }
+
+        if (dstWrite || requireOwnershipTransfer) {
+            if (currentQueue != state.multiQueueState.mainQueue) {
+                if (queueId < state.multiQueueState.readingQueues.size()) {
+                    state.ongoingReads = state.multiQueueState.readingQueues[queueId].readingStages;
+                    state.ongoingWrites = 0;
+                    state.dirtyMask = 0;
+                    state.visible = drv::MemoryBarrier::get_all_bits();
+                }
+                else {
+                    state.ongoingReads = 0;
+                    state.ongoingWrites = 0;
+                    state.dirtyMask = 0;
+                    state.visible = drv::MemoryBarrier::get_all_bits();
+                }
+            }
+            if (hadSemaphore)
+                state.usableStages = usedStages;
+            else if (drv::is_null_ptr(state.multiQueueState.mainQueue))
+                state.usableStages = drv::PipelineStages::get_all_bits(drv::CMD_TYPE_ALL);
+            state.multiQueueState.mainSemaphore = timelineSemaphore;
+            state.multiQueueState.signalledValue = semaphoreSignalValue;
+            state.multiQueueState.submission = cmdBufferId;
+            state.multiQueueState.syncedStages = semaphoreSrcStages;
+            state.multiQueueState.frameId = frameId;
+            state.multiQueueState.readingQueues.clear();
+            state.multiQueueState.mainQueue = currentQueue;
+        }
+        else {
+            if (currentQueue != state.multiQueueState.mainQueue) {
+                if (queueId == state.multiQueueState.readingQueues.size()) {
+                    state.multiQueueState.readingQueues.emplace_back();
+                    state.multiQueueState.readingQueues.back().queue = currentQueue;
+                    state.multiQueueState.readingQueues.back().readingStages = usedStages;
+                }
+                state.multiQueueState.readingQueues[queueId].frameId = frameId;
+                state.multiQueueState.readingQueues[queueId].semaphore = timelineSemaphore;
+                state.multiQueueState.readingQueues[queueId].signalledValue = semaphoreSignalValue;
+                state.multiQueueState.readingQueues[queueId].submission = cmdBufferId;
+                state.multiQueueState.readingQueues[queueId].syncedStages = semaphoreSrcStages;
+            }
+        }
+
+        queueId = 0;
+        while (queueId < state.multiQueueState.readingQueues.size()
+               && state.multiQueueState.readingQueues[queueId].queue != currentQueue)
+            queueId++;
+
+        if (queueId == state.multiQueueState.readingQueues.size()) {
+            // main queue
+            if (requireOwnershipTransfer)
+                invalid = true;
+            else if ((state.usableStages & requirement.usableStages) != requirement.usableStages)
+                invalid = true;
+            else if ((state.ongoingWrites & requirement.ongoingWrites) != state.ongoingWrites)
+                invalid = true;
+            else if ((state.ongoingReads & requirement.ongoingReads) != state.ongoingReads)
+                invalid = true;
+            else if ((state.dirtyMask & requirement.dirtyMask) != state.dirtyMask)
+                invalid = true;
+            else if ((state.visible & requirement.visible) != requirement.visible)
+                invalid = true;
+            if (cacheHandle) {
+                StatsCacheWriter cacheWriter(cacheHandle);
+                auto& bufferData = cacheWriter->cmdBufferBufferStates[buffer->bufferId];
+                if (!bufferData.isCompatible(bufInfo))
+                    bufferData.init(bufInfo);
+                bufferData.subresources.get(layer, mip, aspect).append(state);
+            }
+            if (invalid) {
+                auto& oldState =
+                  bufferCorrections[correctedBufferCount].second.oldState.get(layer, mip, aspect);
+                auto& newState =
+                  bufferCorrections[correctedBufferCount].second.newState.get(layer, mip, aspect);
+                bufferCorrections[correctedBufferCount].second.usageMask.add(layer, mip, aspect);
+                oldState = state;
+                newState = requirement;
+                hadInvalid = true;
+            }
+
+            const auto& result = bufferTransitions[i].second.cmdState.state.get(layer, mip, aspect);
+            drv::PipelineStages::FlagType preservedStages =
+              state.usableStages
+              & bufferTransitions[i]
+                  .second.cmdState.usage.get(layer, mip, aspect)
+                  .preserveUsableStages;
+            if (hadSemaphore)
+                preservedStages &= usedStages;  // this is used as a dst stage for semaphores
+            static_cast<drv::ImageSubresourceTrackData&>(state) = result;
+            state.usableStages = state.usableStages | preservedStages;
+        }
+        else {
+            drv::drv_assert(!requireOwnershipTransfer);
+            drv::drv_assert(!requireLayoutTransition);
+            if ((state.multiQueueState.readingQueues[queueId].readingStages
+                 & requirement.usableStages)
+                != requirement.usableStages)
+                invalid = true;
+            else if ((state.multiQueueState.readingQueues[queueId].readingStages
+                      & requirement.ongoingReads)
+                     != state.multiQueueState.readingQueues[queueId].readingStages)
+                invalid = true;
+            drv::ImageSubresourceTrackData originalState;
+            originalState.dirtyMask = 0;
+            originalState.layout = state.layout;
+            originalState.ongoingReads = state.multiQueueState.readingQueues[queueId].readingStages;
+            originalState.ongoingWrites = 0;
+            originalState.ownership = state.ownership;
+            originalState.usableStages = state.multiQueueState.readingQueues[queueId].readingStages;
+            originalState.visible = drv::MemoryBarrier::get_all_bits();
+            if (cacheHandle) {
+                StatsCacheWriter cacheWriter(cacheHandle);
+                auto& bufferData = cacheWriter->cmdBufferBufferStates[buffer->bufferId];
+                if (!bufferData.isCompatible(bufInfo))
+                    bufferData.init(bufInfo);
+                bufferData.subresources.get(layer, mip, aspect).append(originalState);
+            }
+            if (invalid) {
+                auto& oldState = bufferCorrections[correctedBufferCount].second.oldState;
+                auto& newState = bufferCorrections[correctedBufferCount].second.newState;
+                bufferCorrections[correctedBufferCount].second.usageMask.add(
+                  layer, mip, aspect);  // I suppose this can just be removed
+                oldState = originalState;
+                newState = requirement;
+                hadInvalid = true;
+            }
+
+            const auto& result = bufferTransitions[i].second.cmdState.state;
+            drv::drv_assert(result.dirtyMask == 0);
+            drv::drv_assert(result.ongoingWrites == 0);
+            // this is used as a dst stage for semaphores
+            state.multiQueueState.readingQueues[queueId].readingStages =
+              result.ongoingReads | result.usableStages;
+        }
+        if (hadInvalid)
+            correctedBufferCount++;
+    }
     if (correctedImageCount > 0) {
         correction.imageCorrections =
           FixedArray<std::pair<drv::ImagePtr, drv::ImageStateCorrection>, 1>(correctedImageCount);
         for (uint32_t i = 0; i < correctedImageCount; ++i)
             correction.imageCorrections[i] = std::move(imageCorrections[i]);
     }
-    return correctedImageCount == 0;
+    if (correctedBufferCount > 0) {
+        correction.bufferCorrections =
+          FixedArray<std::pair<drv::BufferPtr, drv::BufferStateCorrection>, 1>(
+            correctedBufferCount);
+        for (uint32_t i = 0; i < correctedBufferCount; ++i)
+            correction.bufferCorrections[i] = std::move(bufferCorrections[i]);
+    }
+    return correctedImageCount == 0 && correctedBufferCount == 0;
 }
 
 drv::PipelineStages::FlagType VulkanCmdBufferRecorder::getAvailableStages() const {
@@ -910,6 +1243,7 @@ drv::PipelineStages::FlagType VulkanCmdBufferRecorder::getAvailableStages() cons
 
 void DrvVulkan::perform_cpu_access(const drv::ResourceLockerDescriptor* resources,
                                    const drv::ResourceLocker::Lock&) {
+    TODO;
     uint32_t imageCount = resources->getImageCount();
     for (uint32_t i = 0; i < imageCount; ++i) {
         drv_vulkan::Image* image = convertImage(resources->getImage(i));

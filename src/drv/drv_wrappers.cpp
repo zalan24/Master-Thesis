@@ -720,8 +720,7 @@ ImageSet::ImageSet(PhysicalDevicePtr _physicalDevice, LogicalDevicePtr _device, 
         *mem = allocate_memory(device, &allocInfo);
         drv_assert(!is_null_ptr(*mem), "Could not allocate memory");
         for (unsigned int i = 0; i < offsets.size(); ++i)
-            drv_assert(bind_image_memory(device, images[imageInd + i], *mem, offsets[i],
-                                         props.memoryTypes[allocInfo.memoryType]),
+            drv_assert(bind_image_memory(device, images[imageInd + i], *mem, offsets[i]),
                        "Could not bind buffer");
     };
     for (unsigned int i = 0; i < count; ++i) {

@@ -255,7 +255,7 @@ class IDriver
     virtual ImagePtr create_image(LogicalDevicePtr device, const ImageCreateInfo* info) = 0;
     virtual bool destroy_image(LogicalDevicePtr device, ImagePtr image) = 0;
     virtual bool bind_image_memory(LogicalDevicePtr device, ImagePtr image, DeviceMemoryPtr memory,
-                                   DeviceSize offset, drv::MemoryType memoryType) = 0;
+                                   DeviceSize offset) = 0;
     virtual bool get_image_memory_requirements(LogicalDevicePtr device, ImagePtr image,
                                                MemoryRequirements& memoryRequirements) = 0;
     virtual ImageViewPtr create_image_view(LogicalDevicePtr device,
@@ -289,7 +289,8 @@ class IDriver
       LogicalDevicePtr device, QueuePtr currentQueue, uint64_t frameId, CmdBufferId cmdBufferId,
       const TimelineSemaphoreHandle& timelineSemaphore, uint64_t semaphoreSignalValue,
       PipelineStages::FlagType semaphoreSrcStages, StateCorrectionData& correction,
-      uint32_t imageCount, const std::pair<drv::ImagePtr, ImageTrackInfo>* transitions,
+      uint32_t imageCount, const std::pair<drv::ImagePtr, ImageTrackInfo>* imageTransitions,
+      uint32_t bufferCount, const std::pair<drv::BufferPtr, BufferTrackInfo>* bufferTransitions,
       StatsCache* cacheHandle, ResourceStateTransitionCallback* cb) = 0;
 
     virtual DriverSupport get_support(LogicalDevicePtr device) = 0;

@@ -141,9 +141,17 @@ struct MultiQueueTrackingState
     FlexibleArray<ReadingQueueState, 8> readingQueues;
 };
 
+struct BufferSubresourceTrackData : PerSubresourceRangeTrackData
+{};
+
 struct ImageSubresourceTrackData : PerSubresourceRangeTrackData
 {
     drv::ImageLayout layout = drv::ImageLayout::UNDEFINED;
+};
+
+struct GlobalBufferSubresourceTrackData : BufferSubresourceTrackData
+{
+    MultiQueueTrackingState multiQueueState;
 };
 
 struct GlobalImageSubresourceTrackData : ImageSubresourceTrackData
@@ -186,6 +194,8 @@ struct ImagePerSubresourceData
     const T& operator[](uint32_t i) const { return data[i]; }
 };
 
+using BufferTrackingState = BufferSubresourceTrackData;
+using GlobalBufferTrackingState = GlobalBufferSubresourceTrackData;
 using ImageTrackingState = ImagePerSubresourceData<ImageSubresourceTrackData, 16>;
 using GlobalImageTrackingState = ImagePerSubresourceData<GlobalImageSubresourceTrackData, 16>;
 struct SubresourceUsageData
@@ -194,6 +204,7 @@ struct SubresourceUsageData
       drv::PipelineStages::get_all_bits(drv::CMD_TYPE_ALL);
     bool written = false;
 };
+using BufferUsageData = SubresourceUsageData;
 using ImageUsageData = ImagePerSubresourceData<SubresourceUsageData, 16>;
 
 struct SubresourceStateCorrection
@@ -206,6 +217,16 @@ struct ImageSubresourceStateCorrection : SubresourceStateCorrection
 {
     drv::ImageLayout oldLayout = drv::ImageLayout::UNDEFINED;
     drv::ImageLayout newLayout = drv::ImageLayout::UNDEFINED;
+};
+
+struct CmdBufferTrackingState
+{
+    BufferUsageData usage;
+    BufferTrackingState state;
+    drv::PipelineStages::FlagType userStages = 0;  // including barriers
+    // ImageSubresourceSet usageMask;
+
+    void addStage(drv::PipelineStages::FlagType stages) { userStages |= stages; }
 };
 
 struct CmdImageTrackingState
@@ -227,6 +248,13 @@ struct CmdImageTrackingState
     }
 };
 
+struct BufferStateCorrection
+{
+    BufferTrackingState oldState;
+    BufferTrackingState newState;
+    // BufferSubresourceSet usageMask;
+};
+
 struct ImageStateCorrection
 {
     ImageTrackingState oldState;
@@ -243,9 +271,15 @@ struct ImageStateCorrection
 struct StateCorrectionData
 {
     FixedArray<std::pair<ImagePtr, ImageStateCorrection>, 1> imageCorrections;
-    StateCorrectionData() : imageCorrections(0) {}
+    FixedArray<std::pair<BufferPtr, BufferStateCorrection>, 1> bufferCorrections;
+    StateCorrectionData() : imageCorrections(0), bufferCorrections(0) {}
 };
 
+struct BufferTrackInfo
+{
+    BufferTrackingState guarantee;
+    CmdBufferTrackingState cmdState;  // usage mask and result state
+};
 struct ImageTrackInfo
 {
     ImageTrackingState guarantee;
