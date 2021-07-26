@@ -13,8 +13,8 @@ struct DeviceMemory
 {
     VkDeviceMemory memory;
     drv::DeviceSize size;
-    std::mutex mapMutex;
     drv::MemoryType memoryType;
+    mutable std::mutex mapMutex;
 
     DeviceMemory(VkDeviceMemory _memory, drv::DeviceSize _size, drv::MemoryType _memoryType)
       : memory(_memory), size(_size), memoryType(_memoryType) {}

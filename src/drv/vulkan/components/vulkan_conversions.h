@@ -22,8 +22,8 @@ inline drv::QueueFamilyPtr convertFamilyFromVk(uint32_t id) {
     return id;
 }
 
-inline VkBuffer convertBuffer(drv::BufferPtr buffer) {
-    return drv::resolve_ptr<drv_vulkan::Buffer*>(buffer)->buffer;
+inline drv_vulkan::Buffer* convertBuffer(drv::BufferPtr buffer) {
+    return drv::resolve_ptr<drv_vulkan::Buffer*>(buffer);
 }
 
 inline drv_vulkan::Swapchain* convertSwapchain(drv::SwapchainPtr swapchain) {

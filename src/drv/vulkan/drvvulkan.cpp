@@ -108,8 +108,8 @@ bool VulkanCmdBufferRecorder::requireFlush(const BarrierInfo& barrier0,
         else if (barrier0.imageBarriers[j].image < barrier0.imageBarriers[i].image)
             j++;
         else {  // equals
-            if (barrier0.imageBarriers[i].subresource.overlap(
-                  barrier1.imageBarriers[j].subresource))
+            if (barrier0.imageBarriers[i].subresourceSet.overlap(
+                  barrier1.imageBarriers[j].subresourceSet))
                 return true;
         }
     }
@@ -121,8 +121,8 @@ bool VulkanCmdBufferRecorder::requireFlush(const BarrierInfo& barrier0,
         else if (barrier0.bufferBarriers[j].buffer < barrier0.bufferBarriers[i].buffer)
             j++;
         else {  // equals
-            if (barrier0.bufferBarriers[i].subresourceSet.overlap(
-                  barrier1.bufferBarriers[j].subresourceSet))
+            if (barrier0.bufferBarriers[i].subresource.overlap(
+                  barrier1.bufferBarriers[j].subresource))
                 return true;
         }
     }
@@ -406,9 +406,9 @@ void VulkanCmdBufferRecorder::flushBarrier(BarrierInfo& barrier) {
     }
     for (uint32_t i = 0; i < barrier.numBufferRanges; ++i) {
         if ((barrier.bufferBarriers[i].dstFamily == barrier.bufferBarriers[i].srcFamily
-             && barrier.numBufferRanges[i].dstAccessFlags == 0
-             && barrier.numBufferRanges[i].srcAccessFlags == 0)
-            || !barrier.numBufferRanges[i].subresource.empty())
+             && barrier.bufferBarriers[i].dstAccessFlags == 0
+             && barrier.bufferBarriers[i].srcAccessFlags == 0)
+            || !barrier.bufferBarriers[i].subresource.empty())
             continue;
 
         vkBufferBarriers[bufferRangeCount].sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;

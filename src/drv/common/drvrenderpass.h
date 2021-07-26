@@ -32,7 +32,7 @@ struct ResourceUsageInfo
 {
     RenderPassResourceId resource;
     ImageResourceUsageFlag imageUsages = 0;
-    // TODO buffer usages
+    BufferResourceUsageFlag bufferUsages = 0;
 };
 
 struct SubpassInfo

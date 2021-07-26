@@ -28,11 +28,13 @@ class ResourceLockerDescriptor
                   drv::AspectFlagBits aspect, UsageMode usage) noexcept;
     void addImage(drv::ImagePtr image, const drv::ImageSubresourceSet& subresources,
                   UsageMode usage) noexcept;
+    void addBuffer(drv::BufferPtr Buffer, UsageMode usage) noexcept;
 
     UsageMode getImageUsage(drv::ImagePtr image, uint32_t layer, uint32_t mip,
                             drv::AspectFlagBits aspect) const;
     UsageMode getImageUsage(uint32_t index, uint32_t layer, uint32_t mip,
                             drv::AspectFlagBits aspect) const;
+    UsageMode getBufferUsage(uint32_t index) const;
 
     enum ConflictType
     {
@@ -82,7 +84,6 @@ class ResourceLockerDescriptor
           : image(_image), reads(layerCount), writes(layerCount) {}
     };
 
-    // TODO when buffer count is added, add it ot empty() function
     virtual void push_back(BufferData&& data) = 0;
     virtual void reserveBuffers(uint32_t count) = 0;
 

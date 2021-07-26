@@ -145,6 +145,18 @@ struct ImageSubresStateStat final : public IAutoSerializable<ImageSubresStateSta
     void get(drv::ImageSubresourceTrackData& data, bool tendTo) const;
 };
 
+struct BufferSubresStateStat final : public IAutoSerializable<BufferSubresStateStat>
+{
+    REFLECTABLE
+    (
+        (SubresStateStat) subres
+    )
+
+    void set(const drv::BufferSubresourceTrackData& data);
+    void append(const drv::BufferSubresourceTrackData& data);
+    void get(drv::BufferSubresourceTrackData& data, bool tendTo) const;
+};
+
 template <typename T>
 struct ImageSubresourcesData final : public ISerializable
 {
@@ -218,3 +230,4 @@ struct ImageSubresourcesData final : public ISerializable
 using SemaphoreSyncData = PipelineStagesStat;
 
 using ImageStateStat = ImageSubresourcesData<ImageSubresStateStat>;
+using BufferStateStat = BufferSubresStateStat;

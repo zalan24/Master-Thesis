@@ -28,6 +28,19 @@ DrvCmdBufferRecorder::~DrvCmdBufferRecorder() {
                 imageStates->pop_back();
             }
         }
+        for (uint32_t i = uint32_t(bufferStates->size()); i > 0; --i) {
+            bool used = false;
+            for (uint32_t j = 0; j < bufferRecordStates.size() && !used; ++j) {
+                if (bufferRecordStates[j].first == (*bufferStates)[i - 1].first) {
+                    used = bufferRecordStates[j].second.used;
+                    break;
+                }
+            }
+            if (!used) {
+                (*bufferStates)[i - 1] = std::move((*bufferStates)[bufferStates->size() - 1]);
+                bufferStates->pop_back();
+            }
+        }
         if (resourceUsage != nullptr) {
             resourceUsage->clear();
             for (uint32_t i = 0; i < imageStates->size(); ++i) {
@@ -41,6 +54,12 @@ DrvCmdBufferRecorder::~DrvCmdBufferRecorder() {
                                               written ? ResourceLockerDescriptor::READ_WRITE
                                                       : ResourceLockerDescriptor::READ);
                   });
+            }
+            for (uint32_t i = 0; i < bufferStates->size(); ++i) {
+                bool written = (*bufferStates)[i].second.cmdState.usage.written;
+                resourceUsage->addBuffer(
+                  (*bufferStates)[i].first,
+                  written ? ResourceLockerDescriptor::READ_WRITE : ResourceLockerDescriptor::READ);
             }
         }
         reset_ptr(cmdBufferPtr);
@@ -57,7 +76,30 @@ DrvCmdBufferRecorder::DrvCmdBufferRecorder(IDriver* _driver, drv::PhysicalDevice
     queueSupport(_driver->get_command_type_mask(physicalDevice, _family)),
     queueFamilyLock(driver->lock_queue_family(device, family)),
     cmdBufferPtr(_cmdBufferPtr),
-    imageStates(nullptr) {
+    imageStates(nullptr),
+    bufferStates(nullptr) {
+}
+
+void DrvCmdBufferRecorder::autoRegisterBuffer(BufferPtr buffer) {
+    BufferInfo bufInfo = driver->get_buffer_info(buffer);
+    ImageStartingState state;
+    auto& s = state;
+    {
+        auto reader = STATS_CACHE_READER;
+        if (auto bufferItr = reader->cmdBufferBufferStates.find(*bufInfo.bufferId);
+            bufferItr != reader->cmdBufferBufferStates.end()) {
+            const ImageSubresStateStat& subRes = bufferItr->second.subresources;
+            subRes.get(s, false);
+
+            if (s.usableStages == 0)
+                s.usableStages |= drv::PipelineStages::BOTTOM_OF_PIPE_BIT;
+        }
+        else {
+            // everything else is default
+            s.ownership = family;
+        }
+    }
+    registerBuffer(buffer, state);
 }
 
 void DrvCmdBufferRecorder::init(uint64_t firstSignalValue) {
@@ -96,10 +138,8 @@ void DrvCmdBufferRecorder::autoRegisterImage(ImagePtr image, uint32_t layer, uin
     ImageSubresourceSet initMask(texInfo.arraySize);
     initMask.add(layer, mip, aspect);
     auto& s = state.get(layer, mip, aspect);
-
     {
         auto reader = STATS_CACHE_READER;
-        TODO;
         if (auto imageItr = reader->cmdBufferImageStates.find(*texInfo.imageId);
             imageItr != reader->cmdBufferImageStates.end()
             && imageItr->second.isCompatible(texInfo)) {
@@ -126,10 +166,9 @@ ImageTrackInfo& DrvCmdBufferRecorder::getImageState(
     bool found = false;
     for (uint32_t i = 0; i < imageRecordStates.size() && !found; ++i) {
         if (imageRecordStates[i].first == image) {
-            drv::TextureInfo info = driver->get_texture_info(image);
             for (uint32_t j = 0; j < ranges; ++j)
                 subresourceRanges->traverse(
-                  info.arraySize, info.numMips,
+                  texInfo.arraySize, texInfo.numMips,
                   [&, this](uint32_t layer, uint32_t mip, AspectFlagBits aspect) {
                       if (!(texInfo.aspects & aspect))
                           return;
@@ -164,6 +203,68 @@ ImageTrackInfo& DrvCmdBufferRecorder::getImageState(
     state.cmdState.state = state.guarantee;
     imageStates->emplace_back(image, std::move(state));
     return imageStates->back().second;
+}
+
+BufferTrackInfo& DrvCmdBufferRecorder::getBufferState(
+  drv::BufferPtr buffer, uint32_t ranges, const drv::BufferSubresourceRange* subresourceRanges,
+  const drv::PipelineStages& stages) {
+    BufferInfo bufInfo = driver->get_buffer_info(buffer);
+    bool found = false;
+    for (uint32_t i = 0; i < bufferRecordStates.size() && !found; ++i) {
+        if (bufferRecordStates[i].first == buffer) {
+            drv::drv_assert((*bufferStates)[i].first == buffer,
+                            "Buffer state and record state use different indices");
+            (*bufferStates)[i].second.cmdState.addStage(stages.stageFlags);
+            found = true;
+        }
+    }
+    if (!found)
+        autoRegisterBuffer(buffer);
+    found = false;
+    for (uint32_t i = 0; i < bufferRecordStates.size() && !found; ++i) {
+        if (bufferRecordStates[i].first == buffer) {
+            bufferRecordStates[i].second.used = true;
+            found = true;
+        }
+    }
+    for (uint32_t i = 0; i < bufferStates->size(); ++i)
+        if ((*bufferStates)[i].first == buffer)
+            return (*bufferStates)[i].second;
+    drv::drv_assert(false, "Something went wrong with the registration of an buffer");
+    // undefined, unknown queue family
+    // let's hope, it works out
+    BufferTrackInfo state;
+    state.guarantee.usableStages &= getAvailableStages();
+    state.cmdState.state = state.guarantee;
+    bufferStates->emplace_back(buffer, std::move(state));
+    return bufferStates->back().second;
+}
+
+void DrvCmdBufferRecorder::registerBuffer(BufferPtr buffer, const BufferStartingState& state) {
+    BufferInfo bufInfo = driver->get_buffer_info(buffer);
+    uint32_t indRec = 0;
+    while (indRec < bufferRecordStates.size() && bufferRecordStates[indRec].first != buffer)
+        indRec++;
+    if (indRec == bufferRecordStates.size()) {
+        RecordBufferInfo recInfo{false};
+        bufferRecordStates.emplace_back(buffer, std::move(recInfo));
+    }
+    RecordBufferInfo& bufRecState = bufferRecordStates[indRec].second;
+
+    uint32_t ind = 0;
+    while (ind < bufferStates->size() && (*bufferStates)[ind].first != buffer)
+        ind++;
+    bool knownBuffer = ind != bufferStates->size();
+    BufferTrackInfo bufState = knownBuffer ? (*bufferStates)[ind].second : BufferTrackInfo();
+
+    bufState.guarantee = state;
+    if (!knownBuffer)
+        bufState.guarantee.usableStages &= getAvailableStages();
+    bufState.cmdState.state = bufState.guarantee;
+    if (!knownBuffer)
+        bufferStates->emplace_back(buffer, std::move(bufState));
+    else
+        (*bufferStates)[ind].second = std::move(bufState);
 }
 
 void DrvCmdBufferRecorder::registerImage(ImagePtr image, const ImageStartingState& state,
@@ -248,6 +349,30 @@ void DrvCmdBufferRecorder::updateImageState(drv::ImagePtr image, const ImageTrac
     if (!found) {
         RecordImageInfo recInfo(false, initMask);
         imageRecordStates.emplace_back(image, std::move(recInfo));
+    }
+}
+
+void DrvCmdBufferRecorder::updateBufferState(drv::BufferPtr buffer, const BufferTrackInfo& state) {
+    bool found = false;
+    for (uint32_t i = 0; i < bufferStates->size() && !found; ++i) {
+        if ((*bufferStates)[i].first == buffer) {
+            found = true;
+            (*bufferStates)[i].second.guarantee = (*bufferStates)[i].second.cmdState.state =
+              state.cmdState.state;
+        }
+    }
+    if (!found)
+        bufferStates->emplace_back(buffer, state);
+    found = false;
+    for (uint32_t i = 0; i < bufferRecordStates.size() && !found; ++i) {
+        if (bufferRecordStates[i].first == buffer) {
+            found = true;
+            // bufferRecordStates[i].second.initMask.merge(initMask);
+        }
+    }
+    if (!found) {
+        RecordBufferInfo recInfo(false);
+        bufferRecordStates.emplace_back(buffer, std::move(recInfo));
     }
 }
 
@@ -336,13 +461,17 @@ void DrvCmdBufferRecorder::useResource(drv::ImagePtr image,
 uint32_t PersistentResourceLockerDescriptor::getImageCount() const {
     return uint32_t(imageData.size());
 }
+uint32_t PersistentResourceLockerDescriptor::getBufferCount() const {
+    return uint32_t(bufferData.size());
+}
 void PersistentResourceLockerDescriptor::clear() {
     imageData.clear();
+    bufferData.clear();
 }
 void PersistentResourceLockerDescriptor::push_back(ImageData&& data) {
     imageData.push_back(std::move(data));
 }
-void PersistentResourceLockerDescriptor::reserve(uint32_t count) {
+void PersistentResourceLockerDescriptor::reserveImages(uint32_t count) {
     imageData.reserve(count);
 }
 
@@ -353,4 +482,19 @@ ResourceLockerDescriptor::ImageData& PersistentResourceLockerDescriptor::getImag
 const ResourceLockerDescriptor::ImageData& PersistentResourceLockerDescriptor::getImageData(
   uint32_t index) const {
     return imageData[index];
+}
+void PersistentResourceLockerDescriptor::push_back(BufferData&& data) {
+    bufferData.push_back(std::move(data));
+}
+void PersistentResourceLockerDescriptor::reserveBuffers(uint32_t count) {
+    bufferData.reserve(count);
+}
+
+ResourceLockerDescriptor::BufferData& PersistentResourceLockerDescriptor::getBufferData(
+  uint32_t index) {
+    return bufferData[index];
+}
+const ResourceLockerDescriptor::BufferData& PersistentResourceLockerDescriptor::getBufferData(
+  uint32_t index) const {
+    return bufferData[index];
 }

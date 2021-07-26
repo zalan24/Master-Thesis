@@ -134,6 +134,32 @@ void ResourceLockerDescriptor::addImage(drv::ImagePtr image, uint32_t layerCount
     }
 }
 
+void ResourceLockerDescriptor::addBuffer(drv::BufferPtr buffer, UsageMode usage) noexcept {
+    if (usage == UsageMode::NONE)
+        return;
+    uint32_t ind = findBuffer(buffer);
+    if (ind != getBufferCount()) {
+        if (usage == UsageMode::READ || usage == UsageMode::READ_WRITE)
+            getBufferData(ind).reads = true;
+        if (usage == UsageMode::WRITE || usage == UsageMode::READ_WRITE)
+            getBufferData(ind).writes = true;
+    }
+    else {
+        ind = getBufferCount();
+        push_back(BufferData{});
+        while (0 < ind && buffer < getBuffer(ind - 1)) {
+            getBufferData(ind) = std::move(getBufferData(ind - 1));
+            ind--;
+        }
+        BufferData data(buffer);
+        if (usage == UsageMode::READ || usage == UsageMode::READ_WRITE)
+            data.reads = true;
+        if (usage == UsageMode::WRITE || usage == UsageMode::READ_WRITE)
+            data.writes = true;
+        getBufferData(ind) = std::move(data);
+    }
+}
+
 void ResourceLockerDescriptor::addImage(drv::ImagePtr image,
                                         const drv::ImageSubresourceSet& subresources,
                                         UsageMode usage) noexcept {
@@ -180,12 +206,15 @@ uint32_t ResourceLockerDescriptor::findImage(ImagePtr image) const {
 }
 
 void ResourceLockerDescriptor::copyFrom(const ResourceLockerDescriptor* other) {
-    TODO;
     clear();
-    uint32_t count = other->getImageCount();
-    reserve(count);
-    for (uint32_t i = 0; i < count; ++i)
+    uint32_t imageCount = other->getImageCount();
+    reserveImages(imageCount);
+    for (uint32_t i = 0; i < imageCount; ++i)
         push_back(ImageData(other->getImageData(i)));
+    uint32_t bufferCount = other->getBufferCount();
+    reserveImages(bufferCount);
+    for (uint32_t i = 0; i < bufferCount; ++i)
+        push_back(BufferData(other->getBufferData(i)));
 }
 
 ResourceLockerDescriptor::UsageMode ResourceLockerDescriptor::getImageUsage(
@@ -241,8 +270,7 @@ ResourceLockerDescriptor::ConflictType ResourceLockerDescriptor::findConflict(
 }
 
 bool ResourceLockerDescriptor::empty() const {
-    // TODO add buffer count here
-    return getImageCount() == 0;
+    return getImageCount() == 0 && getBufferCount() == 0;
 }
 
 ImagePtr ResourceLockerDescriptor::getImage(uint32_t index) const {

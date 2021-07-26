@@ -14,40 +14,34 @@ using namespace drv_vulkan;
 
 drv::BufferPtr DrvVulkan::create_buffer(drv::LogicalDevicePtr device,
                                         const drv::BufferCreateInfo* info) {
-    try {
-        VkBufferCreateInfo bufferCreateInfo;
-        bufferCreateInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-        bufferCreateInfo.pNext = nullptr;
-        bufferCreateInfo.flags = 0;
-        bufferCreateInfo.size = info->size;
-        bufferCreateInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
-        switch (info->sharingType) {
-            case drv::SharingType::EXCLUSIVE:
-                bufferCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-                break;
-            case drv::SharingType::CONCURRENT:
-                bufferCreateInfo.sharingMode = VK_SHARING_MODE_CONCURRENT;
-                break;
-        }
-        bufferCreateInfo.queueFamilyIndexCount = info->familyCount;
-        StackMemory::MemoryHandle<uint32_t> queueFamilies(info->familyCount, TEMPMEM);
-        if (info->familyCount > 0) {
-            for (unsigned int i = 0; i < info->familyCount; ++i)
-                queueFamilies[i] = convertFamilyToVk(info->families[i]);
-            bufferCreateInfo.pQueueFamilyIndices = queueFamilies;
-        }
-        bufferCreateInfo.usage = static_cast<VkBufferUsageFlags>(info->usage);
+    VkBufferCreateInfo bufferCreateInfo;
+    bufferCreateInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+    bufferCreateInfo.pNext = nullptr;
+    bufferCreateInfo.flags = 0;
+    bufferCreateInfo.size = info->size;
+    bufferCreateInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
+    switch (info->sharingType) {
+        case drv::SharingType::EXCLUSIVE:
+            bufferCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+            break;
+        case drv::SharingType::CONCURRENT:
+            bufferCreateInfo.sharingMode = VK_SHARING_MODE_CONCURRENT;
+            break;
+    }
+    bufferCreateInfo.queueFamilyIndexCount = info->familyCount;
+    StackMemory::MemoryHandle<uint32_t> queueFamilies(info->familyCount, TEMPMEM);
+    if (info->familyCount > 0) {
+        for (unsigned int i = 0; i < info->familyCount; ++i)
+            queueFamilies[i] = convertFamilyToVk(info->families[i]);
+        bufferCreateInfo.pQueueFamilyIndices = queueFamilies;
+    }
+    bufferCreateInfo.usage = static_cast<VkBufferUsageFlags>(info->usage);
 
-        VkBuffer vkBuffer;
-        VkResult result =
-          vkCreateBuffer(drv::resolve_ptr<VkDevice>(device), &bufferCreateInfo, nullptr, &vkBuffer);
-        drv::drv_assert(result == VK_SUCCESS, "Could not create buffer");
-        return drv::store_ptr<drv::BufferPtr>(new Buffer(info->bufferId, info->size, vkBuffer));
-    }
-    catch (...) {
-        delete buffer;
-        throw;
-    }
+    VkBuffer vkBuffer;
+    VkResult result =
+      vkCreateBuffer(drv::resolve_ptr<VkDevice>(device), &bufferCreateInfo, nullptr, &vkBuffer);
+    drv::drv_assert(result == VK_SUCCESS, "Could not create buffer");
+    return drv::store_ptr<drv::BufferPtr>(new Buffer(info->bufferId, info->size, vkBuffer));
 }
 
 bool DrvVulkan::destroy_buffer(drv::LogicalDevicePtr device, drv::BufferPtr _buffer) {
@@ -67,7 +61,8 @@ drv::DeviceMemoryPtr DrvVulkan::allocate_memory(drv::LogicalDevicePtr device,
     VkResult result =
       vkAllocateMemory(drv::resolve_ptr<VkDevice>(device), &allocInfo, nullptr, &memory);
     drv::drv_assert(result == VK_SUCCESS, "Could not allocate memory");
-    return drv::store_ptr<drv::DeviceMemoryPtr>(new drv_vulkan::DeviceMemory(memory, info->size));
+    return drv::store_ptr<drv::DeviceMemoryPtr>(
+      new drv_vulkan::DeviceMemory(memory, info->size, info->memoryType));
 }
 
 bool DrvVulkan::free_memory(drv::LogicalDevicePtr device, drv::DeviceMemoryPtr memory) {

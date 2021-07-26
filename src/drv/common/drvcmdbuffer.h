@@ -84,6 +84,7 @@ class DrvCmdBufferRecorder
 {
  public:
     static constexpr uint32_t NUM_CACHED_IMAGE_STATES = 8;
+    static constexpr uint32_t NUM_CACHED_BUFFER_STATES = 8;
 
     struct RecordImageInfo
     {
@@ -93,11 +94,21 @@ class DrvCmdBufferRecorder
           : used(_used), initMask(std::move(_initMask)) {}
         RecordImageInfo() : used(false), initMask(0) {}
     };
+    struct RecordBufferInfo
+    {
+        bool used = false;
+        RecordBufferInfo(bool _used) : used(_used) {}
+        RecordBufferInfo() : used(false) {}
+    };
 
     using ImageStates =
       FlexibleArray<std::pair<drv::ImagePtr, ImageTrackInfo>, NUM_CACHED_IMAGE_STATES>;
     using ImageRecordStates =
       FlexibleArray<std::pair<drv::ImagePtr, RecordImageInfo>, NUM_CACHED_IMAGE_STATES>;
+    using BufferStates =
+      FlexibleArray<std::pair<drv::BufferPtr, BufferTrackInfo>, NUM_CACHED_BUFFER_STATES>;
+    using BufferRecordStates =
+      FlexibleArray<std::pair<drv::BufferPtr, RecordBufferInfo>, NUM_CACHED_BUFFER_STATES>;
 
     DrvCmdBufferRecorder(IDriver* driver, drv::PhysicalDevicePtr physicalDevice,
                          LogicalDevicePtr device, drv::QueueFamilyPtr family,
@@ -125,6 +136,9 @@ class DrvCmdBufferRecorder
         for (uint32_t i = 0; i < buffer.getImageStates()->size(); ++i)
             updateImageState((*buffer.getImageStates())[i].first,
                              (*buffer.getImageStates())[i].second);
+        for (uint32_t i = 0; i < buffer.getBufferStates()->size(); ++i)
+            updateBufferState((*buffer.getBufferStates())[i].first,
+                              (*buffer.getBufferStates())[i].second);
     }
     using ImageStartingState = ImageTrackingState;
     using BufferStartingState = BufferTrackingState;
@@ -132,14 +146,18 @@ class DrvCmdBufferRecorder
                        const ImageSubresourceSet& initMask);
     void registerImage(ImagePtr image, ImageLayout layout,
                        QueueFamilyPtr ownerShip = IGNORE_FAMILY);
+    void registerBuffer(BufferPtr buffer, const BufferStartingState& state);
     void registerUndefinedImage(ImagePtr image, QueueFamilyPtr ownerShip = IGNORE_FAMILY);
     void autoRegisterImage(ImagePtr image, drv::ImageLayout preferrefLayout);
     void autoRegisterImage(ImagePtr image, uint32_t layer, uint32_t mip, AspectFlagBits aspect, drv::ImageLayout preferrefLayout);
+    void autoRegisterBuffer(BufferPtr buffer);
 
     void updateImageState(drv::ImagePtr image, const ImageTrackInfo& state,
                           const ImageSubresourceSet& initMask);
+    void updateBufferState(drv::BufferPtr buffer, const BufferTrackInfo& state);
 
     void setImageStates(ImageStates* _imageStates) { imageStates = _imageStates; }
+    void setBufferStates(BufferStates* _bufferStates) { bufferStates = _bufferStates; }
 
     virtual void corrigate(const StateCorrectionData& data) = 0;
 
@@ -182,6 +200,9 @@ class DrvCmdBufferRecorder
                                   const drv::ImageSubresourceRange* subresourceRanges,
                                   drv::ImageLayout preferrefLayout,
                                   const drv::PipelineStages& stages);
+    BufferTrackInfo& getBufferState(drv::BufferPtr buffer, uint32_t ranges,
+                                    const drv::BufferSubresourceRange* subresourceRanges,
+                                    const drv::PipelineStages& stages);
 
     void useResource(drv::ImagePtr image, uint32_t layer, uint32_t mip, drv::AspectFlagBits aspect,
                      drv::ImageResourceUsageFlag usages);
@@ -200,8 +221,10 @@ class DrvCmdBufferRecorder
     TimelineSemaphorePool* semaphorePool;
     CommandBufferPtr cmdBufferPtr;
     ImageStates* imageStates;
+    BufferStates* bufferStates;
     ResourceLockerDescriptor* resourceUsage;
     ImageRecordStates imageRecordStates;
+    BufferRecordStates bufferRecordStates;
     RenderPassPostStats currentRenderPassPostStats;
     FlexibleArray<drv::RenderPassStats, 1>* renderPassStats = nullptr;
     FlexibleArray<drv::RenderPassPostStats, 1>* renderPassPostStats = nullptr;
@@ -213,7 +236,7 @@ class DrvCmdBufferRecorder
 struct StateTransition
 {
     const DrvCmdBufferRecorder::ImageStates* imageStates;
-    // TODO buffer states
+    const DrvCmdBufferRecorder::BufferStates* bufferStates;
 };
 
 struct CommandBufferInfo
@@ -243,17 +266,25 @@ class PersistentResourceLockerDescriptor final : public ResourceLockerDescriptor
 {
  public:
     uint32_t getImageCount() const override;
+    uint32_t getBufferCount() const override;
     void clear() override;
 
  protected:
+    void push_back(BufferData&& data) override;
+    void reserveBuffers(uint32_t count) override;
+
+    BufferData& getBufferData(uint32_t index) override;
+    const BufferData& getBufferData(uint32_t index) const override;
+
     void push_back(ImageData&& data) override;
-    void reserve(uint32_t count) override;
+    void reserveImages(uint32_t count) override;
 
     ImageData& getImageData(uint32_t index) override;
     const ImageData& getImageData(uint32_t index) const override;
 
  private:
     std::vector<ImageData> imageData;
+    std::vector<BufferData> bufferData;
 };
 
 template <typename D>
@@ -287,6 +318,7 @@ class DrvCmdBuffer
                 reset_ptr(cmdBufferPtr);
             }
             imageStates.resize(0);
+            bufferStates.resize(0);
             cmdBufferPtr = acquireCommandBuffer();
             currentData = std::move(d);
             StackMemory::MemoryHandle<uint8_t> recorderMem(driver->get_cmd_buffer_recorder_size(),
@@ -297,6 +329,7 @@ class DrvCmdBuffer
               isSimultaneous());
             recorder->setName(name.c_str());
             recorder->setImageStates(&imageStates);
+            recorder->setBufferStates(&bufferStates);
             recorder->setRenderPassStats(&renderPassStats);
             recorder->setRenderPassPostStats(&renderPassPostStats);
             recorder->setSemaphore(&semaphore);
@@ -323,11 +356,15 @@ class DrvCmdBuffer
             StatsCacheWriter writer(statsCacheHandle);
             writer->semaphore.append(0);
         }
-        return {cmdBufferPtr, {&imageStates},   &resourceUsage, ++numSubmissions,  name.c_str(),
-                id,           statsCacheHandle, semaphore,      semaphoreSrcStages};
+        return {cmdBufferPtr,      {&imageStates, &bufferStates},
+                &resourceUsage,    ++numSubmissions,
+                name.c_str(),      id,
+                statsCacheHandle,  semaphore,
+                semaphoreSrcStages};
     }
 
     const DrvCmdBufferRecorder::ImageStates* getImageStates() { return &imageStates; }
+    const DrvCmdBufferRecorder::BufferStates* getBufferStates() { return &bufferStates; }
 
  protected:
     ~DrvCmdBuffer() {}
@@ -350,8 +387,8 @@ class DrvCmdBuffer
     QueueFamilyPtr queueFamily;
     DrvRecordCallback recordCallback;
     CommandBufferPtr cmdBufferPtr = get_null_ptr<CommandBufferPtr>();
-    TODO;
     DrvCmdBufferRecorder::ImageStates imageStates;
+    DrvCmdBufferRecorder::BufferStates bufferStates;
     PersistentResourceLockerDescriptor resourceUsage;
     StatsCache* statsCacheHandle = nullptr;
     FlexibleArray<drv::RenderPassStats, 1> renderPassStats;

@@ -415,6 +415,7 @@ class DrvVulkan final : public drv::IDriver
     bool device_wait_idle(drv::LogicalDevicePtr device) override;
 
     drv::TextureInfo get_texture_info(drv::ImagePtr image) override;
+    drv::BufferInfo get_buffer_info(drv::BufferPtr buffer) override;
 
     bool destroy_framebuffer(drv::LogicalDevicePtr device,
                              drv::FramebufferPtr frameBuffer) override;
@@ -445,7 +446,7 @@ class DrvVulkan final : public drv::IDriver
       uint64_t semaphoreSignalValue, drv::PipelineStages::FlagType semaphoreSrcStages,
       drv::StateCorrectionData& correction, uint32_t imageCount,
       const std::pair<drv::ImagePtr, drv::ImageTrackInfo>* imageTransitions, uint32_t bufferCount,
-      const std::pair<drv::BufferPtr, drv::BufferTrackInfo>* bufferTransitions, ,
+      const std::pair<drv::BufferPtr, drv::BufferTrackInfo>* bufferTransitions,
       StatsCache* cacheHandle, drv::ResourceStateTransitionCallback* cb) override;
 
     void perform_cpu_access(const drv::ResourceLockerDescriptor* resources,

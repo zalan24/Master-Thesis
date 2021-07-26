@@ -196,7 +196,7 @@ void VulkanRenderPass::build_impl() {
                         == subpasses[dst].resources[j].resource) {
                         addResourceDep(subpasses[src].resources[i].imageUsages,
                                        subpasses[dst].resources[j].imageUsages, true);
-                        // TODO buffer usages
+                        TODO buffer usages;
                         // addResourceDep(subpasses[src].resources[i].imageUsages,
                         //                subpasses[dst].resources[j].imageUsages);
                     }

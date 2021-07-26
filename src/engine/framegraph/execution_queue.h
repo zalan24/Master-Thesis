@@ -123,12 +123,13 @@ struct ExecutionPackage
         {
             drv::SemaphorePtr semaphore;
             drv::ImageResourceUsageFlag imageUsages;
+            TODO;
         };
         struct TimelineSemaphoreWaitInfo
         {
             drv::TimelineSemaphorePtr semaphore;
             drv::ImageResourceUsageFlag imageUsages;
-            // TODO add buffer usages
+            TODO add buffer usages;
             uint64_t waitValue;
         };
         using SemaphoreSignalInfo = drv::SemaphorePtr;

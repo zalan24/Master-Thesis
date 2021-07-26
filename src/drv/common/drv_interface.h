@@ -268,6 +268,7 @@ class IDriver
     virtual bool device_wait_idle(LogicalDevicePtr device) = 0;
 
     virtual TextureInfo get_texture_info(drv::ImagePtr image) = 0;
+    virtual BufferInfo get_buffer_info(drv::BufferPtr buffer) = 0;
 
     virtual bool destroy_framebuffer(LogicalDevicePtr device, FramebufferPtr frameBuffer) = 0;
 

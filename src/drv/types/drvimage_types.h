@@ -516,6 +516,18 @@ struct BufferSubresourceRange
 {
     DeviceSize offset;
     DeviceSize size;
+    bool overlap(const BufferSubresourceRange& other) const {
+        if (size == 0 || other.size == 0)
+            return false;
+        return (offset <= other.offset && other.offset < offset + size)
+               || (other.offset <= offset && offset < other.offset + other.size);
+    }
+    void merge(const BufferSubresourceRange& other) {
+        DeviceSize end = std::max(offset + size, other.offset + other.size);
+        offset = std::min(offset, other.offset);
+        size = end - offset;
+    }
+    bool empty() const { return size == 0; }
 };
 
 struct ImageSubresourceRange
@@ -780,6 +792,13 @@ struct ClearValue
     } value;
 };
 
+using BufferResourceUsageFlag = uint64_t;
+enum BufferResourceUsage : BufferResourceUsageFlag
+{
+    BUFFER_USAGE_TRANSFER_DESTINATION = 1ull << 0,
+    BUFFER_USAGE_TRANSFER_SOURCE = 1ull << 1,
+    // Increment get_buffer_usage_count if new usage is added
+};
 using ImageResourceUsageFlag = uint64_t;
 enum ImageResourceUsage : ImageResourceUsageFlag
 {
@@ -808,6 +827,21 @@ constexpr uint32_t get_index_of_image_usage(ImageResourceUsage usage) {
     return get_image_usage_count();
 }
 
+constexpr uint32_t get_buffer_usage_count() {
+    return 2;
+}
+
+constexpr BufferResourceUsage get_buffer_usage(uint32_t index) {
+    return static_cast<BufferResourceUsage>(1 << index);
+}
+
+constexpr uint32_t get_index_of_buffer_usage(BufferResourceUsage usage) {
+    for (uint32_t i = 0; i < get_buffer_usage_count(); ++i)
+        if (get_buffer_usage(i) == usage)
+            return i;
+    return get_buffer_usage_count();
+}
+
 ImageLayoutMask get_accepted_image_layouts(ImageResourceUsageFlag usages);
 
 ImageAspectBitType get_format_aspects(ImageFormat format);
@@ -825,6 +859,8 @@ enum class ImageFilter
 
 PipelineStages get_image_usage_stages(ImageResourceUsageFlag usages);
 MemoryBarrier::AccessFlagBitType get_image_usage_accesses(ImageResourceUsageFlag usages);
+PipelineStages get_buffer_usage_stages(BufferResourceUsageFlag usages);
+MemoryBarrier::AccessFlagBitType get_buffer_usage_accesses(BufferResourceUsageFlag usages);
 
 }  // namespace drv
 
