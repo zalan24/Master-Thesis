@@ -258,6 +258,7 @@ class BufferSet : private Exclusive
         MemoryType::PropertyType preferenceMask = 0;
     };
 
+    BufferSet() = default;
     BufferSet(PhysicalDevicePtr physicalDevice, LogicalDevicePtr device,
               const std::vector<BufferInfo>& infos, const MemorySelector& selector);
     BufferSet(PhysicalDevicePtr physicalDevice, LogicalDevicePtr device,
@@ -287,7 +288,7 @@ class BufferSet : private Exclusive
     std::vector<DeviceMemoryPtr> extraMemories;
 
     static bool pick_memory(const MemorySelector* selector, const MemoryProperties& props,
-                            MaskType mask, DeviceMemoryTypeId& id);
+                            MaskType mask, DeviceMemoryTypeId& id, MemoryType& memoryType);
 
     void close();
 };
@@ -358,7 +359,7 @@ class ImageSet
     std::vector<DeviceMemoryPtr> extraMemories;
 
     static bool pick_memory(const MemorySelector* selector, const MemoryProperties& props,
-                            MaskType mask, DeviceMemoryTypeId& id);
+                            MaskType mask, DeviceMemoryTypeId& id, MemoryType& memoryType);
 
     void close();
 };

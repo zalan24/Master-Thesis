@@ -29,23 +29,32 @@ class GarbageResourceLockerDescriptor final : public drv::ResourceLockerDescript
     explicit GarbageResourceLockerDescriptor(GarbageSystem* garbageSystem);
 
     uint32_t getImageCount() const override;
+    uint32_t getBufferCount() const override;
     void clear() override;
 
  protected:
+    void push_back(BufferData&& data) override;
+    void reserveBuffers(uint32_t count) override;
+
+    BufferData& getBufferData(uint32_t index) override;
+    const BufferData& getBufferData(uint32_t index) const override;
+
     void push_back(ImageData&& data) override;
-    void reserve(uint32_t count) override;
+    void reserveImages(uint32_t count) override;
 
     ImageData& getImageData(uint32_t index) override;
     const ImageData& getImageData(uint32_t index) const override;
 
  private:
     GarbageVector<ImageData> imageData;
+    GarbageVector<BufferData> bufferData;
 };
 
 struct CommandBufferData
 {
     drv::CommandBufferPtr cmdBufferPtr = drv::get_null_ptr<drv::CommandBufferPtr>();
     GarbageVector<std::pair<drv::ImagePtr, drv::ImageTrackInfo>> imageStates;
+    GarbageVector<std::pair<drv::BufferPtr, drv::BufferTrackInfo>> bufferStates;
     GarbageResourceLockerDescriptor resourceUsages;
     bool stateValidation;
     drv::PipelineStages::FlagType semaphoreSrcStages = 0;
@@ -57,6 +66,8 @@ struct CommandBufferData
 
     explicit CommandBufferData(GarbageSystem* garbageSystem, const char* name)
       : imageStates(garbageSystem->getAllocator<std::pair<drv::ImagePtr, drv::ImageTrackInfo>>()),
+        bufferStates(
+          garbageSystem->getAllocator<std::pair<drv::BufferPtr, drv::BufferTrackInfo>>()),
         resourceUsages(garbageSystem),
         stateValidation(false),
         semaphoreSrcStages(0),
@@ -71,11 +82,13 @@ struct CommandBufferData
 
     CommandBufferData(GarbageSystem* garbageSystem, drv::CommandBufferPtr _cmdBufferPtr,
                       const drv::DrvCmdBufferRecorder::ImageStates* _imageStates,
+                      const drv::DrvCmdBufferRecorder::BufferStates* _bufferStates,
                       const drv::ResourceLockerDescriptor* _resourceUsages, bool _stateValidation, drv::PipelineStages::FlagType _semaphoreSrcStages,
                       const char* name, drv::CmdBufferId _cmdBufferId,
                       StatsCache* _statsCacheHandle)
       : cmdBufferPtr(_cmdBufferPtr),
         imageStates(garbageSystem->getAllocator<std::pair<drv::ImagePtr, drv::ImageTrackInfo>>()),
+        bufferStates(garbageSystem->getAllocator<std::pair<drv::BufferPtr, drv::BufferTrackInfo>>()),
         resourceUsages(garbageSystem),
         stateValidation(_stateValidation),
         semaphoreSrcStages(_semaphoreSrcStages),
@@ -90,13 +103,16 @@ struct CommandBufferData
         imageStates.reserve(_imageStates->size());
         for (size_t i = 0; i < _imageStates->size(); ++i)
             imageStates.push_back((*_imageStates)[i]);
+        bufferStates.reserve(_bufferStates->size());
+        for (size_t i = 0; i < _bufferStates->size(); ++i)
+            bufferStates.push_back((*_bufferStates)[i]);
         setName(name);
         resourceUsages.copyFrom(_resourceUsages);
     }
 
     CommandBufferData(GarbageSystem* garbageSystem, const drv::CommandBufferInfo& info,
                       bool _stateValidation)
-      : CommandBufferData(garbageSystem, info.cmdBufferPtr, info.stateTransitions.imageStates,
+      : CommandBufferData(garbageSystem, info.cmdBufferPtr, info.stateTransitions.imageStates, info.stateTransitions.bufferStates,
                           info.resourceUsage, _stateValidation, info.semaphoreSrcStages, info.name, info.cmdBufferId,
                           info.statsCacheHandle) {}
 
@@ -122,14 +138,14 @@ struct ExecutionPackage
         struct SemaphoreWaitInfo
         {
             drv::SemaphorePtr semaphore;
-            drv::ImageResourceUsageFlag imageUsages;
-            TODO;
+            drv::ImageResourceUsageFlag imageUsages = 0;
+            drv::BufferResourceUsageFlag bufferUsages = 0;
         };
         struct TimelineSemaphoreWaitInfo
         {
             drv::TimelineSemaphorePtr semaphore;
-            drv::ImageResourceUsageFlag imageUsages;
-            TODO add buffer usages;
+            drv::ImageResourceUsageFlag imageUsages = 0;
+            drv::BufferResourceUsageFlag bufferUsages = 0;
             uint64_t waitValue;
         };
         using SemaphoreSignalInfo = drv::SemaphorePtr;

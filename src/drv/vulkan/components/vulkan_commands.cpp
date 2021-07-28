@@ -424,9 +424,10 @@ void VulkanCmdBufferRecorder::corrigate(const drv::StateCorrectionData& data) {
     for (uint32_t i = 0; i < data.bufferCorrections.size(); ++i) {
         BufferStartingState state = data.bufferCorrections[i].second.oldState;
         registerBuffer(data.bufferCorrections[i].first, state);
+        drv::BufferInfo bufInfo = driver->get_buffer_info(data.bufferCorrections[i].first);
         drv::BufferSubresourceRange range;
-        range.offset = ;
-        range.size = ;
+        range.offset = 0;
+        range.size = bufInfo.size;
         const auto& subres = data.bufferCorrections[i].second.newState;
         bool discardContent = false;
         drv::PipelineStages::FlagType dstStages = subres.usableStages;

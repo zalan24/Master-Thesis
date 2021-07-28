@@ -182,8 +182,10 @@ DriverSupport get_support(LogicalDevicePtr device);
 CommandBufferPtr create_wait_all_command_buffer(LogicalDevicePtr device, CommandPoolPtr pool);
 uint32_t get_num_pending_usages(drv::ImagePtr image, uint32_t layer, uint32_t mip,
                                 AspectFlagBits aspect);
+uint32_t get_num_pending_usages(drv::BufferPtr buffer);
 PendingResourceUsage get_pending_usage(drv::ImagePtr image, uint32_t layer, uint32_t mip,
                                        AspectFlagBits aspect, uint32_t usageIndex);
+PendingResourceUsage get_pending_usage(drv::BufferPtr buffer, uint32_t usageIndex);
 
 ShaderModulePtr create_shader_module(LogicalDevicePtr device, const ShaderCreateInfo* info);
 bool destroy_shader_module(LogicalDevicePtr device, ShaderModulePtr module);
@@ -207,6 +209,12 @@ void write_image_memory(LogicalDevicePtr device, drv::ImagePtr image, uint32_t l
                         const ResourceLocker::Lock& lock, const void* srcMem);
 void read_image_memory(LogicalDevicePtr device, drv::ImagePtr image, uint32_t layer,
                              uint32_t mip, const ResourceLocker::Lock& lock, void* dstMem);
+void write_buffer_memory(LogicalDevicePtr device, drv::BufferPtr buffer,
+                         const drv::BufferSubresourceRange& range, const ResourceLocker::Lock& lock,
+                         const void* srcMem);
+void read_buffer_memory(LogicalDevicePtr device, drv::BufferPtr buffer,
+                        const drv::BufferSubresourceRange& range, const ResourceLocker::Lock& lock,
+                        void* dstMem);
 
 // std::unique_ptr<CmdTrackingRecordState> create_tracking_record_state();
 // PipelineStages cmd_image_barrier(drv::CmdTrackingRecordState *recordState, CmdImageTrackingState& state, CommandBufferPtr cmdBuffer,

@@ -1208,14 +1208,24 @@ FrameGraph::QueueSyncData FrameGraph::sync_queue(drv::QueuePtr queue, FrameId fr
 uint32_t TemporalResourceLockerDescriptor::getImageCount() const {
     return uint32_t(imageData.size());
 }
+uint32_t TemporalResourceLockerDescriptor::getBufferCount() const {
+    return uint32_t(bufferData.size());
+}
 void TemporalResourceLockerDescriptor::clear() {
     imageData.clear();
+    bufferData.clear();
 }
 void TemporalResourceLockerDescriptor::push_back(ImageData&& data) {
     imageData.push_back(std::move(data));
 }
-void TemporalResourceLockerDescriptor::reserve(uint32_t count) {
+void TemporalResourceLockerDescriptor::reserveImages(uint32_t count) {
     imageData.reserve(count);
+}
+void TemporalResourceLockerDescriptor::push_back(BufferData&& data) {
+    bufferData.push_back(std::move(data));
+}
+void TemporalResourceLockerDescriptor::reserveBuffers(uint32_t count) {
+    bufferData.reserve(count);
 }
 
 drv::ResourceLockerDescriptor::ImageData& TemporalResourceLockerDescriptor::getImageData(
@@ -1225,6 +1235,15 @@ drv::ResourceLockerDescriptor::ImageData& TemporalResourceLockerDescriptor::getI
 const drv::ResourceLockerDescriptor::ImageData& TemporalResourceLockerDescriptor::getImageData(
   uint32_t index) const {
     return imageData[index];
+}
+
+drv::ResourceLockerDescriptor::BufferData& TemporalResourceLockerDescriptor::getBufferData(
+  uint32_t index) {
+    return bufferData[index];
+}
+const drv::ResourceLockerDescriptor::BufferData& TemporalResourceLockerDescriptor::getBufferData(
+  uint32_t index) const {
+    return bufferData[index];
 }
 
 void FrameGraph::Node::registerAcquireAttempt(Stage stage, FrameId frameId) {

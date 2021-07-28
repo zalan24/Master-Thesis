@@ -424,8 +424,11 @@ class DrvVulkan final : public drv::IDriver
                                                          drv::CommandPoolPtr pool) override;
     uint32_t get_num_pending_usages(drv::ImagePtr image, uint32_t layer, uint32_t mip,
                                     drv::AspectFlagBits aspect) override;
+    uint32_t get_num_pending_usages(drv::BufferPtr buffer) override;
     drv::PendingResourceUsage get_pending_usage(drv::ImagePtr image, uint32_t layer, uint32_t mip,
                                                 drv::AspectFlagBits aspect,
+                                                uint32_t usageIndex) override;
+    drv::PendingResourceUsage get_pending_usage(drv::BufferPtr buffer,
                                                 uint32_t usageIndex) override;
 
     drv::DriverSupport get_support(drv::LogicalDevicePtr device) override;
@@ -461,6 +464,12 @@ class DrvVulkan final : public drv::IDriver
     void read_image_memory(drv::LogicalDevicePtr device, drv::ImagePtr image, uint32_t layer,
                            uint32_t mip, const drv::ResourceLocker::Lock& lock,
                            void* dstMem) override;
+    void write_buffer_memory(drv::LogicalDevicePtr device, drv::BufferPtr buffer,
+                             const drv::BufferSubresourceRange& range,
+                             const drv::ResourceLocker::Lock& lock, const void* srcMem) override;
+    void read_buffer_memory(drv::LogicalDevicePtr device, drv::BufferPtr buffer,
+                            const drv::BufferSubresourceRange& range,
+                            const drv::ResourceLocker::Lock& lock, void* dstMem) override;
 
  private:
     struct LogicalDeviceData

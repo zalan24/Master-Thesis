@@ -48,20 +48,31 @@ ExecutionPackage::CommandBufferPackage make_submission_package(
 }
 
 GarbageResourceLockerDescriptor::GarbageResourceLockerDescriptor(GarbageSystem* garbageSystem)
-  : imageData(garbageSystem->getAllocator<drv::ResourceLockerDescriptor::ImageData>()) {
+  : imageData(garbageSystem->getAllocator<drv::ResourceLockerDescriptor::ImageData>()),
+    bufferData(garbageSystem->getAllocator<drv::ResourceLockerDescriptor::BufferData>()) {
 }
 
 uint32_t GarbageResourceLockerDescriptor::getImageCount() const {
     return uint32_t(imageData.size());
 }
+uint32_t GarbageResourceLockerDescriptor::getBufferCount() const {
+    return uint32_t(bufferData.size());
+}
 void GarbageResourceLockerDescriptor::clear() {
     imageData.clear();
+    bufferData.clear();
 }
 void GarbageResourceLockerDescriptor::push_back(ImageData&& data) {
     imageData.push_back(std::move(data));
 }
-void GarbageResourceLockerDescriptor::reserve(uint32_t count) {
+void GarbageResourceLockerDescriptor::reserveImages(uint32_t count) {
     imageData.reserve(count);
+}
+void GarbageResourceLockerDescriptor::push_back(BufferData&& data) {
+    bufferData.push_back(std::move(data));
+}
+void GarbageResourceLockerDescriptor::reserveBuffers(uint32_t count) {
+    bufferData.reserve(count);
 }
 
 drv::ResourceLockerDescriptor::ImageData& GarbageResourceLockerDescriptor::getImageData(
@@ -71,4 +82,13 @@ drv::ResourceLockerDescriptor::ImageData& GarbageResourceLockerDescriptor::getIm
 const drv::ResourceLockerDescriptor::ImageData& GarbageResourceLockerDescriptor::getImageData(
   uint32_t index) const {
     return imageData[index];
+}
+
+drv::ResourceLockerDescriptor::BufferData& GarbageResourceLockerDescriptor::getBufferData(
+  uint32_t index) {
+    return bufferData[index];
+}
+const drv::ResourceLockerDescriptor::BufferData& GarbageResourceLockerDescriptor::getBufferData(
+  uint32_t index) const {
+    return bufferData[index];
 }

@@ -34,7 +34,11 @@ class ResourceLockerDescriptor
                             drv::AspectFlagBits aspect) const;
     UsageMode getImageUsage(uint32_t index, uint32_t layer, uint32_t mip,
                             drv::AspectFlagBits aspect) const;
+    UsageMode getBufferUsage(drv::BufferPtr buffer) const;
     UsageMode getBufferUsage(uint32_t index) const;
+
+    bool hasWriteBuffer(uint32_t index) const { return getBufferUsage(index) & WRITE; }
+    bool hasReadBuffer(uint32_t index) const { return getBufferUsage(index) & READ; }
 
     enum ConflictType
     {

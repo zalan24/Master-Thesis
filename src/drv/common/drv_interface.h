@@ -276,9 +276,11 @@ class IDriver
                                                             CommandPoolPtr pool) = 0;
     virtual uint32_t get_num_pending_usages(drv::ImagePtr image, uint32_t layer, uint32_t mip,
                                             AspectFlagBits aspect) = 0;
+    virtual uint32_t get_num_pending_usages(drv::BufferPtr buffer) = 0;
     virtual PendingResourceUsage get_pending_usage(drv::ImagePtr image, uint32_t layer,
                                                    uint32_t mip, AspectFlagBits aspect,
                                                    uint32_t usageIndex) = 0;
+    virtual PendingResourceUsage get_pending_usage(drv::BufferPtr buffer, uint32_t usageIndex) = 0;
 
     virtual PlacementPtr<drv::DrvCmdBufferRecorder> create_cmd_buffer_recorder(
       void* targetPtr, drv::PhysicalDevicePtr physicalDevice, drv::LogicalDevicePtr device,
@@ -309,6 +311,12 @@ class IDriver
     virtual void read_image_memory(LogicalDevicePtr device, drv::ImagePtr image, uint32_t layer,
                                    uint32_t mip, const ResourceLocker::Lock& lock,
                                    void* dstMem) = 0;
+    virtual void write_buffer_memory(LogicalDevicePtr device, drv::BufferPtr buffer,
+                                     const drv::BufferSubresourceRange& range,
+                                     const ResourceLocker::Lock& lock, const void* srcMem) = 0;
+    virtual void read_buffer_memory(LogicalDevicePtr device, drv::BufferPtr buffer,
+                                    const drv::BufferSubresourceRange& range,
+                                    const ResourceLocker::Lock& lock, void* dstMem) = 0;
 
     // virtual void cmd_flush_waits_on(CommandBufferPtr cmdBuffer, EventPtr event) = 0;
 };

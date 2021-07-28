@@ -20,12 +20,15 @@ drv::BufferPtr DrvVulkan::create_buffer(drv::LogicalDevicePtr device,
     bufferCreateInfo.flags = 0;
     bufferCreateInfo.size = info->size;
     bufferCreateInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
+    bool shared = false;
     switch (info->sharingType) {
         case drv::SharingType::EXCLUSIVE:
             bufferCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+            shared = false;
             break;
         case drv::SharingType::CONCURRENT:
             bufferCreateInfo.sharingMode = VK_SHARING_MODE_CONCURRENT;
+            shared = true;
             break;
     }
     bufferCreateInfo.queueFamilyIndexCount = info->familyCount;
@@ -41,7 +44,7 @@ drv::BufferPtr DrvVulkan::create_buffer(drv::LogicalDevicePtr device,
     VkResult result =
       vkCreateBuffer(drv::resolve_ptr<VkDevice>(device), &bufferCreateInfo, nullptr, &vkBuffer);
     drv::drv_assert(result == VK_SUCCESS, "Could not create buffer");
-    return drv::store_ptr<drv::BufferPtr>(new Buffer(info->bufferId, info->size, vkBuffer));
+    return drv::store_ptr<drv::BufferPtr>(new Buffer(info->bufferId, info->size, vkBuffer, shared));
 }
 
 bool DrvVulkan::destroy_buffer(drv::LogicalDevicePtr device, drv::BufferPtr _buffer) {
@@ -56,7 +59,7 @@ drv::DeviceMemoryPtr DrvVulkan::allocate_memory(drv::LogicalDevicePtr device,
     VkMemoryAllocateInfo allocInfo = {};
     allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
     allocInfo.allocationSize = info->size;
-    allocInfo.memoryTypeIndex = info->memoryType;
+    allocInfo.memoryTypeIndex = info->memoryTypeId;
     VkDeviceMemory memory;
     VkResult result =
       vkAllocateMemory(drv::resolve_ptr<VkDevice>(device), &allocInfo, nullptr, &memory);
@@ -126,4 +129,38 @@ drv::BufferMemoryInfo DrvVulkan::get_buffer_memory_info(drv::LogicalDevicePtr,
     ret.size = drv::resolve_ptr<Buffer*>(buffer)->size;
     ret.offset = drv::resolve_ptr<Buffer*>(buffer)->offset;
     return ret;
+}
+
+uint32_t DrvVulkan::get_num_pending_usages(drv::BufferPtr buffer) {
+    const auto& subresourceState = convertBuffer(buffer)->linearTrackingState;
+    uint32_t ret = static_cast<uint32_t>(subresourceState.multiQueueState.readingQueues.size());
+    if (!drv::is_null_ptr(subresourceState.multiQueueState.mainQueue))
+        ret++;
+    return ret;
+}
+
+drv::PendingResourceUsage DrvVulkan::get_pending_usage(drv::BufferPtr buffer, uint32_t usageIndex) {
+    const auto& subresourceState = convertBuffer(buffer)->linearTrackingState;
+    if (usageIndex < subresourceState.multiQueueState.readingQueues.size())
+        return drv::PendingResourceUsage{
+          subresourceState.multiQueueState.readingQueues[usageIndex].queue,
+          subresourceState.multiQueueState.readingQueues[usageIndex].submission,
+          subresourceState.multiQueueState.readingQueues[usageIndex].frameId,
+          subresourceState.multiQueueState.readingQueues[usageIndex].readingStages,
+          0,
+          subresourceState.multiQueueState.readingQueues[usageIndex].syncedStages,
+          subresourceState.multiQueueState.readingQueues[usageIndex].semaphore,
+          subresourceState.multiQueueState.readingQueues[usageIndex].signalledValue,
+          false};
+    // main queue
+    bool isWrite = !drv::is_null_ptr(subresourceState.multiQueueState.mainQueue);
+    return drv::PendingResourceUsage{subresourceState.multiQueueState.mainQueue,
+                                     subresourceState.multiQueueState.submission,
+                                     subresourceState.multiQueueState.frameId,
+                                     subresourceState.ongoingReads,
+                                     isWrite ? subresourceState.ongoingWrites : 0,
+                                     subresourceState.multiQueueState.syncedStages,
+                                     subresourceState.multiQueueState.mainSemaphore,
+                                     subresourceState.multiQueueState.signalledValue,
+                                     isWrite};
 }

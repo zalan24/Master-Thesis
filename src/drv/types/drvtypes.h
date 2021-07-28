@@ -149,12 +149,6 @@ struct BufferMemoryInfo
     DeviceSize size;
 };
 
-struct MemoryAllocationInfo
-{
-    DeviceSize size;
-    DeviceMemoryTypeId memoryType;
-};
-
 struct MemoryType
 {
     using PropertyType = unsigned int;
@@ -171,6 +165,13 @@ struct MemoryType
         FLAG_BITS_MAX_ENUM = 0x7FFFFFFF
     };
     PropertyType properties = 0;
+};
+
+struct MemoryAllocationInfo
+{
+    DeviceSize size;
+    MemoryType memoryType;
+    DeviceMemoryTypeId memoryTypeId;
 };
 
 struct MemoryProperties

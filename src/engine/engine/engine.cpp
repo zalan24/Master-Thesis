@@ -50,7 +50,7 @@ static void callback(const drv::CallbackData* data) {
                 std::cout << data->text << std::endl;
             break;
         case drv::CallbackData::Type::WARNING:
-            TODO reword command buffer usage;
+            // TODO reword command buffer usage;
             LOG_F(WARNING, "Driver warning: %s", data->text);
             // BREAK_POINT;
             break;
@@ -913,6 +913,8 @@ bool Engine::execute(ExecutionPackage&& package) {
                   cmdBuffer.cmdBufferData.semaphoreSrcStages, correctionData,
                   uint32_t(cmdBuffer.cmdBufferData.imageStates.size()),
                   cmdBuffer.cmdBufferData.imageStates.data(),
+                  uint32_t(cmdBuffer.cmdBufferData.bufferStates.size()),
+                  cmdBuffer.cmdBufferData.bufferStates.data(),
                   cmdBuffer.cmdBufferData.stateValidation ? cmdBuffer.cmdBufferData.statsCacheHandle
                                                           : nullptr,
                   &cb)) {

@@ -60,17 +60,25 @@ class TemporalResourceLockerDescriptor final : public drv::ResourceLockerDescrip
     TemporalResourceLockerDescriptor() = default;
 
     uint32_t getImageCount() const override;
+    uint32_t getBufferCount() const override;
     void clear() override;
 
  protected:
+    void push_back(BufferData&& data) override;
+    void reserveBuffers(uint32_t count) override;
+
+    BufferData& getBufferData(uint32_t index) override;
+    const BufferData& getBufferData(uint32_t index) const override;
+
     void push_back(ImageData&& data) override;
-    void reserve(uint32_t count) override;
+    void reserveImages(uint32_t count) override;
 
     ImageData& getImageData(uint32_t index) override;
     const ImageData& getImageData(uint32_t index) const override;
 
  private:
     FlexibleArray<ImageData, 4> imageData;
+    FlexibleArray<BufferData, 4> bufferData;
 };
 
 class FrameGraph

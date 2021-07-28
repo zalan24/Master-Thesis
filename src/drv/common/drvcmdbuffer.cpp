@@ -82,13 +82,13 @@ DrvCmdBufferRecorder::DrvCmdBufferRecorder(IDriver* _driver, drv::PhysicalDevice
 
 void DrvCmdBufferRecorder::autoRegisterBuffer(BufferPtr buffer) {
     BufferInfo bufInfo = driver->get_buffer_info(buffer);
-    ImageStartingState state;
+    BufferStartingState state;
     auto& s = state;
     {
         auto reader = STATS_CACHE_READER;
         if (auto bufferItr = reader->cmdBufferBufferStates.find(*bufInfo.bufferId);
             bufferItr != reader->cmdBufferBufferStates.end()) {
-            const ImageSubresStateStat& subRes = bufferItr->second.subresources;
+            const BufferSubresStateStat& subRes = bufferItr->second;
             subRes.get(s, false);
 
             if (s.usableStages == 0)

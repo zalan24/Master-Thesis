@@ -1141,35 +1141,29 @@ bool DrvVulkan::validate_and_apply_state_transitions(
             if (cacheHandle) {
                 StatsCacheWriter cacheWriter(cacheHandle);
                 auto& bufferData = cacheWriter->cmdBufferBufferStates[buffer->bufferId];
-                if (!bufferData.isCompatible(bufInfo))
-                    bufferData.init(bufInfo);
-                bufferData.subresources.get(layer, mip, aspect).append(state);
+                // if (!bufferData.isCompatible(bufInfo))
+                // bufferData.init(bufInfo);
+                bufferData.append(state);
             }
             if (invalid) {
-                auto& oldState =
-                  bufferCorrections[correctedBufferCount].second.oldState.get(layer, mip, aspect);
-                auto& newState =
-                  bufferCorrections[correctedBufferCount].second.newState.get(layer, mip, aspect);
-                bufferCorrections[correctedBufferCount].second.usageMask.add(layer, mip, aspect);
+                auto& oldState = bufferCorrections[correctedBufferCount].second.oldState;
+                auto& newState = bufferCorrections[correctedBufferCount].second.newState;
+                // bufferCorrections[correctedBufferCount].second.usageMask.add(layer, mip, aspect);
                 oldState = state;
                 newState = requirement;
                 hadInvalid = true;
             }
 
-            const auto& result = bufferTransitions[i].second.cmdState.state.get(layer, mip, aspect);
+            const auto& result = bufferTransitions[i].second.cmdState.state;
             drv::PipelineStages::FlagType preservedStages =
-              state.usableStages
-              & bufferTransitions[i]
-                  .second.cmdState.usage.get(layer, mip, aspect)
-                  .preserveUsableStages;
+              state.usableStages & bufferTransitions[i].second.cmdState.usage.preserveUsableStages;
             if (hadSemaphore)
                 preservedStages &= usedStages;  // this is used as a dst stage for semaphores
-            static_cast<drv::ImageSubresourceTrackData&>(state) = result;
+            static_cast<drv::BufferSubresourceTrackData&>(state) = result;
             state.usableStages = state.usableStages | preservedStages;
         }
         else {
             drv::drv_assert(!requireOwnershipTransfer);
-            drv::drv_assert(!requireLayoutTransition);
             if ((state.multiQueueState.readingQueues[queueId].readingStages
                  & requirement.usableStages)
                 != requirement.usableStages)
@@ -1178,9 +1172,8 @@ bool DrvVulkan::validate_and_apply_state_transitions(
                       & requirement.ongoingReads)
                      != state.multiQueueState.readingQueues[queueId].readingStages)
                 invalid = true;
-            drv::ImageSubresourceTrackData originalState;
+            drv::BufferSubresourceTrackData originalState;
             originalState.dirtyMask = 0;
-            originalState.layout = state.layout;
             originalState.ongoingReads = state.multiQueueState.readingQueues[queueId].readingStages;
             originalState.ongoingWrites = 0;
             originalState.ownership = state.ownership;
@@ -1189,15 +1182,15 @@ bool DrvVulkan::validate_and_apply_state_transitions(
             if (cacheHandle) {
                 StatsCacheWriter cacheWriter(cacheHandle);
                 auto& bufferData = cacheWriter->cmdBufferBufferStates[buffer->bufferId];
-                if (!bufferData.isCompatible(bufInfo))
-                    bufferData.init(bufInfo);
-                bufferData.subresources.get(layer, mip, aspect).append(originalState);
+                // if (!bufferData.isCompatible(bufInfo))
+                //     bufferData.init(bufInfo);
+                bufferData.append(originalState);
             }
             if (invalid) {
                 auto& oldState = bufferCorrections[correctedBufferCount].second.oldState;
                 auto& newState = bufferCorrections[correctedBufferCount].second.newState;
-                bufferCorrections[correctedBufferCount].second.usageMask.add(
-                  layer, mip, aspect);  // I suppose this can just be removed
+                // bufferCorrections[correctedBufferCount].second.usageMask.add(
+                //   layer, mip, aspect);  // I suppose this can just be removed
                 oldState = originalState;
                 newState = requirement;
                 hadInvalid = true;
@@ -1243,7 +1236,6 @@ drv::PipelineStages::FlagType VulkanCmdBufferRecorder::getAvailableStages() cons
 
 void DrvVulkan::perform_cpu_access(const drv::ResourceLockerDescriptor* resources,
                                    const drv::ResourceLocker::Lock&) {
-    TODO;
     uint32_t imageCount = resources->getImageCount();
     for (uint32_t i = 0; i < imageCount; ++i) {
         drv_vulkan::Image* image = convertImage(resources->getImage(i));
@@ -1283,6 +1275,43 @@ void DrvVulkan::perform_cpu_access(const drv::ResourceLockerDescriptor* resource
               state.ongoingWrites = 0;
               state.usableStages = drv::PipelineStages::get_all_bits(drv::CMD_TYPE_ALL);
           });
+    }
+    uint32_t bufferCount = resources->getBufferCount();
+    for (uint32_t i = 0; i < bufferCount; ++i) {
+        drv_vulkan::Buffer* buffer = convertBuffer(resources->getBuffer(i));
+        if (resources->hasWriteBuffer(i)) {
+            auto& state = buffer->linearTrackingState;
+            state.multiQueueState.mainSemaphore = {};
+            state.multiQueueState.signalledValue = 0;
+            state.multiQueueState.syncedStages = 0;
+            state.multiQueueState.mainQueue = drv::get_null_ptr<drv::QueuePtr>();
+            state.multiQueueState.frameId = 0;
+            state.multiQueueState.submission = 0;
+            state.multiQueueState.readingQueues.clear();
+
+            state.ongoingReads = 0;
+            state.ongoingWrites = 0;
+            state.usableStages = drv::PipelineStages::get_all_bits(drv::CMD_TYPE_ALL);
+        }
+        if (resources->hasReadBuffer(i)) {
+            if (resources->getBufferUsage(i) == drv::ResourceLockerDescriptor::READ_WRITE)
+                return;
+            auto& state = buffer->linearTrackingState;
+            if (drv::is_null_ptr(state.multiQueueState.mainQueue))
+                return;
+
+            state.multiQueueState.mainSemaphore = {};
+            state.multiQueueState.signalledValue = 0;
+            state.multiQueueState.syncedStages = 0;
+            state.multiQueueState.syncedStages = 0;
+            state.multiQueueState.mainQueue = drv::get_null_ptr<drv::QueuePtr>();
+            state.multiQueueState.frameId = 0;
+            state.multiQueueState.submission = 0;
+
+            state.ongoingReads = 0;
+            state.ongoingWrites = 0;
+            state.usableStages = drv::PipelineStages::get_all_bits(drv::CMD_TYPE_ALL);
+        }
     }
 }
 
@@ -1431,5 +1460,101 @@ void DrvVulkan::read_image_memory(drv::LogicalDevicePtr device, drv::ImagePtr _i
         std::memcpy(dstMem, pData, size);
 
         vkUnmapMemory(convertDevice(device), convertMemory(image->memoryPtr)->memory);
+    }
+}
+
+void DrvVulkan::write_buffer_memory(drv::LogicalDevicePtr device, drv::BufferPtr _buffer,
+                                    const drv::BufferSubresourceRange& range,
+                                    const drv::ResourceLocker::Lock& lock, const void* srcMem) {
+    drv_vulkan::Buffer* buffer = convertBuffer(_buffer);
+#if ENABLE_NODE_RESOURCE_VALIDATION
+    {
+        drv::ResourceLockerDescriptor::UsageMode usage =
+          lock.getDescriptor()->getBufferUsage(_buffer);
+        drv::drv_assert(usage == drv::ResourceLockerDescriptor::UsageMode::WRITE
+                        || usage == drv::ResourceLockerDescriptor::UsageMode::READ_WRITE);
+    }
+#endif
+
+    drv::drv_assert(!drv::is_null_ptr(buffer->memoryPtr), "Buffer has no bound memory");
+
+    {
+        std::unique_lock<std::mutex> memoryLock(convertMemory(buffer->memoryPtr)->mapMutex);
+
+        alignas(16) void* pData;
+        VkResult result =
+          vkMapMemory(convertDevice(device), convertMemory(buffer->memoryPtr)->memory,
+                      static_cast<VkDeviceSize>(range.offset + buffer->offset),
+                      static_cast<VkDeviceSize>(range.size), 0, &pData);
+        drv::drv_assert(result == VK_SUCCESS, "Could not map memory");
+
+        std::memcpy(pData, srcMem, range.size);
+
+        vkUnmapMemory(convertDevice(device), convertMemory(buffer->memoryPtr)->memory);
+    }
+
+    if (!(buffer->memoryType.properties & drv::MemoryType::HOST_COHERENT_BIT)) {
+        VkMappedMemoryRange range;
+        range.memory = convertMemory(buffer->memoryPtr)->memory;
+        range.offset = range.offset + buffer->offset;
+        range.pNext = nullptr;
+        range.size = range.size;
+        range.sType = VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE;
+        VkResult result = vkFlushMappedMemoryRanges(convertDevice(device), 1, &range);
+        drv::drv_assert(result == VK_SUCCESS, "Could not flush memory");
+        auto& state = buffer->linearTrackingState;
+        state.visible = drv::MemoryBarrier::HOST_WRITE_BIT;
+        state.dirtyMask = 0;
+        // Host actions are implicitly synchronized
+        state.ongoingReads = 0;
+        state.ongoingWrites = 0;
+        state.usableStages = drv::PipelineStages::get_all_bits(drv::CMD_TYPE_ALL);
+    }
+}
+
+void DrvVulkan::read_buffer_memory(drv::LogicalDevicePtr device, drv::BufferPtr _buffer,
+                                   const drv::BufferSubresourceRange& range,
+                                   const drv::ResourceLocker::Lock& lock, void* dstMem) {
+    drv_vulkan::Buffer* buffer = convertBuffer(_buffer);
+
+#if ENABLE_NODE_RESOURCE_VALIDATION
+    {
+        drv::ResourceLockerDescriptor::UsageMode usage =
+          lock.getDescriptor()->getBufferUsage(_buffer);
+        drv::drv_assert(usage == drv::ResourceLockerDescriptor::UsageMode::READ
+                        || usage == drv::ResourceLockerDescriptor::UsageMode::READ_WRITE);
+    }
+#endif
+
+    drv::drv_assert(!drv::is_null_ptr(buffer->memoryPtr), "Buffer has no bound memory");
+
+    if (!(buffer->memoryType.properties & drv::MemoryType::HOST_COHERENT_BIT)) {
+        auto& state = buffer->linearTrackingState;
+        if (!(state.visible & drv::MemoryBarrier::HOST_READ_BIT)) {
+            VkMappedMemoryRange range;
+            range.memory = convertMemory(buffer->memoryPtr)->memory;
+            range.offset = range.offset + buffer->offset;
+            range.pNext = nullptr;
+            range.size = range.size;
+            range.sType = VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE;
+            VkResult result = vkInvalidateMappedMemoryRanges(convertDevice(device), 1, &range);
+            drv::drv_assert(result == VK_SUCCESS, "Could not invalidate memory");
+            state.visible |= drv::MemoryBarrier::HOST_READ_BIT;
+        }
+    }
+
+    {
+        std::unique_lock<std::mutex> memoryLock(convertMemory(buffer->memoryPtr)->mapMutex);
+
+        alignas(16) void* pData;
+        VkResult result =
+          vkMapMemory(convertDevice(device), convertMemory(buffer->memoryPtr)->memory,
+                      static_cast<VkDeviceSize>(range.offset + buffer->offset),
+                      static_cast<VkDeviceSize>(range.size), 0, &pData);
+        drv::drv_assert(result == VK_SUCCESS, "Could not map memory");
+
+        std::memcpy(dstMem, pData, range.size);
+
+        vkUnmapMemory(convertDevice(device), convertMemory(buffer->memoryPtr)->memory);
     }
 }

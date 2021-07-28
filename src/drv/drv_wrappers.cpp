@@ -478,16 +478,16 @@ BufferSet::BufferSet(PhysicalDevicePtr _physicalDevice, LogicalDevicePtr _device
 }
 
 bool BufferSet::pick_memory(const MemorySelector* selector, const MemoryProperties& props,
-                            MaskType mask, DeviceMemoryTypeId& id) {
-    MemoryType type;
+                            MaskType mask, DeviceMemoryTypeId& id, MemoryType& memoryType) {
     bool found = false;
     for (unsigned int i = 0; i < MemoryProperties::MAX_MEMORY_TYPES; ++i) {
         if ((mask & (1 << i)) == 0)
             continue;
         if (!selector->isAccepted(props.memoryTypes[i]))
             continue;
-        if (!found || &selector->prefer(type, props.memoryTypes[i]) == &props.memoryTypes[i]) {
-            type = props.memoryTypes[i];
+        if (!found
+            || &selector->prefer(memoryType, props.memoryTypes[i]) == &props.memoryTypes[i]) {
+            memoryType = props.memoryTypes[i];
             id = i;
             found = true;
         }
@@ -520,7 +520,7 @@ BufferSet::BufferSet(PhysicalDevicePtr _physicalDevice, LogicalDevicePtr _device
             mem = &extraMemories.back();
         }
         MemoryAllocationInfo allocInfo;
-        drv_assert(pick_memory(selector, props, mask, allocInfo.memoryType),
+        drv_assert(pick_memory(selector, props, mask, allocInfo.memoryTypeId, allocInfo.memoryType),
                    "Could not pick any acceptable memory");
         allocInfo.size = size;
         *mem = allocate_memory(device, &allocInfo);
@@ -670,16 +670,16 @@ ImageSet::ImageSet(PhysicalDevicePtr _physicalDevice, LogicalDevicePtr _device,
 }
 
 bool ImageSet::pick_memory(const MemorySelector* selector, const MemoryProperties& props,
-                           MaskType mask, DeviceMemoryTypeId& id) {
-    MemoryType type;
+                           MaskType mask, DeviceMemoryTypeId& id, MemoryType& memoryType) {
     bool found = false;
     for (unsigned int i = 0; i < MemoryProperties::MAX_MEMORY_TYPES; ++i) {
         if ((mask & (1 << i)) == 0)
             continue;
         if (!selector->isAccepted(props.memoryTypes[i]))
             continue;
-        if (!found || &selector->prefer(type, props.memoryTypes[i]) == &props.memoryTypes[i]) {
-            type = props.memoryTypes[i];
+        if (!found
+            || &selector->prefer(memoryType, props.memoryTypes[i]) == &props.memoryTypes[i]) {
+            memoryType = props.memoryTypes[i];
             id = i;
             found = true;
         }
@@ -714,7 +714,7 @@ ImageSet::ImageSet(PhysicalDevicePtr _physicalDevice, LogicalDevicePtr _device, 
             mem = &extraMemories.back();
         }
         MemoryAllocationInfo allocInfo;
-        drv_assert(pick_memory(selector, props, mask, allocInfo.memoryType),
+        drv_assert(pick_memory(selector, props, mask, allocInfo.memoryTypeId, allocInfo.memoryType),
                    "Could not pick any acceptable memory");
         allocInfo.size = size;
         *mem = allocate_memory(device, &allocInfo);

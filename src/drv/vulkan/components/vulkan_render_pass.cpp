@@ -169,8 +169,9 @@ void VulkanRenderPass::build_impl() {
             drv::MemoryBarrier::AccessFlagBitType srcAccessFlags = 0;
             drv::MemoryBarrier::AccessFlagBitType dstAccessFlags = 0;
 
-            auto addResourceDep = [&](drv::ImageResourceUsageFlag srcUsages,
-                                      drv::ImageResourceUsageFlag dstUsages, bool manageCache) {
+            auto addImageResourceDep = [&](drv::ImageResourceUsageFlag srcUsages,
+                                           drv::ImageResourceUsageFlag dstUsages,
+                                           bool manageCache) {
                 drv::MemoryBarrier::AccessFlagBitType srcAccess =
                   drv::get_image_usage_accesses(srcUsages);
                 drv::MemoryBarrier::AccessFlagBitType dstAccess =
@@ -185,18 +186,36 @@ void VulkanRenderPass::build_impl() {
                     }
                 }
             };
+            auto addBufferResourceDep = [&](drv::BufferResourceUsageFlag srcUsages,
+                                            drv::BufferResourceUsageFlag dstUsages,
+                                            bool manageCache) {
+                drv::MemoryBarrier::AccessFlagBitType srcAccess =
+                  drv::get_buffer_usage_accesses(srcUsages);
+                drv::MemoryBarrier::AccessFlagBitType dstAccess =
+                  drv::get_buffer_usage_accesses(dstUsages);
+                if (drv::MemoryBarrier::get_write_bits(srcAccess) != 0
+                    || drv::MemoryBarrier::get_write_bits(dstAccess) != 0) {
+                    srcStages.add(drv::get_buffer_usage_stages(srcUsages));
+                    dstStages.add(drv::get_buffer_usage_stages(dstUsages));
+                    if (manageCache) {
+                        srcAccessFlags |= srcAccess;
+                        dstAccessFlags |= dstAccess;
+                    }
+                }
+            };
 
             for (uint32_t i = 0; i < attachments.size(); ++i)
                 if (attachmentUsages[src][i] != 0 && attachmentUsages[dst][i] != 0)
-                    addResourceDep(attachmentUsages[src][i], attachmentUsages[dst][i], false);
+                    addImageResourceDep(attachmentUsages[src][i], attachmentUsages[dst][i], false);
 
             for (uint32_t i = 0; i < subpasses[src].resources.size(); ++i) {
                 for (uint32_t j = 0; j < subpasses[dst].resources.size(); ++j) {
                     if (subpasses[src].resources[i].resource
                         == subpasses[dst].resources[j].resource) {
-                        addResourceDep(subpasses[src].resources[i].imageUsages,
-                                       subpasses[dst].resources[j].imageUsages, true);
-                        TODO buffer usages;
+                        addImageResourceDep(subpasses[src].resources[i].imageUsages,
+                                            subpasses[dst].resources[j].imageUsages, true);
+                        addBufferResourceDep(subpasses[src].resources[i].bufferUsages,
+                                             subpasses[dst].resources[j].bufferUsages, true);
                         // addResourceDep(subpasses[src].resources[i].imageUsages,
                         //                subpasses[dst].resources[j].imageUsages);
                     }

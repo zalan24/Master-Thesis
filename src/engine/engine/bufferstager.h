@@ -63,7 +63,7 @@ class BufferStager
     drv::BufferPtr getBuffer() const { return buffer; }
 
  private:
-    drv::LogicalDevicePtr device;
+    drv::LogicalDevicePtr device = drv::get_null_ptr<drv::LogicalDevicePtr>();
     drv::BufferPtr buffer = drv::get_null_ptr<drv::BufferPtr>();
     res::BufferSet stagers;
     drv::BufferSubresourceRange subresource;

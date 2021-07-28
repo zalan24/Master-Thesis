@@ -448,9 +448,17 @@ uint32_t drv::get_num_pending_usages(drv::ImagePtr image, uint32_t layer, uint32
     return current_driver_interface->get_num_pending_usages(image, layer, mip, aspect);
 }
 
+uint32_t drv::get_num_pending_usages(drv::BufferPtr buffer) {
+    return current_driver_interface->get_num_pending_usages(buffer);
+}
+
 drv::PendingResourceUsage drv::get_pending_usage(drv::ImagePtr image, uint32_t layer, uint32_t mip,
                                                  AspectFlagBits aspect, uint32_t usageIndex) {
     return current_driver_interface->get_pending_usage(image, layer, mip, aspect, usageIndex);
+}
+
+drv::PendingResourceUsage drv::get_pending_usage(drv::BufferPtr buffer, uint32_t usageIndex) {
+    return current_driver_interface->get_pending_usage(buffer, usageIndex);
 }
 
 void drv::perform_cpu_access(const ResourceLockerDescriptor* resources,
@@ -471,6 +479,18 @@ void drv::read_image_memory(LogicalDevicePtr device, drv::ImagePtr image, uint32
                                        uint32_t mip, const ResourceLocker::Lock& lock,
                                        void* dstMem) {
     return current_driver_interface->read_image_memory(device, image, layer, mip, lock, dstMem);
+}
+
+void drv::write_buffer_memory(LogicalDevicePtr device, drv::BufferPtr buffer,
+                              const drv::BufferSubresourceRange& range,
+                              const ResourceLocker::Lock& lock, const void* srcMem) {
+    return current_driver_interface->write_buffer_memory(device, buffer, range, lock, srcMem);
+}
+
+void drv::read_buffer_memory(LogicalDevicePtr device, drv::BufferPtr buffer,
+                             const drv::BufferSubresourceRange& range,
+                             const ResourceLocker::Lock& lock, void* dstMem) {
+    return current_driver_interface->read_buffer_memory(device, buffer, range, lock, dstMem);
 }
 
 bool drv::get_image_memory_data(drv::LogicalDevicePtr device, drv::ImagePtr image, uint32_t layer,

@@ -1,10 +1,10 @@
-#include "BufferStager.h"
+#include "bufferstager.h"
 
 #include "engine.h"
 
 BufferStager::BufferStager(Engine* engine, drv::BufferPtr _buffer, uint32_t _numStagers,
                            Usage usage)
-  : BufferStager(engine, _buffer, drv::get_texture_info(_buffer).getSubresourceRange(), _numStagers,
+  : BufferStager(engine, _buffer, drv::get_buffer_info(_buffer).getSubresourceRange(), _numStagers,
                  usage) {
 }
 
@@ -19,8 +19,8 @@ BufferStager::BufferStager(Engine* engine, drv::BufferPtr _buffer,
         infos[i].bufferId = drv::BufferId(bufInfo.bufferId->name + "_stager",
                                           bufInfo.bufferId->subId * numStagers + i);
         infos[i].size = bufInfo.size;
-        infos[i].usages = drv::BufferSet::BufferInfo::TRANSFER_SRC_BIT
-                          | drv::BufferSet::BufferInfo::TRANSFER_DST_BIT;
+        infos[i].usage = drv::BufferSet::BufferInfo::TRANSFER_SRC_BIT
+                         | drv::BufferSet::BufferInfo::TRANSFER_DST_BIT;
     }
     stagers = engine->createResource<drv::BufferSet>(
       engine->getPhysicalDevice(), engine->getDevice(), std::move(infos),
