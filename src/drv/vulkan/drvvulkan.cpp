@@ -604,6 +604,105 @@ void VulkanCmdBufferRecorder::appendBarrier(drv::PipelineStages srcStage,
     }
 }
 
+void VulkanCmdBufferRecorder::appendBarrier(drv::PipelineStages srcStage,
+                                            drv::PipelineStages dstStage,
+                                            BufferSingleSubresourceMemoryBarrier&& bufferBarrier) {
+    if (!(srcStage.stageFlags & (~drv::PipelineStages::TOP_OF_PIPE_BIT))
+        && dstStage.stageFlags == 0) {
+        drv::drv_assert(bufferBarrier.dstAccessFlags == 0
+                        && bufferBarrier.dstFamily == bufferBarrier.srcFamily
+                        && bufferBarrier.newLayout == bufferBarrier.oldLayout
+                        && bufferBarrier.srcAccessFlags == 0);
+        return;
+    }
+    BufferMemoryBarrier barrier;
+    static_cast<ResourceBarrier&>(barrier) = static_cast<ResourceBarrier&>(bufferBarrier);
+    barrier.buffer = bufferBarrier.buffer;
+    barrier.;
+    TODO;
+    barrier.subresourceSet.add(bufferBarrier.layer, bufferBarrier.mipLevel, bufferBarrier.aspect);
+    barrier.oldLayout = bufferBarrier.oldLayout;
+    barrier.newLayout = bufferBarrier.newLayout;
+    appendBarrier(srcStage, dstStage, std::move(barrier));
+}
+
+void VulkanCmdBufferRecorder::appendBarrier(drv::PipelineStages srcStage,
+                                            drv::PipelineStages dstStage,
+                                            BufferMemoryBarrier&& bufferBarrier) {
+    TODO;
+    if (!(srcStage.stageFlags & (~drv::PipelineStages::TOP_OF_PIPE_BIT))
+        && dstStage.stageFlags == 0) {
+        drv::drv_assert(
+          imageBarrier.dstAccessFlags == 0 && imageBarrier.dstFamily == imageBarrier.srcFamily
+          && imageBarrier.newLayout == imageBarrier.oldLayout && imageBarrier.srcAccessFlags == 0);
+        return;
+    }
+    BarrierInfo barrier;
+    barrier.srcStages = trackingConfig->forceAllSrcStages ? getAvailableStages() : srcStage;
+    barrier.dstStages = trackingConfig->forceAllDstStages ? getAvailableStages() : dstStage;
+    // barrier.event = event;
+    barrier.numImageRanges = 1;
+    barrier.imageBarriers[0] = std::move(imageBarrier);
+    drv::drv_assert(barrier);
+    if (lastBarrier < barriers.size() && barriers[lastBarrier]
+        && matches(barriers[lastBarrier], barrier) && merge(barriers[lastBarrier], barrier)) {
+        barriers[lastBarrier] = std::move(barrier);
+    }
+    else {
+        uint32_t freeSpot = static_cast<uint32_t>(barriers.size());
+        bool placed = false;
+        for (uint32_t i = 0; i < static_cast<uint32_t>(barriers.size()); ++i) {
+            if (!barriers[i]) {
+                freeSpot = i;
+                continue;
+            }
+            if (matches(barriers[i], barrier) && merge(barriers[i], barrier)) {
+                barriers[i] = std::move(barrier);
+                lastBarrier = i;
+                placed = true;
+                break;
+            }
+            if (swappable(barriers[i], barrier))
+                continue;
+            if (merge(barriers[i], barrier)) {
+                freeSpot = i;
+            }
+            else if (/*drv::is_null_ptr(barriers[i].event) ||*/ requireFlush(barriers[i],
+                                                                             barrier)) {
+                // if no event is in original barrier, better keep the order
+                // otherwise manually placed barriers could lose effectivity
+                freeSpot = i;
+                flushBarrier(barriers[i]);
+            }
+        }
+        if (!placed) {
+            // Currently only the fixed portion of barriers is used
+            if (freeSpot >= barriers.size() && barriers.size() >= barriers.fixedSize()) {
+                freeSpot = 0;
+                flushBarrier(barriers[0]);
+            }
+            if (freeSpot < barriers.size()) {
+                barriers[freeSpot] = std::move(barrier);
+                lastBarrier = freeSpot;
+            }
+            else {
+                lastBarrier = static_cast<uint32_t>(barriers.size());
+                barriers.push_back(std::move(barrier));
+            }
+        }
+        while (!barriers.empty() && !barriers.back())
+            barriers.pop_back();
+    }
+    if (
+      (trackingConfig->immediateBarriers /* && drv::is_null_ptr<drv::EventPtr>(event)*/)
+      /*|| (trackingConfig->immediateEventBarriers && !drv::is_null_ptr<drv::EventPtr>(event))*/) {
+        drv::drv_assert(barriers[lastBarrier].srcStages.stageFlags == srcStage.stageFlags
+                        && barriers[lastBarrier].dstStages.stageFlags == dstStage.stageFlags
+                        /*&& barriers[lastBarrier].event == event*/);
+        flushBarrier(barriers[lastBarrier]);
+    }
+}
+
 void VulkanCmdBufferRecorder::invalidate(InvalidationLevel level, const char* message) const {
     switch (level) {
         case SUBOPTIMAL:

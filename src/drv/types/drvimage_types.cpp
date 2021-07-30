@@ -456,6 +456,26 @@ PipelineStages drv::get_image_usage_stages(ImageResourceUsageFlag usages) {
     return ret;
 }
 
+PipelineStages drv::get_buffer_usage_stages(BufferResourceUsageFlag usages) {
+    BufferResourceUsageFlag usage = 1;
+    PipelineStages ret;
+    while (usages) {
+        if (usages & 1) {
+            switch (static_cast<BufferResourceUsage>(usage)) {
+                case BUFFER_USAGE_TRANSFER_DESTINATION:
+                    ret.add(PipelineStages::TRANSFER_BIT);
+                    break;
+                case BUFFER_USAGE_TRANSFER_SOURCE:
+                    ret.add(PipelineStages::TRANSFER_BIT);
+                    break;
+            }
+        }
+        usages >>= 1;
+        usage <<= 1;
+    }
+    return ret;
+}
+
 MemoryBarrier::AccessFlagBitType drv::get_image_usage_accesses(ImageResourceUsageFlag usages) {
     ImageResourceUsageFlag usage = 1;
     MemoryBarrier::AccessFlagBitType ret = 0;
@@ -485,6 +505,26 @@ MemoryBarrier::AccessFlagBitType drv::get_image_usage_accesses(ImageResourceUsag
                     break;
                 case IMAGE_USAGE_DEPTH_STENCIL_WRITE:
                     ret |= MemoryBarrier::AccessFlagBits::DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+                    break;
+            }
+        }
+        usages >>= 1;
+        usage <<= 1;
+    }
+    return ret;
+}
+
+MemoryBarrier::AccessFlagBitType drv::get_buffer_usage_accesses(BufferResourceUsageFlag usages) {
+    BufferResourceUsageFlag usage = 1;
+    MemoryBarrier::AccessFlagBitType ret = 0;
+    while (usages) {
+        if (usages & 1) {
+            switch (static_cast<BufferResourceUsage>(usage)) {
+                case BUFFER_USAGE_TRANSFER_DESTINATION:
+                    ret |= MemoryBarrier::AccessFlagBits::TRANSFER_WRITE_BIT;
+                    break;
+                case BUFFER_USAGE_TRANSFER_SOURCE:
+                    ret |= MemoryBarrier::AccessFlagBits::TRANSFER_READ_BIT;
                     break;
             }
         }

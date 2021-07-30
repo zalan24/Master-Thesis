@@ -134,6 +134,14 @@ drv::TextureInfo DrvVulkan::get_texture_info(drv::ImagePtr _image) {
     return ret;
 }
 
+drv::BufferInfo DrvVulkan::get_buffer_info(drv::BufferPtr _buffer) {
+    drv_vulkan::Buffer* buffer = convertBuffer(_buffer);
+    drv::BufferInfo ret;
+    ret.bufferId = &buffer->bufferId;
+    ret.size = buffer->size;
+    return ret;
+}
+
 void VulkanCmdBufferRecorder::validate_memory_access(
   drv::CmdImageTrackingState& state, drv::ImagePtr _image, uint32_t mipLevel, uint32_t arrayIndex,
   drv::AspectFlagBits aspect, bool read, bool write, drv::PipelineStages stages,
@@ -157,6 +165,18 @@ void VulkanCmdBufferRecorder::validate_memory_access(
     }
     if (changeLayout)
         drv::drv_assert(write, "Only writing operations can transform the image layout");
+}
+
+void VulkanCmdBufferRecorder::validate_memory_access(
+  drv::CmdBufferTrackingState& state, drv::BufferPtr _buffer, bool read, bool write,
+  drv::PipelineStages stages, drv::MemoryBarrier::AccessFlagBitType accessMask,
+  drv::PipelineStages& barrierSrcStage, drv::PipelineStages& barrierDstStage,
+  BufferSingleSubresourceMemoryBarrier& barrier) {
+    drv_vulkan::Buffer* buffer = convertBuffer(_buffer);
+    drv::BufferSubresourceTrackData& subresourceData = state.state;
+    auto& usage = state.usage;
+    validate_memory_access(subresourceData, usage, read, write, buffer->sharedResource, stages,
+                           accessMask, barrierSrcStage, barrierDstStage, barrier);
 }
 
 void VulkanCmdBufferRecorder::add_memory_access_validate(
@@ -190,6 +210,27 @@ void VulkanCmdBufferRecorder::add_memory_access_validate(
         drv::drv_assert(write);
         subresourceData.layout = resultLayout;
     }
+}
+
+void VulkanCmdBufferRecorder::add_memory_access_validate(
+  drv::CmdBufferTrackingState& state, drv::BufferPtr buffer, bool read, bool write,
+  drv::PipelineStages stages, drv::MemoryBarrier::AccessFlagBitType accessMask) {
+    drv::PipelineStages barrierSrcStages;
+
+    // state.usageMask.add(arrayIndex, mipLevel, aspect);
+
+    drv::PipelineStages barrierDstStages;
+    BufferSingleSubresourceMemoryBarrier barrier;
+    barrier.buffer = buffer;
+    validate_memory_access(state, buffer, read, write, stages, accessMask, barrierSrcStages,
+                           barrierDstStages, barrier);
+
+    appendBarrier(barrierSrcStages, barrierDstStages, std::move(barrier));
+
+    // drv_vulkan::Image* image = convertImage(_image);
+    drv::BufferSubresourceTrackData& subresourceData = state.state;
+
+    add_memory_access(subresourceData, read, write, stages, accessMask);
 }
 
 void VulkanCmdBufferRecorder::add_memory_access(
@@ -243,6 +284,15 @@ void VulkanCmdBufferRecorder::add_memory_access(
     flushBarriersFor(_image, numSubresourceRanges, subresourceRanges);
 }
 
+void VulkanCmdBufferRecorder::add_memory_access(
+  drv::CmdBufferTrackingState& state, drv::BufferPtr _buffer, uint32_t numSubresourceRanges,
+  const drv::BufferSubresourceRange* subresourceRanges, bool read, bool write,
+  drv::PipelineStages stages, drv::MemoryBarrier::AccessFlagBitType accessMask) {
+    flushBarriersFor(_buffer, numSubresourceRanges, subresourceRanges);
+    add_memory_access_validate(state, _buffer, read, write, stages, accessMask);
+    flushBarriersFor(_buffer, numSubresourceRanges, subresourceRanges);
+}
+
 drv::PipelineStages VulkanCmdBufferRecorder::add_memory_sync(
   drv::CmdImageTrackingState& state, drv::ImagePtr _image, uint32_t numSubresourceRanges,
   const drv::ImageSubresourceRange* subresourceRanges, bool flush, drv::PipelineStages dstStages,
@@ -286,6 +336,15 @@ drv::PipelineStages VulkanCmdBufferRecorder::add_memory_sync(
           });
     }
     return srcStages;
+}
+
+drv::PipelineStages VulkanCmdBufferRecorder::add_memory_sync(
+  drv::CmdBufferTrackingState& state, drv::BufferPtr _buffer, uint32_t /*numSubresourceRanges*/,
+  const drv::BufferSubresourceRange* /*subresourceRanges*/, bool flush,
+  drv::PipelineStages dstStages, drv::MemoryBarrier::AccessFlagBitType accessMask,
+  bool transferOwnership, drv::QueueFamilyPtr newOwner, bool discardContent) {
+    return add_memory_sync(state, _buffer, flush, dstStages, accessMask, transferOwnership,
+                           newOwner, discardContent);
 }
 
 drv::PipelineStages VulkanCmdBufferRecorder::add_memory_sync(
@@ -355,6 +414,26 @@ uint32_t DrvVulkan::get_num_pending_usages(drv::ImagePtr image, uint32_t layer, 
     if (!drv::is_null_ptr(subresourceState.multiQueueState.mainQueue))
         ret++;
     return ret;
+}
+
+drv::PipelineStages VulkanCmdBufferRecorder::add_memory_sync(
+  drv::CmdBufferTrackingState& state, drv::BufferPtr _buffer, bool flush,
+  drv::PipelineStages dstStages, drv::MemoryBarrier::AccessFlagBitType accessMask,
+  bool transferOwnership, drv::QueueFamilyPtr newOwner, bool discardContent) {
+    // state.usageMask.add(arrayIndex, mipLevel, aspect);
+    drv::BufferSubresourceTrackData& subresourceData = state.state;
+    auto& usage = state.usage;
+    // 'subresourceData.layout != resultLayout' excluded for consistent behaviour
+    if (discardContent)
+        flush = false;
+    drv::PipelineStages barrierSrcStages;
+    drv::PipelineStages barrierDstStages;
+    BufferSingleSubresourceMemoryBarrier barrier;
+    barrier.buffer = _buffer;
+    add_memory_sync(subresourceData, usage, flush, dstStages, accessMask, transferOwnership,
+                    newOwner, barrierSrcStages, barrierDstStages, barrier);
+    appendBarrier(barrierSrcStages, barrierDstStages, std::move(barrier));
+    return barrierSrcStages;
 }
 
 drv::PendingResourceUsage DrvVulkan::get_pending_usage(drv::ImagePtr image, uint32_t layer,
