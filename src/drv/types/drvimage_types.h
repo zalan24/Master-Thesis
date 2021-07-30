@@ -644,6 +644,13 @@ struct ImageCopyRegion
     Extent3D extent;
 };
 
+struct BufferCopyRegion
+{
+    DeviceSize srcOffset;
+    DeviceSize dstOffset;
+    DeviceSize size;
+};
+
 struct ImageCreateInfo
 {
     ImageId imageId;

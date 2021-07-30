@@ -275,6 +275,9 @@ class BufferSet : private Exclusive
     void get_buffers(drv::BufferPtr* buffers);
     void get_buffers(drv::BufferPtr* buffers, unsigned int from, unsigned int count);
 
+    drv::BufferPtr getBuffer() const { return buffers[0]; }
+    drv::BufferPtr getBuffer(uint32_t index) const { return buffers[index]; }
+
  private:
     using MaskType = uint32_t;
     static_assert(std::is_same_v<MaskType, decltype(MemoryRequirements::memoryTypeBits)>,

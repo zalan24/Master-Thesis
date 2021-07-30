@@ -379,20 +379,19 @@ struct ShaderCreateInfo
     const uint32_t* code;
 };
 
+// struct BufferSubresourceMemoryBarrier
+// {
+//     MemoryBarrier::AccessFlagBitType srcAccessFlags;
+//     MemoryBarrier::AccessFlagBitType dstAccessFlags;
 
-struct BufferMemoryBarrier
-{
-    MemoryBarrier::AccessFlagBitType srcAccessFlags;
-    MemoryBarrier::AccessFlagBitType dstAccessFlags;
+//     // ownership transfer
+//     drv::QueueFamilyPtr srcFamily;
+//     drv::QueueFamilyPtr dstFamily;
 
-    // ownership transfer
-    drv::QueueFamilyPtr srcFamily;
-    drv::QueueFamilyPtr dstFamily;
-
-    drv::BufferPtr buffer;
-    DeviceSize offset;
-    DeviceSize size;
-};
+//     drv::BufferPtr buffer;
+//     DeviceSize offset;
+//     DeviceSize size;
+// };
 
 // struct ImageMemoryBarrier
 // {

@@ -349,7 +349,7 @@ void Game::beforeDraw(FrameId frameId) {
     }
 }
 
-void Game::readback(FrameId frameId) {
+void Game::readback(FrameId) {
     // TemporalResourceLockerDescriptor resourceDesc;
     // ImageStager::StagerId stagerId = testImageStager.getStagerId(frameId);
     // testImageStager.lockResource(resourceDesc, ImageStager::DOWNLOAD, stagerId);

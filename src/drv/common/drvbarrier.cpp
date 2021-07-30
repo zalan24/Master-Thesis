@@ -148,3 +148,54 @@ ImageMemoryBarrier::ImageMemoryBarrier(ImagePtr _image, uint32_t numRanges,
 const ImageSubresourceRange* ImageMemoryBarrier::getRanges() const {
     return numSubresourceRanges == 1 ? &ranges.range : ranges.ranges;
 }
+
+// BufferMemoryBarrier::BufferMemoryBarrier(BufferPtr _buffer, BufferResourceUsageFlag usages,
+//                                          bool _discardCurrentContent, QueueFamilyPtr targetFamily)
+//   : buffer(_buffer),
+//     stages(drv::get_buffer_usage_stages(usages)),
+//     accessMask(drv::get_buffer_usage_accesses(usages)),
+//     discardCurrentContent(_discardCurrentContent) {
+//     requestedOwnership = targetFamily;
+//     numSubresourceRanges = 1;
+//     ranges.range.offset = 0;
+//     ranges.range.size = ;
+// }
+
+BufferMemoryBarrier::BufferMemoryBarrier(BufferPtr _buffer, uint32_t numRanges,
+                                         const BufferSubresourceRange* _ranges,
+                                         BufferResourceUsageFlag usages,
+                                         bool _discardCurrentContent, QueueFamilyPtr targetFamily)
+  : buffer(_buffer),
+    numSubresourceRanges(numRanges),
+    stages(drv::get_buffer_usage_stages(usages)),
+    accessMask(drv::get_buffer_usage_accesses(usages)),
+    discardCurrentContent(_discardCurrentContent) {
+    requestedOwnership = targetFamily;
+    if (numSubresourceRanges == 1)
+        ranges.range = _ranges[0];
+    else
+        ranges.ranges = _ranges;
+}
+
+BufferMemoryBarrier::BufferMemoryBarrier(BufferPtr _buffer, uint32_t numRanges,
+                                         const BufferSubresourceRange* _ranges,
+                                         const PipelineStages& _stages,
+                                         MemoryBarrier::AccessFlagBitType _accessMask,
+                                         bool _discardCurrentContent, QueueFamilyPtr targetFamily)
+  : buffer(_buffer),
+    numSubresourceRanges(numRanges),
+    stages(_stages),
+    accessMask(_accessMask),
+    discardCurrentContent(_discardCurrentContent) {
+    // drv_assert(get_accepted_image_layouts(usages) & static_cast<ImageLayoutMask>(transition),
+    //            "Transition target layout is not supported by all specified usages");
+    requestedOwnership = targetFamily;
+    if (numSubresourceRanges == 1)
+        ranges.range = _ranges[0];
+    else
+        ranges.ranges = _ranges;
+}
+
+const BufferSubresourceRange* BufferMemoryBarrier::getRanges() const {
+    return numSubresourceRanges == 1 ? &ranges.range : ranges.ranges;
+}

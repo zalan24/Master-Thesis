@@ -18,9 +18,20 @@ BufferStager::BufferStager(Engine* engine, drv::BufferPtr _buffer,
     for (uint32_t i = 0; i < infos.size(); ++i) {
         infos[i].bufferId = drv::BufferId(bufInfo.bufferId->name + "_stager",
                                           bufInfo.bufferId->subId * numStagers + i);
-        infos[i].size = bufInfo.size;
-        infos[i].usage = drv::BufferSet::BufferInfo::TRANSFER_SRC_BIT
-                         | drv::BufferSet::BufferInfo::TRANSFER_DST_BIT;
+        infos[i].size = static_cast<unsigned long>(bufInfo.size);
+
+        switch (usage) {
+            case DOWNLOAD:
+                infos[i].usage |= drv::BufferCreateInfo::TRANSFER_DST_BIT;
+                break;
+            case UPLOAD:
+                infos[i].usage |= drv::BufferCreateInfo::TRANSFER_SRC_BIT;
+                break;
+            case BOTH:
+                infos[i].usage |=
+                  drv::BufferCreateInfo::TRANSFER_DST_BIT | drv::BufferCreateInfo::TRANSFER_SRC_BIT;
+                break;
+        }
     }
     stagers = engine->createResource<drv::BufferSet>(
       engine->getPhysicalDevice(), engine->getDevice(), std::move(infos),
@@ -99,7 +110,7 @@ void BufferStager::lockResource(drv::ResourceLockerDescriptor& descriptor, Usage
             usageMode = drv::ResourceLockerDescriptor::UsageMode::READ_WRITE;
             break;
     }
-    descriptor.addBuffer(stagers.get().getBuffer(stager), subres, usageMode);
+    descriptor.addBuffer(stagers.get().getBuffer(stager), usageMode);
 }
 
 void BufferStager::transferFromStager(drv::DrvCmdBufferRecorder* recorder, StagerId stager) {
@@ -111,23 +122,15 @@ void BufferStager::transferFromStager(drv::DrvCmdBufferRecorder* recorder, Stage
     drv::drv_assert(
       checkSubres(subres),
       "Stager is used with incorrect subresource: it was promised a different subresource set");
-    recorder->cmdBufferBarrier({stagers.get().getBuffer(stager), drv::IMAGE_USAGE_TRANSFER_SOURCE,
-                                drv::ImageMemoryBarrier::AUTO_TRANSITION, false});
-    // StackMemory::MemoryHandle<drv::ImageCopyRegion> regions(subresMipCount, TEMPMEM);
-    // for (uint32_t i = 0; i < subresMipCount; ++i) {
-    //     regions[i].srcSubresource.aspectMask = subres.aspectMask;
-    //     regions[i].srcSubresource.baseArrayLayer = subres.baseArrayLayer - layerOffset;
-    //     regions[i].srcSubresource.layerCount = subresLayerCount;
-    //     regions[i].srcSubresource.mipLevel = subres.baseMipLevel + i - mipOffset;
-    //     regions[i].srcOffset = {0, 0, 0};
-    //     regions[i].dstSubresource.aspectMask = subres.aspectMask;
-    //     regions[i].dstSubresource.baseArrayLayer = subres.baseArrayLayer;
-    //     regions[i].dstSubresource.layerCount = subresLayerCount;
-    //     regions[i].dstSubresource.mipLevel = subres.baseMipLevel + i;
-    //     regions[i].dstOffset = {0, 0, 0};
-    //     regions[i].extent = drv::get_texture_info(stagers.get().getBuffer(stager)).extent;
-    // }
-    recorder->cmdCopyBuffer(stagers.get().getBuffer(stager), buffer, subresMipCount, regions);
+    drv::BufferSubresourceRange range =
+      drv::get_buffer_info(stagers.get().getBuffer(stager)).getSubresourceRange();
+    recorder->cmdBufferBarrier(
+      {stagers.get().getBuffer(stager), 1, &range, drv::BUFFER_USAGE_TRANSFER_SOURCE, false});
+    drv::BufferCopyRegion region;
+    region.srcOffset = subres.offset - subresource.offset;
+    region.dstOffset = subres.offset;
+    region.size = subres.size;
+    recorder->cmdCopyBuffer(stagers.get().getBuffer(stager), buffer, 1, &region);
 }
 
 void BufferStager::transferToStager(drv::DrvCmdBufferRecorder* recorder, StagerId stager) {
@@ -139,29 +142,20 @@ void BufferStager::transferToStager(drv::DrvCmdBufferRecorder* recorder, StagerI
     drv::drv_assert(
       checkSubres(subres),
       "Stager is used with incorrect subresource: it was promised a different subresource set");
-    recorder->cmdBufferBarrier({stagers.get().getBuffer(stager),
-                                drv::IMAGE_USAGE_TRANSFER_DESTINATION,
-                                drv::ImageMemoryBarrier::AUTO_TRANSITION, true});
-    // StackMemory::MemoryHandle<drv::ImageCopyRegion> regions(subresMipCount, TEMPMEM);
-    // for (uint32_t i = 0; i < subresMipCount; ++i) {
-    //     regions[i].srcSubresource.aspectMask = subres.aspectMask;
-    //     regions[i].srcSubresource.baseArrayLayer = subres.baseArrayLayer;
-    //     regions[i].srcSubresource.layerCount = subresLayerCount;
-    //     regions[i].srcSubresource.mipLevel = subres.baseMipLevel + i;
-    //     regions[i].srcOffset = {0, 0, 0};
-    //     regions[i].dstSubresource.aspectMask = subres.aspectMask;
-    //     regions[i].dstSubresource.baseArrayLayer = subres.baseArrayLayer - layerOffset;
-    //     regions[i].dstSubresource.layerCount = subresLayerCount;
-    //     regions[i].dstSubresource.mipLevel = subres.baseMipLevel + i - mipOffset;
-    //     regions[i].dstOffset = {0, 0, 0};
-    //     regions[i].extent = drv::get_texture_info(stagers.get().getBuffer(stager)).extent;
-    // }
-    recorder->cmdCopyBuffer(buffer, stagers.get().getBuffer(stager), subresMipCount, regions);
+    drv::BufferSubresourceRange range =
+      drv::get_buffer_info(stagers.get().getBuffer(stager)).getSubresourceRange();
+    recorder->cmdBufferBarrier(
+      {stagers.get().getBuffer(stager), 1, &range, drv::BUFFER_USAGE_TRANSFER_DESTINATION, true});
+    drv::BufferCopyRegion region;
+    region.srcOffset = subres.offset;
+    region.dstOffset = subres.offset - subresource.offset;
+    region.size = subres.size;
+    recorder->cmdCopyBuffer(buffer, stagers.get().getBuffer(stager), 1, &region);
 }
 
-void BufferStager::setData(const void* srcData, const drv::BufferSubresourceRange& range,
+void BufferStager::setData(const void* srcData, const drv::BufferSubresourceRange& subres,
                            StagerId stager, const drv::ResourceLocker::Lock& lock) {
-    drv::write_buffer_memory(device, stagers.get().getBuffer(stager), range, lock, srcData);
+    drv::write_buffer_memory(device, stagers.get().getBuffer(stager), subres, lock, srcData);
 }
 
 void BufferStager::setData(const void* srcData, StagerId stager,
@@ -171,7 +165,7 @@ void BufferStager::setData(const void* srcData, StagerId stager,
 
 void BufferStager::getData(void* dstData, const drv::BufferSubresourceRange& subres,
                            StagerId stager, const drv::ResourceLocker::Lock& lock) {
-    drv::read_buffer_memory(device, stagers.get().getBuffer(stager), range, lock, dstData);
+    drv::read_buffer_memory(device, stagers.get().getBuffer(stager), subres, lock, dstData);
 }
 
 void BufferStager::getData(void* dstData, StagerId stager, const drv::ResourceLocker::Lock& lock) {

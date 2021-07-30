@@ -135,6 +135,7 @@ class VulkanCmdBufferRecorder final : public drv::DrvCmdBufferRecorder
                             const drv::PerSubresourceRangeTrackData& resultState,
                             drv::PerSubresourceRangeTrackData& mergedState);
     void cmdImageBarrier(const drv::ImageMemoryBarrier& barrier) override;
+    void cmdBufferBarrier(const drv::BufferMemoryBarrier& barrier) override;
     void cmdClearImage(drv::ImagePtr image, const drv::ClearColorValue* clearColors,
                        uint32_t ranges = 0,
                        const drv::ImageSubresourceRange* subresourceRanges = nullptr) override;
@@ -142,6 +143,8 @@ class VulkanCmdBufferRecorder final : public drv::DrvCmdBufferRecorder
                       const drv::ImageBlit* pRegions, drv::ImageFilter filter) override;
     void cmdCopyImage(drv::ImagePtr srcImage, drv::ImagePtr dstImage, uint32_t regionCount,
                       const drv::ImageCopyRegion* pRegions) override;
+                      void cmdCopyBuffer(drv::BufferPtr srcBuffer, drv::BufferPtr dstBuffer, uint32_t regionCount,
+                               const drv::BufferCopyRegion* pRegions) override;
 
     drv::PipelineStages cmd_image_barrier(drv::CmdImageTrackingState& state,
                                           const drv::ImageMemoryBarrier& barrier);

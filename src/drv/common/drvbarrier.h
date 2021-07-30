@@ -70,4 +70,33 @@ class ImageMemoryBarrier
     static bool pick_layout(ImageResourceUsageFlag usages, ImageLayout& result);
     static drv::ImageLayoutMask get_accepted_layouts(ImageResourceUsageFlag usages);
 };
+
+class BufferMemoryBarrier
+{
+ public:
+    // BufferMemoryBarrier(BufferPtr buffer, BufferResourceUsageFlag usages,
+    //                     bool discardCurrentContent = false,
+    //                     QueueFamilyPtr targetFamily = IGNORE_FAMILY);
+    BufferMemoryBarrier(BufferPtr buffer, uint32_t numRanges, const BufferSubresourceRange* ranges,
+                        BufferResourceUsageFlag usages, bool discardCurrentContent = false,
+                        QueueFamilyPtr targetFamily = IGNORE_FAMILY);
+    BufferMemoryBarrier(BufferPtr buffer, uint32_t numRanges, const BufferSubresourceRange* ranges,
+                        const PipelineStages& stages, MemoryBarrier::AccessFlagBitType accessMask,
+                        bool discardCurrentContent = false,
+                        QueueFamilyPtr targetFamily = IGNORE_FAMILY);
+
+    const BufferSubresourceRange* getRanges() const;
+
+    BufferPtr buffer;
+    uint32_t numSubresourceRanges = 0;
+    union Ranges
+    {
+        const BufferSubresourceRange* ranges;
+        BufferSubresourceRange range;
+    } ranges;
+    PipelineStages stages;
+    MemoryBarrier::AccessFlagBitType accessMask;
+    QueueFamilyPtr requestedOwnership = IGNORE_FAMILY;
+    bool discardCurrentContent = false;
+};
 }  // namespace drv

@@ -205,6 +205,23 @@ uint32_t ResourceLockerDescriptor::findImage(ImagePtr image) const {
     return a;
 }
 
+uint32_t ResourceLockerDescriptor::findBuffer(BufferPtr buffer) const {
+    uint32_t a = 0;
+    uint32_t b = getBufferCount();
+    if (b == 0)
+        return getBufferCount();
+    while (a + 1 < b) {
+        uint32_t m = (a + b) / 2;
+        if (buffer < getBuffer(m))
+            b = m;
+        else
+            a = m;
+    }
+    if (getBuffer(a) != buffer)
+        return getBufferCount();
+    return a;
+}
+
 void ResourceLockerDescriptor::copyFrom(const ResourceLockerDescriptor* other) {
     clear();
     uint32_t imageCount = other->getImageCount();
@@ -230,12 +247,32 @@ ResourceLockerDescriptor::UsageMode ResourceLockerDescriptor::getImageUsage(
     return UsageMode::READ_WRITE;
 }
 
+ResourceLockerDescriptor::UsageMode ResourceLockerDescriptor::getBufferUsage(uint32_t index) const {
+    bool read = getBufferData(index).reads;
+    bool write = getBufferData(index).writes;
+    if (!read && !write)
+        return UsageMode::NONE;
+    if (!write)
+        return UsageMode::READ;
+    if (!read)
+        return UsageMode::WRITE;
+    return UsageMode::READ_WRITE;
+}
+
 ResourceLockerDescriptor::UsageMode ResourceLockerDescriptor::getImageUsage(
   drv::ImagePtr image, uint32_t layer, uint32_t mip, drv::AspectFlagBits aspect) const {
     uint32_t ind = findImage(image);
     if (ind == getImageCount())
         return UsageMode::NONE;
     return getImageUsage(ind, layer, mip, aspect);
+}
+
+ResourceLockerDescriptor::UsageMode ResourceLockerDescriptor::getBufferUsage(
+  drv::BufferPtr buffer) const {
+    uint32_t ind = findBuffer(buffer);
+    if (ind == getBufferCount())
+        return UsageMode::NONE;
+    return getBufferUsage(ind);
 }
 
 ResourceLockerDescriptor::ConflictType ResourceLockerDescriptor::findConflict(
@@ -275,6 +312,9 @@ bool ResourceLockerDescriptor::empty() const {
 
 ImagePtr ResourceLockerDescriptor::getImage(uint32_t index) const {
     return getImageData(index).image;
+}
+BufferPtr ResourceLockerDescriptor::getBuffer(uint32_t index) const {
+    return getBufferData(index).buffer;
 }
 
 const ImageSubresourceSet& ResourceLockerDescriptor::getReadSubresources(uint32_t index) const& {

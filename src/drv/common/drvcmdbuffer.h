@@ -118,6 +118,7 @@ class DrvCmdBufferRecorder
     virtual ~DrvCmdBufferRecorder();
 
     virtual void cmdImageBarrier(const ImageMemoryBarrier& barrier) = 0;
+    virtual void cmdBufferBarrier(const BufferMemoryBarrier& barrier) = 0;
     virtual void cmdClearImage(ImagePtr image, const ClearColorValue* clearColors,
                                uint32_t ranges = 0,
                                const ImageSubresourceRange* subresourceRanges = nullptr) = 0;
@@ -125,6 +126,8 @@ class DrvCmdBufferRecorder
                               const ImageBlit* pRegions, ImageFilter filter) = 0;
     virtual void cmdCopyImage(ImagePtr srcImage, ImagePtr dstImage, uint32_t regionCount,
                               const ImageCopyRegion* pRegions) = 0;
+    virtual void cmdCopyBuffer(BufferPtr srcBuffer, BufferPtr dstBuffer, uint32_t regionCount,
+                               const BufferCopyRegion* pRegions) = 0;
 
     CommandBufferPtr getCommandBuffer() const { return cmdBufferPtr; }
     drv::QueueFamilyPtr getFamily() const { return family; }
@@ -204,12 +207,20 @@ class DrvCmdBufferRecorder
                                     const drv::BufferSubresourceRange* subresourceRanges,
                                     const drv::PipelineStages& stages);
 
-    void useResource(drv::ImagePtr image, uint32_t layer, uint32_t mip, drv::AspectFlagBits aspect,
-                     drv::ImageResourceUsageFlag usages);
-    void useResource(drv::ImagePtr image, uint32_t rangeCount,
-                     const drv::ImageSubresourceRange* ranges, drv::ImageResourceUsageFlag usages);
-    void useResource(drv::ImagePtr image, const drv::ImageSubresourceSet& subresources,
-                     drv::ImageResourceUsageFlag usages);
+    void useImageResource(drv::ImagePtr image, uint32_t layer, uint32_t mip,
+                          drv::AspectFlagBits aspect, drv::ImageResourceUsageFlag usages);
+    void useImageResource(drv::ImagePtr image, uint32_t rangeCount,
+                          const drv::ImageSubresourceRange* ranges,
+                          drv::ImageResourceUsageFlag usages);
+    void useImageResource(drv::ImagePtr image, const drv::ImageSubresourceSet& subresources,
+                          drv::ImageResourceUsageFlag usages);
+    // void useBufferResource(drv::BufferPtr buffer,
+    //                  drv::BufferResourceUsageFlag usages);
+    void useBufferResource(drv::BufferPtr buffer, uint32_t rangeCount,
+                           const drv::BufferSubresourceRange* ranges,
+                           drv::BufferResourceUsageFlag usages);
+    void useBufferResource(drv::BufferPtr buffer, const drv::BufferSubresourceRange& subresources,
+                           drv::BufferResourceUsageFlag usages);
 
     IDriver* driver;
     LogicalDevicePtr device;

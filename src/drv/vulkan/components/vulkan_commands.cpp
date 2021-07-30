@@ -18,6 +18,13 @@ void VulkanCmdBufferRecorder::cmdImageBarrier(const drv::ImageMemoryBarrier& bar
                       barrier);
 }
 
+void VulkanCmdBufferRecorder::cmdBufferBarrier(const drv::BufferMemoryBarrier& barrier) {
+    cmd_buffer_barrier(getBufferState(barrier.buffer, barrier.numSubresourceRanges,
+                                      barrier.getRanges(), barrier.stages)
+                         .cmdState,
+                       barrier);
+}
+
 void VulkanCmdBufferRecorder::cmdClearImage(drv::ImagePtr image,
                                             const drv::ClearColorValue* clearColors,
                                             uint32_t ranges,
@@ -88,11 +95,45 @@ void VulkanCmdBufferRecorder::cmdCopyImage(drv::ImagePtr srcImage, drv::ImagePtr
                       drv::MemoryBarrier::AccessFlagBits::TRANSFER_WRITE_BIT, dstRequiredLayoutMask,
                       true, &dstCurrentLayout, false, drv::ImageLayout::UNDEFINED);
 
-    useResource(srcImage, regionCount, srcRanges, drv::IMAGE_USAGE_TRANSFER_SOURCE);
-    useResource(dstImage, regionCount, dstRanges, drv::IMAGE_USAGE_TRANSFER_DESTINATION);
+    useImageResource(srcImage, regionCount, srcRanges, drv::IMAGE_USAGE_TRANSFER_SOURCE);
+    useImageResource(dstImage, regionCount, dstRanges, drv::IMAGE_USAGE_TRANSFER_DESTINATION);
     vkCmdCopyImage(convertCommandBuffer(getCommandBuffer()), convertImage(srcImage)->image,
                    convertImageLayout(srcCurrentLayout), convertImage(dstImage)->image,
                    convertImageLayout(dstCurrentLayout), regionCount, regions);
+}
+
+void VulkanCmdBufferRecorder::cmdCopyBuffer(drv::BufferPtr srcBuffer, drv::BufferPtr dstBuffer,
+                                            uint32_t regionCount,
+                                            const drv::BufferCopyRegion* pRegions) {
+    if (regionCount == 0)
+        return;
+    StackMemory::MemoryHandle<VkBufferCopy> regions(regionCount, TEMPMEM);
+    StackMemory::MemoryHandle<drv::BufferSubresourceRange> srcRanges(regionCount, TEMPMEM);
+    StackMemory::MemoryHandle<drv::BufferSubresourceRange> dstRanges(regionCount, TEMPMEM);
+    for (uint32_t i = 0; i < regionCount; ++i) {
+        regions[i].srcOffset = static_cast<VkDeviceSize>(pRegions[i].srcOffset);
+        regions[i].dstOffset = static_cast<VkDeviceSize>(pRegions[i].dstOffset);
+        regions[i].size = static_cast<VkDeviceSize>(pRegions[i].size);
+
+        srcRanges[i].offset = pRegions[i].srcOffset;
+        srcRanges[i].size = pRegions[i].size;
+
+        dstRanges[i].offset = pRegions[i].dstOffset;
+        dstRanges[i].size = pRegions[i].size;
+    }
+
+    drv::PipelineStages stages(drv::PipelineStages::TRANSFER_BIT);
+    add_memory_access(getBufferState(srcBuffer, regionCount, srcRanges, stages).cmdState, srcBuffer,
+                      regionCount, srcRanges, true, false, stages,
+                      drv::MemoryBarrier::AccessFlagBits::TRANSFER_READ_BIT);
+    add_memory_access(getBufferState(dstBuffer, regionCount, dstRanges, stages).cmdState, dstBuffer,
+                      regionCount, dstRanges, false, true, stages,
+                      drv::MemoryBarrier::AccessFlagBits::TRANSFER_WRITE_BIT);
+
+    useBufferResource(srcBuffer, regionCount, srcRanges, drv::BUFFER_USAGE_TRANSFER_SOURCE);
+    useBufferResource(dstBuffer, regionCount, dstRanges, drv::BUFFER_USAGE_TRANSFER_DESTINATION);
+    vkCmdCopyBuffer(convertCommandBuffer(getCommandBuffer()), convertBuffer(srcBuffer)->buffer,
+                    convertBuffer(dstBuffer)->buffer, regionCount, regions);
 }
 
 void VulkanCmdBufferRecorder::cmdBlitImage(drv::ImagePtr srcImage, drv::ImagePtr dstImage,
@@ -149,8 +190,8 @@ void VulkanCmdBufferRecorder::cmdBlitImage(drv::ImagePtr srcImage, drv::ImagePtr
                       drv::MemoryBarrier::AccessFlagBits::TRANSFER_WRITE_BIT, dstRequiredLayoutMask,
                       true, &dstCurrentLayout, false, drv::ImageLayout::UNDEFINED);
 
-    useResource(srcImage, regionCount, srcRanges, drv::IMAGE_USAGE_TRANSFER_SOURCE);
-    useResource(dstImage, regionCount, dstRanges, drv::IMAGE_USAGE_TRANSFER_DESTINATION);
+    useImageResource(srcImage, regionCount, srcRanges, drv::IMAGE_USAGE_TRANSFER_SOURCE);
+    useImageResource(dstImage, regionCount, dstRanges, drv::IMAGE_USAGE_TRANSFER_DESTINATION);
     vkCmdBlitImage(convertCommandBuffer(getCommandBuffer()), convertImage(srcImage)->image,
                    convertImageLayout(srcCurrentLayout), convertImage(dstImage)->image,
                    convertImageLayout(dstCurrentLayout), regionCount, regions,
@@ -214,7 +255,7 @@ void VulkanCmdBufferRecorder::cmd_clear_image(drv::ImagePtr image,
         vkValues[i] = convertClearColor(clearColors[i]);
     }
 
-    useResource(image, ranges, subresourceRanges, drv::IMAGE_USAGE_TRANSFER_DESTINATION);
+    useImageResource(image, ranges, subresourceRanges, drv::IMAGE_USAGE_TRANSFER_DESTINATION);
     vkCmdClearColorImage(convertCommandBuffer(getCommandBuffer()), convertImage(image)->image,
                          convertImageLayout(currentLayout), vkValues, ranges, vkRanges);
 }
@@ -229,6 +270,17 @@ drv::PipelineStages VulkanCmdBufferRecorder::cmd_image_barrier(
                              && barrier.requestedOwnership != drv::IGNORE_FAMILY,
                            barrier.requestedOwnership, barrier.transitionLayout,
                            barrier.discardCurrentContent, barrier.resultLayout);
+}
+
+drv::PipelineStages VulkanCmdBufferRecorder::cmd_buffer_barrier(
+  drv::CmdBufferTrackingState& state, const drv::BufferMemoryBarrier& barrier) {
+    bool flush = !barrier.discardCurrentContent;
+    // extra sync is only placed, if it has dirty cache
+    return add_memory_sync(state, barrier.buffer, barrier.numSubresourceRanges, barrier.getRanges(),
+                           flush, barrier.stages, barrier.accessMask,
+                           !convertBuffer(barrier.buffer)->sharedResource
+                             && barrier.requestedOwnership != drv::IGNORE_FAMILY,
+                           barrier.requestedOwnership, barrier.discardCurrentContent);
 }
 
 bool VulkanCmdBufferRecorder::cmdUseAsAttachment(
@@ -247,7 +299,7 @@ bool VulkanCmdBufferRecorder::cmdUseAsAttachment(
     drv::CmdImageTrackingState& cmdState =
       getImageState(image, 1, &subresourceRange, initialLayout, stages).cmdState;
 
-    useResource(image, 1, &subresourceRange, usages);
+    useImageResource(image, 1, &subresourceRange, usages);
 
     subresourceRange.traverse(
       texInfo.arraySize, texInfo.numMips,

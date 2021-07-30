@@ -235,3 +235,15 @@ void ImageSubresStateStat::get(drv::ImageSubresourceTrackData& data, bool tendTo
     subres.get(data, tendTo);
     data.layout = layout.get();
 }
+
+void BufferSubresStateStat::set(const drv::BufferSubresourceTrackData& data) {
+    subres.set(data);
+}
+
+void BufferSubresStateStat::append(const drv::BufferSubresourceTrackData& data) {
+    subres.append(data);
+}
+
+void BufferSubresStateStat::get(drv::BufferSubresourceTrackData& data, bool tendTo) const {
+    subres.get(data, tendTo);
+}
