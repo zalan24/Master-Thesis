@@ -215,7 +215,8 @@ void write_buffer_memory(LogicalDevicePtr device, drv::BufferPtr buffer,
 void read_buffer_memory(LogicalDevicePtr device, drv::BufferPtr buffer,
                         const drv::BufferSubresourceRange& range, const ResourceLocker::Lock& lock,
                         void* dstMem);
-void sync_gpu_clock(PhysicalDevicePtr physicalDevice, LogicalDevicePtr device);
+void sync_gpu_clock(InstancePtr instance, PhysicalDevicePtr physicalDevice,
+                    LogicalDevicePtr device);
 
 TimestampQueryPoolPtr create_timestamp_query_pool(LogicalDevicePtr device, uint32_t timestampCount);
 bool destroy_timestamp_query_pool(LogicalDevicePtr device, TimestampQueryPoolPtr pool);

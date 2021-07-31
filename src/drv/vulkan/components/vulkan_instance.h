@@ -17,7 +17,7 @@ struct Instance
 
     PFN_vkCreateDebugUtilsMessengerEXT vkCreateDebugUtilsMessengerEXT = VK_NULL_HANDLE;
     PFN_vkDestroyDebugUtilsMessengerEXT vkDestroyDebugUtilsMessengerEXT = VK_NULL_HANDLE;
-    PFN_vkGetCalibratedTimestampsEXT vkGetCalibratedTimestampsEXT = VK_NULL_HANDLE;
+    // PFN_vkGetCalibratedTimestampsEXT vkGetCalibratedTimestampsEXT = VK_NULL_HANDLE;
 };
 
 void get_extensions(const Features& features, unsigned int& count, const char** extensions);

@@ -46,10 +46,18 @@ bool DrvVulkan::get_physical_devices(drv::InstancePtr _instance, const drv::Devi
                        deviceProperties.limits.timestampComputeAndGraphics ? "true" : "false");
         LOG_DRIVER_API(" timestampPeriod: %f", deviceProperties.limits.timestampPeriod);
 
-        if (deviceProperties.limits.maxPushConstantsSize < limits.maxPushConstantsSize)
+        if (deviceProperties.limits.maxPushConstantsSize < limits.maxPushConstantsSize) {
             infos[i].acceptable = false;
-        if (deviceProperties.limits.timestampPeriod <= 0)
+            LOG_DRIVER_API(" Not accepted due to maxPushConstantsSize");
+        }
+        else if (deviceProperties.limits.timestampPeriod <= 0) {
             infos[i].acceptable = false;
+            LOG_DRIVER_API(" Not accepted due to timestampPeriod");
+        }
+        else if (!deviceProperties.limits.timestampComputeAndGraphics) {
+            infos[i].acceptable = false;
+            LOG_DRIVER_API(" Not accepted due to timestampComputeAndGraphics");
+        }
 
         switch (deviceProperties.deviceType) {
             case VK_PHYSICAL_DEVICE_TYPE_OTHER:

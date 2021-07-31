@@ -318,7 +318,8 @@ class IDriver
                                     const drv::BufferSubresourceRange& range,
                                     const ResourceLocker::Lock& lock, void* dstMem) = 0;
 
-    virtual void sync_gpu_clock(PhysicalDevicePtr physicalDevice, LogicalDevicePtr device) = 0;
+    virtual void sync_gpu_clock(InstancePtr instance, PhysicalDevicePtr physicalDevice,
+                                LogicalDevicePtr device) = 0;
 
     virtual TimestampQueryPoolPtr create_timestamp_query_pool(LogicalDevicePtr device,
                                                               uint32_t timestampCount) = 0;

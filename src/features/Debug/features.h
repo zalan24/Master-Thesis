@@ -13,7 +13,7 @@ namespace featureconfig
 {
 inline constexpr Params get_params() {
     Params ret = {};
-    ret.debugLevel = DEBUGGING_EXTRA_VALIDATION;
+    ret.debugLevel = DEBUGGING_BASIC;
     ret.shaderPrint = false;
     ret.logResourcesCreations = true;
     return ret;

@@ -135,6 +135,16 @@ drv::InstancePtr DrvVulkan::create_instance(const drv::InstanceCreateInfo* info)
     for (const char* layer : layers)
         LOG_DRIVER_API(" - %s", layer);
 
+    LOG_DRIVER_API("Supported instance extensions:");
+    uint32_t supportedExtCount;
+    vkEnumerateInstanceExtensionProperties(nullptr, &supportedExtCount,
+                                           nullptr);  //get number of extensions
+    std::vector<VkExtensionProperties> supportedExtensions(supportedExtCount);
+    vkEnumerateInstanceExtensionProperties(nullptr, &supportedExtCount,
+                                           supportedExtensions.data());  //populate buffer
+    for (auto& extension : supportedExtensions)
+        LOG_DRIVER_API(" - %s", extension.extensionName);
+
     Instance* instance = new Instance;
     if (instance == nullptr)
         return drv::get_null_ptr<drv::InstancePtr>();

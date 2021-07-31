@@ -501,8 +501,9 @@ bool drv::get_image_memory_data(drv::LogicalDevicePtr device, drv::ImagePtr imag
                                                            rowPitch, arrayPitch, depthPitch);
 }
 
-void drv::sync_gpu_clock(PhysicalDevicePtr physicalDevice, LogicalDevicePtr device) {
-    return current_driver_interface->sync_gpu_clock(physicalDevice, device);
+void drv::sync_gpu_clock(InstancePtr instance, PhysicalDevicePtr physicalDevice,
+                         LogicalDevicePtr device) {
+    return current_driver_interface->sync_gpu_clock(instance, physicalDevice, device);
 }
 
 drv::TimestampQueryPoolPtr drv::create_timestamp_query_pool(LogicalDevicePtr device,

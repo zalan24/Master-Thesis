@@ -244,7 +244,7 @@ Engine::Engine(int argc, char* argv[], const EngineConfig& cfg,
                                            presentDepOffset);
     inputManager.registerListener(&mouseListener, 100);
 
-    drv::sync_gpu_clock(physicalDevice, device);
+    drv::sync_gpu_clock(drvInstance, physicalDevice, device);
 }
 
 void Engine::buildFrameGraph() {
@@ -1076,7 +1076,7 @@ void Engine::gameLoop() {
         executeThread.join();
         readbackThread.join();
 
-        drv::sync_gpu_clock(physicalDevice, device);
+        drv::sync_gpu_clock(drvInstance, physicalDevice, device);
 
         entityManager.exportToFile(fs::path{"prev_scene.json"});
 

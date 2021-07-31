@@ -20,7 +20,8 @@ void drv_vulkan::get_extensions(const Features& features, unsigned int& count,
 
     if (featureconfig::params.debugLevel != featureconfig::DEBUGGING_NONE)
         REG_EXT(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
-    REG_EXT(VK_EXT_CALIBRATED_TIMESTAMPS_EXTENSION_NAME);
+    // REG_EXT(VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME);
+    // REG_EXT(VK_EXT_CALIBRATED_TIMESTAMPS_EXTENSION_NAME);
     if (featureconfig::params.debugLevel >= featureconfig::DEBUGGING_EXTRA_VALIDATION)
         REG_EXT(VK_EXT_VALIDATION_FEATURES_EXTENSION_NAME);
     if (features.glfw) {
@@ -42,7 +43,7 @@ void drv_vulkan::load_extensions(Instance* instance) {
         GET_FUNC(vkCreateDebugUtilsMessengerEXT);
         GET_FUNC(vkDestroyDebugUtilsMessengerEXT);
     }
-    GET_FUNC(vkGetCalibratedTimestampsEXT);
+    // GET_FUNC(vkGetCalibratedTimestampsEXT);
 
 #undef GET_FUNC
 }
