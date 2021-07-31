@@ -408,6 +408,13 @@ ImageSubresourceRange TextureInfo::getSubresourceRange() const {
     return ret;
 }
 
+BufferSubresourceRange BufferInfo::getSubresourceRange() const {
+    BufferSubresourceRange ret;
+    ret.offset = 0;
+    ret.size = size;
+    return ret;
+}
+
 bool ImageSubresourceRange::has(uint32_t layer, uint32_t mip, drv::AspectFlagBits aspect) const {
     if (layer < baseArrayLayer || mip < baseMipLevel || (aspectMask & aspect) == 0)
         return false;

@@ -501,7 +501,23 @@ void VulkanCmdBufferRecorder::flushBarriersFor(drv::ImagePtr _image, uint32_t nu
         if (!barriers[i])
             continue;
         for (uint32_t j = 0; j < barriers[i].numImageRanges; ++j) {
-            if (barriers[i].imageBarriers[j].subresourceSet.overlap(subresources)) {
+            if (barriers[i].imageBarriers[j].image == _image
+                && barriers[i].imageBarriers[j].subresourceSet.overlap(subresources)) {
+                flushBarrier(barriers[i]);
+                break;
+            }
+        }
+    }
+}
+
+void VulkanCmdBufferRecorder::flushBarriersFor(
+  drv::BufferPtr _buffer, uint32_t /*numSubresourceRanges*/,
+  const drv::BufferSubresourceRange* /*subresourceRange*/) {
+    for (uint32_t i = 0; i < barriers.size(); ++i) {
+        if (!barriers[i])
+            continue;
+        for (uint32_t j = 0; j < barriers[i].numBufferRanges; ++j) {
+            if (barriers[i].bufferBarriers[j].buffer == _buffer) {
                 flushBarrier(barriers[i]);
                 break;
             }
@@ -611,38 +627,32 @@ void VulkanCmdBufferRecorder::appendBarrier(drv::PipelineStages srcStage,
         && dstStage.stageFlags == 0) {
         drv::drv_assert(bufferBarrier.dstAccessFlags == 0
                         && bufferBarrier.dstFamily == bufferBarrier.srcFamily
-                        && bufferBarrier.newLayout == bufferBarrier.oldLayout
                         && bufferBarrier.srcAccessFlags == 0);
         return;
     }
     BufferMemoryBarrier barrier;
     static_cast<ResourceBarrier&>(barrier) = static_cast<ResourceBarrier&>(bufferBarrier);
     barrier.buffer = bufferBarrier.buffer;
-    barrier.;
-    TODO;
-    barrier.subresourceSet.add(bufferBarrier.layer, bufferBarrier.mipLevel, bufferBarrier.aspect);
-    barrier.oldLayout = bufferBarrier.oldLayout;
-    barrier.newLayout = bufferBarrier.newLayout;
+    barrier.subresource = driver->get_buffer_info(bufferBarrier.buffer).getSubresourceRange();
     appendBarrier(srcStage, dstStage, std::move(barrier));
 }
 
 void VulkanCmdBufferRecorder::appendBarrier(drv::PipelineStages srcStage,
                                             drv::PipelineStages dstStage,
                                             BufferMemoryBarrier&& bufferBarrier) {
-    TODO;
     if (!(srcStage.stageFlags & (~drv::PipelineStages::TOP_OF_PIPE_BIT))
         && dstStage.stageFlags == 0) {
-        drv::drv_assert(
-          imageBarrier.dstAccessFlags == 0 && imageBarrier.dstFamily == imageBarrier.srcFamily
-          && imageBarrier.newLayout == imageBarrier.oldLayout && imageBarrier.srcAccessFlags == 0);
+        drv::drv_assert(bufferBarrier.dstAccessFlags == 0
+                        && bufferBarrier.dstFamily == bufferBarrier.srcFamily
+                        && bufferBarrier.srcAccessFlags == 0);
         return;
     }
     BarrierInfo barrier;
     barrier.srcStages = trackingConfig->forceAllSrcStages ? getAvailableStages() : srcStage;
     barrier.dstStages = trackingConfig->forceAllDstStages ? getAvailableStages() : dstStage;
     // barrier.event = event;
-    barrier.numImageRanges = 1;
-    barrier.imageBarriers[0] = std::move(imageBarrier);
+    barrier.numBufferRanges = 1;
+    barrier.bufferBarriers[0] = std::move(bufferBarrier);
     drv::drv_assert(barrier);
     if (lastBarrier < barriers.size() && barriers[lastBarrier]
         && matches(barriers[lastBarrier], barrier) && merge(barriers[lastBarrier], barrier)) {
@@ -1102,7 +1112,7 @@ bool DrvVulkan::validate_and_apply_state_transitions(
             correctedImageCount++;
     }
     for (uint32_t i = 0; i < bufferCount; ++i) {
-        drv::BufferInfo bufInfo = get_buffer_info(bufferTransitions[i].first);
+        // drv::BufferInfo bufInfo = get_buffer_info(bufferTransitions[i].first);
         drv_vulkan::Buffer* buffer = convertBuffer(bufferTransitions[i].first);
 
         if (correctedBufferCount < bufferCount
@@ -1563,7 +1573,7 @@ void DrvVulkan::read_image_memory(drv::LogicalDevicePtr device, drv::ImagePtr _i
 }
 
 void DrvVulkan::write_buffer_memory(drv::LogicalDevicePtr device, drv::BufferPtr _buffer,
-                                    const drv::BufferSubresourceRange& range,
+                                    const drv::BufferSubresourceRange& subres,
                                     const drv::ResourceLocker::Lock& lock, const void* srcMem) {
     drv_vulkan::Buffer* buffer = convertBuffer(_buffer);
 #if ENABLE_NODE_RESOURCE_VALIDATION
@@ -1583,11 +1593,11 @@ void DrvVulkan::write_buffer_memory(drv::LogicalDevicePtr device, drv::BufferPtr
         alignas(16) void* pData;
         VkResult result =
           vkMapMemory(convertDevice(device), convertMemory(buffer->memoryPtr)->memory,
-                      static_cast<VkDeviceSize>(range.offset + buffer->offset),
-                      static_cast<VkDeviceSize>(range.size), 0, &pData);
+                      static_cast<VkDeviceSize>(subres.offset + buffer->offset),
+                      static_cast<VkDeviceSize>(subres.size), 0, &pData);
         drv::drv_assert(result == VK_SUCCESS, "Could not map memory");
 
-        std::memcpy(pData, srcMem, range.size);
+        std::memcpy(pData, srcMem, subres.size);
 
         vkUnmapMemory(convertDevice(device), convertMemory(buffer->memoryPtr)->memory);
     }
@@ -1595,9 +1605,9 @@ void DrvVulkan::write_buffer_memory(drv::LogicalDevicePtr device, drv::BufferPtr
     if (!(buffer->memoryType.properties & drv::MemoryType::HOST_COHERENT_BIT)) {
         VkMappedMemoryRange range;
         range.memory = convertMemory(buffer->memoryPtr)->memory;
-        range.offset = range.offset + buffer->offset;
+        range.offset = subres.offset + buffer->offset;
         range.pNext = nullptr;
-        range.size = range.size;
+        range.size = subres.size;
         range.sType = VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE;
         VkResult result = vkFlushMappedMemoryRanges(convertDevice(device), 1, &range);
         drv::drv_assert(result == VK_SUCCESS, "Could not flush memory");
@@ -1612,7 +1622,7 @@ void DrvVulkan::write_buffer_memory(drv::LogicalDevicePtr device, drv::BufferPtr
 }
 
 void DrvVulkan::read_buffer_memory(drv::LogicalDevicePtr device, drv::BufferPtr _buffer,
-                                   const drv::BufferSubresourceRange& range,
+                                   const drv::BufferSubresourceRange& subres,
                                    const drv::ResourceLocker::Lock& lock, void* dstMem) {
     drv_vulkan::Buffer* buffer = convertBuffer(_buffer);
 
@@ -1632,9 +1642,9 @@ void DrvVulkan::read_buffer_memory(drv::LogicalDevicePtr device, drv::BufferPtr 
         if (!(state.visible & drv::MemoryBarrier::HOST_READ_BIT)) {
             VkMappedMemoryRange range;
             range.memory = convertMemory(buffer->memoryPtr)->memory;
-            range.offset = range.offset + buffer->offset;
+            range.offset = subres.offset + buffer->offset;
             range.pNext = nullptr;
-            range.size = range.size;
+            range.size = subres.size;
             range.sType = VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE;
             VkResult result = vkInvalidateMappedMemoryRanges(convertDevice(device), 1, &range);
             drv::drv_assert(result == VK_SUCCESS, "Could not invalidate memory");
@@ -1648,11 +1658,11 @@ void DrvVulkan::read_buffer_memory(drv::LogicalDevicePtr device, drv::BufferPtr 
         alignas(16) void* pData;
         VkResult result =
           vkMapMemory(convertDevice(device), convertMemory(buffer->memoryPtr)->memory,
-                      static_cast<VkDeviceSize>(range.offset + buffer->offset),
-                      static_cast<VkDeviceSize>(range.size), 0, &pData);
+                      static_cast<VkDeviceSize>(subres.offset + buffer->offset),
+                      static_cast<VkDeviceSize>(subres.size), 0, &pData);
         drv::drv_assert(result == VK_SUCCESS, "Could not map memory");
 
-        std::memcpy(dstMem, pData, range.size);
+        std::memcpy(dstMem, pData, subres.size);
 
         vkUnmapMemory(convertDevice(device), convertMemory(buffer->memoryPtr)->memory);
     }
