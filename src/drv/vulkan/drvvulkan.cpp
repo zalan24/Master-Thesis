@@ -1667,3 +1667,42 @@ void DrvVulkan::read_buffer_memory(drv::LogicalDevicePtr device, drv::BufferPtr 
         vkUnmapMemory(convertDevice(device), convertMemory(buffer->memoryPtr)->memory);
     }
 }
+
+drv::TimestampQueryPoolPtr DrvVulkan::create_timestamp_query_pool(drv::LogicalDevicePtr device,
+                                                                  uint32_t timestampCount) {
+    VkQueryPoolCreateInfo createInfo;
+    createInfo.sType = VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO;
+    createInfo.pNext = nullptr;
+    createInfo.flags = 0;
+    createInfo.queryType = VK_QUERY_TYPE_TIMESTAMP;
+    createInfo.queryCount = timestampCount;
+    createInfo.pipelineStatistics = 0;
+    VkQueryPool queryPool;
+    VkResult result = vkCreateQueryPool(convertDevice(device), &createInfo, nullptr, &queryPool);
+    drv::drv_assert(result == VK_SUCCESS, "Timestamp query pool could not be created");
+
+    return drv::store_ptr<drv::TimestampQueryPoolPtr>(queryPool);
+}
+
+bool DrvVulkan::destroy_timestamp_query_pool(drv::LogicalDevicePtr device,
+                                             drv::TimestampQueryPoolPtr pool) {
+    vkDestroyQueryPool(convertDevice(device), convertTimestampQueryPool(pool), nullptr);
+    return true;
+}
+
+bool DrvVulkan::reset_timestamp_queries(drv::LogicalDevicePtr device,
+                                        drv::TimestampQueryPoolPtr pool, uint32_t firstQuery,
+                                        uint32_t count) {
+    vkResetQueryPool(convertDevice(device), convertTimestampQueryPool(pool), firstQuery, count);
+    return true;
+}
+
+bool DrvVulkan::get_timestamp_query_pool_results(drv::LogicalDevicePtr device,
+                                                 drv::TimestampQueryPoolPtr queryPool,
+                                                 uint32_t firstQuery, uint32_t queryCount,
+                                                 uint64_t* pData) {
+    VkResult result = vkGetQueryPoolResults(
+      convertDevice(device), convertTimestampQueryPool(queryPool), firstQuery, queryCount,
+      sizeof(uint64_t) * queryCount, pData, sizeof(uint64_t), VK_QUERY_RESULT_64_BIT);
+    return result == VK_SUCCESS;
+}

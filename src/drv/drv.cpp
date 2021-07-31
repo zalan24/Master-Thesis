@@ -500,3 +500,28 @@ bool drv::get_image_memory_data(drv::LogicalDevicePtr device, drv::ImagePtr imag
     return current_driver_interface->get_image_memory_data(device, image, layer, mip, offset, size,
                                                            rowPitch, arrayPitch, depthPitch);
 }
+
+void drv::sync_gpu_clock(PhysicalDevicePtr physicalDevice, LogicalDevicePtr device) {
+    return current_driver_interface->sync_gpu_clock(physicalDevice, device);
+}
+
+drv::TimestampQueryPoolPtr drv::create_timestamp_query_pool(LogicalDevicePtr device,
+                                                            uint32_t timestampCount) {
+    return current_driver_interface->create_timestamp_query_pool(device, timestampCount);
+}
+
+bool drv::destroy_timestamp_query_pool(LogicalDevicePtr device, TimestampQueryPoolPtr pool) {
+    return current_driver_interface->destroy_timestamp_query_pool(device, pool);
+}
+
+bool drv::reset_timestamp_queries(LogicalDevicePtr device, TimestampQueryPoolPtr pool,
+                                  uint32_t firstQuery, uint32_t count) {
+    return current_driver_interface->reset_timestamp_queries(device, pool, firstQuery, count);
+}
+
+bool drv::get_timestamp_query_pool_results(LogicalDevicePtr device, TimestampQueryPoolPtr queryPool,
+                                           uint32_t firstQuery, uint32_t queryCount,
+                                           uint64_t* pData) {
+    return current_driver_interface->get_timestamp_query_pool_results(device, queryPool, firstQuery,
+                                                                      queryCount, pData);
+}

@@ -2,6 +2,7 @@
 
 #include <atomic>
 #include <cassert>
+#include <chrono>
 #include <deque>
 #include <mutex>
 #include <unordered_map>
@@ -474,16 +475,37 @@ class DrvVulkan final : public drv::IDriver
                             const drv::BufferSubresourceRange& range,
                             const drv::ResourceLocker::Lock& lock, void* dstMem) override;
 
+    void sync_gpu_clock(drv::PhysicalDevicePtr physicalDevice,
+                        drv::LogicalDevicePtr device) override;
+
+    drv::TimestampQueryPoolPtr create_timestamp_query_pool(drv::LogicalDevicePtr device,
+                                                           uint32_t timestampCount) override;
+    bool destroy_timestamp_query_pool(drv::LogicalDevicePtr device,
+                                      drv::TimestampQueryPoolPtr pool) override;
+
+    bool reset_timestamp_queries(drv::LogicalDevicePtr device, drv::TimestampQueryPoolPtr pool,
+                                 uint32_t firstQuery, uint32_t count) override;
+
+    bool get_timestamp_query_pool_results(drv::LogicalDevicePtr device,
+                                          drv::TimestampQueryPoolPtr queryPool, uint32_t firstQuery,
+                                          uint32_t queryCount, uint64_t* pData) override;
+
  private:
+    using Clock = std::chrono::high_resolution_clock;
+
     struct LogicalDeviceData
     {
         std::unordered_map<drv::QueuePtr, drv::QueueFamilyPtr> queueToFamily;
+        // std::unordered_map<drv::QueuePtr, int64_t> queueToClockOffset;
         std::unordered_map<drv::QueueFamilyPtr, std::mutex> queueFamilyMutexes;
         std::unordered_map<drv::QueuePtr, std::mutex> queueMutexes;
+        Clock::time_point lastSyncTimeHost;
+        uint64_t lastSyncTimeDeviceTicks = 0;
     };
     std::mutex devicesDataMutex;
     std::unordered_map<drv::LogicalDevicePtr, LogicalDeviceData> devicesData;
     drv::StateTrackingConfig trackingConfig;
+    float timestampPeriod = 1;
 };
 
 template <typename T1, typename T2>

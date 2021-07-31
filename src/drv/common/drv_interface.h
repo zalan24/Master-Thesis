@@ -318,6 +318,20 @@ class IDriver
                                     const drv::BufferSubresourceRange& range,
                                     const ResourceLocker::Lock& lock, void* dstMem) = 0;
 
+    virtual void sync_gpu_clock(PhysicalDevicePtr physicalDevice, LogicalDevicePtr device) = 0;
+
+    virtual TimestampQueryPoolPtr create_timestamp_query_pool(LogicalDevicePtr device,
+                                                              uint32_t timestampCount) = 0;
+    virtual bool destroy_timestamp_query_pool(LogicalDevicePtr device,
+                                              TimestampQueryPoolPtr pool) = 0;
+    virtual bool reset_timestamp_queries(LogicalDevicePtr device, TimestampQueryPoolPtr pool,
+                                         uint32_t firstQuery, uint32_t count) = 0;
+
+    virtual bool get_timestamp_query_pool_results(LogicalDevicePtr device,
+                                                  TimestampQueryPoolPtr queryPool,
+                                                  uint32_t firstQuery, uint32_t queryCount,
+                                                  uint64_t* pData) = 0;
+
     // virtual void cmd_flush_waits_on(CommandBufferPtr cmdBuffer, EventPtr event) = 0;
 };
 }  // namespace drv

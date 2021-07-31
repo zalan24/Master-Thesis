@@ -80,6 +80,7 @@ using SwapchainPtr = Ptr;
 using EventPtr = Ptr;
 using ImageViewPtr = Ptr;
 using FramebufferPtr = Ptr;
+using TimestampQueryPoolPtr = Ptr;
 
 static constexpr QueueFamilyPtr IGNORE_FAMILY = std::numeric_limits<QueueFamilyPtr>::max();
 

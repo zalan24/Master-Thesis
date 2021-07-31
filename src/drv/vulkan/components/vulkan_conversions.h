@@ -46,6 +46,10 @@ inline VkDevice convertDevice(drv::LogicalDevicePtr device) {
     return drv::resolve_ptr<VkDevice>(device);
 }
 
+inline VkQueryPool convertTimestampQueryPool(drv::TimestampQueryPoolPtr pool) {
+    return drv::resolve_ptr<VkQueryPool>(pool);
+}
+
 inline drv_vulkan::DeviceMemory* convertMemory(drv::DeviceMemoryPtr memory) {
     return drv::resolve_ptr<drv_vulkan::DeviceMemory*>(memory);
 }

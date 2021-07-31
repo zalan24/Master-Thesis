@@ -42,8 +42,13 @@ bool DrvVulkan::get_physical_devices(drv::InstancePtr _instance, const drv::Devi
 
         LOG_DRIVER_API(" maxPushConstantsSize: %d bytes (required: %d)",
                        deviceProperties.limits.maxPushConstantsSize, limits.maxPushConstantsSize);
+        LOG_DRIVER_API(" timestampComputeAndGraphics: %s",
+                       deviceProperties.limits.timestampComputeAndGraphics ? "true" : "false");
+        LOG_DRIVER_API(" timestampPeriod: %f", deviceProperties.limits.timestampPeriod);
 
         if (deviceProperties.limits.maxPushConstantsSize < limits.maxPushConstantsSize)
+            infos[i].acceptable = false;
+        if (deviceProperties.limits.timestampPeriod <= 0)
             infos[i].acceptable = false;
 
         switch (deviceProperties.deviceType) {

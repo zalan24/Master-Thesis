@@ -41,7 +41,8 @@ drv::LogicalDevicePtr DrvVulkan::create_logical_device(const drv::LogicalDeviceC
     VkPhysicalDeviceVulkan12Features device12Features = {};
     device12Features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
     device12Features.pNext = nullptr;
-    device12Features.timelineSemaphore = true;
+    device12Features.timelineSemaphore = VK_TRUE;
+    device12Features.hostQueryReset = VK_TRUE;
 
     VkDeviceCreateInfo createInfo = {};
     createInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
@@ -72,6 +73,10 @@ drv::LogicalDevicePtr DrvVulkan::create_logical_device(const drv::LogicalDeviceC
     LOG_DRIVER_API("Logical device created <%p> for physical device: %p",
                    static_cast<const void*>(device),
                    static_cast<const void*>(convertPhysicalDevice(info->physicalDevice)));
+
+    VkPhysicalDeviceProperties deviceProperties;
+    vkGetPhysicalDeviceProperties(convertPhysicalDevice(info->physicalDevice), &deviceProperties);
+    timestampPeriod = deviceProperties.limits.timestampPeriod;
 
     drv::LogicalDevicePtr ret = drv::store_ptr<drv::LogicalDevicePtr>(device);
     {
@@ -122,4 +127,132 @@ drv::DriverSupport DrvVulkan::get_support(drv::LogicalDevicePtr device) {
     ret.meshShaders = false;
     ret.fragmentDensityMap = false;
     return ret;
+}
+
+void DrvVulkan::sync_gpu_clock(drv::PhysicalDevicePtr /*physicalDevice*/,
+                               drv::LogicalDevicePtr device) {
+    std::unique_lock<std::mutex> lock(devicesDataMutex);
+    auto deviceItr = devicesData.find(device);
+    drv::drv_assert(deviceItr != devicesData.end());
+    uint64_t maxDeviation;
+    VkCalibratedTimestampInfoEXT timeStampInfo;
+    timeStampInfo.sType = VK_STRUCTURE_TYPE_CALIBRATED_TIMESTAMP_INFO_EXT;
+    timeStampInfo.pNext = nullptr;
+    timeStampInfo.timeDomain = VK_TIME_DOMAIN_DEVICE_EXT;
+    Clock::time_point prevHostTime = deviceItr->second.lastSyncTimeHost;
+    uint64_t prevDeviceTicks = deviceItr->second.lastSyncTimeDeviceTicks;
+    VkResult result =
+      vkGetCalibratedTimestampsEXT(convertDevice(device), 1, &timeStampInfo,
+                                   &deviceItr->second.lastSyncTimeDeviceTicks, &maxDeviation);
+    deviceItr->second.lastSyncTimeHost = Clock::now();
+    drv::drv_assert(result == VK_SUCCESS, "Could not calibrate timestamps");
+
+    if (prevDeviceTicks != 0) {
+        int64_t deviceDiffNs =
+          int64_t(double(deviceItr->second.lastSyncTimeDeviceTicks - prevDeviceTicks)
+                  * double(timestampPeriod));
+        int64_t hostDiffNs = std::chrono::duration_cast<std::chrono::nanoseconds>(
+                               deviceItr->second.lastSyncTimeHost - prevHostTime)
+                               .count();
+        LOG_DRIVER_API(
+          "Clock calibrated. Max deviation: %llu ns, drift = %lld ns (h: %lld, d: %lld)",
+          maxDeviation, deviceDiffNs - hostDiffNs, hostDiffNs, deviceDiffNs);
+    }
+    else
+        LOG_DRIVER_API("Clock calibrated. Max deviation: %llu ns", maxDeviation);
+    // StackMemory::MemoryHandle<std::unique_lock<std::mutex>> locks(
+    //   deviceItr->second.queueMutexes.size(), TEMPMEM);
+    // {
+    //     uint32_t ind = 0;
+    //     for (auto& itr : deviceItr->second.queueMutexes)
+    //         locks[ind++] = std::unique_lock<std::mutex>(itr.second);
+    // }
+    // try {
+    //     deviceItr->second.lastSyncTime = Clock::now();
+    //     std::unordered_map<drv::QueueFamilyPtr, drv::CommandPoolPtr> cmdPools;
+    //     for (auto& itr : deviceItr->second.queueFamilyMutexes) {
+    //         drv::CommandPoolCreateInfo info(false, false);
+    //         cmdPools[itr.first] = create_command_pool(device, itr.first, &info);
+    //     }
+    //     std::unordered_map<drv::QueuePtr, drv::CommandBufferPtr> cmdBuffers;
+
+    //     for (auto& itr : deviceItr->second.queueMutexes) {
+    //         auto familyItr = deviceItr->second.queueToFamily.find(itr.first);
+    //         drv::drv_assert(familyItr != deviceItr->second.queueToFamily.end(),
+    //                         "Could not find family for queue");
+    //         drv::CommandBufferCreateInfo info;
+    //         info.flags = drv::CommandBufferCreateInfo::ONE_TIME_SUBMIT_BIT;
+    //         info.type = drv::CommandBufferType::PRIMARY;
+    //         cmdBuffers[itr.first] =
+    //           create_command_buffer(device, cmdPools[familyItr->second], &info);
+    //     }
+
+    //     drv::TimestampQueryPoolPtr queryPool = create_timestamp_query_pool(device, 1);
+    //     drv::drv_assert(!drv::is_null_ptr(queryPool), "queryPool is nullptr");
+
+    //     drv::FenceCreateInfo fenceInfo;
+    //     fenceInfo.signalled = false;
+    //     drv::FencePtr fence = create_fence(device, &fenceInfo);
+
+    //     for (auto& itr : deviceItr->second.queueMutexes) {
+    //         reset_timestamp_queries(device, queryPool, 0, 1);
+    //         drv::CommandBufferPtr cmdBuffer = cmdBuffers[itr.first];
+    //         VkCommandBufferBeginInfo info;
+    //         info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+    //         info.pNext = nullptr;
+    //         info.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+    //         info.pInheritanceInfo = nullptr;
+    //         VkResult result = vkBeginCommandBuffer(convertCommandBuffer(cmdBuffer), &info);
+    //         drv::drv_assert(result == VK_SUCCESS, "Could not begin recording command buffer");
+
+    //         vkCmdWriteTimestamp(convertCommandBuffer(cmdBuffer),
+    //                             VK_PIPELINE_STAGE_VERTEX_SHADER_BIT,
+    //                             convertTimestampQueryPool(queryPool), 0);
+
+    //         result = vkEndCommandBuffer(convertCommandBuffer(cmdBuffer));
+    //         drv::drv_assert(result == VK_SUCCESS, "Could not finish recording command buffer");
+
+    //         VkCommandBuffer vkCmdBuffer = convertCommandBuffer(cmdBuffer);
+    //         VkSubmitInfo submitInfo;
+    //         submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+    //         submitInfo.pNext = nullptr;
+    //         submitInfo.commandBufferCount = 1;
+    //         submitInfo.pCommandBuffers = &vkCmdBuffer;
+    //         submitInfo.signalSemaphoreCount = 0;
+    //         submitInfo.pSignalSemaphores = nullptr;
+    //         submitInfo.waitSemaphoreCount = 0;
+    //         submitInfo.pWaitSemaphores = nullptr;
+    //         submitInfo.pWaitDstStageMask = nullptr;
+    //         vkQueueSubmit(convertQueue(itr.first), 1, &submitInfo, convertFence(fence));
+    //         Clock::time_point submissionTime = Clock::now();
+    //         int64_t submissionNs = std::chrono::duration_cast<std::chrono::nanoseconds>(
+    //                                  submissionTime - deviceItr->second.lastSyncTime)
+    //                                  .count();
+    //         wait_for_fence(device, 1, &fence, true, 0);
+    //         reset_fences(device, 1, &fence);
+    //         uint64_t executionTicks;
+    //         get_timestamp_query_pool_results(device, queryPool, 0, 1, &executionTicks);
+    //         int64_t executionNs = executionTicks * gpuClockNsPerTick;  // timestampPeriod
+    //         deviceItr->second.queueToClockOffset[itr.first] = submissionNs - executionNs;
+    //     }
+
+    //     destroy_fence(device, fence);
+
+    //     destroy_timestamp_query_pool(device, queryPool);
+
+    //     cmdBuffers.clear();
+
+    //     for (auto& itr : cmdPools)
+    //         drv::drv_assert(destroy_command_pool(device, itr.second), "Could not destroy cmd pool");
+    // }
+    // catch (const std::exception& e) {
+    //     LOG_F(ERROR, "An exception has ocurred during sync_gpu_clock: %s", e.what());
+    //     std::abort();
+    // }
+    // catch (...) {
+    //     LOG_F(ERROR, "An unknown exception has ocurred during sync_gpu_clock");
+    //     std::abort();
+    // }
+
+    // device_wait_idle(device);
 }
