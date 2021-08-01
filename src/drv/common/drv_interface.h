@@ -1,5 +1,6 @@
 #pragma once
 
+#include <chrono>
 #include <mutex>
 
 #include <serializable.h>
@@ -19,6 +20,8 @@ struct StatsCache;
 
 namespace drv
 {
+using Clock = std::chrono::high_resolution_clock;
+
 class RenderPass;
 class ImageMemoryBarrier;
 class DrvShaderHeaderRegistry;
@@ -318,7 +321,7 @@ class IDriver
                                     const drv::BufferSubresourceRange& range,
                                     const ResourceLocker::Lock& lock, void* dstMem) = 0;
 
-    virtual void sync_gpu_clock(InstancePtr instance, PhysicalDevicePtr physicalDevice,
+    virtual uint64_t sync_gpu_clock(InstancePtr instance, PhysicalDevicePtr physicalDevice,
                                 LogicalDevicePtr device) = 0;
 
     virtual TimestampQueryPoolPtr create_timestamp_query_pool(LogicalDevicePtr device,
@@ -332,6 +335,9 @@ class IDriver
                                                   TimestampQueryPoolPtr queryPool,
                                                   uint32_t firstQuery, uint32_t queryCount,
                                                   uint64_t* pData) = 0;
+    virtual void decode_timestamps(LogicalDevicePtr device, QueuePtr queue, uint32_t count,
+                                        const uint64_t* values,
+                                        drv::Clock::time_point* results) = 0;
 
     // virtual void cmd_flush_waits_on(CommandBufferPtr cmdBuffer, EventPtr event) = 0;
 };

@@ -501,7 +501,7 @@ bool drv::get_image_memory_data(drv::LogicalDevicePtr device, drv::ImagePtr imag
                                                            rowPitch, arrayPitch, depthPitch);
 }
 
-void drv::sync_gpu_clock(InstancePtr instance, PhysicalDevicePtr physicalDevice,
+uint64_t drv::sync_gpu_clock(InstancePtr instance, PhysicalDevicePtr physicalDevice,
                          LogicalDevicePtr device) {
     return current_driver_interface->sync_gpu_clock(instance, physicalDevice, device);
 }
@@ -525,4 +525,16 @@ bool drv::get_timestamp_query_pool_results(LogicalDevicePtr device, TimestampQue
                                            uint64_t* pData) {
     return current_driver_interface->get_timestamp_query_pool_results(device, queryPool, firstQuery,
                                                                       queryCount, pData);
+}
+
+drv::Clock::time_point drv::decode_timestamp(LogicalDevicePtr device, QueuePtr queue,
+                                             uint64_t value) {
+    drv::Clock::time_point result;
+    decode_timestamps(device, queue, 1, &value, &result);
+    return result;
+}
+
+void drv::decode_timestamps(LogicalDevicePtr device, QueuePtr queue, uint32_t count,
+                            const uint64_t* values, drv::Clock::time_point* results) {
+    return current_driver_interface->decode_timestamps(device, queue, count, values, results);
 }

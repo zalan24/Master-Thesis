@@ -2,7 +2,6 @@
 
 #include <atomic>
 #include <cassert>
-#include <chrono>
 #include <deque>
 #include <mutex>
 #include <unordered_map>
@@ -475,7 +474,7 @@ class DrvVulkan final : public drv::IDriver
                             const drv::BufferSubresourceRange& range,
                             const drv::ResourceLocker::Lock& lock, void* dstMem) override;
 
-    void sync_gpu_clock(drv::InstancePtr instance, drv::PhysicalDevicePtr physicalDevice,
+    uint64_t sync_gpu_clock(drv::InstancePtr instance, drv::PhysicalDevicePtr physicalDevice,
                         drv::LogicalDevicePtr device) override;
 
     drv::TimestampQueryPoolPtr create_timestamp_query_pool(drv::LogicalDevicePtr device,
@@ -490,29 +489,50 @@ class DrvVulkan final : public drv::IDriver
                                           drv::TimestampQueryPoolPtr queryPool, uint32_t firstQuery,
                                           uint32_t queryCount, uint64_t* pData) override;
 
-                                          // bool is_timestamp_supported(drv::LogicalDevicePtr device, );
+    void decode_timestamps(drv::LogicalDevicePtr device, drv::QueuePtr queue, uint32_t count,
+                           const uint64_t* values, drv::Clock::time_point* results) override;
 
  private:
-    using Clock = std::chrono::high_resolution_clock;
-
     struct LogicalDeviceData
     {
         struct SyncTimeData
         {
-            Clock::time_point lastSyncTimeHost;
+            drv::Clock::time_point lastSyncTimeHost;
             uint64_t lastSyncTimeDeviceTicks;
+            double driftHnsPerDns = 0;
         };
         std::unordered_map<drv::QueuePtr, drv::QueueFamilyPtr> queueToFamily;
-        std::unordered_map<drv::QueuePtr, SyncTimeData> queueToClockOffset;
+        std::unordered_map<drv::QueuePtr, uint64_t> timestampBits;
+        std::unordered_map<drv::QueuePtr, SyncTimeData> queueTimeline;
         std::unordered_map<drv::QueueFamilyPtr, std::mutex> queueFamilyMutexes;
         std::unordered_map<drv::QueuePtr, std::mutex> queueMutexes;
         // Clock::time_point lastSyncTimeHost;
         // uint64_t lastSyncTimeDeviceTicks = 0;
+        DrvVulkan *driver = nullptr;
+        drv::PhysicalDevicePtr physicalDevice = drv::get_null_ptr<drv::PhysicalDevicePtr>();
+        drv::LogicalDevicePtr device = drv::get_null_ptr<drv::LogicalDevicePtr>();
+        drv::FencePtr fence = drv::get_null_ptr<drv::FencePtr>();
+        drv::TimestampQueryPoolPtr queryPool = drv::get_null_ptr<drv::TimestampQueryPoolPtr>();
+        std::unordered_map<drv::QueueFamilyPtr, drv::CommandPoolPtr> cmdPools;
+        std::unordered_map<drv::QueueFamilyPtr, drv::CommandBufferPtr> calibrationCmdBuffers;
+        float timestampPeriod = 1;
+
+        LogicalDeviceData() = default;
+        LogicalDeviceData(DrvVulkan *driver, drv::PhysicalDevicePtr physicalDevice, drv::LogicalDevicePtr device);
+        ~LogicalDeviceData();
+        LogicalDeviceData(const LogicalDeviceData&) = delete;
+        LogicalDeviceData& operator=(const LogicalDeviceData&) = delete;
+        LogicalDeviceData(LogicalDeviceData&& other);
+        LogicalDeviceData& operator=(LogicalDeviceData&& other);
+
+        void close();
+
+        drv::Clock::time_point decode_timestamp(uint64_t timestampBits, const SyncTimeData& data,
+                                                uint64_t value) const;
     };
     std::mutex devicesDataMutex;
     std::unordered_map<drv::LogicalDevicePtr, LogicalDeviceData> devicesData;
     drv::StateTrackingConfig trackingConfig;
-    float timestampPeriod = 1;
 };
 
 template <typename T1, typename T2>

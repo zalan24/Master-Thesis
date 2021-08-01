@@ -39,7 +39,6 @@ Instance::~Instance() {
 }
 
 void Instance::close() {
-    CHECK_THREAD;
     if (!is_null_ptr(ptr)) {
         delete_instance(ptr);
         reset_ptr(ptr);
@@ -65,7 +64,6 @@ Instance::operator bool() const {
 }
 
 Instance::operator InstancePtr() const {
-    CHECK_THREAD;
     return ptr;
 }
 

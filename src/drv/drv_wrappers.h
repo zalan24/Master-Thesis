@@ -51,7 +51,6 @@ class DriverWrapper
 
 class Instance
   : public NoCopy
-  , private Exclusive
 {
  public:
     Instance(const InstanceCreateInfo& info);

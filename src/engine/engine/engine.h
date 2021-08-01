@@ -212,6 +212,8 @@ class Engine
     FrameGraph::NodeId getMainRecordNode() const {return  mainRecordNode;}
 
  private:
+    static constexpr uint64_t firstTimelineCalibrationTimeMs = 1000;
+    static constexpr uint64_t otherTimelineCalibrationTimeMs = 10000;
     friend class AccessValidationCallback;
 
     struct ErrorCallback
@@ -287,6 +289,7 @@ class Engine
     EntityManager::EntitySystemInfo cursorEntitySystem;
     EntityManager::EntitySystemInfo latencyFlashEntitySystem;
     EntityManager::EntitySystemInfo cameraEntitySystem;
+    drv::Clock::time_point nextTimelineCalibration;
 
     uint32_t acquireImageSemaphoreId = 0;
     FrameId firstPresentableFrame = 0;

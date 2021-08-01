@@ -245,6 +245,8 @@ Engine::Engine(int argc, char* argv[], const EngineConfig& cfg,
     inputManager.registerListener(&mouseListener, 100);
 
     drv::sync_gpu_clock(drvInstance, physicalDevice, device);
+    nextTimelineCalibration =
+      drv::Clock::now() + std::chrono::milliseconds(firstTimelineCalibrationTimeMs);
 }
 
 void Engine::buildFrameGraph() {
@@ -837,6 +839,11 @@ bool Engine::execute(ExecutionPackage&& package) {
         ExecutionPackage::PresentPackage& p =
           std::get<ExecutionPackage::PresentPackage>(package.package);
         present(p.swapichain, p.frame, p.imageIndex, p.semaphoreId);
+        if (nextTimelineCalibration < drv::Clock::now()) {
+            drv::sync_gpu_clock(drvInstance, physicalDevice, device);
+            nextTimelineCalibration =
+              drv::Clock::now() + std::chrono::milliseconds(otherTimelineCalibrationTimeMs);
+        }
     }
     else if (std::holds_alternative<ExecutionPackage::Functor>(package.package)) {
         ExecutionPackage::Functor& functor = std::get<ExecutionPackage::Functor>(package.package);

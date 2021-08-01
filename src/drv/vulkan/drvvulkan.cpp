@@ -1706,3 +1706,103 @@ bool DrvVulkan::get_timestamp_query_pool_results(drv::LogicalDevicePtr device,
       sizeof(uint64_t) * queryCount, pData, sizeof(uint64_t), VK_QUERY_RESULT_64_BIT);
     return result == VK_SUCCESS;
 }
+
+DrvVulkan::LogicalDeviceData::LogicalDeviceData(DrvVulkan* _driver,
+                                                drv::PhysicalDevicePtr _physicalDevice,
+                                                drv::LogicalDevicePtr _device)
+  : driver(_driver), physicalDevice(_physicalDevice), device(_device) {
+    queryPool = driver->create_timestamp_query_pool(device, 1);
+    drv::drv_assert(!drv::is_null_ptr(queryPool), "queryPool is nullptr");
+
+    drv::FenceCreateInfo fenceInfo;
+    fenceInfo.signalled = false;
+    fence = driver->create_fence(device, &fenceInfo);
+
+    // for (auto& itr : deviceItr->second.queueFamilyMutexes) {
+    //     drv::CommandPoolCreateInfo info(false, false);
+    //     cmdPools[itr.first] = create_command_pool(device, itr.first, &info);
+    // }
+}
+
+DrvVulkan::LogicalDeviceData::~LogicalDeviceData() {
+    close();
+}
+
+void DrvVulkan::LogicalDeviceData::close() {
+    if (driver != nullptr) {
+        calibrationCmdBuffers.clear();
+        for (auto& itr : cmdPools)
+            drv::drv_assert(driver->destroy_command_pool(device, itr.second),
+                            "Could not destroy cmd pool");
+
+        driver->destroy_fence(device, fence);
+        driver->destroy_timestamp_query_pool(device, queryPool);
+        driver = nullptr;
+    }
+}
+
+DrvVulkan::LogicalDeviceData::LogicalDeviceData(LogicalDeviceData&& other)
+  : queueToFamily(std::move(other.queueToFamily)),
+    timestampBits(std::move(other.timestampBits)),
+    queueTimeline(std::move(other.queueTimeline)),
+    queueFamilyMutexes(std::move(other.queueFamilyMutexes)),
+    queueMutexes(std::move(other.queueMutexes)),
+    driver(std::move(other.driver)),
+    physicalDevice(std::move(other.physicalDevice)),
+    device(std::move(other.device)),
+    fence(std::move(other.fence)),
+    queryPool(std::move(other.queryPool)),
+    cmdPools(std::move(other.cmdPools)),
+    calibrationCmdBuffers(std::move(other.calibrationCmdBuffers)),
+    timestampPeriod(std::move(other.timestampPeriod)) {
+    other.driver = nullptr;
+}
+
+DrvVulkan::LogicalDeviceData& DrvVulkan::LogicalDeviceData::operator=(LogicalDeviceData&& other) {
+    if (this == &other)
+        return *this;
+    close();
+    queueToFamily = std::move(other.queueToFamily);
+    timestampBits = std::move(other.timestampBits);
+    queueTimeline = std::move(other.queueTimeline);
+    queueFamilyMutexes = std::move(other.queueFamilyMutexes);
+    queueMutexes = std::move(other.queueMutexes);
+    driver = std::move(other.driver);
+    physicalDevice = std::move(other.physicalDevice);
+    device = std::move(other.device);
+    fence = std::move(other.fence);
+    queryPool = std::move(other.queryPool);
+    cmdPools = std::move(other.cmdPools);
+    calibrationCmdBuffers = std::move(other.calibrationCmdBuffers);
+    timestampPeriod = std::move(other.timestampPeriod);
+    other.driver = nullptr;
+    return *this;
+}
+
+drv::Clock::time_point DrvVulkan::LogicalDeviceData::decode_timestamp(uint64_t timestampBits,
+                                                                      const SyncTimeData& data,
+                                                                      uint64_t value) const {
+    uint64_t timestamp = value & timestampBits;
+
+    double deviceDiffNsD =
+      double(timestamp - data.lastSyncTimeDeviceTicks) * double(timestampPeriod);
+    double hostDiffNsD = deviceDiffNsD + deviceDiffNsD * data.driftHnsPerDns;
+
+    return data.lastSyncTimeHost + std::chrono::nanoseconds(uint64_t(hostDiffNsD));
+}
+
+void DrvVulkan::decode_timestamps(drv::LogicalDevicePtr device, drv::QueuePtr queue, uint32_t count,
+                                  const uint64_t* values, drv::Clock::time_point* results) {
+    std::unique_lock<std::mutex> lock(devicesDataMutex);
+    auto itr = devicesData.find(device);
+    drv::drv_assert(itr != devicesData.end());
+    auto timelineItr = itr->second.queueTimeline.find(queue);
+    drv::drv_assert(timelineItr != itr->second.queueTimeline.end(),
+                    "No timeline information for given queue");
+    auto bitsItr = itr->second.timestampBits.find(queue);
+    drv::drv_assert(bitsItr != itr->second.timestampBits.end(),
+                    "No timeline bits information for given queue");
+
+    for (uint32_t i = 0; i < count; ++i)
+        results[i] = itr->second.decode_timestamp(bitsItr->second, timelineItr->second, values[i]);
+}

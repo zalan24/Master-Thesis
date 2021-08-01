@@ -215,8 +215,8 @@ void write_buffer_memory(LogicalDevicePtr device, drv::BufferPtr buffer,
 void read_buffer_memory(LogicalDevicePtr device, drv::BufferPtr buffer,
                         const drv::BufferSubresourceRange& range, const ResourceLocker::Lock& lock,
                         void* dstMem);
-void sync_gpu_clock(InstancePtr instance, PhysicalDevicePtr physicalDevice,
-                    LogicalDevicePtr device);
+uint64_t sync_gpu_clock(InstancePtr instance, PhysicalDevicePtr physicalDevice,
+                        LogicalDevicePtr device);
 
 TimestampQueryPoolPtr create_timestamp_query_pool(LogicalDevicePtr device, uint32_t timestampCount);
 bool destroy_timestamp_query_pool(LogicalDevicePtr device, TimestampQueryPoolPtr pool);
@@ -224,6 +224,9 @@ bool reset_timestamp_queries(LogicalDevicePtr device, TimestampQueryPoolPtr pool
 
 bool get_timestamp_query_pool_results(LogicalDevicePtr device, TimestampQueryPoolPtr queryPool,
                                       uint32_t firstQuery, uint32_t queryCount, uint64_t* pData);
+drv::Clock::time_point decode_timestamp(LogicalDevicePtr device, QueuePtr queue, uint64_t value);
+void decode_timestamps(LogicalDevicePtr device, QueuePtr queue, uint32_t count,
+                       const uint64_t* values, drv::Clock::time_point* results);
 
 // std::unique_ptr<CmdTrackingRecordState> create_tracking_record_state();
 // PipelineStages cmd_image_barrier(drv::CmdTrackingRecordState *recordState, CmdImageTrackingState& state, CommandBufferPtr cmdBuffer,
