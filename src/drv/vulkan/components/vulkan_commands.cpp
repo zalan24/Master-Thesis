@@ -283,6 +283,12 @@ drv::PipelineStages VulkanCmdBufferRecorder::cmd_buffer_barrier(
                            barrier.requestedOwnership, barrier.discardCurrentContent);
 }
 
+void VulkanCmdBufferRecorder::cmdTimestamp(drv::TimestampQueryPoolPtr pool, uint32_t index,
+                                           drv::PipelineStages::PipelineStageFlagBits stage) {
+    vkCmdWriteTimestamp(convertCommandBuffer(getCommandBuffer()), convertPipelineStage(stage),
+                        convertTimestampQueryPool(pool), index);
+}
+
 bool VulkanCmdBufferRecorder::cmdUseAsAttachment(
   drv::ImagePtr image, const drv::ImageSubresourceRange& subresourceRange,
   drv::ImageLayout initialLayout, drv::ImageLayout resultLayout, drv::ImageResourceUsageFlag usages,

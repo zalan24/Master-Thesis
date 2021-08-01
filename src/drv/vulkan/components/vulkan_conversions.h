@@ -198,6 +198,10 @@ inline VkEvent convertEvent(drv::EventPtr event) {
 inline VkPipelineStageFlags convertPipelineStages(const drv::PipelineStages& stages) {
     return static_cast<VkPipelineStageFlags>(stages.stageFlags);
 }
+inline VkPipelineStageFlagBits convertPipelineStage(
+  const drv::PipelineStages::PipelineStageFlagBits stage) {
+    return static_cast<VkPipelineStageFlagBits>(stage);
+}
 
 constexpr inline VkImageLayout convertImageLayout(drv::ImageLayout layout) {
     if (layout == drv::ImageLayout::SHARED_PRESENT_KHR)

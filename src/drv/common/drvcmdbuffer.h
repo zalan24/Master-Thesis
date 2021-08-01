@@ -128,6 +128,8 @@ class DrvCmdBufferRecorder
                               const ImageCopyRegion* pRegions) = 0;
     virtual void cmdCopyBuffer(BufferPtr srcBuffer, BufferPtr dstBuffer, uint32_t regionCount,
                                const BufferCopyRegion* pRegions) = 0;
+    virtual void cmdTimestamp(TimestampQueryPoolPtr pool, uint32_t index,
+                              PipelineStages::PipelineStageFlagBits stage) = 0;
 
     CommandBufferPtr getCommandBuffer() const { return cmdBufferPtr; }
     drv::QueueFamilyPtr getFamily() const { return family; }
