@@ -446,6 +446,7 @@ const MemoryType& BufferSet::PreferenceSelector::prefer(const MemoryType& a,
         return a;
     MemoryType::PropertyType ap = a.properties & preferenceMask;
     MemoryType::PropertyType bp = b.properties & preferenceMask;
+
     MemoryType::PropertyType common = ap & bp;
     ap ^= common;
     bp ^= common;
@@ -944,6 +945,56 @@ void TimelineSemaphore::signal(uint64_t value) const {
                     "Could not signal timeline semaphore");
 }
 
+TimestampQueryPool::TimestampQueryPool(LogicalDevicePtr _device, uint32_t count) : device(_device) {
+    ptr = create_timestamp_query_pool(device, count);
+    drv::drv_assert(!is_null_ptr(ptr), "Could not create timestamp query pool");
+}
+
+TimestampQueryPool::~TimestampQueryPool() noexcept {
+    close();
+}
+
+void TimestampQueryPool::close() {
+    if (!is_null_ptr(ptr)) {
+        drv::drv_assert(destroy_timestamp_query_pool(device, ptr),
+                        "Could not destroy timestamp query pool");
+        reset_ptr(ptr);
+    }
+}
+
+TimestampQueryPool::TimestampQueryPool(TimestampQueryPool&& other) noexcept {
+    device = std::move(other.device);
+    ptr = std::move(other.ptr);
+    reset_ptr(other.ptr);
+}
+
+TimestampQueryPool& TimestampQueryPool::operator=(TimestampQueryPool&& other) noexcept {
+    if (&other == this)
+        return *this;
+    close();
+    device = std::move(other.device);
+    ptr = std::move(other.ptr);
+    reset_ptr(other.ptr);
+    return *this;
+}
+
+TimestampQueryPool::operator TimestampQueryPoolPtr() const {
+    return ptr;
+}
+
+Clock::time_point TimestampQueryPool::getTimestamp(QueuePtr queue, uint32_t id) const {
+    Clock::time_point ret;
+    getTimestamps(queue, id, 1, &ret);
+    return ret;
+}
+
+void TimestampQueryPool::getTimestamps(QueuePtr queue, uint32_t first, uint32_t count,
+                                       Clock::time_point* results) const {
+    StackMemory::MemoryHandle<uint64_t> timestamps(count, TEMPMEM);
+    drv::get_timestamp_query_pool_results(device, ptr, first, count, timestamps);
+    drv::decode_timestamps(device, queue, count, timestamps, results);
+}
+
 Fence::Fence(LogicalDevicePtr _device, const FenceCreateInfo& info) : device(_device) {
     ptr = create_fence(device, &info);
     drv::drv_assert(!is_null_ptr(ptr), "Could not create fence");
@@ -954,7 +1005,6 @@ Fence::~Fence() noexcept {
 }
 
 void Fence::close() {
-    CHECK_THREAD;
     if (!is_null_ptr(ptr)) {
         drv::drv_assert(destroy_fence(device, ptr), "Could not destroy fence");
         reset_ptr(ptr);

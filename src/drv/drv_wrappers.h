@@ -412,9 +412,7 @@ class TimelineSemaphore
     void close();
 };
 
-class Fence
-  : public NoCopy
-  , private Exclusive
+class Fence : public NoCopy
 {
  public:
     Fence(LogicalDevicePtr device, const FenceCreateInfo& info = {});
@@ -431,6 +429,27 @@ class Fence
  private:
     LogicalDevicePtr device;
     FencePtr ptr;
+
+    void close();
+};
+
+class TimestampQueryPool : public NoCopy
+{
+ public:
+    TimestampQueryPool(LogicalDevicePtr device, uint32_t count);
+    ~TimestampQueryPool() noexcept;
+
+    TimestampQueryPool(TimestampQueryPool&& other) noexcept;
+    TimestampQueryPool& operator=(TimestampQueryPool&& other) noexcept;
+
+    operator TimestampQueryPoolPtr() const;
+
+    Clock::time_point getTimestamp(QueuePtr queue, uint32_t id) const;
+    void getTimestamps(QueuePtr queue, uint32_t first, uint32_t count, Clock::time_point* results) const;
+
+ private:
+    LogicalDevicePtr device;
+    TimestampQueryPoolPtr ptr;
 
     void close();
 };
