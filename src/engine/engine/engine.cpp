@@ -190,13 +190,15 @@ Engine::Engine(int argc, char* argv[], const EngineConfig& cfg,
     inputQueue(queueManager.getQueue({"input", "HtoD"})),
     cmdBufferBank(device),
     semaphorePool(device, config.maxFramesInFlight),
+    timestampPool(device),
     swapchain(physicalDevice, device, window,
               get_swapchain_create_info(config, presentQueue.queue, renderQueue.queue)),
     eventPool(device),
     syncBlock(device, safe_cast<uint32_t>(config.maxFramesInFlight)),  // TODO why just 2?
     // maxFramesInFlight + 1 for readback stage
     frameGraph(physicalDevice, device, &garbageSystem, &resourceLocker, &eventPool, &semaphorePool,
-               trackingConfig, config.maxFramesInExecutionQueue, config.maxFramesInFlight + 1),
+               &timestampPool, trackingConfig, config.maxFramesInExecutionQueue,
+               config.maxFramesInFlight + 1),
     runtimeStats(!launchArgs.clearRuntimeStats, launchArgs.runtimeStatsPersistanceBin,
                  launchArgs.runtimeStatsGameExportsBin, launchArgs.runtimeStatsCacheBin),
     entityManager(physicalDevice, device, &frameGraph, resourceFolders.textures) {

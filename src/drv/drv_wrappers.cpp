@@ -945,9 +945,11 @@ void TimelineSemaphore::signal(uint64_t value) const {
                     "Could not signal timeline semaphore");
 }
 
-TimestampQueryPool::TimestampQueryPool(LogicalDevicePtr _device, uint32_t count) : device(_device) {
-    ptr = create_timestamp_query_pool(device, count);
+TimestampQueryPool::TimestampQueryPool(LogicalDevicePtr _device, uint32_t count)
+  : device(_device), size(count) {
+    ptr = create_timestamp_query_pool(device, size);
     drv::drv_assert(!is_null_ptr(ptr), "Could not create timestamp query pool");
+    reset(0, size);
 }
 
 TimestampQueryPool::~TimestampQueryPool() noexcept {
@@ -965,6 +967,7 @@ void TimestampQueryPool::close() {
 TimestampQueryPool::TimestampQueryPool(TimestampQueryPool&& other) noexcept {
     device = std::move(other.device);
     ptr = std::move(other.ptr);
+    size = std::move(other.size);
     reset_ptr(other.ptr);
 }
 
@@ -974,8 +977,17 @@ TimestampQueryPool& TimestampQueryPool::operator=(TimestampQueryPool&& other) no
     close();
     device = std::move(other.device);
     ptr = std::move(other.ptr);
+    size = std::move(other.size);
     reset_ptr(other.ptr);
     return *this;
+}
+
+void TimestampQueryPool::reset(uint32_t index) {
+    reset(index, 1);
+}
+
+void TimestampQueryPool::reset(uint32_t first, uint32_t count) {
+    drv::reset_timestamp_queries(device, ptr, first, count);
 }
 
 TimestampQueryPool::operator TimestampQueryPoolPtr() const {

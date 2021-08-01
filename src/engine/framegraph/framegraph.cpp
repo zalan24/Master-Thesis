@@ -7,10 +7,11 @@
 #include <util.hpp>
 
 #include <drverror.h>
+#include <timestamppool.h>
 
 FrameGraph::FrameGraph(drv::PhysicalDevice _physicalDevice, drv::LogicalDevicePtr _device,
                        GarbageSystem* _garbageSystem, drv::ResourceLocker* _resourceLocker,
-                       EventPool* _eventPool, drv::TimelineSemaphorePool* _semaphorePool,
+                       EventPool* _eventPool, drv::TimelineSemaphorePool* _semaphorePool, TimestampPool *_timestampPool,
                        drv::StateTrackingConfig _trackerConfig, uint32_t maxFramesInExecution,
                        uint32_t _maxFramesInFlight)
   : physicalDevice(_physicalDevice),
@@ -19,6 +20,7 @@ FrameGraph::FrameGraph(drv::PhysicalDevice _physicalDevice, drv::LogicalDevicePt
     resourceLocker(_resourceLocker),
     eventPool(_eventPool),
     semaphorePool(_semaphorePool),
+    timestampPool(_timestampPool),
     trackerConfig(_trackerConfig),
     maxFramesInFlight(_maxFramesInFlight) {
     for (uint32_t i = 0; i < NUM_STAGES; ++i) {

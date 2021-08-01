@@ -13,4 +13,5 @@ target_link_libraries(EngineFramegraph PUBLIC
     AnimationsEventPool
     CoreDataStructures
     boost_align_external
+    TimestampPool
 )

@@ -447,9 +447,15 @@ class TimestampQueryPool : public NoCopy
     Clock::time_point getTimestamp(QueuePtr queue, uint32_t id) const;
     void getTimestamps(QueuePtr queue, uint32_t first, uint32_t count, Clock::time_point* results) const;
 
+    void reset(uint32_t index);
+    void reset(uint32_t first, uint32_t count);
+
+    uint32_t getTimestampCount() const { return size; }
+
  private:
     LogicalDevicePtr device;
     TimestampQueryPoolPtr ptr;
+    uint32_t size;
 
     void close();
 };

@@ -25,4 +25,5 @@ target_link_libraries(EngineLib PUBLIC
     concurrent_queue_external
     loguru_external
     Entities
+    TimestampPool
 )

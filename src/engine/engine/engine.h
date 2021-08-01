@@ -25,6 +25,7 @@
 #include <entitymanager.h>
 #include <eventpool.h>
 #include <framegraph.h>
+#include <timestamppool.h>
 
 #include <corecontext.h>
 #include <garbagesystem.h>
@@ -271,6 +272,7 @@ class Engine
     drv::QueueManager::Queue inputQueue;
     drv::CommandBufferBank cmdBufferBank;
     drv::TimelineSemaphorePool semaphorePool;
+    TimestampPool timestampPool;
     drv::Swapchain swapchain;
     EventPool eventPool;
     SyncBlock syncBlock;

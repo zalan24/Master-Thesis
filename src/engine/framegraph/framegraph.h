@@ -26,6 +26,8 @@
 #include "framegraphDecl.h"
 #include "garbagesystem.h"
 
+class TimestampPool;
+
 struct ArtificialWorkLoad final : public IAutoSerializable<ArtificialWorkLoad>
 {
     // measured in milliseconds
@@ -347,7 +349,7 @@ class FrameGraph
 
     FrameGraph(drv::PhysicalDevice physicalDevice, drv::LogicalDevicePtr device,
                GarbageSystem* garbageSystem, drv::ResourceLocker* resourceLocker,
-               EventPool* eventPool, drv::TimelineSemaphorePool* semaphorePool,
+               EventPool* eventPool, drv::TimelineSemaphorePool* semaphorePool, TimestampPool *timestampPool,
                drv::StateTrackingConfig trackerConfig, uint32_t maxFramesInExecution,
                uint32_t maxFramesInFlight);
 
@@ -387,6 +389,7 @@ class FrameGraph
     drv::ResourceLocker* resourceLocker;
     EventPool* eventPool;
     drv::TimelineSemaphorePool* semaphorePool;
+    TimestampPool *timestampPool;
     drv::StateTrackingConfig trackerConfig;
     uint32_t maxFramesInFlight;
     ExecutionQueue executionQueue;
