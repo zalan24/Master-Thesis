@@ -1779,13 +1779,15 @@ DrvVulkan::LogicalDeviceData& DrvVulkan::LogicalDeviceData::operator=(LogicalDev
     return *this;
 }
 
-drv::Clock::time_point DrvVulkan::LogicalDeviceData::decode_timestamp(uint64_t timestampBits,
+drv::Clock::time_point DrvVulkan::LogicalDeviceData::decode_timestamp(uint64_t bits,
                                                                       const SyncTimeData& data,
                                                                       uint64_t value) const {
-    uint64_t timestamp = value & timestampBits;
+    uint64_t timestamp = value & bits;
 
-    double deviceDiffNsD =
-      double(timestamp - data.lastSyncTimeDeviceTicks) * double(timestampPeriod);
+    int64_t deviceDiffNs = timestamp >= data.lastSyncTimeDeviceTicks
+                             ? int64_t(timestamp - data.lastSyncTimeDeviceTicks)
+                             : -int64_t(data.lastSyncTimeDeviceTicks - timestamp);
+    double deviceDiffNsD = double(deviceDiffNs) * double(timestampPeriod);
     double hostDiffNsD = deviceDiffNsD + deviceDiffNsD * data.driftHnsPerDns;
 
     return data.lastSyncTimeHost + std::chrono::nanoseconds(uint64_t(hostDiffNsD));
