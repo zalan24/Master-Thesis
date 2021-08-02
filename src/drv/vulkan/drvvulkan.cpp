@@ -1808,3 +1808,10 @@ void DrvVulkan::decode_timestamps(drv::LogicalDevicePtr device, drv::QueuePtr qu
     for (uint32_t i = 0; i < count; ++i)
         results[i] = itr->second.decode_timestamp(bitsItr->second, timelineItr->second, values[i]);
 }
+
+bool DrvVulkan::timestamps_supported(drv::LogicalDevicePtr device, drv::QueuePtr queue) {
+    std::unique_lock<std::mutex> lock(devicesDataMutex);
+    auto itr = devicesData.find(device);
+    drv::drv_assert(itr != devicesData.end());
+    return itr->second.queueTimeline.find(queue) != itr->second.queueTimeline.end();
+}

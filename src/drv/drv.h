@@ -227,6 +227,13 @@ bool get_timestamp_query_pool_results(LogicalDevicePtr device, TimestampQueryPoo
 drv::Clock::time_point decode_timestamp(LogicalDevicePtr device, QueuePtr queue, uint64_t value);
 void decode_timestamps(LogicalDevicePtr device, QueuePtr queue, uint32_t count,
                        const uint64_t* values, drv::Clock::time_point* results);
+bool timestamps_supported(LogicalDevicePtr device, QueuePtr queue);
+
+PlacementPtr<drv::DrvCmdBufferRecorder> create_cmd_buffer_recorder(
+  void* targetPtr, drv::PhysicalDevicePtr physicalDevice, drv::LogicalDevicePtr device,
+  drv::QueueFamilyPtr family, drv::CommandBufferPtr cmdBufferPtr, bool singleTime,
+  bool simultaneousUse);
+size_t get_cmd_buffer_recorder_size();
 
 // std::unique_ptr<CmdTrackingRecordState> create_tracking_record_state();
 // PipelineStages cmd_image_barrier(drv::CmdTrackingRecordState *recordState, CmdImageTrackingState& state, CommandBufferPtr cmdBuffer,

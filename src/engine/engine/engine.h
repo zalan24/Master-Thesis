@@ -41,6 +41,7 @@
 #include "bufferstager.h"
 #include "imagestager.h"
 #include "resources.hpp"
+#include "timestampcmdbuffers.h"
 
 struct ExecutionPackage;
 
@@ -273,6 +274,7 @@ class Engine
     drv::CommandBufferBank cmdBufferBank;
     drv::TimelineSemaphorePool semaphorePool;
     TimestampPool timestampPool;
+    DynamicTimestampCmdBufferPool timestampCmdBuffers;
     drv::Swapchain swapchain;
     EventPool eventPool;
     SyncBlock syncBlock;

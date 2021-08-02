@@ -12,55 +12,61 @@ using namespace drv;
 DrvCmdBufferRecorder::~DrvCmdBufferRecorder() {
     if (!is_null_ptr(cmdBufferPtr)) {
         if (currentRenderPassPostStats) {
-            renderPassPostStats->push_back(std::move(currentRenderPassPostStats));
+            if (renderPassPostStats)
+                renderPassPostStats->push_back(std::move(currentRenderPassPostStats));
             currentRenderPassPostStats = {};
         }
-        for (uint32_t i = uint32_t(imageStates->size()); i > 0; --i) {
-            bool used = false;
-            for (uint32_t j = 0; j < imageRecordStates.size() && !used; ++j) {
-                if (imageRecordStates[j].first == (*imageStates)[i - 1].first) {
-                    used = imageRecordStates[j].second.used;
-                    break;
+        if (imageStates)
+            for (uint32_t i = uint32_t(imageStates->size()); i > 0; --i) {
+                bool used = false;
+                for (uint32_t j = 0; j < imageRecordStates.size() && !used; ++j) {
+                    if (imageRecordStates[j].first == (*imageStates)[i - 1].first) {
+                        used = imageRecordStates[j].second.used;
+                        break;
+                    }
+                }
+                if (!used) {
+                    (*imageStates)[i - 1] = std::move((*imageStates)[imageStates->size() - 1]);
+                    imageStates->pop_back();
                 }
             }
-            if (!used) {
-                (*imageStates)[i - 1] = std::move((*imageStates)[imageStates->size() - 1]);
-                imageStates->pop_back();
-            }
-        }
-        for (uint32_t i = uint32_t(bufferStates->size()); i > 0; --i) {
-            bool used = false;
-            for (uint32_t j = 0; j < bufferRecordStates.size() && !used; ++j) {
-                if (bufferRecordStates[j].first == (*bufferStates)[i - 1].first) {
-                    used = bufferRecordStates[j].second.used;
-                    break;
+        if (bufferStates)
+            for (uint32_t i = uint32_t(bufferStates->size()); i > 0; --i) {
+                bool used = false;
+                for (uint32_t j = 0; j < bufferRecordStates.size() && !used; ++j) {
+                    if (bufferRecordStates[j].first == (*bufferStates)[i - 1].first) {
+                        used = bufferRecordStates[j].second.used;
+                        break;
+                    }
+                }
+                if (!used) {
+                    (*bufferStates)[i - 1] = std::move((*bufferStates)[bufferStates->size() - 1]);
+                    bufferStates->pop_back();
                 }
             }
-            if (!used) {
-                (*bufferStates)[i - 1] = std::move((*bufferStates)[bufferStates->size() - 1]);
-                bufferStates->pop_back();
-            }
-        }
         if (resourceUsage != nullptr) {
             resourceUsage->clear();
-            for (uint32_t i = 0; i < imageStates->size(); ++i) {
-                uint32_t numLayers = driver->get_texture_info((*imageStates)[i].first).arraySize;
-                (*imageStates)[i].second.cmdState.usageMask.traverse(
-                  [&, this](uint32_t layer, uint32_t mip, drv::AspectFlagBits aspect) {
-                      bool written =
-                        (*imageStates)[i].second.cmdState.usage.get(layer, mip, aspect).written;
-                      resourceUsage->addImage((*imageStates)[i].first, numLayers, layer, mip,
-                                              aspect,
-                                              written ? ResourceLockerDescriptor::READ_WRITE
-                                                      : ResourceLockerDescriptor::READ);
-                  });
-            }
-            for (uint32_t i = 0; i < bufferStates->size(); ++i) {
-                bool written = (*bufferStates)[i].second.cmdState.usage.written;
-                resourceUsage->addBuffer(
-                  (*bufferStates)[i].first,
-                  written ? ResourceLockerDescriptor::READ_WRITE : ResourceLockerDescriptor::READ);
-            }
+            if (imageStates)
+                for (uint32_t i = 0; i < imageStates->size(); ++i) {
+                    uint32_t numLayers =
+                      driver->get_texture_info((*imageStates)[i].first).arraySize;
+                    (*imageStates)[i].second.cmdState.usageMask.traverse(
+                      [&, this](uint32_t layer, uint32_t mip, drv::AspectFlagBits aspect) {
+                          bool written =
+                            (*imageStates)[i].second.cmdState.usage.get(layer, mip, aspect).written;
+                          resourceUsage->addImage((*imageStates)[i].first, numLayers, layer, mip,
+                                                  aspect,
+                                                  written ? ResourceLockerDescriptor::READ_WRITE
+                                                          : ResourceLockerDescriptor::READ);
+                      });
+                }
+            if (bufferStates)
+                for (uint32_t i = 0; i < bufferStates->size(); ++i) {
+                    bool written = (*bufferStates)[i].second.cmdState.usage.written;
+                    resourceUsage->addBuffer((*bufferStates)[i].first,
+                                             written ? ResourceLockerDescriptor::READ_WRITE
+                                                     : ResourceLockerDescriptor::READ);
+                }
         }
         reset_ptr(cmdBufferPtr);
         queueFamilyLock = {};
@@ -110,6 +116,7 @@ void DrvCmdBufferRecorder::init(uint64_t firstSignalValue) {
         if (semaphoreStage.stageFlags != 0) {
             drv::TimelineSemaphoreCreateInfo createInfo;
             createInfo.startValue = 0;
+            drv::drv_assert(semaphorePool, "semaphorePool is not initialized");
             *semaphore = acquire_timeline_semaphore(semaphorePool, firstSignalValue);
             semaphoreStages = semaphoreStage.stageFlags;
         }
@@ -162,6 +169,7 @@ void DrvCmdBufferRecorder::autoRegisterImage(ImagePtr image, uint32_t layer, uin
 ImageTrackInfo& DrvCmdBufferRecorder::getImageState(
   drv::ImagePtr image, uint32_t ranges, const drv::ImageSubresourceRange* subresourceRanges,
   drv::ImageLayout preferrefLayout, const drv::PipelineStages& stages) {
+    drv::drv_assert(imageStates != nullptr, "imageStats is not initialized in cmdBufferRecorder");
     TextureInfo texInfo = driver->get_texture_info(image);
     bool found = false;
     for (uint32_t i = 0; i < imageRecordStates.size() && !found; ++i) {
@@ -208,6 +216,8 @@ ImageTrackInfo& DrvCmdBufferRecorder::getImageState(
 BufferTrackInfo& DrvCmdBufferRecorder::getBufferState(
   drv::BufferPtr buffer, uint32_t /*ranges*/,
   const drv::BufferSubresourceRange* /*subresourceRanges*/, const drv::PipelineStages& stages) {
+    drv::drv_assert(bufferStates != nullptr,
+                    "bufferStates is not initialized in cmdBufferRecorder");
     bool found = false;
     for (uint32_t i = 0; i < bufferRecordStates.size() && !found; ++i) {
         if (bufferRecordStates[i].first == buffer) {
@@ -267,6 +277,7 @@ void DrvCmdBufferRecorder::registerBuffer(BufferPtr buffer, const BufferStarting
 
 void DrvCmdBufferRecorder::registerImage(ImagePtr image, const ImageStartingState& state,
                                          const ImageSubresourceSet& initMask) {
+    drv::drv_assert(imageStates != nullptr, "imageStats is not initialized in cmdBufferRecorder");
     TextureInfo texInfo = driver->get_texture_info(image);
     uint32_t indRec = 0;
     while (indRec < imageRecordStates.size() && imageRecordStates[indRec].first != image)
@@ -324,6 +335,7 @@ void DrvCmdBufferRecorder::registerUndefinedImage(ImagePtr image, QueueFamilyPtr
 
 void DrvCmdBufferRecorder::updateImageState(drv::ImagePtr image, const ImageTrackInfo& state,
                                             const ImageSubresourceSet& initMask) {
+    drv::drv_assert(imageStates != nullptr, "imageStats is not initialized in cmdBufferRecorder");
     bool found = false;
     for (uint32_t i = 0; i < imageStates->size() && !found; ++i) {
         if ((*imageStates)[i].first == image) {
@@ -351,6 +363,8 @@ void DrvCmdBufferRecorder::updateImageState(drv::ImagePtr image, const ImageTrac
 }
 
 void DrvCmdBufferRecorder::updateBufferState(drv::BufferPtr buffer, const BufferTrackInfo& state) {
+    drv::drv_assert(bufferStates != nullptr,
+                    "bufferStates is not initialized in cmdBufferRecorder");
     bool found = false;
     for (uint32_t i = 0; i < bufferStates->size() && !found; ++i) {
         if ((*bufferStates)[i].first == buffer) {

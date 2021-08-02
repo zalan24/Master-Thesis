@@ -538,3 +538,19 @@ void drv::decode_timestamps(LogicalDevicePtr device, QueuePtr queue, uint32_t co
                             const uint64_t* values, drv::Clock::time_point* results) {
     return current_driver_interface->decode_timestamps(device, queue, count, values, results);
 }
+
+PlacementPtr<drv::DrvCmdBufferRecorder> drv::create_cmd_buffer_recorder(
+  void* targetPtr, drv::PhysicalDevicePtr physicalDevice, drv::LogicalDevicePtr device,
+  drv::QueueFamilyPtr family, drv::CommandBufferPtr cmdBufferPtr, bool singleTime,
+  bool simultaneousUse) {
+    return current_driver_interface->create_cmd_buffer_recorder(
+      targetPtr, physicalDevice, device, family, cmdBufferPtr, singleTime, simultaneousUse);
+}
+
+size_t drv::get_cmd_buffer_recorder_size() {
+    return current_driver_interface->get_cmd_buffer_recorder_size();
+}
+
+bool drv::timestamps_supported(LogicalDevicePtr device, QueuePtr queue) {
+    return current_driver_interface->timestamps_supported(device, queue);
+}

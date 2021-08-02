@@ -338,6 +338,7 @@ class IDriver
     virtual void decode_timestamps(LogicalDevicePtr device, QueuePtr queue, uint32_t count,
                                         const uint64_t* values,
                                         drv::Clock::time_point* results) = 0;
+    virtual bool timestamps_supported(LogicalDevicePtr device, QueuePtr queue) = 0;
 
     // virtual void cmd_flush_waits_on(CommandBufferPtr cmdBuffer, EventPtr event) = 0;
 };

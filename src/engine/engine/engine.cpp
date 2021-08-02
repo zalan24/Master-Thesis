@@ -191,6 +191,7 @@ Engine::Engine(int argc, char* argv[], const EngineConfig& cfg,
     cmdBufferBank(device),
     semaphorePool(device, config.maxFramesInFlight),
     timestampPool(device),
+    timestampCmdBuffers(physicalDevice, device, config.maxFramesInFlight, 64),
     swapchain(physicalDevice, device, window,
               get_swapchain_create_info(config, presentQueue.queue, renderQueue.queue)),
     eventPool(device),
@@ -859,10 +860,18 @@ bool Engine::execute(ExecutionPackage&& package) {
     }
     else if (std::holds_alternative<ExecutionPackage::CommandBufferPackage>(package.package)) {
         runtimeStats.incrementSubmissionCount();
-        drv::CommandBufferPtr commandBuffers[2];
+        drv::CommandBufferPtr commandBuffers[4];
         uint32_t numCommandBuffers = 0;
         ExecutionPackage::CommandBufferPackage& cmdBuffer =
           std::get<ExecutionPackage::CommandBufferPackage>(package.package);
+
+        bool needTimestamps = drv::timestamps_supported(device, cmdBuffer.queue);
+
+        if (needTimestamps) {
+            TimestampCmdBufferPool::CmdBufferInfo info = timestampCmdBuffers.acquire(
+              drv::get_queue_family(device, cmdBuffer.queue), cmdBuffer.frameId);
+            commandBuffers[numCommandBuffers++] = info.cmdBuffer;
+        }
 
         AccessValidationCallback cb(
           this, cmdBuffer.queue,
@@ -950,6 +959,11 @@ bool Engine::execute(ExecutionPackage&& package) {
             if (!drv::is_null_ptr(cmdBuffer.cmdBufferData.cmdBufferPtr)) {
                 commandBuffers[numCommandBuffers++] = cmdBuffer.cmdBufferData.cmdBufferPtr;
             }
+        }
+        if (needTimestamps) {
+            TimestampCmdBufferPool::CmdBufferInfo info = timestampCmdBuffers.acquire(
+              drv::get_queue_family(device, cmdBuffer.queue), cmdBuffer.frameId);
+            commandBuffers[numCommandBuffers++] = info.cmdBuffer;
         }
         cb.filterSemaphores();
         StackMemory::MemoryHandle<drv::TimelineSemaphorePtr> waitTimelineSemaphores(

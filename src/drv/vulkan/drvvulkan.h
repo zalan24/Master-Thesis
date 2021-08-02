@@ -493,6 +493,7 @@ class DrvVulkan final : public drv::IDriver
 
     void decode_timestamps(drv::LogicalDevicePtr device, drv::QueuePtr queue, uint32_t count,
                            const uint64_t* values, drv::Clock::time_point* results) override;
+    bool timestamps_supported(drv::LogicalDevicePtr device, drv::QueuePtr queue) override;
 
  private:
     struct LogicalDeviceData
