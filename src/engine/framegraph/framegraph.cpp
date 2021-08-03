@@ -78,6 +78,7 @@ FrameGraph::Node::Node(const std::string& _name, Stages _stages, bool _tagNode)
   : name(_name), stages(_stages), tagNode(_tagNode) {
     if (stages & EXECUTION_STAGE) {
         executionTiming.resize(TIMING_HISTORY_SIZE);
+        deviceTiming.resize(TIMING_HISTORY_SIZE);
         localExecutionQueue = std::make_unique<ExecutionQueue>();
         drv::drv_assert(
           stages & RECORD_STAGE,
@@ -112,6 +113,7 @@ FrameGraph::Node::Node(Node&& other)
     workLoads(std::move(other.workLoads)),
     timingInfos(std::move(other.timingInfos)),
     executionTiming(std::move(other.executionTiming)),
+    deviceTiming(std::move(other.deviceTiming)),
     enqueuedFrame(other.enqueuedFrame.load()),
     enqueueFrameClearance(other.enqueueFrameClearance) {
     for (uint32_t i = 0; i < NUM_STAGES; ++i)
@@ -144,6 +146,7 @@ FrameGraph::Node& FrameGraph::Node::operator=(Node&& other) {
     workLoads = std::move(other.workLoads);
     timingInfos = std::move(other.timingInfos);
     executionTiming = std::move(other.executionTiming);
+    deviceTiming = std::move(other.deviceTiming);
     for (uint32_t i = 0; i < NUM_STAGES; ++i)
         completedFrames[i].store(other.completedFrames[i].load());
     enqueuedFrame = other.enqueuedFrame.load();
@@ -1324,4 +1327,21 @@ void FrameGraph::NodeHandle::busy_sleep(std::chrono::microseconds duration) {
     FrameGraph::Node::Clock::time_point startTime = FrameGraph::Node::Clock::now();
     while (FrameGraph::Node::Clock::now() - startTime < duration)
         ;
+}
+
+void FrameGraph::Node::registerDeviceTiming(FrameId frameId, const DeviceTiming& timing) {
+    auto& entry = deviceTiming[frameId % TIMING_HISTORY_SIZE];
+    entry.push_back(timing);
+}
+
+void FrameGraph::initFrame(FrameId frameId) {
+    for (auto& itr : nodes)
+        itr.initFrame(frameId);
+}
+
+void FrameGraph::Node::initFrame(FrameId frameId) {
+    if (!deviceTiming.empty()) {
+        auto& devicesTimingEntry = deviceTiming[frameId % TIMING_HISTORY_SIZE];
+        devicesTimingEntry.clear();
+    }
 }

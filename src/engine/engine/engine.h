@@ -319,6 +319,17 @@ class Engine
 
     std::vector<EntityRenderData> entitiesToDraw;
 
+    struct SubmissionTimestampsInfo
+    {
+        drv::Clock::time_point submissionTime;
+        FrameGraph::NodeId node;
+        drv::CmdBufferId submission;
+        drv::QueuePtr queue;
+        uint32_t beginTimestampBufferIndex;
+        uint32_t endTimestampBufferIndex;
+    };
+    std::vector<std::vector<SubmissionTimestampsInfo>> timestsampRingBuffer;
+
     void simulationLoop();
     void beforeDrawLoop();
     void recordCommandsLoop();

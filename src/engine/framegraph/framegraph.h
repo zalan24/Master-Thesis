@@ -185,7 +185,7 @@ class FrameGraph
 
         const std::string &getName() const {return name;}
 
-        using Clock = std::chrono::high_resolution_clock;
+        using Clock = drv::Clock;
 
         struct NodeTiming
         {
@@ -196,7 +196,18 @@ class FrameGraph
         };
         struct ExecutionTiming
         {
+            TODO;  // not all messages are timed...
             FrameId frameId = INVALID_FRAME;
+            Clock::time_point start;
+            Clock::time_point finish;
+        };
+
+        struct DeviceTiming
+        {
+            drv::QueuePtr queue;
+            drv::CmdBufferId submissionId;
+            FrameId frameId = INVALID_FRAME;
+            Clock::time_point submitted;
             Clock::time_point start;
             Clock::time_point finish;
         };
@@ -206,6 +217,8 @@ class FrameGraph
         void registerFinish(Stage stage, FrameId frameId);
         void registerExecutionStart(FrameId frameId);
         void registerExecutionFinish(FrameId frameId);
+        void registerDeviceTiming(FrameId frameId, const DeviceTiming& timing);
+        void initFrame(FrameId frameId);
 
         void setWorkLoad(Stage stage, const ArtificialWorkLoad& workLoad);
         ArtificialWorkLoad getWorkLoad(Stage stage) const;
@@ -232,6 +245,7 @@ class FrameGraph
         std::array<std::atomic<FrameId>, NUM_STAGES> completedFrames;
         std::array<std::vector<NodeTiming>, NUM_STAGES> timingInfos;
         std::vector<ExecutionTiming> executionTiming;
+        std::vector<FlexibleArray<DeviceTiming, 4>> deviceTiming;
         mutable std::mutex cpuMutex;
         mutable std::shared_mutex workLoadMutex;
         std::condition_variable cpuCv;
@@ -343,6 +357,8 @@ class FrameGraph
     void build();
     void stopExecution(bool force);  // used when quitting the app
     bool isStopped() const;
+
+    void initFrame(FrameId frameId);
 
     QueueId registerQueue(drv::QueuePtr queue);
     drv::QueuePtr getQueue(QueueId queueId) const;

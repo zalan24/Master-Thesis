@@ -202,7 +202,8 @@ Engine::Engine(int argc, char* argv[], const EngineConfig& cfg,
                config.maxFramesInFlight + 1),
     runtimeStats(!launchArgs.clearRuntimeStats, launchArgs.runtimeStatsPersistanceBin,
                  launchArgs.runtimeStatsGameExportsBin, launchArgs.runtimeStatsCacheBin),
-    entityManager(physicalDevice, device, &frameGraph, resourceFolders.textures) {
+    entityManager(physicalDevice, device, &frameGraph, resourceFolders.textures),
+    timestsampRingBuffer(config.maxFramesInFlight + 1) {
     json configJson = ISerializable::serialize(config);
     std::stringstream ss;
     ss << configJson;
@@ -466,6 +467,8 @@ void Engine::simulationLoop() {
                 LOG_F(ERROR, "Could not reload work load file");
             }
         }
+
+        frameGraph.initFrame(simulationFrame);
 
         if (auto startNode =
               frameGraph.acquireNode(frameGraph.getStageStartNode(FrameGraph::SIMULATION_STAGE),
@@ -866,16 +869,19 @@ bool Engine::execute(ExecutionPackage&& package) {
           std::get<ExecutionPackage::CommandBufferPackage>(package.package);
 
         bool needTimestamps = drv::timestamps_supported(device, cmdBuffer.queue);
+        SubmissionTimestampsInfo submissionTimestampInfo;
 
         if (needTimestamps) {
             TimestampCmdBufferPool::CmdBufferInfo info = timestampCmdBuffers.acquire(
               drv::get_queue_family(device, cmdBuffer.queue), cmdBuffer.frameId);
             commandBuffers[numCommandBuffers++] = info.cmdBuffer;
+            submissionTimestampInfo.beginTimestampBufferIndex = info.index;
         }
 
-        AccessValidationCallback cb(
-          this, cmdBuffer.queue,
-          frameGraph.getNodeFromCmdBuffer(cmdBuffer.cmdBufferData.cmdBufferId), cmdBuffer.frameId);
+        FrameGraph::NodeId nodeId =
+          frameGraph.getNodeFromCmdBuffer(cmdBuffer.cmdBufferData.cmdBufferId);
+
+        AccessValidationCallback cb(this, cmdBuffer.queue, nodeId, cmdBuffer.frameId);
 
         StackMemory::MemoryHandle<drv::TimelineSemaphorePtr> signalTimelineSemaphores(
           cmdBuffer.signalTimelineSemaphores.size() + 1, TEMPMEM);
@@ -964,6 +970,7 @@ bool Engine::execute(ExecutionPackage&& package) {
             TimestampCmdBufferPool::CmdBufferInfo info = timestampCmdBuffers.acquire(
               drv::get_queue_family(device, cmdBuffer.queue), cmdBuffer.frameId);
             commandBuffers[numCommandBuffers++] = info.cmdBuffer;
+            submissionTimestampInfo.endTimestampBufferIndex = info.index;
         }
         cb.filterSemaphores();
         StackMemory::MemoryHandle<drv::TimelineSemaphorePtr> waitTimelineSemaphores(
@@ -999,6 +1006,14 @@ bool Engine::execute(ExecutionPackage&& package) {
         executionInfo.signalTimelineSemaphores = signalTimelineSemaphores;
         executionInfo.timelineSignalValues = signalTimelineSemaphoreValues;
         drv::execute(getDevice(), cmdBuffer.queue, 1, &executionInfo);
+        if (needTimestamps) {
+            submissionTimestampInfo.submissionTime = drv::Clock::now();
+            submissionTimestampInfo.node = nodeId;
+            submissionTimestampInfo.queue = cmdBuffer.queue;
+            submissionTimestampInfo.submission = cmdBuffer.cmdBufferData.cmdBufferId;
+            timestsampRingBuffer[cmdBuffer.frameId % timestsampRingBuffer.size()].push_back(
+              std::move(submissionTimestampInfo));
+        }
     }
     else if (std::holds_alternative<ExecutionPackage::RecursiveQueue>(package.package)) {
         ExecutionPackage::RecursiveQueue& queue =
@@ -1044,6 +1059,43 @@ void Engine::readbackLoop(volatile bool* finished) {
               frameGraph.acquireNode(frameGraph.getStageEndNode(FrameGraph::READBACK_STAGE),
                                      FrameGraph::READBACK_STAGE, readbackFrame);
             handle) {
+            for (const auto& itr :
+                 timestsampRingBuffer[readbackFrame % timestsampRingBuffer.size()]) {
+                drv::PipelineStages trackedStages =
+                  timestampCmdBuffers.getTrackedStages(drv::get_queue_family(device, itr.queue));
+                uint32_t count = trackedStages.getStageCount();
+                StackMemory::MemoryHandle<drv::Clock::time_point> startTimes(count, TEMPMEM);
+                StackMemory::MemoryHandle<drv::Clock::time_point> endTimes(count, TEMPMEM);
+                timestampCmdBuffers.readbackTimestamps(itr.queue, itr.beginTimestampBufferIndex,
+                                                       startTimes);
+                timestampCmdBuffers.readbackTimestamps(itr.queue, itr.endTimestampBufferIndex,
+                                                       endTimes);
+                FrameGraph::Node::DeviceTiming timing;
+                timing.frameId = readbackFrame;
+                timing.queue = itr.queue;
+                timing.submissionId = itr.submission;
+                timing.submitted = itr.submissionTime;
+                timing.finish = endTimes[0];
+                for (uint32_t i = 1; i < count; ++i)
+                    if (timing.finish < endTimes[i])
+                        timing.finish = endTimes[i];
+                timing.start = itr.submissionTime;
+                bool startInitialized = false;
+                for (uint32_t i = 0; i < count; ++i) {
+                    drv::PipelineStages::PipelineStageFlagBits stage = trackedStages.getStage(i);
+                    if (stage == drv::PipelineStages::TOP_OF_PIPE_BIT)
+                        continue;
+                    if (!startInitialized || startTimes[i] < timing.start) {
+                        timing.start = startTimes[i];
+                        startInitialized = true;
+                    }
+                }
+                drv::drv_assert(startInitialized, "Could not read start time");
+                frameGraph.getNode(itr.node)->registerDeviceTiming(readbackFrame,
+                                                                   std::move(timing));
+            }
+            timestsampRingBuffer[readbackFrame % timestsampRingBuffer.size()].clear();
+
             garbageSystem.releaseGarbage(readbackFrame);
         }
         else {

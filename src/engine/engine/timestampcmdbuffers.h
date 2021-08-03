@@ -30,6 +30,11 @@ class TimestampCmdBufferPool
     };
     CmdBufferInfo acquire(FrameId frameId);
 
+    drv::PipelineStages getTrackedStages() const { return trackedStages; }
+    void readbackTimestamps(drv::QueuePtr queue, uint32_t index,
+                            drv::Clock::time_point* results) const;
+    uint32_t timestampCount() const;
+
  private:
     struct CommandBufferData
     {
@@ -63,6 +68,10 @@ class DynamicTimestampCmdBufferPool
                                   uint32_t queriesPerFramePerPool);
 
     TimestampCmdBufferPool::CmdBufferInfo acquire(drv::QueueFamilyPtr family, FrameId frameId);
+
+    drv::PipelineStages getTrackedStages(drv::QueueFamilyPtr family) const;
+    void readbackTimestamps(drv::QueuePtr queue, uint32_t index,
+                            drv::Clock::time_point* results) const;
 
  private:
     struct PerFamilyData

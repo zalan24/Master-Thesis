@@ -132,6 +132,38 @@ TimestampCmdBufferPool::CmdBufferInfo DynamicTimestampCmdBufferPool::acquire(
     familyPool.pools.emplace_back(physicalDevice, device, family, maxFramesInFlight,
                                   queriesPerFramePerPool);
     ret = familyPool.pools[familyPool.poolIndex].acquire(frameId);
+    ret.index += familyPool.poolIndex * familyPool.pools[0].timestampCount();
     drv::drv_assert(ret, "Could not acquire timestamp cmd buffer");
     return ret;
+}
+
+uint32_t TimestampCmdBufferPool::timestampCount() const {
+    return timestampQueryPool.getTimestampCount();
+}
+
+void TimestampCmdBufferPool::readbackTimestamps(drv::QueuePtr queue, uint32_t index,
+                                                drv::Clock::time_point* results) const {
+    uint32_t firstIndex = trackedStages.getStageCount() * index;
+    uint32_t count = trackedStages.getStageCount();
+    StackMemory::MemoryHandle<uint64_t> values(count, TEMPMEM);
+    drv::get_timestamp_query_pool_results(device, timestampQueryPool, firstIndex, count, values);
+    drv::decode_timestamps(device, queue, count, values, results);
+}
+
+drv::PipelineStages DynamicTimestampCmdBufferPool::getTrackedStages(
+  drv::QueueFamilyPtr family) const {
+    std::unique_lock<std::mutex> lock(mutex);
+    auto itr = pools.find(family);
+    drv::drv_assert(itr != pools.end(), "Queue family not supported");
+    return itr->second.pools[0].getTrackedStages();
+}
+
+void DynamicTimestampCmdBufferPool::readbackTimestamps(drv::QueuePtr queue, uint32_t index,
+                                                       drv::Clock::time_point* results) const {
+    std::unique_lock<std::mutex> lock(mutex);
+    auto itr = pools.find(drv::get_queue_family(device, queue));
+    drv::drv_assert(itr != pools.end(), "Queue family not supported");
+    uint32_t poolIndex = index / itr->second.pools[0].timestampCount();
+    index = index % itr->second.pools[0].timestampCount();
+    return itr->second.pools[poolIndex].readbackTimestamps(queue, index, results);
 }
