@@ -196,7 +196,6 @@ class FrameGraph
         };
         struct ExecutionTiming
         {
-            TODO;  // not all messages are timed...
             FrameId frameId = INVALID_FRAME;
             Clock::time_point start;
             Clock::time_point finish;
@@ -359,6 +358,8 @@ class FrameGraph
     bool isStopped() const;
 
     void initFrame(FrameId frameId);
+    void feedExecutionTiming(FrameId frameId, Clock::time_point issueTime,
+                             Clock::time_point executionStartTime);
 
     QueueId registerQueue(drv::QueuePtr queue);
     drv::QueuePtr getQueue(QueueId queueId) const;

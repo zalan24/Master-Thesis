@@ -228,6 +228,8 @@ struct ExecutionPackage
         drv::SwapchainPtr swapichain;
     };
 
+    FrameId frame;
+    drv::Clock::time_point creationTime;
     std::variant<CommandBufferPackage, Functor, MessagePackage, RecursiveQueue, PresentPackage,
                  std::unique_ptr<CustomFunctor>, const void*>
       package;
@@ -236,12 +238,18 @@ struct ExecutionPackage
     operator bool() const { return !std::holds_alternative<const void*>(package); }
 
     ExecutionPackage() : package(nullptr) {}
-    ExecutionPackage(CommandBufferPackage&& p) : package(std::move(p)) {}
-    ExecutionPackage(Functor&& f) : package(std::move(f)) {}
-    ExecutionPackage(MessagePackage&& m) : package(std::move(m)) {}
-    ExecutionPackage(RecursiveQueue&& q) : package(std::move(q)) {}
-    ExecutionPackage(PresentPackage&& p) : package(std::move(p)) {}
-    ExecutionPackage(std::unique_ptr<CustomFunctor>&& f) : package(std::move(f)) {}
+    ExecutionPackage(FrameId _frame, CommandBufferPackage&& p)
+      : frame(_frame), creationTime(drv::Clock::now()), package(std::move(p)) {}
+    ExecutionPackage(FrameId _frame, Functor&& f)
+      : frame(_frame), creationTime(drv::Clock::now()), package(std::move(f)) {}
+    ExecutionPackage(FrameId _frame, MessagePackage&& m)
+      : frame(_frame), creationTime(drv::Clock::now()), package(std::move(m)) {}
+    ExecutionPackage(FrameId _frame, RecursiveQueue&& q)
+      : frame(_frame), creationTime(drv::Clock::now()), package(std::move(q)) {}
+    ExecutionPackage(FrameId _frame, PresentPackage&& p)
+      : frame(_frame), creationTime(drv::Clock::now()), package(std::move(p)) {}
+    ExecutionPackage(FrameId _frame, std::unique_ptr<CustomFunctor>&& f)
+      : frame(_frame), creationTime(drv::Clock::now()), package(std::move(f)) {}
 };
 
 enum class ResourceStateValidationMode

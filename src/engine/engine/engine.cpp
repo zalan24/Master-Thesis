@@ -815,6 +815,7 @@ class AccessValidationCallback final : public drv::ResourceStateTransitionCallba
 };
 
 bool Engine::execute(ExecutionPackage&& package) {
+    frameGraph.feedExecutionTiming(package.frame, package.creationTime, drv::Clock::now());
     if (std::holds_alternative<ExecutionPackage::MessagePackage>(package.package)) {
         ExecutionPackage::MessagePackage& message =
           std::get<ExecutionPackage::MessagePackage>(package.package);
