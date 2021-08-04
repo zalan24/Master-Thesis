@@ -1092,6 +1092,16 @@ void Engine::readbackLoop(volatile bool* finished) {
                 timing.submissionId = itr.submission;
                 timing.submitted = itr.submissionTime;
                 timing.finish = endTimes[0];
+                // LOG_ENGINE("Device timings at frame: %llu", readbackFrame);
+                // for (uint32_t i = 0; i < count; ++i) {
+                //     LOG_ENGINE(" - start: %lld end: %lld",
+                //                std::chrono::duration_cast<std::chrono::milliseconds>(
+                //                  startTimes[i] - itr.submissionTime)
+                //                  .count(),
+                //                std::chrono::duration_cast<std::chrono::milliseconds>(
+                //                  endTimes[i] - itr.submissionTime)
+                //                  .count());
+                // }
                 for (uint32_t i = 1; i < count; ++i)
                     if (timing.finish < endTimes[i])
                         timing.finish = endTimes[i];
@@ -1626,6 +1636,11 @@ PerformanceCaptureData Engine::generatePerfCapture(FrameId lastReadyFrame) const
                 for (uint32_t i = 0; i < submissionCount; ++i) {
                     FrameGraph::Node::DeviceTiming timing = node->getDeviceTiming(frame, i);
                     double delay = getTimeDiff(timing.submitted, timing.start);
+
+                    // LOG_ENGINE("Device delay: %lf, submitted: %lf, start: %lf, finish: %lf", delay,
+                    //            getTimeDiff(startTime, timing.submitted),
+                    //            getTimeDiff(startTime, timing.start),
+                    //            getTimeDiff(startTime, timing.finish));
                     if (delay < 0)
                         delay = 0;
                     if (ret.deviceDelay < 0 || delay < ret.deviceDelay)

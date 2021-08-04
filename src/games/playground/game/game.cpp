@@ -104,7 +104,7 @@ void Game::recordCmdBufferClear(const AcquiredImageData& swapchainData,
         clearValue = drv::ClearColorValue(0.f, 1.f, 1.f, 1.f);
         shaderTestDesc.setVariant_Color(shader_test_descriptor::Color::RED);
     }
-    mandelbrotDesc.setVariant_Quality(shader_mandelbrot_descriptor::Quality::QUALITY9);
+    mandelbrotDesc.setVariant_Quality(shader_mandelbrot_descriptor::Quality::QUALITY10);
 
     recorder->cmdClearImage(swapchainData.image, &clearValue);
 

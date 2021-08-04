@@ -1,5 +1,7 @@
 #include "timestampcmdbuffers.h"
 
+#include <logger.h>
+
 #include <drverror.h>
 
 drv::PipelineStages TimestampCmdBufferPool::get_required_stages(
@@ -13,7 +15,6 @@ drv::PipelineStages TimestampCmdBufferPool::get_required_stages(
     if (commandTypes & drv::CMD_TYPE_COMPUTE)
         ret.add(drv::PipelineStages::COMPUTE_SHADER_BIT);
     if (commandTypes & drv::CMD_TYPE_GRAPHICS) {
-        ret.add(drv::PipelineStages::COMPUTE_SHADER_BIT);
         ret.add(drv::PipelineStages::VERTEX_INPUT_BIT);
         ret.add(drv::PipelineStages::FRAGMENT_SHADER_BIT);
         ret.add(drv::PipelineStages::GEOMETRY_SHADER_BIT);
@@ -67,12 +68,15 @@ TimestampCmdBufferPool::TimestampCmdBufferPool(drv::PhysicalDevicePtr physicalDe
         StackMemory::MemoryHandle<uint8_t> recorderMem(drv::get_cmd_buffer_recorder_size(),
                                                        TEMPMEM);
         PlacementPtr<drv::DrvCmdBufferRecorder> recorder = drv::create_cmd_buffer_recorder(
-          recorderMem, physicalDevice, device, family, cmdBuffers[i].cmdBuffer, false, false);
+          recorderMem, physicalDevice, device, family, cmdBuffers.back().cmdBuffer, false, false);
         recorder->init(0);
 
-        for (uint32_t j = 0; j < trackedStages.getStageCount(); ++j)
-            recorder->cmdTimestamp(timestampQueryPool, i * maxFramesInFlight * _queriesPerFrame + j,
+        for (uint32_t j = 0; j < trackedStages.getStageCount(); ++j) {
+            // LOG_ENGINE("Timestamp  family <%p>, cmdBuffer: %d, stage: %u, timestamp: %u", family, i,
+            //            trackedStages.getStage(j), i * trackedStages.getStageCount() + j);
+            recorder->cmdTimestamp(timestampQueryPool, i * trackedStages.getStageCount() + j,
                                    trackedStages.getStage(j));
+        }
     }
 }
 
@@ -146,7 +150,15 @@ void TimestampCmdBufferPool::readbackTimestamps(drv::QueuePtr queue, uint32_t in
     uint32_t firstIndex = trackedStages.getStageCount() * index;
     uint32_t count = trackedStages.getStageCount();
     StackMemory::MemoryHandle<uint64_t> values(count, TEMPMEM);
-    drv::get_timestamp_query_pool_results(device, timestampQueryPool, firstIndex, count, values);
+    bool success =
+      drv::get_timestamp_query_pool_results(device, timestampQueryPool, firstIndex, count, values);
+    // if (!success) {
+    //     LOG_F(WARNING, "Could not query timestamp results. Unsuccessful stages:");
+    //     for (uint32_t i = 0; i < count; ++i)
+    //         if (values[i] == 0)
+    //             LOG_F(WARNING, " - %u", trackedStages.getStage(i));
+    // }
+    drv::drv_assert(success, "Could not query timestamps");
     drv::decode_timestamps(device, queue, count, values, results);
 }
 

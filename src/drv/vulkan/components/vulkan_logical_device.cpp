@@ -243,8 +243,9 @@ uint64_t DrvVulkan::sync_gpu_clock(drv::InstancePtr /*_instance*/,
         wait_for_fence(device, 1, &deviceItr->second.fence, true, 0);
         reset_fences(device, 1, &deviceItr->second.fence);
         // uint64_t executionTicks;
-        get_timestamp_query_pool_results(device, deviceItr->second.queryPool, 0, 1,
-                                         &syncData.lastSyncTimeDeviceTicks);
+        drv::drv_assert(get_timestamp_query_pool_results(device, deviceItr->second.queryPool, 0, 1,
+                                                         &syncData.lastSyncTimeDeviceTicks),
+                        "Timestamps are not ready yet");
         syncData.lastSyncTimeDeviceTicks &= bits;
         // int64_t executionNs = executionTicks * gpuClockNsPerTick;  // timestampPeriod
         if (auto syncItr = deviceItr->second.queueTimeline.find(queue);

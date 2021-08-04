@@ -1701,9 +1701,10 @@ bool DrvVulkan::get_timestamp_query_pool_results(drv::LogicalDevicePtr device,
                                                  drv::TimestampQueryPoolPtr queryPool,
                                                  uint32_t firstQuery, uint32_t queryCount,
                                                  uint64_t* pData) {
-    VkResult result = vkGetQueryPoolResults(
-      convertDevice(device), convertTimestampQueryPool(queryPool), firstQuery, queryCount,
-      sizeof(uint64_t) * queryCount, pData, sizeof(uint64_t), VK_QUERY_RESULT_64_BIT);
+    VkResult result =
+      vkGetQueryPoolResults(convertDevice(device), convertTimestampQueryPool(queryPool), firstQuery,
+                            queryCount, sizeof(uint64_t) * queryCount, pData, sizeof(uint64_t),
+                            VK_QUERY_RESULT_64_BIT /* | VK_QUERY_RESULT_WITH_AVAILABILITY_BIT*/);
     return result == VK_SUCCESS;
 }
 
