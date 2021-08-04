@@ -215,6 +215,8 @@ class FrameGraph
         };
 
         NodeTiming getTiming(FrameId frame, Stage stage) const;
+        uint32_t getDeviceTimingCount(FrameId frame) const;
+        DeviceTiming getDeviceTiming(FrameId frame, uint32_t index) const;
 
         void registerAcquireAttempt(Stage stage, FrameId frameId);
         void registerStart(Stage stage, FrameId frameId);
@@ -394,6 +396,16 @@ class FrameGraph
     ArtificialFrameGraphWorkLoad getWorkLoad() const;
     void setWorkLoad(const ArtificialFrameGraphWorkLoad& workLoad);
 
+     struct ExecutionPackagesTiming
+    {
+        FrameId frame = INVALID_FRAME;
+        std::chrono::microseconds minimumDelay;
+        Clock::time_point minimumSubmissionTime;
+        Clock::time_point minimumExecutionTime;
+    };
+
+    ExecutionPackagesTiming getExecutionTiming(FrameId frame) const;
+
  private:
     struct DependenceData
     {
@@ -404,13 +416,6 @@ class FrameGraph
         }
     };
 
-    struct ExecutionPackagesTiming
-    {
-        FrameId frame = INVALID_FRAME;
-        std::chrono::microseconds minimumDelay;
-        Clock::time_point minimumSubmissionTime;
-        Clock::time_point minimumExecutionTime;
-    };
 
     drv::PhysicalDevice physicalDevice;
     drv::LogicalDevicePtr device;

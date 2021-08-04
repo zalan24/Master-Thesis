@@ -2,7 +2,9 @@
 
 #include <chrono>
 #include <cstdlib>
+#include <ctime>
 #include <fstream>
+#include <iomanip>
 #include <iostream>
 #include <map>
 #include <sstream>
@@ -21,7 +23,7 @@
 #include "execution_queue.h"
 #include "imagestager.h"
 
-bool EngineMouseInputListener::processMouseButton(const Input::MouseButtenEvent& event) {
+bool EngineInputListener::processMouseButton(const Input::MouseButtenEvent& event) {
     if (event.buttonId == 0) {
         if (event.type == event.PRESS)
             clicking = true;
@@ -31,9 +33,18 @@ bool EngineMouseInputListener::processMouseButton(const Input::MouseButtenEvent&
     return false;
 }
 
-bool EngineMouseInputListener::processMouseMove(const Input::MouseMoveEvent& event) {
+bool EngineInputListener::processMouseMove(const Input::MouseMoveEvent& event) {
     mX = event.relX;
     mY = event.relY;
+    return false;
+}
+
+bool EngineInputListener::processKeyboard(const Input::KeyboardEvent& event) {
+    if (event.key == KEY_F10) {
+        if (event.type == event.PRESS)
+            perfCapture = true;
+        return true;
+    }
     return false;
 }
 
@@ -483,6 +494,8 @@ void Engine::simulationLoop() {
             assert(frameGraph.isStopped());
             break;
         }
+        if (mouseListener.popNeedPerfCapture())
+            createPerformanceCapture(simulationFrame);
         simulate(simulationFrame);
         if (!frameGraph.endStage(FrameGraph::SIMULATION_STAGE, simulationFrame)) {
             assert(frameGraph.isStopped());
@@ -1099,6 +1112,33 @@ void Engine::readbackLoop(volatile bool* finished) {
             }
             timestsampRingBuffer[readbackFrame % timestsampRingBuffer.size()].clear();
 
+            if (perfCaptureFrame != INVALID_FRAME
+                && perfCaptureFrame + config.maxFramesInFlight <= readbackFrame) {
+                PerformanceCaptureData capture = generatePerfCapture(readbackFrame);
+                fs::path capturesFolder = fs::path{"captures"};
+                if (!fs::exists(capturesFolder))
+                    fs::create_directories(capturesFolder);
+                try {
+                    capture.exportToFile(capturesFolder / fs::path{"lastCapture.json"});
+                    std::stringstream filename;
+
+                    auto time =
+                      std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
+                    struct tm timeinfo;
+                    localtime_s(&timeinfo, &time);
+                    filename << "capture_" << std::put_time(&timeinfo, "%Y_%m_%d_%H_%M_%S") << "_"
+                             << perfCaptureFrame << ".json";
+                    fs::path capturePath = capturesFolder / fs::path{filename.str()};
+                    capture.exportToFile(capturePath);
+                    LOG_ENGINE("Performance capture of frame %llu, saved to %s", perfCaptureFrame,
+                               capturePath.string().c_str());
+                }
+                catch (const std::exception& e) {
+                    LOG_F(ERROR, "Could not capture frame: %s", e.what());
+                }
+                perfCaptureFrame = INVALID_FRAME;
+            }
+
             garbageSystem.releaseGarbage(readbackFrame);
         }
         else {
@@ -1542,10 +1582,19 @@ PerformanceCaptureData Engine::generatePerfCapture(FrameId lastReadyFrame) const
 
     PerformanceCaptureData ret;
     ret.frameId = targetFrame;
-    ret.frameTime = getTimeDiff(firstTiming.start, endTiming.start);
+    ret.frameTime = getTimeDiff(firstTiming.start, endTiming.start) / frameCount;
     ret.fps = 1000.0 / ret.frameTime;
     ret.executionDelay = -1;
     ret.deviceDelay = -1;
+
+    for (FrameId frame = firstFrame; frame <= lastReadyFrame; ++frame) {
+        FrameGraph::ExecutionPackagesTiming timing = frameGraph.getExecutionTiming(frame);
+        double delay = double(timing.minimumDelay.count()) / 1000.0;
+        if (delay < 0)
+            delay = 0;
+        if (ret.executionDelay < 0 || delay < ret.executionDelay)
+            ret.executionDelay = delay;
+    }
 
     uint32_t pkgId = 0;
 
@@ -1571,6 +1620,22 @@ PerformanceCaptureData Engine::generatePerfCapture(FrameId lastReadyFrame) const
                 ret.stageToThreadToPackageList[stageName][threadName].push_back(std::move(pkg));
             }
         }
+        if (node->hasExecution())
+            for (FrameId frame = firstFrame; frame <= lastReadyFrame; ++frame) {
+                uint32_t submissionCount = node->getDeviceTimingCount(frame);
+                for (uint32_t i = 0; i < submissionCount; ++i) {
+                    FrameGraph::Node::DeviceTiming timing = node->getDeviceTiming(frame, i);
+                    double delay = getTimeDiff(timing.submitted, timing.start);
+                    if (delay < 0)
+                        delay = 0;
+                    if (ret.deviceDelay < 0 || delay < ret.deviceDelay)
+                        ret.deviceDelay = delay;
+                }
+            }
     }
     return ret;
+}
+
+void Engine::createPerformanceCapture(FrameId targetFrame) {
+    perfCaptureFrame = targetFrame;
 }

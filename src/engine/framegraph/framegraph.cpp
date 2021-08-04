@@ -1370,3 +1370,20 @@ void FrameGraph::feedExecutionTiming(FrameId frameId, Clock::time_point issueTim
         entry.minimumSubmissionTime = issueTime;
     }
 }
+
+FrameGraph::ExecutionPackagesTiming FrameGraph::getExecutionTiming(FrameId frameId) const {
+    ExecutionPackagesTiming ret = executionPackagesTiming[frameId % TIMING_HISTORY_SIZE];
+    drv::drv_assert(ret.frame == frameId, "Trying to acquire too old timing data");
+    return ret;
+}
+
+uint32_t FrameGraph::Node::getDeviceTimingCount(FrameId frame) const {
+    const auto& entry = deviceTiming[frame % TIMING_HISTORY_SIZE];
+    return uint32_t(entry.size());
+}
+
+FrameGraph::Node::DeviceTiming FrameGraph::Node::getDeviceTiming(FrameId frame,
+                                                                 uint32_t index) const {
+    const auto& entry = deviceTiming[frame % TIMING_HISTORY_SIZE];
+    return entry[index];
+}

@@ -89,25 +89,27 @@ struct PerformanceCaptureData final : public IAutoSerializable<PerformanceCaptur
     )
 };
 
-class EngineMouseInputListener final : public InputListener
+class EngineInputListener final : public InputListener
 {
  public:
- EngineMouseInputListener() : InputListener(false) {}
-    // EngineMouseInputListener(Renderer* _renderer) : InputListener(false), renderer(_renderer) {}
-    ~EngineMouseInputListener() override {}
+    EngineInputListener() : InputListener(false) {}
+    // EngineInputListener(Renderer* _renderer) : InputListener(false), renderer(_renderer) {}
+    ~EngineInputListener() override {}
 
     CursorMode getCursorMode() override final { return DONT_CARE; }
 
     bool isClicking() const { return clicking; }
     glm::vec2 getMousePos() const { return {mX, mY}; }
+    bool popNeedPerfCapture() { return std::exchange(perfCapture, false); }
 
  protected:
-    // bool processKeyboard(const Input::KeyboardEvent&) override;
+    bool processKeyboard(const Input::KeyboardEvent&) override;
     bool processMouseButton(const Input::MouseButtenEvent&) override;
     bool processMouseMove(const Input::MouseMoveEvent&) override;
     // bool processScroll(const Input::ScrollEvent&) override;
 
  private:
+    bool perfCapture = false;
     bool clicking = false;
     double mX;
     double mY;
@@ -239,7 +241,7 @@ class Engine
 
     FrameGraph::NodeId getMainRecordNode() const {return  mainRecordNode;}
 
-    void createPerformanceCapture() const;
+    void createPerformanceCapture(FrameId targetFrame);
 
  private:
     static constexpr uint64_t firstTimelineCalibrationTimeMs = 1000;
@@ -283,7 +285,7 @@ class Engine
     ShaderBin shaderBin;
     Input input;
     InputManager inputManager;
-    EngineMouseInputListener mouseListener;
+    EngineInputListener mouseListener;
     drv::DriverWrapper driver;
     drv::Window window;
     drv::Instance drvInstance;
@@ -346,6 +348,7 @@ class Engine
     std::filesystem::file_time_type workLoadFileModificationDate;
 
     std::vector<EntityRenderData> entitiesToDraw;
+    FrameId perfCaptureFrame = INVALID_FRAME;
 
     struct SubmissionTimestampsInfo
     {
