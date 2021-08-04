@@ -1637,10 +1637,10 @@ PerformanceCaptureData Engine::generatePerfCapture(FrameId lastReadyFrame) const
                     FrameGraph::Node::DeviceTiming timing = node->getDeviceTiming(frame, i);
                     double delay = getTimeDiff(timing.submitted, timing.start);
 
-                    // LOG_ENGINE("Device delay: %lf, submitted: %lf, start: %lf, finish: %lf", delay,
-                    //            getTimeDiff(startTime, timing.submitted),
-                    //            getTimeDiff(startTime, timing.start),
-                    //            getTimeDiff(startTime, timing.finish));
+                    LOG_ENGINE("Device delay: %lf, submitted: %lf, start: %lf, finish: %lf", delay,
+                               getTimeDiff(startTime, timing.submitted),
+                               getTimeDiff(startTime, timing.start),
+                               getTimeDiff(startTime, timing.finish));
                     if (delay < 0)
                         delay = 0;
                     if (ret.deviceDelay < 0 || delay < ret.deviceDelay)

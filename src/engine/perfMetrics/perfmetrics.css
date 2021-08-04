@@ -1,0 +1,59 @@
+body {
+    background-color: rgb(54, 52, 46);
+}
+
+#perftable {
+    /* width: 100%; */
+    /* height: fit-content; */
+}
+
+#perftable tr {
+    /* width: fit-content; */
+    /* height: fit-content; */
+    background-color:  rgb(68, 66, 57);
+    border-bottom: 1px solid rgb(100, 97, 84);
+    border-top: 1px solid rgb(100, 97, 84);
+}
+
+#perftable > tbody > tr {
+    /* width: fit-content; */
+    /* width: 30px; */
+    /* width: 3% */
+    /* height: fit-content; */
+    background-color:  rgb(59, 57, 50);
+    border-bottom: 1px solid rgb(148, 144, 124);
+    border-top: 1px solid rgb(148, 144, 124);
+}
+
+.nametd {
+    /* width: min-content; */
+    /* background-color: wheat; */
+}
+
+.contenttd {
+    width: 1000px;
+    /* background-color: aqua; */
+    border: 1px solid white;
+}
+
+.stageName, .threadName {
+    color: rgb(255, 244, 185);
+    overflow: hidden;
+}
+
+.threadName {
+    width: 200px;
+}
+
+.stageName {
+    width: 20px;
+    margin: 5px;
+    transform: rotate(180deg);
+    writing-mode: vertical-rl;
+}
+
+table {
+    border-collapse:collapse;
+    /* width: 100%; */
+}
+
