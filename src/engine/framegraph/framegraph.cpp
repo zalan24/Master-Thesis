@@ -1262,6 +1262,7 @@ void FrameGraph::Node::registerAcquireAttempt(Stage stage, FrameId frameId) {
         entry.frameId = frameId;
         entry.ready = Clock::now();
         entry.finish = entry.start = {};
+        entry.threadId = std::this_thread::get_id();
     }
 }
 
@@ -1273,6 +1274,13 @@ void FrameGraph::Node::registerStart(Stage stage, FrameId frameId) {
 void FrameGraph::Node::registerFinish(Stage stage, FrameId frameId) {
     auto& entry = timingInfos[get_stage_id(stage)][frameId % TIMING_HISTORY_SIZE];
     entry.finish = Clock::now();
+}
+
+FrameGraph::Node::NodeTiming FrameGraph::Node::getTiming(FrameId frame, Stage stage) const {
+    FrameGraph::Node::NodeTiming ret =
+      timingInfos[get_stage_id(stage)][frame % TIMING_HISTORY_SIZE];
+    drv::drv_assert(ret.frameId == frame, "Trying to acquire too old timing data");
+    return ret;
 }
 
 void FrameGraph::Node::registerExecutionStart(FrameId frameId) {

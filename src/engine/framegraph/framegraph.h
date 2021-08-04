@@ -93,7 +93,7 @@ class FrameGraph
     static constexpr NodeId INVALID_NODE = std::numeric_limits<NodeId>::max();
     static constexpr uint32_t NO_SYNC = std::numeric_limits<Offset>::max();
     using Clock = drv::Clock;
-    static constexpr uint32_t TIMING_HISTORY_SIZE = 16;
+    static constexpr uint32_t TIMING_HISTORY_SIZE = 32;
 
     using Stages = uint8_t;
     enum Stage : Stages
@@ -187,9 +187,12 @@ class FrameGraph
 
         const std::string &getName() const {return name;}
 
+        bool hasStage(Stage stage) const { return (stages & stage) != 0; }
+
         struct NodeTiming
         {
             FrameId frameId = INVALID_FRAME;
+            std::thread::id threadId;
             FrameGraph::Clock::time_point ready;
             FrameGraph::Clock::time_point start;
             FrameGraph::Clock::time_point finish;
@@ -210,6 +213,8 @@ class FrameGraph
             FrameGraph::Clock::time_point start;
             FrameGraph::Clock::time_point finish;
         };
+
+        NodeTiming getTiming(FrameId frame, Stage stage) const;
 
         void registerAcquireAttempt(Stage stage, FrameId frameId);
         void registerStart(Stage stage, FrameId frameId);
@@ -308,6 +313,7 @@ class FrameGraph
     Node* getNode(NodeId id);
     NodeId getNodeId(const std::string& name) const;
     const Node* getNode(NodeId id) const;
+    uint32_t getNodeCount() const { return uint32_t(nodes.size()); }
     void addDependency(NodeId target, CpuDependency dep);
     void addDependency(NodeId target, EnqueueDependency dep);
     // void addDependency(NodeId target, CpuQueueDependency dep);

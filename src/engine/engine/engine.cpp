@@ -1513,3 +1513,64 @@ Engine::AcquiredImageData Engine::mainRecord(FrameId frameId) {
     }
     return {};
 }
+
+PerformanceCaptureData Engine::generatePerfCapture(FrameId lastReadyFrame) const {
+    FrameId firstFrame = lastReadyFrame > config.maxFramesInFlight * 2 + 1
+                           ? lastReadyFrame - (config.maxFramesInFlight * 2 + 1)
+                           : 0;
+    uint32_t frameCount = uint32_t(lastReadyFrame - firstFrame + 1);
+    drv::drv_assert(FrameGraph::TIMING_HISTORY_SIZE > frameCount + config.maxFramesInFlight,
+                    "Timing history is not long enough to make a capture");
+    FrameId targetFrame = lastReadyFrame - config.maxFramesInFlight;
+
+    const FrameGraph::Node* simStart =
+      frameGraph.getNode(frameGraph.getStageStartNode(FrameGraph::SIMULATION_STAGE));
+
+    FrameGraph::Node::NodeTiming firstTiming =
+      simStart->getTiming(firstFrame, FrameGraph::SIMULATION_STAGE);
+    FrameGraph::Node::NodeTiming targetTiming =
+      simStart->getTiming(targetFrame, FrameGraph::SIMULATION_STAGE);
+    FrameGraph::Node::NodeTiming endTiming =
+      simStart->getTiming(lastReadyFrame, FrameGraph::SIMULATION_STAGE);
+
+    FrameGraph::Clock::time_point startTime = targetTiming.start;
+
+    auto getTimeDiff = [](FrameGraph::Clock::time_point from, FrameGraph::Clock::time_point to) {
+        return double(std::chrono::duration_cast<std::chrono::nanoseconds>(to - from).count())
+               / 1000000.0;
+    };
+
+    PerformanceCaptureData ret;
+    ret.frameId = targetFrame;
+    ret.frameTime = getTimeDiff(firstTiming.start, endTiming.start);
+    ret.fps = 1000.0 / ret.frameTime;
+    ret.executionDelay = -1;
+    ret.deviceDelay = -1;
+
+    uint32_t pkgId = 0;
+
+    for (FrameGraph::NodeId id = 0; id < frameGraph.getNodeCount(); ++id) {
+        const FrameGraph::Node* node = frameGraph.getNode(id);
+        for (uint32_t stageId = 0; stageId < FrameGraph::NUM_STAGES; ++stageId) {
+            FrameGraph::Stage stage = FrameGraph::get_stage(stageId);
+            if (stage == FrameGraph::EXECUTION_STAGE)
+                continue;
+            std::string stageName = FrameGraph::get_stage_name(stage);
+            if (!node->hasStage(stage))
+                continue;
+            for (FrameId frame = firstFrame; frame <= lastReadyFrame; ++frame) {
+                FrameGraph::Node::NodeTiming timing = node->getTiming(frame, stage);
+                PerformanceCaptureCpuPackage pkg;
+                pkg.name = node->getName();
+                pkg.frameId = frame;
+                pkg.packageId = pkgId++;
+                pkg.availableTime = getTimeDiff(startTime, timing.ready);
+                pkg.startTime = getTimeDiff(startTime, timing.start);
+                pkg.endTime = getTimeDiff(startTime, timing.finish);
+                std::string threadName = get_thread_name(timing.threadId);
+                ret.stageToThreadToPackageList[stageName][threadName].push_back(std::move(pkg));
+            }
+        }
+    }
+    return ret;
+}

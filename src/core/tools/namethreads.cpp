@@ -1,8 +1,23 @@
 #include "namethreads.h"
 
+#include <map>
+#include <mutex>
 #include <thread>
+#include <sstream>
 
 // https://stackoverflow.com/questions/10121560/stdthread-naming-your-thread
+
+static std::mutex mapMutex;
+static std::map<std::thread::id, std::string> threadNames;
+
+std::string get_thread_name(std::thread::id id) {
+    std::unique_lock<std::mutex> lock(mapMutex);
+    if (auto itr = threadNames.find(id); itr != threadNames.end())
+        return itr->second;
+    std::stringstream ss;
+    ss << "#" << id;
+    return ss.str();
+}
 
 #ifdef _WIN32
 // because apparently vindoz can't event use lowercase header names
@@ -39,6 +54,8 @@ static void SetThreadName(uint32_t dwThreadID, const char* threadName) {
 void set_thread_name(std::thread* thread, const char* name) {
     DWORD threadId = ::GetThreadId(static_cast<HANDLE>(thread->native_handle()));
     SetThreadName(threadId, name);
+    std::unique_lock<std::mutex> lock(mapMutex);
+    threadNames[thread->get_id()] = std::string(name);
 }
 
 #elif defined(__linux__)

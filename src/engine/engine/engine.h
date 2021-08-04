@@ -63,6 +63,32 @@ struct EngineConfig final : public IAutoSerializable<EngineConfig>
     )
 };
 
+struct PerformanceCaptureCpuPackage final : public IAutoSerializable<PerformanceCaptureCpuPackage>
+{
+    REFLECTABLE
+    (
+        (std::string) name,
+        (uint64_t) frameId,
+        (uint32_t) packageId,
+        (double) availableTime,
+        (double) startTime,
+        (double) endTime
+    )
+};
+
+struct PerformanceCaptureData final : public IAutoSerializable<PerformanceCaptureData>
+{
+    REFLECTABLE
+    (
+        (uint64_t) frameId,
+        (double) fps,
+        (double) frameTime,
+        (double) executionDelay,
+        (double) deviceDelay,
+        (std::map<std::string, std::map<std::string, std::vector<PerformanceCaptureCpuPackage>>>) stageToThreadToPackageList
+    )
+};
+
 class EngineMouseInputListener final : public InputListener
 {
  public:
@@ -213,6 +239,8 @@ class Engine
 
     FrameGraph::NodeId getMainRecordNode() const {return  mainRecordNode;}
 
+    void createPerformanceCapture() const;
+
  private:
     static constexpr uint64_t firstTimelineCalibrationTimeMs = 1000;
     static constexpr uint64_t otherTimelineCalibrationTimeMs = 10000;
@@ -340,6 +368,7 @@ class Engine
     void present(drv::SwapchainPtr swapchain, FrameId frame, uint32_t imageIndex,
                  uint32_t semaphoreIndex);
     bool sampleInput(FrameId frameId);
+    PerformanceCaptureData generatePerfCapture(FrameId lastReadyFrame) const;
     AcquiredImageData mainRecord(FrameId frameId);
 
     static drv::PhysicalDevice::SelectionInfo get_device_selection_info(
