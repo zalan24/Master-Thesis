@@ -92,6 +92,8 @@ class FrameGraph
     using Offset = uint32_t;
     static constexpr NodeId INVALID_NODE = std::numeric_limits<NodeId>::max();
     static constexpr uint32_t NO_SYNC = std::numeric_limits<Offset>::max();
+    using Clock = drv::Clock;
+    static constexpr uint32_t TIMING_HISTORY_SIZE = 16;
 
     using Stages = uint8_t;
     enum Stage : Stages
@@ -185,20 +187,18 @@ class FrameGraph
 
         const std::string &getName() const {return name;}
 
-        using Clock = drv::Clock;
-
         struct NodeTiming
         {
             FrameId frameId = INVALID_FRAME;
-            Clock::time_point ready;
-            Clock::time_point start;
-            Clock::time_point finish;
+            FrameGraph::Clock::time_point ready;
+            FrameGraph::Clock::time_point start;
+            FrameGraph::Clock::time_point finish;
         };
         struct ExecutionTiming
         {
             FrameId frameId = INVALID_FRAME;
-            Clock::time_point start;
-            Clock::time_point finish;
+            FrameGraph::Clock::time_point start;
+            FrameGraph::Clock::time_point finish;
         };
 
         struct DeviceTiming
@@ -206,9 +206,9 @@ class FrameGraph
             drv::QueuePtr queue;
             drv::CmdBufferId submissionId;
             FrameId frameId = INVALID_FRAME;
-            Clock::time_point submitted;
-            Clock::time_point start;
-            Clock::time_point finish;
+            FrameGraph::Clock::time_point submitted;
+            FrameGraph::Clock::time_point start;
+            FrameGraph::Clock::time_point finish;
         };
 
         void registerAcquireAttempt(Stage stage, FrameId frameId);
@@ -223,8 +223,6 @@ class FrameGraph
         ArtificialWorkLoad getWorkLoad(Stage stage) const;
 
      private:
-        static constexpr uint32_t TIMING_HISTORY_SIZE = 16;
-
         std::string name;
         Stages stages = 0;
         bool tagNode;
@@ -400,6 +398,14 @@ class FrameGraph
         }
     };
 
+    struct ExecutionPackagesTiming
+    {
+        FrameId frame = INVALID_FRAME;
+        std::chrono::microseconds minimumDelay;
+        Clock::time_point minimumSubmissionTime;
+        Clock::time_point minimumExecutionTime;
+    };
+
     drv::PhysicalDevice physicalDevice;
     drv::LogicalDevicePtr device;
     GarbageSystem* garbageSystem;
@@ -417,6 +423,7 @@ class FrameGraph
     std::array<TagNodeId, NUM_STAGES> stageStartNodes;
     std::array<TagNodeId, NUM_STAGES> stageEndNodes;
     std::vector<Offset> enqueueDependencyOffsets;
+    std::vector<ExecutionPackagesTiming> executionPackagesTiming;
 
     struct WaitAllCommandsData
     {

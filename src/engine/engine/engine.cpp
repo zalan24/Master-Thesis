@@ -634,18 +634,19 @@ void Engine::recordCommandsLoop() {
             }
             if (!drv::is_null_ptr(swapchainData.image)) {
                 frameGraph.getExecutionQueue(presentHandle)
-                  ->push(ExecutionPackage(ExecutionPackage::PresentPackage{
-                    recordFrame, swapchainData.imageIndex, swapchainData.semaphoreIndex,
-                    swapchainData.swapchain}));
+                  ->push(ExecutionPackage(
+                    recordFrame, ExecutionPackage::PresentPackage{
+                                   recordFrame, swapchainData.imageIndex,
+                                   swapchainData.semaphoreIndex, swapchainData.swapchain}));
             }
         }
         if (auto endNode =
               frameGraph.acquireNode(frameGraph.getStageEndNode(FrameGraph::RECORD_STAGE),
                                      FrameGraph::RECORD_STAGE, recordFrame);
             endNode) {
-            frameGraph.getGlobalExecutionQueue()->push(
-              ExecutionPackage(ExecutionPackage::MessagePackage{
-                ExecutionPackage::Message::FRAME_SUBMITTED, recordFrame, 0, nullptr}));
+            frameGraph.getGlobalExecutionQueue()->push(ExecutionPackage(
+              recordFrame, ExecutionPackage::MessagePackage{
+                             ExecutionPackage::Message::FRAME_SUBMITTED, recordFrame, 0, nullptr}));
         }
         else {
             assert(frameGraph.isStopped());
@@ -655,6 +656,7 @@ void Engine::recordCommandsLoop() {
     }
     // No node can be waiting for enqueue at this point (or they will never be enqueued)
     frameGraph.getGlobalExecutionQueue()->push(ExecutionPackage(
+      recordFrame,
       ExecutionPackage::MessagePackage{ExecutionPackage::Message::QUIT, 0, 0, nullptr}));
 }
 

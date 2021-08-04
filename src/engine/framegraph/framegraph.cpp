@@ -11,9 +11,9 @@
 
 FrameGraph::FrameGraph(drv::PhysicalDevice _physicalDevice, drv::LogicalDevicePtr _device,
                        GarbageSystem* _garbageSystem, drv::ResourceLocker* _resourceLocker,
-                       EventPool* _eventPool, drv::TimelineSemaphorePool* _semaphorePool, TimestampPool *_timestampPool,
-                       drv::StateTrackingConfig _trackerConfig, uint32_t maxFramesInExecution,
-                       uint32_t _maxFramesInFlight)
+                       EventPool* _eventPool, drv::TimelineSemaphorePool* _semaphorePool,
+                       TimestampPool* _timestampPool, drv::StateTrackingConfig _trackerConfig,
+                       uint32_t maxFramesInExecution, uint32_t _maxFramesInFlight)
   : physicalDevice(_physicalDevice),
     device(_device),
     garbageSystem(_garbageSystem),
@@ -22,7 +22,8 @@ FrameGraph::FrameGraph(drv::PhysicalDevice _physicalDevice, drv::LogicalDevicePt
     semaphorePool(_semaphorePool),
     timestampPool(_timestampPool),
     trackerConfig(_trackerConfig),
-    maxFramesInFlight(_maxFramesInFlight) {
+    maxFramesInFlight(_maxFramesInFlight),
+    executionPackagesTiming(TIMING_HISTORY_SIZE) {
     for (uint32_t i = 0; i < NUM_STAGES; ++i) {
         if (get_stage(i) == EXECUTION_STAGE) {
             stageStartNodes[i] = stageEndNodes[i] = INVALID_NODE;
@@ -590,9 +591,10 @@ FrameGraph::NodeHandle::NodeHandle(FrameGraph* _frameGraph, FrameGraph::NodeId _
     Node* nodePtr = frameGraph->getNode(node);
     nodePtr->registerStart(stage, frameId);
     if (stage == RECORD_STAGE && nodePtr->hasExecution()) {
-        frameGraph->getExecutionQueue(*this)->push(
-          ExecutionPackage(ExecutionPackage::MessagePackage{
-            ExecutionPackage::Message::FRAMEGRAPH_NODE_START_MARKER, node, frameId, nullptr}));
+        frameGraph->getExecutionQueue(*this)->push(ExecutionPackage(
+          frameId,
+          ExecutionPackage::MessagePackage{ExecutionPackage::Message::FRAMEGRAPH_NODE_START_MARKER,
+                                           node, frameId, nullptr}));
     }
     float startWorkLoad = nodePtr->getWorkLoad(stage).preLoad;
     uint64_t usec = static_cast<uint64_t>(startWorkLoad * 1000);
@@ -641,7 +643,7 @@ void FrameGraph::NodeHandle::submit(QueueId queueId,
     drv::drv_assert(frameGraph->getQueue(queueId) == submission.queue);
 
     ExecutionQueue* q = frameGraph->getExecutionQueue(*this);
-    q->push(std::move(submission));
+    q->push(ExecutionPackage(submission.frameId, std::move(submission)));
 }
 
 bool FrameGraph::waitForNode(NodeId node, Stage stage, FrameId frame) {
@@ -1003,6 +1005,7 @@ void FrameGraph::release(NodeHandle& handle) {
     Node* node = getNode(handle.node);
     if (handle.stage == RECORD_STAGE && node->hasExecution()) {
         getExecutionQueue(handle)->push(ExecutionPackage(
+          handle.frameId,
           ExecutionPackage::MessagePackage{ExecutionPackage::Message::FRAMEGRAPH_NODE_FINISH_MARKER,
                                            handle.node, handle.frameId, nullptr}));
     }
@@ -1021,6 +1024,7 @@ void FrameGraph::release(NodeHandle& handle) {
         }
         else {
             node->localExecutionQueue->push(ExecutionPackage(
+              handle.frameId,
               ExecutionPackage::MessagePackage{ExecutionPackage::Message::RECURSIVE_END_MARKER,
                                                handle.node, handle.frameId, nullptr}));
             checkAndEnqueue(handle.node, handle.frameId, handle.stage, false);
@@ -1034,8 +1038,8 @@ void FrameGraph::checkAndEnqueue(NodeId nodeId, FrameId frameId, Stage stage, bo
     for (FrameId i = node->enqueuedFrame + 1;
          i <= clearance && i <= node->completedFrames[get_stage_id(stage)]; ++i) {
         traverse = true;
-        executionQueue.push(
-          ExecutionPackage(ExecutionPackage::RecursiveQueue{node->localExecutionQueue.get()}));
+        executionQueue.push(ExecutionPackage(
+          frameId, ExecutionPackage::RecursiveQueue{node->localExecutionQueue.get()}));
         node->enqueuedFrame = i;
     }
     if (traverse)
@@ -1075,10 +1079,11 @@ ExecutionQueue* FrameGraph::getExecutionQueue(NodeHandle& handle) {
         && node->enqueueFrameClearance != INVALID_FRAME) {
         if (handle.nodeExecutionData.hasLocalCommands) {
             node->localExecutionQueue->push(ExecutionPackage(
+              handle.frameId,
               ExecutionPackage::MessagePackage{ExecutionPackage::Message::RECURSIVE_END_MARKER,
                                                handle.node, handle.frameId, nullptr}));
-            executionQueue.push(
-              ExecutionPackage(ExecutionPackage::RecursiveQueue{node->localExecutionQueue.get()}));
+            executionQueue.push(ExecutionPackage(
+              handle.frameId, ExecutionPackage::RecursiveQueue{node->localExecutionQueue.get()}));
             handle.nodeExecutionData.hasLocalCommands = false;
         }
         return &executionQueue;
@@ -1324,8 +1329,8 @@ ArtificialWorkLoad FrameGraph::Node::getWorkLoad(Stage stage) const {
 }
 
 void FrameGraph::NodeHandle::busy_sleep(std::chrono::microseconds duration) {
-    FrameGraph::Node::Clock::time_point startTime = FrameGraph::Node::Clock::now();
-    while (FrameGraph::Node::Clock::now() - startTime < duration)
+    FrameGraph::Clock::time_point startTime = FrameGraph::Clock::now();
+    while (FrameGraph::Clock::now() - startTime < duration)
         ;
 }
 
@@ -1343,5 +1348,17 @@ void FrameGraph::Node::initFrame(FrameId frameId) {
     if (!deviceTiming.empty()) {
         auto& devicesTimingEntry = deviceTiming[frameId % TIMING_HISTORY_SIZE];
         devicesTimingEntry.clear();
+    }
+}
+
+void FrameGraph::feedExecutionTiming(FrameId frameId, Clock::time_point issueTime,
+                                     Clock::time_point executionStartTime) {
+    auto& entry = executionPackagesTiming[frameId % TIMING_HISTORY_SIZE];
+    auto duration = executionStartTime - issueTime;
+    if (entry.frame != frameId || duration < entry.minimumDelay) {
+        entry.frame = frameId;
+        entry.minimumDelay = std::chrono::duration_cast<std::chrono::microseconds>(duration);
+        entry.minimumExecutionTime = executionStartTime;
+        entry.minimumSubmissionTime = issueTime;
     }
 }
