@@ -2,7 +2,15 @@ body {
     background-color: rgb(54, 52, 46);
 }
 
+html, body {
+    margin: 0; height: 100%;
+    overflow: hidden;
+}
+
 #perftable {
+    top: 0;
+    left: 0;
+    position: absolute;
     /* width: 100%; */
     /* height: fit-content; */
 }
@@ -13,6 +21,15 @@ body {
     background-color:  rgb(68, 66, 57);
     border-bottom: 1px solid rgb(100, 97, 84);
     border-top: 1px solid rgb(100, 97, 84);
+}
+
+#perftable * {
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    -khtml-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
 }
 
 #perftable > tbody > tr {
