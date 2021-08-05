@@ -204,17 +204,17 @@ function createTable() {
 
             let contentTd = document.createElement('td');
             contentTd.className = 'contenttd';
+            contentTd.style.width = `${timeToWorldUnit * (maxTime - minTime)}px`;
 
             // let contentTable = document.createElement('table');
             // let contentTableBody = document.createElement('tbody');
             // let contentTableTr = document.createElement('tr');
 
-            // contentTd.style.width = `${timeToWorldUnit * (maxTime - minTime)}px`;
             // let lastTime = minTime;
             for(let i in cpuNodes[stageName][threadName]) {
                 let node = cpuNodes[stageName][threadName][i];
                 // let pause = (node.availableTime - lastTime) * timeToWorldUnit;
-                let textTarget = null;
+                // let textTarget = null;
                 // if (pause >= 1)
                 // {
                 //     let pauseElem = document.createElement('div');
@@ -223,40 +223,53 @@ function createTable() {
                 //     contentTd.appendChild(pauseElem);
                 // }
                 // lastTime = node.availableTime;
-                let waitTime = node.startTime - node.availableTime;
-                let workTime = node.endTime - node.startTime;
+                let waitTime = Math.max(node.startTime - node.availableTime, 0);
+                let workTime = Math.max(node.endTime - node.startTime, 0);
 
+                let nodeWrapperElem = document.createElement('div');
+                nodeWrapperElem.className = "nodeWrapper " + (node.frameId == captureData.frameId ? "currentFrame" : "otherFrame");
+                nodeWrapperElem.style.left = `${timeToWorldUnit * (node.availableTime - minTime)}px`
                 let nodeElem = document.createElement('div');
                 nodeElem.className = "cpuNode";
-                nodeElem.style.left = `${timeToWorldUnit * (node.availableTime - minTime)}px`
-                nodeElem.style.width = `${Math.max(timeToWorldUnit * (node.endTime - node.availableTime), 1)}px`;
+
+                let textWrapper = document.createElement('div');
+                textWrapper.className = "textWrapper";
+                textWrapper.style.width = `${Math.max(timeToWorldUnit * (waitTime + workTime), 1)}px`;
+
+                let nodeNameElem = document.createElement('div');
+                nodeNameElem.className = "nodeText";
+                nodeNameElem.innerHTML = `${node.name} (${node.frameId - captureData.frameId})`;
+                // nodeNameElem.style.top = "3px";
+                textWrapper.appendChild(nodeNameElem);
+
+                let nodeTimingElem = document.createElement('div');
+                nodeTimingElem.className = "nodeText";
+                nodeTimingElem.innerHTML = `${Math.round(node.availableTime - minTargetTime)} | ${Math.round(node.startTime - minTargetTime)} | ${Math.round(node.endTime - minTargetTime)} ms`;
+                // nodeTimingElem.style.bottom = "3px";
+                // nodeTimingElem.style.paddingTop = "15px";
+                textWrapper.appendChild(nodeTimingElem);
+                nodeElem.appendChild(textWrapper);
+
+                // nodeElem.style.width = "200px";// `${Math.max(timeToWorldUnit * (node.endTime - node.availableTime), 1)}px`;
 
                 if (waitTime > 0.1) {
                     let waitElem = document.createElement('div');
                     waitElem.className = "waitTime";
                     waitElem.style.width = `${Math.max(timeToWorldUnit * waitTime, 1)}px`;
                     nodeElem.appendChild(waitElem);
-                    textTarget = waitElem;
+                    // textTarget = waitElem;
                 }
                 let workElem = document.createElement('div');
                 workElem.className = "workTime";
                 workElem.style.width = `${Math.max(timeToWorldUnit * workTime, 1)}px`;
                 // workElem.style.left = `${timeToWorldUnit * (node.startTime - minTime)}px`
                 nodeElem.appendChild(workElem);
-                if (textTarget == null)
-                    textTarget = workElem;
+                // if (textTarget == null)
+                //     textTarget = workElem;
 
-                let nodeNameElem = document.createElement('div');
-                nodeNameElem.className = "nodeText";
-                nodeNameElem.innerHTML = `${node.name} (${node.frameId - captureData.frameId})`;
-                textTarget.appendChild(nodeNameElem);
 
-                let nodeTimingElem = document.createElement('div');
-                nodeTimingElem.className = "nodeText";
-                nodeTimingElem.innerHTML = `${Math.round(node.availableTime - minTargetTime)} | ${Math.round(node.startTime - minTargetTime)} | ${Math.round(node.endTime - minTargetTime)} ms`;
-                textTarget.appendChild(nodeTimingElem);
-
-                contentTd.appendChild(nodeElem);
+                nodeWrapperElem.appendChild(nodeElem);
+                contentTd.appendChild(nodeWrapperElem);
             }
             // contentTableBody.appendChild(contentTableTr);
             // contentTable.appendChild(contentTableBody);
