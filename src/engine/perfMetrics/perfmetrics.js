@@ -133,6 +133,18 @@ function createTable() {
     if (oldTbl)
         oldTbl.remove()
 
+    let frameIdText = document.getElementById('info_frameid');
+    let fpsText = document.getElementById('info_fps');
+    let frametimeText = document.getElementById('info_frametime');
+    let execDelayText = document.getElementById('info_executiondelay');
+    let deviceDelayText = document.getElementById('info_devicedelay');
+
+    frameIdText.innerHTML = captureData.frameId;
+    fpsText.innerHTML = Math.round(captureData.fps);
+    frametimeText.innerHTML = `${Math.round(captureData.frameTime)}ms`;
+    execDelayText.innerHTML = `${Math.round(captureData.executionDelay)}ms`;
+    deviceDelayText.innerHTML = `${Math.round(captureData.deviceDelay)}ms`;
+
     document.onmousedown = onDocumentDragStart;
     document.onmouseup = onDocumentDragEnd;
     document.onmousemove = onDocumentDrag;
