@@ -102,8 +102,12 @@ table {
     height: 30px;
     /* position: absolute; */
     /* float: left; */
-    opacity: 0.5;
+    /* opacity: 0.5; */
     /* top: 0; */
+    display: inline-block;
+    /* display: inline; */
+    /* float: left; */
+    /* width: 30px; */
 }
 
 .contenttd {
@@ -113,10 +117,6 @@ table {
     /* border: 1px solid white; */
 }
 
-.waitTime:hover, .workTime:hover {
-    opacity: 1;
-}
-
 .waitTime {
     /* position: inherit; */
     background-color: rgb(119, 73, 43);
@@ -124,6 +124,7 @@ table {
 
 .workTime {
     background-color: brown;
+    /* display: inline; */
     /* position: inherit; */
 }
 
@@ -131,13 +132,22 @@ table {
     font-size: x-small;
     color: white;
     overflow: hidden;
-    opacity: 0.3;
     white-space: nowrap;
     text-align: right;
 }
 
-div:hover > .nodeText {
+.cpuNode:hover .nodeText {
     overflow: visible;
+    z-index: 1;
+}
+
+.cpuNode {
+    z-index: 0;
+    opacity: 0.3;
+    /* height: 30px; */
+}
+
+.cpuNode:hover {
+    /* z-index: 2; */
     opacity: 1;
-    z-index: 2;
 }

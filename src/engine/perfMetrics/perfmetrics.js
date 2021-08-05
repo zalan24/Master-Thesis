@@ -210,34 +210,39 @@ function createTable() {
             // let contentTableTr = document.createElement('tr');
 
             // contentTd.style.width = `${timeToWorldUnit * (maxTime - minTime)}px`;
-            let lastTime = minTime;
+            // let lastTime = minTime;
             for(let i in cpuNodes[stageName][threadName]) {
                 let node = cpuNodes[stageName][threadName][i];
-                let pause = (node.availableTime - lastTime) * timeToWorldUnit;
+                // let pause = (node.availableTime - lastTime) * timeToWorldUnit;
                 let textTarget = null;
-                if (pause >= 1)
-                {
-                    let pauseElem = document.createElement('div');
-                    pauseElem.style.width = `${pause}px`;
-                    // pauseTd.style.left = `${timeToWorldUnit * (lastTime - minTime)}px`
-                    contentTd.appendChild(pauseElem);
-                }
-                lastTime = node.availableTime;
+                // if (pause >= 1)
+                // {
+                //     let pauseElem = document.createElement('div');
+                //     pauseElem.style.width = `${pause}px`;
+                //     // pauseTd.style.left = `${timeToWorldUnit * (lastTime - minTime)}px`
+                //     contentTd.appendChild(pauseElem);
+                // }
+                // lastTime = node.availableTime;
                 let waitTime = node.startTime - node.availableTime;
                 let workTime = node.endTime - node.startTime;
+
+                let nodeElem = document.createElement('div');
+                nodeElem.className = "cpuNode";
+                nodeElem.style.left = `${timeToWorldUnit * (node.availableTime - minTime)}px`
+                nodeElem.style.width = `${Math.max(timeToWorldUnit * (node.endTime - node.availableTime), 1)}px`;
+
                 if (waitTime > 0.1) {
                     let waitElem = document.createElement('div');
                     waitElem.className = "waitTime";
-                    waitElem.style.width = `${timeToWorldUnit * waitTime}px`;
-                    waitElem.style.left = `${timeToWorldUnit * (node.availableTime - minTime)}px`
-                    contentTd.appendChild(waitElem);
+                    waitElem.style.width = `${Math.max(timeToWorldUnit * waitTime, 1)}px`;
+                    nodeElem.appendChild(waitElem);
                     textTarget = waitElem;
                 }
                 let workElem = document.createElement('div');
                 workElem.className = "workTime";
                 workElem.style.width = `${Math.max(timeToWorldUnit * workTime, 1)}px`;
-                workElem.style.left = `${timeToWorldUnit * (node.startTime - minTime)}px`
-                contentTd.appendChild(workElem);
+                // workElem.style.left = `${timeToWorldUnit * (node.startTime - minTime)}px`
+                nodeElem.appendChild(workElem);
                 if (textTarget == null)
                     textTarget = workElem;
 
@@ -250,6 +255,8 @@ function createTable() {
                 nodeTimingElem.className = "nodeText";
                 nodeTimingElem.innerHTML = `${Math.round(node.availableTime - minTargetTime)} | ${Math.round(node.startTime - minTargetTime)} | ${Math.round(node.endTime - minTargetTime)} ms`;
                 textTarget.appendChild(nodeTimingElem);
+
+                contentTd.appendChild(nodeElem);
             }
             // contentTableBody.appendChild(contentTableTr);
             // contentTable.appendChild(contentTableBody);
