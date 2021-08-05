@@ -133,6 +133,8 @@ function createTable() {
     if (oldTbl)
         oldTbl.remove()
 
+    const timeToWorldUnit = 2;
+
     let frameIdText = document.getElementById('info_frameid');
     let fpsText = document.getElementById('info_fps');
     let frametimeText = document.getElementById('info_frametime');
@@ -158,11 +160,15 @@ function createTable() {
     cpuNodes = captureData.stageToThreadToPackageList;
     let minTime = null;
     let maxTime = null;
+    let minTargetTime = null;
     for (let stageName in cpuNodes) {
         for (let threadName in cpuNodes[stageName]) {
-            for(let node in cpuNodes[stageName][threadName]) {
+            for(let i in cpuNodes[stageName][threadName]) {
+                let node = cpuNodes[stageName][threadName][i];
                 if (minTime == null || node.availableTime < minTime)
                     minTime = node.availableTime;
+                if (node.frameId == captureData.frameId && (minTargetTime == null || node.availableTime < minTargetTime))
+                    minTargetTime = node.availableTime;
                 if (maxTime == null || maxTime < node.endTime)
                     maxTime = node.endTime;
             }
@@ -198,6 +204,56 @@ function createTable() {
 
             let contentTd = document.createElement('td');
             contentTd.className = 'contenttd';
+
+            // let contentTable = document.createElement('table');
+            // let contentTableBody = document.createElement('tbody');
+            // let contentTableTr = document.createElement('tr');
+
+            // contentTd.style.width = `${timeToWorldUnit * (maxTime - minTime)}px`;
+            let lastTime = minTime;
+            for(let i in cpuNodes[stageName][threadName]) {
+                let node = cpuNodes[stageName][threadName][i];
+                let pause = (node.availableTime - lastTime) * timeToWorldUnit;
+                let textTarget = null;
+                if (pause >= 1)
+                {
+                    let pauseElem = document.createElement('div');
+                    pauseElem.style.width = `${pause}px`;
+                    // pauseTd.style.left = `${timeToWorldUnit * (lastTime - minTime)}px`
+                    contentTd.appendChild(pauseElem);
+                }
+                lastTime = node.availableTime;
+                let waitTime = node.startTime - node.availableTime;
+                let workTime = node.endTime - node.startTime;
+                if (waitTime > 0.1) {
+                    let waitElem = document.createElement('div');
+                    waitElem.className = "waitTime";
+                    waitElem.style.width = `${timeToWorldUnit * waitTime}px`;
+                    waitElem.style.left = `${timeToWorldUnit * (node.availableTime - minTime)}px`
+                    contentTd.appendChild(waitElem);
+                    textTarget = waitElem;
+                }
+                let workElem = document.createElement('div');
+                workElem.className = "workTime";
+                workElem.style.width = `${Math.max(timeToWorldUnit * workTime, 1)}px`;
+                workElem.style.left = `${timeToWorldUnit * (node.startTime - minTime)}px`
+                contentTd.appendChild(workElem);
+                if (textTarget == null)
+                    textTarget = workElem;
+
+                let nodeNameElem = document.createElement('div');
+                nodeNameElem.className = "nodeText";
+                nodeNameElem.innerHTML = `${node.name} (${node.frameId - captureData.frameId})`;
+                textTarget.appendChild(nodeNameElem);
+
+                let nodeTimingElem = document.createElement('div');
+                nodeTimingElem.className = "nodeText";
+                nodeTimingElem.innerHTML = `${Math.round(node.availableTime - minTargetTime)} | ${Math.round(node.startTime - minTargetTime)} | ${Math.round(node.endTime - minTargetTime)} ms`;
+                textTarget.appendChild(nodeTimingElem);
+            }
+            // contentTableBody.appendChild(contentTableTr);
+            // contentTable.appendChild(contentTableBody);
+            // contentTd.appendChild(contentTable);
             threadTr.appendChild(contentTd);
 
             threadBody.appendChild(threadTr);

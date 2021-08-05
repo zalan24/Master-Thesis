@@ -47,12 +47,6 @@ html, body {
     /* background-color: wheat; */
 }
 
-.contenttd {
-    width: 1000px;
-    /* background-color: aqua; */
-    border: 1px solid white;
-}
-
 .stageName, .threadName {
     color: rgb(255, 244, 185);
     overflow: hidden;
@@ -70,7 +64,7 @@ html, body {
 }
 
 table {
-    border-collapse:collapse;
+    border-collapse: collapse;
     /* width: 100%; */
 }
 
@@ -104,3 +98,46 @@ table {
     color: rgb(255, 244, 185);
 }
 
+.waitTime, .workTime {
+    height: 30px;
+    /* position: absolute; */
+    /* float: left; */
+    opacity: 0.5;
+    /* top: 0; */
+}
+
+.contenttd {
+    height: 35px;
+    /* width: 1000px; */
+    /* background-color: aqua; */
+    /* border: 1px solid white; */
+}
+
+.waitTime:hover, .workTime:hover {
+    opacity: 1;
+}
+
+.waitTime {
+    /* position: inherit; */
+    background-color: rgb(119, 73, 43);
+}
+
+.workTime {
+    background-color: brown;
+    /* position: inherit; */
+}
+
+.nodeText {
+    font-size: x-small;
+    color: white;
+    overflow: hidden;
+    opacity: 0.3;
+    white-space: nowrap;
+    text-align: right;
+}
+
+div:hover > .nodeText {
+    overflow: visible;
+    opacity: 1;
+    z-index: 2;
+}
