@@ -133,7 +133,7 @@ var cpuPackageData = {};
 function createTable() {
     let oldTbl = document.getElementById('perftable');
     if (oldTbl)
-        oldTbl.remove()
+        oldTbl.remove();
 
     const timeToWorldUnit = 2;
 
@@ -159,7 +159,8 @@ function createTable() {
     tbl.id = 'perftable';
     let tbdy = document.createElement('tbody');
 
-    cpuNodes = captureData.stageToThreadToPackageList;
+    let cpuNodes = captureData.stageToThreadToPackageList;
+    let executionNodes = captureData.executionPackages;
     let minTime = null;
     let maxTime = null;
     let minTargetTime = null;
@@ -273,8 +274,102 @@ function createTable() {
         stageTr.appendChild(threadsNamesTd);
         tbdy.appendChild(stageTr);
     }
+
+
+    let executionStageTr = document.createElement('tr');
+
+    let stageNameTd = document.createElement('td');
+    let stageText = document.createElement('div');
+    stageText.innerHTML = "execution"
+    stageText.className = 'stageName';
+    stageNameTd.appendChild(stageText);
+    stageNameTd.className = 'nametd';
+    executionStageTr.appendChild(stageNameTd);
+
+    let threadsNamesTd = document.createElement('td');
+    let threadTbl = document.createElement('table');
+    threadTbl.className = 'threadtable';
+    let threadBody = document.createElement('tbody');
+    let threadTr = document.createElement('tr');
+
+    let threadNameTd = document.createElement('td');
+    threadNameTd.className = 'nametd';
+    let threadNameDiv = document.createElement('div');
+    threadNameDiv.innerHTML = "executionQueue";
+    threadNameDiv.className = 'threadName';
+    threadNameTd.appendChild(threadNameDiv);
+    threadTr.appendChild(threadNameTd);
+
+    let contentTd = document.createElement('td');
+    contentTd.className = 'contenttd';
+    contentTd.style.width = `${timeToWorldUnit * (maxTime - minTime)}px`;
+
+    let execIntervalElem = document.createElement('div');
+    execIntervalElem.id = 'execInterval';
+    contentTd.appendChild(execIntervalElem);
+
+
+    for (let i in executionNodes) {
+        let node = executionNodes[i];
+        // let delay = Math.max(node.startTime - node.issueTime, 0);
+        let workTime = Math.max(node.endTime - node.startTime, 0);
+
+        let sourceNode = cpuPackageData[node.sourcePackageId].n;
+
+        let nodeWrapperElem = document.createElement('div');
+        nodeWrapperElem.className = "nodeWrapper " + (sourceNode.frameId == captureData.frameId ? "currentFrame" : "otherFrame");
+        nodeWrapperElem.style.left = `${timeToWorldUnit * (node.startTime - minTime)}px`
+        let nodeElem = document.createElement('div');
+        nodeElem.className = "cpuNode";
+        // cpuPackageData[node.packageId] = {w: nodeWrapperElem, n: node};
+
+        let textWrapper = document.createElement('div');
+        textWrapper.className = "textWrapper";
+        textWrapper.style.width = `${Math.max(timeToWorldUnit * workTime, 1)}px`;
+
+        let nodeNameElem = document.createElement('div');
+        nodeNameElem.className = "nodeText";
+        nodeNameElem.innerHTML = `${sourceNode.name} (${sourceNode.frameId - captureData.frameId})`;
+        textWrapper.appendChild(nodeNameElem);
+
+        // let execNodeNameElem = document.createElement('div');
+        // execNodeNameElem.className = "nodeText";
+        // execNodeNameElem.innerHTML = `${node.name}`;
+        // textWrapper.appendChild(execNodeNameElem);
+
+        let nodeTimingElem = document.createElement('div');
+        nodeTimingElem.className = "nodeText";
+        nodeTimingElem.innerHTML = `${Math.round(node.issueTime - minTargetTime)} | ${Math.round(node.startTime - minTargetTime)} | ${Math.round(node.endTime - minTargetTime)} ms`;
+        textWrapper.appendChild(nodeTimingElem);
+        nodeElem.appendChild(textWrapper);
+
+
+        let workElem = document.createElement('div');
+        workElem.className = "workTime";
+        workElem.style.width = `${Math.max(timeToWorldUnit * workTime, 1)}px`;
+        nodeElem.appendChild(workElem);
+
+
+        nodeWrapperElem.appendChild(nodeElem);
+        contentTd.appendChild(nodeWrapperElem);
+    }
+    threadTr.appendChild(contentTd);
+
+    threadBody.appendChild(threadTr);
+    threadTbl.appendChild(threadBody);
+    threadsNamesTd.appendChild(threadTbl);
+    executionStageTr.appendChild(threadsNamesTd);
+    tbdy.appendChild(executionStageTr);
+
+
     tbl.appendChild(tbdy);
     body.appendChild(tbl);
+
+    for (let i in captureData.executionIntervals) {
+        console.log(captureData.executionIntervals[i]);
+        let interval = captureData.executionIntervals[i][1];
+        cpuPackageData[captureData.executionIntervals[i][0]].interval = interval;
+    }
 
     for (let pkgId in cpuPackageData) {
         // cpuPackageData[node.packageId] = {w: nodeWrapperElem, n: node};
@@ -294,6 +389,12 @@ function createTable() {
                 else
                     dep.w.classList.add("dependent");
             }
+            if (info.interval) {
+                console.log(info.interval);
+                execIntervalElem.style.left = `${timeToWorldUnit * (info.interval.startTime - minTime)}px`;
+                execIntervalElem.style.width = `${Math.max(timeToWorldUnit * (info.interval.endTime - info.interval.startTime), 1)}px`;
+                execIntervalElem.style.visibility = "visible";
+            }
         }
         info.w.onmouseleave = (_) => {
             for (let depended in info.n.depended) {
@@ -310,6 +411,7 @@ function createTable() {
                 else
                     dep.w.classList.remove("dependent");
             }
+            execIntervalElem.style.visibility = "hidden";
         }
     }
 }
