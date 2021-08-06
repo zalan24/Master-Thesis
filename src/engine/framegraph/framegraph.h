@@ -86,11 +86,9 @@ class TemporalResourceLockerDescriptor final : public drv::ResourceLockerDescrip
 class FrameGraph
 {
  public:
-    using NodeId = uint32_t;
     using TagNodeId = NodeId;
     using QueueId = uint32_t;
     using Offset = uint32_t;
-    static constexpr NodeId INVALID_NODE = std::numeric_limits<NodeId>::max();
     static constexpr uint32_t NO_SYNC = std::numeric_limits<Offset>::max();
     using Clock = drv::Clock;
     static constexpr uint32_t TIMING_HISTORY_SIZE = 32;
@@ -193,7 +191,8 @@ class FrameGraph
         {
             FrameId frameId = INVALID_FRAME;
             std::thread::id threadId;
-            FrameGraph::Clock::time_point ready;
+            FrameGraph::Clock::time_point nodesReady;
+            FrameGraph::Clock::time_point resourceReady;
             FrameGraph::Clock::time_point start;
             FrameGraph::Clock::time_point finish;
         };
@@ -215,10 +214,12 @@ class FrameGraph
         };
 
         NodeTiming getTiming(FrameId frame, Stage stage) const;
+        ExecutionTiming getExecutionTiming(FrameId frame) const;
         uint32_t getDeviceTimingCount(FrameId frame) const;
         DeviceTiming getDeviceTiming(FrameId frame, uint32_t index) const;
 
         void registerAcquireAttempt(Stage stage, FrameId frameId);
+        void registerResourceAcquireAttempt(Stage stage, FrameId frameId);
         void registerStart(Stage stage, FrameId frameId);
         void registerFinish(Stage stage, FrameId frameId);
         void registerExecutionStart(FrameId frameId);
@@ -228,6 +229,8 @@ class FrameGraph
 
         void setWorkLoad(Stage stage, const ArtificialWorkLoad& workLoad);
         ArtificialWorkLoad getWorkLoad(Stage stage) const;
+
+        const std::vector<CpuDependency>& getCpuDeps() const {return cpuDeps;}
 
      private:
         std::string name;
@@ -293,12 +296,14 @@ class FrameGraph
 
         static void busy_sleep(std::chrono::microseconds duration);
 
+        NodeId getNodeId() const {return node;}
+
      private:
         NodeHandle();
-        NodeHandle(FrameGraph* frameGraph, FrameGraph::NodeId node, Stage stage, FrameId frameId,
+        NodeHandle(FrameGraph* frameGraph, NodeId node, Stage stage, FrameId frameId,
                    drv::ResourceLocker::Lock&& lock);
         FrameGraph* frameGraph;
-        FrameGraph::NodeId node;
+        NodeId node;
         Stage stage;
         FrameId frameId;
         drv::ResourceLocker::Lock lock;
@@ -364,8 +369,9 @@ class FrameGraph
     bool isStopped() const;
 
     void initFrame(FrameId frameId);
-    void feedExecutionTiming(FrameId frameId, Clock::time_point issueTime,
-                             Clock::time_point executionStartTime);
+    void feedExecutionTiming(NodeId sourceNode, FrameId frameId, Clock::time_point issueTime,
+                             Clock::time_point executionStartTime,
+                             Clock::time_point executionEndTime);
 
     QueueId registerQueue(drv::QueuePtr queue);
     drv::QueuePtr getQueue(QueueId queueId) const;
@@ -398,13 +404,21 @@ class FrameGraph
 
      struct ExecutionPackagesTiming
     {
+        NodeId sourceNode;
         FrameId frame = INVALID_FRAME;
-        std::chrono::microseconds minimumDelay;
-        Clock::time_point minimumSubmissionTime;
-        Clock::time_point minimumExecutionTime;
+        std::chrono::microseconds delay;
+        Clock::time_point submissionTime;
+        Clock::time_point executionTime;
+        Clock::time_point endTime;
     };
 
-    ExecutionPackagesTiming getExecutionTiming(FrameId frame) const;
+    struct FrameExecutionPackagesTimings
+    {
+        uint32_t minDelay = 0;
+        std::vector<ExecutionPackagesTiming> packages;
+    };
+
+    const FrameExecutionPackagesTimings& getExecutionTiming(FrameId frame) const;
 
  private:
     struct DependenceData
@@ -434,7 +448,7 @@ class FrameGraph
     std::array<TagNodeId, NUM_STAGES> stageStartNodes;
     std::array<TagNodeId, NUM_STAGES> stageEndNodes;
     std::vector<Offset> enqueueDependencyOffsets;
-    std::vector<ExecutionPackagesTiming> executionPackagesTiming;
+    std::vector<FrameExecutionPackagesTimings> executionPackagesTiming;
 
     struct WaitAllCommandsData
     {

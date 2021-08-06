@@ -187,7 +187,7 @@ FrameGraph::TagNodeId FrameGraph::addTagNode(const std::string& name, Stage stag
     return addNode(Node(name, stages, true), false);
 }
 
-FrameGraph::NodeId FrameGraph::addNode(Node&& node, bool applyTagDependencies) {
+NodeId FrameGraph::addNode(Node&& node, bool applyTagDependencies) {
     node.frameGraph = this;
     NodeId id = safe_cast<NodeId>(nodes.size());
     node.ownId = id;
@@ -360,7 +360,7 @@ void FrameGraph::stopExecution(bool force) {
     }
 }
 
-static size_t get_graph_id(FrameGraph::NodeId nodeId, FrameGraph::Stage stage) {
+static size_t get_graph_id(NodeId nodeId, FrameGraph::Stage stage) {
     return nodeId * FrameGraph::NUM_STAGES + FrameGraph::get_stage_id(stage);
 }
 
@@ -585,14 +585,14 @@ void FrameGraph::build() {
 FrameGraph::NodeHandle::NodeHandle() : frameGraph(nullptr) {
 }
 
-FrameGraph::NodeHandle::NodeHandle(FrameGraph* _frameGraph, FrameGraph::NodeId _node, Stage _stage,
+FrameGraph::NodeHandle::NodeHandle(FrameGraph* _frameGraph, NodeId _node, Stage _stage,
                                    FrameId _frameId, drv::ResourceLocker::Lock&& _lock)
   : frameGraph(_frameGraph), node(_node), stage(_stage), frameId(_frameId), lock(std::move(_lock)) {
     Node* nodePtr = frameGraph->getNode(node);
     nodePtr->registerStart(stage, frameId);
     if (stage == RECORD_STAGE && nodePtr->hasExecution()) {
         frameGraph->getExecutionQueue(*this)->push(ExecutionPackage(
-          frameId,
+          frameId, node,
           ExecutionPackage::MessagePackage{ExecutionPackage::Message::FRAMEGRAPH_NODE_START_MARKER,
                                            node, frameId, nullptr}));
     }
@@ -643,7 +643,7 @@ void FrameGraph::NodeHandle::submit(QueueId queueId,
     drv::drv_assert(frameGraph->getQueue(queueId) == submission.queue);
 
     ExecutionQueue* q = frameGraph->getExecutionQueue(*this);
-    q->push(ExecutionPackage(submission.frameId, std::move(submission)));
+    q->push(ExecutionPackage(submission.frameId, submission.nodeId, std::move(submission)));
 }
 
 bool FrameGraph::waitForNode(NodeId node, Stage stage, FrameId frame) {
@@ -813,6 +813,7 @@ FrameGraph::NodeHandle FrameGraph::acquireNode(NodeId nodeId, Stage stage, Frame
             }
         }
     }
+    node->registerResourceAcquireAttempt(stage, frame);
     drv::ResourceLocker::Lock resourceLock = {};
     if (!resources.empty()) {
         auto lock = resourceLocker->lock(&resources);
@@ -887,6 +888,7 @@ FrameGraph::NodeHandle FrameGraph::tryAcquireNode(
             }
         }
     }
+    node->registerResourceAcquireAttempt(stage, frame);
     drv::ResourceLocker::Lock resourceLock = {};
     if (!resources.empty()) {
         std::chrono::nanoseconds duration = std::chrono::high_resolution_clock::now() - start;
@@ -955,6 +957,7 @@ FrameGraph::NodeHandle FrameGraph::tryAcquireNode(
             }
         }
     }
+    node->registerResourceAcquireAttempt(stage, frame);
     drv::ResourceLocker::Lock resourceLock = {};
     if (!resources.empty()) {
         auto lock = resourceLocker->tryLock(&resources);
@@ -1005,7 +1008,7 @@ void FrameGraph::release(NodeHandle& handle) {
     Node* node = getNode(handle.node);
     if (handle.stage == RECORD_STAGE && node->hasExecution()) {
         getExecutionQueue(handle)->push(ExecutionPackage(
-          handle.frameId,
+          handle.frameId, handle.getNodeId(),
           ExecutionPackage::MessagePackage{ExecutionPackage::Message::FRAMEGRAPH_NODE_FINISH_MARKER,
                                            handle.node, handle.frameId, nullptr}));
     }
@@ -1024,7 +1027,7 @@ void FrameGraph::release(NodeHandle& handle) {
         }
         else {
             node->localExecutionQueue->push(ExecutionPackage(
-              handle.frameId,
+              handle.frameId, handle.getNodeId(),
               ExecutionPackage::MessagePackage{ExecutionPackage::Message::RECURSIVE_END_MARKER,
                                                handle.node, handle.frameId, nullptr}));
             checkAndEnqueue(handle.node, handle.frameId, handle.stage, false);
@@ -1039,7 +1042,7 @@ void FrameGraph::checkAndEnqueue(NodeId nodeId, FrameId frameId, Stage stage, bo
          i <= clearance && i <= node->completedFrames[get_stage_id(stage)]; ++i) {
         traverse = true;
         executionQueue.push(ExecutionPackage(
-          frameId, ExecutionPackage::RecursiveQueue{node->localExecutionQueue.get()}));
+          frameId, nodeId, ExecutionPackage::RecursiveQueue{node->localExecutionQueue.get()}));
         node->enqueuedFrame = i;
     }
     if (traverse)
@@ -1079,11 +1082,12 @@ ExecutionQueue* FrameGraph::getExecutionQueue(NodeHandle& handle) {
         && node->enqueueFrameClearance != INVALID_FRAME) {
         if (handle.nodeExecutionData.hasLocalCommands) {
             node->localExecutionQueue->push(ExecutionPackage(
-              handle.frameId,
+              handle.frameId, handle.getNodeId(),
               ExecutionPackage::MessagePackage{ExecutionPackage::Message::RECURSIVE_END_MARKER,
                                                handle.node, handle.frameId, nullptr}));
-            executionQueue.push(ExecutionPackage(
-              handle.frameId, ExecutionPackage::RecursiveQueue{node->localExecutionQueue.get()}));
+            executionQueue.push(
+              ExecutionPackage(handle.frameId, handle.getNodeId(),
+                               ExecutionPackage::RecursiveQueue{node->localExecutionQueue.get()}));
             handle.nodeExecutionData.hasLocalCommands = false;
         }
         return &executionQueue;
@@ -1134,7 +1138,7 @@ void FrameGraph::registerCmdBuffer(drv::CmdBufferId id, NodeId node, StatsCache*
         cmdBufferToNode[id] = {node, statsCacheHandle};
 }
 
-FrameGraph::NodeId FrameGraph::getNodeFromCmdBuffer(drv::CmdBufferId id) const {
+NodeId FrameGraph::getNodeFromCmdBuffer(drv::CmdBufferId id) const {
     std::shared_lock<std::shared_mutex> lock(cmdBufferToNodeMutex);
     auto itr = cmdBufferToNode.find(id);
     drv::drv_assert(itr != cmdBufferToNode.end(), "Command buffer has not been registered yet");
@@ -1260,10 +1264,15 @@ void FrameGraph::Node::registerAcquireAttempt(Stage stage, FrameId frameId) {
     auto& entry = timingInfos[get_stage_id(stage)][frameId % TIMING_HISTORY_SIZE];
     if (entry.frameId != frameId) {
         entry.frameId = frameId;
-        entry.ready = Clock::now();
-        entry.finish = entry.start = {};
+        entry.nodesReady = Clock::now();
+        entry.resourceReady = entry.finish = entry.start = {};
         entry.threadId = std::this_thread::get_id();
     }
+}
+
+void FrameGraph::Node::registerResourceAcquireAttempt(Stage stage, FrameId frameId) {
+    auto& entry = timingInfos[get_stage_id(stage)][frameId % TIMING_HISTORY_SIZE];
+    entry.resourceReady = Clock::now();
 }
 
 void FrameGraph::Node::registerStart(Stage stage, FrameId frameId) {
@@ -1279,6 +1288,12 @@ void FrameGraph::Node::registerFinish(Stage stage, FrameId frameId) {
 FrameGraph::Node::NodeTiming FrameGraph::Node::getTiming(FrameId frame, Stage stage) const {
     FrameGraph::Node::NodeTiming ret =
       timingInfos[get_stage_id(stage)][frame % TIMING_HISTORY_SIZE];
+    drv::drv_assert(ret.frameId == frame, "Trying to acquire too old timing data");
+    return ret;
+}
+
+FrameGraph::Node::ExecutionTiming FrameGraph::Node::getExecutionTiming(FrameId frame) const {
+    FrameGraph::Node::ExecutionTiming ret = executionTiming[frame % TIMING_HISTORY_SIZE];
     drv::drv_assert(ret.frameId == frame, "Trying to acquire too old timing data");
     return ret;
 }
@@ -1319,7 +1334,7 @@ void FrameGraph::setWorkLoad(const ArtificialFrameGraphWorkLoad& workLoad) {
     }
 }
 
-FrameGraph::NodeId FrameGraph::getNodeId(const std::string& name) const {
+NodeId FrameGraph::getNodeId(const std::string& name) const {
     for (uint32_t i = 0; i < nodes.size(); ++i)
         if (nodes[i].getName() == name)
             return i;
@@ -1350,6 +1365,7 @@ void FrameGraph::Node::registerDeviceTiming(FrameId frameId, const DeviceTiming&
 void FrameGraph::initFrame(FrameId frameId) {
     for (auto& itr : nodes)
         itr.initFrame(frameId);
+    executionPackagesTiming[frameId % TIMING_HISTORY_SIZE].packages.clear();
 }
 
 void FrameGraph::Node::initFrame(FrameId frameId) {
@@ -1359,22 +1375,28 @@ void FrameGraph::Node::initFrame(FrameId frameId) {
     }
 }
 
-void FrameGraph::feedExecutionTiming(FrameId frameId, Clock::time_point issueTime,
-                                     Clock::time_point executionStartTime) {
+void FrameGraph::feedExecutionTiming(NodeId sourceNode, FrameId frameId,
+                                     Clock::time_point issueTime,
+                                     Clock::time_point executionStartTime,
+                                     Clock::time_point executionEndTime) {
     auto& entry = executionPackagesTiming[frameId % TIMING_HISTORY_SIZE];
+    ExecutionPackagesTiming package;
     auto duration = executionStartTime - issueTime;
-    if (entry.frame != frameId || duration < entry.minimumDelay) {
-        entry.frame = frameId;
-        entry.minimumDelay = std::chrono::duration_cast<std::chrono::microseconds>(duration);
-        entry.minimumExecutionTime = executionStartTime;
-        entry.minimumSubmissionTime = issueTime;
-    }
+    package.sourceNode = sourceNode;
+    package.frame = frameId;
+    package.delay = std::chrono::duration_cast<std::chrono::microseconds>(duration);
+    package.executionTime = executionStartTime;
+    package.submissionTime = issueTime;
+    package.endTime = executionEndTime;
+    if (entry.minDelay >= entry.packages.size()
+        || entry.packages[entry.minDelay].delay < package.delay)
+        entry.minDelay = entry.packages.size();
+    entry.packages.push_back(std::move(package));
 }
 
-FrameGraph::ExecutionPackagesTiming FrameGraph::getExecutionTiming(FrameId frameId) const {
-    ExecutionPackagesTiming ret = executionPackagesTiming[frameId % TIMING_HISTORY_SIZE];
-    drv::drv_assert(ret.frame == frameId, "Trying to acquire too old timing data");
-    return ret;
+const FrameGraph::FrameExecutionPackagesTimings& FrameGraph::getExecutionTiming(
+  FrameId frameId) const {
+    return executionPackagesTiming[frameId % TIMING_HISTORY_SIZE];
 }
 
 uint32_t FrameGraph::Node::getDeviceTimingCount(FrameId frame) const {

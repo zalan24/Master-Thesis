@@ -156,6 +156,7 @@ struct ExecutionPackage
         };
         drv::QueuePtr queue;
         FrameId frameId;
+        NodeId nodeId;
         CommandBufferData cmdBufferData;
         uint64_t signaledManagedSemaphoreValue;
         drv::TimelineSemaphoreHandle signalManagedSemaphore;
@@ -163,7 +164,7 @@ struct ExecutionPackage
         GarbageVector<TimelineSemaphoreSignalInfo> signalTimelineSemaphores;
         GarbageVector<SemaphoreWaitInfo> waitSemaphores;
         GarbageVector<TimelineSemaphoreWaitInfo> waitTimelineSemaphores;
-        CommandBufferPackage(drv::QueuePtr _queue, FrameId _frameId,
+        CommandBufferPackage(drv::QueuePtr _queue, FrameId _frameId, NodeId _nodeId,
                              CommandBufferData _cmdBufferData,
                              uint64_t _signaledManagedSemaphoreValue,
                              drv::TimelineSemaphoreHandle _signalManagedSemaphore,
@@ -173,6 +174,7 @@ struct ExecutionPackage
                              GarbageVector<TimelineSemaphoreWaitInfo> _waitTimelineSemaphores)
           : queue(_queue),
             frameId(_frameId),
+            nodeId(_nodeId),
             cmdBufferData(std::move(_cmdBufferData)),
             signaledManagedSemaphoreValue(_signaledManagedSemaphoreValue),
             signalManagedSemaphore(std::move(_signalManagedSemaphore)),
@@ -229,6 +231,7 @@ struct ExecutionPackage
     };
 
     FrameId frame;
+    NodeId nodeId;
     drv::Clock::time_point creationTime;
     std::variant<CommandBufferPackage, Functor, MessagePackage, RecursiveQueue, PresentPackage,
                  std::unique_ptr<CustomFunctor>, const void*>
@@ -238,18 +241,18 @@ struct ExecutionPackage
     operator bool() const { return !std::holds_alternative<const void*>(package); }
 
     ExecutionPackage() : package(nullptr) {}
-    ExecutionPackage(FrameId _frame, CommandBufferPackage&& p)
-      : frame(_frame), creationTime(drv::Clock::now()), package(std::move(p)) {}
-    ExecutionPackage(FrameId _frame, Functor&& f)
-      : frame(_frame), creationTime(drv::Clock::now()), package(std::move(f)) {}
-    ExecutionPackage(FrameId _frame, MessagePackage&& m)
-      : frame(_frame), creationTime(drv::Clock::now()), package(std::move(m)) {}
-    ExecutionPackage(FrameId _frame, RecursiveQueue&& q)
-      : frame(_frame), creationTime(drv::Clock::now()), package(std::move(q)) {}
-    ExecutionPackage(FrameId _frame, PresentPackage&& p)
-      : frame(_frame), creationTime(drv::Clock::now()), package(std::move(p)) {}
-    ExecutionPackage(FrameId _frame, std::unique_ptr<CustomFunctor>&& f)
-      : frame(_frame), creationTime(drv::Clock::now()), package(std::move(f)) {}
+    ExecutionPackage(FrameId _frame, NodeId _node, CommandBufferPackage&& p)
+      : frame(_frame), nodeId(_node), creationTime(drv::Clock::now()), package(std::move(p)) {}
+    ExecutionPackage(FrameId _frame, NodeId _node, Functor&& f)
+      : frame(_frame), nodeId(_node), creationTime(drv::Clock::now()), package(std::move(f)) {}
+    ExecutionPackage(FrameId _frame, NodeId _node, MessagePackage&& m)
+      : frame(_frame), nodeId(_node), creationTime(drv::Clock::now()), package(std::move(m)) {}
+    ExecutionPackage(FrameId _frame, NodeId _node, RecursiveQueue&& q)
+      : frame(_frame), nodeId(_node), creationTime(drv::Clock::now()), package(std::move(q)) {}
+    ExecutionPackage(FrameId _frame, NodeId _node, PresentPackage&& p)
+      : frame(_frame), nodeId(_node), creationTime(drv::Clock::now()), package(std::move(p)) {}
+    ExecutionPackage(FrameId _frame, NodeId _node, std::unique_ptr<CustomFunctor>&& f)
+      : frame(_frame), nodeId(_node), creationTime(drv::Clock::now()), package(std::move(f)) {}
 };
 
 enum class ResourceStateValidationMode
@@ -260,7 +263,7 @@ enum class ResourceStateValidationMode
 };
 
 ExecutionPackage::CommandBufferPackage make_submission_package(
-  drv::QueuePtr queue, FrameId frameId, const drv::CommandBufferInfo& info,
+  drv::QueuePtr queue, FrameId frameId, NodeId nodeId, const drv::CommandBufferInfo& info,
   GarbageSystem* garbageSystem, ResourceStateValidationMode validationMode);
 
 class ExecutionQueue

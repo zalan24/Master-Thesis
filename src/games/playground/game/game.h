@@ -48,7 +48,7 @@ class Game final : public Game3D
     drv::AttachmentId colorTagretColorAttachment;
     drv::SubpassId colorSubpass;
     drv::SubpassId swapchainSubpass;
-    FrameGraph::NodeId transferNode;
+    NodeId transferNode;
     std::vector<res::ImageView> imageViews;
     std::vector<std::vector<drv::RenderPass::AttachmentData>> attachments;
     std::vector<res::Framebuffer> swapchainFrameBuffers;

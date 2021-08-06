@@ -1,158 +1,6 @@
 Get a triangle on screen:
     ☐ Shader manager
     ☐ Finish descriptors
-    ☐ Resource tracking
-        ☐ Plan
-            ✘ Add auto enqueue order dep to any queue dependencies @cancelled (6/16/2021, 10:59:11 AM)
-            ✔ Add submission id (eg. hash of name) @done (6/16/2021, 11:41:18 AM)
-                ✔ It's bound to a queue, it cannot be submitted anywhere else @done (6/16/2021, 11:01:21 AM)
-            ✔ Add new state data to res state @done (6/18/2021, 10:17:00 AM)
-                ✔ Main queue + submission id + frame id + is_write @done (6/18/2021, 10:16:57 AM)
-                ✔ Add a set of reading queue + submission id + frame id + reading stages @done (6/18/2021, 10:16:59 AM)
-            ✔ Command buffer needs to know if resource has been written (including layout transform) @done (6/18/2021, 10:32:02 AM)
-            ✔ Identify which submissions need sync objects @done (6/19/2021, 1:13:16 PM)
-                ✔ Validate resource usage compared to framegraph too (framegraph queue can be resolved from queue + submission id) @done (6/19/2021, 1:13:12 PM)
-                    ✔ Framegraph needs to be able to decide this even if the dependency is transitive @done (6/19/2021, 1:13:14 PM)
-                ✔ Semaphore is needed for conflicting usages on different queues @done (6/19/2021, 11:39:38 AM)
-                    ✔ At submission, append mask of 0 to required semaphore stages @done (6/19/2021, 11:21:33 AM)
-                    ✔ At dependency, append used mask to semaphore stages @done (6/19/2021, 11:39:36 AM)
-                    ✔ Use tend to true when reading the cache @done (6/19/2021, 11:19:52 AM)
-                    ✘ Cache should start at 0 @cancelled (6/19/2021, 11:02:32 AM)
-                ✘ Event is needed for conflicting usages on main queue only (on writing submission, the current queue is the main queue) @cancelled (6/19/2021, 11:02:25 AM)
-                    ✘ If submissions doesn't happen consistently together, use semaphore instead (or nothing) @cancelled (6/19/2021, 11:02:28 AM)
-                ✔ Store where sync is needed in cache @done (6/19/2021, 11:21:47 AM)
-                    ✔ At most one semaphore is needed per submission, but there can be multiple events @done (6/19/2021, 11:21:46 AM)
-                ✔ Create sync objects in submissions based on stats @done (6/19/2021, 11:23:09 AM)
-            ✔ Deal with signal correction in framegraph @done (6/21/2021, 11:51:20 AM)
-                ✔ Create a special reusable command buffer for every queue family that waits on all previous work @done (6/20/2021, 12:17:45 PM)
-                    ✔ Prepare a submission info struct that waits on everything (?in the engine?) @done (6/20/2021, 12:17:47 PM)
-                ✔ Clearing, which requires all work to be done @done (6/20/2021, 2:20:00 PM)
-                    ✔ When a frame is fully done (all nodes finished), add the wait all cmd buffer to all used queues @done (6/20/2021, 2:19:35 PM)
-                    ✘ Framegraph should have a function to retrive all semaphores used for waiting all work done @cancelled (6/20/2021, 2:19:47 PM)
-                    ✔ Clearing garbage node should wait on all of these @done (6/20/2021, 2:19:54 PM)
-                        ✔ Add a special dependency type for waiting on all work @done (6/20/2021, 2:19:53 PM)
-                ✔ QueueCpu dep for queries @done (6/21/2021, 11:51:15 AM)
-                    ✔ QueueCpu dep implies dependency: submission -> cpu @done (6/20/2021, 2:31:27 PM)
-                    ✔ Remove queue from queueCpu depedency and rename it to GpuCpu dep @done (6/20/2021, 3:23:26 PM)
-                    ✔ Every node with both a record and a readback stage has a gpu->readback dependency @done (6/20/2021, 3:36:13 PM)
-                    ✔ acquiring such a node will require a list of sub-resources to wait on @done (6/21/2021, 10:21:04 AM)
-                        ✔ List of (resourcePtr,subresourceSet) entries @done (6/20/2021, 3:37:26 PM)
-                        ✘ ???assert readback stage??? @cancelled (6/21/2021, 10:21:02 AM)
-                    ✔ Framegraph will need to acquire usages of the listed sub-resources and validate them @done (6/21/2021, 11:19:20 AM)
-                        ✔ All usages must refer to either one of the waited gpu works, or something that has an enqueue dependency to any waited node @done (6/21/2021, 11:19:06 AM)
-                    ✔ Record the need for a semaphore in the waited usages the same way as gpu-gpu work @done (6/21/2021, 11:19:03 AM)
-                    ✔ Wait for all resources / check state depending on node acquisition mode @done (6/21/2021, 10:42:44 AM)
-                        ✔ Wait on the semaphores associated with the retrived usages @done (6/21/2021, 10:42:35 AM)
-                    ✔ When successfully returning a node handle, save used resources into a gargbage vector @done (6/21/2021, 10:43:06 AM)
-                    ✘ In debug mode: validate that recorded resources haven't been modified by execution during the node handle's lifetime @cancelled (6/21/2021, 11:51:09 AM)
-                    ✔ Clean up old implementation (get rid of old semaphores used by it) @done (6/20/2021, 3:23:06 PM)
-            ✔ Sync new states @done (7/3/2021, 10:06:43 AM)
-                ✔ Semaphore counter start from 0!!!! @done (6/21/2021, 12:28:05 PM)
-                ✔ Semaphore management system @done (6/26/2021, 11:32:39 AM)
-                    ✔ Create an abstract class for async pools @done (6/23/2021, 11:32:24 AM)
-                    ✔ Event pool should use it @done (6/23/2021, 12:22:12 PM)
-                    ✔ Command buffer pool should use it @done (6/23/2021, 12:52:26 PM)
-                    ✔ Create a timeline semaphore pool @done (6/25/2021, 10:43:45 AM)
-                        ✔ Internal semaphore struct @done (6/23/2021, 1:32:01 PM)
-                            ✔ drv::TimelineSemaphore @done (6/23/2021, 1:32:00 PM)
-                            ✔ signalled value (!= the current value of the semaphore, signal could reach it later) @done (6/23/2021, 1:31:59 PM)
-                            ✔ ref counter @done (6/23/2021, 1:31:57 PM)
-                        ✔ Semaphore handle @done (6/23/2021, 1:20:58 PM)
-                            ✔ TimelineSemaphorePtr @done (6/23/2021, 1:15:34 PM)
-                            ✔ ref to ref counter @done (6/23/2021, 1:20:55 PM)
-                            ✔ ref to signal value @done (6/23/2021, 1:15:36 PM)
-                        ✔ An item can be retrived if it has a lower signalled value, then requested and 0 refcount @done (6/23/2021, 2:03:22 PM)
-                        ✔ Currently release is not called on semaphores in the pool... Do something about it @done (6/25/2021, 10:43:42 AM)
-                    ✔ cmd buffer need to use a timeline semaphore handle @done (6/26/2021, 11:32:34 AM)
-                    ✔ image tracking states need a semaphore handle as well @done (6/25/2021, 10:43:54 AM)
-                    ✔ Warn if there are too many semaphores in the pool @done (6/26/2021, 11:32:36 AM)
-                ✔ If the src submissions had signal, use it. Otherwise auto create new signal @done (7/1/2021, 1:09:25 PM)
-                    ✔ Wait on semaphore stages at the end of the signalling cmd buffer @done (6/21/2021, 12:15:12 PM)
-                    ✔ Signal semaphores @done (6/21/2021, 12:27:46 PM)
-                    ✔ Auto sync submissions needs a pipeline barrier that waits for all reading stages on the queue @done (7/1/2021, 1:09:20 PM)
-                    ✔ src submissions's signal needs a pipeline barrier with all reading stages recorded in that cmd buffer. If it's not sufficient, auto sync is still required @done (7/1/2021, 1:09:18 PM)
-                        ✔ Probably count these kinds of corrections in the report file separately from normal auto sync @done (7/1/2021, 1:09:02 PM)
-                ✔ Auto creation of signals should be in the report file @done (7/1/2021, 1:08:57 PM)
-                    ✔ CPU side auto sync @done (6/26/2021, 12:48:21 PM)
-                    ✔ GPU side auto sync @done (7/1/2021, 1:08:55 PM)
-                ✘ Need to implement syncing with event too. It could use cache to know what to use as dst stuff @cancelled (6/21/2021, 12:07:38 PM)
-                ✘ Need to auto signal events, if they weren't signalled (what about unset?) @cancelled (6/21/2021, 12:14:44 PM)
-                ✔ Collect semaphores required by GpuCpu dependency @done (6/26/2021, 12:43:04 PM)
-                    ✔ Use auto sync if needed @done (6/26/2021, 12:43:00 PM)
-                ✔ What is the wait stage for timeline semaphores managed by resource tracking??? @done (7/3/2021, 10:01:54 AM)
-                    ✔ Track which stages a resource is used on before the first barrier + the last stage of the first barrier @done (7/3/2021, 10:01:52 AM)
-                    ✔ These stages are the wait stages for the semaphores @done (7/3/2021, 9:55:54 AM)
-            ✔ Host side state @done (7/4/2021, 4:07:04 PM)
-                ✔ Create a resource usage object (stores set of resources -> set of subresources -> read/write) @done (7/4/2021, 1:02:23 PM)
-                    ✔ Set of resources must be an ordered list @done (7/4/2021, 1:02:20 PM)
-                ✔ Acquire node needs an object like this @done (7/3/2021, 3:36:40 PM)
-                ✔ Execution queue needs to create an object like this as well @done (7/3/2021, 3:09:34 PM)
-                    ✔ Such objects should be created during recording and stored with the command buffer @done (7/3/2021, 3:09:31 PM)
-                ✔ Sync resource usage objects if they have a conflicting usage @done (7/4/2021, 11:34:07 AM)
-                    ✔ Create a manager class for resource usage objects @done (7/3/2021, 3:36:23 PM)
-                    ✔ This class should have a list of active locks (set of resource objects) @done (7/4/2021, 11:31:05 AM)
-                    ✔ Create lock, lock_timeout, try_lock functions @done (7/3/2021, 3:36:28 PM)
-                    ✔ Blocking locks should count how many resource objects are blocking them @done (7/4/2021, 11:33:59 AM)
-                        ✔ have an unlock counter in the manager class @done (7/4/2021, 11:31:16 AM)
-                        ✔ When unlocking an object (removing from manager list), increment the counter and notify a CV @done (7/4/2021, 11:31:20 AM)
-                        ✔ locking function should only recheck if resource is free to use, if the counter has reached a sufficient vaule (as many objects were unlock as it was blocked by) @done (7/4/2021, 11:33:50 AM)
-                        ✔ locking function should recount locking objects when it checks for availability @done (7/4/2021, 11:33:55 AM)
-            ✔ Track new states @done (7/5/2021, 12:07:22 PM)
-                ✔ On CPU usage @done (7/4/2021, 4:08:36 PM)
-                    ✔ CPU Read @done (7/4/2021, 4:08:35 PM)
-                    ✔ CPU write only @done (7/4/2021, 4:08:34 PM)
-                    ✔ CPU read write @done (7/4/2021, 4:08:32 PM)
-                ✔ On execution queue @done (7/5/2021, 12:07:19 PM)
-                    ✔ When sync object is applied, update main queue / states on reader queues @done (7/5/2021, 12:07:17 PM)
-                ✔ Track signalled value and synced stages on multiqueue tracking info @done (7/5/2021, 12:07:24 PM)
-            ✔ Map memory @done (7/7/2021, 10:17:54 PM)
-                ✔ These functions will require a resource lock @done (7/7/2021, 10:17:36 PM)
-                ✔ Update resources states: apply memory flushes and invalidations performed by the memory map commands @done (7/7/2021, 10:17:34 PM)
-                ✔ Check if the mapped memory is actually locked by the resource lock (with an appropriate mode) @done (7/7/2021, 10:17:29 PM)
-            ☐ Test
-                ☐ Test queue->cpu dependency
-                    ☐ Try reading and writing from CPU
-                ☐ Test separate queue families
-                    ☐ with shared resources
-                    ☐ with exclusive resources
-                ☐ Host vs Device usage
-                    ☐ Upload an image to gpu
-                    ☐ Render something to it
-                    ☐ read it back and save it
-                ☐ Pressure testing
-                    ☐ Create an uploading node for render/compute/transfer families
-                    ☐ Continously acquire node and upload data (something read from file)
-                    ☐ Create N threads, which are assigned (deterministic) randomly to 3 render queues including the main queue
-                    ☐ Each thread should have a (deterministic) randomly assigned image layout from the usable set (probably {genenar, present khr, transfer src optimal / transfer dst optimal})
-                        ☐ Do this for the src image, that they use, and the target image
-                    ☐ Each thread should blit the image to a tile on the screen
-                    ☐ They should depend on each other from left to right, top to bottom
-                    ☐ They need to depend on uploading work
-                    ☐ present needs to wait on them
-                    ☐ Download the generated image every frame (save it too once in a run to a file)
-                    ☐ If this works, repleace the 3 uploaded textures with on 3-layered texture
-                    ☐ Expected result:
-                        ☐ It should produce the expected images
-                        ☐ After running for a while, runtime stats should get rid of all corrections
-                        ☐ After the 1st run, no auto semaphores should be used at all
-
-        ☐ Buffer????
-                ☐ Have a small history of sub+resource ranges + an extra fix slot for the entire buffer (instead of arrays and mip levels)
-                ☐ Per history/fixed slot
-                    ☐ A slot stores sub-resource ranges (with a fixed max number)
-                    ☐ When doing on operation, find the correct slot:
-                        ☐ If there is an exact match, use that
-                        ☐ If not, try to create a new slot
-                        ☐ If no more free slots, create a virtual slot and perform a slot merge
-                    ☐ Do the exact same as for the image without the layout
-                ☐ History management
-                    ☐ When accessing a slot, merge all overlapping slots into it (if the fixed slot is updated, history is cleared)
-                ☐ Slot merge
-                    ☐ Calculate resulting sub-resource ranges
-                        ☐ If the new slots needs to many ranges, merge the ranges
-                    ☐ Find all slots in the history than conflict with this slot...
-                    ☐ ... ???
-
     ☐ Validate synchronization using the link in sources
     ☐ Create an api consts header file and put all const values there (barrier limits, tracker limits, etc.)
     ✔ Add logging @done (3/28/2021, 12:39:53 PM)
@@ -174,14 +22,6 @@ Get a triangle on screen:
         ☐ Inside the scope of this system, these positions would be reserved for all shaders even if they don't use a header
     ☐ Check how command pool usages / family queue usages are synced. Maybe not necessary?
     ☐ Conditional rendering: https://www.khronos.org/news/permalink/tutorial-vulkan-conditional-rendering
-    ☐ Sync
-        ☐ Add command buffer recorder interface to api
-        ☐ Separate tracking state from image (tracker should support decoupled tracking stats)
-        ☐ Command buffers should have a garantee for each resource they are using and an auto calculated end result
-        ☐ Submitting a command buffer will validate the garantees and apply the end states
-        ☐ Images should have a single tracking state
-        ☐ Remove tracking slots
-        ☐ Execution queue should manage resource states (it should apply extra sync operations, if garantees are not met)
     ☐ Shaders
         ☐ Var types:
             ☐ Command buffer fix: values only defined within a command buffer, like grid cell transformation for grid rendering
@@ -189,23 +29,26 @@ Get a triangle on screen:
             ☐ Dynamic global variables: camera matrix for eg.
             ☐ Material resources (textures and buffers)
             ☐ Global resources
-    ☐ Stages in framegraph
-        ☐ Each node has a stage mask (simulation, pre-record, record, implicit enqueue, ?implicit execution?, each device queue...)
-        ☐ Each stage has a frame counter (except queue stages)
-        ☐ There is an implicit dependency between each stage of the node's execution
-        ☐ Cpu-cpu dependencies will get a source and destination stage
-        ☐ Command buffers will be recorded in the record stage only
-        ☐ The record stage is meant to be a heavily dependent stage: depending on all previous nodes, that share resources
-            ☐ This needs special validation
-            ☐ Command buffers are recorded and submitted here
-            ☐ It's meant to be a really fast stage, because command buffers rarely need to be re-recorded
-        ☐ Each stage is autamatically synced with the begin stage marker of that stage (like the current start sime / start record markers, just automatic)
-        ☐ The engine will need to trigger the stage markers using the built in stuff instead of custom nodes
-        ☐ The record stage should have a function that initializes a command buffer recorder with all known resources from prev nodes + earlier cmd buffers from the current node
     ☐ drv::drv_assert shouldn't use std::strings, because it causes dynamic memory allocations...
     ☐ Add dynamic memory allocations to report file
         ☐ Also add avg amount of memory in framemem
         ☐ And maybe something about stackmem
+
+    ☐ Performance capture
+        ☐ cpu node dependencies
+            ☐ depended and dependent nodes should be displayed when hovering a node
+            ☐ Ones that actually delayed the current node or were actually delayed should be highlighted
+        ☐ Resource locks
+            ☐ Add a new time point, when the depended nodes are complete, but the resources not yet
+        ☐ swapchain acquire and present should be displayed
+        ☐ Execution queue
+            ☐ Hovering a node should highlight it's execution time range
+            ☐ Display execution packages and somehow link them to the source node (requires node info in packages)
+        ☐ Device queue
+            ☐ Similar to execution queue, but could be displayed per-stage
+        ☐ Deal with slop...
+            ☐ ???
+
 
 Cleanup & other:
     ☐ Remove useless common driver stuff (drv/common)

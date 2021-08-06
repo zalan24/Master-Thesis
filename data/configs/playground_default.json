@@ -4,7 +4,7 @@
     "inputBufferSize": 2048,
     "stackMemorySizeKb": 1024,
     "frameMemorySizeKb": 32768,
-    "imagesInSwapchain": 5,
+    "imagesInSwapchain": 3,
     "maxFramesInExecutionQueue": 2,
     "maxFramesInFlight": 4,
     "title": "Playground",

@@ -26,14 +26,14 @@ void ExecutionQueue::waitForPackage() {
 }
 
 ExecutionPackage::CommandBufferPackage make_submission_package(
-  drv::QueuePtr queue, FrameId frameId, const drv::CommandBufferInfo& info,
+  drv::QueuePtr queue, FrameId frameId, NodeId nodeId, const drv::CommandBufferInfo& info,
   GarbageSystem* garbageSystem, ResourceStateValidationMode validationMode) {
     bool stateValidation =
       validationMode == ResourceStateValidationMode::ALWAYS_VALIDATE
       || (validationMode == ResourceStateValidationMode::IGNORE_FIRST_SUBMISSION
           && info.numUsages > 1);
     return ExecutionPackage::CommandBufferPackage(
-      queue, frameId, CommandBufferData(garbageSystem, info, stateValidation),
+      queue, frameId, nodeId, CommandBufferData(garbageSystem, info, stateValidation),
       FrameGraph::get_semaphore_value(frameId), info.semaphore,
       GarbageVector<ExecutionPackage::CommandBufferPackage::SemaphoreSignalInfo>(
         garbageSystem->getAllocator<ExecutionPackage::CommandBufferPackage::SemaphoreSignalInfo>()),

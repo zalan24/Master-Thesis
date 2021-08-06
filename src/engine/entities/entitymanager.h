@@ -47,7 +47,7 @@ class EntityManager final : public ISerializable
         } type = ENGINE_SYSTEM;
         FrameGraph::Stages stages;
         bool constSystem;
-        FrameGraph::NodeId nodeId;
+        NodeId nodeId;
         EntitySystemCb entitySystemCb;
     };
 

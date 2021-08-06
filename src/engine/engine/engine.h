@@ -71,8 +71,33 @@ struct PerformanceCaptureCpuPackage final : public IAutoSerializable<Performance
         (uint64_t) frameId,
         (uint32_t) packageId,
         (double) availableTime,
+        (double) resAvailableTime,
+        (double) startTime,
+        (double) endTime,
+        (std::set<uint32_t>) depended,
+        (std::set<uint32_t>) dependent
+    )
+};
+
+struct PerformanceCaptureInterval final : public IAutoSerializable<PerformanceCaptureInterval>
+{
+    REFLECTABLE
+    (
         (double) startTime,
         (double) endTime
+    )
+};
+
+struct PerformanceCaptureExecutionPackage final : public IAutoSerializable<PerformanceCaptureExecutionPackage>
+{
+    REFLECTABLE
+    (
+        (std::string) name,
+        (uint32_t) sourcePackageId,
+        (double) issueTime,
+        (double) startTime,
+        (double) endTime,
+        (bool) minimalDelayInFrame
     )
 };
 
@@ -85,7 +110,9 @@ struct PerformanceCaptureData final : public IAutoSerializable<PerformanceCaptur
         (double) frameTime,
         (double) executionDelay,
         (double) deviceDelay,
-        (std::map<std::string, std::map<std::string, std::vector<PerformanceCaptureCpuPackage>>>) stageToThreadToPackageList
+        (std::map<std::string, std::map<std::string, std::vector<PerformanceCaptureCpuPackage>>>) stageToThreadToPackageList,
+        (std::map<uint32_t, PerformanceCaptureInterval>) executionIntervals,
+        (std::vector<PerformanceCaptureExecutionPackage>) executionPackages
     )
 };
 
@@ -239,7 +266,7 @@ class Engine
 
     void drawEntities(drv::DrvCmdBufferRecorder* recorder, drv::ImagePtr targetImage);
 
-    FrameGraph::NodeId getMainRecordNode() const {return  mainRecordNode;}
+    NodeId getMainRecordNode() const { return mainRecordNode; }
 
     void createPerformanceCapture(FrameId targetFrame);
 
@@ -314,9 +341,10 @@ class Engine
     RuntimeStats runtimeStats;
     EntityManager entityManager;
 
-    FrameGraph::NodeId inputSampleNode;
-    FrameGraph::NodeId mainRecordNode;
-    FrameGraph::NodeId presentFrameNode;
+    NodeId inputSampleNode;
+    NodeId mainRecordNode;
+    NodeId acquireSwapchainNode;
+    NodeId presentFrameNode;
     QueueInfo queueInfos;
     EntityManager::EntitySystemInfo physicsEntitySystem;
     EntityManager::EntitySystemInfo renderEntitySystem;
@@ -353,7 +381,7 @@ class Engine
     struct SubmissionTimestampsInfo
     {
         drv::Clock::time_point submissionTime;
-        FrameGraph::NodeId node;
+        NodeId node;
         drv::CmdBufferId submission;
         drv::QueuePtr queue;
         uint32_t beginTimestampBufferIndex;
