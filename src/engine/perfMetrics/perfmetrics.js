@@ -100,12 +100,16 @@ function onDocumentDragEnd(e) {
     dragStartMouse = null;
 }
 
+function applyViewTransformOn(element) {
+    let invModel = getTranslation({x: -element.offsetWidth/2, y: -element.offsetHeight/2});
+    tm = mulMat(invModel, viewMatrix);
+    element.style.transform = `matrix(${tm[0][0]}, ${tm[0][1]}, ${tm[1][0]}, ${tm[1][1]}, ${tm[0][2]}, ${tm[1][2]})`;
+}
+
 function applyViewTransform() {
     let table = document.getElementById('perftable');
     if (table) {
-        // invView = invert(viewMatrix);
-        invView = viewMatrix;
-        table.style.transform = `matrix(${invView[0][0]}, ${invView[1][0]}, ${invView[0][1]}, ${invView[1][1]}, ${invView[0][2]}, ${invView[1][2]})`;
+        applyViewTransformOn(table);
     }
 }
 
@@ -420,4 +424,5 @@ function createTable() {
             execIntervalElem.style.visibility = "hidden";
         }
     }
+    applyViewTransform();
 }
