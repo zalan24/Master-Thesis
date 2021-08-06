@@ -289,10 +289,10 @@ function createTable() {
             }
             for (let dependent in info.n.dependent) {
                 let dep = cpuPackageData[info.n.dependent[dependent]];
-                if (dep.n.endTime < info.n.availableTime)
-                    dep.w.classList.add("dependent");
-                else
+                if (dep.n.availableTime < info.n.endTime)
                     dep.w.classList.add("activeDependent");
+                else
+                    dep.w.classList.add("dependent");
             }
         }
         info.w.onmouseleave = (_) => {
@@ -305,10 +305,10 @@ function createTable() {
             }
             for (let dependent in info.n.dependent) {
                 let dep = cpuPackageData[info.n.dependent[dependent]];
-                if (dep.n.endTime < info.n.availableTime)
-                    dep.w.classList.remove("dependent");
-                else
+                if (dep.n.availableTime < info.n.endTime)
                     dep.w.classList.remove("activeDependent");
+                else
+                    dep.w.classList.remove("dependent");
             }
         }
     }

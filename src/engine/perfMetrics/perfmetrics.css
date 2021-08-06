@@ -153,6 +153,16 @@ table {
     z-index: 1;
 }
 
+.activeDepended .nodeText {
+    overflow: visible;
+    z-index: 1;
+}
+
+.activeDependent .nodeText {
+    overflow: visible;
+    z-index: 1;
+}
+
 .nodeWrapper {
     position: absolute;
     bottom: 0;
