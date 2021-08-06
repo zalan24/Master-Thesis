@@ -35,17 +35,18 @@ Get a triangle on screen:
         ☐ And maybe something about stackmem
 
     ☐ Performance capture
-        ☐ cpu node dependencies
-            ☐ depended and dependent nodes should be displayed when hovering a node
-            ☐ Ones that actually delayed the current node or were actually delayed should be highlighted
-        ☐ Resource locks
-            ☐ Add a new time point, when the depended nodes are complete, but the resources not yet
-        ☐ swapchain acquire and present should be displayed
+        ✔ cpu node dependencies @done (8/6/2021, 1:44:16 PM)
+            ✔ depended and dependent nodes should be displayed when hovering a node @done (8/6/2021, 1:44:05 PM)
+            ✔ Ones that actually delayed the current node or were actually delayed should be highlighted @done (8/6/2021, 1:44:13 PM)
+        ✔ Resource locks @done (8/6/2021, 1:44:20 PM)
+            ✔ Add a new time point, when the depended nodes are complete, but the resources not yet @done (8/6/2021, 1:44:19 PM)
+        ✔ swapchain acquire and present should be displayed @done (8/6/2021, 1:44:23 PM)
         ☐ Execution queue
             ☐ Hovering a node should highlight it's execution time range
             ☐ Display execution packages and somehow link them to the source node (requires node info in packages)
         ☐ Device queue
             ☐ Similar to execution queue, but could be displayed per-stage
+        ☐ Display cpu node wait on execution
         ☐ Deal with slop...
             ☐ ???
 

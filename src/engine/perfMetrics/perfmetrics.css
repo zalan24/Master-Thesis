@@ -98,7 +98,7 @@ table {
     color: rgb(255, 244, 185);
 }
 
-.waitTime, .workTime {
+.waitTime, .workTime, .resourceWaitTime {
     height: 30px;
     display: inline-block;
 }
@@ -112,12 +112,20 @@ table {
     background-color: rgb(119, 73, 43);
 }
 
+.resourceWaitTime {
+    background-color: rgb(43, 57, 119);
+}
+
 .workTime {
     background-color: brown;
 }
 
 .otherFrame .waitTime {
     background-color: rgb(82, 57, 40);
+}
+
+.otherFrame .resourceWaitTime {
+    background-color: rgb(35, 44, 83);
 }
 
 .otherFrame .workTime {
@@ -172,4 +180,25 @@ table {
 .cpuNode:hover {
     /* z-index: 2; */
     opacity: 1;
+}
+
+.depended, .activeDepended, .dependent, .activeDependent {
+    z-index: 1;
+    border-radius: 5px;
+}
+
+.depended {
+    border: dashed 2px rgb(167, 23, 23);
+}
+
+.activeDepended {
+    border: solid 2px rgb(206, 10, 10);
+}
+
+.dependent {
+    border: dashed 2px rgb(23, 45, 167);
+}
+
+.activeDependent {
+    border: solid 2px rgb(10, 23, 206);
 }

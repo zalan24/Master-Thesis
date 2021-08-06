@@ -128,6 +128,8 @@ function onDocumentZoom(e) {
     applyViewTransform();
 }
 
+var cpuPackageData = {};
+
 function createTable() {
     let oldTbl = document.getElementById('perftable');
     if (oldTbl)
@@ -175,8 +177,9 @@ function createTable() {
         }
     }
 
+    cpuPackageData = {};
+
     for (let stageName in cpuNodes) {
-        // console.log(key, yourobject[key]);
         let stageTr = document.createElement('tr');
 
         let stageNameTd = document.createElement('td');
@@ -206,24 +209,15 @@ function createTable() {
             contentTd.className = 'contenttd';
             contentTd.style.width = `${timeToWorldUnit * (maxTime - minTime)}px`;
 
-            // let contentTable = document.createElement('table');
-            // let contentTableBody = document.createElement('tbody');
-            // let contentTableTr = document.createElement('tr');
-
-            // let lastTime = minTime;
             for(let i in cpuNodes[stageName][threadName]) {
                 let node = cpuNodes[stageName][threadName][i];
-                // let pause = (node.availableTime - lastTime) * timeToWorldUnit;
-                // let textTarget = null;
-                // if (pause >= 1)
-                // {
-                //     let pauseElem = document.createElement('div');
-                //     pauseElem.style.width = `${pause}px`;
-                //     // pauseTd.style.left = `${timeToWorldUnit * (lastTime - minTime)}px`
-                //     contentTd.appendChild(pauseElem);
-                // }
-                // lastTime = node.availableTime;
+                let resWaitTime = Math.max(node.startTime - node.resAvailableTime, 0);
                 let waitTime = Math.max(node.startTime - node.availableTime, 0);
+                if (resWaitTime > 0.05) {
+                    waitTime = Math.max(node.resAvailableTime - node.availableTime, 0)
+                }
+                else
+                    resWaitTime = 0;
                 let workTime = Math.max(node.endTime - node.startTime, 0);
 
                 let nodeWrapperElem = document.createElement('div');
@@ -231,6 +225,7 @@ function createTable() {
                 nodeWrapperElem.style.left = `${timeToWorldUnit * (node.availableTime - minTime)}px`
                 let nodeElem = document.createElement('div');
                 nodeElem.className = "cpuNode";
+                cpuPackageData[node.packageId] = {w: nodeWrapperElem, n: node};
 
                 let textWrapper = document.createElement('div');
                 textWrapper.className = "textWrapper";
@@ -239,41 +234,36 @@ function createTable() {
                 let nodeNameElem = document.createElement('div');
                 nodeNameElem.className = "nodeText";
                 nodeNameElem.innerHTML = `${node.name} (${node.frameId - captureData.frameId})`;
-                // nodeNameElem.style.top = "3px";
                 textWrapper.appendChild(nodeNameElem);
 
                 let nodeTimingElem = document.createElement('div');
                 nodeTimingElem.className = "nodeText";
                 nodeTimingElem.innerHTML = `${Math.round(node.availableTime - minTargetTime)} | ${Math.round(node.startTime - minTargetTime)} | ${Math.round(node.endTime - minTargetTime)} ms`;
-                // nodeTimingElem.style.bottom = "3px";
-                // nodeTimingElem.style.paddingTop = "15px";
                 textWrapper.appendChild(nodeTimingElem);
                 nodeElem.appendChild(textWrapper);
 
-                // nodeElem.style.width = "200px";// `${Math.max(timeToWorldUnit * (node.endTime - node.availableTime), 1)}px`;
 
-                if (waitTime > 0.1) {
+                if (resWaitTime > 0) {
+                    let resElem = document.createElement('div');
+                    resElem.className = "resourceWaitTime";
+                    resElem.style.width = `${Math.max(timeToWorldUnit * resWaitTime, 1)}px`;
+                    nodeElem.appendChild(resElem);
+                }
+                if (waitTime > 0.05) {
                     let waitElem = document.createElement('div');
                     waitElem.className = "waitTime";
                     waitElem.style.width = `${Math.max(timeToWorldUnit * waitTime, 1)}px`;
                     nodeElem.appendChild(waitElem);
-                    // textTarget = waitElem;
                 }
                 let workElem = document.createElement('div');
                 workElem.className = "workTime";
                 workElem.style.width = `${Math.max(timeToWorldUnit * workTime, 1)}px`;
-                // workElem.style.left = `${timeToWorldUnit * (node.startTime - minTime)}px`
                 nodeElem.appendChild(workElem);
-                // if (textTarget == null)
-                //     textTarget = workElem;
 
 
                 nodeWrapperElem.appendChild(nodeElem);
                 contentTd.appendChild(nodeWrapperElem);
             }
-            // contentTableBody.appendChild(contentTableTr);
-            // contentTable.appendChild(contentTableBody);
-            // contentTd.appendChild(contentTable);
             threadTr.appendChild(contentTd);
 
             threadBody.appendChild(threadTr);
@@ -281,26 +271,45 @@ function createTable() {
             threadsNamesTd.appendChild(threadTbl);
         }
         stageTr.appendChild(threadsNamesTd);
-
-        // let threadContentTd = document.createElement('td');
-        // for (let _ in cpuNodes[stageName]) {
-        //     let threadTbl = document.createElement('table');
-        //     threadTbl.className = 'threadtable';
-        //     let threadBody = document.createElement('tbody');
-        //     let threadTr = document.createElement('tr');
-
-        //     let contentTd = document.createElement('td');
-        //     contentTd.className = 'contenttd';
-        //     threadTr.appendChild(contentTd);
-
-        //     threadBody.appendChild(threadTr);
-        //     threadTbl.appendChild(threadBody);
-        //     threadContentTd.appendChild(threadTbl);
-        // }
-        // stageTr.appendChild(threadContentTd);
-
         tbdy.appendChild(stageTr);
     }
     tbl.appendChild(tbdy);
     body.appendChild(tbl);
+
+    for (let pkgId in cpuPackageData) {
+        // cpuPackageData[node.packageId] = {w: nodeWrapperElem, n: node};
+        let info = cpuPackageData[pkgId];
+        info.w.onmouseenter = (_) => {
+            for (let depended in info.n.depended) {
+                let dep = cpuPackageData[info.n.depended[depended]];
+                if (dep.n.endTime < info.n.availableTime)
+                    dep.w.classList.add("depended");
+                else
+                    dep.w.classList.add("activeDepended");
+            }
+            for (let dependent in info.n.dependent) {
+                let dep = cpuPackageData[info.n.dependent[dependent]];
+                if (dep.n.endTime < info.n.availableTime)
+                    dep.w.classList.add("dependent");
+                else
+                    dep.w.classList.add("activeDependent");
+            }
+        }
+        info.w.onmouseleave = (_) => {
+            for (let depended in info.n.depended) {
+                let dep = cpuPackageData[info.n.depended[depended]];
+                if (dep.n.endTime < info.n.availableTime)
+                    dep.w.classList.remove("depended");
+                else
+                    dep.w.classList.remove("activeDepended");
+            }
+            for (let dependent in info.n.dependent) {
+                let dep = cpuPackageData[info.n.dependent[dependent]];
+                if (dep.n.endTime < info.n.availableTime)
+                    dep.w.classList.remove("dependent");
+                else
+                    dep.w.classList.remove("activeDependent");
+            }
+        }
+    }
 }

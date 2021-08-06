@@ -1531,8 +1531,8 @@ Engine::AcquiredImageData Engine::mainRecord(FrameId frameId) {
     lockResources(resourceDesc, frameId);
     AcquiredImageData swapChainData;
 
-    if (FrameGraph::NodeHandle nodeHandle = getFrameGraph().acquireNode(
-          acquireSwapchainNode, FrameGraph::RECORD_STAGE, frameId, resourceDesc);
+    if (FrameGraph::NodeHandle nodeHandle =
+          getFrameGraph().acquireNode(acquireSwapchainNode, FrameGraph::RECORD_STAGE, frameId);
         nodeHandle) {
         swapChainData = acquiredSwapchainImage(nodeHandle);
         if (!swapChainData)
