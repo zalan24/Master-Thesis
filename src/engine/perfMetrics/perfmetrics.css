@@ -158,6 +158,11 @@ table {
     z-index: 1;
 }
 
+.issued .nodeText {
+    overflow: visible;
+    z-index: 1;
+}
+
 .nodeWrapper, #execInterval {
     position: absolute;
     bottom: 0;
@@ -189,7 +194,7 @@ table {
     opacity: 1;
 }
 
-.depended, .activeDepended, .dependent, .activeDependent {
+.depended, .activeDepended, .dependent, .activeDependent, .issued {
     z-index: 1;
     border-radius: 5px;
 }
@@ -208,6 +213,10 @@ table {
 
 .activeDependent {
     border: solid 2px rgb(10, 23, 206);
+}
+
+.issued {
+    border: solid 2px wheat;
 }
 
 #execInterval {

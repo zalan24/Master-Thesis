@@ -315,6 +315,7 @@ function createTable() {
         let workTime = Math.max(node.endTime - node.startTime, 0);
 
         let sourceNode = cpuPackageData[node.sourcePackageId].n;
+        let sourceNodeWrapper = cpuPackageData[node.sourcePackageId].w;
 
         let nodeWrapperElem = document.createElement('div');
         nodeWrapperElem.className = "nodeWrapper " + (sourceNode.frameId == captureData.frameId ? "currentFrame" : "otherFrame");
@@ -349,6 +350,13 @@ function createTable() {
         workElem.style.width = `${Math.max(timeToWorldUnit * workTime, 1)}px`;
         nodeElem.appendChild(workElem);
 
+        nodeWrapperElem.onmouseenter = (_) => {
+            sourceNodeWrapper.classList.add("issued");
+        }
+        nodeWrapperElem.onmouseleave = (_) => {
+            sourceNodeWrapper.classList.remove("issued");
+        }
+
 
         nodeWrapperElem.appendChild(nodeElem);
         contentTd.appendChild(nodeWrapperElem);
@@ -366,7 +374,6 @@ function createTable() {
     body.appendChild(tbl);
 
     for (let i in captureData.executionIntervals) {
-        console.log(captureData.executionIntervals[i]);
         let interval = captureData.executionIntervals[i][1];
         cpuPackageData[captureData.executionIntervals[i][0]].interval = interval;
     }
@@ -390,7 +397,6 @@ function createTable() {
                     dep.w.classList.add("dependent");
             }
             if (info.interval) {
-                console.log(info.interval);
                 execIntervalElem.style.left = `${timeToWorldUnit * (info.interval.startTime - minTime)}px`;
                 execIntervalElem.style.width = `${Math.max(timeToWorldUnit * (info.interval.endTime - info.interval.startTime), 1)}px`;
                 execIntervalElem.style.visibility = "visible";
