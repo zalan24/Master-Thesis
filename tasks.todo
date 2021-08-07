@@ -42,11 +42,13 @@ Get a triangle on screen:
             ✔ Add a new time point, when the depended nodes are complete, but the resources not yet @done (8/6/2021, 1:44:19 PM)
         ✔ swapchain acquire and present should be displayed @done (8/6/2021, 1:44:23 PM)
         ☐ Execution queue
-            ☐ Hovering a node should highlight it's execution time range
-            ☐ Display execution packages and somehow link them to the source node (requires node info in packages)
+            ✔ Hovering a node should highlight it's execution time range @done (8/7/2021, 8:59:46 AM)
+            ✔ Display execution packages and somehow link them to the source node (requires node info in packages) @done (8/7/2021, 8:59:50 AM)
+            ☐ Display cpu node wait on execution
         ☐ Device queue
             ☐ Similar to execution queue, but could be displayed per-stage
-        ☐ Display cpu node wait on execution
+            ☐ Display gpu complete waits
+            ☐ Display gpu node waits
         ☐ Deal with slop...
             ☐ ???
 

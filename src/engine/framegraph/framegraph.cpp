@@ -1100,9 +1100,10 @@ ExecutionQueue* FrameGraph::getGlobalExecutionQueue() {
     return &executionQueue;
 }
 
-FrameGraph::QueueId FrameGraph::registerQueue(drv::QueuePtr queue) {
-    FrameGraph::QueueId ret = safe_cast<FrameGraph::QueueId>(queues.size());
+QueueId FrameGraph::registerQueue(drv::QueuePtr queue, const std::string& name) {
+    QueueId ret = safe_cast<QueueId>(queues.size());
     queues.push_back(queue);
+    queueNames.push_back(name);
     bool found = false;
     for (uint32_t i = 0; i < uniqueQueues.size() && !found; ++i)
         found = uniqueQueues[i] == queue;
@@ -1113,6 +1114,10 @@ FrameGraph::QueueId FrameGraph::registerQueue(drv::QueuePtr queue) {
 
 drv::QueuePtr FrameGraph::getQueue(QueueId queueId) const {
     return queues[queueId];
+}
+
+const std::string& FrameGraph::getQueueName(QueueId queueId) const {
+    return queueNames[queueId];
 }
 
 void FrameGraph::NodeHandle::close() {
@@ -1378,7 +1383,8 @@ void FrameGraph::Node::initFrame(FrameId frameId) {
 void FrameGraph::feedExecutionTiming(NodeId sourceNode, FrameId frameId,
                                      Clock::time_point issueTime,
                                      Clock::time_point executionStartTime,
-                                     Clock::time_point executionEndTime) {
+                                     Clock::time_point executionEndTime,
+                                     drv::CmdBufferId submissionId) {
     auto& entry = executionPackagesTiming[frameId % TIMING_HISTORY_SIZE];
     ExecutionPackagesTiming package;
     auto duration = executionStartTime - issueTime;
@@ -1388,9 +1394,10 @@ void FrameGraph::feedExecutionTiming(NodeId sourceNode, FrameId frameId,
     package.executionTime = executionStartTime;
     package.submissionTime = issueTime;
     package.endTime = executionEndTime;
+    package.submissionId = submissionId;
     if (entry.minDelay >= entry.packages.size()
         || entry.packages[entry.minDelay].delay < package.delay)
-        entry.minDelay = entry.packages.size();
+        entry.minDelay = uint32_t(entry.packages.size());
     entry.packages.push_back(std::move(package));
 }
 

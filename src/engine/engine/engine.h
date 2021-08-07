@@ -75,7 +75,8 @@ struct PerformanceCaptureCpuPackage final : public IAutoSerializable<Performance
         (double) startTime,
         (double) endTime,
         (std::set<uint32_t>) depended,
-        (std::set<uint32_t>) dependent
+        (std::set<uint32_t>) dependent,
+        (std::set<uint32_t>) execDepended
     )
 };
 
@@ -92,12 +93,25 @@ struct PerformanceCaptureExecutionPackage final : public IAutoSerializable<Perfo
 {
     REFLECTABLE
     (
-        (std::string) name,
+        // (std::string) name,
+        (uint32_t) packageId,
         (uint32_t) sourcePackageId,
         (double) issueTime,
         (double) startTime,
         (double) endTime,
         (bool) minimalDelayInFrame
+    )
+};
+
+struct PerformanceCaptureDevicePackage final : public IAutoSerializable<PerformanceCaptureDevicePackage>
+{
+    REFLECTABLE
+    (
+        // (std::string) name,
+        (uint32_t) sourceExecPackageId,
+        (double) submissionTime,
+        (double) startTime,
+        (double) endTime
     )
 };
 
@@ -112,7 +126,8 @@ struct PerformanceCaptureData final : public IAutoSerializable<PerformanceCaptur
         (double) deviceDelay,
         (std::map<std::string, std::map<std::string, std::vector<PerformanceCaptureCpuPackage>>>) stageToThreadToPackageList,
         (std::map<uint32_t, PerformanceCaptureInterval>) executionIntervals,
-        (std::vector<PerformanceCaptureExecutionPackage>) executionPackages
+        (std::vector<PerformanceCaptureExecutionPackage>) executionPackages,
+        (std::map<std::string, std::vector<PerformanceCaptureDevicePackage>>) queueToDevicePackageList
     )
 };
 
@@ -196,7 +211,7 @@ class Engine
     struct QueueData
     {
         drv::QueuePtr handle;
-        FrameGraph::QueueId id;
+        QueueId id;
     };
 
     struct QueueInfo
@@ -211,7 +226,7 @@ class Engine
     const QueueInfo& getQueues() const;
 
     // OneTimeCmdBuffer acquireCommandRecorder(FrameGraph::NodeHandle& acquiringNodeHandle,
-    //                                         FrameId frameId, FrameGraph::QueueId queueId);
+    //                                         FrameId frameId, QueueId queueId);
 
     GarbageSystem* getGarbageSystem() { return &garbageSystem; }
     drv::CommandBufferBank* getCommandBufferBank() { return &cmdBufferBank; }
@@ -246,17 +261,24 @@ class Engine
 
     drv::TimelineSemaphorePool* getSemaphorePool() { return &semaphorePool; }
 
-    void transferFromStager(drv::CmdBufferId cmdBufferId, ImageStager& stager, FrameGraph::QueueId queue, FrameId frame, FrameGraph::NodeHandle& nodeHandle,
+    void transferFromStager(drv::CmdBufferId cmdBufferId, ImageStager& stager, QueueId queue,
+                            FrameId frame, FrameGraph::NodeHandle& nodeHandle,
                             ImageStager::StagerId stagerId);
-    void transferFromStager(drv::CmdBufferId cmdBufferId, ImageStager& stager, FrameGraph::QueueId queue, FrameId frame, FrameGraph::NodeHandle& nodeHandle,
+    void transferFromStager(drv::CmdBufferId cmdBufferId, ImageStager& stager, QueueId queue,
+                            FrameId frame, FrameGraph::NodeHandle& nodeHandle,
                             ImageStager::StagerId stagerId, uint32_t layer, uint32_t mip);
-    void transferFromStager(drv::CmdBufferId cmdBufferId, ImageStager& stager, FrameGraph::QueueId queue, FrameId frame, FrameGraph::NodeHandle& nodeHandle,
-                            ImageStager::StagerId stagerId, const drv::ImageSubresourceRange& subres);
-    void transferToStager(drv::CmdBufferId cmdBufferId, ImageStager& stager, FrameGraph::QueueId queue, FrameId frame, FrameGraph::NodeHandle& nodeHandle,
+    void transferFromStager(drv::CmdBufferId cmdBufferId, ImageStager& stager, QueueId queue,
+                            FrameId frame, FrameGraph::NodeHandle& nodeHandle,
+                            ImageStager::StagerId stagerId,
+                            const drv::ImageSubresourceRange& subres);
+    void transferToStager(drv::CmdBufferId cmdBufferId, ImageStager& stager, QueueId queue,
+                          FrameId frame, FrameGraph::NodeHandle& nodeHandle,
                           ImageStager::StagerId stagerId);
-    void transferToStager(drv::CmdBufferId cmdBufferId, ImageStager& stager, FrameGraph::QueueId queue, FrameId frame, FrameGraph::NodeHandle& nodeHandle,
+    void transferToStager(drv::CmdBufferId cmdBufferId, ImageStager& stager, QueueId queue,
+                          FrameId frame, FrameGraph::NodeHandle& nodeHandle,
                           ImageStager::StagerId stagerId, uint32_t layer, uint32_t mip);
-    void transferToStager(drv::CmdBufferId cmdBufferId, ImageStager& stager, FrameGraph::QueueId queue, FrameId frame, FrameGraph::NodeHandle& nodeHandle,
+    void transferToStager(drv::CmdBufferId cmdBufferId, ImageStager& stager, QueueId queue,
+                          FrameId frame, FrameGraph::NodeHandle& nodeHandle,
                           ImageStager::StagerId stagerId, const drv::ImageSubresourceRange& subres);
 
     void initPhysicsEntitySystem();
@@ -384,6 +406,7 @@ class Engine
         NodeId node;
         drv::CmdBufferId submission;
         drv::QueuePtr queue;
+        QueueId queueId;
         uint32_t beginTimestampBufferIndex;
         uint32_t endTimestampBufferIndex;
     };

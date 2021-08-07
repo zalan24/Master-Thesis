@@ -155,6 +155,7 @@ struct ExecutionPackage
             uint64_t signalValue;
         };
         drv::QueuePtr queue;
+        QueueId queueId;
         FrameId frameId;
         NodeId nodeId;
         CommandBufferData cmdBufferData;
@@ -164,7 +165,7 @@ struct ExecutionPackage
         GarbageVector<TimelineSemaphoreSignalInfo> signalTimelineSemaphores;
         GarbageVector<SemaphoreWaitInfo> waitSemaphores;
         GarbageVector<TimelineSemaphoreWaitInfo> waitTimelineSemaphores;
-        CommandBufferPackage(drv::QueuePtr _queue, FrameId _frameId, NodeId _nodeId,
+        CommandBufferPackage(drv::QueuePtr _queue, QueueId _queueId, FrameId _frameId, NodeId _nodeId,
                              CommandBufferData _cmdBufferData,
                              uint64_t _signaledManagedSemaphoreValue,
                              drv::TimelineSemaphoreHandle _signalManagedSemaphore,
@@ -173,6 +174,7 @@ struct ExecutionPackage
                              GarbageVector<SemaphoreWaitInfo> _waitSemaphores,
                              GarbageVector<TimelineSemaphoreWaitInfo> _waitTimelineSemaphores)
           : queue(_queue),
+            queueId(_queueId),
             frameId(_frameId),
             nodeId(_nodeId),
             cmdBufferData(std::move(_cmdBufferData)),
@@ -263,7 +265,7 @@ enum class ResourceStateValidationMode
 };
 
 ExecutionPackage::CommandBufferPackage make_submission_package(
-  drv::QueuePtr queue, FrameId frameId, NodeId nodeId, const drv::CommandBufferInfo& info,
+  drv::QueuePtr queue, QueueId queueId, FrameId frameId, NodeId nodeId, const drv::CommandBufferInfo& info,
   GarbageSystem* garbageSystem, ResourceStateValidationMode validationMode);
 
 class ExecutionQueue

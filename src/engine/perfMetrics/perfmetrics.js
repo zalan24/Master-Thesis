@@ -100,8 +100,16 @@ function onDocumentDragEnd(e) {
     dragStartMouse = null;
 }
 
+function getModelTransform(element) {
+    return getTranslation({x: element.offsetWidth/2, y: element.offsetHeight/2});
+}
+
+function getInvModelTransform(element) {
+    return getTranslation({x: -element.offsetWidth/2, y: -element.offsetHeight/2});
+}
+
 function applyViewTransformOn(element) {
-    let invModel = getTranslation({x: -element.offsetWidth/2, y: -element.offsetHeight/2});
+    let invModel = getInvModelTransform(element);
     tm = mulMat(invModel, viewMatrix);
     element.style.transform = `matrix(${tm[0][0]}, ${tm[0][1]}, ${tm[1][0]}, ${tm[1][1]}, ${tm[0][2]}, ${tm[1][2]})`;
 }
@@ -133,6 +141,7 @@ function onDocumentZoom(e) {
 }
 
 var cpuPackageData = {};
+var executionPackageData = {};
 
 function createTable() {
     let oldTbl = document.getElementById('perftable');
@@ -164,6 +173,7 @@ function createTable() {
     let tbdy = document.createElement('tbody');
 
     let cpuNodes = captureData.stageToThreadToPackageList;
+    let deviceNodes = captureData.queueToDevicePackageList;
     let executionNodes = captureData.executionPackages;
     let minTime = null;
     let maxTime = null;
@@ -181,8 +191,18 @@ function createTable() {
             }
         }
     }
+    for (let i in executionNodes) {
+        let node = executionNodes[i];
+        if (minTime == null || node.startTime < minTime)
+            minTime = node.startTime;
+        if (node.frameId == captureData.frameId && (minTargetTime == null || node.startTime < minTargetTime))
+            minTargetTime = node.startTime;
+        if (maxTime == null || maxTime < node.endTime)
+            maxTime = node.endTime;
+    }
 
     cpuPackageData = {};
+    executionPackageData = {};
 
     for (let stageName in cpuNodes) {
         let stageTr = document.createElement('tr');
@@ -326,7 +346,7 @@ function createTable() {
         nodeWrapperElem.style.left = `${timeToWorldUnit * (node.startTime - minTime)}px`
         let nodeElem = document.createElement('div');
         nodeElem.className = "cpuNode";
-        // cpuPackageData[node.packageId] = {w: nodeWrapperElem, n: node};
+        executionPackageData[node.packageId] = {w: nodeWrapperElem, n: node};
 
         let textWrapper = document.createElement('div');
         textWrapper.className = "textWrapper";
@@ -372,6 +392,100 @@ function createTable() {
     threadsNamesTd.appendChild(threadTbl);
     executionStageTr.appendChild(threadsNamesTd);
     tbdy.appendChild(executionStageTr);
+
+
+    let deviceStageTr = document.createElement('tr');
+
+    stageNameTd = document.createElement('td');
+    stageText = document.createElement('div');
+    stageText.innerHTML = 'GPU';
+    stageText.className = 'stageName';
+    stageNameTd.appendChild(stageText);
+    stageNameTd.className = 'nametd';
+    deviceStageTr.appendChild(stageNameTd);
+
+    threadsNamesTd = document.createElement('td');
+    for (let threadName in deviceNodes) {
+        let threadTbl = document.createElement('table');
+        threadTbl.className = 'threadtable';
+        let threadBody = document.createElement('tbody');
+        let threadTr = document.createElement('tr');
+
+        let threadNameTd = document.createElement('td');
+        threadNameTd.className = 'nametd';
+        let threadNameDiv = document.createElement('div');
+        threadNameDiv.innerHTML = threadName;
+        threadNameDiv.className = 'threadName';
+        threadNameTd.appendChild(threadNameDiv);
+        threadTr.appendChild(threadNameTd);
+
+        let contentTd = document.createElement('td');
+        contentTd.className = 'contenttd';
+        contentTd.style.width = `${timeToWorldUnit * (maxTime - minTime)}px`;
+
+        for(let i in deviceNodes[threadName]) {
+            let node = deviceNodes[threadName][i];
+            // let delay = Math.max(node.submissionTime - node.issueTime, 0);
+            let workTime = Math.max(node.endTime - node.startTime, 0);
+
+            let sourceExecution = executionPackageData[node.sourceExecPackageId];
+            console.log(sourceExecution.n);
+            let sourceNode = cpuPackageData[sourceExecution.n.sourcePackageId];
+
+            let nodeWrapperElem = document.createElement('div');
+            nodeWrapperElem.className = "nodeWrapper " + (sourceNode.n.frameId == captureData.frameId ? "currentFrame" : "otherFrame");
+            nodeWrapperElem.style.left = `${timeToWorldUnit * (node.startTime - minTime)}px`
+            let nodeElem = document.createElement('div');
+            nodeElem.className = "cpuNode";
+            // cpuPackageData[node.packageId] = {w: nodeWrapperElem, n: node};
+
+            let textWrapper = document.createElement('div');
+            textWrapper.className = "textWrapper";
+            textWrapper.style.width = `${Math.max(timeToWorldUnit * workTime, 1)}px`;
+
+            let nodeNameElem = document.createElement('div');
+            nodeNameElem.className = "nodeText";
+            nodeNameElem.innerHTML = `${sourceNode.n.name} (${sourceNode.n.frameId - captureData.frameId})`;
+            textWrapper.appendChild(nodeNameElem);
+
+            // let execNodeNameElem = document.createElement('div');
+            // execNodeNameElem.className = "nodeText";
+            // execNodeNameElem.innerHTML = `${node.name}`;
+            // textWrapper.appendChild(execNodeNameElem);
+
+            let nodeTimingElem = document.createElement('div');
+            nodeTimingElem.className = "nodeText";
+            nodeTimingElem.innerHTML = `${Math.round(node.submissionTime - minTargetTime)} | ${Math.round(node.startTime - minTargetTime)} | ${Math.round(node.endTime - minTargetTime)} ms`;
+            textWrapper.appendChild(nodeTimingElem);
+            nodeElem.appendChild(textWrapper);
+
+
+            let workElem = document.createElement('div');
+            workElem.className = "workTime";
+            workElem.style.width = `${Math.max(timeToWorldUnit * workTime, 1)}px`;
+            nodeElem.appendChild(workElem);
+
+            nodeWrapperElem.onmouseenter = (_) => {
+                sourceNode.w.classList.add("issued");
+                sourceExecution.w.classList.add("issued");
+            }
+            nodeWrapperElem.onmouseleave = (_) => {
+                sourceExecution.w.classList.remove("issued");
+                sourceNode.w.classList.remove("issued");
+            }
+
+
+            nodeWrapperElem.appendChild(nodeElem);
+            contentTd.appendChild(nodeWrapperElem);
+        }
+        threadTr.appendChild(contentTd);
+
+        threadBody.appendChild(threadTr);
+        threadTbl.appendChild(threadBody);
+        threadsNamesTd.appendChild(threadTbl);
+    }
+    deviceStageTr.appendChild(threadsNamesTd);
+    tbdy.appendChild(deviceStageTr);
 
 
     tbl.appendChild(tbdy);
@@ -424,5 +538,11 @@ function createTable() {
             execIntervalElem.style.visibility = "hidden";
         }
     }
+    applyViewTransform();
+}
+
+function initPage() {
+    createTable();
+    viewMatrix = getModelTransform(document.getElementById('perftable'));
     applyViewTransform();
 }

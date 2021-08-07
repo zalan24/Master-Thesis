@@ -87,7 +87,6 @@ class FrameGraph
 {
  public:
     using TagNodeId = NodeId;
-    using QueueId = uint32_t;
     using Offset = uint32_t;
     static constexpr uint32_t NO_SYNC = std::numeric_limits<Offset>::max();
     using Clock = drv::Clock;
@@ -207,6 +206,7 @@ class FrameGraph
         {
             drv::QueuePtr queue;
             drv::CmdBufferId submissionId;
+            QueueId queueId;
             FrameId frameId = INVALID_FRAME;
             FrameGraph::Clock::time_point submitted;
             FrameGraph::Clock::time_point start;
@@ -371,10 +371,12 @@ class FrameGraph
     void initFrame(FrameId frameId);
     void feedExecutionTiming(NodeId sourceNode, FrameId frameId, Clock::time_point issueTime,
                              Clock::time_point executionStartTime,
-                             Clock::time_point executionEndTime);
+                             Clock::time_point executionEndTime,
+                             drv::CmdBufferId submissionId = drv::CmdBufferId(-1));
 
-    QueueId registerQueue(drv::QueuePtr queue);
+    QueueId registerQueue(drv::QueuePtr queue, const std::string& name);
     drv::QueuePtr getQueue(QueueId queueId) const;
+    const std::string& getQueueName(QueueId queueId) const;
 
     FrameGraph(drv::PhysicalDevice physicalDevice, drv::LogicalDevicePtr device,
                GarbageSystem* garbageSystem, drv::ResourceLocker* resourceLocker,
@@ -410,6 +412,7 @@ class FrameGraph
         Clock::time_point submissionTime;
         Clock::time_point executionTime;
         Clock::time_point endTime;
+        drv::CmdBufferId submissionId = drv::CmdBufferId(-1);
     };
 
     struct FrameExecutionPackagesTimings
@@ -444,6 +447,7 @@ class FrameGraph
     std::vector<Node> nodes;
     std::atomic<bool> quit = false;
     FlexibleArray<drv::QueuePtr, 8> queues;
+    FlexibleArray<std::string, 8> queueNames;
     FlexibleArray<drv::QueuePtr, 8> uniqueQueues;
     std::array<TagNodeId, NUM_STAGES> stageStartNodes;
     std::array<TagNodeId, NUM_STAGES> stageEndNodes;

@@ -233,12 +233,15 @@ Engine::Engine(int argc, char* argv[], const EngineConfig& cfg,
           WARNING,
           "Present is supported on render queue, but a different queue is selected for presentation");
 
-    queueInfos.computeQueue = {computeQueue.queue, frameGraph.registerQueue(computeQueue.queue)};
-    queueInfos.DtoHQueue = {DtoHQueue.queue, frameGraph.registerQueue(DtoHQueue.queue)};
-    queueInfos.HtoDQueue = {HtoDQueue.queue, frameGraph.registerQueue(HtoDQueue.queue)};
-    queueInfos.inputQueue = {inputQueue.queue, frameGraph.registerQueue(inputQueue.queue)};
-    queueInfos.presentQueue = {presentQueue.queue, frameGraph.registerQueue(presentQueue.queue)};
-    queueInfos.renderQueue = {renderQueue.queue, frameGraph.registerQueue(renderQueue.queue)};
+    queueInfos.computeQueue = {computeQueue.queue,
+                               frameGraph.registerQueue(computeQueue.queue, "compute")};
+    queueInfos.DtoHQueue = {DtoHQueue.queue, frameGraph.registerQueue(DtoHQueue.queue, "DtoH")};
+    queueInfos.HtoDQueue = {HtoDQueue.queue, frameGraph.registerQueue(HtoDQueue.queue, "HtoD")};
+    queueInfos.inputQueue = {inputQueue.queue, frameGraph.registerQueue(inputQueue.queue, "input")};
+    queueInfos.presentQueue = {presentQueue.queue,
+                               frameGraph.registerQueue(presentQueue.queue, "present")};
+    queueInfos.renderQueue = {renderQueue.queue,
+                              frameGraph.registerQueue(renderQueue.queue, "render")};
 
     inputSampleNode =
       frameGraph.addNode(FrameGraph::Node("sample_input", FrameGraph::SIMULATION_STAGE));
@@ -839,6 +842,7 @@ class AccessValidationCallback final : public drv::ResourceStateTransitionCallba
 bool Engine::execute(ExecutionPackage&& package) {
     bool recursiveExecution = false;
     drv::Clock::time_point startTime = drv::Clock::now();
+    drv::CmdBufferId cmdBufferId = drv::CmdBufferId(-1);
     if (std::holds_alternative<ExecutionPackage::MessagePackage>(package.package)) {
         ExecutionPackage::MessagePackage& message =
           std::get<ExecutionPackage::MessagePackage>(package.package);
@@ -891,6 +895,7 @@ bool Engine::execute(ExecutionPackage&& package) {
         uint32_t numCommandBuffers = 0;
         ExecutionPackage::CommandBufferPackage& cmdBuffer =
           std::get<ExecutionPackage::CommandBufferPackage>(package.package);
+        cmdBufferId = cmdBuffer.cmdBufferData.cmdBufferId;
 
         bool needTimestamps = drv::timestamps_supported(device, cmdBuffer.queue);
         SubmissionTimestampsInfo submissionTimestampInfo;
@@ -1033,6 +1038,7 @@ bool Engine::execute(ExecutionPackage&& package) {
             submissionTimestampInfo.submissionTime = drv::Clock::now();
             submissionTimestampInfo.node = nodeId;
             submissionTimestampInfo.queue = cmdBuffer.queue;
+            submissionTimestampInfo.queueId = cmdBuffer.queueId;
             submissionTimestampInfo.submission = cmdBuffer.cmdBufferData.cmdBufferId;
             timestsampRingBuffer[cmdBuffer.frameId % timestsampRingBuffer.size()].push_back(
               std::move(submissionTimestampInfo));
@@ -1056,7 +1062,7 @@ bool Engine::execute(ExecutionPackage&& package) {
     }
     if (!recursiveExecution)
         frameGraph.feedExecutionTiming(package.nodeId, package.frame, package.creationTime,
-                                       startTime, drv::Clock::now());
+                                       startTime, drv::Clock::now(), cmdBufferId);
     return true;
 }
 
@@ -1100,6 +1106,7 @@ void Engine::readbackLoop(volatile bool* finished) {
                 FrameGraph::Node::DeviceTiming timing;
                 timing.frameId = readbackFrame;
                 timing.queue = itr.queue;
+                timing.queueId = itr.queueId;
                 timing.submissionId = itr.submission;
                 timing.submitted = itr.submissionTime;
                 timing.finish = endTimes[0];
@@ -1280,9 +1287,8 @@ void Engine::mainLoopKernel() {
     }
 }
 
-void Engine::transferFromStager(drv::CmdBufferId cmdBufferId, ImageStager& stager,
-                                FrameGraph::QueueId queue, FrameId frame,
-                                FrameGraph::NodeHandle& nodeHandle,
+void Engine::transferFromStager(drv::CmdBufferId cmdBufferId, ImageStager& stager, QueueId queue,
+                                FrameId frame, FrameGraph::NodeHandle& nodeHandle,
                                 ImageStager::StagerId stagerId) {
     struct Data
     {
@@ -1303,15 +1309,15 @@ void Engine::transferFromStager(drv::CmdBufferId cmdBufferId, ImageStager& stage
                                      getPhysicalDevice(), getDevice(), frameGraph.getQueue(queue),
                                      getCommandBufferBank(), getGarbageSystem(), Data::record,
                                      getFrameGraph().get_semaphore_value(frame));
-    ExecutionPackage::CommandBufferPackage submission = make_submission_package(
-      frameGraph.getQueue(queue), frame, nodeHandle.getNodeId(), cmdBuffer.use(std::move(data)),
-      getGarbageSystem(), ResourceStateValidationMode::NEVER_VALIDATE);
+    ExecutionPackage::CommandBufferPackage submission =
+      make_submission_package(frameGraph.getQueue(queue), queue, frame, nodeHandle.getNodeId(),
+                              cmdBuffer.use(std::move(data)), getGarbageSystem(),
+                              ResourceStateValidationMode::NEVER_VALIDATE);
     nodeHandle.submit(queue, std::move(submission));
 }
-void Engine::transferFromStager(drv::CmdBufferId cmdBufferId, ImageStager& stager,
-                                FrameGraph::QueueId queue, FrameId frame,
-                                FrameGraph::NodeHandle& nodeHandle, ImageStager::StagerId stagerId,
-                                uint32_t layer, uint32_t mip) {
+void Engine::transferFromStager(drv::CmdBufferId cmdBufferId, ImageStager& stager, QueueId queue,
+                                FrameId frame, FrameGraph::NodeHandle& nodeHandle,
+                                ImageStager::StagerId stagerId, uint32_t layer, uint32_t mip) {
     struct Data
     {
         ImageStager* stager;
@@ -1334,14 +1340,15 @@ void Engine::transferFromStager(drv::CmdBufferId cmdBufferId, ImageStager& stage
                                      getPhysicalDevice(), getDevice(), frameGraph.getQueue(queue),
                                      getCommandBufferBank(), getGarbageSystem(), Data::record,
                                      getFrameGraph().get_semaphore_value(frame));
-    ExecutionPackage::CommandBufferPackage submission = make_submission_package(
-      frameGraph.getQueue(queue), frame, nodeHandle.getNodeId(), cmdBuffer.use(std::move(data)),
-      getGarbageSystem(), ResourceStateValidationMode::NEVER_VALIDATE);
+    ExecutionPackage::CommandBufferPackage submission =
+      make_submission_package(frameGraph.getQueue(queue), queue, frame, nodeHandle.getNodeId(),
+                              cmdBuffer.use(std::move(data)), getGarbageSystem(),
+                              ResourceStateValidationMode::NEVER_VALIDATE);
     nodeHandle.submit(queue, std::move(submission));
 }
-void Engine::transferFromStager(drv::CmdBufferId cmdBufferId, ImageStager& stager,
-                                FrameGraph::QueueId queue, FrameId frame,
-                                FrameGraph::NodeHandle& nodeHandle, ImageStager::StagerId stagerId,
+void Engine::transferFromStager(drv::CmdBufferId cmdBufferId, ImageStager& stager, QueueId queue,
+                                FrameId frame, FrameGraph::NodeHandle& nodeHandle,
+                                ImageStager::StagerId stagerId,
                                 const drv::ImageSubresourceRange& subres) {
     struct Data
     {
@@ -1363,14 +1370,15 @@ void Engine::transferFromStager(drv::CmdBufferId cmdBufferId, ImageStager& stage
                                      getPhysicalDevice(), getDevice(), frameGraph.getQueue(queue),
                                      getCommandBufferBank(), getGarbageSystem(), Data::record,
                                      getFrameGraph().get_semaphore_value(frame));
-    ExecutionPackage::CommandBufferPackage submission = make_submission_package(
-      frameGraph.getQueue(queue), frame, nodeHandle.getNodeId(), cmdBuffer.use(std::move(data)),
-      getGarbageSystem(), ResourceStateValidationMode::NEVER_VALIDATE);
+    ExecutionPackage::CommandBufferPackage submission =
+      make_submission_package(frameGraph.getQueue(queue), queue, frame, nodeHandle.getNodeId(),
+                              cmdBuffer.use(std::move(data)), getGarbageSystem(),
+                              ResourceStateValidationMode::NEVER_VALIDATE);
     nodeHandle.submit(queue, std::move(submission));
 }
-void Engine::transferToStager(drv::CmdBufferId cmdBufferId, ImageStager& stager,
-                              FrameGraph::QueueId queue, FrameId frame,
-                              FrameGraph::NodeHandle& nodeHandle, ImageStager::StagerId stagerId) {
+void Engine::transferToStager(drv::CmdBufferId cmdBufferId, ImageStager& stager, QueueId queue,
+                              FrameId frame, FrameGraph::NodeHandle& nodeHandle,
+                              ImageStager::StagerId stagerId) {
     struct Data
     {
         ImageStager* stager;
@@ -1389,15 +1397,15 @@ void Engine::transferToStager(drv::CmdBufferId cmdBufferId, ImageStager& stager,
                                      getPhysicalDevice(), getDevice(), frameGraph.getQueue(queue),
                                      getCommandBufferBank(), getGarbageSystem(), Data::record,
                                      getFrameGraph().get_semaphore_value(frame));
-    ExecutionPackage::CommandBufferPackage submission = make_submission_package(
-      frameGraph.getQueue(queue), frame, nodeHandle.getNodeId(), cmdBuffer.use(std::move(data)),
-      getGarbageSystem(), ResourceStateValidationMode::NEVER_VALIDATE);
+    ExecutionPackage::CommandBufferPackage submission =
+      make_submission_package(frameGraph.getQueue(queue), queue, frame, nodeHandle.getNodeId(),
+                              cmdBuffer.use(std::move(data)), getGarbageSystem(),
+                              ResourceStateValidationMode::NEVER_VALIDATE);
     nodeHandle.submit(queue, std::move(submission));
 }
-void Engine::transferToStager(drv::CmdBufferId cmdBufferId, ImageStager& stager,
-                              FrameGraph::QueueId queue, FrameId frame,
-                              FrameGraph::NodeHandle& nodeHandle, ImageStager::StagerId stagerId,
-                              uint32_t layer, uint32_t mip) {
+void Engine::transferToStager(drv::CmdBufferId cmdBufferId, ImageStager& stager, QueueId queue,
+                              FrameId frame, FrameGraph::NodeHandle& nodeHandle,
+                              ImageStager::StagerId stagerId, uint32_t layer, uint32_t mip) {
     struct Data
     {
         ImageStager* stager;
@@ -1419,14 +1427,15 @@ void Engine::transferToStager(drv::CmdBufferId cmdBufferId, ImageStager& stager,
                                      getPhysicalDevice(), getDevice(), frameGraph.getQueue(queue),
                                      getCommandBufferBank(), getGarbageSystem(), Data::record,
                                      getFrameGraph().get_semaphore_value(frame));
-    ExecutionPackage::CommandBufferPackage submission = make_submission_package(
-      frameGraph.getQueue(queue), frame, nodeHandle.getNodeId(), cmdBuffer.use(std::move(data)),
-      getGarbageSystem(), ResourceStateValidationMode::NEVER_VALIDATE);
+    ExecutionPackage::CommandBufferPackage submission =
+      make_submission_package(frameGraph.getQueue(queue), queue, frame, nodeHandle.getNodeId(),
+                              cmdBuffer.use(std::move(data)), getGarbageSystem(),
+                              ResourceStateValidationMode::NEVER_VALIDATE);
     nodeHandle.submit(queue, std::move(submission));
 }
-void Engine::transferToStager(drv::CmdBufferId cmdBufferId, ImageStager& stager,
-                              FrameGraph::QueueId queue, FrameId frame,
-                              FrameGraph::NodeHandle& nodeHandle, ImageStager::StagerId stagerId,
+void Engine::transferToStager(drv::CmdBufferId cmdBufferId, ImageStager& stager, QueueId queue,
+                              FrameId frame, FrameGraph::NodeHandle& nodeHandle,
+                              ImageStager::StagerId stagerId,
                               const drv::ImageSubresourceRange& subres) {
     struct Data
     {
@@ -1447,9 +1456,10 @@ void Engine::transferToStager(drv::CmdBufferId cmdBufferId, ImageStager& stager,
                                      getPhysicalDevice(), getDevice(), frameGraph.getQueue(queue),
                                      getCommandBufferBank(), getGarbageSystem(), Data::record,
                                      getFrameGraph().get_semaphore_value(frame));
-    ExecutionPackage::CommandBufferPackage submission = make_submission_package(
-      frameGraph.getQueue(queue), frame, nodeHandle.getNodeId(), cmdBuffer.use(std::move(data)),
-      getGarbageSystem(), ResourceStateValidationMode::NEVER_VALIDATE);
+    ExecutionPackage::CommandBufferPackage submission =
+      make_submission_package(frameGraph.getQueue(queue), queue, frame, nodeHandle.getNodeId(),
+                              cmdBuffer.use(std::move(data)), getGarbageSystem(),
+                              ResourceStateValidationMode::NEVER_VALIDATE);
     nodeHandle.submit(queue, std::move(submission));
 }
 
@@ -1569,8 +1579,8 @@ Engine::AcquiredImageData Engine::mainRecord(FrameId frameId) {
               queueInfos.renderQueue.handle, getCommandBufferBank(), getGarbageSystem(),
               RecordData::record, getFrameGraph().get_semaphore_value(frameId));
             ExecutionPackage::CommandBufferPackage submission = make_submission_package(
-              queueInfos.renderQueue.handle, frameId, nodeHandle.getNodeId(),
-              cmdBuffer.use(std::move(recordData)), getGarbageSystem(),
+              queueInfos.renderQueue.handle, queueInfos.renderQueue.id, frameId,
+              nodeHandle.getNodeId(), cmdBuffer.use(std::move(recordData)), getGarbageSystem(),
               ResourceStateValidationMode::NEVER_VALIDATE);
             submission.waitSemaphores.push_back(
               {swapChainData.imageAvailableSemaphore,
@@ -1725,6 +1735,16 @@ PerformanceCaptureData Engine::generatePerfCapture(FrameId lastReadyFrame) const
                         continue;
                     if (frame < dep.offset)
                         continue;
+                    if (dep.srcStage == FrameGraph::EXECUTION_STAGE) {
+                        NodeInfo depended =
+                          getPackageId(dep.srcNode, frame - dep.offset, FrameGraph::RECORD_STAGE);
+                        if (depended.stageName != "") {
+                            ret
+                              .stageToThreadToPackageList[current.stageName][current.threadName]
+                                                         [current.vecId]
+                              .execDepended.insert(depended.pgkId);
+                        }
+                    }
                     NodeInfo depended = getPackageId(dep.srcNode, frame - dep.offset, dep.srcStage);
                     if (depended.stageName == "")
                         continue;
@@ -1740,6 +1760,21 @@ PerformanceCaptureData Engine::generatePerfCapture(FrameId lastReadyFrame) const
             }
         }
     }
+    uint32_t execPgkId = 0;
+    struct CmdBufferInfo
+    {
+        FrameId frameId;
+        NodeId nodeId;
+        drv::CmdBufferId cmdBufferId;
+        bool operator<(const CmdBufferInfo& other) const {
+            if (frameId != other.frameId)
+                return frameId < other.frameId;
+            if (nodeId != other.nodeId)
+                return nodeId < other.nodeId;
+            return cmdBufferId < other.cmdBufferId;
+        }
+    };
+    std::map<CmdBufferInfo, uint32_t> cmdBufferToPkgId;
     for (FrameId frame = firstFrame; frame <= lastReadyFrame; ++frame) {
         const FrameGraph::FrameExecutionPackagesTimings executionTimings =
           frameGraph.getExecutionTiming(frame);
@@ -1748,13 +1783,41 @@ PerformanceCaptureData Engine::generatePerfCapture(FrameId lastReadyFrame) const
                                                   FrameGraph::RECORD_STAGE);
             drv::drv_assert(sourcePackage.stageName != "", "Execution source node not found");
             PerformanceCaptureExecutionPackage package;
-            package.name = "<no_name>";  // TODO
+            // package.name = "<no_name>";  // TODO
+            package.packageId = execPgkId++;
             package.sourcePackageId = sourcePackage.pgkId;
             package.issueTime = getTimeDiff(startTime, executionTimings.packages[i].submissionTime);
             package.startTime = getTimeDiff(startTime, executionTimings.packages[i].executionTime);
             package.endTime = getTimeDiff(startTime, executionTimings.packages[i].endTime);
             package.minimalDelayInFrame = i == executionTimings.minDelay;
+            if (executionTimings.packages[i].submissionId != drv::CmdBufferId(-1)) {
+                CmdBufferInfo info{frame, executionTimings.packages[i].sourceNode,
+                                   executionTimings.packages[i].submissionId};
+                cmdBufferToPkgId[info] = package.packageId;
+            }
             ret.executionPackages.push_back(std::move(package));
+        }
+    }
+    for (NodeId id = 0; id < frameGraph.getNodeCount(); ++id) {
+        const FrameGraph::Node* node = frameGraph.getNode(id);
+        if (!node->hasExecution())
+            continue;
+        for (FrameId frame = firstFrame; frame <= lastReadyFrame; ++frame) {
+            for (uint32_t i = 0; i < node->getDeviceTimingCount(frame); ++i) {
+                FrameGraph::Node::DeviceTiming timing = node->getDeviceTiming(frame, i);
+                CmdBufferInfo info{frame, id, timing.submissionId};
+                auto execItr = cmdBufferToPkgId.find(info);
+                drv::drv_assert(execItr != cmdBufferToPkgId.end(),
+                                "Could not find submission source");
+                PerformanceCaptureDevicePackage package;
+                // package.name = ;
+                package.sourceExecPackageId = execItr->second;
+                package.submissionTime = getTimeDiff(startTime, timing.submitted);
+                package.startTime = getTimeDiff(startTime, timing.start);
+                package.endTime = getTimeDiff(startTime, timing.finish);
+                std::string queueName = frameGraph.getQueueName(timing.queueId);
+                ret.queueToDevicePackageList[queueName].push_back(std::move(package));
+            }
         }
     }
     return ret;
