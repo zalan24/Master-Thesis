@@ -348,6 +348,10 @@ function createTable() {
         nodeElem.className = "cpuNode";
         executionPackageData[node.packageId] = {w: nodeWrapperElem, n: node};
 
+        if (!cpuPackageData[node.sourcePackageId].lastExecution || node.endTime < cpuPackageData[node.sourcePackageId].lastExecution.n.endTime) {
+            cpuPackageData[node.sourcePackageId].lastExecution = executionPackageData[node.packageId];
+        }
+
         let textWrapper = document.createElement('div');
         textWrapper.className = "textWrapper";
         textWrapper.style.width = `${Math.max(timeToWorldUnit * workTime, 1)}px`;
@@ -429,7 +433,6 @@ function createTable() {
             let workTime = Math.max(node.endTime - node.startTime, 0);
 
             let sourceExecution = executionPackageData[node.sourceExecPackageId];
-            console.log(sourceExecution.n);
             let sourceNode = cpuPackageData[sourceExecution.n.sourcePackageId];
 
             let nodeWrapperElem = document.createElement('div');
@@ -507,6 +510,13 @@ function createTable() {
                 else
                     dep.w.classList.add("activeDepended");
             }
+            for (let execDepended in info.n.execDepended) {
+                let dep = cpuPackageData[info.n.execDepended[execDepended]].lastExecution;
+                if (dep.n.endTime < info.n.availableTime)
+                    dep.w.classList.add("depended");
+                else
+                    dep.w.classList.add("activeDepended");
+            }
             for (let dependent in info.n.dependent) {
                 let dep = cpuPackageData[info.n.dependent[dependent]];
                 if (dep.n.availableTime < info.n.endTime)
@@ -523,6 +533,13 @@ function createTable() {
         info.w.onmouseleave = (_) => {
             for (let depended in info.n.depended) {
                 let dep = cpuPackageData[info.n.depended[depended]];
+                if (dep.n.endTime < info.n.availableTime)
+                    dep.w.classList.remove("depended");
+                else
+                    dep.w.classList.remove("activeDepended");
+            }
+            for (let execDepended in info.n.execDepended) {
+                let dep = cpuPackageData[info.n.execDepended[execDepended]].lastExecution;
                 if (dep.n.endTime < info.n.availableTime)
                     dep.w.classList.remove("depended");
                 else

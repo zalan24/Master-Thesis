@@ -41,10 +41,10 @@ Get a triangle on screen:
         ✔ Resource locks @done (8/6/2021, 1:44:20 PM)
             ✔ Add a new time point, when the depended nodes are complete, but the resources not yet @done (8/6/2021, 1:44:19 PM)
         ✔ swapchain acquire and present should be displayed @done (8/6/2021, 1:44:23 PM)
-        ☐ Execution queue
+        ✔ Execution queue @done (8/7/2021, 10:28:59 AM)
             ✔ Hovering a node should highlight it's execution time range @done (8/7/2021, 8:59:46 AM)
             ✔ Display execution packages and somehow link them to the source node (requires node info in packages) @done (8/7/2021, 8:59:50 AM)
-            ☐ Display cpu node wait on execution
+            ✔ Display cpu node wait on execution @done (8/7/2021, 10:28:57 AM)
         ☐ Device queue
             ☐ Similar to execution queue, but could be displayed per-stage
             ☐ Display gpu complete waits
