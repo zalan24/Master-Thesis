@@ -231,6 +231,8 @@ class FrameGraph
         ArtificialWorkLoad getWorkLoad(Stage stage) const;
 
         const std::vector<CpuDependency>& getCpuDeps() const {return cpuDeps;}
+        const std::vector<GpuCpuDependency>& getGpuDeps() const { return gpuCpuDeps; }
+        const std::vector<GpuCompleteDependency>& getGpuDoneDeps() const { return gpuCompleteDeps; }
 
      private:
         std::string name;

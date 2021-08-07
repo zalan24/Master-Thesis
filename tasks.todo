@@ -45,10 +45,9 @@ Get a triangle on screen:
             ✔ Hovering a node should highlight it's execution time range @done (8/7/2021, 8:59:46 AM)
             ✔ Display execution packages and somehow link them to the source node (requires node info in packages) @done (8/7/2021, 8:59:50 AM)
             ✔ Display cpu node wait on execution @done (8/7/2021, 10:28:57 AM)
-        ☐ Device queue
-            ☐ Similar to execution queue, but could be displayed per-stage
-            ☐ Display gpu complete waits
-            ☐ Display gpu node waits
+        ✔ Device queue @done (8/7/2021, 10:58:59 AM)
+            ✔ Display gpu complete waits @done (8/7/2021, 10:58:57 AM)
+            ✔ Display gpu node waits @done (8/7/2021, 10:58:58 AM)
         ☐ Deal with slop...
             ☐ ???
 

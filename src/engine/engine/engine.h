@@ -76,7 +76,9 @@ struct PerformanceCaptureCpuPackage final : public IAutoSerializable<Performance
         (double) endTime,
         (std::set<uint32_t>) depended,
         (std::set<uint32_t>) dependent,
-        (std::set<uint32_t>) execDepended
+        (std::set<uint32_t>) execDepended,
+        (std::set<uint32_t>) deviceDepended,
+        (std::map<std::string, uint64_t>) gpuDoneDep
     )
 };
 

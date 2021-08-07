@@ -440,7 +440,13 @@ function createTable() {
             nodeWrapperElem.style.left = `${timeToWorldUnit * (node.startTime - minTime)}px`
             let nodeElem = document.createElement('div');
             nodeElem.className = "cpuNode";
+            node.w = nodeWrapperElem;
+            node.frameId = sourceNode.n.frameId;
             // cpuPackageData[node.packageId] = {w: nodeWrapperElem, n: node};
+
+            if (!sourceNode.lastDeviceWork || node.endTime < sourceNode.lastDeviceWork.n.endTime) {
+                sourceNode.lastDeviceWork = {w: nodeWrapperElem, n: node};
+            }
 
             let textWrapper = document.createElement('div');
             textWrapper.className = "textWrapper";
@@ -517,12 +523,30 @@ function createTable() {
                 else
                     dep.w.classList.add("activeDepended");
             }
+            for (let deviceDepended in info.n.deviceDepended) {
+                let dep = cpuPackageData[info.n.deviceDepended[deviceDepended]].lastDeviceWork;
+                if (dep.n.endTime < info.n.availableTime)
+                    dep.w.classList.add("depended");
+                else
+                    dep.w.classList.add("activeDepended");
+            }
             for (let dependent in info.n.dependent) {
                 let dep = cpuPackageData[info.n.dependent[dependent]];
                 if (dep.n.availableTime < info.n.endTime)
                     dep.w.classList.add("activeDependent");
                 else
                     dep.w.classList.add("dependent");
+            }
+            for (let threadName in info.n.gpuDoneDep) {
+                for(let i in captureData.queueToDevicePackageList[threadName]) {
+                    let dep = captureData.queueToDevicePackageList[threadName][i];
+                    if (dep.frameId < info.n.gpuDoneDep[threadName]) {
+                        if (info.n.availableTime < dep.endTime)
+                            dep.w.classList.add("activeDepended");
+                        else
+                            dep.w.classList.add("depended");
+                    }
+                }
             }
             if (info.interval) {
                 execIntervalElem.style.left = `${timeToWorldUnit * (info.interval.startTime - minTime)}px`;
@@ -545,12 +569,30 @@ function createTable() {
                 else
                     dep.w.classList.remove("activeDepended");
             }
+            for (let deviceDepended in info.n.deviceDepended) {
+                let dep = cpuPackageData[info.n.deviceDepended[deviceDepended]].lastDeviceWork;
+                if (dep.n.endTime < info.n.availableTime)
+                    dep.w.classList.remove("depended");
+                else
+                    dep.w.classList.remove("activeDepended");
+            }
             for (let dependent in info.n.dependent) {
                 let dep = cpuPackageData[info.n.dependent[dependent]];
                 if (dep.n.availableTime < info.n.endTime)
                     dep.w.classList.remove("activeDependent");
                 else
                     dep.w.classList.remove("dependent");
+            }
+            for (let threadName in info.n.gpuDoneDep) {
+                for(let i in captureData.queueToDevicePackageList[threadName]) {
+                    let dep = captureData.queueToDevicePackageList[threadName][i];
+                    if (dep.frameId < info.n.gpuDoneDep[threadName]) {
+                        if (info.n.availableTime < dep.endTime)
+                            dep.w.classList.remove("activeDepended");
+                        else
+                            dep.w.classList.remove("depended");
+                    }
+                }
             }
             execIntervalElem.style.visibility = "hidden";
         }

@@ -1757,6 +1757,24 @@ PerformanceCaptureData Engine::generatePerfCapture(FrameId lastReadyFrame) const
                                                  [depended.vecId]
                       .dependent.insert(current.pgkId);
                 }
+                for (const auto& dep : node->getGpuDeps()) {
+                    NodeInfo dependedSource =
+                      getPackageId(dep.srcNode, frame - dep.offset, FrameGraph::RECORD_STAGE);
+                    if (dependedSource.stageName == "")
+                        continue;
+                    ret
+                      .stageToThreadToPackageList[current.stageName][current.threadName]
+                                                 [current.vecId]
+                      .deviceDepended.insert(dependedSource.pgkId);
+                }
+                for (const auto& dep : node->getGpuDoneDeps()) {
+                    if (dep.offset > frame)
+                        continue;
+                    ret
+                      .stageToThreadToPackageList[current.stageName][current.threadName]
+                                                 [current.vecId]
+                      .gpuDoneDep[frameGraph.getQueueName(dep.srcQueue)] = frame - dep.offset;
+                }
             }
         }
     }
