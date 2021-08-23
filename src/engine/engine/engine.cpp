@@ -19,6 +19,7 @@
 #include <drvwindow.h>
 
 #include <namethreads.h>
+#include <perf_metrics.h>
 
 #include "execution_queue.h"
 #include "imagestager.h"
@@ -1147,7 +1148,7 @@ void Engine::readbackLoop(volatile bool* finished) {
                 if (!fs::exists(capturesFolder))
                     fs::create_directories(capturesFolder);
                 try {
-                    capture.exportToFile(capturesFolder / fs::path{"lastCapture.json"});
+                    generate_capture_file(capturesFolder / fs::path{"lastCapture.html"}, &capture);
                     std::stringstream filename;
 
                     auto time =
@@ -1155,9 +1156,9 @@ void Engine::readbackLoop(volatile bool* finished) {
                     struct tm timeinfo;
                     localtime_s(&timeinfo, &time);
                     filename << "capture_" << std::put_time(&timeinfo, "%Y_%m_%d_%H_%M_%S") << "_"
-                             << perfCaptureFrame << ".json";
+                             << perfCaptureFrame << ".html";
                     fs::path capturePath = capturesFolder / fs::path{filename.str()};
-                    capture.exportToFile(capturePath);
+                    generate_capture_file(capturePath, &capture);
                     LOG_ENGINE("Performance capture of frame %llu, saved to %s", perfCaptureFrame,
                                capturePath.string().c_str());
                 }

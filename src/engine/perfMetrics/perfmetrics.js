@@ -1,4 +1,5 @@
-let captureData = {
+let captureData = {};
+
 var viewMatrix = [[1, 0, 0], [0, 1, 0]];
 
 function copyMat(m) {

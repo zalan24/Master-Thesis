@@ -26,4 +26,5 @@ target_link_libraries(EngineLib PUBLIC
     loguru_external
     Entities
     TimestampPool
+    PerfMetrics
 )
