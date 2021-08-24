@@ -57,6 +57,12 @@ Get a triangle on screen:
             ☐ Somehow warn about nodes, that have a high extra slop due to implicit dependency
             ☐ ??? Display per node slops on capture ???
 
+    ☐ Latency reduction
+        ☐ Add extra info to nodes in the slop graph, which stored the amount of delay for that specific node
+        ☐ Use this information for slop calculation
+            ☐ Every node should have information about how much it was directly or indirectly delayed
+            ☐ When a node needs to wait on a delayed node, slop is negative!!!
+
 
 Cleanup & other:
     ☐ Remove useless common driver stuff (drv/common)
