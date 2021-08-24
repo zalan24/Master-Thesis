@@ -1141,6 +1141,8 @@ void Engine::readbackLoop(volatile bool* finished) {
             }
             timestsampRingBuffer[readbackFrame % timestsampRingBuffer.size()].clear();
 
+            frameGraph.processSlops(readbackFrame);
+
             if (perfCaptureFrame != INVALID_FRAME
                 && perfCaptureFrame + config.maxFramesInFlight <= readbackFrame) {
                 PerformanceCaptureData capture = generatePerfCapture(readbackFrame);

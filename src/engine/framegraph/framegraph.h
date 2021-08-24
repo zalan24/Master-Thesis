@@ -25,6 +25,7 @@
 #include "execution_queue.h"
 #include "framegraphDecl.h"
 #include "garbagesystem.h"
+#include "slopgraph.h"
 
 class TimestampPool;
 
@@ -81,6 +82,49 @@ class TemporalResourceLockerDescriptor final : public drv::ResourceLockerDescrip
  private:
     FlexibleArray<ImageData, 4> imageData;
     FlexibleArray<BufferData, 4> bufferData;
+};
+
+class FrameGraph;
+class FrameGraphSlops final : public SlopGraph
+{
+ public:
+    uint32_t getNodeCount() const override;
+    NodeInfos getNodeInfos(SlopNodeId node) const override;
+    uint32_t getChildCount(SlopNodeId node) const override;
+    uint32_t getChild(SlopNodeId node, uint32_t index) const override;
+    bool isImplicitDependency(SlopNodeId node, uint32_t index) const override;
+
+    void feedBack(SlopNodeId node, const FeedbackInfo& info) override;
+
+    void build(FrameGraph* frameGraph);
+    void prepare(FrameGraph* frameGraph, FrameId frame);
+
+    FeedbackInfo calculateSlop(bool feedbackNodes);
+
+ private:
+    SlopNodeId inputNode = INVALID_SLOP_NODE;
+    SlopNodeId presentNodeId = INVALID_SLOP_NODE;
+
+    struct SubmissionData
+    {
+        SlopNodeId deviceWorkNode = INVALID_SLOP_NODE;
+        TODO;  // what up with blocking on resource usage?
+    };
+
+    struct DeviceWorkData
+    {
+        TODO;  // nodes could wait on these (resource usage)
+    };
+
+    struct FixedNodeData
+    {
+        std::vector<SlopNodeId> fixedChildren;
+        std::vector<SlopNodeId> submissions;
+    };
+
+    std::vector<FixedNodeData> fixedNodes;
+    std::vector<SubmissionData> submissions;
+    std::vector<DeviceWorkData> deviceWorkPackages;
 };
 
 class FrameGraph
@@ -194,6 +238,7 @@ class FrameGraph
             FrameGraph::Clock::time_point resourceReady;
             FrameGraph::Clock::time_point start;
             FrameGraph::Clock::time_point finish;
+            int64_t totalSlopNs;
         };
         struct ExecutionTiming
         {
@@ -211,6 +256,7 @@ class FrameGraph
             FrameGraph::Clock::time_point submitted;
             FrameGraph::Clock::time_point start;
             FrameGraph::Clock::time_point finish;
+            int64_t totalSlopNs;
         };
 
         NodeTiming getTiming(FrameId frame, Stage stage) const;
@@ -415,6 +461,7 @@ class FrameGraph
         Clock::time_point executionTime;
         Clock::time_point endTime;
         drv::CmdBufferId submissionId = drv::CmdBufferId(-1);
+        int64_t totalSlopNs;
     };
 
     struct FrameExecutionPackagesTimings
@@ -424,6 +471,7 @@ class FrameGraph
     };
 
     const FrameExecutionPackagesTimings& getExecutionTiming(FrameId frame) const;
+    void processSlops(FrameId frame);
 
  private:
     struct DependenceData
@@ -435,7 +483,7 @@ class FrameGraph
         }
     };
 
-
+    FrameGraphSlops slopsGraph;
     drv::PhysicalDevice physicalDevice;
     drv::LogicalDevicePtr device;
     GarbageSystem* garbageSystem;

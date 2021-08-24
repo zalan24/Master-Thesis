@@ -14,7 +14,8 @@ FrameGraph::FrameGraph(drv::PhysicalDevice _physicalDevice, drv::LogicalDevicePt
                        EventPool* _eventPool, drv::TimelineSemaphorePool* _semaphorePool,
                        TimestampPool* _timestampPool, drv::StateTrackingConfig _trackerConfig,
                        uint32_t maxFramesInExecution, uint32_t _maxFramesInFlight)
-  : physicalDevice(_physicalDevice),
+  : slopsGraph(),
+    physicalDevice(_physicalDevice),
     device(_device),
     garbageSystem(_garbageSystem),
     resourceLocker(_resourceLocker),
@@ -580,6 +581,7 @@ void FrameGraph::build() {
         createInfo.startValue = 0;
         frameEndSemaphores[uniqueQueues[i]] = drv::TimelineSemaphore(device, createInfo);
     }
+    slopsGraph.build(this);
 }
 
 FrameGraph::NodeHandle::NodeHandle() : frameGraph(nullptr) {
@@ -1415,4 +1417,32 @@ FrameGraph::Node::DeviceTiming FrameGraph::Node::getDeviceTiming(FrameId frame,
                                                                  uint32_t index) const {
     const auto& entry = deviceTiming[frame % TIMING_HISTORY_SIZE];
     return entry[index];
+}
+
+uint32_t FrameGraphSlops::getNodeCount() const;
+NodeInfos FrameGraphSlops::getNodeInfos(SlopNodeId node) const;
+uint32_t FrameGraphSlops::getChildCount(SlopNodeId node) const;
+uint32_t FrameGraphSlops::getChild(SlopNodeId node, uint32_t index) const;
+bool FrameGraphSlops::isImplicitDependency(SlopNodeId node, uint32_t index) const;
+
+void FrameGraphSlops::feedBack(SlopNodeId node, const FeedbackInfo& info);
+
+// TODO build fixed part of the slop graph from cpu nodes [simulation..record]
+// TODO what exactly to include here?
+void FrameGraphSlops::build(FrameGraph* frameGraph);
+// TODO loop over execution packages and device submissions
+void FrameGraphSlops::prepare(FrameGraph* frameGraph, FrameId frame);
+
+SlopGraph::FeedbackInfo FrameGraphSlops::calculateSlop(bool feedbackNodes) {
+    drv::drv_assert(inputNode != INVALID_SLOP_NODE && presentNodeId != INVALID_SLOP_NODE,
+                    "FrameGraphSlops was not prepared before calculating slop");
+    auto ret =
+      static_cast<SlopGraph*>(this)->calculateSlop(inputNode, presentNodeId, feedbackNodes);
+    presentNodeId = INVALID_SLOP_NODE;
+    return ret;
+}
+
+void FrameGraph::processSlops(FrameId frame) {
+    slopsGraph.prepare(this, frame);
+    slopsGraph.calculateSlop(true);
 }
