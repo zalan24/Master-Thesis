@@ -132,7 +132,7 @@ drv::Swapchain::CreateInfo Engine::get_swapchain_create_info(const EngineConfig&
                                  drv::SwapchainCreateInfo::PresentMode::IMMEDIATE,
                                  drv::SwapchainCreateInfo::PresentMode::FIFO_RELAXED,
                                  drv::SwapchainCreateInfo::PresentMode::FIFO};
-    ret.sharingType = drv::SharingType::CONCURRENT;  // TODO use exclusive
+    ret.sharingType = drv::SharingType::EXCLUSIVE;
     // TODO usage should come from the game
     ret.usages =
       drv::ImageCreateInfo::COLOR_ATTACHMENT_BIT | drv::ImageCreateInfo::TRANSFER_DST_BIT;

@@ -73,7 +73,7 @@
         "-d../data/",
         // "--gfx",
         // "--api_dump",
-        "--renderdoc",
+        // "--renderdoc",
         "--scene",
         "${workspaceFolder}/data/scenes/test_entity_scene.json",
         "--no_persistance",

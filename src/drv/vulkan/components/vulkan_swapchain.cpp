@@ -4,6 +4,7 @@
 #include <limits>
 
 #include <corecontext.h>
+#include <logger.h>
 
 #include <vulkan/vulkan.h>
 
@@ -75,6 +76,12 @@ drv::SwapchainPtr DrvVulkan::create_swapchain(drv::PhysicalDevicePtr physicalDev
         createInfo.oldSwapchain =
           drv::resolve_ptr<drv_vulkan::Swapchain*>(info->oldSwapchain)->swapchain;
     VkSwapchainKHR swapChain;
+    const char* presentModeNames[] = {"immediate", "mailbox", "fifo", "fifo_relaxed"};
+    const char* sharingModes[] = {"exclusive", "concurrent"};
+    LOG_DRIVER_API("Creating a swapchain: %dx%d, %s, minCount: %d, %s",
+                   createInfo.imageExtent.width, createInfo.imageExtent.height,
+                   presentModeNames[createInfo.presentMode], createInfo.minImageCount,
+                   sharingModes[createInfo.imageSharingMode]);
     VkResult result =
       vkCreateSwapchainKHR(drv::resolve_ptr<VkDevice>(device), &createInfo, nullptr, &swapChain);
     drv::drv_assert(result == VK_SUCCESS, "Swapchain could not be created");
