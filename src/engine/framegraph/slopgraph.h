@@ -20,7 +20,7 @@ class SlopGraph
     virtual uint32_t getNodeCount() const = 0;
     virtual NodeInfos getNodeInfos(SlopNodeId node) const = 0;
     virtual uint32_t getChildCount(SlopNodeId node) const = 0;
-    virtual uint32_t getChild(SlopNodeId node, uint32_t index) const = 0;
+    virtual SlopNodeId getChild(SlopNodeId node, uint32_t index) const = 0;
     // true for nodes than are not dependent, but run on the same thread right after the given node
     virtual bool isImplicitDependency(SlopNodeId node, uint32_t index) const = 0;
 

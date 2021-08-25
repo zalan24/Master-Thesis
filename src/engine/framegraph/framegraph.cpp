@@ -1279,9 +1279,14 @@ void FrameGraph::Node::registerAcquireAttempt(Stage stage, FrameId frameId) {
     }
 }
 
-void FrameGraph::Node::registerSlop(FrameId frameId, int64_t slopNs) {
+void FrameGraph::Node::registerSlop(FrameId frameId, Stage stage, int64_t slopNs) {
     auto& entry = timingInfos[get_stage_id(stage)][frameId % TIMING_HISTORY_SIZE];
     entry.recordedSlopsNs += slopNs;
+}
+
+void FrameGraph::Node::feedbackSlop(FrameId frameId, Stage stage, int64_t slopNs) {
+    auto& entry = timingInfos[get_stage_id(stage)][frameId % TIMING_HISTORY_SIZE];
+    entry.totalSlopNs = slopNs;
 }
 
 void FrameGraph::Node::registerResourceAcquireAttempt(Stage stage, FrameId frameId) {
@@ -1426,22 +1431,35 @@ FrameGraph::Node::DeviceTiming FrameGraph::Node::getDeviceTiming(FrameId frame,
     return entry[index];
 }
 
-FrameGraph::NodeHandle::SlopTimer::SlopTimer(Node* _node, FrameId _frame)
-  : node(_node), frame(_frame), start(FrameGraph::Clock::now()) {
+FrameGraph::NodeHandle::SlopTimer::SlopTimer(Node* _node, FrameId _frame, Stage _stage)
+  : node(_node), frame(_frame), stage(_stage), start(FrameGraph::Clock::now()) {
 }
 
 FrameGraph::NodeHandle::SlopTimer::~SlopTimer() {
     node->registerSlop(
-      frame, std::chrono::duration_cast<std::chrono::nanoseconds>(FrameGraph::Clock::now() - start)
-               .count());
+      frame, stage,
+      std::chrono::duration_cast<std::chrono::nanoseconds>(FrameGraph::Clock::now() - start)
+        .count());
 }
 
 FrameGraph::NodeHandle::SlopTimer FrameGraph::NodeHandle::getSlopTimer() const {
-    return SlopTimer(frameGraph->getNode(node), frameId);
+    return SlopTimer(frameGraph->getNode(node), frameId, stage);
 }
 
-uint32_t FrameGraphSlops::getNodeCount() const;
-SlopGraph::NodeInfos FrameGraphSlops::getNodeInfos(SlopNodeId node) const;
+uint32_t FrameGraphSlops::getNodeCount() const {
+    return uint32_t(fixedNodes.size() + submissions.size() + deviceWorkPackages.size());
+}
+
+SlopGraph::NodeInfos FrameGraphSlops::getNodeInfos(SlopNodeId node) const {
+    if (node < fixedNodes.size())
+        return fixedNodes[node].infos;
+    node -= fixedNodes.size();
+    if (node < submissions.size())
+        return submissions[node].infos;
+    node -= submissions.size();
+    return deviceWorkPackages[node].infos;
+}
+
 // TODO
 // + node-node cpu dep
 // + node -> execution package
@@ -1452,18 +1470,116 @@ SlopGraph::NodeInfos FrameGraphSlops::getNodeInfos(SlopNodeId node) const;
 // + resource lock (gpu usage and cpu usage = implicit gpu wait) -- no need, same
 // + wait on gpu queue -- no need, these should not be used for non-readback loop nodes (worth a check&warning though)
 // + gpu->cpu dep -- no need, same
-uint32_t FrameGraphSlops::getChildCount(SlopNodeId node) const;
-uint32_t FrameGraphSlops::getChild(SlopNodeId node, uint32_t index) const;
-bool FrameGraphSlops::isImplicitDependency(SlopNodeId node, uint32_t index) const;
+uint32_t FrameGraphSlops::getChildCount(SlopNodeId node) const {
+    if (node < fixedNodes.size())
+        return uint32_t(fixedNodes[node].fixedChildren.size() + fixedNodes[node].submissions.size())
+               + (fixedNodes[node].followingNode != INVALID_SLOP_NODE ? 1 : 0);
+    node -= fixedNodes.size();
+    if (node < submissions.size())
+        return (submissions[node].deviceWorkNode != INVALID_SLOP_NODE ? 1 : 0)
+               + (submissions[node].followingNode != INVALID_SLOP_NODE ? 1 : 0);
+    node -= submissions.size();
+    return deviceWorkPackages[node].followingNode != INVALID_SLOP_NODE ? 1 : 0;
+}
 
-void FrameGraphSlops::feedBack(SlopNodeId node, const FeedbackInfo& info);
+SlopGraph::SlopNodeId FrameGraphSlops::getChild(SlopNodeId node, uint32_t index) const {
+    if (node < fixedNodes.size()) {
+        if (fixedNodes[node].followingNode != INVALID_SLOP_NODE) {
+            if (index == 0)
+                return fixedNodes[node].followingNode;
+            index -= 1;
+        }
+        if (index < fixedNodes[node].fixedChildren.size())
+            return fixedNodes[node].fixedChildren[index];
+        index -= fixedNodes[node].fixedChildren.size();
+        return fixedNodes[node].submissions[index];
+    }
+    node -= fixedNodes.size();
+    if (node < submissions.size()) {
+        if (submissions[node].followingNode != INVALID_SLOP_NODE && index == 0)
+            return submissions[node].followingNode;
+        return submissions[node].deviceWorkNode;
+    }
+    node -= submissions.size();
+    return deviceWorkPackages[node].followingNode;
+}
 
-// TODO build fixed part of the slop graph from cpu nodes [simulation..record]
-// TODO what exactly to include here?
-// everything in between the input and present node (based on time), it's possible to add more, just unnecessary
-void FrameGraphSlops::build(FrameGraph* frameGraph);
+bool FrameGraphSlops::isImplicitDependency(SlopNodeId node, uint32_t index) const {
+    if (index > 0)
+        return false;
+    if (node < fixedNodes.size())
+        return fixedNodes[node].followingNode != INVALID_SLOP_NODE;
+    node -= fixedNodes.size();
+    if (node < submissions.size())
+        return submissions[node].followingNode != INVALID_SLOP_NODE;
+    node -= submissions.size();
+    return deviceWorkPackages[node].followingNode != INVALID_SLOP_NODE;
+}
+
+void FrameGraphSlops::feedBack(SlopNodeId node, const FeedbackInfo& info) {
+    if (node < fixedNodes.size()) {
+        FrameGraph::Node* fNode = frameGraph->getNode(fixedNodes[node].frameGraphNode);
+        FrameId frame =
+          currentFrame + fixedNodes[node].frameIndex - frameGraph->getMaxFramesInFlight();
+        fNode->feedbackSlop(frame, fixedNodes[node].stage, info.totalSlopNs);
+    }
+    // otherwise ignore infos (submissions and device work don't need it)
+}
+
+void FrameGraphSlops::build(FrameGraph* _frameGraph, NodeId _inputNode, int _inputNodeStage) {
+    frameGraph = _frameGraph;
+    uint32_t frameCount = frameGraph->getMaxFramesInFlight() * 2 + 1;
+    for (NodeId id = 0; id < frameGraph.getNodeCount(); ++id) {
+        const FrameGraph::Node* node = frameGraph.getNode(id);
+        for (uint32_t stageId = 0; stageId < FrameGraph::NUM_STAGES; ++stageId) {
+            FrameGraph::Stage stage = FrameGraph::get_stage(stageId);
+            if (stage == FrameGraph::EXECUTION_STAGE || stage == FrameGraph::READBACK_STAGE)
+                continue;
+            if (!node->hasStage(stage))
+                continue;
+            for (FrameId frame = 0; frame <= frameCount; ++frame)
+                createCpuNode(id, stage, frame);
+        }
+    }
+    for (NodeId id = 0; id < frameGraph.getNodeCount(); ++id) {
+        const FrameGraph::Node* node = frameGraph.getNode(id);
+        for (uint32_t stageId = 0; stageId < FrameGraph::NUM_STAGES; ++stageId) {
+            FrameGraph::Stage stage = FrameGraph::get_stage(stageId);
+            if (stage == FrameGraph::EXECUTION_STAGE || stage == FrameGraph::READBACK_STAGE)
+                continue;
+            if (!node->hasStage(stage))
+                continue;
+            for (FrameId frame = 0; frame <= frameCount; ++frame) {
+                SlopNodeId targetNode = findFixedNode(id, stage, frame);
+                if (targetNode == INVALID_SLOP_NODE)
+                    continue;
+
+                for (const auto& dep : node->getCpuDeps()) {
+                    if (dep.dstStage != stage)
+                        continue;
+                    if (frame < dep.offset)
+                        continue;
+                    SlopNodeId sourceNode = findFixedNode(id, stage, frame);
+                    if (sourceNode == INVALID_SLOP_NODE)
+                        continue;
+                    addFixedDependency(sourceNode, targetNode);
+                }
+                drv::drv_assert(node->getGpuDeps().size() == 0, "Slop graph doesn't support this");
+                drv::drv_assert(node->getGpuDoneDeps().size() == 0,
+                                "Slop graph doesn't support this");
+            }
+        }
+    }
+    inputNode = findFixedNode(_inputNode, _inputNodeStage, frameGraph->getMaxFramesInFlight());
+}
+
 // TODO loop over execution packages and device submissions
-void FrameGraphSlops::prepare(FrameGraph* frameGraph, FrameId frame);
+// also fill in the node infos
+void FrameGraphSlops::prepare(FrameId frame) {
+    TODO;
+    currentFrame = frame;
+    presentNodeId = findNode(, , frameGraph->getMaxFramesInFlight());
+}
 
 SlopGraph::FeedbackInfo FrameGraphSlops::calculateSlop(bool feedbackNodes) {
     drv::drv_assert(inputNode != INVALID_SLOP_NODE && presentNodeId != INVALID_SLOP_NODE,
@@ -1475,6 +1591,8 @@ SlopGraph::FeedbackInfo FrameGraphSlops::calculateSlop(bool feedbackNodes) {
 }
 
 void FrameGraph::processSlops(FrameId frame) {
-    slopsGraph.prepare(this, frame);
+    if (frame < getMaxFramesInFlight())
+        continue;
+    slopsGraph.prepare(frame);
     slopsGraph.calculateSlop(true);
 }

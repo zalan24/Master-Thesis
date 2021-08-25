@@ -91,33 +91,47 @@ class FrameGraphSlops final : public SlopGraph
     uint32_t getNodeCount() const override;
     NodeInfos getNodeInfos(SlopNodeId node) const override;
     uint32_t getChildCount(SlopNodeId node) const override;
-    uint32_t getChild(SlopNodeId node, uint32_t index) const override;
+    SlopNodeId getChild(SlopNodeId node, uint32_t index) const override;
     bool isImplicitDependency(SlopNodeId node, uint32_t index) const override;
 
     void feedBack(SlopNodeId node, const FeedbackInfo& info) override;
 
-    void build(FrameGraph* frameGraph);
-    void prepare(FrameGraph* frameGraph, FrameId frame);
+    void build(FrameGraph* frameGraph, NodeId inputNode, int inputNodeStage);
+    void prepare(FrameId frame);
+
+    // frameIndex : [0..(2*maxFramesInFlight + 1)]
+    void createCpuNode(NodeId nodeId, int stage, uint32_t frameIndex);
+    SlopNodeId findFixedNode(NodeId nodeId, int stage, uint32_t frameIndex) const;
+    void addFixedDependency(SlopNodeId from, SlopNodeId to);
 
     FeedbackInfo calculateSlop(bool feedbackNodes);
 
  private:
+    FrameGraph* frameGraph = nullptr;
     SlopNodeId inputNode = INVALID_SLOP_NODE;
     SlopNodeId presentNodeId = INVALID_SLOP_NODE;
+    FrameId currentFrame;
 
     struct SubmissionData
     {
+        NodeInfos infos;
         SlopNodeId deviceWorkNode = INVALID_SLOP_NODE;
-        TODO;  // what up with blocking on resource usage?
+        SlopNodeId followingNode = INVALID_SLOP_NODE;
     };
 
     struct DeviceWorkData
     {
-        TODO;  // nodes could wait on these (resource usage)
+        NodeInfos infos;
+        SlopNodeId followingNode = INVALID_SLOP_NODE;
     };
 
     struct FixedNodeData
     {
+        NodeInfos infos;
+        NodeId frameGraphNode;
+        int stage;
+        uint32_t frameIndex;
+        SlopNodeId followingNode = INVALID_SLOP_NODE;
         std::vector<SlopNodeId> fixedChildren;
         std::vector<SlopNodeId> submissions;
     };
@@ -257,7 +271,6 @@ class FrameGraph
             FrameGraph::Clock::time_point submitted;
             FrameGraph::Clock::time_point start;
             FrameGraph::Clock::time_point finish;
-            int64_t totalSlopNs = 0;
         };
 
         NodeTiming getTiming(FrameId frame, Stage stage) const;
@@ -272,7 +285,8 @@ class FrameGraph
         void registerExecutionStart(FrameId frameId);
         void registerExecutionFinish(FrameId frameId);
         void registerDeviceTiming(FrameId frameId, const DeviceTiming& timing);
-        void registerSlop(FrameId frameId, int64_t slopNs);
+        void registerSlop(FrameId frameId, Stage stage, int64_t slopNs);  // during node work
+        void feedbackSlop(FrameId frameId, Stage stage, int64_t slopNs);  // afterwards calculation
         void initFrame(FrameId frameId);
 
         void setWorkLoad(Stage stage, const ArtificialWorkLoad& workLoad);
@@ -351,7 +365,7 @@ class FrameGraph
         class SlopTimer
         {
          public:
-            SlopTimer(Node* node, FrameId frame);
+            SlopTimer(Node* node, FrameId frame, Stage stage);
             ~SlopTimer();
             SlopTimer(const SlopTimer&) = delete;
             SlopTimer& operator=(const SlopTimer&) = delete;
@@ -359,6 +373,7 @@ class FrameGraph
          private:
             Node* node;
             FrameId frame;
+            Stage stage;
             FrameGraph::Clock::time_point start;
         };
 
