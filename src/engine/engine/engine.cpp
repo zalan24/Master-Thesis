@@ -1799,7 +1799,7 @@ PerformanceCaptureData Engine::generatePerfCapture(FrameId lastReadyFrame) const
     };
     std::map<CmdBufferInfo, uint32_t> cmdBufferToPkgId;
     for (FrameId frame = firstFrame; frame <= lastReadyFrame; ++frame) {
-        const FrameGraph::FrameExecutionPackagesTimings executionTimings =
+        const FrameGraph::FrameExecutionPackagesTimings& executionTimings =
           frameGraph.getExecutionTiming(frame);
         for (uint32_t i = 0; i < executionTimings.packages.size(); ++i) {
             NodeInfo sourcePackage = getPackageId(executionTimings.packages[i].sourceNode, frame,
