@@ -554,10 +554,12 @@ Engine::AcquiredImageData Engine::acquiredSwapchainImage(
         && windowExtent == swapchain.getCurrentEXtent()) {
         uint32_t imageIndex = drv::Swapchain::INVALID_INDEX;
         std::unique_lock<std::mutex> lock(swapchainMutex);
-        // TODO latency slop -> acquiringNodeHandle
-        drv::AcquireResult result = swapchain.acquire(
-          imageIndex, syncBlock.imageAvailableSemaphores[acquireImageSemaphoreId]);
-        // ---
+        drv::AcquireResult result;
+        {
+            auto timer = acquiringNodeHandle.getSlopTimer();
+            result = swapchain.acquire(imageIndex,
+                                       syncBlock.imageAvailableSemaphores[acquireImageSemaphoreId]);
+        }
         switch (result) {
             case drv::AcquireResult::ERROR:
                 drv::drv_assert(false, "Could not acquire swapchain image");

@@ -75,11 +75,13 @@ SlopGraph::FeedbackInfo SlopGraph::calculateSlop(SlopNodeId sourceNode, SlopNode
             }
             else
                 noImplicitMin =
-                  std::min(noImplicitMin, uint64_t(int64_t(childInfo.startTimeNs)
+                  std::min(noImplicitMin, uint64_t(int64_t(childInfo.startTimeNs) + childInfo.slopNs
                                                    + nodeData[child].feedbackInfo.totalSlopNs));
-            sloppedMin = std::min(sloppedMin, uint64_t(int64_t(childInfo.startTimeNs)
-                                                       + nodeData[child].feedbackInfo.totalSlopNs));
-            asIsMin = std::min(asIsMin, childInfo.startTimeNs);
+            sloppedMin =
+              std::min(sloppedMin, uint64_t(int64_t(childInfo.startTimeNs) + childInfo.slopNs
+                                            + nodeData[child].feedbackInfo.totalSlopNs));
+            asIsMin =
+              std::min(asIsMin, uint64_t(int64_t(childInfo.startTimeNs) + childInfo.slopNs));
         }
         nodeData[node].feedbackInfo.directSlopNs = get_diff(nodeInfo.endTimeNs, asIsMin);
         nodeData[node].feedbackInfo.totalSlopNs = get_diff(nodeInfo.endTimeNs, sloppedMin);

@@ -14,6 +14,7 @@ class SlopGraph
         // TODO record existing delay due to latency reduction
         uint64_t startTimeNs;
         uint64_t endTimeNs;
+        int64_t slopNs;  // within the node's work time
     };
 
     virtual uint32_t getNodeCount() const = 0;

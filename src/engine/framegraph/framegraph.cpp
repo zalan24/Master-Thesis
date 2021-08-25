@@ -1274,7 +1274,14 @@ void FrameGraph::Node::registerAcquireAttempt(Stage stage, FrameId frameId) {
         entry.nodesReady = Clock::now();
         entry.resourceReady = entry.finish = entry.start = {};
         entry.threadId = std::this_thread::get_id();
+        entry.recordedSlopsNs = 0;
+        entry.totalSlopNs = 0;
     }
+}
+
+void FrameGraph::Node::registerSlop(FrameId frameId, int64_t slopNs) {
+    auto& entry = timingInfos[get_stage_id(stage)][frameId % TIMING_HISTORY_SIZE];
+    entry.recordedSlopsNs += slopNs;
 }
 
 void FrameGraph::Node::registerResourceAcquireAttempt(Stage stage, FrameId frameId) {
@@ -1419,8 +1426,32 @@ FrameGraph::Node::DeviceTiming FrameGraph::Node::getDeviceTiming(FrameId frame,
     return entry[index];
 }
 
+FrameGraph::NodeHandle::SlopTimer::SlopTimer(Node* _node, FrameId _frame)
+  : node(_node), frame(_frame), start(FrameGraph::Clock::now()) {
+}
+
+FrameGraph::NodeHandle::SlopTimer::~SlopTimer() {
+    node->registerSlop(
+      frame, std::chrono::duration_cast<std::chrono::nanoseconds>(FrameGraph::Clock::now() - start)
+               .count());
+}
+
+FrameGraph::NodeHandle::SlopTimer FrameGraph::NodeHandle::getSlopTimer() const {
+    return SlopTimer(frameGraph->getNode(node), frameId);
+}
+
 uint32_t FrameGraphSlops::getNodeCount() const;
-NodeInfos FrameGraphSlops::getNodeInfos(SlopNodeId node) const;
+SlopGraph::NodeInfos FrameGraphSlops::getNodeInfos(SlopNodeId node) const;
+// TODO
+// + node-node cpu dep
+// + node -> execution package
+// + execution package -> device work
+// + swapchain acquire/present? -- measure per-node slop manually, and add it to the node's slop in the slop graph algorithm
+// + semaphore for swapchain image??? -- no need, this dependency can never delay the gpu work in practice (could cause a positive feedback loop if it did)
+// + resource lock (mutex between execution and record) -- no need, slop graph should handle it without entering a positive feedback loop
+// + resource lock (gpu usage and cpu usage = implicit gpu wait) -- no need, same
+// + wait on gpu queue -- no need, these should not be used for non-readback loop nodes (worth a check&warning though)
+// + gpu->cpu dep -- no need, same
 uint32_t FrameGraphSlops::getChildCount(SlopNodeId node) const;
 uint32_t FrameGraphSlops::getChild(SlopNodeId node, uint32_t index) const;
 bool FrameGraphSlops::isImplicitDependency(SlopNodeId node, uint32_t index) const;
@@ -1429,6 +1460,7 @@ void FrameGraphSlops::feedBack(SlopNodeId node, const FeedbackInfo& info);
 
 // TODO build fixed part of the slop graph from cpu nodes [simulation..record]
 // TODO what exactly to include here?
+// everything in between the input and present node (based on time), it's possible to add more, just unnecessary
 void FrameGraphSlops::build(FrameGraph* frameGraph);
 // TODO loop over execution packages and device submissions
 void FrameGraphSlops::prepare(FrameGraph* frameGraph, FrameId frame);

@@ -238,7 +238,8 @@ class FrameGraph
             FrameGraph::Clock::time_point resourceReady;
             FrameGraph::Clock::time_point start;
             FrameGraph::Clock::time_point finish;
-            int64_t totalSlopNs;
+            int64_t recordedSlopsNs = 0;
+            int64_t totalSlopNs = 0;
         };
         struct ExecutionTiming
         {
@@ -256,7 +257,7 @@ class FrameGraph
             FrameGraph::Clock::time_point submitted;
             FrameGraph::Clock::time_point start;
             FrameGraph::Clock::time_point finish;
-            int64_t totalSlopNs;
+            int64_t totalSlopNs = 0;
         };
 
         NodeTiming getTiming(FrameId frame, Stage stage) const;
@@ -271,6 +272,7 @@ class FrameGraph
         void registerExecutionStart(FrameId frameId);
         void registerExecutionFinish(FrameId frameId);
         void registerDeviceTiming(FrameId frameId, const DeviceTiming& timing);
+        void registerSlop(FrameId frameId, int64_t slopNs);
         void initFrame(FrameId frameId);
 
         void setWorkLoad(Stage stage, const ArtificialWorkLoad& workLoad);
@@ -345,6 +347,22 @@ class FrameGraph
         static void busy_sleep(std::chrono::microseconds duration);
 
         NodeId getNodeId() const {return node;}
+
+        class SlopTimer
+        {
+         public:
+            SlopTimer(Node* node, FrameId frame);
+            ~SlopTimer();
+            SlopTimer(const SlopTimer&) = delete;
+            SlopTimer& operator=(const SlopTimer&) = delete;
+
+         private:
+            Node* node;
+            FrameId frame;
+            FrameGraph::Clock::time_point start;
+        };
+
+        SlopTimer getSlopTimer() const;
 
      private:
         NodeHandle();
