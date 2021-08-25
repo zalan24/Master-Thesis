@@ -581,7 +581,7 @@ void FrameGraph::build() {
         createInfo.startValue = 0;
         frameEndSemaphores[uniqueQueues[i]] = drv::TimelineSemaphore(device, createInfo);
     }
-    slopsGraph.build(this);
+    slopsGraph.build(this, , , );
 }
 
 FrameGraph::NodeHandle::NodeHandle() : frameGraph(nullptr) {
@@ -1527,7 +1527,10 @@ void FrameGraphSlops::feedBack(SlopNodeId node, const FeedbackInfo& info) {
     // otherwise ignore infos (submissions and device work don't need it)
 }
 
-void FrameGraphSlops::build(FrameGraph* _frameGraph, NodeId _inputNode, int _inputNodeStage) {
+void FrameGraphSlops::build(FrameGraph* _frameGraph, NodeId _inputNode, int _inputNodeStage,
+                            NodeId _presentNode) {
+    presentFrameGraphNode = _presentNode;
+    inputFrameGraphNode = _inputNode;
     frameGraph = _frameGraph;
     uint32_t frameCount = frameGraph->getMaxFramesInFlight() * 2 + 1;
     for (NodeId id = 0; id < frameGraph.getNodeCount(); ++id) {
@@ -1574,12 +1577,34 @@ void FrameGraphSlops::build(FrameGraph* _frameGraph, NodeId _inputNode, int _inp
     inputNode = findFixedNode(_inputNode, _inputNodeStage, frameGraph->getMaxFramesInFlight());
 }
 
-// TODO loop over execution packages and device submissions
-// also fill in the node infos
-void FrameGraphSlops::prepare(FrameId frame, NodeId _presentNodeId) {
+void FrameGraphSlops::prepare(FrameId _frame) {
     clearDynamicNodes();
     currentFrame = frame;
-    TODO;  // set 'NodeInfos infos;' for every node type
+    auto origoTime = frameGraph->getNode(inputFrameGraphNode)
+                       ->getTiming(_frame, FrameGraph::SIMULATION_STAGE)
+                       .start;
+    uint32_t frameCount = frameGraph->getMaxFramesInFlight() * 2 + 1;
+    for (NodeId id = 0; id < frameGraph.getNodeCount(); ++id) {
+        const FrameGraph::Node* node = frameGraph.getNode(id);
+        for (uint32_t stageId = 0; stageId < FrameGraph::NUM_STAGES; ++stageId) {
+            FrameGraph::Stage stage = FrameGraph::get_stage(stageId);
+            if (!node->hasStage(stage))
+                continue;
+            for (FrameId frame = 0; frame <= frameCount; ++frame) {
+                SlopNodeId targetNode = findFixedNode(id, stage, frame);
+                if (targetNode == INVALID_SLOP_NODE)
+                    continue;
+                FrameId frameId = _frame + frame - frameGraph->getMaxFramesInFlight();
+                auto nodeTiming = node->getTiming(frameId, stage);
+                NodeInfos infos;
+                infos.startTimeNs = (nodeTiming.start - origoTime).count();
+                infos.endTimeNs = (nodeTiming.finish - origoTime).count();
+                infos.slopNs = nodeTiming.recordedSlopsNs;
+                feedInfo(targetNode, infos);
+            }
+        }
+    }
+
     TODO;  // add implicit dependencies
     FrameId firstFrame =
       frame >= frameGraph->getMaxFramesInFlight() ? frame - frameGraph->getMaxFramesInFlight() : 0;
@@ -1592,6 +1617,12 @@ void FrameGraphSlops::prepare(FrameId frame, NodeId _presentNodeId) {
                                                   FrameGraph::RECORD_STAGE, frameId);
             SlopNodeId targetNode = addSubmissionDynNode(i, frameId);
             addDynamicDependency(sourceNode, targetNode);
+
+            NodeInfos infos;
+            infos.startTimeNs = (executionTimings.packages[i].executionTime - origoTime).count();
+            infos.endTimeNs = (executionTimings.packages[i].endTime - origoTime).count();
+            infos.slopNs = 0;
+            feedInfo(targetNode, infos);
         }
     }
 
@@ -1605,17 +1636,30 @@ void FrameGraphSlops::prepare(FrameId frame, NodeId _presentNodeId) {
                 SlopNodeId sourceNode = findSubmissionDynNode(, frameId);
                 SlopNodeId targetNode = addDeviceDynNode(id, i, frameId);
                 addDynamicDependency(sourceNode, targetNode);
-                TODO;  // set deviceWorkNode
+                getSubmissionData(sourceNode).deviceWorkNode = targetNode;
+                NodeInfos infos;
+                infos.startTimeNs = (timing.start - origoTime).count();
+                infos.endTimeNs = (timing.finish - origoTime).count();
+                infos.slopNs = 0;
+                feedInfo(targetNode, infos);
             }
         }
     }
 
-    presentNodeId = findDynamicNode(presentNodeId, , frameGraph->getMaxFramesInFlight());
+    uint32_t presentTimingCount =
+      frameGraph->getNode(presentFrameGraphNode)->getDeviceTimingCount();
+    if (presentTimingCount > 0)
+        presentNodeId = findDeviceDynNode(presentNodeId, presentTimingCount - 1,
+                                          frameGraph->getMaxFramesInFlight());
+    else
+        presentNodeId = INVALID_SLOP_NODE;
 }
 
 SlopGraph::FeedbackInfo FrameGraphSlops::calculateSlop(bool feedbackNodes) {
-    drv::drv_assert(inputNode != INVALID_SLOP_NODE && presentNodeId != INVALID_SLOP_NODE,
+    drv::drv_assert(inputNode != INVALID_SLOP_NODE,
                     "FrameGraphSlops was not prepared before calculating slop");
+    if (presentNodeId == INVALID_SLOP_NODE)
+        return {};
     auto ret =
       static_cast<SlopGraph*>(this)->calculateSlop(inputNode, presentNodeId, feedbackNodes);
     presentNodeId = INVALID_SLOP_NODE;

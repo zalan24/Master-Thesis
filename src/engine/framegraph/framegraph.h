@@ -96,8 +96,8 @@ class FrameGraphSlops final : public SlopGraph
 
     void feedBack(SlopNodeId node, const FeedbackInfo& info) override;
 
-    void build(FrameGraph* frameGraph, NodeId inputNode, int inputNodeStage);
-    void prepare(FrameId frame, NodeId presentNodeId);
+    void build(FrameGraph* frameGraph, NodeId inputNode, int inputNodeStage, NodeId presentNode);
+    void prepare(FrameId frame);
 
     // frameIndex : [0..(2*maxFramesInFlight + 1)]
     SlopNodeId createCpuNode(NodeId nodeId, int stage, uint32_t frameIndex);
@@ -114,11 +114,11 @@ class FrameGraphSlops final : public SlopGraph
 
  private:
     FrameGraph* frameGraph = nullptr;
+    NodeId inputFrameGraphNode;
+    NodeId presentFrameGraphNode;
     SlopNodeId inputNode = INVALID_SLOP_NODE;
     SlopNodeId presentNodeId = INVALID_SLOP_NODE;
     FrameId currentFrame;
-
-    TODO;  // fill out all data
 
     struct SubmissionData
     {
@@ -148,7 +148,17 @@ class FrameGraphSlops final : public SlopGraph
     std::vector<SubmissionData> submissions;
     std::vector<DeviceWorkData> deviceWorkPackages;
 
+    FixedNodeData& getFixedNodeData(SlopNodeId node);
+    const FixedNodeData& getFixedNodeData(SlopNodeId node) const;
+
+    SubmissionData& getSubmissionData(SlopNodeId node);
+    const SubmissionData& getSubmissionData(SlopNodeId node) const;
+
+    DeviceWorkData& getDeviceWorkData(SlopNodeId node);
+    const DeviceWorkData& getDeviceWorkData(SlopNodeId node) const;
+
     void clearDynamicNodes();
+    void feedInfo(SlopNodeId node, const NodeInfos& infos);
 };
 
 class FrameGraph

@@ -5,13 +5,6 @@
 #include <corecontext.h>
 #include <drverror.h>
 
-static int64_t get_diff(uint64_t start, uint64_t end) {
-    if (start <= end)
-        return int64_t(end - start);
-    else
-        return -int64_t(start - end);
-}
-
 SlopGraph::FeedbackInfo SlopGraph::calculateSlop(SlopNodeId sourceNode, SlopNodeId targetNode,
                                                  bool feedbackNodes) {
     const uint32_t nodeCount = getNodeCount();
@@ -62,9 +55,9 @@ SlopGraph::FeedbackInfo SlopGraph::calculateSlop(SlopNodeId sourceNode, SlopNode
     for (uint32_t i = indexOfTarget; i > 0; --i) {
         SlopNodeId node = i - 1;
         NodeInfos nodeInfo = getNodeInfos(node);
-        uint64_t sloppedMin = std::numeric_limits<uint64_t>::max();
-        uint64_t asIsMin = std::numeric_limits<uint64_t>::max();
-        uint64_t noImplicitMin = std::numeric_limits<uint64_t>::max();
+        int64_t sloppedMin = std::numeric_limits<int64_t>::max();
+        int64_t asIsMin = std::numeric_limits<int64_t>::max();
+        int64_t noImplicitMin = std::numeric_limits<int64_t>::max();
         for (uint32_t j = 0; j < getChildCount(node); ++j) {
             SlopNodeId child = getChild(node, j);
             NodeInfos childInfo = getNodeInfos(child);
@@ -75,18 +68,15 @@ SlopGraph::FeedbackInfo SlopGraph::calculateSlop(SlopNodeId sourceNode, SlopNode
             }
             else
                 noImplicitMin =
-                  std::min(noImplicitMin, uint64_t(int64_t(childInfo.startTimeNs) + childInfo.slopNs
-                                                   + nodeData[child].feedbackInfo.totalSlopNs));
-            sloppedMin =
-              std::min(sloppedMin, uint64_t(int64_t(childInfo.startTimeNs) + childInfo.slopNs
-                                            + nodeData[child].feedbackInfo.totalSlopNs));
-            asIsMin =
-              std::min(asIsMin, uint64_t(int64_t(childInfo.startTimeNs) + childInfo.slopNs));
+                  std::min(noImplicitMin, childInfo.startTimeNs + childInfo.slopNs
+                                            + nodeData[child].feedbackInfo.totalSlopNs);
+            sloppedMin = std::min(sloppedMin, childInfo.startTimeNs + childInfo.slopNs
+                                                + nodeData[child].feedbackInfo.totalSlopNs);
+            asIsMin = std::min(asIsMin, childInfo.startTimeNs + childInfo.slopNs);
         }
-        nodeData[node].feedbackInfo.directSlopNs = get_diff(nodeInfo.endTimeNs, asIsMin);
-        nodeData[node].feedbackInfo.totalSlopNs = get_diff(nodeInfo.endTimeNs, sloppedMin);
-        nodeData[node].feedbackInfo.extraSlopWithoutImplicitChildNs =
-          get_diff(sloppedMin, noImplicitMin);
+        nodeData[node].feedbackInfo.directSlopNs = asIsMin - nodeInfo.endTimeNs;
+        nodeData[node].feedbackInfo.totalSlopNs = sloppedMin - nodeInfo.endTimeNs;
+        nodeData[node].feedbackInfo.extraSlopWithoutImplicitChildNs = noImplicitMin - sloppedMin;
     }
     // ---
 
