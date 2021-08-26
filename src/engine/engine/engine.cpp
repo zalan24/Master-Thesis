@@ -325,7 +325,9 @@ void Engine::buildFrameGraph() {
                                                        FrameGraph::BEFORE_DRAW_STAGE, 1});
 
     entityManager.initFrameGraph();
-    frameGraph.build();
+
+    // present node doesn't have measurable executions, so main render needs to be used instead
+    frameGraph.build(inputSampleNode, FrameGraph::SIMULATION_STAGE, mainRecordNode);
 
     if (!fs::exists(fs::path{workLoadFile})) {
         ArtificialFrameGraphWorkLoad workLoad = frameGraph.getWorkLoad();

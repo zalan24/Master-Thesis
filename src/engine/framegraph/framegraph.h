@@ -104,11 +104,13 @@ class FrameGraphSlops final : public SlopGraph
     SlopNodeId findFixedNode(NodeId nodeId, int stage, uint32_t frameIndex) const;
     void addFixedDependency(SlopNodeId from, SlopNodeId to);
 
-    SlopNodeId addSubmissionDynNode(uint32_t id, FrameId frame);
+    SlopNodeId addSubmissionDynNode(drv::CmdBufferId id, FrameId frame);
     SlopNodeId addDeviceDynNode(NodeId nodeId, uint32_t id, FrameId frame);
     void addDynamicDependency(SlopNodeId from, SlopNodeId to);
-    SlopNodeId findSubmissionDynNode(uint32_t id, FrameId frame) const;
+    SlopNodeId findSubmissionDynNode(drv::CmdBufferId id, FrameId frame) const;
     SlopNodeId findDeviceDynNode(NodeId nodeId, uint32_t id, FrameId frame) const;
+    void addImplicitDependency(SlopNodeId from, SlopNodeId to);
+    void addDeviceDependency(SlopNodeId from, SlopNodeId to);
 
     FeedbackInfo calculateSlop(bool feedbackNodes);
 
@@ -122,6 +124,8 @@ class FrameGraphSlops final : public SlopGraph
 
     struct SubmissionData
     {
+        drv::CmdBufferId id;
+        FrameId frame;
         NodeInfos infos;
         SlopNodeId deviceWorkNode = INVALID_SLOP_NODE;
         SlopNodeId followingNode = INVALID_SLOP_NODE;
@@ -129,10 +133,26 @@ class FrameGraphSlops final : public SlopGraph
 
     struct DeviceWorkData
     {
+        NodeId nodeId;
+        uint32_t id;
+        FrameId frame;
         NodeInfos infos;
         SlopNodeId followingNode = INVALID_SLOP_NODE;
     };
 
+    struct FixedNodeKey
+    {
+        NodeId nodeId;
+        int stage;
+        uint32_t frameIndex;
+        bool operator<(const FixedNodeKey& other) const {
+            if (nodeId != other.nodeId)
+                return nodeId < other.nodeId;
+            if (stage != other.stage)
+                return stage < other.stage;
+            return frameIndex < other.frameIndex;
+        }
+    };
     struct FixedNodeData
     {
         NodeInfos infos;
@@ -147,6 +167,7 @@ class FrameGraphSlops final : public SlopGraph
     std::vector<FixedNodeData> fixedNodes;
     std::vector<SubmissionData> submissions;
     std::vector<DeviceWorkData> deviceWorkPackages;
+    std::map<FixedNodeKey, SlopNodeId> fixedNodeMap;
 
     FixedNodeData& getFixedNodeData(SlopNodeId node);
     const FixedNodeData& getFixedNodeData(SlopNodeId node) const;
@@ -465,7 +486,7 @@ class FrameGraph
     ExecutionQueue* getExecutionQueue(NodeHandle& handle);
     ExecutionQueue* getGlobalExecutionQueue();
 
-    void build();
+    void build(NodeId inputNode, Stage inputNodeStage, NodeId presentNode);
     void stopExecution(bool force);  // used when quitting the app
     bool isStopped() const;
 
