@@ -1632,6 +1632,7 @@ PerformanceCaptureData Engine::generatePerfCapture(FrameId lastReadyFrame) const
     ret.frameId = targetFrame;
     ret.frameTime = getTimeDiff(firstTiming.start, endTiming.start) / frameCount;
     ret.fps = 1000.0 / ret.frameTime;
+    ret.softwareLatency = ;
     ret.executionDelay = -1;
     ret.deviceDelay = -1;
 

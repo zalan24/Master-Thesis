@@ -1538,7 +1538,7 @@ void FrameGraphSlops::build(FrameGraph* _frameGraph, NodeId _inputNode, int _inp
                 continue;
             if (!node->hasStage(stage))
                 continue;
-            for (uint32_t frame = 0; frame <= frameCount; ++frame)
+            for (uint32_t frame = 0; frame < frameCount; ++frame)
                 createCpuNode(id, stage, frame);
         }
     }
@@ -1550,7 +1550,7 @@ void FrameGraphSlops::build(FrameGraph* _frameGraph, NodeId _inputNode, int _inp
                 continue;
             if (!node->hasStage(stage))
                 continue;
-            for (uint32_t frame = 0; frame <= frameCount; ++frame) {
+            for (uint32_t frame = 0; frame < frameCount; ++frame) {
                 SlopNodeId targetNode = findFixedNode(id, stage, frame);
                 if (targetNode == INVALID_SLOP_NODE)
                     continue;
@@ -1636,7 +1636,7 @@ void FrameGraphSlops::prepare(FrameId _frame) {
             FrameGraph::Stage stage = FrameGraph::get_stage(stageId);
             if (!node->hasStage(stage))
                 continue;
-            for (uint32_t frame = 0; frame <= frameCount; ++frame) {
+            for (uint32_t frame = 0; frame < frameCount; ++frame) {
                 SlopNodeId targetNode = findFixedNode(id, stage, frame);
                 if (targetNode == INVALID_SLOP_NODE)
                     continue;
@@ -1711,7 +1711,7 @@ void FrameGraphSlops::prepare(FrameId _frame) {
             FrameGraph::Stage stage = FrameGraph::get_stage(stageId);
             if (!node->hasStage(stage))
                 continue;
-            for (uint32_t frame = 0; frame <= frameCount; ++frame) {
+            for (uint32_t frame = 0; frame < frameCount; ++frame) {
                 SlopNodeId targetNode = findFixedNode(id, stage, frame);
                 if (targetNode == INVALID_SLOP_NODE)
                     continue;
@@ -1812,7 +1812,7 @@ void FrameGraphSlops::addFixedDependency(SlopNodeId from, SlopNodeId to) {
 
 SlopGraph::SlopNodeId FrameGraphSlops::addSubmissionDynNode(drv::CmdBufferId id, FrameId frame,
                                                             SlopNodeId sourceNode) {
-    SlopGraph::SlopNodeId ret = SlopGraph::SlopNodeId(submissions.size());
+    SlopGraph::SlopNodeId ret = SlopGraph::SlopNodeId(submissions.size() + fixedNodes.size());
     SubmissionData data;
     data.id = id;
     data.frame = frame;
@@ -1824,7 +1824,8 @@ SlopGraph::SlopNodeId FrameGraphSlops::addSubmissionDynNode(drv::CmdBufferId id,
 SlopGraph::SlopNodeId FrameGraphSlops::addDeviceDynNode(NodeId nodeId, uint32_t id, FrameId frame,
                                                         SlopNodeId sourceNode,
                                                         SlopNodeId sourceSubmission) {
-    SlopGraph::SlopNodeId ret = SlopGraph::SlopNodeId(deviceWorkPackages.size());
+    SlopGraph::SlopNodeId ret =
+      SlopGraph::SlopNodeId(deviceWorkPackages.size() + fixedNodes.size() + submissions.size());
     DeviceWorkData data;
     data.nodeId = nodeId;
     data.id = id;
@@ -1894,6 +1895,7 @@ const FrameGraphSlops::FixedNodeData& FrameGraphSlops::getFixedNodeData(SlopNode
 FrameGraphSlops::SubmissionData& FrameGraphSlops::getSubmissionData(SlopNodeId node) {
     drv::drv_assert(node >= fixedNodes.size(), "This node is not a submission node");
     node -= fixedNodes.size();
+    drv::drv_assert(node < submissions.size(), "This node is not a submission node");
     return submissions[node];
 }
 
@@ -1908,8 +1910,8 @@ FrameGraphSlops::DeviceWorkData& FrameGraphSlops::getDeviceWorkData(SlopNodeId n
     drv::drv_assert(node >= fixedNodes.size() + submissions.size(),
                     "This node is not a device work node");
     node -= fixedNodes.size();
-    drv::drv_assert(node < submissions.size(), "This node is not a submission node");
     node -= submissions.size();
+    drv::drv_assert(node < deviceWorkPackages.size(), "This node is not a submission node");
     return deviceWorkPackages[node];
 }
 
@@ -1918,6 +1920,7 @@ const FrameGraphSlops::DeviceWorkData& FrameGraphSlops::getDeviceWorkData(SlopNo
                     "This node is not a device work node");
     node -= fixedNodes.size();
     node -= submissions.size();
+    drv::drv_assert(node < deviceWorkPackages.size(), "This node is not a submission node");
     return deviceWorkPackages[node];
 }
 

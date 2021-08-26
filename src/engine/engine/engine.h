@@ -124,6 +124,7 @@ struct PerformanceCaptureData final : public IAutoSerializable<PerformanceCaptur
         (uint64_t) frameId,
         (double) fps,
         (double) frameTime,
+        (double) softwareLatency,
         (double) executionDelay,
         (double) deviceDelay,
         (std::map<std::string, std::map<std::string, std::vector<PerformanceCaptureCpuPackage>>>) stageToThreadToPackageList,
