@@ -104,8 +104,9 @@ class FrameGraphSlops final : public SlopGraph
     SlopNodeId findFixedNode(NodeId nodeId, int stage, uint32_t frameIndex) const;
     void addFixedDependency(SlopNodeId from, SlopNodeId to);
 
-    SlopNodeId addSubmissionDynNode(drv::CmdBufferId id, FrameId frame);
-    SlopNodeId addDeviceDynNode(NodeId nodeId, uint32_t id, FrameId frame);
+    SlopNodeId addSubmissionDynNode(drv::CmdBufferId id, FrameId frame, SlopNodeId sourceNode);
+    SlopNodeId addDeviceDynNode(NodeId nodeId, uint32_t id, FrameId frame, SlopNodeId sourceNode,
+                                SlopNodeId sourceSubmission);
     void addDynamicDependency(SlopNodeId from, SlopNodeId to);
     SlopNodeId findSubmissionDynNode(drv::CmdBufferId id, FrameId frame) const;
     SlopNodeId findDeviceDynNode(NodeId nodeId, uint32_t id, FrameId frame) const;
@@ -127,6 +128,7 @@ class FrameGraphSlops final : public SlopGraph
         drv::CmdBufferId id;
         FrameId frame;
         NodeInfos infos;
+        SlopNodeId sourceNode;
         SlopNodeId deviceWorkNode = INVALID_SLOP_NODE;
         SlopNodeId followingNode = INVALID_SLOP_NODE;
     };
@@ -137,7 +139,10 @@ class FrameGraphSlops final : public SlopGraph
         uint32_t id;
         FrameId frame;
         NodeInfos infos;
+        SlopNodeId sourceNode;
+        SlopNodeId sourceSubmission;
         SlopNodeId followingNode = INVALID_SLOP_NODE;
+        std::vector<SlopNodeId> dependencies;
     };
 
     struct FixedNodeKey

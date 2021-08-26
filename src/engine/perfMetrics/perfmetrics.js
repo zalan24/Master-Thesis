@@ -541,7 +541,7 @@ function createTable() {
             for (let threadName in info.n.gpuDoneDep) {
                 for(let i in captureData.queueToDevicePackageList[threadName]) {
                     let dep = captureData.queueToDevicePackageList[threadName][i];
-                    if (dep.frameId < info.n.gpuDoneDep[threadName]) {
+                    if (dep.frameId <= info.n.gpuDoneDep[threadName]) {
                         if (info.n.availableTime < dep.endTime)
                             dep.w.classList.add("activeDepended");
                         else

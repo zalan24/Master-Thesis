@@ -13,9 +13,16 @@ SlopGraph::FeedbackInfo SlopGraph::calculateSlop(SlopNodeId sourceNode, SlopNode
     StackMemory::MemoryHandle<SlopNodeId> tempVector(nodeCount, TEMPMEM);
 
     // topological ordering
-    for (uint32_t i = 0; i < nodeCount; ++i)
-        for (uint32_t j = 0; j < getChildCount(i); ++j)
-            nodeData[getChild(i, j)].dependenceCount++;
+    for (uint32_t i = 0; i < nodeCount; ++i) {
+        int64_t endTime = getNodeInfos(i).endTimeNs;
+        for (uint32_t j = 0; j < getChildCount(i); ++j) {
+            uint32_t child = getChild(i, j);
+            nodeData[child].dependenceCount++;
+            // 10us for measurement error
+            drv::drv_assert(endTime <= getNodeInfos(child).startTimeNs + 10 * 1000,
+                            "Invalid dependencies in slot graph");
+        }
+    }
     uint32_t currentId = 0;
     for (uint32_t i = 0; i < nodeCount; ++i) {
         if (nodeData[i].dependenceCount > 0 || nodeData[i].ordered)

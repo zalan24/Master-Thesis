@@ -1470,7 +1470,8 @@ uint32_t FrameGraphSlops::getChildCount(SlopNodeId node) const {
         return (submissions[node].deviceWorkNode != INVALID_SLOP_NODE ? 1 : 0)
                + (submissions[node].followingNode != INVALID_SLOP_NODE ? 1 : 0);
     node -= submissions.size();
-    return deviceWorkPackages[node].followingNode != INVALID_SLOP_NODE ? 1 : 0;
+    return (deviceWorkPackages[node].followingNode != INVALID_SLOP_NODE ? 1 : 0)
+           + uint32_t(deviceWorkPackages[node].dependencies.size());
 }
 
 SlopGraph::SlopNodeId FrameGraphSlops::getChild(SlopNodeId node, uint32_t index) const {
@@ -1492,7 +1493,12 @@ SlopGraph::SlopNodeId FrameGraphSlops::getChild(SlopNodeId node, uint32_t index)
         return submissions[node].deviceWorkNode;
     }
     node -= submissions.size();
-    return deviceWorkPackages[node].followingNode;
+    if (deviceWorkPackages[node].followingNode != INVALID_SLOP_NODE) {
+        if (index == 0)
+            return deviceWorkPackages[node].followingNode;
+        index -= 1;
+    }
+    return deviceWorkPackages[node].dependencies[index];
 }
 
 bool FrameGraphSlops::isImplicitDependency(SlopNodeId node, uint32_t index) const {
@@ -1657,7 +1663,7 @@ void FrameGraphSlops::prepare(FrameId _frame) {
             drv::drv_assert(sourceNode != INVALID_SLOP_NODE,
                             "Source node not found for execution package");
             SlopNodeId targetNode =
-              addSubmissionDynNode(executionTimings.packages[i].submissionId, frameId);
+              addSubmissionDynNode(executionTimings.packages[i].submissionId, frameId, sourceNode);
             addDynamicDependency(sourceNode, targetNode);
 
             NodeInfos infos;
@@ -1677,8 +1683,8 @@ void FrameGraphSlops::prepare(FrameId _frame) {
             for (uint32_t i = 0; i < node->getDeviceTimingCount(frameId); ++i) {
                 FrameGraph::Node::DeviceTiming timing = node->getDeviceTiming(frameId, i);
                 SlopNodeId sourceNode = findSubmissionDynNode(timing.submissionId, frameId);
-                SlopNodeId targetNode = addDeviceDynNode(id, i, frameId);
-                addDynamicDependency(sourceNode, targetNode);
+                SlopNodeId targetNode = addDeviceDynNode(
+                  id, i, frameId, getSubmissionData(sourceNode).sourceNode, sourceNode);
                 getSubmissionData(sourceNode).deviceWorkNode = targetNode;
                 NodeInfos infos;
                 infos.startTimeNs = (timing.start - origoTime).count();
@@ -1714,11 +1720,25 @@ void FrameGraphSlops::prepare(FrameId _frame) {
                     if (dep.dstStage != stage || frameId < dep.offset)
                         continue;
                     uint32_t lastIndex = slopNodeInd;
-                    while (lastIndex > 0
-                           && (nodeOrder[lastIndex - 1].nodeId != dep.srcNode
-                               || getDeviceWorkData(nodeOrder[lastIndex - 1].nodeId).frame
-                                    > frameId - dep.offset))
-                        lastIndex--;
+                    FrameId latestDepFrame = frameId - dep.offset;
+                    uint32_t numDepNodes = uint32_t(latestDepFrame - firstFrame + 1);
+                    StackMemory::MemoryHandle<SlopNodeId> depNodes(numDepNodes, TEMPMEM);
+                    drv::drv_assert(frame - dep.offset + 1 - numDepNodes == 0);
+                    for (uint32_t i = 0; i < numDepNodes; ++i)
+                        depNodes[i] = findFixedNode(dep.srcNode, FrameGraph::RECORD_STAGE,
+                                                    frame - dep.offset - 1);
+                    for (; lastIndex > 0; lastIndex--) {
+                        if (nodeOrder[lastIndex - 1].nodeId
+                            < fixedNodes.size() + submissions.size())
+                            continue;  // not a device work node
+                        bool found = false;
+                        for (uint32_t i = 0; i < numDepNodes && !found; ++i)
+                            found =
+                              depNodes[i]
+                              == getDeviceWorkData(nodeOrder[lastIndex - 1].nodeId).sourceNode;
+                        if (found)
+                            break;
+                    }
                     if (lastIndex > 0)
                         addDeviceDependency(nodeOrder[lastIndex - 1].nodeId, targetNode);
                 }
@@ -1760,9 +1780,9 @@ SlopGraph::FeedbackInfo FrameGraphSlops::calculateSlop(bool feedbackNodes) {
 }
 
 void FrameGraph::processSlops(FrameId frame) {
-    if (frame < getMaxFramesInFlight())
+    if (frame < getMaxFramesInFlight() * 2 + 1)
         return;
-    slopsGraph.prepare(frame);
+    slopsGraph.prepare(frame - getMaxFramesInFlight());
     slopsGraph.calculateSlop(true);
 }
 
@@ -1790,21 +1810,27 @@ void FrameGraphSlops::addFixedDependency(SlopNodeId from, SlopNodeId to) {
     fixedNodes[from].fixedChildren.push_back(to);
 }
 
-SlopGraph::SlopNodeId FrameGraphSlops::addSubmissionDynNode(drv::CmdBufferId id, FrameId frame) {
+SlopGraph::SlopNodeId FrameGraphSlops::addSubmissionDynNode(drv::CmdBufferId id, FrameId frame,
+                                                            SlopNodeId sourceNode) {
     SlopGraph::SlopNodeId ret = SlopGraph::SlopNodeId(submissions.size());
     SubmissionData data;
     data.id = id;
     data.frame = frame;
+    data.sourceNode = sourceNode;
     submissions.push_back(std::move(data));
     return ret;
 }
 
-SlopGraph::SlopNodeId FrameGraphSlops::addDeviceDynNode(NodeId nodeId, uint32_t id, FrameId frame) {
+SlopGraph::SlopNodeId FrameGraphSlops::addDeviceDynNode(NodeId nodeId, uint32_t id, FrameId frame,
+                                                        SlopNodeId sourceNode,
+                                                        SlopNodeId sourceSubmission) {
     SlopGraph::SlopNodeId ret = SlopGraph::SlopNodeId(deviceWorkPackages.size());
     DeviceWorkData data;
     data.nodeId = nodeId;
     data.id = id;
     data.frame = frame;
+    data.sourceNode = sourceNode;
+    data.sourceSubmission = sourceSubmission;
     deviceWorkPackages.push_back(std::move(data));
     return ret;
 }
@@ -1856,34 +1882,45 @@ void FrameGraphSlops::feedInfo(SlopNodeId node, const NodeInfos& infos) {
 }
 
 FrameGraphSlops::FixedNodeData& FrameGraphSlops::getFixedNodeData(SlopNodeId node) {
+    drv::drv_assert(node < fixedNodes.size(), "This node is not a fixed node");
     return fixedNodes[node];
 }
 
 const FrameGraphSlops::FixedNodeData& FrameGraphSlops::getFixedNodeData(SlopNodeId node) const {
+    drv::drv_assert(node < fixedNodes.size(), "This node is not a fixed node");
     return fixedNodes[node];
 }
 
 FrameGraphSlops::SubmissionData& FrameGraphSlops::getSubmissionData(SlopNodeId node) {
+    drv::drv_assert(node >= fixedNodes.size(), "This node is not a submission node");
     node -= fixedNodes.size();
     return submissions[node];
 }
 
 const FrameGraphSlops::SubmissionData& FrameGraphSlops::getSubmissionData(SlopNodeId node) const {
+    drv::drv_assert(node >= fixedNodes.size(), "This node is not a submission node");
     node -= fixedNodes.size();
+    drv::drv_assert(node < submissions.size(), "This node is not a submission node");
     return submissions[node];
 }
 
 FrameGraphSlops::DeviceWorkData& FrameGraphSlops::getDeviceWorkData(SlopNodeId node) {
+    drv::drv_assert(node >= fixedNodes.size() + submissions.size(),
+                    "This node is not a device work node");
     node -= fixedNodes.size();
+    drv::drv_assert(node < submissions.size(), "This node is not a submission node");
     node -= submissions.size();
     return deviceWorkPackages[node];
 }
 
 const FrameGraphSlops::DeviceWorkData& FrameGraphSlops::getDeviceWorkData(SlopNodeId node) const {
+    drv::drv_assert(node >= fixedNodes.size() + submissions.size(),
+                    "This node is not a device work node");
     node -= fixedNodes.size();
     node -= submissions.size();
     return deviceWorkPackages[node];
 }
 
-TODO;  // add to device children...
-// void FrameGraphSlops::addDeviceDependency(SlopNodeId from, SlopNodeId to);
+void FrameGraphSlops::addDeviceDependency(SlopNodeId from, SlopNodeId to) {
+    getDeviceWorkData(from).dependencies.push_back(to);
+}
