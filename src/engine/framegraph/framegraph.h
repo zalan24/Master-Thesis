@@ -103,7 +103,7 @@ class FrameGraphSlops final : public SlopGraph
     SlopNodeId findFixedNode(NodeId nodeId, int stage, uint32_t frameIndex) const;
     void addFixedDependency(SlopNodeId from, SlopNodeId to);
 
-    SlopNodeId addSubmissionDynNode(drv::CmdBufferId id, FrameId frame, SlopNodeId sourceNode);
+    SlopNodeId addSubmissionDynNode(drv::CmdBufferId id, uint32_t index, FrameId frame, SlopNodeId sourceNode);
     SlopNodeId addDeviceDynNode(NodeId nodeId, uint32_t id, FrameId frame, SlopNodeId sourceNode,
                                 SlopNodeId sourceSubmission);
     void addDynamicDependency(SlopNodeId from, SlopNodeId to, int64_t offsetNs);
@@ -131,6 +131,7 @@ class FrameGraphSlops final : public SlopGraph
     struct SubmissionData
     {
         drv::CmdBufferId id;
+        uint32_t  index;
         FrameId frame;
         NodeInfos infos;
         SlopNodeId sourceNode;
@@ -331,6 +332,7 @@ class FrameGraph
             FrameGraph::Clock::time_point submitted;
             FrameGraph::Clock::time_point start;
             FrameGraph::Clock::time_point finish;
+            int64_t totalSlopNs = 0;
         };
 
         NodeTiming getTiming(FrameId frame, Stage stage) const;
@@ -347,6 +349,7 @@ class FrameGraph
         void registerDeviceTiming(FrameId frameId, const DeviceTiming& timing);
         void registerSlop(FrameId frameId, Stage stage, int64_t slopNs);  // during node work
         void feedbackSlop(FrameId frameId, Stage stage, int64_t slopNs);  // afterwards calculation
+        void feedbackDeviceSlop(FrameId frameId, uint32_t index, int64_t slopNs);  // afterwards calculation
         void initFrame(FrameId frameId);
 
         void setWorkLoad(Stage stage, const ArtificialWorkLoad& workLoad);
@@ -514,6 +517,7 @@ class FrameGraph
                              Clock::time_point executionStartTime,
                              Clock::time_point executionEndTime,
                              drv::CmdBufferId submissionId = drv::CmdBufferId(-1));
+    void feedbackExecutionSlop(FrameId frameId, uint32_t index, int64_t totalSlopNs);
 
     QueueId registerQueue(drv::QueuePtr queue, const std::string& name);
     drv::QueuePtr getQueue(QueueId queueId) const;

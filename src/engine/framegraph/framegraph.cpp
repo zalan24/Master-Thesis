@@ -1288,6 +1288,10 @@ void FrameGraph::Node::feedbackSlop(FrameId frameId, Stage stage, int64_t slopNs
     auto& entry = timingInfos[get_stage_id(stage)][frameId % TIMING_HISTORY_SIZE];
     entry.totalSlopNs = slopNs;
 }
+void FrameGraph::Node::feedbackDeviceSlop(FrameId frameId, uint32_t index, int64_t slopNs) {
+    auto& entry = deviceTiming[frameId % TIMING_HISTORY_SIZE];
+    entry[index].totalSlopNs = slopNs;
+}
 
 void FrameGraph::Node::registerResourceAcquireAttempt(Stage stage, FrameId frameId) {
     auto& entry = timingInfos[get_stage_id(stage)][frameId % TIMING_HISTORY_SIZE];
@@ -1415,6 +1419,11 @@ void FrameGraph::feedExecutionTiming(NodeId sourceNode, FrameId frameId,
     entry.packages.push_back(std::move(package));
 }
 
+void FrameGraph::feedbackExecutionSlop(FrameId frameId, uint32_t index, int64_t totalSlopNs) {
+    auto& entry = executionPackagesTiming[frameId % TIMING_HISTORY_SIZE];
+    entry.packages[index].totalSlopNs = totalSlopNs;
+}
+
 const FrameGraph::FrameExecutionPackagesTimings& FrameGraph::getExecutionTiming(
   FrameId frameId) const {
     return executionPackagesTiming[frameId % TIMING_HISTORY_SIZE];
@@ -1511,7 +1520,20 @@ void FrameGraphSlops::feedBack(SlopNodeId node, const FeedbackInfo& info) {
         fNode->feedbackSlop(frame, static_cast<FrameGraph::Stage>(fixedNodes[node].stage),
                             info.totalSlopNs);
     }
-    // otherwise ignore infos (submissions and device work don't need it)
+    else {
+        node -= fixedNodes.size();
+        if (node < submissions.size()) {
+            frameGraph->feedbackExecutionSlop(submissions[node].frame, submissions[node].index,
+                                              info.totalSlopNs);
+        }
+        else {
+            node -= submissions.size();
+            SlopNodeId sourceNode = deviceWorkPackages[node].sourceNode;
+            FrameGraph::Node* fNode = frameGraph->getNode(fixedNodes[sourceNode].frameGraphNode);
+            fNode->feedbackDeviceSlop(deviceWorkPackages[node].frame, deviceWorkPackages[node].id,
+                                      info.totalSlopNs);
+        }
+    }
 }
 
 void FrameGraphSlops::build(FrameGraph* _frameGraph, NodeId _inputNode, int _inputNodeStage,
@@ -1653,8 +1675,8 @@ void FrameGraphSlops::prepare(FrameId _frame) {
                                                   FrameGraph::RECORD_STAGE, frame);
             drv::drv_assert(sourceNode != INVALID_SLOP_NODE,
                             "Source node not found for execution package");
-            SlopNodeId targetNode =
-              addSubmissionDynNode(executionTimings.packages[i].submissionId, frameId, sourceNode);
+            SlopNodeId targetNode = addSubmissionDynNode(executionTimings.packages[i].submissionId,
+                                                         i, frameId, sourceNode);
 
             int64_t submissionTime = (executionTimings.packages[i].submissionTime - origoTime).count();
             NodeInfos infos;
@@ -1677,13 +1699,16 @@ void FrameGraphSlops::prepare(FrameId _frame) {
             for (uint32_t i = 0; i < node->getDeviceTimingCount(frameId); ++i) {
                 FrameGraph::Node::DeviceTiming timing = node->getDeviceTiming(frameId, i);
                 SlopNodeId sourceNode = findSubmissionDynNode(timing.submissionId, frameId);
-                SlopNodeId targetNode = addDeviceDynNode(
-                  id, i, frameId, getSubmissionData(sourceNode).sourceNode, sourceNode);
+                SlopNodeId sourceFixedNode = getSubmissionData(sourceNode).sourceNode;
+                SlopNodeId targetNode =
+                  addDeviceDynNode(id, i, frameId, sourceFixedNode, sourceNode);
                 getSubmissionData(sourceNode).deviceWorkNode = targetNode;
                 NodeInfos infos;
                 infos.startTimeNs = (timing.start - origoTime).count();
                 infos.endTimeNs = (timing.finish - origoTime).count();
                 infos.slopNs = 0;
+                if (getFixedNodeData(sourceFixedNode).frameGraphNode == presentFrameGraphNode)
+                    infos.isDelayable = false;
                 feedInfo(targetNode, infos);
                 nodeOrder[slopNodeInd++] = {infos.startTimeNs, targetNode,
                                             getQueueId(timing.queueId)};
@@ -1824,11 +1849,12 @@ void FrameGraphSlops::addFixedDependency(SlopNodeId from, SlopNodeId to) {
     fixedNodes[from].fixedChildren.push_back(to);
 }
 
-SlopGraph::SlopNodeId FrameGraphSlops::addSubmissionDynNode(drv::CmdBufferId id, FrameId frame,
-                                                            SlopNodeId sourceNode) {
+SlopGraph::SlopNodeId FrameGraphSlops::addSubmissionDynNode(drv::CmdBufferId id, uint32_t index,
+                                                            FrameId frame, SlopNodeId sourceNode) {
     SlopGraph::SlopNodeId ret = SlopGraph::SlopNodeId(submissions.size() + fixedNodes.size());
     SubmissionData data;
     data.id = id;
+    data.index = index;
     data.frame = frame;
     data.sourceNode = sourceNode;
     submissions.push_back(std::move(data));

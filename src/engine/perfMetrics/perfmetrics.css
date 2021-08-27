@@ -99,12 +99,12 @@ table {
 }
 
 .waitTime, .workTime, .resourceWaitTime {
-    height: 30px;
+    height: 40px;
     display: inline-block;
 }
 
 .contenttd {
-    height: 35px;
+    height: 45px;
     position: relative;
 }
 

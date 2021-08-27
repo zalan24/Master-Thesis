@@ -15,6 +15,7 @@ class SlopGraph
         int64_t startTimeNs;
         int64_t endTimeNs;
         int64_t slopNs;  // within the node's work time
+        bool isDelayable = true;
     };
 
     struct ChildInfo

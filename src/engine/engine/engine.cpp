@@ -1696,6 +1696,7 @@ PerformanceCaptureData Engine::generatePerfCapture(
                 pkg.name = node->getName();
                 pkg.frameId = frame;
                 pkg.packageId = pkgId++;
+                pkg.slopDuration = double(timing.totalSlopNs) / 1000000.0;
                 pkg.availableTime = getTimeDiff(startTime, timing.nodesReady);
                 pkg.resAvailableTime = getTimeDiff(startTime, timing.resourceReady);
                 pkg.startTime = getTimeDiff(startTime, timing.start);
@@ -1823,6 +1824,7 @@ PerformanceCaptureData Engine::generatePerfCapture(
             package.issueTime = getTimeDiff(startTime, executionTimings.packages[i].submissionTime);
             package.startTime = getTimeDiff(startTime, executionTimings.packages[i].executionTime);
             package.endTime = getTimeDiff(startTime, executionTimings.packages[i].endTime);
+            package.slopDuration = double(executionTimings.packages[i].totalSlopNs) / 1000000.0;
             package.minimalDelayInFrame = i == executionTimings.minDelay;
             if (executionTimings.packages[i].submissionId != drv::CmdBufferId(-1)) {
                 CmdBufferInfo info{frame, executionTimings.packages[i].sourceNode,
@@ -1846,6 +1848,7 @@ PerformanceCaptureData Engine::generatePerfCapture(
                 PerformanceCaptureDevicePackage package;
                 // package.name = ;
                 package.sourceExecPackageId = execItr->second;
+                package.slopDuration = double(timing.totalSlopNs) / 1000000.0;
                 package.submissionTime = getTimeDiff(startTime, timing.submitted);
                 package.startTime = getTimeDiff(startTime, timing.start);
                 package.endTime = getTimeDiff(startTime, timing.finish);

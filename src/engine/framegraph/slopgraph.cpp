@@ -65,9 +65,11 @@ SlopGraph::FeedbackInfo SlopGraph::calculateSlop(SlopNodeId sourceNode, SlopNode
     drv::drv_assert(indexOfSource < indexOfTarget, "Target node should be after the source node");
 
     // calculation of slops using dynamic programming
-    for (uint32_t i = indexOfTarget; i > 0; --i) {
+    for (uint32_t i = nodeCount; i > 0; --i) {
         SlopNodeId node = i - 1;
         NodeInfos nodeInfo = getNodeInfos(node);
+        if (!nodeInfo.isDelayable)
+            continue;
         int64_t sloppedMin = std::numeric_limits<int64_t>::max();
         int64_t asIsMin = std::numeric_limits<int64_t>::max();
         int64_t noImplicitMin = std::numeric_limits<int64_t>::max();

@@ -70,6 +70,7 @@ struct PerformanceCaptureCpuPackage final : public IAutoSerializable<Performance
         (std::string) name,
         (uint64_t) frameId,
         (uint32_t) packageId,
+        (double) slopDuration,
         (double) availableTime,
         (double) resAvailableTime,
         (double) startTime,
@@ -98,6 +99,7 @@ struct PerformanceCaptureExecutionPackage final : public IAutoSerializable<Perfo
         // (std::string) name,
         (uint32_t) packageId,
         (uint32_t) sourcePackageId,
+        (double) slopDuration,
         (double) issueTime,
         (double) startTime,
         (double) endTime,
@@ -111,6 +113,7 @@ struct PerformanceCaptureDevicePackage final : public IAutoSerializable<Performa
     (
         // (std::string) name,
         (uint32_t) sourceExecPackageId,
+        (double) slopDuration,
         (double) submissionTime,
         (double) startTime,
         (double) endTime

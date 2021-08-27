@@ -275,6 +275,11 @@ function createTable() {
                 nodeNameElem.innerHTML = `${node.name} (${node.frameId - captureData.frameId})`;
                 textWrapper.appendChild(nodeNameElem);
 
+                let nodeSlopElem = document.createElement('div');
+                nodeSlopElem.className = "nodeText";
+                nodeSlopElem.innerHTML = `slop: ${Math.round(node.slopDuration)} ms`;
+                textWrapper.appendChild(nodeSlopElem);
+
                 let nodeTimingElem = document.createElement('div');
                 nodeTimingElem.className = "nodeText";
                 nodeTimingElem.innerHTML = `${Math.round(node.availableTime - minTargetTime)} | ${Math.round(node.startTime - minTargetTime)} | ${Math.round(node.endTime - minTargetTime)} ms`;
@@ -380,6 +385,11 @@ function createTable() {
         // execNodeNameElem.innerHTML = `${node.name}`;
         // textWrapper.appendChild(execNodeNameElem);
 
+        let nodeSlopElem = document.createElement('div');
+        nodeSlopElem.className = "nodeText";
+        nodeSlopElem.innerHTML = `slop: ${Math.round(node.slopDuration)} ms`;
+        textWrapper.appendChild(nodeSlopElem);
+        
         let nodeTimingElem = document.createElement('div');
         nodeTimingElem.className = "nodeText";
         nodeTimingElem.innerHTML = `${Math.round(node.issueTime - minTargetTime)} | ${Math.round(node.startTime - minTargetTime)} | ${Math.round(node.endTime - minTargetTime)} ms`;
@@ -475,6 +485,11 @@ function createTable() {
             // execNodeNameElem.className = "nodeText";
             // execNodeNameElem.innerHTML = `${node.name}`;
             // textWrapper.appendChild(execNodeNameElem);
+
+            let nodeSlopElem = document.createElement('div');
+            nodeSlopElem.className = "nodeText";
+            nodeSlopElem.innerHTML = `slop: ${Math.round(node.slopDuration)} ms`;
+            textWrapper.appendChild(nodeSlopElem);
 
             let nodeTimingElem = document.createElement('div');
             nodeTimingElem.className = "nodeText";
