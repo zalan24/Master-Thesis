@@ -1474,43 +1474,33 @@ uint32_t FrameGraphSlops::getChildCount(SlopNodeId node) const {
            + uint32_t(deviceWorkPackages[node].dependencies.size());
 }
 
-SlopGraph::SlopNodeId FrameGraphSlops::getChild(SlopNodeId node, uint32_t index) const {
+SlopGraph::ChildInfo FrameGraphSlops::getChild(SlopNodeId node, uint32_t index) const {
     if (node < fixedNodes.size()) {
         if (fixedNodes[node].followingNode != INVALID_SLOP_NODE) {
             if (index == 0)
-                return fixedNodes[node].followingNode;
+                return {fixedNodes[node].followingNode, 0, true};
             index -= 1;
         }
         if (index < fixedNodes[node].fixedChildren.size())
-            return fixedNodes[node].fixedChildren[index];
+            return {fixedNodes[node].fixedChildren[index], 0, false};
         index -= fixedNodes[node].fixedChildren.size();
-        return fixedNodes[node].dynamicChildren[index];
+        return {fixedNodes[node].dynamicChildren[index].child,
+                fixedNodes[node].dynamicChildren[index].offsetNs, false};
     }
     node -= fixedNodes.size();
     if (node < submissions.size()) {
         if (submissions[node].followingNode != INVALID_SLOP_NODE && index == 0)
-            return submissions[node].followingNode;
-        return submissions[node].deviceWorkNode;
+            return {submissions[node].followingNode, 0, submissions[node].followingIsImplicit};
+        return {submissions[node].deviceWorkNode, submissions[node].deviceNodeOffsetNs, false};
     }
     node -= submissions.size();
     if (deviceWorkPackages[node].followingNode != INVALID_SLOP_NODE) {
         if (index == 0)
-            return deviceWorkPackages[node].followingNode;
+            return {deviceWorkPackages[node].followingNode,
+                    deviceWorkPackages[node].followingNodeOffsetNs, true};
         index -= 1;
     }
-    return deviceWorkPackages[node].dependencies[index];
-}
-
-bool FrameGraphSlops::isImplicitDependency(SlopNodeId node, uint32_t index) const {
-    if (index > 0)
-        return false;
-    if (node < fixedNodes.size())
-        return fixedNodes[node].followingNode != INVALID_SLOP_NODE;
-    node -= fixedNodes.size();
-    if (node < submissions.size())
-        return submissions[node].followingNode != INVALID_SLOP_NODE;
-    node -= submissions.size();
-    return deviceWorkPackages[node].followingNode != INVALID_SLOP_NODE;
+    return {deviceWorkPackages[node].dependencies[index], 0, false};
 }
 
 void FrameGraphSlops::feedBack(SlopNodeId node, const FeedbackInfo& info) {
@@ -1560,7 +1550,7 @@ void FrameGraphSlops::build(FrameGraph* _frameGraph, NodeId _inputNode, int _inp
                         continue;
                     if (frame < dep.offset)
                         continue;
-                    SlopNodeId sourceNode = findFixedNode(id, stage, frame - dep.offset);
+                    SlopNodeId sourceNode = findFixedNode(dep.srcNode, stage, frame - dep.offset);
                     if (sourceNode == INVALID_SLOP_NODE)
                         continue;
                     addFixedDependency(sourceNode, targetNode);
@@ -1571,7 +1561,7 @@ void FrameGraphSlops::build(FrameGraph* _frameGraph, NodeId _inputNode, int _inp
     inputNode = findFixedNode(_inputNode, _inputNodeStage, frameGraph->getMaxFramesInFlight());
 }
 
-void FrameGraphSlops::addImplicitDependency(SlopNodeId from, SlopNodeId to) {
+void FrameGraphSlops::addImplicitDependency(SlopNodeId from, SlopNodeId to, int64_t offsetNs) {
     if (from < fixedNodes.size())
         fixedNodes[from].followingNode = to;
     else {
@@ -1581,6 +1571,7 @@ void FrameGraphSlops::addImplicitDependency(SlopNodeId from, SlopNodeId to) {
         else {
             from -= submissions.size();
             deviceWorkPackages[from].followingNode = to;
+            deviceWorkPackages[from].followingNodeOffsetNs = offsetNs;
         }
     }
 }
@@ -1664,14 +1655,15 @@ void FrameGraphSlops::prepare(FrameId _frame) {
                             "Source node not found for execution package");
             SlopNodeId targetNode =
               addSubmissionDynNode(executionTimings.packages[i].submissionId, frameId, sourceNode);
-            addDynamicDependency(sourceNode, targetNode);
 
+            int64_t submissionTime = (executionTimings.packages[i].submissionTime - origoTime).count();
             NodeInfos infos;
             infos.startTimeNs = (executionTimings.packages[i].executionTime - origoTime).count();
             infos.endTimeNs = (executionTimings.packages[i].endTime - origoTime).count();
             infos.slopNs = 0;
             feedInfo(targetNode, infos);
             nodeOrder[slopNodeInd++] = {infos.startTimeNs, targetNode, 0};
+            addDynamicDependency(sourceNode, targetNode, std::max(0ll, submissionTime - infos.endTimeNs));
         }
     }
 
@@ -1693,6 +1685,8 @@ void FrameGraphSlops::prepare(FrameId _frame) {
                 feedInfo(targetNode, infos);
                 nodeOrder[slopNodeInd++] = {infos.startTimeNs, targetNode,
                                             getQueueId(timing.queueId)};
+                getSubmissionData(sourceNode).deviceNodeOffsetNs =
+                  get_offset(getNodeInfos(sourceNode), infos);
             }
         }
     }
@@ -1701,7 +1695,9 @@ void FrameGraphSlops::prepare(FrameId _frame) {
     std::sort(nodeOrder.get(), nodeOrder.get() + slopNodeInd);
     for (uint32_t i = 1; i < slopNodeInd; ++i)
         if (nodeOrder[i].queueId == nodeOrder[i - 1].queueId)
-            addImplicitDependency(nodeOrder[i - 1].nodeId, nodeOrder[i].nodeId);
+            addImplicitDependency(
+              nodeOrder[i - 1].nodeId, nodeOrder[i].nodeId,
+              get_offset(getNodeInfos(nodeOrder[i - 1].nodeId), getNodeInfos(nodeOrder[i].nodeId)));
 
     for (NodeId id = 0; id < frameGraph->getNodeCount(); ++id) {
         const FrameGraph::Node* node = frameGraph->getNode(id);
@@ -1759,31 +1755,48 @@ void FrameGraphSlops::prepare(FrameId _frame) {
         }
     }
 
+    for (uint32_t i = 0; i < submissions.size(); ++i) {
+        if (submissions[i].followingNode != INVALID_SLOP_NODE) {
+            SlopNodeId sourceFixedNode = submissions[i].sourceNode;
+            SlopNodeId targetFixedNode = getSubmissionData(submissions[i].followingNode).sourceNode;
+            NodeId sourceFrameGraphNode = getFixedNodeData(sourceFixedNode).frameGraphNode;
+            NodeId targetFrameGraphNode = getFixedNodeData(targetFixedNode).frameGraphNode;
+            if (sourceFrameGraphNode == targetFrameGraphNode
+                || frameGraph->hasEnqueueDependency(
+                  sourceFrameGraphNode, targetFrameGraphNode,
+                  uint32_t(getSubmissionData(submissions[i].followingNode).frame
+                           - submissions[i].frame)))
+                submissions[i].followingIsImplicit = false;
+        }
+    }
+
     uint32_t presentTimingCount =
       frameGraph->getNode(presentFrameGraphNode)->getDeviceTimingCount(_frame);
     if (presentTimingCount > 0)
-        presentNodeId = findDeviceDynNode(presentNodeId, presentTimingCount - 1,
+        presentNodeId = findDeviceDynNode(presentFrameGraphNode, presentTimingCount - 1,
                                           frameGraph->getMaxFramesInFlight());
     else
         presentNodeId = INVALID_SLOP_NODE;
 }
 
-SlopGraph::FeedbackInfo FrameGraphSlops::calculateSlop(bool feedbackNodes) {
+FrameGraphSlops::LatencyInfo FrameGraphSlops::calculateSlop(FrameId frame, bool feedbackNodes) {
     drv::drv_assert(inputNode != INVALID_SLOP_NODE,
                     "FrameGraphSlops was not prepared before calculating slop");
     if (presentNodeId == INVALID_SLOP_NODE)
         return {};
-    auto ret =
+    LatencyInfo ret;
+    ret.frame = frame;
+    ret.inputSlop =
       static_cast<SlopGraph*>(this)->calculateSlop(inputNode, presentNodeId, feedbackNodes);
     presentNodeId = INVALID_SLOP_NODE;
     return ret;
 }
 
-void FrameGraph::processSlops(FrameId frame) {
+FrameGraphSlops::LatencyInfo FrameGraph::processSlops(FrameId frame) {
     if (frame < getMaxFramesInFlight() * 2 + 1)
-        return;
+        return {};
     slopsGraph.prepare(frame - getMaxFramesInFlight());
-    slopsGraph.calculateSlop(true);
+    return slopsGraph.calculateSlop(frame - getMaxFramesInFlight(), true);
 }
 
 SlopGraph::SlopNodeId FrameGraphSlops::createCpuNode(NodeId nodeId, int stage,
@@ -1836,10 +1849,10 @@ SlopGraph::SlopNodeId FrameGraphSlops::addDeviceDynNode(NodeId nodeId, uint32_t 
     return ret;
 }
 
-void FrameGraphSlops::addDynamicDependency(SlopNodeId from, SlopNodeId to) {
+void FrameGraphSlops::addDynamicDependency(SlopNodeId from, SlopNodeId to, int64_t offsetNs) {
     drv::drv_assert(from < fixedNodes.size(),
                     "Only fixed nodes can have dynamic dependencies (at the moment)");
-    fixedNodes[from].dynamicChildren.push_back(to);
+    fixedNodes[from].dynamicChildren.push_back({to, offsetNs});
 }
 
 SlopGraph::SlopNodeId FrameGraphSlops::findSubmissionDynNode(drv::CmdBufferId id,
@@ -1926,4 +1939,8 @@ const FrameGraphSlops::DeviceWorkData& FrameGraphSlops::getDeviceWorkData(SlopNo
 
 void FrameGraphSlops::addDeviceDependency(SlopNodeId from, SlopNodeId to) {
     getDeviceWorkData(from).dependencies.push_back(to);
+}
+
+int64_t FrameGraphSlops::get_offset(const NodeInfos& from, const NodeInfos& to) {
+    return std::max(0ll, to.startTimeNs - from.endTimeNs);
 }

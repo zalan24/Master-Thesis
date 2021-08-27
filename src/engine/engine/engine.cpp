@@ -1145,11 +1145,11 @@ void Engine::readbackLoop(volatile bool* finished) {
             }
             timestsampRingBuffer[readbackFrame % timestsampRingBuffer.size()].clear();
 
-            frameGraph.processSlops(readbackFrame);
+            FrameGraphSlops::LatencyInfo latencyInfo = frameGraph.processSlops(readbackFrame);
 
             if (perfCaptureFrame != INVALID_FRAME
                 && perfCaptureFrame + config.maxFramesInFlight <= readbackFrame) {
-                PerformanceCaptureData capture = generatePerfCapture(readbackFrame);
+                PerformanceCaptureData capture = generatePerfCapture(readbackFrame, latencyInfo);
                 fs::path capturesFolder = fs::path{"captures"};
                 if (!fs::exists(capturesFolder))
                     fs::create_directories(capturesFolder);
@@ -1602,7 +1602,8 @@ Engine::AcquiredImageData Engine::mainRecord(FrameId frameId) {
     return {};
 }
 
-PerformanceCaptureData Engine::generatePerfCapture(FrameId lastReadyFrame) const {
+PerformanceCaptureData Engine::generatePerfCapture(
+  FrameId lastReadyFrame, const FrameGraphSlops::LatencyInfo& latency) const {
     FrameId firstFrame = lastReadyFrame > config.maxFramesInFlight * 2 + 1
                            ? lastReadyFrame - (config.maxFramesInFlight * 2 + 1)
                            : 0;
@@ -1610,6 +1611,9 @@ PerformanceCaptureData Engine::generatePerfCapture(FrameId lastReadyFrame) const
     drv::drv_assert(FrameGraph::TIMING_HISTORY_SIZE > frameCount + config.maxFramesInFlight,
                     "Timing history is not long enough to make a capture");
     FrameId targetFrame = lastReadyFrame - config.maxFramesInFlight;
+
+    drv::drv_assert(latency.frame != INVALID_FRAME, "Latency frame is invalid");
+    drv::drv_assert(targetFrame == latency.frame, "Latency frame != capture target frame");
 
     const FrameGraph::Node* simStart =
       frameGraph.getNode(frameGraph.getStageStartNode(FrameGraph::SIMULATION_STAGE));
@@ -1632,7 +1636,10 @@ PerformanceCaptureData Engine::generatePerfCapture(FrameId lastReadyFrame) const
     ret.frameId = targetFrame;
     ret.frameTime = getTimeDiff(firstTiming.start, endTiming.start) / frameCount;
     ret.fps = 1000.0 / ret.frameTime;
-    ret.softwareLatency = ;
+    ret.softwareLatency =
+      double(std::chrono::nanoseconds(latency.inputSlop.latencyNs).count()) / 1000000.0;
+    ret.latencySlop =
+      double(std::chrono::nanoseconds(latency.inputSlop.totalSlopNs).count()) / 1000000.0;
     ret.executionDelay = -1;
     ret.deviceDelay = -1;
 

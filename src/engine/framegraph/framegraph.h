@@ -91,8 +91,7 @@ class FrameGraphSlops final : public SlopGraph
     uint32_t getNodeCount() const override;
     NodeInfos getNodeInfos(SlopNodeId node) const override;
     uint32_t getChildCount(SlopNodeId node) const override;
-    SlopNodeId getChild(SlopNodeId node, uint32_t index) const override;
-    bool isImplicitDependency(SlopNodeId node, uint32_t index) const override;
+    ChildInfo getChild(SlopNodeId node, uint32_t index) const override;
 
     void feedBack(SlopNodeId node, const FeedbackInfo& info) override;
 
@@ -107,13 +106,19 @@ class FrameGraphSlops final : public SlopGraph
     SlopNodeId addSubmissionDynNode(drv::CmdBufferId id, FrameId frame, SlopNodeId sourceNode);
     SlopNodeId addDeviceDynNode(NodeId nodeId, uint32_t id, FrameId frame, SlopNodeId sourceNode,
                                 SlopNodeId sourceSubmission);
-    void addDynamicDependency(SlopNodeId from, SlopNodeId to);
+    void addDynamicDependency(SlopNodeId from, SlopNodeId to, int64_t offsetNs);
     SlopNodeId findSubmissionDynNode(drv::CmdBufferId id, FrameId frame) const;
     SlopNodeId findDeviceDynNode(NodeId nodeId, uint32_t id, FrameId frame) const;
-    void addImplicitDependency(SlopNodeId from, SlopNodeId to);
+    void addImplicitDependency(SlopNodeId from, SlopNodeId to, int64_t offsetNs);
     void addDeviceDependency(SlopNodeId from, SlopNodeId to);
 
-    FeedbackInfo calculateSlop(bool feedbackNodes);
+    struct LatencyInfo
+    {
+        FrameId frame = INVALID_FRAME;
+        FeedbackInfo inputSlop;
+    };
+
+    LatencyInfo calculateSlop(FrameId frame, bool feedbackNodes);
 
  private:
     FrameGraph* frameGraph = nullptr;
@@ -130,7 +135,9 @@ class FrameGraphSlops final : public SlopGraph
         NodeInfos infos;
         SlopNodeId sourceNode;
         SlopNodeId deviceWorkNode = INVALID_SLOP_NODE;
+        int64_t deviceNodeOffsetNs = 0;
         SlopNodeId followingNode = INVALID_SLOP_NODE;
+        bool followingIsImplicit = true;
     };
 
     struct DeviceWorkData
@@ -142,6 +149,7 @@ class FrameGraphSlops final : public SlopGraph
         SlopNodeId sourceNode;
         SlopNodeId sourceSubmission;
         SlopNodeId followingNode = INVALID_SLOP_NODE;
+        int64_t followingNodeOffsetNs = 0;
         std::vector<SlopNodeId> dependencies;
     };
 
@@ -158,6 +166,11 @@ class FrameGraphSlops final : public SlopGraph
             return frameIndex < other.frameIndex;
         }
     };
+    struct DynDep
+    {
+        SlopNodeId child;
+        int64_t offsetNs = 0;
+    };
     struct FixedNodeData
     {
         NodeInfos infos;
@@ -166,7 +179,7 @@ class FrameGraphSlops final : public SlopGraph
         uint32_t frameIndex;
         SlopNodeId followingNode = INVALID_SLOP_NODE;
         std::vector<SlopNodeId> fixedChildren;
-        std::vector<SlopNodeId> dynamicChildren;
+        std::vector<DynDep> dynamicChildren;
     };
 
     std::vector<FixedNodeData> fixedNodes;
@@ -185,6 +198,7 @@ class FrameGraphSlops final : public SlopGraph
 
     void clearDynamicNodes();
     void feedInfo(SlopNodeId node, const NodeInfos& infos);
+    static int64_t get_offset(const NodeInfos& from, const NodeInfos& to);
 };
 
 class FrameGraph
@@ -550,7 +564,7 @@ class FrameGraph
     };
 
     const FrameExecutionPackagesTimings& getExecutionTiming(FrameId frame) const;
-    void processSlops(FrameId frame);
+    FrameGraphSlops::LatencyInfo processSlops(FrameId frame);
 
  private:
     struct DependenceData

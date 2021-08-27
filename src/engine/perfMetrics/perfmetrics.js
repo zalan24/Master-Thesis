@@ -155,6 +155,7 @@ function createTable() {
     let fpsText = document.getElementById('info_fps');
     let frametimeText = document.getElementById('info_frametime');
     let softLatencyText = document.getElementById('info_softwarelatency');
+    let latencySlopText = document.getElementById('info_latencyslop');
     let execDelayText = document.getElementById('info_executiondelay');
     let deviceDelayText = document.getElementById('info_devicedelay');
 
@@ -162,6 +163,7 @@ function createTable() {
     fpsText.innerHTML = Math.round(captureData.fps);
     frametimeText.innerHTML = `${Math.round(captureData.frameTime)}ms`;
     softLatencyText.innerHTML = `${Math.round(captureData.softwareLatency)}ms`;
+    latencySlopText.innerHTML = `${Math.round(captureData.latencySlop)}ms`;
     execDelayText.innerHTML = `${Math.round(captureData.executionDelay)}ms`;
     deviceDelayText.innerHTML = `${Math.round(captureData.deviceDelay)}ms`;
 

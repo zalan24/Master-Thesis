@@ -125,6 +125,7 @@ struct PerformanceCaptureData final : public IAutoSerializable<PerformanceCaptur
         (double) fps,
         (double) frameTime,
         (double) softwareLatency,
+        (double) latencySlop,
         (double) executionDelay,
         (double) deviceDelay,
         (std::map<std::string, std::map<std::string, std::vector<PerformanceCaptureCpuPackage>>>) stageToThreadToPackageList,
@@ -425,7 +426,7 @@ class Engine
     void present(drv::SwapchainPtr swapchain, FrameId frame, uint32_t imageIndex,
                  uint32_t semaphoreIndex);
     bool sampleInput(FrameId frameId);
-    PerformanceCaptureData generatePerfCapture(FrameId lastReadyFrame) const;
+    PerformanceCaptureData generatePerfCapture(FrameId lastReadyFrame, const FrameGraphSlops::LatencyInfo &latency) const;
     AcquiredImageData mainRecord(FrameId frameId);
 
     static drv::PhysicalDevice::SelectionInfo get_device_selection_info(

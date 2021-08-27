@@ -12,14 +12,20 @@ SlopGraph::FeedbackInfo SlopGraph::calculateSlop(SlopNodeId sourceNode, SlopNode
     StackMemory::MemoryHandle<SlopNodeId> topologicalOrder(nodeCount, TEMPMEM);
     StackMemory::MemoryHandle<SlopNodeId> tempVector(nodeCount, TEMPMEM);
 
+    NodeInfos targetNodeInfo = getNodeInfos(targetNode);
+
     // topological ordering
     for (uint32_t i = 0; i < nodeCount; ++i) {
+        int64_t startTime = getNodeInfos(i).startTimeNs;
         int64_t endTime = getNodeInfos(i).endTimeNs;
         for (uint32_t j = 0; j < getChildCount(i); ++j) {
-            uint32_t child = getChild(i, j);
-            nodeData[child].dependenceCount++;
+            ChildInfo child = getChild(i, j);
+            nodeData[child.id].dependenceCount++;
             // 10us for measurement error
-            drv::drv_assert(endTime <= getNodeInfos(child).startTimeNs + 10 * 1000,
+            drv::drv_assert(
+              endTime + child.depOffset <= getNodeInfos(child.id).startTimeNs + 10 * 1000,
+              "Invalid dependencies in slot graph");
+            drv::drv_assert(startTime <= getNodeInfos(child.id).startTimeNs + 10 * 1000,
                             "Invalid dependencies in slot graph");
         }
     }
@@ -34,11 +40,11 @@ SlopGraph::FeedbackInfo SlopGraph::calculateSlop(SlopNodeId sourceNode, SlopNode
         while (count > 0) {
             SlopNodeId node = tempVector[--count];
             for (uint32_t j = 0; j < getChildCount(node); ++j) {
-                SlopNodeId child = getChild(node, j);
-                if (--nodeData[child].dependenceCount == 0) {
-                    tempVector[count++] = child;
-                    topologicalOrder[currentId++] = child;
-                    nodeData[child].ordered = true;
+                ChildInfo child = getChild(node, j);
+                if (--nodeData[child.id].dependenceCount == 0) {
+                    tempVector[count++] = child.id;
+                    topologicalOrder[currentId++] = child.id;
+                    nodeData[child.id].ordered = true;
                 }
             }
         }
@@ -66,23 +72,25 @@ SlopGraph::FeedbackInfo SlopGraph::calculateSlop(SlopNodeId sourceNode, SlopNode
         int64_t asIsMin = std::numeric_limits<int64_t>::max();
         int64_t noImplicitMin = std::numeric_limits<int64_t>::max();
         for (uint32_t j = 0; j < getChildCount(node); ++j) {
-            SlopNodeId child = getChild(node, j);
-            NodeInfos childInfo = getNodeInfos(child);
-            if (isImplicitDependency(node, j)) {
+            ChildInfo child = getChild(node, j);
+            NodeInfos childInfo = getNodeInfos(child.id);
+            if (child.isImplicit) {
                 drv::drv_assert(nodeData[node].feedbackInfo.implicitChild == INVALID_SLOP_NODE,
                                 "Only one implicit child can exist");
-                nodeData[node].feedbackInfo.implicitChild = child;
+                nodeData[node].feedbackInfo.implicitChild = child.id;
             }
             else
-                noImplicitMin =
-                  std::min(noImplicitMin, childInfo.startTimeNs + childInfo.slopNs
-                                            + nodeData[child].feedbackInfo.totalSlopNs);
+                noImplicitMin = std::min(
+                  noImplicitMin, childInfo.startTimeNs + childInfo.slopNs
+                                   + nodeData[child.id].feedbackInfo.totalSlopNs - child.depOffset);
             sloppedMin = std::min(sloppedMin, childInfo.startTimeNs + childInfo.slopNs
-                                                + nodeData[child].feedbackInfo.totalSlopNs);
-            asIsMin = std::min(asIsMin, childInfo.startTimeNs + childInfo.slopNs);
+                                                + nodeData[child.id].feedbackInfo.totalSlopNs
+                                                - child.depOffset);
+            asIsMin = std::min(asIsMin, childInfo.startTimeNs + childInfo.slopNs - child.depOffset);
         }
         nodeData[node].feedbackInfo.directSlopNs = asIsMin - nodeInfo.endTimeNs;
         nodeData[node].feedbackInfo.totalSlopNs = sloppedMin - nodeInfo.endTimeNs;
+        nodeData[node].feedbackInfo.latencyNs = targetNodeInfo.endTimeNs - nodeInfo.startTimeNs;
         nodeData[node].feedbackInfo.extraSlopWithoutImplicitChildNs = noImplicitMin - sloppedMin;
     }
     // ---
