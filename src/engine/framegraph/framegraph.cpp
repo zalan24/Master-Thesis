@@ -1663,7 +1663,9 @@ void FrameGraphSlops::prepare(FrameId _frame) {
             infos.slopNs = 0;
             feedInfo(targetNode, infos);
             nodeOrder[slopNodeInd++] = {infos.startTimeNs, targetNode, 0};
-            addDynamicDependency(sourceNode, targetNode, std::max(0ll, submissionTime - infos.endTimeNs));
+            addDynamicDependency(
+              sourceNode, targetNode,
+              std::min(0ll, submissionTime - getNodeInfos(sourceNode).endTimeNs));
         }
     }
 
@@ -1773,8 +1775,7 @@ void FrameGraphSlops::prepare(FrameId _frame) {
     uint32_t presentTimingCount =
       frameGraph->getNode(presentFrameGraphNode)->getDeviceTimingCount(_frame);
     if (presentTimingCount > 0)
-        presentNodeId = findDeviceDynNode(presentFrameGraphNode, presentTimingCount - 1,
-                                          frameGraph->getMaxFramesInFlight());
+        presentNodeId = findDeviceDynNode(presentFrameGraphNode, presentTimingCount - 1, _frame);
     else
         presentNodeId = INVALID_SLOP_NODE;
 }
@@ -1942,5 +1943,5 @@ void FrameGraphSlops::addDeviceDependency(SlopNodeId from, SlopNodeId to) {
 }
 
 int64_t FrameGraphSlops::get_offset(const NodeInfos& from, const NodeInfos& to) {
-    return std::max(0ll, to.startTimeNs - from.endTimeNs);
+    return std::min(0ll, to.startTimeNs - from.endTimeNs);
 }

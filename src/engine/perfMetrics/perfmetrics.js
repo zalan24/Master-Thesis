@@ -205,6 +205,15 @@ function createTable() {
         if (maxTime == null || maxTime < node.endTime)
             maxTime = node.endTime;
     }
+    for (let threadName in deviceNodes) {
+        for(let i in deviceNodes[threadName]) {
+            let node = deviceNodes[threadName][i];
+            if (minTime == null || node.startTime < minTime)
+                minTime = node.startTime;
+            if (maxTime == null || maxTime < node.endTime)
+                maxTime = node.endTime;
+        }
+    }
 
     cpuPackageData = {};
     executionPackageData = {};
@@ -562,40 +571,30 @@ function createTable() {
         info.w.onmouseleave = (_) => {
             for (let depended in info.n.depended) {
                 let dep = cpuPackageData[info.n.depended[depended]];
-                if (dep.n.endTime < info.n.availableTime)
-                    dep.w.classList.remove("depended");
-                else
-                    dep.w.classList.remove("activeDepended");
+                dep.w.classList.remove("depended");
+                dep.w.classList.remove("activeDepended");
             }
             for (let execDepended in info.n.execDepended) {
                 let dep = cpuPackageData[info.n.execDepended[execDepended]].lastExecution;
-                if (dep.n.endTime < info.n.availableTime)
-                    dep.w.classList.remove("depended");
-                else
-                    dep.w.classList.remove("activeDepended");
+                dep.w.classList.remove("depended");
+                dep.w.classList.remove("activeDepended");
             }
             for (let deviceDepended in info.n.deviceDepended) {
                 let dep = cpuPackageData[info.n.deviceDepended[deviceDepended]].lastDeviceWork;
-                if (dep.n.endTime < info.n.availableTime)
-                    dep.w.classList.remove("depended");
-                else
-                    dep.w.classList.remove("activeDepended");
+                dep.w.classList.remove("depended");
+                dep.w.classList.remove("activeDepended");
             }
             for (let dependent in info.n.dependent) {
                 let dep = cpuPackageData[info.n.dependent[dependent]];
-                if (dep.n.availableTime < info.n.endTime)
-                    dep.w.classList.remove("activeDependent");
-                else
-                    dep.w.classList.remove("dependent");
+                dep.w.classList.remove("activeDependent");
+                dep.w.classList.remove("dependent");
             }
             for (let threadName in info.n.gpuDoneDep) {
                 for(let i in captureData.queueToDevicePackageList[threadName]) {
                     let dep = captureData.queueToDevicePackageList[threadName][i];
-                    if (dep.frameId < info.n.gpuDoneDep[threadName]) {
-                        if (info.n.availableTime < dep.endTime)
-                            dep.w.classList.remove("activeDepended");
-                        else
-                            dep.w.classList.remove("depended");
+                    if (dep.frameId <= info.n.gpuDoneDep[threadName]) {
+                        dep.w.classList.remove("activeDepended");
+                        dep.w.classList.remove("depended");
                     }
                 }
             }

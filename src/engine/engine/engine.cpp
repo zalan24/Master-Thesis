@@ -203,7 +203,7 @@ Engine::Engine(int argc, char* argv[], const EngineConfig& cfg,
     cmdBufferBank(device),
     semaphorePool(device, config.maxFramesInFlight),
     timestampPool(device),
-    timestampCmdBuffers(physicalDevice, device, config.maxFramesInFlight, 64),
+    timestampCmdBuffers(physicalDevice, device, config.maxFramesInFlight + 1, 64),
     swapchain(physicalDevice, device, window,
               get_swapchain_create_info(config, presentQueue.queue, renderQueue.queue)),
     eventPool(device),
@@ -1148,7 +1148,7 @@ void Engine::readbackLoop(volatile bool* finished) {
             FrameGraphSlops::LatencyInfo latencyInfo = frameGraph.processSlops(readbackFrame);
 
             if (perfCaptureFrame != INVALID_FRAME
-                && perfCaptureFrame + config.maxFramesInFlight <= readbackFrame) {
+                && perfCaptureFrame + frameGraph.getMaxFramesInFlight() <= readbackFrame) {
                 PerformanceCaptureData capture = generatePerfCapture(readbackFrame, latencyInfo);
                 fs::path capturesFolder = fs::path{"captures"};
                 if (!fs::exists(capturesFolder))
@@ -1604,13 +1604,14 @@ Engine::AcquiredImageData Engine::mainRecord(FrameId frameId) {
 
 PerformanceCaptureData Engine::generatePerfCapture(
   FrameId lastReadyFrame, const FrameGraphSlops::LatencyInfo& latency) const {
-    FrameId firstFrame = lastReadyFrame > config.maxFramesInFlight * 2 + 1
-                           ? lastReadyFrame - (config.maxFramesInFlight * 2 + 1)
+    FrameId firstFrame = lastReadyFrame > frameGraph.getMaxFramesInFlight() * 2 + 1
+                           ? lastReadyFrame - (frameGraph.getMaxFramesInFlight() * 2 + 1)
                            : 0;
     uint32_t frameCount = uint32_t(lastReadyFrame - firstFrame + 1);
-    drv::drv_assert(FrameGraph::TIMING_HISTORY_SIZE > frameCount + config.maxFramesInFlight,
-                    "Timing history is not long enough to make a capture");
-    FrameId targetFrame = lastReadyFrame - config.maxFramesInFlight;
+    drv::drv_assert(
+      FrameGraph::TIMING_HISTORY_SIZE > frameCount + frameGraph.getMaxFramesInFlight(),
+      "Timing history is not long enough to make a capture");
+    FrameId targetFrame = lastReadyFrame - frameGraph.getMaxFramesInFlight();
 
     drv::drv_assert(latency.frame != INVALID_FRAME, "Latency frame is invalid");
     drv::drv_assert(targetFrame == latency.frame, "Latency frame != capture target frame");
