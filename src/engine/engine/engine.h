@@ -54,6 +54,7 @@ struct EngineConfig final : public IAutoSerializable<EngineConfig>
         (uint32_t) imagesInSwapchain,
         (uint32_t) maxFramesInExecutionQueue,
         (uint32_t) maxFramesInFlight,
+        (uint32_t) slopHistorySize,
         (std::string) title,
         (std::string) driver,
         (uint32_t) inputBufferSize,

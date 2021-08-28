@@ -13,8 +13,9 @@ FrameGraph::FrameGraph(drv::PhysicalDevice _physicalDevice, drv::LogicalDevicePt
                        GarbageSystem* _garbageSystem, drv::ResourceLocker* _resourceLocker,
                        EventPool* _eventPool, drv::TimelineSemaphorePool* _semaphorePool,
                        TimestampPool* _timestampPool, drv::StateTrackingConfig _trackerConfig,
-                       uint32_t maxFramesInExecution, uint32_t _maxFramesInFlight)
-  : slopsGraph(),
+                       uint32_t maxFramesInExecution, uint32_t _maxFramesInFlight,
+                       uint32_t slopHistorySize)
+  : slopsGraph(slopHistorySize),
     physicalDevice(_physicalDevice),
     device(_device),
     garbageSystem(_garbageSystem),
@@ -1815,6 +1816,24 @@ FrameGraphSlops::LatencyInfo FrameGraphSlops::calculateSlop(FrameId frame, bool 
     ret.frame = frame;
     ret.inputSlop =
       static_cast<SlopGraph*>(this)->calculateSlop(inputNode, presentNodeId, feedbackNodes);
+    slopHistory[frame % slopHistory.size()] = ret.inputSlop.totalSlopNs;
+    if (frame >= slopHistory.size()) {
+        ret.slopAvg = slopHistory[0];
+        ret.slopMin = slopHistory[0];
+        ret.slopMax = slopHistory[0];
+        ret.slopStdDiv = 0;
+        for (uint32_t i = 1; i < slopHistory.size(); ++i) {
+            ret.slopAvg += slopHistory[i];
+            ret.slopMax = std::max(ret.slopMax, slopHistory[i]);
+            ret.slopMin = std::min(ret.slopMin, slopHistory[i]);
+        }
+        ret.slopAvg /= int64_t(slopHistory.size());
+        for (uint32_t i = 0; i < slopHistory.size(); ++i) {
+            int64_t diff = ret.slopAvg - slopHistory[i];
+            ret.slopStdDiv += diff * diff;
+        }
+        ret.slopStdDiv = int64_t(sqrt(ret.slopStdDiv / int64_t(slopHistory.size())));
+    }
     presentNodeId = INVALID_SLOP_NODE;
     return ret;
 }

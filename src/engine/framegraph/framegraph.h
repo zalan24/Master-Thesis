@@ -88,6 +88,8 @@ class FrameGraph;
 class FrameGraphSlops final : public SlopGraph
 {
  public:
+    explicit FrameGraphSlops(uint32_t historySize) : slopHistory(historySize) {}
+
     uint32_t getNodeCount() const override;
     NodeInfos getNodeInfos(SlopNodeId node) const override;
     uint32_t getChildCount(SlopNodeId node) const override;
@@ -115,6 +117,10 @@ class FrameGraphSlops final : public SlopGraph
     struct LatencyInfo
     {
         FrameId frame = INVALID_FRAME;
+        int64_t slopAvg = 0;
+        int64_t slopMin = 0;
+        int64_t slopMax = 0;
+        int64_t slopStdDiv = 0;
         FeedbackInfo inputSlop;
     };
 
@@ -127,6 +133,7 @@ class FrameGraphSlops final : public SlopGraph
     SlopNodeId inputNode = INVALID_SLOP_NODE;
     SlopNodeId presentNodeId = INVALID_SLOP_NODE;
     FrameId currentFrame;
+    std::vector<int64_t> slopHistory;
 
     struct SubmissionData
     {
@@ -525,9 +532,9 @@ class FrameGraph
 
     FrameGraph(drv::PhysicalDevice physicalDevice, drv::LogicalDevicePtr device,
                GarbageSystem* garbageSystem, drv::ResourceLocker* resourceLocker,
-               EventPool* eventPool, drv::TimelineSemaphorePool* semaphorePool, TimestampPool *timestampPool,
-               drv::StateTrackingConfig trackerConfig, uint32_t maxFramesInExecution,
-               uint32_t maxFramesInFlight);
+               EventPool* eventPool, drv::TimelineSemaphorePool* semaphorePool,
+               TimestampPool* timestampPool, drv::StateTrackingConfig trackerConfig,
+               uint32_t maxFramesInExecution, uint32_t maxFramesInFlight, uint32_t slopHistorySize);
 
     uint32_t getMaxFramesInFlight() const { return maxFramesInFlight; }
 

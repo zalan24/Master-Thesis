@@ -211,7 +211,7 @@ Engine::Engine(int argc, char* argv[], const EngineConfig& cfg,
     // maxFramesInFlight + 1 for readback stage
     frameGraph(physicalDevice, device, &garbageSystem, &resourceLocker, &eventPool, &semaphorePool,
                &timestampPool, trackingConfig, config.maxFramesInExecutionQueue,
-               config.maxFramesInFlight + 1),
+               config.maxFramesInFlight + 1, config.slopHistorySize),
     runtimeStats(!launchArgs.clearRuntimeStats, launchArgs.runtimeStatsPersistanceBin,
                  launchArgs.runtimeStatsGameExportsBin, launchArgs.runtimeStatsCacheBin),
     entityManager(physicalDevice, device, &frameGraph, resourceFolders.textures),
@@ -1146,6 +1146,10 @@ void Engine::readbackLoop(volatile bool* finished) {
             timestsampRingBuffer[readbackFrame % timestsampRingBuffer.size()].clear();
 
             FrameGraphSlops::LatencyInfo latencyInfo = frameGraph.processSlops(readbackFrame);
+            if (latencyInfo.frame != INVALID_FRAME)
+                drv::drv_assert(
+                  latencyInfo.inputSlop.totalSlopNs <= latencyInfo.inputSlop.latencyNs,
+                  "Slop cannot be greater than latency");
 
             if (perfCaptureFrame != INVALID_FRAME
                 && perfCaptureFrame + frameGraph.getMaxFramesInFlight() <= readbackFrame) {
