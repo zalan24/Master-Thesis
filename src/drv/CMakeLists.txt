@@ -25,5 +25,5 @@ target_link_libraries(AnimationsDrv PUBLIC
 
 if (BUILD_DRV_VULKAN)
     add_subdirectory(vulkan)
-    target_link_libraries(AnimationsDrv PRIVATE AnimationsDrvVulkan)
+    target_link_libraries(AnimationsDrv PRIVATE DrvVulkan)
 endif()

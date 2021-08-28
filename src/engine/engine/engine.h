@@ -430,6 +430,7 @@ class Engine
     void present(drv::SwapchainPtr swapchain, FrameId frame, uint32_t imageIndex,
                  uint32_t semaphoreIndex);
     bool sampleInput(FrameId frameId);
+    void drawUI(FrameId frameId);
     PerformanceCaptureData generatePerfCapture(FrameId lastReadyFrame, const FrameGraphSlops::LatencyInfo &latency) const;
     AcquiredImageData mainRecord(FrameId frameId);
 

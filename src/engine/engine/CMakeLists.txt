@@ -27,4 +27,5 @@ target_link_libraries(EngineLib PUBLIC
     Entities
     TimestampPool
     PerfMetrics
+    ImGuiLib
 )

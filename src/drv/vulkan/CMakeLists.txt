@@ -6,23 +6,23 @@ if (Vulkan_FOUND)
         commands/*.c commands/*.cpp commands/*.h commands/*.hpp
         components/*.c components/*.cpp components/*.h components/*.hpp)
 
-    add_library(AnimationsDrvVulkan STATIC ${DRV_VULKAN_FILES})
-    target_include_directories(AnimationsDrvVulkan PUBLIC
+    add_library(DrvVulkan STATIC ${DRV_VULKAN_FILES})
+    target_include_directories(DrvVulkan PUBLIC
         ${CMAKE_CURRENT_BINARY_DIR}
         ${CMAKE_CURRENT_SOURCE_DIR}
     )
-    set_target_properties(  AnimationsDrvVulkan
+    set_target_properties(  DrvVulkan
                             PROPERTIES
                             COMPILE_FLAGS ${TARGETCOMPILEFLAGS}
                             LINK_OPTIONS "${TARGET_LINK_FLAGS}")
-    target_link_libraries(AnimationsDrvVulkan PUBLIC
+    target_link_libraries(DrvVulkan PUBLIC
         DrvCommon
         AnimationsInput
         CoreTools
         CoreDataStructures
         FeaturesLib
     )
-    target_link_libraries(AnimationsDrvVulkan PRIVATE
+    target_link_libraries(DrvVulkan PRIVATE
         ${Vulkan_LIBRARIES}
         vulkan_hpp_external
         vulkan_headers_external
@@ -48,5 +48,5 @@ if (Vulkan_FOUND)
 
     add_custom_target(VulkanLayers DEPENDS ${VULKAN_LAYER_CONFIGS})
     add_dependencies(VulkanLayers validation_layers_external gfxreconstruct_external vulkan_extensions_external)
-    add_dependencies(AnimationsDrvVulkan VulkanLayers)
+    add_dependencies(DrvVulkan VulkanLayers)
 endif()
