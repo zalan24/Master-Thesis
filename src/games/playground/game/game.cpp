@@ -59,6 +59,10 @@ Game::Game(int argc, char* argv[], const EngineConfig& config,
     // subpassInfo2.inputs.push_back(
     //   {colorTagretColorAttachment, drv::ImageLayout::SHADER_READ_ONLY_OPTIMAL});
     swapchainSubpass = testRenderPass->createSubpass(std::move(subpassInfo2));
+    drv::SubpassInfo imGuiSubpassInfo;
+    imGuiSubpassInfo.colorOutputs.push_back(
+      {swapchainColorAttachment, drv::ImageLayout::COLOR_ATTACHMENT_OPTIMAL});
+    imGuiSubpass = testRenderPass->createSubpass(imGuiSubpassInfo);
     testRenderPass->build();
 
     transferNode = getFrameGraph().addNode(FrameGraph::Node(
@@ -165,6 +169,9 @@ void Game::recordCmdBufferRender(const AcquiredImageData& swapchainData,
     testPass.bindGraphicsShader(get_dynamic_states(swapchainData.extent), {}, mandelbrotShader,
                                 &shaderGlobalDesc, &mandelbrotDesc);
     testPass.draw(6, 1, 0, 0);
+
+    testPass.beginSubpass(imGuiSubpass);
+    recordImGui(swapchainData, recorder, frameId);
 
     testPass.end();
 

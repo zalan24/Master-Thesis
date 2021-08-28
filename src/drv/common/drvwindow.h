@@ -24,4 +24,7 @@ class IWindow
     virtual drv::Extent2D getResolution() const = 0;
 
     virtual bool shouldClose() = 0;
+
+    virtual void newImGuiFrame() = 0;
+    virtual void renderImGui() = 0;
 };

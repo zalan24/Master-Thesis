@@ -21,6 +21,7 @@ if (Vulkan_FOUND)
         CoreTools
         CoreDataStructures
         FeaturesLib
+        ImGuiLib
     )
     target_link_libraries(DrvVulkan PRIVATE
         ${Vulkan_LIBRARIES}

@@ -250,8 +250,9 @@ Engine::Engine(int argc, char* argv[], const EngineConfig& cfg,
       frameGraph.addNode(FrameGraph::Node("sample_input", FrameGraph::SIMULATION_STAGE));
     presentFrameNode = frameGraph.addNode(
       FrameGraph::Node("presentFrame", FrameGraph::RECORD_STAGE | FrameGraph::EXECUTION_STAGE));
-    mainRecordNode = frameGraph.addNode(
-      FrameGraph::Node("mainRecord", FrameGraph::RECORD_STAGE | FrameGraph::EXECUTION_STAGE));
+    mainRecordNode = frameGraph.addNode(FrameGraph::Node(
+      "mainRecord",
+      FrameGraph::BEFORE_DRAW_STAGE | FrameGraph::RECORD_STAGE | FrameGraph::EXECUTION_STAGE));
     acquireSwapchainNode = frameGraph.addNode(
       FrameGraph::Node("acquireSwapchain", FrameGraph::RECORD_STAGE | FrameGraph::EXECUTION_STAGE));
 
@@ -636,6 +637,12 @@ void Engine::beforeDrawLoop() {
         else
             break;
         beforeDraw(beforeDrawFrame);
+        if (FrameGraph::NodeHandle nodeHandle = getFrameGraph().acquireNode(
+              mainRecordNode, FrameGraph::BEFORE_DRAW_STAGE, beforeDrawFrame);
+            nodeHandle) {
+            window->newImGuiFrame();
+            drawUI(beforeDrawFrame);
+        }
         if (!frameGraph.endStage(FrameGraph::BEFORE_DRAW_STAGE, beforeDrawFrame)) {
             assert(frameGraph.isStopped());
             break;
@@ -1603,12 +1610,14 @@ Engine::AcquiredImageData Engine::mainRecord(FrameId frameId) {
         }
 
         entitiesToDraw.clear();
-
-        drawUI(frameId);
-
-        return swapChainData;
     }
-    return {};
+    else
+        return {};
+    return swapChainData;
+}
+
+void Engine::recordImGui(const AcquiredImageData&, drv::DrvCmdBufferRecorder*, FrameId) {
+    window->renderImGui();
 }
 
 PerformanceCaptureData Engine::generatePerfCapture(
@@ -1914,4 +1923,6 @@ void Engine::drawUI(FrameId frameId) {
 
     // ImGui::Render();
     // ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+
+    recordGameUI(frameId);
 }

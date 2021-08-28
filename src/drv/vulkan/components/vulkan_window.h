@@ -16,6 +16,8 @@
 #endif
 #include <vulkan/vulkan.h>
 
+#include <imgui.h>
+
 #include <drvtypes.h>
 #include <drvwindow.h>
 
@@ -52,6 +54,9 @@ class VulkanWindow final : public IWindow
 
     bool init(drv::InstancePtr instance) override;
     void close() override;
+
+    void newImGuiFrame() override;
+    void renderImGui() override;
 
     VkSurfaceKHR getSurface();
 
@@ -92,6 +97,17 @@ class VulkanWindow final : public IWindow
         void getCapabilities(VkPhysicalDevice physicalDevice,
                              VkSurfaceCapabilitiesKHR& capabilities) const;
     };
+    struct ImGuiHelper
+    {
+        explicit ImGuiHelper(
+          GLFWwindow* window /*, VkSurfaceKHR surface, uint32_t width, uint32_t height*/);
+        ~ImGuiHelper();
+
+        ImGuiHelper(const ImGuiHelper&) = delete;
+        ImGuiHelper& operator=(const ImGuiHelper&) = delete;
+
+        //   ImGui_ImplVulkanH_Window wd;
+    };
     //  drv::IDriver* driver;
     int currentCursorMode;
     std::atomic<int> targetCursorMode;
@@ -100,6 +116,7 @@ class VulkanWindow final : public IWindow
     InputManager* inputManager;
     WindowObject window;
     Surface surface;
+    ImGuiHelper imGuiHelper;
     std::unique_ptr<SwapChainSupportDetails> swapchainSupport;
     std::set<int> pushedButtons;
     std::set<int> pushedMouseButtons;

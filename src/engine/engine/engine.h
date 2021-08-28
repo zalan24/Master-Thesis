@@ -262,10 +262,14 @@ class Engine
     virtual void beforeDraw(FrameId frameId) = 0;
     virtual void record(const AcquiredImageData& swapchainData, drv::DrvCmdBufferRecorder* recorder,
                         FrameId frameId) = 0;
+    virtual void recordGameUI(FrameId /*frameId*/) {}
     virtual void lockResources(TemporalResourceLockerDescriptor& resourceDesc, FrameId frameId) = 0;
     virtual void readback(FrameId frameId) = 0;
     virtual void releaseSwapchainResources() = 0;
     virtual void createSwapchainResources(const drv::Swapchain& swapchain) = 0;
+
+    void recordImGui(const AcquiredImageData& swapchainData,
+                                 drv::DrvCmdBufferRecorder* recorder, FrameId frameId);
 
     drv::TimelineSemaphorePool* getSemaphorePool() { return &semaphorePool; }
 
