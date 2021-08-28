@@ -1572,7 +1572,8 @@ void FrameGraphSlops::build(FrameGraph* _frameGraph, NodeId _inputNode, int _inp
                         continue;
                     if (frame < dep.offset)
                         continue;
-                    SlopNodeId sourceNode = findFixedNode(dep.srcNode, stage, frame - dep.offset);
+                    SlopNodeId sourceNode =
+                      findFixedNode(dep.srcNode, dep.srcStage, frame - dep.offset);
                     if (sourceNode == INVALID_SLOP_NODE)
                         continue;
                     addFixedDependency(sourceNode, targetNode);

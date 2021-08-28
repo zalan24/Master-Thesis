@@ -49,11 +49,11 @@ Get a triangle on screen:
             ✔ Display gpu complete waits @done (8/7/2021, 10:58:57 AM)
             ✔ Display gpu node waits @done (8/7/2021, 10:58:58 AM)
         ☐ Deal with slop
-            ☐ Implement slop graph for framegraph
-            ☐ Create one slop graph object in graph building and reuse when needed
-            ☐ FrameGraph should have a function for slop calculation, called in readback end, right before perf capture
-            ☐ Node history should store slop info. Updated by slop graph's feedback
-            ☐ Perf capture should contain the calculated slop for the source node (as a global reducible latency)
+            ✔ Implement slop graph for framegraph @done (8/28/2021, 12:06:42 PM)
+            ✔ Create one slop graph object in graph building and reuse when needed @done (8/28/2021, 12:06:46 PM)
+            ✔ FrameGraph should have a function for slop calculation, called in readback end, right before perf capture @done (8/28/2021, 12:06:54 PM)
+            ✔ Node history should store slop info. Updated by slop graph's feedback @done (8/28/2021, 12:06:59 PM)
+            ✔ Perf capture should contain the calculated slop for the source node (as a global reducible latency) @done (8/28/2021, 12:07:11 PM)
             ☐ Somehow warn about nodes, that have a high extra slop due to implicit dependency
             ☐ ??? Display per node slops on capture ???
 
@@ -62,6 +62,8 @@ Get a triangle on screen:
         ☐ Use this information for slop calculation
             ☐ Every node should have information about how much it was directly or indirectly delayed
             ☐ When a node needs to wait on a delayed node, slop is negative!!!
+        ☐ ???????Latency slop = software latency - frame time???????
+            ☐ Nope, this doesn't care about dependencies
 
 
 Cleanup & other:

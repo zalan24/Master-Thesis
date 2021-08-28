@@ -66,13 +66,15 @@ SlopGraph::FeedbackInfo SlopGraph::calculateSlop(SlopNodeId sourceNode, SlopNode
 
     // calculation of slops using dynamic programming
     for (uint32_t i = nodeCount; i > 0; --i) {
-        SlopNodeId node = i - 1;
+        SlopNodeId node = topologicalOrder[i - 1];
         NodeInfos nodeInfo = getNodeInfos(node);
         if (!nodeInfo.isDelayable)
             continue;
-        int64_t sloppedMin = std::numeric_limits<int64_t>::max();
-        int64_t asIsMin = std::numeric_limits<int64_t>::max();
-        int64_t noImplicitMin = std::numeric_limits<int64_t>::max();
+        // a delayable node with no children can be delayed to any amount
+        int64_t inf = nodeInfo.endTimeNs + 1000ll * 1000ll * 1000ll * 1000ll;  // 1000s
+        int64_t sloppedMin = inf;
+        int64_t asIsMin = inf;
+        int64_t noImplicitMin = inf;
         for (uint32_t j = 0; j < getChildCount(node); ++j) {
             ChildInfo child = getChild(node, j);
             NodeInfos childInfo = getNodeInfos(child.id);
