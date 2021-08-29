@@ -2,6 +2,11 @@
 
 #include <drvtypes.h>
 
+namespace drv
+{
+class RenderPass;
+}
+
 class IWindow
 {
  public:
@@ -25,6 +30,12 @@ class IWindow
 
     virtual bool shouldClose() = 0;
 
-    virtual void newImGuiFrame() = 0;
-    virtual void renderImGui() = 0;
+    virtual void newImGuiFrame(uint64_t frame) = 0;
+    virtual void recordImGui(uint64_t frame) = 0;
+    virtual void drawImGui(uint64_t frame, drv::CommandBufferPtr cmdBuffer) = 0;
+    virtual void initImGui(drv::InstancePtr instance, drv::PhysicalDevicePtr physicalDevice,
+                           drv::LogicalDevicePtr device, 
+                           drv::QueuePtr renderQueue,
+                           drv::QueuePtr transferQueue, drv::RenderPass* renderpass,
+                           uint32_t minSwapchainImages, uint32_t swapchainImages) = 0;
 };

@@ -349,6 +349,12 @@ void Engine::buildFrameGraph() {
     entityManager.importFromFile(fs::path{launchArgs.sceneToLoad});
 }
 
+void Engine::initImGui(drv::RenderPass* imGuiRenderpass) {
+    window->initImGui(drvInstance, physicalDevice, device, queueInfos.renderQueue.handle,
+                      queueInfos.HtoDQueue.handle, imGuiRenderpass, config.imagesInSwapchain,
+                      swapchain.getImageCount());
+}
+
 void Engine::esCamera(EntityManager*, Engine* engine, FrameGraph::NodeHandle*, FrameGraph::Stage,
                       const EntityManager::EntitySystemParams&, Entity* entity) {
     drv::Extent2D extent = engine->window->getResolution();
@@ -640,8 +646,9 @@ void Engine::beforeDrawLoop() {
         if (FrameGraph::NodeHandle nodeHandle = getFrameGraph().acquireNode(
               mainRecordNode, FrameGraph::BEFORE_DRAW_STAGE, beforeDrawFrame);
             nodeHandle) {
-            window->newImGuiFrame();
+            window->newImGuiFrame(beforeDrawFrame);
             drawUI(beforeDrawFrame);
+            window->recordImGui(beforeDrawFrame);
         }
         if (!frameGraph.endStage(FrameGraph::BEFORE_DRAW_STAGE, beforeDrawFrame)) {
             assert(frameGraph.isStopped());
@@ -1616,8 +1623,9 @@ Engine::AcquiredImageData Engine::mainRecord(FrameId frameId) {
     return swapChainData;
 }
 
-void Engine::recordImGui(const AcquiredImageData&, drv::DrvCmdBufferRecorder*, FrameId) {
-    window->renderImGui();
+void Engine::recordImGui(const AcquiredImageData&, drv::DrvCmdBufferRecorder* recorder,
+                         FrameId frame) {
+    window->drawImGui(frame, recorder->getCommandBuffer());
 }
 
 PerformanceCaptureData Engine::generatePerfCapture(
@@ -1883,10 +1891,6 @@ void Engine::createPerformanceCapture(FrameId targetFrame) {
 }
 
 void Engine::drawUI(FrameId frameId) {
-    // ImGui_ImplOpenGL3_NewFrame();
-    // ImGui_ImplGlfw_NewFrame();
-    // ImGui::NewFrame();
-
     static bool my_tool_active = true;
     // Create a window called "My First Tool", with a menu bar.
     ImGui::Begin("My First Tool", &my_tool_active, ImGuiWindowFlags_MenuBar);
@@ -1920,9 +1924,6 @@ void Engine::drawUI(FrameId frameId) {
         ImGui::Text("%04d: Some text", n);
     ImGui::EndChild();
     ImGui::End();
-
-    // ImGui::Render();
-    // ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
     recordGameUI(frameId);
 }

@@ -75,7 +75,6 @@ Game::Game(int argc, char* argv[], const EngineConfig& config,
     initCursorEntitySystem();
     initRenderEntitySystem();
 
-    // TODO present node could be inside of record end node???
     buildFrameGraph();
 }
 
@@ -507,4 +506,6 @@ void Game::createSwapchainResources(const drv::Swapchain& swapchain) {
                                         globalDesc, redVariant);
     inputAttachmentShader.prepareGraphicalPipeline(testRenderPass.get(), colorSubpass, dynStates,
                                                    globalDesc, {});
+
+    initImGui(testRenderPass.get());
 }

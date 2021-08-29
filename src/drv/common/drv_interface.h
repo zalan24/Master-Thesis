@@ -202,9 +202,9 @@ class IDriver
     //   LogicalDevicePtr device, const DescriptorSetLayoutCreateInfo* info) = 0;
     // virtual bool destroy_descriptor_set_layout(LogicalDevicePtr device,
     //                                            DescriptorSetLayoutPtr layout) = 0;
-    // virtual DescriptorPoolPtr create_descriptor_pool(LogicalDevicePtr device,
-    //                                                  const DescriptorPoolCreateInfo* info) = 0;
-    // virtual bool destroy_descriptor_pool(LogicalDevicePtr device, DescriptorPoolPtr pool) = 0;
+    virtual DescriptorPoolPtr create_descriptor_pool(LogicalDevicePtr device,
+                                                     const DescriptorPoolCreateInfo* info) = 0;
+    virtual bool destroy_descriptor_pool(LogicalDevicePtr device, DescriptorPoolPtr pool) = 0;
     // virtual bool allocate_descriptor_sets(LogicalDevicePtr device,
     //                                       const DescriptorSetAllocateInfo* allocateInfo,
     //                                       DescriptorSetPtr* sets) = 0;
@@ -268,6 +268,7 @@ class IDriver
     virtual std::unique_lock<std::mutex> lock_queue_family(LogicalDevicePtr device,
                                                            QueueFamilyPtr family) = 0;
     virtual QueueFamilyPtr get_queue_family(LogicalDevicePtr device, QueuePtr queue) = 0;
+    virtual bool queue_wait_idle(LogicalDevicePtr device, QueuePtr queue) = 0;
     virtual bool device_wait_idle(LogicalDevicePtr device) = 0;
 
     virtual TextureInfo get_texture_info(drv::ImagePtr image) = 0;

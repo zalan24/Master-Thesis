@@ -109,9 +109,9 @@ bool unmap_memory(LogicalDevicePtr device, DeviceMemoryPtr memory);
 //                                                     const DescriptorSetLayoutCreateInfo* info);
 // bool destroy_descriptor_set_layout(LogicalDevicePtr device, DescriptorSetLayoutPtr layout);
 
-// DescriptorPoolPtr create_descriptor_pool(LogicalDevicePtr device,
-//                                          const DescriptorPoolCreateInfo* info);
-// bool destroy_descriptor_pool(LogicalDevicePtr device, DescriptorPoolPtr pool);
+DescriptorPoolPtr create_descriptor_pool(LogicalDevicePtr device,
+                                         const DescriptorPoolCreateInfo* info);
+bool destroy_descriptor_pool(LogicalDevicePtr device, DescriptorPoolPtr pool);
 // bool allocate_descriptor_sets(LogicalDevicePtr device,
 //                               const DescriptorSetAllocateInfo* allocateInfo,
 //                               DescriptorSetPtr* sets);
@@ -166,6 +166,7 @@ bool destroy_image_view(LogicalDevicePtr device, ImageViewPtr view);
 // std::unique_lock<std::mutex> lock_queue(LogicalDevicePtr device, QueuePtr queue);
 std::unique_lock<std::mutex> lock_queue_family(LogicalDevicePtr device, QueueFamilyPtr family);
 QueueFamilyPtr get_queue_family(LogicalDevicePtr device, QueuePtr queue);
+bool queue_wait_idle(LogicalDevicePtr device, QueuePtr queue);
 bool device_wait_idle(LogicalDevicePtr device);
 TextureInfo get_texture_info(drv::ImagePtr image);
 BufferInfo get_buffer_info(drv::BufferPtr buffer);

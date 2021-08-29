@@ -10,6 +10,7 @@
 
 #include <drverror.h>
 
+#include "vulkan_conversions.h"
 #include "vulkan_enum_compare.h"
 
 // drv::DescriptorSetLayoutPtr DrvVulkan::create_descriptor_set_layout(
@@ -63,41 +64,40 @@
 //     return true;
 // }
 
-// drv::DescriptorPoolPtr DrvVulkan::create_descriptor_pool(
-//   drv::LogicalDevicePtr device, const drv::DescriptorPoolCreateInfo* info) {
-//     VkDescriptorPoolCreateInfo poolInfo = {};
-//     poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-//     poolInfo.maxSets = info->maxSets;
-//     poolInfo.poolSizeCount = info->poolSizeCount;
+drv::DescriptorPoolPtr DrvVulkan::create_descriptor_pool(
+  drv::LogicalDevicePtr device, const drv::DescriptorPoolCreateInfo* info) {
+    VkDescriptorPoolCreateInfo poolInfo = {};
+    poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+    poolInfo.maxSets = info->maxSets;
+    poolInfo.poolSizeCount = info->poolSizeCount;
 
-//     // check for compatibility
+    // check for compatibility
 
-//     static_assert(offsetof(VkDescriptorPoolSize, type)
-//                     == offsetof(drv::DescriptorPoolCreateInfo::PoolSize, type),
-//                   "Vulkan compatibility error");
+    static_assert(offsetof(VkDescriptorPoolSize, type)
+                    == offsetof(drv::DescriptorPoolCreateInfo::PoolSize, type),
+                  "Vulkan compatibility error");
 
-//     static_assert(offsetof(VkDescriptorPoolSize, descriptorCount)
-//                     == offsetof(drv::DescriptorPoolCreateInfo::PoolSize, descriptorCount),
-//                   "Vulkan compatibility error");
-//     static_assert(
-//       std::is_same_v<decltype(VkDescriptorPoolSize::descriptorCount),
-//                      decltype(drv::DescriptorPoolCreateInfo::PoolSize::descriptorCount)>,
-//       "Vulkan compatibility error");
+    static_assert(offsetof(VkDescriptorPoolSize, descriptorCount)
+                    == offsetof(drv::DescriptorPoolCreateInfo::PoolSize, descriptorCount),
+                  "Vulkan compatibility error");
+    static_assert(
+      std::is_same_v<decltype(VkDescriptorPoolSize::descriptorCount),
+                     decltype(drv::DescriptorPoolCreateInfo::PoolSize::descriptorCount)>,
+      "Vulkan compatibility error");
 
-//     poolInfo.pPoolSizes = reinterpret_cast<const VkDescriptorPoolSize*>(info->poolSizes);
+    poolInfo.pPoolSizes = reinterpret_cast<const VkDescriptorPoolSize*>(info->poolSizes);
 
-//     VkDescriptorPool descriptorPool;
-//     VkResult result = vkCreateDescriptorPool(drv::resolve_ptr<VkDevice>(device), &poolInfo, nullptr,
-//                                              &descriptorPool);
-//     drv::drv_assert(result == VK_SUCCESS, "Could not create descriptor pool");
-//     return drv::store_ptr<drv::DescriptorPoolPtr>(descriptorPool);
-// }
+    VkDescriptorPool descriptorPool;
+    VkResult result =
+      vkCreateDescriptorPool(convertDevice(device), &poolInfo, nullptr, &descriptorPool);
+    drv::drv_assert(result == VK_SUCCESS, "Could not create descriptor pool");
+    return drv::store_ptr<drv::DescriptorPoolPtr>(descriptorPool);
+}
 
-// bool DrvVulkan::destroy_descriptor_pool(drv::LogicalDevicePtr device, drv::DescriptorPoolPtr pool) {
-//     vkDestroyDescriptorPool(drv::resolve_ptr<VkDevice>(device),
-//                             drv::resolve_ptr<VkDescriptorPool>(pool), nullptr);
-//     return true;
-// }
+bool DrvVulkan::destroy_descriptor_pool(drv::LogicalDevicePtr device, drv::DescriptorPoolPtr pool) {
+    vkDestroyDescriptorPool(convertDevice(device), convertDescriptorPool(pool), nullptr);
+    return true;
+}
 
 // bool DrvVulkan::allocate_descriptor_sets(drv::LogicalDevicePtr device,
 //                                          const drv::DescriptorSetAllocateInfo* allocateInfo,

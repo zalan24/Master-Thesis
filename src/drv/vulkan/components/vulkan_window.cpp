@@ -34,6 +34,7 @@
 #include "drvvulkan.h"
 #include "vulkan_conversions.h"
 #include "vulkan_instance.h"
+#include "vulkan_render_pass.h"
 #include "vulkan_swapchain_surface.h"
 
 struct GLFWwindow;
@@ -273,15 +274,12 @@ VulkanWindow::Surface::~Surface() {
 }
 
 VulkanWindow::VulkanWindow(IDriver* _driver, Input* _input, InputManager* _inputManager,
-                           unsigned int _width, unsigned int _height,
-                           const std::string& title)
-  :  //driver(_driver),
+                           unsigned int _width, unsigned int _height, const std::string& title)
+  : driver(_driver),
     initer(),
     input(_input),
     inputManager(_inputManager),
-    window(static_cast<int>(_width), static_cast<int>(_height), title),
-    imGuiHelper(window) {
-    UNUSED(_driver);
+    window(static_cast<int>(_width), static_cast<int>(_height), title) {
     // glfwSwapInterval(1);
     inputManager->setCursorModeCallbock([this](InputListener::CursorMode mode) {
         switch (mode) {
@@ -380,80 +378,126 @@ void VulkanWindow::queryCurrentResolution(drv::PhysicalDevicePtr physicalDevice)
     height = int(capabilities.currentExtent.height);
 }
 
-VulkanWindow::ImGuiHelper::ImGuiHelper(GLFWwindow* _window /*, VkSurfaceKHR surface, uint32_t width,
-                                       uint32_t height*/) {
-    // wd.Surface = surface;
-    // wd->PresentMode = ;
-    // //printf("[vulkan] Selected PresentMode = %d\n", wd->PresentMode);
+void VulkanWindow::initImGui(drv::InstancePtr instance, drv::PhysicalDevicePtr physicalDevice,
+                             drv::LogicalDevicePtr device, drv::QueuePtr renderQueue,
+                             drv::QueuePtr transferQueue, drv::RenderPass* renderpass,
+                             uint32_t minSwapchainImages, uint32_t swapchainImages) {
+    if (imGuiHelper)
+        return;
+    imGuiHelper =
+      std::make_unique<ImGuiHelper>(driver, window, instance, physicalDevice, device, renderQueue,
+                                    transferQueue, renderpass, minSwapchainImages, swapchainImages);
+}
 
-    // // Create SwapChain, RenderPass, Framebuffer, etc.
-    // IM_ASSERT(g_MinImageCount >= 2);
-    // ImGui_ImplVulkanH_CreateOrResizeWindow(g_Instance, g_PhysicalDevice, g_Device, wd,
-    //                                        g_QueueFamily, g_Allocator, width, height,
-    //                                        g_MinImageCount);
+static void check_vk_result(VkResult result) {
+    drv::drv_assert(result == VK_SUCCESS, "Vulkan error inside imGui");
+}
+
+VulkanWindow::ImGuiHelper::ImGuiHelper(drv::IDriver* _driver, GLFWwindow* _window,
+                                       drv::InstancePtr instance,
+                                       drv::PhysicalDevicePtr physicalDevice,
+                                       drv::LogicalDevicePtr _device, drv::QueuePtr renderQueue,
+                                       drv::QueuePtr transferQueue, drv::RenderPass* renderpass,
+                                       uint32_t minSwapchainImages, uint32_t swapchainImages)
+  : driver(_driver), device(_device) {
+    drv::DescriptorPoolCreateInfo poolInfo;
+    poolInfo.maxSets = 1;
+    poolInfo.poolSizeCount = 1;
+    drv::DescriptorPoolCreateInfo::PoolSize poolSize;
+    poolSize.type = drv::DescriptorSetLayoutCreateInfo::Binding::Type::COMBINED_IMAGE_SAMPLER;
+    poolSize.descriptorCount = 1;
+    poolInfo.poolSizes = &poolSize;
+    descriptorPool = driver->create_descriptor_pool(device, &poolInfo);
+
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
 
     ImGui_ImplGlfw_InitForVulkan(_window, false);  // TODO do I need to install callbacks?
-    // ImGui_ImplVulkan_InitInfo init_info = {};
-    // init_info.Instance = g_Instance;
-    // init_info.PhysicalDevice = g_PhysicalDevice;
-    // init_info.Device = g_Device;
-    // init_info.QueueFamily = g_QueueFamily;
-    // init_info.Queue = g_Queue;
-    // init_info.PipelineCache = g_PipelineCache;
-    // init_info.DescriptorPool = g_DescriptorPool;
-    // init_info.Allocator = g_Allocator;
-    // init_info.MinImageCount = g_MinImageCount;
-    // init_info.ImageCount = wd->ImageCount;
-    // init_info.CheckVkResultFn = check_vk_result;
-    // ImGui_ImplVulkan_Init(&init_info, wd->RenderPass);
+    ImGui_ImplVulkan_InitInfo init_info = {};
+    init_info.Instance = convertInstance(instance);
+    init_info.PhysicalDevice = convertPhysicalDevice(physicalDevice);
+    init_info.Device = convertDevice(device);
+    init_info.QueueFamily = convertFamilyToVk(driver->get_queue_family(device, renderQueue));
+    init_info.Queue = convertQueue(renderQueue);
+    init_info.PipelineCache = nullptr;  // TODO pipeline cache
+    init_info.DescriptorPool = convertDescriptorPool(descriptorPool);
+    init_info.Allocator = nullptr;
+    init_info.MinImageCount = minSwapchainImages;
+    init_info.ImageCount = swapchainImages;
+    init_info.CheckVkResultFn = check_vk_result;
+    ImGui_ImplVulkan_Init(&init_info, static_cast<VulkanRenderPass*>(renderpass)->getRenderPass());
+
+    // Upload Fonts
+    {
+        auto familyLock =
+          driver->lock_queue_family(device, driver->get_queue_family(device, transferQueue));
+        drv::CommandPoolCreateInfo cmdPoolInfo(false, false);
+        drv::CommandPoolPtr cmdPool = driver->create_command_pool(
+          device, driver->get_queue_family(device, transferQueue), &cmdPoolInfo);
+
+        drv::CommandBufferCreateInfo cmdBufferInfo;
+        cmdBufferInfo.flags = drv::CommandBufferCreateInfo::ONE_TIME_SUBMIT_BIT;
+        cmdBufferInfo.type = drv::CommandBufferType::PRIMARY;
+        drv::CommandBufferPtr cmdBuffer =
+          driver->create_command_buffer(device, cmdPool, &cmdBufferInfo);
+
+        VkCommandBufferBeginInfo info;
+        info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+        info.pNext = nullptr;
+        info.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+        info.pInheritanceInfo = nullptr;
+        VkResult result = vkBeginCommandBuffer(convertCommandBuffer(cmdBuffer), &info);
+        drv::drv_assert(result == VK_SUCCESS, "Could not begin recording command buffer");
+
+        ImGui_ImplVulkan_CreateFontsTexture(convertCommandBuffer(cmdBuffer));
+
+        result = vkEndCommandBuffer(convertCommandBuffer(cmdBuffer));
+        drv::drv_assert(result == VK_SUCCESS, "Could not finish recording command buffer");
+
+        drv::ExecutionInfo execInfo;
+        execInfo.numCommandBuffers = 1;
+        execInfo.commandBuffers = &cmdBuffer;
+        drv::drv_assert(
+          driver->execute(device, transferQueue, 1, &execInfo, drv::get_null_ptr<drv::FencePtr>()),
+          "Could not upload fonts for imGui");
+
+        drv::drv_assert(driver->queue_wait_idle(device, transferQueue),
+                        "Could not wait on transfer queue");
+
+        driver->destroy_command_pool(device, cmdPool);
+
+        ImGui_ImplVulkan_DestroyFontUploadObjects();
+    }
 }
 
 VulkanWindow::ImGuiHelper::~ImGuiHelper() {
-    // ImGui_ImplVulkan_Shutdown();
+    ImGui_ImplVulkan_Shutdown();
     ImGui_ImplGlfw_Shutdown();
     ImGui::DestroyContext();
+
+    driver->destroy_descriptor_pool(device, descriptorPool);
 }
 
-void VulkanWindow::newImGuiFrame() {
-    // // Upload Fonts
-    // {
-    //     // Use any command queue
-    //     VkCommandPool command_pool = wd->Frames[wd->FrameIndex].CommandPool;
-    //     VkCommandBuffer command_buffer = wd->Frames[wd->FrameIndex].CommandBuffer;
+void VulkanWindow::newImGuiFrame(uint64_t frame) {
+    if (imGuiHelper == nullptr)
+        return;
+    if (imGuiInitFrame == std::numeric_limits<uint64_t>::max())
+        imGuiInitFrame = frame;
 
-    //     err = vkResetCommandPool(g_Device, command_pool, 0);
-    //     check_vk_result(err);
-    //     VkCommandBufferBeginInfo begin_info = {};
-    //     begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-    //     begin_info.flags |= VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-    //     err = vkBeginCommandBuffer(command_buffer, &begin_info);
-    //     check_vk_result(err);
-
-    //     ImGui_ImplVulkan_CreateFontsTexture(command_buffer);
-
-    //     VkSubmitInfo end_info = {};
-    //     end_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-    //     end_info.commandBufferCount = 1;
-    //     end_info.pCommandBuffers = &command_buffer;
-    //     err = vkEndCommandBuffer(command_buffer);
-    //     check_vk_result(err);
-    //     err = vkQueueSubmit(g_Queue, 1, &end_info, VK_NULL_HANDLE);
-    //     check_vk_result(err);
-
-    //     err = vkDeviceWaitIdle(g_Device);
-    //     check_vk_result(err);
-    //     ImGui_ImplVulkan_DestroyFontUploadObjects();
-    // }
-
-    // ImGui_ImplVulkan_NewFrame();
+    ImGui_ImplVulkan_NewFrame();
     ImGui_ImplGlfw_NewFrame();
-    // ImGui::NewFrame();
+    ImGui::NewFrame();
 }
 
-void VulkanWindow::renderImGui() {
-    // ImGui::Render();
-    //     ImDrawData* draw_data = ImGui::GetDrawData();
-    // ImGui_ImplVulkan_RenderDrawData(draw_data, fd->CommandBuffer);
+void VulkanWindow::recordImGui(uint64_t frame) {
+    if (imGuiHelper == nullptr || frame < imGuiInitFrame)
+        return;
+    ImGui::Render();
+}
+
+void VulkanWindow::drawImGui(uint64_t frame, drv::CommandBufferPtr cmdBuffer) {
+    if (imGuiHelper == nullptr || frame < imGuiInitFrame)
+        return;
+    ImDrawData* drawData = ImGui::GetDrawData();
+    ImGui_ImplVulkan_RenderDrawData(drawData, convertCommandBuffer(cmdBuffer));
 }

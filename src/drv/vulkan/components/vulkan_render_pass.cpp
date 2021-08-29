@@ -164,8 +164,8 @@ void VulkanRenderPass::build_impl() {
 
     for (uint32_t src = 0; src < subpasses.size(); ++src) {
         for (uint32_t dst = src + 1; dst < subpasses.size(); ++dst) {
-            drv::PipelineStages srcStages = drv::PipelineStages::TOP_OF_PIPE_BIT;
-            drv::PipelineStages dstStages = drv::PipelineStages::BOTTOM_OF_PIPE_BIT;
+            drv::PipelineStages srcStages = 0;
+            drv::PipelineStages dstStages = 0;
             drv::MemoryBarrier::AccessFlagBitType srcAccessFlags = 0;
             drv::MemoryBarrier::AccessFlagBitType dstAccessFlags = 0;
 
@@ -222,7 +222,7 @@ void VulkanRenderPass::build_impl() {
                 }
             }
 
-            if (srcStages.stageFlags != drv::PipelineStages::TOP_OF_PIPE_BIT) {
+            if (srcStages.stageFlags != 0 && dstStages.stageFlags != 0) {
                 VkSubpassDependency dep;
                 dep.srcSubpass = src;
                 dep.dstSubpass = dst;

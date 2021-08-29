@@ -11,11 +11,16 @@
 #include "vulkan_buffer.h"
 #include "vulkan_enum_compare.h"
 #include "vulkan_image.h"
+#include "vulkan_instance.h"
 #include "vulkan_memory.h"
 #include "vulkan_swapchain.h"
 
 inline uint32_t convertFamilyToVk(drv::QueueFamilyPtr family) {
     return family;
+}
+
+inline VkInstance convertInstance(drv::InstancePtr instance) {
+    return drv::resolve_ptr<drv_vulkan::Instance*>(instance)->instance;
 }
 
 inline drv::QueueFamilyPtr convertFamilyFromVk(uint32_t id) {
@@ -44,6 +49,10 @@ inline drv_vulkan::ImageView* convertImageView(drv::ImageViewPtr view) {
 
 inline VkDevice convertDevice(drv::LogicalDevicePtr device) {
     return drv::resolve_ptr<VkDevice>(device);
+}
+
+inline VkDescriptorPool convertDescriptorPool(drv::DescriptorPoolPtr device) {
+    return drv::resolve_ptr<VkDescriptorPool>(device);
 }
 
 inline VkQueryPool convertTimestampQueryPool(drv::TimestampQueryPoolPtr pool) {

@@ -231,14 +231,14 @@ drv::DriverSupport drv::get_support(LogicalDevicePtr device) {
 //     return current_driver_interface->destroy_descriptor_set_layout(device, layout);
 // }
 
-// drv::DescriptorPoolPtr drv::create_descriptor_pool(LogicalDevicePtr device,
-//                                                    const DescriptorPoolCreateInfo* info) {
-//     return current_driver_interface->create_descriptor_pool(device, info);
-// }
+drv::DescriptorPoolPtr drv::create_descriptor_pool(LogicalDevicePtr device,
+                                                   const DescriptorPoolCreateInfo* info) {
+    return current_driver_interface->create_descriptor_pool(device, info);
+}
 
-// bool drv::destroy_descriptor_pool(LogicalDevicePtr device, DescriptorPoolPtr pool) {
-//     return current_driver_interface->destroy_descriptor_pool(device, pool);
-// }
+bool drv::destroy_descriptor_pool(LogicalDevicePtr device, DescriptorPoolPtr pool) {
+    return current_driver_interface->destroy_descriptor_pool(device, pool);
+}
 
 // bool drv::allocate_descriptor_sets(LogicalDevicePtr device,
 //                                    const DescriptorSetAllocateInfo* allocateInfo,
@@ -415,6 +415,10 @@ drv::QueueFamilyPtr drv::get_queue_family(LogicalDevicePtr device, QueuePtr queu
 
 bool drv::device_wait_idle(LogicalDevicePtr device) {
     return current_driver_interface->device_wait_idle(device);
+}
+
+bool drv::queue_wait_idle(LogicalDevicePtr device, QueuePtr queue) {
+    return current_driver_interface->queue_wait_idle(device, queue);
 }
 
 drv::TextureInfo drv::get_texture_info(drv::ImagePtr image) {

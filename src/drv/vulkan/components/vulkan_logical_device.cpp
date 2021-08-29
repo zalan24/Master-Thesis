@@ -152,6 +152,11 @@ drv::QueuePtr DrvVulkan::get_queue(drv::LogicalDevicePtr device, drv::QueueFamil
     return ret;
 }
 
+bool DrvVulkan::queue_wait_idle(drv::LogicalDevicePtr, drv::QueuePtr queue) {
+    VkResult result = vkQueueWaitIdle(convertQueue(queue));
+    return result == VK_SUCCESS;
+}
+
 bool DrvVulkan::device_wait_idle(drv::LogicalDevicePtr device) {
     VkResult result = vkDeviceWaitIdle(convertDevice(device));
     return result == VK_SUCCESS;

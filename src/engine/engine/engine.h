@@ -254,6 +254,7 @@ class Engine
  protected:
     // Needs to be called from game implementation after finishing the framegraph
     void buildFrameGraph();
+    void initImGui(drv::RenderPass* imGuiRenderpass);
 
     FrameGraph& getFrameGraph() { return frameGraph; }
     const FrameGraph& getFrameGraph() const { return frameGraph; }

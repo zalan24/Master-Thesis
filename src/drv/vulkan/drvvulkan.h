@@ -344,10 +344,10 @@ class DrvVulkan final : public drv::IDriver
     //   drv::LogicalDevicePtr device, const drv::DescriptorSetLayoutCreateInfo* info) override;
     // bool destroy_descriptor_set_layout(drv::LogicalDevicePtr device,
     //                                    drv::DescriptorSetLayoutPtr layout) override;
-    // drv::DescriptorPoolPtr create_descriptor_pool(
-    //   drv::LogicalDevicePtr device, const drv::DescriptorPoolCreateInfo* info) override;
-    // bool destroy_descriptor_pool(drv::LogicalDevicePtr device,
-    //                              drv::DescriptorPoolPtr pool) override;
+    drv::DescriptorPoolPtr create_descriptor_pool(
+      drv::LogicalDevicePtr device, const drv::DescriptorPoolCreateInfo* info) override;
+    bool destroy_descriptor_pool(drv::LogicalDevicePtr device,
+                                 drv::DescriptorPoolPtr pool) override;
     // bool allocate_descriptor_sets(drv::LogicalDevicePtr device,
     //                               const drv::DescriptorSetAllocateInfo* allocateInfo,
     //                               drv::DescriptorSetPtr* sets) override;
@@ -417,6 +417,7 @@ class DrvVulkan final : public drv::IDriver
                                                    drv::QueueFamilyPtr family) override;
     drv::QueueFamilyPtr get_queue_family(drv::LogicalDevicePtr device,
                                          drv::QueuePtr queue) override;
+    bool queue_wait_idle(drv::LogicalDevicePtr device, drv::QueuePtr queue) override;
     bool device_wait_idle(drv::LogicalDevicePtr device) override;
 
     drv::TextureInfo get_texture_info(drv::ImagePtr image) override;

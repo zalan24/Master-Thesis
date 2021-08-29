@@ -1,6 +1,7 @@
 #pragma once
 
 #include <atomic>
+#include <limits>
 #include <memory>
 #include <mutex>
 #include <optional>
@@ -55,8 +56,13 @@ class VulkanWindow final : public IWindow
     bool init(drv::InstancePtr instance) override;
     void close() override;
 
-    void newImGuiFrame() override;
-    void renderImGui() override;
+    void newImGuiFrame(uint64_t frame) override;
+    void recordImGui(uint64_t frame) override;
+    void drawImGui(uint64_t frame, drv::CommandBufferPtr cmdBuffer) override;
+    void initImGui(drv::InstancePtr instance, drv::PhysicalDevicePtr physicalDevice,
+                   drv::LogicalDevicePtr device, drv::QueuePtr renderQueue,
+                   drv::QueuePtr transferQueue, drv::RenderPass* renderpass,
+                   uint32_t minSwapchainImages, uint32_t swapchainImages) override;
 
     VkSurfaceKHR getSurface();
 
@@ -99,16 +105,22 @@ class VulkanWindow final : public IWindow
     };
     struct ImGuiHelper
     {
-        explicit ImGuiHelper(
-          GLFWwindow* window /*, VkSurfaceKHR surface, uint32_t width, uint32_t height*/);
+        explicit ImGuiHelper(drv::IDriver* driver, GLFWwindow* window, drv::InstancePtr instance,
+                             drv::PhysicalDevicePtr physicalDevice, drv::LogicalDevicePtr device,
+                             drv::QueuePtr renderQueue, drv::QueuePtr transferQueue,
+                             drv::RenderPass* renderpass, uint32_t minSwapchainImages,
+                             uint32_t swapchainImages);
         ~ImGuiHelper();
 
         ImGuiHelper(const ImGuiHelper&) = delete;
         ImGuiHelper& operator=(const ImGuiHelper&) = delete;
 
         //   ImGui_ImplVulkanH_Window wd;
+        drv::IDriver* driver;
+        drv::LogicalDevicePtr device = drv::get_null_ptr<drv::LogicalDevicePtr>();
+        drv::DescriptorPoolPtr descriptorPool = drv::get_null_ptr<drv::DescriptorPoolPtr>();
     };
-    //  drv::IDriver* driver;
+    drv::IDriver* driver;
     int currentCursorMode;
     std::atomic<int> targetCursorMode;
     GLFWInit initer;
@@ -116,12 +128,13 @@ class VulkanWindow final : public IWindow
     InputManager* inputManager;
     WindowObject window;
     Surface surface;
-    ImGuiHelper imGuiHelper;
+    std::unique_ptr<ImGuiHelper> imGuiHelper;
     std::unique_ptr<SwapChainSupportDetails> swapchainSupport;
     std::set<int> pushedButtons;
     std::set<int> pushedMouseButtons;
     int width = 0;
     int height = 0;
+    uint64_t imGuiInitFrame = std::numeric_limits<uint64_t>::max();
 
     mutable std::mutex resolutionMutex;
 
