@@ -23,6 +23,7 @@
 #include <drvwindow.h>
 
 struct GLFWwindow;
+struct GLFWmonitor;
 
 class Input;
 class InputManager;
@@ -143,6 +144,10 @@ class VulkanWindow final : public IWindow
     static void cursor_position_callback(GLFWwindow* window, double xpos, double ypos);
     static void mouse_button_callback(GLFWwindow* window, int button, int action, int mods);
     static void scroll_callback(GLFWwindow* window, double xoffset, double yoffset);
+    static void window_focus_callback(GLFWwindow* window, int focused);
+    static void cursor_enter_callback(GLFWwindow* window, int entered);
+    static void char_callback(GLFWwindow* window, unsigned int c);
+    static void monitor_callback(GLFWmonitor* window, int event);
 
     static void framebuffer_resize_callback(GLFWwindow* window, int width, int height);
 };
