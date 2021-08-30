@@ -38,4 +38,5 @@ class IWindow
                            drv::QueuePtr renderQueue,
                            drv::QueuePtr transferQueue, drv::RenderPass* renderpass,
                            uint32_t minSwapchainImages, uint32_t swapchainImages) = 0;
+    virtual void closeImGui() = 0;
 };

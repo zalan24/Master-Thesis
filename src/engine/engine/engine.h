@@ -47,96 +47,55 @@ struct ExecutionPackage;
 
 struct EngineConfig final : public IAutoSerializable<EngineConfig>
 {
-    REFLECTABLE
-    (
-        (uint32_t) screenWidth,
-        (uint32_t) screenHeight,
-        (uint32_t) imagesInSwapchain,
-        (uint32_t) maxFramesInExecutionQueue,
-        (uint32_t) maxFramesInFlight,
-        (uint32_t) slopHistorySize,
-        (std::string) title,
-        (std::string) driver,
-        (uint32_t) inputBufferSize,
-        (uint32_t) stackMemorySizeKb,
-        (uint32_t) frameMemorySizeKb,
-        (std::string) logs
-    )
+    REFLECTABLE((uint32_t)screenWidth, (uint32_t)screenHeight, (uint32_t)imagesInSwapchain,
+                (uint32_t)maxFramesInExecutionQueue, (uint32_t)maxFramesInFlight,
+                (uint32_t)slopHistorySize, (std::string)title, (std::string)driver,
+                (uint32_t)inputBufferSize, (uint32_t)stackMemorySizeKb, (uint32_t)frameMemorySizeKb,
+                (std::string)logs)
 };
 
 struct PerformanceCaptureCpuPackage final : public IAutoSerializable<PerformanceCaptureCpuPackage>
 {
-    REFLECTABLE
-    (
-        (std::string) name,
-        (uint64_t) frameId,
-        (uint32_t) packageId,
-        (double) slopDuration,
-        (double) availableTime,
-        (double) resAvailableTime,
-        (double) startTime,
-        (double) endTime,
-        (std::set<uint32_t>) depended,
-        (std::set<uint32_t>) dependent,
-        (std::set<uint32_t>) execDepended,
-        (std::set<uint32_t>) deviceDepended,
-        (std::map<std::string, uint64_t>) gpuDoneDep
-    )
+    REFLECTABLE((std::string)name, (uint64_t)frameId, (uint32_t)packageId, (double)slopDuration,
+                (double)availableTime, (double)resAvailableTime, (double)startTime, (double)endTime,
+                (std::set<uint32_t>)depended, (std::set<uint32_t>)dependent,
+                (std::set<uint32_t>)execDepended, (std::set<uint32_t>)deviceDepended,
+                (std::map<std::string, uint64_t>)gpuDoneDep)
 };
 
 struct PerformanceCaptureInterval final : public IAutoSerializable<PerformanceCaptureInterval>
 {
-    REFLECTABLE
-    (
-        (double) startTime,
-        (double) endTime
-    )
+    REFLECTABLE((double)startTime, (double)endTime)
 };
 
-struct PerformanceCaptureExecutionPackage final : public IAutoSerializable<PerformanceCaptureExecutionPackage>
+struct PerformanceCaptureExecutionPackage final
+  : public IAutoSerializable<PerformanceCaptureExecutionPackage>
 {
-    REFLECTABLE
-    (
-        // (std::string) name,
-        (uint32_t) packageId,
-        (uint32_t) sourcePackageId,
-        (double) slopDuration,
-        (double) issueTime,
-        (double) startTime,
-        (double) endTime,
-        (bool) minimalDelayInFrame
-    )
+    REFLECTABLE(
+      // (std::string) name,
+      (uint32_t)packageId, (uint32_t)sourcePackageId, (double)slopDuration, (double)issueTime,
+      (double)startTime, (double)endTime, (bool)minimalDelayInFrame)
 };
 
-struct PerformanceCaptureDevicePackage final : public IAutoSerializable<PerformanceCaptureDevicePackage>
+struct PerformanceCaptureDevicePackage final
+  : public IAutoSerializable<PerformanceCaptureDevicePackage>
 {
-    REFLECTABLE
-    (
-        // (std::string) name,
-        (uint32_t) sourceExecPackageId,
-        (double) slopDuration,
-        (double) submissionTime,
-        (double) startTime,
-        (double) endTime
-    )
+    REFLECTABLE(
+      // (std::string) name,
+      (uint32_t)sourceExecPackageId, (double)slopDuration, (double)submissionTime,
+      (double)startTime, (double)endTime)
 };
 
 struct PerformanceCaptureData final : public IAutoSerializable<PerformanceCaptureData>
 {
-    REFLECTABLE
-    (
-        (uint64_t) frameId,
-        (double) fps,
-        (double) frameTime,
-        (double) softwareLatency,
-        (double) latencySlop,
-        (double) executionDelay,
-        (double) deviceDelay,
-        (std::map<std::string, std::map<std::string, std::vector<PerformanceCaptureCpuPackage>>>) stageToThreadToPackageList,
-        (std::map<uint32_t, PerformanceCaptureInterval>) executionIntervals,
-        (std::vector<PerformanceCaptureExecutionPackage>) executionPackages,
-        (std::map<std::string, std::vector<PerformanceCaptureDevicePackage>>) queueToDevicePackageList
-    )
+    REFLECTABLE(
+      (uint64_t)frameId, (double)fps, (double)frameTime, (double)softwareLatency,
+      (double)latencySlop, (double)executionDelay, (double)deviceDelay,
+      (std::map<std::string, std::map<std::string, std::vector<PerformanceCaptureCpuPackage>>>)
+        stageToThreadToPackageList,
+      (std::map<uint32_t, PerformanceCaptureInterval>)executionIntervals,
+      (std::vector<PerformanceCaptureExecutionPackage>)executionPackages,
+      (std::map<std::string, std::vector<PerformanceCaptureDevicePackage>>)queueToDevicePackageList)
 };
 
 class EngineInputListener final : public InputListener
@@ -269,8 +228,8 @@ class Engine
     virtual void releaseSwapchainResources() = 0;
     virtual void createSwapchainResources(const drv::Swapchain& swapchain) = 0;
 
-    void recordImGui(const AcquiredImageData& swapchainData,
-                                 drv::DrvCmdBufferRecorder* recorder, FrameId frameId);
+    void recordImGui(const AcquiredImageData& swapchainData, drv::DrvCmdBufferRecorder* recorder,
+                     FrameId frameId);
 
     drv::TimelineSemaphorePool* getSemaphorePool() { return &semaphorePool; }
 
@@ -335,6 +294,21 @@ class Engine
         float z;
     };
 
+    struct ImGuiIniter
+    {
+        ImGuiIniter(IWindow* window, drv::InstancePtr instance,
+                    drv::PhysicalDevicePtr physicalDevice, drv::LogicalDevicePtr device,
+                    drv::QueuePtr renderQueue, drv::QueuePtr transferQueue,
+                    drv::RenderPass* renderpass, uint32_t minSwapchainImages,
+                    uint32_t swapchainImages);
+        ~ImGuiIniter();
+
+        ImGuiIniter(const ImGuiIniter&) = delete;
+        ImGuiIniter& operator=(const ImGuiIniter&) = delete;
+
+        IWindow* window;
+    };
+
     EngineConfig config;
     Resources resourceFolders;
     Args launchArgs;
@@ -375,6 +349,7 @@ class Engine
     FrameGraph frameGraph;
     RuntimeStats runtimeStats;
     EntityManager entityManager;
+    std::unique_ptr<ImGuiIniter> imGuiIniter;
 
     NodeId inputSampleNode;
     NodeId mainRecordNode;
@@ -429,14 +404,15 @@ class Engine
     void beforeDrawLoop();
     void recordCommandsLoop();
     void executeCommandsLoop();
-    void readbackLoop(volatile bool *finished);
+    void readbackLoop(volatile bool* finished);
     void mainLoopKernel();
     bool execute(ExecutionPackage&& package);
     void present(drv::SwapchainPtr swapchain, FrameId frame, uint32_t imageIndex,
                  uint32_t semaphoreIndex);
     bool sampleInput(FrameId frameId);
     void drawUI(FrameId frameId);
-    PerformanceCaptureData generatePerfCapture(FrameId lastReadyFrame, const FrameGraphSlops::LatencyInfo &latency) const;
+    PerformanceCaptureData generatePerfCapture(FrameId lastReadyFrame,
+                                               const FrameGraphSlops::LatencyInfo& latency) const;
     AcquiredImageData mainRecord(FrameId frameId);
 
     static drv::PhysicalDevice::SelectionInfo get_device_selection_info(
@@ -460,6 +436,6 @@ class Engine
                                FrameGraph::NodeHandle* nodeHandle, FrameGraph::Stage stage,
                                const EntityManager::EntitySystemParams& params, Entity* entity);
     static void esCamera(EntityManager* entityManager, Engine* engine,
-                               FrameGraph::NodeHandle* nodeHandle, FrameGraph::Stage stage,
-                               const EntityManager::EntitySystemParams& params, Entity* entity);
+                         FrameGraph::NodeHandle* nodeHandle, FrameGraph::Stage stage,
+                         const EntityManager::EntitySystemParams& params, Entity* entity);
 };

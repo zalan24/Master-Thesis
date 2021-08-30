@@ -64,6 +64,7 @@ class VulkanWindow final : public IWindow
                    drv::LogicalDevicePtr device, drv::QueuePtr renderQueue,
                    drv::QueuePtr transferQueue, drv::RenderPass* renderpass,
                    uint32_t minSwapchainImages, uint32_t swapchainImages) override;
+    void closeImGui() override;
 
     VkSurfaceKHR getSurface();
 

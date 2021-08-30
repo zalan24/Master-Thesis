@@ -350,9 +350,10 @@ void Engine::buildFrameGraph() {
 }
 
 void Engine::initImGui(drv::RenderPass* imGuiRenderpass) {
-    window->initImGui(drvInstance, physicalDevice, device, queueInfos.renderQueue.handle,
-                      queueInfos.HtoDQueue.handle, imGuiRenderpass, config.imagesInSwapchain,
-                      swapchain.getImageCount());
+    imGuiIniter = std::make_unique<ImGuiIniter>(
+      static_cast<IWindow*>(window), drvInstance, physicalDevice, device,
+      queueInfos.renderQueue.handle, queueInfos.HtoDQueue.handle, imGuiRenderpass,
+      config.imagesInSwapchain, swapchain.getImageCount());
 }
 
 void Engine::esCamera(EntityManager*, Engine* engine, FrameGraph::NodeHandle*, FrameGraph::Stage,
@@ -1621,6 +1622,20 @@ Engine::AcquiredImageData Engine::mainRecord(FrameId frameId) {
     else
         return {};
     return swapChainData;
+}
+
+Engine::ImGuiIniter::ImGuiIniter(IWindow* _window, drv::InstancePtr instance,
+                                 drv::PhysicalDevicePtr _physicalDevice,
+                                 drv::LogicalDevicePtr _device, drv::QueuePtr _renderQueue,
+                                 drv::QueuePtr transferQueue, drv::RenderPass* renderpass,
+                                 uint32_t minSwapchainImages, uint32_t swapchainImages)
+  : window(_window) {
+    window->initImGui(instance, _physicalDevice, _device, _renderQueue, transferQueue, renderpass,
+                      minSwapchainImages, swapchainImages);
+}
+
+Engine::ImGuiIniter::~ImGuiIniter() {
+    window->closeImGui();
 }
 
 void Engine::recordImGui(const AcquiredImageData&, drv::DrvCmdBufferRecorder* recorder,

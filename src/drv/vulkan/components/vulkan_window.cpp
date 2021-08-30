@@ -379,6 +379,10 @@ void VulkanWindow::initImGui(drv::InstancePtr instance, drv::PhysicalDevicePtr p
                                     transferQueue, renderpass, minSwapchainImages, swapchainImages);
 }
 
+void VulkanWindow::closeImGui() {
+    imGuiHelper.reset();
+}
+
 static void check_vk_result(VkResult result) {
     drv::drv_assert(result == VK_SUCCESS, "Vulkan error inside imGui");
 }
