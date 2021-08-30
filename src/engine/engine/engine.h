@@ -384,6 +384,7 @@ class Engine
     std::atomic<bool> swapchainRecreationRequired = {false};
     std::atomic<bool> swapchainRecreationPossible = {false};
     std::filesystem::file_time_type workLoadFileModificationDate;
+    bool wantToQuit = false;
 
     std::vector<EntityRenderData> entitiesToDraw;
     FrameId perfCaptureFrame = INVALID_FRAME;

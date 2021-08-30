@@ -1237,7 +1237,7 @@ void Engine::gameLoop() {
         entityManager.startFrameGraph(this);
 
         IWindow* w = window;
-        while (!w->shouldClose()) {
+        while (!w->shouldClose() && !wantToQuit) {
             mainLoopKernel();
         }
         frameGraph.stopExecution(false);
@@ -1906,39 +1906,15 @@ void Engine::createPerformanceCapture(FrameId targetFrame) {
 }
 
 void Engine::drawUI(FrameId frameId) {
-    static bool my_tool_active = true;
-    // Create a window called "My First Tool", with a menu bar.
-    ImGui::Begin("My First Tool", &my_tool_active, ImGuiWindowFlags_MenuBar);
-    if (ImGui::BeginMenuBar()) {
+    if (ImGui::BeginMainMenuBar()) {
         if (ImGui::BeginMenu("File")) {
-            if (ImGui::MenuItem("Open..", "Ctrl+O")) { /* Do stuff */
-            }
-            if (ImGui::MenuItem("Save", "Ctrl+S")) { /* Do stuff */
-            }
-            if (ImGui::MenuItem("Close", "Ctrl+W")) {
-                my_tool_active = false;
+            if (ImGui::MenuItem("Quit", "Alt+F4")) {
+                wantToQuit = true;
             }
             ImGui::EndMenu();
         }
-        ImGui::EndMenuBar();
+        ImGui::EndMainMenuBar();
     }
-
-    static float my_color[4] = {0, 0, 0, 0};
-
-    // Edit a color (stored as ~4 floats)
-    ImGui::ColorEdit4("Color", my_color);
-
-    // Plot some values
-    const float my_values[] = {0.2f, 0.1f, 1.0f, 0.5f, 0.9f, 2.2f};
-    ImGui::PlotLines("Frame Times", my_values, IM_ARRAYSIZE(my_values));
-
-    // Display contents in a scrolling region
-    ImGui::TextColored(ImVec4(1, 1, 0, 1), "Important Stuff");
-    ImGui::BeginChild("Scrolling");
-    for (int n = 0; n < 50; n++)
-        ImGui::Text("%04d: Some text", n);
-    ImGui::EndChild();
-    ImGui::End();
 
     recordGameUI(frameId);
 }

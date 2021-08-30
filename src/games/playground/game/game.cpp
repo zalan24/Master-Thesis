@@ -68,7 +68,9 @@ Game::Game(int argc, char* argv[], const EngineConfig& config,
     transferNode = getFrameGraph().addNode(FrameGraph::Node(
       "transfer", FrameGraph::BEFORE_DRAW_STAGE /* | FrameGraph::READBACK_STAGE*/));
 
-    getFrameGraph().addDependency(getMainRecordNode(), FrameGraph::CpuDependency{transferNode, FrameGraph::BEFORE_DRAW_STAGE, FrameGraph::RECORD_STAGE, 0});
+    getFrameGraph().addDependency(
+      getMainRecordNode(), FrameGraph::CpuDependency{transferNode, FrameGraph::BEFORE_DRAW_STAGE,
+                                                     FrameGraph::RECORD_STAGE, 0});
     // getFrameGraph().addDependency(transferNode, FrameGraph::GpuCpuDependency{getMainRecordNode(), FrameGraph::READBACK_STAGE, 0});
 
     initPhysicsEntitySystem();
@@ -196,9 +198,9 @@ void Game::recordCmdBufferRender(const AcquiredImageData& swapchainData,
         region.srcOffsets[0] = drv::Offset3D{0, 0, 0};
         region.srcOffsets[1] =
           drv::Offset3D{int(texInfo.extent.width), int(texInfo.extent.height), 1};
-        region.dstOffsets[0] = drv::Offset3D{100, 0, 0};
+        region.dstOffsets[0] = drv::Offset3D{100, 300, 0};
         region.dstOffsets[1] =
-          drv::Offset3D{int(texInfo.extent.width) + 100, int(texInfo.extent.height), 1};
+          drv::Offset3D{int(texInfo.extent.width) + 100, int(texInfo.extent.height) + 300, 1};
         recorder->cmdBlitImage(transferTexture.get().getImage(0), swapchainData.image, 1, &region,
                                drv::ImageFilter::NEAREST);
     }
@@ -241,12 +243,13 @@ void Game::recordCmdBufferBlit(const AcquiredImageData& swapchainData,
         region.dstOffsets[1].x = 100;
     if (region.dstOffsets[1].y > 100)
         region.dstOffsets[1].y = 100;
-    recorder->cmdBlitImage(renderTarget.get().getImage(), swapchainData.image, 1, &region,
-                           drv::ImageFilter::NEAREST);
+    // recorder->cmdBlitImage(renderTarget.get().getImage(), swapchainData.image, 1, &region,
+    //                        drv::ImageFilter::NEAREST);
 
     drv::TextureInfo texInfo = drv::get_texture_info(transferTexture.get().getImage(0));
     region.dstOffsets[0] = drv::Offset3D{0, 0, 0};
-    region.dstOffsets[1] = drv::Offset3D{int(texInfo.extent.width), int(texInfo.extent.height), 1};
+    region.dstOffsets[1] =
+      drv::Offset3D{int(texInfo.extent.width), int(texInfo.extent.height) + 0, 1};
     recorder->cmdBlitImage(renderTarget.get().getImage(), transferTexture.get().getImage(0), 1,
                            &region, drv::ImageFilter::LINEAR);
 
