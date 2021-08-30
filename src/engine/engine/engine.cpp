@@ -466,6 +466,15 @@ Engine::~Engine() {
 }
 
 bool Engine::sampleInput(FrameId frameId) {
+    if (performLatencySleep) {
+        double sleepTimeMs = ;
+        waitTimeStats.feed(sleepTimeMs);
+        std::this_thread::sleep_for(std::chrono::nanoseconds(int64_t(sleepTimeMs * 1000000.0)));
+    }
+    else {
+        waitTimeStats.feed(0);
+    }
+    TODO;  // sync with main and do an input sample on it
     FrameGraph::NodeHandle inputHandle =
       frameGraph.acquireNode(inputSampleNode, FrameGraph::SIMULATION_STAGE, frameId);
     if (!inputHandle)
@@ -1168,6 +1177,25 @@ void Engine::readbackLoop(volatile bool* finished) {
                   latencyInfo.inputSlop.totalSlopNs <= latencyInfo.inputSlop.latencyNs,
                   "Slop cannot be greater than latency");
 
+            const FrameGraph::Node* simStart =
+              frameGraph.getNode(frameGraph.getStageStartNode(FrameGraph::SIMULATION_STAGE));
+            const FrameGraph::Node* presentStart = frameGraph.getNode(presentFrameNode);
+            FrameGraph::Node::NodeTiming firstPresentTiming =
+              readbackFrame > 0
+                ? presentStart->getTiming(readbackFrame - 1, FrameGraph::RECORD_STAGE)
+                : simStart->getTiming(readbackFrame, FrameGraph::SIMULATION_STAGE);
+            FrameGraph::Node::NodeTiming endPresentTiming =
+              presentStart->getTiming(readbackFrame, FrameGraph::RECORD_STAGE);
+
+            double frameTimeMs = double(std::chrono::duration_cast<std::chrono::nanoseconds>(
+                                          endPresentTiming.finish - firstPresentTiming.finish)
+                                          .count())
+                                 / 1000000.0;
+
+            fpsStats.feed(1000.0 / frameTimeMs);
+            latencyStats.feed(double(latencyInfo.inputSlop.latencyNs) / 1000000.0);
+            slopStats.feed(double(latencyInfo.inputSlop.totalSlopNs) / 1000000.0);
+
             if (perfCaptureFrame != INVALID_FRAME
                 && perfCaptureFrame + frameGraph.getMaxFramesInFlight() <= readbackFrame) {
                 PerformanceCaptureData capture = generatePerfCapture(readbackFrame, latencyInfo);
@@ -1659,13 +1687,14 @@ PerformanceCaptureData Engine::generatePerfCapture(
 
     const FrameGraph::Node* simStart =
       frameGraph.getNode(frameGraph.getStageStartNode(FrameGraph::SIMULATION_STAGE));
+    const FrameGraph::Node* presentStart = frameGraph.getNode(presentFrameNode);
 
-    FrameGraph::Node::NodeTiming firstTiming =
-      simStart->getTiming(firstFrame, FrameGraph::SIMULATION_STAGE);
+    FrameGraph::Node::NodeTiming firstPresentTiming =
+      presentStart->getTiming(firstFrame, FrameGraph::RECORD_STAGE);
     FrameGraph::Node::NodeTiming targetTiming =
       simStart->getTiming(targetFrame, FrameGraph::SIMULATION_STAGE);
-    FrameGraph::Node::NodeTiming endTiming =
-      simStart->getTiming(lastReadyFrame, FrameGraph::SIMULATION_STAGE);
+    FrameGraph::Node::NodeTiming endPresentTiming =
+      presentStart->getTiming(lastReadyFrame, FrameGraph::RECORD_STAGE);
 
     FrameGraph::Clock::time_point startTime = targetTiming.start;
 
@@ -1676,10 +1705,11 @@ PerformanceCaptureData Engine::generatePerfCapture(
 
     PerformanceCaptureData ret;
     ret.frameId = targetFrame;
-    ret.frameTime = getTimeDiff(firstTiming.start, endTiming.start) / frameCount;
+    ret.frameTime = getTimeDiff(firstPresentTiming.start, endPrenentTiming.start) / frameCount;
     ret.fps = 1000.0 / ret.frameTime;
     ret.softwareLatency =
       double(std::chrono::nanoseconds(latency.inputSlop.latencyNs).count()) / 1000000.0;
+    ret.sleepTime = ;
     ret.latencySlop =
       double(std::chrono::nanoseconds(latency.inputSlop.totalSlopNs).count()) / 1000000.0;
     ret.executionDelay = -1;
@@ -1913,6 +1943,17 @@ void Engine::drawUI(FrameId frameId) {
             }
             ImGui::EndMenu();
         }
+
+        // ImGui::AlignTextToFramePadding();
+        if (fpsStats.hasInfo())
+            ImGui::Text("Fps: %lf (~%lf)", fpsStats.getAvg(), fpsStats.getStdDiv());
+        if (latencyStats.hasInfo())
+            ImGui::Text("Latency: %lf (~%lf)", latencyStats.getAvg(), latencyStats.getStdDiv());
+        if (slopStats.hasInfo())
+            ImGui::Text("Slop: %lf (~%lf)", slopStats.getAvg(), slopStats.getStdDiv());
+        if (waitTimeStats.hasInfo())
+            ImGui::Text("Sleep: %lf (~%lf)", waitTimeStats.getAvg(), waitTimeStats.getStdDiv());
+        ImGui::Checkbox("Reduce latency", &performLatencySleep);
         ImGui::EndMainMenuBar();
     }
 

@@ -90,7 +90,7 @@ struct PerformanceCaptureData final : public IAutoSerializable<PerformanceCaptur
 {
     REFLECTABLE(
       (uint64_t)frameId, (double)fps, (double)frameTime, (double)softwareLatency,
-      (double)latencySlop, (double)executionDelay, (double)deviceDelay,
+      (double)latencySlop, (double)sleepTime, (double)executionDelay, (double)deviceDelay,
       (std::map<std::string, std::map<std::string, std::vector<PerformanceCaptureCpuPackage>>>)
         stageToThreadToPackageList,
       (std::map<uint32_t, PerformanceCaptureInterval>)executionIntervals,
@@ -122,6 +122,44 @@ class EngineInputListener final : public InputListener
     bool clicking = false;
     double mX;
     double mY;
+};
+
+template <uint32_t N>
+struct StatCalculator
+{
+ public:
+    void feed(double value) {
+        std::unique_lock<std::mutex> lock(mutex);
+        values[count % N] = value;
+        sum += value;
+        if ((count % N) == 0) {
+            avg = sum / N;
+            sum = 0;
+            stdDiv = 0;
+            for (uint32_t i = 0; i < N; ++i)
+                stdDiv += (values[i] - avg) * (values[i] - avg);
+            stdDiv = sqrt(stdDiv / N);
+        }
+    }
+    bool hasInfo() const { return count >= N; }
+    double getAvg() const {
+        std::unique_lock<std::mutex> lock(mutex);
+        return avg;
+    }
+    double getStdDiv() const {
+        std::unique_lock<std::mutex> lock(mutex);
+        return stdDiv;
+    }
+
+ private:
+    uint32_t count = 0;
+    std::array<double, N> values;
+
+    mutable std::mutex mutex;
+
+    double sum = 0;
+    double avg = 0;
+    double stdDiv = 0;
 };
 
 class Engine
@@ -388,6 +426,12 @@ class Engine
 
     std::vector<EntityRenderData> entitiesToDraw;
     FrameId perfCaptureFrame = INVALID_FRAME;
+
+    StatCalculator<32> fpsStats;
+    StatCalculator<32> latencyStats;
+    StatCalculator<32> slopStats;
+    StatCalculator<32> waitTimeStats;
+    bool performLatencySleep = false;
 
     struct SubmissionTimestampsInfo
     {
