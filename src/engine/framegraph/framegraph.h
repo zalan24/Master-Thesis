@@ -33,28 +33,23 @@ struct ArtificialWorkLoad final : public IAutoSerializable<ArtificialWorkLoad>
 {
     // measured in milliseconds
 
-    REFLECTABLE(
-        (float) preLoad,
-        // (float) minLoad,  // of actual work
-        (float) postLoad
-    )
+    REFLECTABLE((float)preLoad,
+                // (float) minLoad,  // of actual work
+                (float)postLoad)
 
     ArtificialWorkLoad() : preLoad(0), /* minLoad(0),*/ postLoad(0) {}
 };
 
 struct ArtificialNodeWorkLoad final : public IAutoSerializable<ArtificialNodeWorkLoad>
 {
-    REFLECTABLE(
-        (std::map<std::string, ArtificialWorkLoad>) cpuWorkLoad
-        // (ArtificialWorkLoad) executionWorkLoad
+    REFLECTABLE((std::map<std::string, ArtificialWorkLoad>)cpuWorkLoad
+                // (ArtificialWorkLoad) executionWorkLoad
     )
 };
 
 struct ArtificialFrameGraphWorkLoad final : public IAutoSerializable<ArtificialFrameGraphWorkLoad>
 {
-    REFLECTABLE(
-        (std::map<std::string, ArtificialNodeWorkLoad>) nodeLoad
-    )
+    REFLECTABLE((std::map<std::string, ArtificialNodeWorkLoad>)nodeLoad)
 };
 
 class TemporalResourceLockerDescriptor final : public drv::ResourceLockerDescriptor
@@ -105,7 +100,8 @@ class FrameGraphSlops final : public SlopGraph
     SlopNodeId findFixedNode(NodeId nodeId, int stage, uint32_t frameIndex) const;
     void addFixedDependency(SlopNodeId from, SlopNodeId to);
 
-    SlopNodeId addSubmissionDynNode(drv::CmdBufferId id, uint32_t index, FrameId frame, SlopNodeId sourceNode);
+    SlopNodeId addSubmissionDynNode(drv::CmdBufferId id, uint32_t index, FrameId frame,
+                                    SlopNodeId sourceNode);
     SlopNodeId addDeviceDynNode(NodeId nodeId, uint32_t id, FrameId frame, SlopNodeId sourceNode,
                                 SlopNodeId sourceSubmission);
     void addDynamicDependency(SlopNodeId from, SlopNodeId to, int64_t offsetNs);
@@ -138,7 +134,7 @@ class FrameGraphSlops final : public SlopGraph
     struct SubmissionData
     {
         drv::CmdBufferId id;
-        uint32_t  index;
+        uint32_t index;
         FrameId frame;
         NodeInfos infos;
         SlopNodeId sourceNode;
@@ -308,7 +304,7 @@ class FrameGraph
 
         bool hasExecution() const;
 
-        const std::string &getName() const {return name;}
+        const std::string& getName() const { return name; }
 
         bool hasStage(Stage stage) const { return (stages & stage) != 0; }
 
@@ -321,6 +317,7 @@ class FrameGraph
             FrameGraph::Clock::time_point start;
             FrameGraph::Clock::time_point finish;
             int64_t recordedSlopsNs = 0;
+            int64_t latencySleepNs = 0;
             int64_t totalSlopNs = 0;
         };
         struct ExecutionTiming
@@ -355,14 +352,17 @@ class FrameGraph
         void registerExecutionFinish(FrameId frameId);
         void registerDeviceTiming(FrameId frameId, const DeviceTiming& timing);
         void registerSlop(FrameId frameId, Stage stage, int64_t slopNs);  // during node work
+        void registerLatencySleep(FrameId frameId, Stage stage,
+                                  int64_t slopNs);                        // during node work
         void feedbackSlop(FrameId frameId, Stage stage, int64_t slopNs);  // afterwards calculation
-        void feedbackDeviceSlop(FrameId frameId, uint32_t index, int64_t slopNs);  // afterwards calculation
+        void feedbackDeviceSlop(FrameId frameId, uint32_t index,
+                                int64_t slopNs);  // afterwards calculation
         void initFrame(FrameId frameId);
 
         void setWorkLoad(Stage stage, const ArtificialWorkLoad& workLoad);
         ArtificialWorkLoad getWorkLoad(Stage stage) const;
 
-        const std::vector<CpuDependency>& getCpuDeps() const {return cpuDeps;}
+        const std::vector<CpuDependency>& getCpuDeps() const { return cpuDeps; }
         const std::vector<GpuCpuDependency>& getGpuDeps() const { return gpuCpuDeps; }
         const std::vector<GpuCompleteDependency>& getGpuDoneDeps() const { return gpuCompleteDeps; }
 
@@ -426,11 +426,11 @@ class FrameGraph
 
         FrameId getFrameId() const { return frameId; }
 
-        const drv::ResourceLocker::Lock& getLock() const {return lock;}
+        const drv::ResourceLocker::Lock& getLock() const { return lock; }
 
         static void busy_sleep(std::chrono::microseconds duration);
 
-        NodeId getNodeId() const {return node;}
+        NodeId getNodeId() const { return node; }
 
         class SlopTimer
         {
@@ -447,7 +447,23 @@ class FrameGraph
             FrameGraph::Clock::time_point start;
         };
 
+        class LatencySleepTimer
+        {
+         public:
+            LatencySleepTimer(Node* node, FrameId frame, Stage stage);
+            ~LatencySleepTimer();
+            LatencySleepTimer(const LatencySleepTimer&) = delete;
+            LatencySleepTimer& operator=(const LatencySleepTimer&) = delete;
+
+         private:
+            Node* node;
+            FrameId frame;
+            Stage stage;
+            FrameGraph::Clock::time_point start;
+        };
+
         SlopTimer getSlopTimer() const;
+        LatencySleepTimer getLatencySleepTimer() const;
 
      private:
         NodeHandle();
@@ -545,18 +561,19 @@ class FrameGraph
     NodeId getNodeFromCmdBuffer(drv::CmdBufferId id) const;
     StatsCache* getStatsCacheHandle(drv::CmdBufferId id) const;
 
-    struct QueueSyncData {
+    struct QueueSyncData
+    {
         drv::TimelineSemaphoreHandle semaphore;
         uint64_t waitValue;
     };
     QueueSyncData sync_queue(drv::QueuePtr queue, FrameId frame) const;
 
-    drv::ResourceLocker* getResourceLocker() const {return resourceLocker; }
+    drv::ResourceLocker* getResourceLocker() const { return resourceLocker; }
 
     ArtificialFrameGraphWorkLoad getWorkLoad() const;
     void setWorkLoad(const ArtificialFrameGraphWorkLoad& workLoad);
 
-     struct ExecutionPackagesTiming
+    struct ExecutionPackagesTiming
     {
         NodeId sourceNode;
         FrameId frame = INVALID_FRAME;
@@ -594,7 +611,7 @@ class FrameGraph
     drv::ResourceLocker* resourceLocker;
     EventPool* eventPool;
     drv::TimelineSemaphorePool* semaphorePool;
-    TimestampPool *timestampPool;
+    TimestampPool* timestampPool;
     drv::StateTrackingConfig trackerConfig;
     uint32_t maxFramesInFlight;
     ExecutionQueue executionQueue;

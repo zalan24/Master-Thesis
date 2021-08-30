@@ -1276,6 +1276,7 @@ void FrameGraph::Node::registerAcquireAttempt(Stage stage, FrameId frameId) {
         entry.resourceReady = entry.finish = entry.start = {};
         entry.threadId = std::this_thread::get_id();
         entry.recordedSlopsNs = 0;
+        entry.latencySleepNs = 0;
         entry.totalSlopNs = 0;
     }
 }
@@ -1283,6 +1284,11 @@ void FrameGraph::Node::registerAcquireAttempt(Stage stage, FrameId frameId) {
 void FrameGraph::Node::registerSlop(FrameId frameId, Stage stage, int64_t slopNs) {
     auto& entry = timingInfos[get_stage_id(stage)][frameId % TIMING_HISTORY_SIZE];
     entry.recordedSlopsNs += slopNs;
+}
+
+void FrameGraph::Node::registerLatencySleep(FrameId frameId, Stage stage, int64_t slopNs) {
+    auto& entry = timingInfos[get_stage_id(stage)][frameId % TIMING_HISTORY_SIZE];
+    entry.latencySleepNs += slopNs;
 }
 
 void FrameGraph::Node::feedbackSlop(FrameId frameId, Stage stage, int64_t slopNs) {
@@ -1454,6 +1460,22 @@ FrameGraph::NodeHandle::SlopTimer::~SlopTimer() {
 
 FrameGraph::NodeHandle::SlopTimer FrameGraph::NodeHandle::getSlopTimer() const {
     return SlopTimer(frameGraph->getNode(node), frameId, stage);
+}
+
+FrameGraph::NodeHandle::LatencySleepTimer::LatencySleepTimer(Node* _node, FrameId _frame,
+                                                             Stage _stage)
+  : node(_node), frame(_frame), stage(_stage), start(FrameGraph::Clock::now()) {
+}
+
+FrameGraph::NodeHandle::LatencySleepTimer::~LatencySleepTimer() {
+    node->registerLatencySleep(
+      frame, stage,
+      std::chrono::duration_cast<std::chrono::nanoseconds>(FrameGraph::Clock::now() - start)
+        .count());
+}
+
+FrameGraph::NodeHandle::LatencySleepTimer FrameGraph::NodeHandle::getLatencySleepTimer() const {
+    return LatencySleepTimer(frameGraph->getNode(node), frameId, stage);
 }
 
 uint32_t FrameGraphSlops::getNodeCount() const {
@@ -1661,6 +1683,7 @@ void FrameGraphSlops::prepare(FrameId _frame) {
                 infos.startTimeNs = (nodeTiming.start - origoTime).count();
                 infos.endTimeNs = (nodeTiming.finish - origoTime).count();
                 infos.slopNs = nodeTiming.recordedSlopsNs;
+                infos.latencySleepNs = nodeTiming.latencySleepNs;
                 feedInfo(targetNode, infos);
                 nodeOrder[slopNodeInd++] = {infos.startTimeNs, targetNode,
                                             getThreadId(nodeTiming.threadId)};
@@ -1680,11 +1703,13 @@ void FrameGraphSlops::prepare(FrameId _frame) {
             SlopNodeId targetNode = addSubmissionDynNode(executionTimings.packages[i].submissionId,
                                                          i, frameId, sourceNode);
 
-            int64_t submissionTime = (executionTimings.packages[i].submissionTime - origoTime).count();
+            int64_t submissionTime =
+              (executionTimings.packages[i].submissionTime - origoTime).count();
             NodeInfos infos;
             infos.startTimeNs = (executionTimings.packages[i].executionTime - origoTime).count();
             infos.endTimeNs = (executionTimings.packages[i].endTime - origoTime).count();
             infos.slopNs = 0;
+            infos.latencySleepNs = 0;
             feedInfo(targetNode, infos);
             nodeOrder[slopNodeInd++] = {infos.startTimeNs, targetNode, 0};
             addDynamicDependency(
@@ -1709,6 +1734,7 @@ void FrameGraphSlops::prepare(FrameId _frame) {
                 infos.startTimeNs = (timing.start - origoTime).count();
                 infos.endTimeNs = (timing.finish - origoTime).count();
                 infos.slopNs = 0;
+                infos.latencySleepNs = 0;
                 if (getFixedNodeData(sourceFixedNode).frameGraphNode == presentFrameGraphNode)
                     infos.isDelayable = false;
                 feedInfo(targetNode, infos);

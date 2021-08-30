@@ -214,6 +214,11 @@ inline void printStack() {
 //     return static_cast<T>(value);
 // }
 
+template <typename T, typename T2>
+T lerp(const T& a, const T& b, const T2& f) {
+    return (b - a) * f + a;
+}
+
 template <typename T, unsigned int D>
 class Range
 {

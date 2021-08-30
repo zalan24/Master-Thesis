@@ -466,19 +466,39 @@ Engine::~Engine() {
 }
 
 bool Engine::sampleInput(FrameId frameId) {
-    if (performLatencySleep) {
-        double sleepTimeMs = ;
-        waitTimeStats.feed(sleepTimeMs);
-        std::this_thread::sleep_for(std::chrono::nanoseconds(int64_t(sleepTimeMs * 1000000.0)));
-    }
-    else {
-        waitTimeStats.feed(0);
-    }
-    TODO;  // sync with main and do an input sample on it
     FrameGraph::NodeHandle inputHandle =
       frameGraph.acquireNode(inputSampleNode, FrameGraph::SIMULATION_STAGE, frameId);
     if (!inputHandle)
         return false;
+    if (performLatencySleep) {
+        // TODO add these to imgui and save them between sessions
+        double minMaxLerp = -0.5;
+        double latencyPoolMs = 4;
+
+        FrameGraphSlops::LatencyInfo latencyInfo;
+        {
+            std::unique_lock<std::mutex> lock(latencyInfoMutex);
+            latencyInfo = latestLatencyInfo;
+        }
+
+        double expectedSlopMs = ::lerp(double(latencyInfo.slopMin) / 1000000.0,
+                                       double(latencyInfo.slopMax) / 1000000.0, minMaxLerp);
+        double sleepTimeMs = std::max(expectedSlopMs - latencyPoolMs, 0.0);
+        waitTimeStats.feed(sleepTimeMs);
+        {
+            auto timer = inputHandle.getLatencySleepTimer();
+            std::this_thread::sleep_for(std::chrono::nanoseconds(int64_t(sleepTimeMs * 1000000.0)));
+        }
+    }
+    else {
+        waitTimeStats.feed(0);
+    }
+    {
+        // Try to acquire new input data
+        std::unique_lock<std::mutex> lock(inputWaitMutex);
+        mainKernelCv.notify_one();
+        waitForInputCv.wait_for(lock, std::chrono::microseconds(500));
+    }
     Input::InputEvent event;
     while (input.popEvent(event))
         inputManager.feedInput(std::move(event));
@@ -1171,10 +1191,13 @@ void Engine::readbackLoop(volatile bool* finished) {
             }
             timestsampRingBuffer[readbackFrame % timestsampRingBuffer.size()].clear();
 
-            FrameGraphSlops::LatencyInfo latencyInfo = frameGraph.processSlops(readbackFrame);
-            if (latencyInfo.frame != INVALID_FRAME)
+            {
+                std::unique_lock<std::mutex> lock(latencyInfoMutex);
+                latestLatencyInfo = frameGraph.processSlops(readbackFrame);
+            }
+            if (latestLatencyInfo.frame != INVALID_FRAME)
                 drv::drv_assert(
-                  latencyInfo.inputSlop.totalSlopNs <= latencyInfo.inputSlop.latencyNs,
+                  latestLatencyInfo.inputSlop.totalSlopNs <= latestLatencyInfo.inputSlop.latencyNs,
                   "Slop cannot be greater than latency");
 
             const FrameGraph::Node* simStart =
@@ -1193,12 +1216,13 @@ void Engine::readbackLoop(volatile bool* finished) {
                                  / 1000000.0;
 
             fpsStats.feed(1000.0 / frameTimeMs);
-            latencyStats.feed(double(latencyInfo.inputSlop.latencyNs) / 1000000.0);
-            slopStats.feed(double(latencyInfo.inputSlop.totalSlopNs) / 1000000.0);
+            latencyStats.feed(double(latestLatencyInfo.inputSlop.latencyNs) / 1000000.0);
+            slopStats.feed(double(latestLatencyInfo.inputSlop.totalSlopNs) / 1000000.0);
 
             if (perfCaptureFrame != INVALID_FRAME
                 && perfCaptureFrame + frameGraph.getMaxFramesInFlight() <= readbackFrame) {
-                PerformanceCaptureData capture = generatePerfCapture(readbackFrame, latencyInfo);
+                PerformanceCaptureData capture =
+                  generatePerfCapture(readbackFrame, latestLatencyInfo);
                 fs::path capturesFolder = fs::path{"captures"};
                 if (!fs::exists(capturesFolder))
                     fs::create_directories(capturesFolder);
@@ -1315,6 +1339,7 @@ void Engine::mainLoopKernel() {
     mainKernelCv.wait_for(lock, std::chrono::milliseconds(4));
     runtimeStats.incrementInputSample();
     static_cast<IWindow*>(window)->pollEvents();
+    waitForInputCv.notify_one();
 
     if (garbageSystem.getStartedFrame() != INVALID_FRAME) {
         if (swapchainRecreationPossible) {
@@ -1685,6 +1710,7 @@ PerformanceCaptureData Engine::generatePerfCapture(
     drv::drv_assert(latency.frame != INVALID_FRAME, "Latency frame is invalid");
     drv::drv_assert(targetFrame == latency.frame, "Latency frame != capture target frame");
 
+    const FrameGraph::Node* inputSampler = frameGraph.getNode(inputSampleNode);
     const FrameGraph::Node* simStart =
       frameGraph.getNode(frameGraph.getStageStartNode(FrameGraph::SIMULATION_STAGE));
     const FrameGraph::Node* presentStart = frameGraph.getNode(presentFrameNode);
@@ -1693,6 +1719,8 @@ PerformanceCaptureData Engine::generatePerfCapture(
       presentStart->getTiming(firstFrame, FrameGraph::RECORD_STAGE);
     FrameGraph::Node::NodeTiming targetTiming =
       simStart->getTiming(targetFrame, FrameGraph::SIMULATION_STAGE);
+    FrameGraph::Node::NodeTiming inputSampleTiming =
+      inputSampler->getTiming(targetFrame, FrameGraph::SIMULATION_STAGE);
     FrameGraph::Node::NodeTiming endPresentTiming =
       presentStart->getTiming(lastReadyFrame, FrameGraph::RECORD_STAGE);
 
@@ -1705,11 +1733,12 @@ PerformanceCaptureData Engine::generatePerfCapture(
 
     PerformanceCaptureData ret;
     ret.frameId = targetFrame;
-    ret.frameTime = getTimeDiff(firstPresentTiming.start, endPrenentTiming.start) / frameCount;
+    ret.frameTime = getTimeDiff(firstPresentTiming.start, endPresentTiming.start) / frameCount;
     ret.fps = 1000.0 / ret.frameTime;
     ret.softwareLatency =
       double(std::chrono::nanoseconds(latency.inputSlop.latencyNs).count()) / 1000000.0;
-    ret.sleepTime = ;
+    ret.sleepTime =
+      double(std::chrono::nanoseconds(inputSampleTiming.latencySleepNs).count()) / 1000000.0;
     ret.latencySlop =
       double(std::chrono::nanoseconds(latency.inputSlop.totalSlopNs).count()) / 1000000.0;
     ret.executionDelay = -1;
@@ -1946,13 +1975,15 @@ void Engine::drawUI(FrameId frameId) {
 
         // ImGui::AlignTextToFramePadding();
         if (fpsStats.hasInfo())
-            ImGui::Text("Fps: %lf (~%lf)", fpsStats.getAvg(), fpsStats.getStdDiv());
+            ImGui::Text("Fps: %3.0lf (~%2.1lf)", fpsStats.getAvg(), fpsStats.getStdDiv());
         if (latencyStats.hasInfo())
-            ImGui::Text("Latency: %lf (~%lf)", latencyStats.getAvg(), latencyStats.getStdDiv());
+            ImGui::Text("Latency: %3.0lf (~%2.1lf)", latencyStats.getAvg(),
+                        latencyStats.getStdDiv());
         if (slopStats.hasInfo())
-            ImGui::Text("Slop: %lf (~%lf)", slopStats.getAvg(), slopStats.getStdDiv());
+            ImGui::Text("Slop: %3.0lf (~%2.1lf)", slopStats.getAvg(), slopStats.getStdDiv());
         if (waitTimeStats.hasInfo())
-            ImGui::Text("Sleep: %lf (~%lf)", waitTimeStats.getAvg(), waitTimeStats.getStdDiv());
+            ImGui::Text("Sleep: %3.0f (~%2.1lf)", waitTimeStats.getAvg(),
+                        waitTimeStats.getStdDiv());
         ImGui::Checkbox("Reduce latency", &performLatencySleep);
         ImGui::EndMainMenuBar();
     }

@@ -140,6 +140,7 @@ struct StatCalculator
                 stdDiv += (values[i] - avg) * (values[i] - avg);
             stdDiv = sqrt(stdDiv / N);
         }
+        count++;
     }
     bool hasInfo() const { return count >= N; }
     double getAvg() const {
@@ -416,13 +417,17 @@ class Engine
     mutable std::mutex swapchainMutex;
     mutable std::mutex mainKernelMutex;
     mutable std::mutex swapchainRecreationMutex;
+    mutable std::mutex inputWaitMutex;
     std::condition_variable mainKernelCv;
+    std::condition_variable waitForInputCv;
     std::condition_variable mainKernelSwapchainCv;
     std::condition_variable beforeDrawSwapchainCv;
     std::atomic<bool> swapchainRecreationRequired = {false};
     std::atomic<bool> swapchainRecreationPossible = {false};
     std::filesystem::file_time_type workLoadFileModificationDate;
     bool wantToQuit = false;
+    mutable std::mutex latencyInfoMutex;
+    FrameGraphSlops::LatencyInfo latestLatencyInfo;
 
     std::vector<EntityRenderData> entitiesToDraw;
     FrameId perfCaptureFrame = INVALID_FRAME;
