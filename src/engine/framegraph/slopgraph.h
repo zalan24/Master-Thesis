@@ -40,6 +40,7 @@ class SlopGraph
         // if the implicit child didn't exists, direct slop would increase by this much
         // if it's too high, it's recommended to separate the two nodes onto different threads or reorder them
         int64_t extraSlopWithoutImplicitChildNs = 0;
+        int64_t sleepTimeNs = 0;
     };
 
     virtual void feedBack(SlopNodeId node, const FeedbackInfo& info) = 0;

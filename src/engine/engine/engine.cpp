@@ -472,8 +472,8 @@ bool Engine::sampleInput(FrameId frameId) {
         return false;
     if (performLatencySleep) {
         // TODO add these to imgui and save them between sessions
-        double minMaxLerp = -0.5;
-        double latencyPoolMs = 4;
+        double minMaxLerp = 0;
+        double latencyPoolMs = 32;
 
         FrameGraphSlops::LatencyInfo latencyInfo;
         {
@@ -481,9 +481,10 @@ bool Engine::sampleInput(FrameId frameId) {
             latencyInfo = latestLatencyInfo;
         }
 
+        double prevSleepTime = double(latencyInfo.inputSlop.sleepTimeNs) / 1000000.0;
         double expectedSlopMs = ::lerp(double(latencyInfo.slopMin) / 1000000.0,
                                        double(latencyInfo.slopMax) / 1000000.0, minMaxLerp);
-        double sleepTimeMs = std::max(expectedSlopMs - latencyPoolMs, 0.0);
+        double sleepTimeMs = std::max(expectedSlopMs - latencyPoolMs + prevSleepTime, 0.0);
         waitTimeStats.feed(sleepTimeMs);
         {
             auto timer = inputHandle.getLatencySleepTimer();

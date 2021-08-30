@@ -97,6 +97,7 @@ SlopGraph::FeedbackInfo SlopGraph::calculateSlop(SlopNodeId sourceNode, SlopNode
         nodeData[node].feedbackInfo.totalSlopNs = sloppedMin - nodeInfo.endTimeNs;
         nodeData[node].feedbackInfo.latencyNs = targetNodeInfo.endTimeNs - nodeInfo.startTimeNs;
         nodeData[node].feedbackInfo.extraSlopWithoutImplicitChildNs = noImplicitMin - sloppedMin;
+        nodeData[node].feedbackInfo.sleepTimeNs = nodeInfo.latencySleepNs;
     }
     // ---
 

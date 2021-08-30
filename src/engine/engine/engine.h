@@ -130,7 +130,7 @@ struct StatCalculator
  public:
     void feed(double value) {
         std::unique_lock<std::mutex> lock(mutex);
-        values[count % N] = value;
+        values[(count++) % N] = value;
         sum += value;
         if ((count % N) == 0) {
             avg = sum / N;
@@ -140,7 +140,6 @@ struct StatCalculator
                 stdDiv += (values[i] - avg) * (values[i] - avg);
             stdDiv = sqrt(stdDiv / N);
         }
-        count++;
     }
     bool hasInfo() const { return count >= N; }
     double getAvg() const {
