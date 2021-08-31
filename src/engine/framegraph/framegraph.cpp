@@ -55,6 +55,15 @@ FrameGraph::FrameGraph(drv::PhysicalDevice _physicalDevice, drv::LogicalDevicePt
                   CpuDependency{stageStartNodes[get_stage_id(RECORD_STAGE)], EXECUTION_STAGE,
                                 READBACK_STAGE, 0});
     addDependency(
+      stageStartNodes[get_stage_id(READBACK_STAGE)],
+      CpuDependency{stageEndNodes[get_stage_id(RECORD_STAGE)], RECORD_STAGE, READBACK_STAGE, 0});
+    addDependency(stageStartNodes[get_stage_id(READBACK_STAGE)],
+                  CpuDependency{stageEndNodes[get_stage_id(BEFORE_DRAW_STAGE)], BEFORE_DRAW_STAGE,
+                                READBACK_STAGE, 0});
+    addDependency(stageStartNodes[get_stage_id(READBACK_STAGE)],
+                  CpuDependency{stageEndNodes[get_stage_id(SIMULATION_STAGE)], SIMULATION_STAGE,
+                                READBACK_STAGE, 0});
+    addDependency(
       stageEndNodes[get_stage_id(READBACK_STAGE)],
       CpuDependency{stageEndNodes[get_stage_id(RECORD_STAGE)], EXECUTION_STAGE, READBACK_STAGE, 0});
     addDependency(stageStartNodes[get_stage_id(SIMULATION_STAGE)],

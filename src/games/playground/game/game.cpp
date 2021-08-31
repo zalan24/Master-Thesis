@@ -325,7 +325,6 @@ void Game::record(const AcquiredImageData& swapchainData, drv::DrvCmdBufferRecor
 
 void Game::simulate(FrameId frameId) {
     UNUSED(frameId);
-    std::this_thread::sleep_for(std::chrono::milliseconds(4));
     // std::cout << "Simulate: " << frameId << std::endl;
 }
 
@@ -530,7 +529,7 @@ void Game::createSwapchainResources(const drv::Swapchain& swapchain) {
     initImGui(testRenderPass.get());
 }
 
-void Game::recordMenuOptionsUI(FrameId frameId) {
+void Game::recordMenuOptionsUI(FrameId) {
     if (ImGui::BeginMenu("Mandelbrot level")) {
         int from = static_cast<int>(shader_mandelbrot_descriptor::Quality::QUALITY1);
         int to = static_cast<int>(shader_mandelbrot_descriptor::Quality::QUALITY10);
@@ -539,5 +538,6 @@ void Game::recordMenuOptionsUI(FrameId frameId) {
             sprintf(label, "Quality %d", i + 1);
             ImGui::RadioButton(label, &gameOptions.mandelBrotLevel, i);
         }
+        ImGui::EndMenu();
     }
 }

@@ -484,12 +484,13 @@ bool Engine::sampleInput(FrameId frameId) {
       frameGraph.acquireNode(inputSampleNode, FrameGraph::SIMULATION_STAGE, frameId);
     if (!inputHandle)
         return false;
-    if (engineOptions.latencyReduction) {
+    if (engineOptions.latencyReduction && fpsStats.hasInfo()) {
         double sleepTimeMs = 0;
 
         if (!engineOptions.manualLatencyReduction) {
+            double frameTime = 1000.0 / fpsStats.getAvg();
             double minMaxLerp = engineOptions.latencyPrediction;
-            double latencyPoolMs = engineOptions.latencyPool*;
+            double latencyPoolMs = engineOptions.latencyPool * frameTime;
 
             FrameGraphSlops::LatencyInfo latencyInfo;
             {
@@ -1240,8 +1241,38 @@ void Engine::readbackLoop(volatile bool* finished) {
             latencyStats.feed(double(latestLatencyInfo.inputSlop.latencyNs) / 1000000.0);
             slopStats.feed(double(latestLatencyInfo.inputSlop.totalSlopNs) / 1000000.0);
 
-            execDelayStats.feed();
-            deviceDelayStats.feed();
+            //
+
+            double executionDelay = -1;
+            double deviceDelay = -1;
+
+            const FrameGraph::FrameExecutionPackagesTimings& executionTiming =
+              frameGraph.getExecutionTiming(readbackFrame);
+            if (executionTiming.packages.size() > 0)
+                executionDelay =
+                  double(executionTiming.packages[executionTiming.minDelay].delay.count()) / 1000.0;
+
+            for (NodeId id = 0; id < frameGraph.getNodeCount(); ++id) {
+                const FrameGraph::Node* node = frameGraph.getNode(id);
+                if (node->hasExecution()) {
+                    uint32_t submissionCount = node->getDeviceTimingCount(readbackFrame);
+                    for (uint32_t i = 0; i < submissionCount; ++i) {
+                        FrameGraph::Node::DeviceTiming deviceTiming =
+                          node->getDeviceTiming(readbackFrame, i);
+                        double delay = double(std::chrono::duration_cast<std::chrono::nanoseconds>(
+                                                deviceTiming.start - deviceTiming.submitted)
+                                                .count())
+                                       / 1000000.0;
+                        if (delay < 0)
+                            delay = 0;
+                        if (deviceDelay < 0 || delay < deviceDelay)
+                            deviceDelay = delay;
+                    }
+                }
+            }
+
+            execDelayStats.feed(executionDelay);
+            deviceDelayStats.feed(deviceDelay);
 
             if (perfCaptureFrame != INVALID_FRAME
                 && perfCaptureFrame + frameGraph.getMaxFramesInFlight() <= readbackFrame) {
@@ -2030,40 +2061,58 @@ void Engine::drawUI(FrameId frameId) {
             ImGui::EndMenu();
         }
 
-        // ImGui::AlignTextToFramePadding();
-        if (fpsStats.hasInfo())
-            ImGui::Text("Fps: %3.0lf (~%2.1lf)", fpsStats.getAvg(), fpsStats.getStdDiv());
-        if (latencyStats.hasInfo())
-            ImGui::Text("Latency: %3.0lf (~%2.1lf)", latencyStats.getAvg(),
-                        latencyStats.getStdDiv());
-        ImGui::Checkbox("Reduce latency", &engineOptions.latencyReduction);
+        float minCursorX = ImGui::GetCursorPosX();
+        float cursorX =
+          ImGui::GetCursorPosX() + ImGui::GetColumnWidth() - ImGui::GetStyle().ItemSpacing.x;
+        cursorX -= ImGui::CalcTextSize("Reduce latency [x]").x;
+        if (minCursorX <= cursorX) {
+            ImGui::SetCursorPosX(cursorX);
+            ImGui::Checkbox("Reduce latency", &engineOptions.latencyReduction);
+        }
+        if (latencyStats.hasInfo()) {
+            cursorX -=
+              ImGui::CalcTextSize("Latency: 999 (~99.9)").x + ImGui::GetStyle().ItemSpacing.x;
+            if (minCursorX <= cursorX) {
+                ImGui::SetCursorPosX(cursorX);
+                ImGui::Text("Latency: %3.0lf (~%4.1lf)", latencyStats.getAvg(),
+                            latencyStats.getStdDiv());
+            }
+        }
+        if (fpsStats.hasInfo()) {
+            cursorX -= ImGui::CalcTextSize("Fps: 999 (~99.9)").x + ImGui::GetStyle().ItemSpacing.x;
+            if (minCursorX <= cursorX) {
+                ImGui::SetCursorPosX(cursorX);
+                ImGui::Text("Fps: %3.0lf (~%4.1lf)", fpsStats.getAvg(), fpsStats.getStdDiv());
+            }
+        }
         ImGui::EndMainMenuBar();
     }
 
-    if (ImGui::Begin("Performance metrics", &engineOptions.perfMetrics_window, 0)) {
+    if (engineOptions.perfMetrics_window
+        && ImGui::Begin("Performance metrics", &engineOptions.perfMetrics_window, 0)) {
         if (engineOptions.perfMetrics_fps && fpsStats.hasInfo())
-            ImGui::Text("Fps:             %3.0lf (~%2.1lf)", fpsStats.getAvg(),
+            ImGui::Text("Fps:             %3.0lf (~%4.1lf)", fpsStats.getAvg(),
                         fpsStats.getStdDiv());
         if (engineOptions.perfMetrics_latency && latencyStats.hasInfo())
-            ImGui::Text("Latency:         %3.0lf (~%2.1lf)", latencyStats.getAvg(),
+            ImGui::Text("Latency:         %3.0lf (~%4.1lf)", latencyStats.getAvg(),
                         latencyStats.getStdDiv());
         if (engineOptions.perfMetrics_slop && slopStats.hasInfo())
-            ImGui::Text("Slop:            %3.0lf (~%2.1lf)", slopStats.getAvg(),
+            ImGui::Text("Slop:            %3.0lf (~%4.1lf)", slopStats.getAvg(),
                         slopStats.getStdDiv());
         if (engineOptions.perfMetrics_sleep && waitTimeStats.hasInfo())
-            ImGui::Text("Sleep:           %3.0f (~%2.1lf)", waitTimeStats.getAvg(),
+            ImGui::Text("Sleep:           %3.0f (~%4.1lf)", waitTimeStats.getAvg(),
                         waitTimeStats.getStdDiv());
         if (engineOptions.perfMetrics_execDelay && execDelayStats.hasInfo())
-            ImGui::Text("Execution delay: %3.0f (~%2.1lf)", execDelayStats.getAvg(),
+            ImGui::Text("Execution delay: %3.0f (~%4.1lf)", execDelayStats.getAvg(),
                         execDelayStats.getStdDiv());
         if (engineOptions.perfMetrics_deviceDelay && deviceDelayStats.hasInfo())
-            ImGui::Text("Device delay:    %3.0f (~%2.1lf)", deviceDelayStats.getAvg(),
+            ImGui::Text("Device delay:    %3.0f (~%4.1lf)", deviceDelayStats.getAvg(),
                         deviceDelayStats.getStdDiv());
 
         ImGui::End();
     }
 
-    if (ImGui::Begin("Latency options", &latencyOptionsOpen, 0)) {
+    if (latencyOptionsOpen && ImGui::Begin("Latency options", &latencyOptionsOpen, 0)) {
         ImGui::Checkbox("Latency reduction    ", &engineOptions.latencyReduction);
         ImGui::InputDouble("Latency pool      ", &engineOptions.latencyPool, 0.0, 2.0, "%.8lf");
         ImGui::SameLine();

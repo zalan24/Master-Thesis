@@ -56,7 +56,7 @@ struct EngineConfig final : public IAutoSerializable<EngineConfig>
 
 struct EngineOptions final : public IAutoSerializable<EngineOptions>
 {
-    REFLECTABLE((bool)latencyReduction, (double)latencyPool, double(latencyPrediction),
+    REFLECTABLE((bool)latencyReduction, (double)latencyPool, (double)latencyPrediction,
                 (bool)perfMetrics_window, (bool)perfMetrics_fps, (bool)perfMetrics_latency,
                 (bool)perfMetrics_slop, (bool)perfMetrics_sleep, (bool)perfMetrics_execDelay,
                 (bool)perfMetrics_deviceDelay, (bool)manualLatencyReduction,
