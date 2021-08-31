@@ -54,6 +54,29 @@ struct EngineConfig final : public IAutoSerializable<EngineConfig>
                 (std::string)logs)
 };
 
+struct EngineOptions final : public IAutoSerializable<EngineOptions>
+{
+    REFLECTABLE((bool)latencyReduction, (double)latencyPool, double(latencyPrediction),
+                (bool)perfMetrics_window, (bool)perfMetrics_fps, (bool)perfMetrics_latency,
+                (bool)perfMetrics_slop, (bool)perfMetrics_sleep, (bool)perfMetrics_execDelay,
+                (bool)perfMetrics_deviceDelay, (bool)manualLatencyReduction,
+                (double)manualSleepValue)
+
+    EngineOptions()
+      : latencyReduction(false),
+        latencyPool(1),
+        latencyPrediction(0),
+        perfMetrics_window(true),
+        perfMetrics_fps(true),
+        perfMetrics_latency(true),
+        perfMetrics_slop(true),
+        perfMetrics_sleep(true),
+        perfMetrics_execDelay(true),
+        perfMetrics_deviceDelay(true),
+        manualLatencyReduction(false),
+        manualSleepValue(0.0) {}
+};
+
 struct PerformanceCaptureCpuPackage final : public IAutoSerializable<PerformanceCaptureCpuPackage>
 {
     REFLECTABLE((std::string)name, (uint64_t)frameId, (uint32_t)packageId, (double)slopDuration,
@@ -261,6 +284,8 @@ class Engine
     virtual void record(const AcquiredImageData& swapchainData, drv::DrvCmdBufferRecorder* recorder,
                         FrameId frameId) = 0;
     virtual void recordGameUI(FrameId /*frameId*/) {}
+    virtual void recordMenuOptionsUI(FrameId /*frameId*/) {}
+
     virtual void lockResources(TemporalResourceLockerDescriptor& resourceDesc, FrameId frameId) = 0;
     virtual void readback(FrameId frameId) = 0;
     virtual void releaseSwapchainResources() = 0;
@@ -388,6 +413,7 @@ class Engine
     RuntimeStats runtimeStats;
     EntityManager entityManager;
     std::unique_ptr<ImGuiIniter> imGuiIniter;
+    EngineOptions engineOptions;
 
     NodeId inputSampleNode;
     NodeId mainRecordNode;
@@ -425,6 +451,7 @@ class Engine
     std::atomic<bool> swapchainRecreationPossible = {false};
     std::filesystem::file_time_type workLoadFileModificationDate;
     bool wantToQuit = false;
+    bool latencyOptionsOpen = false;
     mutable std::mutex latencyInfoMutex;
     FrameGraphSlops::LatencyInfo latestLatencyInfo;
 
@@ -435,7 +462,8 @@ class Engine
     StatCalculator<32> latencyStats;
     StatCalculator<32> slopStats;
     StatCalculator<32> waitTimeStats;
-    bool performLatencySleep = false;
+    StatCalculator<32> execDelayStats;
+    StatCalculator<32> deviceDelayStats;
 
     struct SubmissionTimestampsInfo
     {

@@ -2,6 +2,8 @@
 
 #include <optional>
 
+#include <imgui.h>
+
 #include <util.hpp>
 
 #include <drverror.h>
@@ -78,9 +80,23 @@ Game::Game(int argc, char* argv[], const EngineConfig& config,
     initRenderEntitySystem();
 
     buildFrameGraph();
+
+    fs::path optionsPath = fs::path{"gameOptions.json"};
+    if (fs::exists(optionsPath)) {
+        try {
+            gameOptions.importFromFile(optionsPath);
+        }
+        catch (...) {
+            gameOptions = {};
+        }
+    }
 }
 
 Game::~Game() {
+    fs::path optionsPath = fs::path{"gameOptions.json"};
+    if (!fs::exists(optionsPath))
+        fs::create_directories(optionsPath.parent_path());
+    gameOptions.exportToFile(optionsPath);
 }
 
 static ShaderObject::DynamicState get_dynamic_states(drv::Extent2D extent) {
@@ -109,7 +125,8 @@ void Game::recordCmdBufferClear(const AcquiredImageData& swapchainData,
         clearValue = drv::ClearColorValue(0.f, 1.f, 1.f, 1.f);
         shaderTestDesc.setVariant_Color(shader_test_descriptor::Color::RED);
     }
-    mandelbrotDesc.setVariant_Quality(shader_mandelbrot_descriptor::Quality::QUALITY10);
+    mandelbrotDesc.setVariant_Quality(
+      static_cast<shader_mandelbrot_descriptor::Quality>(gameOptions.mandelBrotLevel));
 
     recorder->cmdClearImage(swapchainData.image, &clearValue);
 
@@ -511,4 +528,16 @@ void Game::createSwapchainResources(const drv::Swapchain& swapchain) {
                                                    globalDesc, {});
 
     initImGui(testRenderPass.get());
+}
+
+void Game::recordMenuOptionsUI(FrameId frameId) {
+    if (ImGui::BeginMenu("Mandelbrot level")) {
+        int from = static_cast<int>(shader_mandelbrot_descriptor::Quality::QUALITY1);
+        int to = static_cast<int>(shader_mandelbrot_descriptor::Quality::QUALITY10);
+        char label[128];
+        for (int i = from; i <= to; ++i) {
+            sprintf(label, "Quality %d", i + 1);
+            ImGui::RadioButton(label, &gameOptions.mandelBrotLevel, i);
+        }
+    }
 }

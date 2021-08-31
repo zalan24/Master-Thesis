@@ -67,6 +67,8 @@ Get a triangle on screen:
         ☐ Add an engine config param for min slop
         ☐ If latency reduction is turned on and predicted latency value is higher, than min latency, sleep
 
+    ☐ Replace resource descriptions in framegraph node queries with resource descriptor providers (which only determines physical resources after node's dependency wait)
+
 
 Cleanup & other:
     ☐ Remove useless common driver stuff (drv/common)

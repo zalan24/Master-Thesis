@@ -8,10 +8,18 @@
 #include <engine.h>
 #include <imagestager.h>
 #include <shaderregistry.h>
+#include <serializable.h>
 
 #include <shader_inputatchm.h>
 #include <shader_mandelbrot.h>
 #include <shader_test.h>
+
+struct GameOptions final : public IAutoSerializable<GameOptions>
+{
+    REFLECTABLE((int) mandelBrotLevel)
+
+    GameOptions() : mandelBrotLevel(1) {}
+};
 
 class Game final : public Game3D
 {
@@ -30,6 +38,8 @@ class Game final : public Game3D
     void readback(FrameId frameId) override;
     void releaseSwapchainResources() override;
     void createSwapchainResources(const drv::Swapchain& swapchain) override;
+
+    void recordMenuOptionsUI(FrameId frameId) override;
 
  private:
     ShaderHeaderRegistry shaderHeaders;
@@ -55,6 +65,7 @@ class Game final : public Game3D
     std::vector<res::Framebuffer> swapchainFrameBuffers;
     res::ImageSet renderTarget;
     res::ImageView renderTargetView;
+    GameOptions gameOptions;
 
     res::ImageSet transferTexture;
     ImageStager testImageStager;

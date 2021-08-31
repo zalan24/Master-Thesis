@@ -271,6 +271,16 @@ Engine::Engine(int argc, char* argv[], const EngineConfig& cfg,
     drv::sync_gpu_clock(drvInstance, physicalDevice, device);
     nextTimelineCalibration =
       drv::Clock::now() + std::chrono::milliseconds(firstTimelineCalibrationTimeMs);
+
+    fs::path optionsPath = fs::path{"engineOptions.json"};
+    if (fs::exists(optionsPath)) {
+        try {
+            engineOptions.importFromFile(optionsPath);
+        }
+        catch (...) {
+            engineOptions = {};
+        }
+    }
 }
 
 void Engine::buildFrameGraph() {
@@ -460,6 +470,10 @@ void Engine::initCursorEntitySystem() {
 }
 
 Engine::~Engine() {
+    fs::path optionsPath = fs::path{"engineOptions.json"};
+    if (!fs::exists(optionsPath))
+        fs::create_directories(optionsPath.parent_path());
+    engineOptions.exportToFile(optionsPath);
     garbageSystem.releaseAll();
     inputManager.unregisterListener(&mouseListener);
     LOG_ENGINE("Engine closed");
@@ -470,21 +484,27 @@ bool Engine::sampleInput(FrameId frameId) {
       frameGraph.acquireNode(inputSampleNode, FrameGraph::SIMULATION_STAGE, frameId);
     if (!inputHandle)
         return false;
-    if (performLatencySleep) {
-        // TODO add these to imgui and save them between sessions
-        double minMaxLerp = 0;
-        double latencyPoolMs = 32;
+    if (engineOptions.latencyReduction) {
+        double sleepTimeMs = 0;
 
-        FrameGraphSlops::LatencyInfo latencyInfo;
-        {
-            std::unique_lock<std::mutex> lock(latencyInfoMutex);
-            latencyInfo = latestLatencyInfo;
+        if (!engineOptions.manualLatencyReduction) {
+            double minMaxLerp = engineOptions.latencyPrediction;
+            double latencyPoolMs = engineOptions.latencyPool*;
+
+            FrameGraphSlops::LatencyInfo latencyInfo;
+            {
+                std::unique_lock<std::mutex> lock(latencyInfoMutex);
+                latencyInfo = latestLatencyInfo;
+            }
+
+            double prevSleepTime = double(latencyInfo.inputSlop.sleepTimeNs) / 1000000.0;
+            double expectedSlopMs = ::lerp(double(latencyInfo.slopMin) / 1000000.0,
+                                           double(latencyInfo.slopMax) / 1000000.0, minMaxLerp);
+            sleepTimeMs = std::max(expectedSlopMs - latencyPoolMs + prevSleepTime, 0.0);
         }
-
-        double prevSleepTime = double(latencyInfo.inputSlop.sleepTimeNs) / 1000000.0;
-        double expectedSlopMs = ::lerp(double(latencyInfo.slopMin) / 1000000.0,
-                                       double(latencyInfo.slopMax) / 1000000.0, minMaxLerp);
-        double sleepTimeMs = std::max(expectedSlopMs - latencyPoolMs + prevSleepTime, 0.0);
+        else {
+            sleepTimeMs = engineOptions.manualSleepValue;
+        }
         waitTimeStats.feed(sleepTimeMs);
         {
             auto timer = inputHandle.getLatencySleepTimer();
@@ -1219,6 +1239,9 @@ void Engine::readbackLoop(volatile bool* finished) {
             fpsStats.feed(1000.0 / frameTimeMs);
             latencyStats.feed(double(latestLatencyInfo.inputSlop.latencyNs) / 1000000.0);
             slopStats.feed(double(latestLatencyInfo.inputSlop.totalSlopNs) / 1000000.0);
+
+            execDelayStats.feed();
+            deviceDelayStats.feed();
 
             if (perfCaptureFrame != INVALID_FRAME
                 && perfCaptureFrame + frameGraph.getMaxFramesInFlight() <= readbackFrame) {
@@ -1965,12 +1988,45 @@ void Engine::createPerformanceCapture(FrameId targetFrame) {
     perfCaptureFrame = targetFrame;
 }
 
+static void HelpMarker(const char* desc) {
+    ImGui::TextDisabled("(?)");
+    if (ImGui::IsItemHovered()) {
+        ImGui::BeginTooltip();
+        ImGui::PushTextWrapPos(ImGui::GetFontSize() * 35.0f);
+        ImGui::TextUnformatted(desc);
+        ImGui::PopTextWrapPos();
+        ImGui::EndTooltip();
+    }
+}
+
 void Engine::drawUI(FrameId frameId) {
     if (ImGui::BeginMainMenuBar()) {
         if (ImGui::BeginMenu("File")) {
             if (ImGui::MenuItem("Quit", "Alt+F4")) {
                 wantToQuit = true;
             }
+            ImGui::EndMenu();
+        }
+        if (ImGui::BeginMenu("Options")) {
+            ImGui::MenuItem("Latency", nullptr, &latencyOptionsOpen);
+            ImGui::EndMenu();
+        }
+        if (ImGui::BeginMenu("View")) {
+            if (ImGui::BeginMenu("PerfMetrics")) {
+                ImGui::Checkbox("Show perf metrics window", &engineOptions.perfMetrics_window);
+                ImGui::Separator();
+                ImGui::Checkbox("Fps", &engineOptions.perfMetrics_fps);
+                ImGui::Checkbox("Latency", &engineOptions.perfMetrics_latency);
+                ImGui::Checkbox("Slop", &engineOptions.perfMetrics_slop);
+                ImGui::Checkbox("Latency sleep", &engineOptions.perfMetrics_sleep);
+                ImGui::Checkbox("Execution delay", &engineOptions.perfMetrics_execDelay);
+                ImGui::Checkbox("Device delay", &engineOptions.perfMetrics_deviceDelay);
+                ImGui::EndMenu();
+            }
+            ImGui::EndMenu();
+        }
+        if (ImGui::BeginMenu("Game")) {
+            recordMenuOptionsUI(frameId);
             ImGui::EndMenu();
         }
 
@@ -1980,13 +2036,49 @@ void Engine::drawUI(FrameId frameId) {
         if (latencyStats.hasInfo())
             ImGui::Text("Latency: %3.0lf (~%2.1lf)", latencyStats.getAvg(),
                         latencyStats.getStdDiv());
-        if (slopStats.hasInfo())
-            ImGui::Text("Slop: %3.0lf (~%2.1lf)", slopStats.getAvg(), slopStats.getStdDiv());
-        if (waitTimeStats.hasInfo())
-            ImGui::Text("Sleep: %3.0f (~%2.1lf)", waitTimeStats.getAvg(),
-                        waitTimeStats.getStdDiv());
-        ImGui::Checkbox("Reduce latency", &performLatencySleep);
+        ImGui::Checkbox("Reduce latency", &engineOptions.latencyReduction);
         ImGui::EndMainMenuBar();
+    }
+
+    if (ImGui::Begin("Performance metrics", &engineOptions.perfMetrics_window, 0)) {
+        if (engineOptions.perfMetrics_fps && fpsStats.hasInfo())
+            ImGui::Text("Fps:             %3.0lf (~%2.1lf)", fpsStats.getAvg(),
+                        fpsStats.getStdDiv());
+        if (engineOptions.perfMetrics_latency && latencyStats.hasInfo())
+            ImGui::Text("Latency:         %3.0lf (~%2.1lf)", latencyStats.getAvg(),
+                        latencyStats.getStdDiv());
+        if (engineOptions.perfMetrics_slop && slopStats.hasInfo())
+            ImGui::Text("Slop:            %3.0lf (~%2.1lf)", slopStats.getAvg(),
+                        slopStats.getStdDiv());
+        if (engineOptions.perfMetrics_sleep && waitTimeStats.hasInfo())
+            ImGui::Text("Sleep:           %3.0f (~%2.1lf)", waitTimeStats.getAvg(),
+                        waitTimeStats.getStdDiv());
+        if (engineOptions.perfMetrics_execDelay && execDelayStats.hasInfo())
+            ImGui::Text("Execution delay: %3.0f (~%2.1lf)", execDelayStats.getAvg(),
+                        execDelayStats.getStdDiv());
+        if (engineOptions.perfMetrics_deviceDelay && deviceDelayStats.hasInfo())
+            ImGui::Text("Device delay:    %3.0f (~%2.1lf)", deviceDelayStats.getAvg(),
+                        deviceDelayStats.getStdDiv());
+
+        ImGui::End();
+    }
+
+    if (ImGui::Begin("Latency options", &latencyOptionsOpen, 0)) {
+        ImGui::Checkbox("Latency reduction    ", &engineOptions.latencyReduction);
+        ImGui::InputDouble("Latency pool      ", &engineOptions.latencyPool, 0.0, 2.0, "%.8lf");
+        ImGui::SameLine();
+        HelpMarker("Measured in frames, not milliseconds");
+        ImGui::InputDouble("Latency prediction", &engineOptions.latencyPrediction, 0.0, 1.0,
+                           "%.8lf");
+        ImGui::SameLine();
+        HelpMarker("Between lerp min and max values in history");
+        ImGui::Checkbox("Manual latency sleep ", &engineOptions.manualLatencyReduction);
+        ImGui::InputDouble("Manual sleep value", &engineOptions.manualSleepValue, 0.0, 200.0,
+                           "%.1lf");
+        ImGui::SameLine();
+        HelpMarker("In milliseconds");
+
+        ImGui::End();
     }
 
     recordGameUI(frameId);
