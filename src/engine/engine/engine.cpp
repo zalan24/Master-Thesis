@@ -2067,8 +2067,8 @@ void Engine::drawUI(FrameId frameId) {
         ImGui::EndMainMenuBar();
     }
 
-    if (engineOptions.perfMetrics_window
-        && ImGui::Begin("Performance metrics", &engineOptions.perfMetrics_window, 0)) {
+    if (engineOptions.perfMetrics_window) {
+        ImGui::Begin("Performance metrics", &engineOptions.perfMetrics_window, 0);
         if (engineOptions.perfMetrics_fps && fpsStats.hasInfo())
             ImGui::Text("Fps:             %3.0lf (~%4.1lf)", fpsStats.getAvg(),
                         fpsStats.getStdDiv());
@@ -2078,6 +2078,9 @@ void Engine::drawUI(FrameId frameId) {
         if (engineOptions.perfMetrics_slop && slopStats.hasInfo())
             ImGui::Text("Slop:            %3.0lf (~%4.1lf)", slopStats.getAvg(),
                         slopStats.getStdDiv());
+        if (engineOptions.perfMetrics_perFrameSlop && perFrameSlopStats.hasInfo())
+            ImGui::Text("Per frame slop:  %3.0lf (~%4.1lf)", perFrameSlopStats.getAvg(),
+                        perFrameSlopStats.getStdDiv());
         if (engineOptions.perfMetrics_sleep && waitTimeStats.hasInfo())
             ImGui::Text("Sleep:           %3.0f (~%4.1lf)", waitTimeStats.getAvg(),
                         waitTimeStats.getStdDiv());
@@ -2091,7 +2094,8 @@ void Engine::drawUI(FrameId frameId) {
         ImGui::End();
     }
 
-    if (latencyOptionsOpen && ImGui::Begin("Latency options", &latencyOptionsOpen, 0)) {
+    if (latencyOptionsOpen) {
+        ImGui::Begin("Latency options", &latencyOptionsOpen, 0);
         ImGui::Checkbox("Latency reduction    ", &engineOptions.latencyReduction);
         ImGui::InputDouble("Latency pool      ", &engineOptions.latencyPool, 0.0, 2.0, "%.8lf");
         ImGui::SameLine();
