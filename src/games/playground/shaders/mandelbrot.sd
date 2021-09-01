@@ -91,15 +91,19 @@ ps {
                 break;
             }
         }
+        vec3 exitColor = vec3(0.0, 0.0, 0.0);
+        vec3 midColor = vec3(1.0, 0.0, 0.0);
+        vec3 peakColor = vec3(1.0, 1.0, 1.0);
         if (exit == 0) {
-            outColor = vec4(0.0, 0.0, 0.0, 1.0);
+            outColor = vec4(exitColor, 1.0);
         } else {
-            if (exit < iterations/2) {
-                float f = float(exit) / float((iterations/2)+1);
-                outColor = mix(vec4(0.0, 0.0, 0.0, 1.0), vec4(1.0, 0.0, 0.0, 1.0), f);
+            float f = log(float(exit)) / log(float(iterations));
+            if (f < 0.5) {
+                f = f*2;
+                outColor = mix(vec4(exitColor, 1.0), vec4(midColor, 1.0), f);
             } else {
-                float f = float(exit-(iterations/2)) / float((iterations/2)+1);
-                outColor = mix(vec4(1.0, 0.0, 0.0, 1.0), vec4(1.0, 1.0, 1.0, 1.0), f);
+                f = (f-0.5)*2;
+                outColor = mix(vec4(midColor, 1.0), vec4(peakColor, 1.0), f);
             }
         }
     }

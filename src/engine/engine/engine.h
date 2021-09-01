@@ -445,6 +445,7 @@ class Engine
     mutable std::mutex mainKernelMutex;
     mutable std::mutex swapchainRecreationMutex;
     mutable std::mutex inputWaitMutex;
+    mutable std::mutex inputSamplingMutex;
     std::condition_variable mainKernelCv;
     std::condition_variable waitForInputCv;
     std::condition_variable mainKernelSwapchainCv;

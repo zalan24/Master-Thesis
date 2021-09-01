@@ -705,9 +705,6 @@ void Engine::beforeDrawLoop() {
         if (FrameGraph::NodeHandle nodeHandle = getFrameGraph().acquireNode(
               mainRecordNode, FrameGraph::BEFORE_DRAW_STAGE, beforeDrawFrame);
             nodeHandle) {
-            window->newImGuiFrame(beforeDrawFrame);
-            drawUI(beforeDrawFrame);
-            window->recordImGui(beforeDrawFrame);
         }
         if (!frameGraph.endStage(FrameGraph::BEFORE_DRAW_STAGE, beforeDrawFrame)) {
             assert(frameGraph.isStopped());
@@ -1372,7 +1369,10 @@ void Engine::mainLoopKernel() {
     std::unique_lock<std::mutex> lock(mainKernelMutex);
     mainKernelCv.wait_for(lock, std::chrono::milliseconds(4));
     runtimeStats.incrementInputSample();
-    static_cast<IWindow*>(window)->pollEvents();
+    {
+        std::unique_lock<std::mutex> samplingLock(inputSamplingMutex);
+        static_cast<IWindow*>(window)->pollEvents();
+    }
     waitForInputCv.notify_one();
 
     if (garbageSystem.getStartedFrame() != INVALID_FRAME) {
@@ -1727,6 +1727,10 @@ Engine::ImGuiIniter::~ImGuiIniter() {
 
 void Engine::recordImGui(const AcquiredImageData&, drv::DrvCmdBufferRecorder* recorder,
                          FrameId frame) {
+    std::unique_lock<std::mutex> lock(inputSamplingMutex);
+    window->newImGuiFrame(frame);
+    drawUI(frame);
+    window->recordImGui(frame);
     window->drawImGui(frame, recorder->getCommandBuffer());
 }
 
