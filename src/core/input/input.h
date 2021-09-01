@@ -146,7 +146,7 @@ class Input
             RELEASE
         } type;
         int buttonId;
-        // GLFW has modifier keys here. They could be added if necessary
+        int mods;
     };
     struct ScrollEvent
     {
@@ -163,7 +163,23 @@ class Input
         } type;
         int key;
         int scancode;
-        // GLFW has modifier keys here. They could be added if necessary
+        int mods;
+    };
+    struct WindowFocusEvent
+    {
+        int focus;
+    };
+    struct CursorEnterEvent
+    {
+        int entered;
+    };
+    struct CharEvent
+    {
+        unsigned int c;
+    };
+    struct MonitorEvent
+    {
+        int monitor;
     };
     struct InputEvent
     {
@@ -172,7 +188,11 @@ class Input
             MOUSE_MOVE,
             MOUSE_BUTTON,
             KEYBOARD,
-            SCROLL
+            SCROLL,
+            WINDOW_FOCUS,
+            CURSOR_ENTERED,
+            CHAR_EVENT,
+            MONITOR
         } type;
         union Event
         {
@@ -180,6 +200,10 @@ class Input
             MouseButtenEvent mouseButton;
             KeyboardEvent keyboard;
             ScrollEvent scroll;
+            WindowFocusEvent windowFocus;
+            CursorEnterEvent cursorEntered;
+            CharEvent charEvent;
+            MonitorEvent monitor;
         } event;
     };
 
@@ -189,6 +213,10 @@ class Input
     void pushMouseButton(MouseButtenEvent&& event);
     void pushKeyboard(KeyboardEvent&& event);
     void pushScroll(ScrollEvent&& event);
+    void pushWindowFocus(WindowFocusEvent&& event);
+    void pushCursorEntered(CursorEnterEvent&& event);
+    void pushChar(CharEvent&& event);
+    void pushMonitor(MonitorEvent&& event);
 
     bool popEvent(InputEvent& event);
 

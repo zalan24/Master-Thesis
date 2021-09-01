@@ -65,6 +65,7 @@ class VulkanWindow final : public IWindow
                    drv::QueuePtr transferQueue, drv::RenderPass* renderpass,
                    uint32_t minSwapchainImages, uint32_t swapchainImages) override;
     void closeImGui() override;
+    std::unique_ptr<InputListener> createImGuiInputListener() override;
 
     VkSurfaceKHR getSurface();
 

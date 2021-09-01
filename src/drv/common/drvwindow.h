@@ -2,6 +2,8 @@
 
 #include <drvtypes.h>
 
+#include <inputlistener.h>
+
 namespace drv
 {
 class RenderPass;
@@ -34,9 +36,10 @@ class IWindow
     virtual void recordImGui(uint64_t frame) = 0;
     virtual void drawImGui(uint64_t frame, drv::CommandBufferPtr cmdBuffer) = 0;
     virtual void initImGui(drv::InstancePtr instance, drv::PhysicalDevicePtr physicalDevice,
-                           drv::LogicalDevicePtr device, 
-                           drv::QueuePtr renderQueue,
+                           drv::LogicalDevicePtr device, drv::QueuePtr renderQueue,
                            drv::QueuePtr transferQueue, drv::RenderPass* renderpass,
                            uint32_t minSwapchainImages, uint32_t swapchainImages) = 0;
     virtual void closeImGui() = 0;
+
+    virtual std::unique_ptr<InputListener> createImGuiInputListener() = 0;
 };

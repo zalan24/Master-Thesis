@@ -25,6 +25,10 @@ class InputListener
     virtual bool processMouseButton(const Input::MouseButtenEvent&) { return blockAll; }
     virtual bool processMouseMove(const Input::MouseMoveEvent&) { return blockAll; }
     virtual bool processScroll(const Input::ScrollEvent&) { return blockAll; }
+    virtual bool processWindowFocus(const Input::WindowFocusEvent&) { return blockAll; }
+    virtual bool processCursorEntered(const Input::CursorEnterEvent&) { return blockAll; }
+    virtual bool processChar(const Input::CharEvent&) { return blockAll; }
+    virtual bool processMonitor(const Input::MonitorEvent&) { return blockAll; }
 
  private:
     bool blockAll;

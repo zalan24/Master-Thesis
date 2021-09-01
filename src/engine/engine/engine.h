@@ -385,6 +385,7 @@ class Engine
     Input input;
     InputManager inputManager;
     EngineInputListener mouseListener;
+    std::unique_ptr<InputListener> imGuiInputListener;
     drv::DriverWrapper driver;
     drv::Window window;
     drv::Instance drvInstance;

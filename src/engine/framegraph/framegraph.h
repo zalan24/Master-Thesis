@@ -428,8 +428,6 @@ class FrameGraph
 
         const drv::ResourceLocker::Lock& getLock() const { return lock; }
 
-        static void busy_sleep(std::chrono::microseconds duration);
-
         NodeId getNodeId() const { return node; }
 
         class SlopTimer
@@ -560,6 +558,8 @@ class FrameGraph
     void registerCmdBuffer(drv::CmdBufferId id, NodeId node, StatsCache* statsCacheHandle);
     NodeId getNodeFromCmdBuffer(drv::CmdBufferId id) const;
     StatsCache* getStatsCacheHandle(drv::CmdBufferId id) const;
+
+    static void busy_sleep(std::chrono::microseconds duration);
 
     struct QueueSyncData
     {

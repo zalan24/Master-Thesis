@@ -266,7 +266,9 @@ Engine::Engine(int argc, char* argv[], const EngineConfig& cfg,
 
     frameGraph.addAllGpuCompleteDependency(presentFrameNode, FrameGraph::RECORD_STAGE,
                                            presentDepOffset);
-    inputManager.registerListener(&mouseListener, 100);
+    imGuiInputListener = window->createImGuiInputListener();
+    inputManager.registerListener(imGuiInputListener.get(), 100);
+    inputManager.registerListener(&mouseListener, 99);
 
     drv::sync_gpu_clock(drvInstance, physicalDevice, device);
     nextTimelineCalibration =
@@ -476,6 +478,7 @@ Engine::~Engine() {
     engineOptions.exportToFile(optionsPath);
     garbageSystem.releaseAll();
     inputManager.unregisterListener(&mouseListener);
+    inputManager.unregisterListener(imGuiInputListener.get());
     LOG_ENGINE("Engine closed");
 }
 
@@ -509,7 +512,7 @@ bool Engine::sampleInput(FrameId frameId) {
         waitTimeStats.feed(sleepTimeMs);
         {
             auto timer = inputHandle.getLatencySleepTimer();
-            std::this_thread::sleep_for(std::chrono::nanoseconds(int64_t(sleepTimeMs * 1000000.0)));
+            FrameGraph::busy_sleep(std::chrono::microseconds(int64_t(sleepTimeMs * 1000.0)));
         }
     }
     else {

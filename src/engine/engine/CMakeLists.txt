@@ -15,7 +15,7 @@ target_link_libraries(EngineLib PUBLIC
     # AnimationsAssetLoaders
     AnimationsDrv
     # AnimationsResources
-    AnimationsInput
+    InputLib
     EngineCmdBuffer
     EngineOneTimeCmdBuffer
     ShaderManager

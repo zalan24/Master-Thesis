@@ -20,4 +20,5 @@ target_link_libraries(DrvCommon PUBLIC
     SerializableLib
     FeaturesLib
     Logging
+    InputLib
 )

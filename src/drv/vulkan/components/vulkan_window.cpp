@@ -51,6 +51,69 @@ void VulkanWindow::error_callback [[noreturn]] (int, const char* description) {
     throw std::runtime_error("Error: " + std::string{description});
 }
 
+class VulkanGlfwImGuiInputListener final : public InputListener
+{
+ public:
+    VulkanGlfwImGuiInputListener(GLFWwindow* _window) : InputListener(false), window(_window) {}
+    ~VulkanGlfwImGuiInputListener() override {}
+
+    CursorMode getCursorMode() override final { return DONT_CARE; }
+
+ protected:
+    bool processKeyboard(const Input::KeyboardEvent& e) override {
+        int action = 0;
+        switch (e.type) {
+            case Input::KeyboardEvent::PRESS:
+                action = GLFW_PRESS;
+                break;
+            case Input::KeyboardEvent::RELEASE:
+                action = GLFW_RELEASE;
+                break;
+            case Input::KeyboardEvent::REPEAT:
+                action = GLFW_REPEAT;
+                break;
+        }
+        ImGui_ImplGlfw_KeyCallback(window, e.key, e.scancode, action, e.mods);
+        return false;
+    }
+    bool processMouseButton(const Input::MouseButtenEvent& e) override {
+        int action = e.type == Input::MouseButtenEvent::PRESS ? GLFW_PRESS : GLFW_RELEASE;
+        ImGui_ImplGlfw_MouseButtonCallback(window, e.buttonId, action, e.mods);
+        return false;
+    }
+    bool processScroll(const Input::ScrollEvent& e) override {
+        ImGui_ImplGlfw_ScrollCallback(window, e.x, e.y);
+        return false;
+    }
+    bool processWindowFocus(const Input::WindowFocusEvent& e) override {
+        ImGui_ImplGlfw_WindowFocusCallback(window, e.focus);
+        return false;
+    }
+
+    bool processCursorEntered(const Input::CursorEnterEvent& e) override {
+        ImGui_ImplGlfw_CursorEnterCallback(window, e.entered);
+        return false;
+    }
+
+    bool processChar(const Input::CharEvent& e) override {
+        ImGui_ImplGlfw_CharCallback(window, e.c);
+        return false;
+    }
+
+    // TODO
+    // bool processMonitor(const Input::MonitorEvent& e) override {
+    //     ImGui_ImplGlfw_MonitorCallback(e.monitor);
+    //     return false;
+    // }
+
+ private:
+    GLFWwindow* window;
+};
+
+std::unique_ptr<InputListener> VulkanWindow::createImGuiInputListener() {
+    return std::make_unique<VulkanGlfwImGuiInputListener>(window.get());
+}
+
 SwapChainSupportDetails drv_vulkan::query_swap_chain_support(drv::PhysicalDevicePtr physicalDevice,
                                                              VkSurfaceKHR surface) {
     VkPhysicalDevice vkPhysicalDevice = drv::resolve_ptr<VkPhysicalDevice>(physicalDevice);
@@ -79,7 +142,6 @@ SwapChainSupportDetails drv_vulkan::query_swap_chain_support(drv::PhysicalDevice
 }
 
 void VulkanWindow::key_callback(GLFWwindow* window, int key, int scancode, int action, int mods) {
-    ImGui_ImplGlfw_KeyCallback(window, key, scancode, action, mods);
     Input::KeyboardEvent event;
     switch (action) {
         case GLFW_PRESS:
@@ -96,6 +158,7 @@ void VulkanWindow::key_callback(GLFWwindow* window, int key, int scancode, int a
     }
     event.key = key;
     event.scancode = scancode;
+    event.mods = mods;
     VulkanWindow* instance = static_cast<VulkanWindow*>(glfwGetWindowUserPointer(window));
     instance->input->pushKeyboard(std::move(event));
 }
@@ -117,17 +180,16 @@ void VulkanWindow::cursor_position_callback(GLFWwindow* window, double xpos, dou
 }
 
 void VulkanWindow::mouse_button_callback(GLFWwindow* window, int button, int action, int mods) {
-    ImGui_ImplGlfw_MouseButtonCallback(window, button, action, mods);
     Input::MouseButtenEvent event;
     event.type =
       action == GLFW_PRESS ? Input::MouseButtenEvent::PRESS : Input::MouseButtenEvent::RELEASE;
     event.buttonId = button;
+    event.mods = mods;
     VulkanWindow* instance = static_cast<VulkanWindow*>(glfwGetWindowUserPointer(window));
     instance->input->pushMouseButton(std::move(event));
 }
 
 void VulkanWindow::scroll_callback(GLFWwindow* window, double xoffset, double yoffset) {
-    ImGui_ImplGlfw_ScrollCallback(window, xoffset, yoffset);
     Input::ScrollEvent event;
     event.x = xoffset;
     event.y = yoffset;
@@ -136,19 +198,34 @@ void VulkanWindow::scroll_callback(GLFWwindow* window, double xoffset, double yo
 }
 
 void VulkanWindow::window_focus_callback(GLFWwindow* window, int focused) {
-    ImGui_ImplGlfw_WindowFocusCallback(window, focused);
+    Input::WindowFocusEvent event;
+    event.focus = focused;
+    VulkanWindow* instance = static_cast<VulkanWindow*>(glfwGetWindowUserPointer(window));
+    instance->input->pushWindowFocus(std::move(event));
 }
 
 void VulkanWindow::cursor_enter_callback(GLFWwindow* window, int entered) {
-    ImGui_ImplGlfw_CursorEnterCallback(window, entered);
+    Input::CursorEnterEvent event;
+    event.entered = entered;
+    VulkanWindow* instance = static_cast<VulkanWindow*>(glfwGetWindowUserPointer(window));
+    instance->input->pushCursorEntered(std::move(event));
 }
 
 void VulkanWindow::char_callback(GLFWwindow* window, unsigned int c) {
-    ImGui_ImplGlfw_CharCallback(window, c);
+    Input::CharEvent event;
+    event.c = c;
+    VulkanWindow* instance = static_cast<VulkanWindow*>(glfwGetWindowUserPointer(window));
+    instance->input->pushChar(std::move(event));
 }
 
-void VulkanWindow::monitor_callback(GLFWmonitor* window, int event) {
-    ImGui_ImplGlfw_MonitorCallback(window, event);
+void VulkanWindow::monitor_callback(GLFWmonitor* monitor, int e) {
+    UNUSED(monitor);
+    UNUSED(e);
+    // TODO
+    // Input::MonitorEvent event;
+    // event.monitor = e;
+    // VulkanWindow* instance = static_cast<VulkanWindow*>(glfwGetWindowUserPointer(window));
+    // instance->input->pushMonitor(std::move(event));
 }
 
 const char* const* VulkanWindow::get_required_extensions(uint32_t& count) {

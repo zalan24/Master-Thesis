@@ -31,6 +31,34 @@ void Input::pushScroll(ScrollEvent&& event) {
     eventQueue.try_enqueue(std::move(e));
 }
 
+void Input::pushWindowFocus(WindowFocusEvent&& event) {
+    InputEvent e;
+    e.type = InputEvent::WINDOW_FOCUS;
+    e.event.windowFocus = std::move(event);
+    eventQueue.try_enqueue(std::move(e));
+}
+
+void Input::pushCursorEntered(CursorEnterEvent&& event) {
+    InputEvent e;
+    e.type = InputEvent::CURSOR_ENTERED;
+    e.event.cursorEntered = std::move(event);
+    eventQueue.try_enqueue(std::move(e));
+}
+
+void Input::pushChar(CharEvent&& event) {
+    InputEvent e;
+    e.type = InputEvent::CHAR_EVENT;
+    e.event.charEvent = std::move(event);
+    eventQueue.try_enqueue(std::move(e));
+}
+
+void Input::pushMonitor(MonitorEvent&& event) {
+    InputEvent e;
+    e.type = InputEvent::MONITOR;
+    e.event.monitor = std::move(event);
+    eventQueue.try_enqueue(std::move(e));
+}
+
 bool Input::popEvent(InputEvent& event) {
     return eventQueue.try_dequeue(event);
 }

@@ -611,7 +611,7 @@ FrameGraph::NodeHandle::NodeHandle(FrameGraph* _frameGraph, NodeId _node, Stage 
     float startWorkLoad = nodePtr->getWorkLoad(stage).preLoad;
     uint64_t usec = static_cast<uint64_t>(startWorkLoad * 1000);
     if (usec > 0)
-        busy_sleep(std::chrono::microseconds(usec));
+        FrameGraph::busy_sleep(std::chrono::microseconds(usec));
 }
 
 FrameGraph::Node& FrameGraph::NodeHandle::getNode() const {
@@ -1137,7 +1137,7 @@ void FrameGraph::NodeHandle::close() {
         float finishWorkLoad = frameGraph->getNode(node)->getWorkLoad(stage).postLoad;
         uint64_t usec = static_cast<uint64_t>(finishWorkLoad * 1000);
         if (usec > 0)
-            busy_sleep(std::chrono::microseconds(usec));
+            FrameGraph::busy_sleep(std::chrono::microseconds(usec));
         frameGraph->getNode(node)->registerFinish(stage, frameId);
         frameGraph->release(*this);
         frameGraph = nullptr;
@@ -1390,7 +1390,7 @@ ArtificialWorkLoad FrameGraph::Node::getWorkLoad(Stage stage) const {
     return workLoads[get_stage_id(stage)];
 }
 
-void FrameGraph::NodeHandle::busy_sleep(std::chrono::microseconds duration) {
+void FrameGraph::busy_sleep(std::chrono::microseconds duration) {
     FrameGraph::Clock::time_point startTime = FrameGraph::Clock::now();
     while (FrameGraph::Clock::now() - startTime < duration)
         ;
