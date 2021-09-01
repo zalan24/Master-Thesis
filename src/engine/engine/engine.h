@@ -58,9 +58,9 @@ struct EngineOptions final : public IAutoSerializable<EngineOptions>
 {
     REFLECTABLE((bool)latencyReduction, (double)latencyPool, (double)latencyPrediction,
                 (bool)perfMetrics_window, (bool)perfMetrics_fps, (bool)perfMetrics_latency,
-                (bool)perfMetrics_slop, (bool)perfMetrics_sleep, (bool)perfMetrics_execDelay,
-                (bool)perfMetrics_deviceDelay, (bool)manualLatencyReduction,
-                (double)manualSleepValue)
+                (bool)perfMetrics_slop, (bool)perfMetrics_perFrameSlop, (bool)perfMetrics_sleep,
+                (bool)perfMetrics_execDelay, (bool)perfMetrics_deviceDelay,
+                (bool)manualLatencyReduction, (double)manualSleepValue)
 
     EngineOptions()
       : latencyReduction(false),
@@ -70,6 +70,7 @@ struct EngineOptions final : public IAutoSerializable<EngineOptions>
         perfMetrics_fps(true),
         perfMetrics_latency(true),
         perfMetrics_slop(true),
+        perfMetrics_perFrameSlop(true),
         perfMetrics_sleep(true),
         perfMetrics_execDelay(true),
         perfMetrics_deviceDelay(true),
@@ -462,6 +463,7 @@ class Engine
     StatCalculator<32> fpsStats;
     StatCalculator<32> latencyStats;
     StatCalculator<32> slopStats;
+    StatCalculator<32> perFrameSlopStats;
     StatCalculator<32> waitTimeStats;
     StatCalculator<32> execDelayStats;
     StatCalculator<32> deviceDelayStats;

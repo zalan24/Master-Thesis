@@ -110,6 +110,13 @@ class FrameGraphSlops final : public SlopGraph
     void addImplicitDependency(SlopNodeId from, SlopNodeId to, int64_t offsetNs);
     void addDeviceDependency(SlopNodeId from, SlopNodeId to);
 
+struct LatencyTimeInfo
+    {
+        int64_t totalSlopNs;
+        int64_t perFrameSlopNs;
+        int64_t execDelayNs;
+        int64_t deviceDelayNs;
+    };
     struct LatencyInfo
     {
         FrameId frame = INVALID_FRAME;
@@ -118,6 +125,7 @@ class FrameGraphSlops final : public SlopGraph
         int64_t slopMax = 0;
         int64_t slopStdDiv = 0;
         FeedbackInfo inputSlop;
+        LatencyTimeInfo frameLatencyInfo;
     };
 
     LatencyInfo calculateSlop(FrameId frame, bool feedbackNodes);
@@ -129,7 +137,7 @@ class FrameGraphSlops final : public SlopGraph
     SlopNodeId inputNode = INVALID_SLOP_NODE;
     SlopNodeId presentNodeId = INVALID_SLOP_NODE;
     FrameId currentFrame;
-    std::vector<int64_t> slopHistory;
+    std::vector<LatencyTimeInfo> slopHistory;
 
     struct SubmissionData
     {

@@ -64,8 +64,8 @@ Get a triangle on screen:
             ✘ When a node needs to wait on a delayed node, slop is negative!!! @cancelled (8/28/2021, 12:35:38 PM)
         ✔ Framegraph should check slop history for the input node when calculating latency @done (8/28/2021, 1:25:37 PM)
             ✔ Return statistics about it (avg, min, max, spread, etc.) @done (8/28/2021, 1:25:39 PM)
-        ☐ Add an engine config param for min slop
-        ☐ If latency reduction is turned on and predicted latency value is higher, than min latency, sleep
+        ✔ Add an engine config param for min slop @done (9/1/2021, 11:12:35 AM)
+        ✔ If latency reduction is turned on and predicted latency value is higher, than min latency, sleep @done (9/1/2021, 11:12:31 AM)
 
     ☐ Replace resource descriptions in framegraph node queries with resource descriptor providers (which only determines physical resources after node's dependency wait)
 

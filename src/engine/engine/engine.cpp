@@ -491,6 +491,10 @@ bool Engine::sampleInput(FrameId frameId) {
         double sleepTimeMs = 0;
 
         if (!engineOptions.manualLatencyReduction) {
+            // slop = perFrameSlop + (execDelay + deviceDelay) + error
+
+            /// ---
+
             double frameTime = 1000.0 / fpsStats.getAvg();
             double minMaxLerp = engineOptions.latencyPrediction;
             double latencyPoolMs = engineOptions.latencyPool * frameTime;
@@ -1243,39 +1247,11 @@ void Engine::readbackLoop(volatile bool* finished) {
             fpsStats.feed(1000.0 / frameTimeMs);
             latencyStats.feed(double(latestLatencyInfo.inputSlop.latencyNs) / 1000000.0);
             slopStats.feed(double(latestLatencyInfo.inputSlop.totalSlopNs) / 1000000.0);
-
-            //
-
-            double executionDelay = -1;
-            double deviceDelay = -1;
-
-            const FrameGraph::FrameExecutionPackagesTimings& executionTiming =
-              frameGraph.getExecutionTiming(readbackFrame);
-            if (executionTiming.packages.size() > 0)
-                executionDelay =
-                  double(executionTiming.packages[executionTiming.minDelay].delay.count()) / 1000.0;
-
-            for (NodeId id = 0; id < frameGraph.getNodeCount(); ++id) {
-                const FrameGraph::Node* node = frameGraph.getNode(id);
-                if (node->hasExecution()) {
-                    uint32_t submissionCount = node->getDeviceTimingCount(readbackFrame);
-                    for (uint32_t i = 0; i < submissionCount; ++i) {
-                        FrameGraph::Node::DeviceTiming deviceTiming =
-                          node->getDeviceTiming(readbackFrame, i);
-                        double delay = double(std::chrono::duration_cast<std::chrono::nanoseconds>(
-                                                deviceTiming.start - deviceTiming.submitted)
-                                                .count())
-                                       / 1000000.0;
-                        if (delay < 0)
-                            delay = 0;
-                        if (deviceDelay < 0 || delay < deviceDelay)
-                            deviceDelay = delay;
-                    }
-                }
-            }
-
-            execDelayStats.feed(executionDelay);
-            deviceDelayStats.feed(deviceDelay);
+            perFrameSlopStats.feed(double(latestLatencyInfo.frameLatencyInfo.perFrameSlopNs)
+                                   / 1000000.0);
+            execDelayStats.feed(double(latestLatencyInfo.frameLatencyInfo.execDelayNs) / 1000000.0);
+            deviceDelayStats.feed(double(latestLatencyInfo.frameLatencyInfo.deviceDelayNs)
+                                  / 1000000.0);
 
             if (perfCaptureFrame != INVALID_FRAME
                 && perfCaptureFrame + frameGraph.getMaxFramesInFlight() <= readbackFrame) {

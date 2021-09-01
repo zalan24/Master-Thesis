@@ -1676,6 +1676,7 @@ void FrameGraphSlops::prepare(FrameId _frame) {
     StackMemory::MemoryHandle<NodeOrderInfo> nodeOrder(slopNodeCount, TEMPMEM);
     uint32_t slopNodeInd = 0;
 
+    uint32_t nodeCount = 0;
     for (NodeId id = 0; id < frameGraph->getNodeCount(); ++id) {
         const FrameGraph::Node* node = frameGraph->getNode(id);
         for (uint32_t stageId = 0; stageId < FrameGraph::NUM_STAGES; ++stageId) {
@@ -1696,9 +1697,11 @@ void FrameGraphSlops::prepare(FrameId _frame) {
                 feedInfo(targetNode, infos);
                 nodeOrder[slopNodeInd++] = {infos.startTimeNs, targetNode,
                                             getThreadId(nodeTiming.threadId)};
+                nodeCount++;
             }
         }
     }
+    drv::drv_assert(nodeCount == fixedNodes.size(), "Fixed node counting failed");
 
     for (FrameId frameId = firstFrame; frameId <= lastFrame; ++frameId) {
         const FrameGraph::FrameExecutionPackagesTimings& executionTimings =
@@ -1851,20 +1854,52 @@ FrameGraphSlops::LatencyInfo FrameGraphSlops::calculateSlop(FrameId frame, bool 
     ret.frame = frame;
     ret.inputSlop =
       static_cast<SlopGraph*>(this)->calculateSlop(inputNode, presentNodeId, feedbackNodes);
-    slopHistory[frame % slopHistory.size()] = ret.inputSlop.totalSlopNs;
+    LatencyTimeInfo info;
+    info.totalSlopNs = ret.inputSlop.totalSlopNs;
+    info.execDelayNs = 0;
+    info.deviceDelayNs = -1;
+
+    const FrameGraph::FrameExecutionPackagesTimings& executionTiming =
+      frameGraph->getExecutionTiming(frame);
+    if (executionTiming.packages.size() > 0)
+        info.execDelayNs = std::chrono::duration_cast<std::chrono::nanoseconds>(
+                             executionTiming.packages[executionTiming.minDelay].delay)
+                             .count();
+
+    for (NodeId id = 0; id < frameGraph->getNodeCount(); ++id) {
+        const FrameGraph::Node* node = frameGraph->getNode(id);
+        if (node->hasExecution()) {
+            uint32_t submissionCount = node->getDeviceTimingCount(frame);
+            for (uint32_t i = 0; i < submissionCount; ++i) {
+                FrameGraph::Node::DeviceTiming deviceTiming = node->getDeviceTiming(frame, i);
+                int64_t delay = std::chrono::duration_cast<std::chrono::nanoseconds>(
+                                  deviceTiming.start - deviceTiming.submitted)
+                                  .count();
+                if (delay < 0)
+                    delay = 0;
+                if (info.deviceDelayNs < 0 || delay < info.deviceDelayNs)
+                    info.deviceDelayNs = delay;
+            }
+        }
+    }
+    if (info.deviceDelayNs < 0)
+        info.deviceDelayNs = 0;
+
+    info.perFrameSlopNs = info.totalSlopNs - (info.execDelayNs + info.deviceDelayNs);
+    ret.frameLatencyInfo = slopHistory[frame % slopHistory.size()] = info;
     if (frame >= slopHistory.size()) {
-        ret.slopAvg = slopHistory[0];
-        ret.slopMin = slopHistory[0];
-        ret.slopMax = slopHistory[0];
+        ret.slopAvg = slopHistory[0].perFrameSlopNs;
+        ret.slopMin = slopHistory[0].perFrameSlopNs;
+        ret.slopMax = slopHistory[0].perFrameSlopNs;
         ret.slopStdDiv = 0;
         for (uint32_t i = 1; i < slopHistory.size(); ++i) {
-            ret.slopAvg += slopHistory[i];
-            ret.slopMax = std::max(ret.slopMax, slopHistory[i]);
-            ret.slopMin = std::min(ret.slopMin, slopHistory[i]);
+            ret.slopAvg += slopHistory[i].perFrameSlopNs;
+            ret.slopMax = std::max(ret.slopMax, slopHistory[i].perFrameSlopNs);
+            ret.slopMin = std::min(ret.slopMin, slopHistory[i].perFrameSlopNs);
         }
         ret.slopAvg /= int64_t(slopHistory.size());
         for (uint32_t i = 0; i < slopHistory.size(); ++i) {
-            int64_t diff = ret.slopAvg - slopHistory[i];
+            int64_t diff = ret.slopAvg - slopHistory[i].perFrameSlopNs;
             ret.slopStdDiv += diff * diff;
         }
         ret.slopStdDiv = int64_t(sqrt(ret.slopStdDiv / int64_t(slopHistory.size())));
