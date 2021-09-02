@@ -1885,24 +1885,26 @@ FrameGraphSlops::LatencyInfo FrameGraphSlops::calculateSlop(FrameId frame, bool 
     if (info.deviceDelayNs < 0)
         info.deviceDelayNs = 0;
 
+    info.latencyNs = ret.inputSlop.latencyNs;
+    info.workNs = info.latencyNs - info.totalSlopNs;
     info.perFrameSlopNs = info.totalSlopNs - (info.execDelayNs + info.deviceDelayNs);
     ret.frameLatencyInfo = slopHistory[frame % slopHistory.size()] = info;
     if (frame >= slopHistory.size()) {
-        ret.slopAvg = slopHistory[0].perFrameSlopNs;
-        ret.slopMin = slopHistory[0].perFrameSlopNs;
-        ret.slopMax = slopHistory[0].perFrameSlopNs;
-        ret.slopStdDiv = 0;
+        ret.workAvg = slopHistory[0].workNs;
+        ret.workMin = slopHistory[0].workNs;
+        ret.workMax = slopHistory[0].workNs;
+        ret.workStdDiv = 0;
         for (uint32_t i = 1; i < slopHistory.size(); ++i) {
-            ret.slopAvg += slopHistory[i].perFrameSlopNs;
-            ret.slopMax = std::max(ret.slopMax, slopHistory[i].perFrameSlopNs);
-            ret.slopMin = std::min(ret.slopMin, slopHistory[i].perFrameSlopNs);
+            ret.workAvg += slopHistory[i].workNs;
+            ret.workMax = std::max(ret.workMax, slopHistory[i].workNs);
+            ret.workMin = std::min(ret.workMin, slopHistory[i].workNs);
         }
-        ret.slopAvg /= int64_t(slopHistory.size());
+        ret.workAvg /= int64_t(slopHistory.size());
         for (uint32_t i = 0; i < slopHistory.size(); ++i) {
-            int64_t diff = ret.slopAvg - slopHistory[i].perFrameSlopNs;
-            ret.slopStdDiv += diff * diff;
+            int64_t diff = ret.workAvg - slopHistory[i].workNs;
+            ret.workStdDiv += diff * diff;
         }
-        ret.slopStdDiv = int64_t(sqrt(ret.slopStdDiv / int64_t(slopHistory.size())));
+        ret.workStdDiv = int64_t(sqrt(ret.workStdDiv / int64_t(slopHistory.size())));
     }
     presentNodeId = INVALID_SLOP_NODE;
     return ret;

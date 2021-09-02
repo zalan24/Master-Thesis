@@ -37,6 +37,19 @@ drv::LogicalDevicePtr DrvVulkan::create_logical_device(const drv::LogicalDeviceC
         queues[i] = queueCreateInfo;
     }
 
+    uint32_t deviceExtensionCount;
+    VkResult result = vkEnumerateDeviceExtensionProperties(
+      convertPhysicalDevice(info->physicalDevice), nullptr, &deviceExtensionCount, nullptr);
+    drv::drv_assert(result == VK_SUCCESS, "Could not query device extensions");
+    StackMemory::MemoryHandle<VkExtensionProperties> deviceExtensions(deviceExtensionCount,
+                                                                      TEMPMEM);
+    result = vkEnumerateDeviceExtensionProperties(convertPhysicalDevice(info->physicalDevice),
+                                                  nullptr, &deviceExtensionCount, deviceExtensions);
+    drv::drv_assert(result == VK_SUCCESS, "Could not query device extensions");
+    LOG_DRIVER_API("Available device extensions:");
+    for (uint32_t i = 0; i < deviceExtensionCount; ++i)
+        LOG_DRIVER_API(" - %s", deviceExtensions[i].extensionName);
+
     VkPhysicalDeviceFeatures deviceFeatures = {};
 
     VkPhysicalDeviceVulkan12Features device12Features = {};
@@ -68,7 +81,7 @@ drv::LogicalDevicePtr DrvVulkan::create_logical_device(const drv::LogicalDeviceC
     createInfo.enabledLayerCount = 0;
 
     VkDevice device;
-    VkResult result =
+    result =
       vkCreateDevice(convertPhysicalDevice(info->physicalDevice), &createInfo, nullptr, &device);
     drv::drv_assert(result == VK_SUCCESS, "Logical device could not be created");
     LOG_DRIVER_API("Logical device created <%p> for physical device: %p",

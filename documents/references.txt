@@ -1,0 +1,36 @@
+--- Effect on players ---
+
+Input Latency Detection in Expert-Level Gamers
+https://cogsci.yale.edu/sites/default/files/files/Thesis2017Banatt.pdf
+
+Latency of 30 ms Benefits First Person Targeting Tasks More Than Refresh Rate Above 60 Hz
+https://research.nvidia.com/sites/default/files/pubs/2019-11_Latency-of-30/FPS_Tasks_sa2019_AuthorVersion.pdf
+
+Lower is Better? The Effects of Local Latencies on Competitive First-Person Shooter Game Players
+https://dl.acm.org/doi/pdf/10.1145/3411764.3445245
+
+--- Effects and aim assist
+
+https://kola.opus.hbz-nrw.de/opus45-kola/frontdoor/deliver/index/docId/2198/file/Dissertation+Gerrit+Lochmann+(1).pdf
+Latency Reduction for Real-Time Rendering and its Application to VR Training Scenarios
+
+--- Reduction ---
+
+- reduction by reprojection -
+Quantifying and Mitigating the Negative Effects of Local Latencies on Aiming in 3D Shooter Games
+https://web.archive.org/web/20170808203210id_/https://www.cs.usask.ca/faculty/gutwin/898-2015/readings/06-latency/ivkovic.pdf
+-
+
+- seems to be something like input patching... -
+Post-Render Warp with Late Input Sampling Improves Aiming Under High Latency Conditions
+https://dl.acm.org/doi/10.1145/3406187
+-
+
+Fighting Latency on Call of Duty Black Ops III
+https://www.gdcvault.com/play/1023220/GDC
+
+Controller to Display Latency in 'Call of Duty'
+https://www.gdcvault.com/play/1026327/GDC
+
+Post-Rendering 3D Warping
+https://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.13.1789&rep=rep1&type=pdf

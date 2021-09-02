@@ -491,30 +491,39 @@ bool Engine::sampleInput(FrameId frameId) {
         double sleepTimeMs = 0;
 
         if (!engineOptions.manualLatencyReduction) {
-            // slop = perFrameSlop + (execDelay + deviceDelay) + error
-
-            /// ---
-
-            double frameTime = 1000.0 / fpsStats.getAvg();
-            double minMaxLerp = engineOptions.latencyPrediction;
-            double latencyPoolMs = engineOptions.latencyPool * frameTime;
-
             FrameGraphSlops::LatencyInfo latencyInfo;
             {
                 std::unique_lock<std::mutex> lock(latencyInfoMutex);
                 latencyInfo = latestLatencyInfo;
             }
 
-            double prevSleepTime = double(latencyInfo.inputSlop.sleepTimeNs) / 1000000.0;
-            double expectedSlopMs = ::lerp(double(latencyInfo.slopMin) / 1000000.0,
-                                           double(latencyInfo.slopMax) / 1000000.0, minMaxLerp);
-            sleepTimeMs = std::max(expectedSlopMs - latencyPoolMs + prevSleepTime, 0.0);
+            double estimatedWork =
+              (double(latencyInfo.workAvg)
+               + double(latencyInfo.workStdDiv) * double(engineOptions.workPrediction))
+              / 1000000.0;
+            double desiredSlop = double(engineOptions.desiredSlop);
+
+            double targetDuration = 0;  // TODO
+
+            sleepTimeMs = targetDuration - estimatedWork - desiredSlop;
+
+            /// ---
+
+            // double frameTime = 1000.0 / fpsStats.getAvg();
+            // double minMaxLerp = engineOptions.latencyPrediction;
+            // double latencyPoolMs = engineOptions.latencyPool * frameTime;
+
+            // double prevSleepTime = double(latencyInfo.inputSlop.sleepTimeNs) / 1000000.0;
+            // double expectedSlopMs = ::lerp(double(latencyInfo.slopMin) / 1000000.0,
+            //                                double(latencyInfo.slopMax) / 1000000.0, minMaxLerp);
+            // sleepTimeMs = std::max(expectedSlopMs - latencyPoolMs + prevSleepTime, 0.0);
         }
         else {
-            sleepTimeMs = engineOptions.manualSleepValue;
+            sleepTimeMs = double(engineOptions.manualSleepTime);
         }
+        sleepTimeMs = std::max(std::min(sleepTimeMs, 100.0), 0.0);
         waitTimeStats.feed(sleepTimeMs);
-        {
+        if (sleepTimeMs > 0) {
             auto timer = inputHandle.getLatencySleepTimer();
             FrameGraph::busy_sleep(std::chrono::microseconds(int64_t(sleepTimeMs * 1000.0)));
         }
@@ -1246,6 +1255,7 @@ void Engine::readbackLoop(volatile bool* finished) {
             slopStats.feed(double(latestLatencyInfo.inputSlop.totalSlopNs) / 1000000.0);
             perFrameSlopStats.feed(double(latestLatencyInfo.frameLatencyInfo.perFrameSlopNs)
                                    / 1000000.0);
+            workStats.feed(double(latestLatencyInfo.frameLatencyInfo.workNs) / 1000000.0);
             execDelayStats.feed(double(latestLatencyInfo.frameLatencyInfo.execDelayNs) / 1000000.0);
             deviceDelayStats.feed(double(latestLatencyInfo.frameLatencyInfo.deviceDelayNs)
                                   / 1000000.0);
@@ -2085,6 +2095,9 @@ void Engine::drawUI(FrameId frameId) {
         if (engineOptions.perfMetrics_perFrameSlop && perFrameSlopStats.hasInfo())
             ImGui::Text("Per frame slop:  %3.0lf (~%4.1lf)", perFrameSlopStats.getAvg(),
                         perFrameSlopStats.getStdDiv());
+        if (engineOptions.perfMetrics_work && workStats.hasInfo())
+            ImGui::Text("Work time:       %3.0lf (~%4.1lf)", workStats.getAvg(),
+                        workStats.getStdDiv());
         if (engineOptions.perfMetrics_sleep && waitTimeStats.hasInfo())
             ImGui::Text("Sleep:           %3.0f (~%4.1lf)", waitTimeStats.getAvg(),
                         waitTimeStats.getStdDiv());
@@ -2101,18 +2114,12 @@ void Engine::drawUI(FrameId frameId) {
     if (latencyOptionsOpen) {
         ImGui::Begin("Latency options", &latencyOptionsOpen, 0);
         ImGui::Checkbox("Latency reduction    ", &engineOptions.latencyReduction);
-        ImGui::InputDouble("Latency pool      ", &engineOptions.latencyPool, 0.0, 2.0, "%.8lf");
-        ImGui::SameLine();
-        HelpMarker("Measured in frames, not milliseconds");
-        ImGui::InputDouble("Latency prediction", &engineOptions.latencyPrediction, 0.0, 1.0,
-                           "%.8lf");
-        ImGui::SameLine();
-        HelpMarker("Between lerp min and max values in history");
+        ImGui::DragFloat("Desired slop", &engineOptions.desiredSlop, 0.1f, 0, 32, "%.8fms");
+        ImGui::DragFloat("Work prediction", &engineOptions.workPrediction, 0.05f, 0, 10,
+                         "avg + %.8f*stdDiv");
         ImGui::Checkbox("Manual latency sleep ", &engineOptions.manualLatencyReduction);
-        ImGui::InputDouble("Manual sleep value", &engineOptions.manualSleepValue, 0.0, 200.0,
-                           "%.1lf");
-        ImGui::SameLine();
-        HelpMarker("In milliseconds");
+        ImGui::DragFloat("Manual sleep time", &engineOptions.manualSleepTime, 0.1f, 0, 100,
+                         "%.8fms");
 
         ImGui::End();
     }

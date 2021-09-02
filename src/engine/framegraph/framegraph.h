@@ -110,20 +110,22 @@ class FrameGraphSlops final : public SlopGraph
     void addImplicitDependency(SlopNodeId from, SlopNodeId to, int64_t offsetNs);
     void addDeviceDependency(SlopNodeId from, SlopNodeId to);
 
-struct LatencyTimeInfo
+    struct LatencyTimeInfo
     {
+        int64_t latencyNs;
         int64_t totalSlopNs;
         int64_t perFrameSlopNs;
         int64_t execDelayNs;
         int64_t deviceDelayNs;
+        int64_t workNs;
     };
     struct LatencyInfo
     {
         FrameId frame = INVALID_FRAME;
-        int64_t slopAvg = 0;
-        int64_t slopMin = 0;
-        int64_t slopMax = 0;
-        int64_t slopStdDiv = 0;
+        int64_t workAvg = 0;
+        int64_t workMin = 0;
+        int64_t workMax = 0;
+        int64_t workStdDiv = 0;
         FeedbackInfo inputSlop;
         LatencyTimeInfo frameLatencyInfo;
     };

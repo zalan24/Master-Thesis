@@ -56,16 +56,16 @@ struct EngineConfig final : public IAutoSerializable<EngineConfig>
 
 struct EngineOptions final : public IAutoSerializable<EngineOptions>
 {
-    REFLECTABLE((bool)latencyReduction, (double)latencyPool, (double)latencyPrediction,
+    REFLECTABLE((bool)latencyReduction, (float)desiredSlop, (float)workPrediction,
                 (bool)perfMetrics_window, (bool)perfMetrics_fps, (bool)perfMetrics_latency,
                 (bool)perfMetrics_slop, (bool)perfMetrics_perFrameSlop, (bool)perfMetrics_sleep,
-                (bool)perfMetrics_execDelay, (bool)perfMetrics_deviceDelay,
-                (bool)manualLatencyReduction, (double)manualSleepValue)
+                (bool)perfMetrics_execDelay, (bool)perfMetrics_deviceDelay, (bool)perfMetrics_work,
+                (bool)manualLatencyReduction, (float)manualSleepTime)
 
     EngineOptions()
       : latencyReduction(false),
-        latencyPool(1),
-        latencyPrediction(0),
+        desiredSlop(1),
+        workPrediction(0),
         perfMetrics_window(true),
         perfMetrics_fps(true),
         perfMetrics_latency(true),
@@ -74,8 +74,9 @@ struct EngineOptions final : public IAutoSerializable<EngineOptions>
         perfMetrics_sleep(true),
         perfMetrics_execDelay(true),
         perfMetrics_deviceDelay(true),
+        perfMetrics_work(true),
         manualLatencyReduction(false),
-        manualSleepValue(0.0) {}
+        manualSleepTime(0.0f) {}
 };
 
 struct PerformanceCaptureCpuPackage final : public IAutoSerializable<PerformanceCaptureCpuPackage>
@@ -468,6 +469,7 @@ class Engine
     StatCalculator<32> waitTimeStats;
     StatCalculator<32> execDelayStats;
     StatCalculator<32> deviceDelayStats;
+    StatCalculator<32> workStats;
 
     struct SubmissionTimestampsInfo
     {
