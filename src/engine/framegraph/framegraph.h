@@ -128,6 +128,7 @@ class FrameGraphSlops final : public SlopGraph
         int64_t workStdDiv = 0;
         FeedbackInfo inputSlop;
         LatencyTimeInfo frameLatencyInfo;
+        std::chrono::high_resolution_clock::time_point finishTime;
     };
 
     LatencyInfo calculateSlop(FrameId frame, bool feedbackNodes);
@@ -139,6 +140,7 @@ class FrameGraphSlops final : public SlopGraph
     SlopNodeId inputNode = INVALID_SLOP_NODE;
     SlopNodeId presentNodeId = INVALID_SLOP_NODE;
     FrameId currentFrame;
+    std::chrono::high_resolution_clock::time_point origoTime;
     std::vector<LatencyTimeInfo> slopHistory;
 
     struct SubmissionData

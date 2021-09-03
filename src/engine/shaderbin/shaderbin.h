@@ -66,12 +66,7 @@ class ShaderBin final : public IAutoSerializable<ShaderBin>
         // uint8_t info = 0;
         // uint8_t location = 0;
 
-        REFLECTABLE
-        (
-            (std::string) name,
-            (uint8_t) info,
-            (uint8_t) location
-        )
+        REFLECTABLE((std::string)name, (uint8_t)info, (uint8_t)location)
 
         AttachmentInfo() : info(0), location(0) {}
     };
@@ -135,22 +130,13 @@ class ShaderBin final : public IAutoSerializable<ShaderBin>
                   drv::CompareOp::GREATER_OR_EQUAL, drv::CompareOp::ALWAYS})
                 if (get_enum_name(v) == s)
                     return static_cast<int32_t>(v);
-            throw std::runtime_error("Could decode enum");
+            throw std::runtime_error("Couldn't decode enum");
         }
 
-        REFLECTABLE
-        (
-            (std::array<std::string, NUM_STAGES>) entryPoints,
-            (drv::PolygonMode) polygonMode,
-            (drv::CullMode) cullMode,
-            (drv::CompareOp) depthCompare,
-            (bool) useDepthClamp,
-            (bool) depthBiasEnable,
-            (bool) depthTest,
-            (bool) depthWrite,
-            (bool) stencilTest,
-            (std::vector<AttachmentInfo>) attachments
-        )
+        REFLECTABLE((std::array<std::string, NUM_STAGES>)entryPoints, (drv::PolygonMode)polygonMode,
+                    (drv::CullMode)cullMode, (drv::CompareOp)depthCompare, (bool)useDepthClamp,
+                    (bool)depthBiasEnable, (bool)depthTest, (bool)depthWrite, (bool)stencilTest,
+                    (std::vector<AttachmentInfo>)attachments)
 
         StageConfig()
           : polygonMode(drv::PolygonMode::FILL),
@@ -175,7 +161,6 @@ class ShaderBin final : public IAutoSerializable<ShaderBin>
 
         // void writeJson(json& out) const override;
         // void readJson(const json& in) override;
-
     };
 
     // struct PushConstBindData
@@ -186,12 +171,8 @@ class ShaderBin final : public IAutoSerializable<ShaderBin>
         static constexpr uint64_t INVALID_SHADER = std::numeric_limits<uint64_t>::max();
         struct StageData final : public IAutoSerializable<StageData>
         {
-            REFLECTABLE
-            (
-                (std::array<uint64_t, NUM_STAGES>) stageOffsets,
-                (std::array<uint64_t, NUM_STAGES>) stageCodeSizes,
-                (StageConfig) configs
-            )
+            REFLECTABLE((std::array<uint64_t, NUM_STAGES>)stageOffsets,
+                        (std::array<uint64_t, NUM_STAGES>)stageCodeSizes, (StageConfig)configs)
 
             StageData() {
                 for (uint32_t i = 0; i < NUM_STAGES; ++i) {
@@ -204,11 +185,7 @@ class ShaderBin final : public IAutoSerializable<ShaderBin>
             // StageConfig configs;
             // PushConstBindData pushConstBindInfo;
         };
-        REFLECTABLE
-        (
-            (uint32_t) totalVariantCount,
-            (std::vector<StageData>) stages
-        )
+        REFLECTABLE((uint32_t)totalVariantCount, (std::vector<StageData>)stages)
 
         ShaderData() : totalVariantCount(0) {}
 
@@ -239,15 +216,9 @@ class ShaderBin final : public IAutoSerializable<ShaderBin>
     bool needTimeStamp() const override { return true; }
 
  private:
-
-    REFLECTABLE
-    (
-        (uint64_t) shaderHeadersHash,
-        (drv::DeviceLimits) limits,
-        (std::unordered_map<std::string, ShaderData>) shaders,
-        (size_t) codeLen,
-        (std::vector<std::vector<uint32_t>>) codeBlocks
-    )
+    REFLECTABLE((uint64_t)shaderHeadersHash, (drv::DeviceLimits)limits,
+                (std::unordered_map<std::string, ShaderData>)shaders, (size_t)codeLen,
+                (std::vector<std::vector<uint32_t>>)codeBlocks)
 
     // uint64_t shaderHeadersHash = 0;  // compatibility with c++ code
     // drv::DeviceLimits limits;

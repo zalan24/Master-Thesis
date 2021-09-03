@@ -56,11 +56,37 @@ struct EngineConfig final : public IAutoSerializable<EngineConfig>
 
 struct EngineOptions final : public IAutoSerializable<EngineOptions>
 {
+    enum RefreshRateMode
+    {
+        UNLIMITED = 0,
+        DISCRETIZED = 1,
+        LIMITED = 2
+    };
+
+    static std::string get_enum_name(RefreshRateMode mode) {
+        switch (mode) {
+            case UNLIMITED:
+                return "unlimited";
+            case DISCRETIZED:
+                return "discretized";
+            case LIMITED:
+                return "limited";
+        }
+    }
+
+    static int32_t get_enum(const std::string& s) {
+        for (const RefreshRateMode& m : {UNLIMITED, DISCRETIZED, LIMITED})
+            if (get_enum_name(m) == s)
+                return static_cast<int32_t>(m);
+        throw std::runtime_error("Couldn't decode enum");
+    }
+
     REFLECTABLE((bool)latencyReduction, (float)desiredSlop, (float)workPrediction,
                 (bool)perfMetrics_window, (bool)perfMetrics_fps, (bool)perfMetrics_latency,
                 (bool)perfMetrics_slop, (bool)perfMetrics_perFrameSlop, (bool)perfMetrics_sleep,
                 (bool)perfMetrics_execDelay, (bool)perfMetrics_deviceDelay, (bool)perfMetrics_work,
-                (bool)manualLatencyReduction, (float)manualSleepTime)
+                (bool)manualLatencyReduction, (float)manualSleepTime, (float)targetRefreshRate,
+                (RefreshRateMode)refreshMode)
 
     EngineOptions()
       : latencyReduction(false),
@@ -76,7 +102,9 @@ struct EngineOptions final : public IAutoSerializable<EngineOptions>
         perfMetrics_deviceDelay(true),
         perfMetrics_work(true),
         manualLatencyReduction(false),
-        manualSleepTime(0.0f) {}
+        manualSleepTime(0.0f),
+        targetRefreshRate(60.0f),
+        refreshMode(UNLIMITED) {}
 };
 
 struct PerformanceCaptureCpuPackage final : public IAutoSerializable<PerformanceCaptureCpuPackage>
@@ -458,6 +486,9 @@ class Engine
     bool latencyOptionsOpen = false;
     mutable std::mutex latencyInfoMutex;
     FrameGraphSlops::LatencyInfo latestLatencyInfo;
+    FrameGraph::Clock::time_point frameEndFixPoint;
+    std::vector<std::chrono::nanoseconds> expectedFrameDurations;
+    FrameGraph::Clock::time_point earliestPresentable;
 
     std::vector<EntityRenderData> entitiesToDraw;
     FrameId perfCaptureFrame = INVALID_FRAME;

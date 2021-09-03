@@ -283,6 +283,10 @@ Engine::Engine(int argc, char* argv[], const EngineConfig& cfg,
             engineOptions = {};
         }
     }
+    // TODO this should be synced with vblanks
+    frameEndFixPoint = FrameGraph::Clock::now();
+    earliestPresentable = FrameGraph::Clock::now();
+    expectedFrameDurations.resize(frameGraph.getMaxFramesInFlight());
 }
 
 void Engine::buildFrameGraph() {
@@ -487,36 +491,51 @@ bool Engine::sampleInput(FrameId frameId) {
       frameGraph.acquireNode(inputSampleNode, FrameGraph::SIMULATION_STAGE, frameId);
     if (!inputHandle)
         return false;
-    if (engineOptions.latencyReduction && fpsStats.hasInfo()) {
+
+    FrameGraphSlops::LatencyInfo latencyInfo;
+    {
+        std::unique_lock<std::mutex> lock(latencyInfoMutex);
+        latencyInfo = latestLatencyInfo;
+    }
+    double refreshTimeMs = 1000.0 / fpsStats.getAvg();
+    FrameGraph::Clock::time_point estimatedPrevEnd = latencyInfo.finishTime;
+    for (FrameId frame = latencyInfo.frame + 1; frame < frameId; ++frame)
+        estimatedPrevEnd += expectedFrameDurations[frame % expectedFrameDurations.size()];
+    FrameGraph::Clock::time_point estimatedCurrentEnd =
+      estimatedPrevEnd + std::chrono::nanoseconds(int64_t(refreshTimeMs * 1000000.0));
+
+    if (engineOptions.latencyReduction && fpsStats.hasInfo()
+        && frameId > frameGraph.getMaxFramesInFlight()) {
         double sleepTimeMs = 0;
 
         if (!engineOptions.manualLatencyReduction) {
-            FrameGraphSlops::LatencyInfo latencyInfo;
-            {
-                std::unique_lock<std::mutex> lock(latencyInfoMutex);
-                latencyInfo = latestLatencyInfo;
-            }
-
             double estimatedWork =
               (double(latencyInfo.workAvg)
                + double(latencyInfo.workStdDiv) * double(engineOptions.workPrediction))
               / 1000000.0;
             double desiredSlop = double(engineOptions.desiredSlop);
 
-            double targetDuration = 0;  // TODO
+            if (engineOptions.refreshMode == EngineOptions::LIMITED)
+                if (estimatedCurrentEnd < earliestPresentable)
+                    estimatedCurrentEnd = earliestPresentable;
+            if (engineOptions.refreshMode == EngineOptions::LIMITED
+                || engineOptions.refreshMode == EngineOptions::DISCRETIZED) {
+                int64_t sinceReferencePoint = std::chrono::duration_cast<std::chrono::nanoseconds>(
+                                                estimatedCurrentEnd - frameEndFixPoint)
+                                                .count();
+                int64_t intervalLen =
+                  int64_t((1000.0 / double(engineOptions.targetRefreshRate)) * 1000000.0);
+                sinceReferencePoint += intervalLen - (sinceReferencePoint % intervalLen);
+                estimatedCurrentEnd =
+                  frameEndFixPoint + std::chrono::nanoseconds(sinceReferencePoint);
+            }
+
+            double targetDuration = double(std::chrono::duration_cast<std::chrono::nanoseconds>(
+                                             estimatedCurrentEnd - FrameGraph::Clock::now())
+                                             .count())
+                                    / 1000000.0;
 
             sleepTimeMs = targetDuration - estimatedWork - desiredSlop;
-
-            /// ---
-
-            // double frameTime = 1000.0 / fpsStats.getAvg();
-            // double minMaxLerp = engineOptions.latencyPrediction;
-            // double latencyPoolMs = engineOptions.latencyPool * frameTime;
-
-            // double prevSleepTime = double(latencyInfo.inputSlop.sleepTimeNs) / 1000000.0;
-            // double expectedSlopMs = ::lerp(double(latencyInfo.slopMin) / 1000000.0,
-            //                                double(latencyInfo.slopMax) / 1000000.0, minMaxLerp);
-            // sleepTimeMs = std::max(expectedSlopMs - latencyPoolMs + prevSleepTime, 0.0);
         }
         else {
             sleepTimeMs = double(engineOptions.manualSleepTime);
@@ -531,6 +550,11 @@ bool Engine::sampleInput(FrameId frameId) {
     else {
         waitTimeStats.feed(0);
     }
+    std::chrono::nanoseconds duration =
+      std::chrono::duration_cast<std::chrono::nanoseconds>(estimatedCurrentEnd - estimatedPrevEnd);
+    expectedFrameDurations[frameId % expectedFrameDurations.size()] = duration;
+    if (engineOptions.refreshMode == EngineOptions::LIMITED)
+        earliestPresentable = estimatedPrevEnd + duration / 2;
     {
         // Try to acquire new input data
         std::unique_lock<std::mutex> lock(inputWaitMutex);
@@ -2120,6 +2144,14 @@ void Engine::drawUI(FrameId frameId) {
         ImGui::Checkbox("Manual latency sleep ", &engineOptions.manualLatencyReduction);
         ImGui::DragFloat("Manual sleep time", &engineOptions.manualSleepTime, 0.1f, 0, 100,
                          "%.8fms");
+
+        const char* fpsModes[] = {"unlimited", "discretized", "limited"};
+        int currentMode = static_cast<int>(engineOptions.refreshMode);
+        ImGui::Combo("Mode", &currentMode, fpsModes, IM_ARRAYSIZE(fpsModes));
+        engineOptions.refreshMode = static_cast<EngineOptions::RefreshRateMode>(currentMode);
+        ImGui::SameLine();
+        ImGui::DragFloat("Target fps", &engineOptions.targetRefreshRate, 0.5, 1.f, 1000.f,
+                         "%.8f fps");
 
         ImGui::End();
     }

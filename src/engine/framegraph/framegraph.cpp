@@ -1634,9 +1634,9 @@ void FrameGraphSlops::addImplicitDependency(SlopNodeId from, SlopNodeId to, int6
 void FrameGraphSlops::prepare(FrameId _frame) {
     clearDynamicNodes();
     currentFrame = _frame;
-    auto origoTime = frameGraph->getNode(inputFrameGraphNode)
-                       ->getTiming(_frame, FrameGraph::SIMULATION_STAGE)
-                       .start;
+    origoTime = frameGraph->getNode(inputFrameGraphNode)
+                  ->getTiming(_frame, FrameGraph::SIMULATION_STAGE)
+                  .start;
     struct NodeOrderInfo
     {
         int64_t startTimeNs;
@@ -1889,6 +1889,7 @@ FrameGraphSlops::LatencyInfo FrameGraphSlops::calculateSlop(FrameId frame, bool 
     info.workNs = info.latencyNs - info.totalSlopNs;
     info.perFrameSlopNs = info.totalSlopNs - (info.execDelayNs + info.deviceDelayNs);
     ret.frameLatencyInfo = slopHistory[frame % slopHistory.size()] = info;
+    ret.finishTime = std::chrono::nanoseconds(getNodeInfos(presentNodeId).endTimeNs) + origoTime;
     if (frame >= slopHistory.size()) {
         ret.workAvg = slopHistory[0].workNs;
         ret.workMin = slopHistory[0].workNs;
