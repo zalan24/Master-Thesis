@@ -11,7 +11,6 @@ class SlopGraph
 
     struct NodeInfos
     {
-        // TODO record existing delay due to latency reduction
         int64_t startTimeNs;
         int64_t endTimeNs;
         int64_t slopNs;          // within the node's work time
@@ -41,6 +40,7 @@ class SlopGraph
         // if it's too high, it's recommended to separate the two nodes onto different threads or reorder them
         int64_t extraSlopWithoutImplicitChildNs = 0;
         int64_t sleepTimeNs = 0;
+        int64_t workTimeNs = 0;  // from here until target node
     };
 
     virtual void feedBack(SlopNodeId node, const FeedbackInfo& info) = 0;

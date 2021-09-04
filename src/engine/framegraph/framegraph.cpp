@@ -1886,7 +1886,8 @@ FrameGraphSlops::LatencyInfo FrameGraphSlops::calculateSlop(FrameId frame, bool 
         info.deviceDelayNs = 0;
 
     info.latencyNs = ret.inputSlop.latencyNs;
-    info.workNs = info.latencyNs - info.totalSlopNs;
+    // info.latencyNs - info.totalSlopNs - ret.inputSlop.sleepTimeNs;
+    info.workNs = ret.inputSlop.workTimeNs - ret.inputSlop.sleepTimeNs;
     info.perFrameSlopNs = info.totalSlopNs - (info.execDelayNs + info.deviceDelayNs);
     ret.frameLatencyInfo = slopHistory[frame % slopHistory.size()] = info;
     ret.finishTime = std::chrono::nanoseconds(getNodeInfos(presentNodeId).endTimeNs) + origoTime;

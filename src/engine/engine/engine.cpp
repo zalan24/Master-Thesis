@@ -286,7 +286,8 @@ Engine::Engine(int argc, char* argv[], const EngineConfig& cfg,
     // TODO this should be synced with vblanks
     frameEndFixPoint = FrameGraph::Clock::now();
     earliestPresentable = FrameGraph::Clock::now();
-    expectedFrameDurations.resize(frameGraph.getMaxFramesInFlight());
+    expectedFrameDurations.resize(frameGraph.getMaxFramesInFlight() * 2 + 1);
+    estimatedFrameEndTimes.resize(frameGraph.getMaxFramesInFlight() * 2 + 1);
 }
 
 void Engine::buildFrameGraph() {
@@ -498,6 +499,7 @@ bool Engine::sampleInput(FrameId frameId) {
         latencyInfo = latestLatencyInfo;
     }
     double refreshTimeMs = 1000.0 / fpsStats.getAvg();
+    TODO;  // this information is very old, work time calculation is error prone
     FrameGraph::Clock::time_point estimatedPrevEnd = latencyInfo.finishTime;
     for (FrameId frame = latencyInfo.frame + 1; frame < frameId; ++frame)
         estimatedPrevEnd += expectedFrameDurations[frame % expectedFrameDurations.size()];
@@ -552,6 +554,7 @@ bool Engine::sampleInput(FrameId frameId) {
     }
     std::chrono::nanoseconds duration =
       std::chrono::duration_cast<std::chrono::nanoseconds>(estimatedCurrentEnd - estimatedPrevEnd);
+    estimatedFrameEndTimes[frameId % estimatedFrameEndTimes.size()] = estimatedCurrentEnd;
     expectedFrameDurations[frameId % expectedFrameDurations.size()] = duration;
     if (engineOptions.refreshMode == EngineOptions::LIMITED)
         earliestPresentable = estimatedPrevEnd + duration / 2;
@@ -1283,6 +1286,18 @@ void Engine::readbackLoop(volatile bool* finished) {
             execDelayStats.feed(double(latestLatencyInfo.frameLatencyInfo.execDelayNs) / 1000000.0);
             deviceDelayStats.feed(double(latestLatencyInfo.frameLatencyInfo.deviceDelayNs)
                                   / 1000000.0);
+            // estimatedFrameEndTimes[latestLatencyInfo.frame % estimatedFrameEndTimes.size()] =
+            //   latestLatencyInfo.finishTime;
+            FrameId prevIndex = (latestLatencyInfo.frame + 1 - estimatedFrameEndTimes.size())
+                                % estimatedFrameEndTimes.size();
+            const auto expectedDuration =
+              expectedFrameDurations[latestLatencyInfo.frame % expectedFrameDurations.size()];
+            const FrameGraph::Clock::time_point expectedFinishTime =
+              estimatedFrameEndTimes[prevIndex] + expectedDuration;
+            if (latestLatencyInfo.finishTime <= expectedFinishTime)
+                mispredictions.feed(0);
+            else
+                mispredictions.feed(1);
 
             if (perfCaptureFrame != INVALID_FRAME
                 && perfCaptureFrame + frameGraph.getMaxFramesInFlight() <= readbackFrame) {
@@ -2066,9 +2081,13 @@ void Engine::drawUI(FrameId frameId) {
                 ImGui::Checkbox("Fps", &engineOptions.perfMetrics_fps);
                 ImGui::Checkbox("Latency", &engineOptions.perfMetrics_latency);
                 ImGui::Checkbox("Slop", &engineOptions.perfMetrics_slop);
+                ImGui::Checkbox("Per frame slop", &engineOptions.perfMetrics_perFrameSlop);
                 ImGui::Checkbox("Latency sleep", &engineOptions.perfMetrics_sleep);
                 ImGui::Checkbox("Execution delay", &engineOptions.perfMetrics_execDelay);
                 ImGui::Checkbox("Device delay", &engineOptions.perfMetrics_deviceDelay);
+                ImGui::Checkbox("Work time", &engineOptions.perfMetrics_work);
+                ImGui::Checkbox("Delayed frames", &engineOptions.perfMetrics_mispredictions);
+
                 ImGui::EndMenu();
             }
             ImGui::EndMenu();
@@ -2131,6 +2150,8 @@ void Engine::drawUI(FrameId frameId) {
         if (engineOptions.perfMetrics_deviceDelay && deviceDelayStats.hasInfo())
             ImGui::Text("Device delay:    %3.0f (~%4.1lf)", deviceDelayStats.getAvg(),
                         deviceDelayStats.getStdDiv());
+        if (engineOptions.perfMetrics_mispredictions && mispredictions.hasInfo())
+            ImGui::Text("Missprediction: %5.1lf%%", mispredictions.getAvg() * 100.0);
 
         ImGui::End();
     }
@@ -2138,20 +2159,24 @@ void Engine::drawUI(FrameId frameId) {
     if (latencyOptionsOpen) {
         ImGui::Begin("Latency options", &latencyOptionsOpen, 0);
         ImGui::Checkbox("Latency reduction    ", &engineOptions.latencyReduction);
-        ImGui::DragFloat("Desired slop", &engineOptions.desiredSlop, 0.1f, 0, 32, "%.8fms");
-        ImGui::DragFloat("Work prediction", &engineOptions.workPrediction, 0.05f, 0, 10,
-                         "avg + %.8f*stdDiv");
-        ImGui::Checkbox("Manual latency sleep ", &engineOptions.manualLatencyReduction);
-        ImGui::DragFloat("Manual sleep time", &engineOptions.manualSleepTime, 0.1f, 0, 100,
-                         "%.8fms");
-
-        const char* fpsModes[] = {"unlimited", "discretized", "limited"};
-        int currentMode = static_cast<int>(engineOptions.refreshMode);
-        ImGui::Combo("Mode", &currentMode, fpsModes, IM_ARRAYSIZE(fpsModes));
-        engineOptions.refreshMode = static_cast<EngineOptions::RefreshRateMode>(currentMode);
-        ImGui::SameLine();
-        ImGui::DragFloat("Target fps", &engineOptions.targetRefreshRate, 0.5, 1.f, 1000.f,
-                         "%.8f fps");
+        {
+            if (!engineOptions.latencyReduction)
+                ImGui::BeginDisabled();
+            const char* fpsModes[] = {"unlimited", "discretized", "limited"};
+            int currentMode = static_cast<int>(engineOptions.refreshMode);
+            ImGui::Combo("Mode", &currentMode, fpsModes, IM_ARRAYSIZE(fpsModes));
+            engineOptions.refreshMode = static_cast<EngineOptions::RefreshRateMode>(currentMode);
+            ImGui::DragFloat("Target fps", &engineOptions.targetRefreshRate, 0.5, 1.f, 1000.f,
+                             "%.8f fps");
+            ImGui::DragFloat("Desired slop", &engineOptions.desiredSlop, 0.1f, 0, 32, "%.8fms");
+            ImGui::DragFloat("Work prediction", &engineOptions.workPrediction, 0.05f, 0, 10,
+                             "avg + %.8f*stdDiv");
+            ImGui::Checkbox("Manual latency sleep ", &engineOptions.manualLatencyReduction);
+            ImGui::DragFloat("Manual sleep time", &engineOptions.manualSleepTime, 0.1f, 0, 100,
+                             "%.8fms");
+            if (!engineOptions.latencyReduction)
+                ImGui::EndDisabled();
+        }
 
         ImGui::End();
     }

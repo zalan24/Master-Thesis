@@ -85,8 +85,8 @@ struct EngineOptions final : public IAutoSerializable<EngineOptions>
                 (bool)perfMetrics_window, (bool)perfMetrics_fps, (bool)perfMetrics_latency,
                 (bool)perfMetrics_slop, (bool)perfMetrics_perFrameSlop, (bool)perfMetrics_sleep,
                 (bool)perfMetrics_execDelay, (bool)perfMetrics_deviceDelay, (bool)perfMetrics_work,
-                (bool)manualLatencyReduction, (float)manualSleepTime, (float)targetRefreshRate,
-                (RefreshRateMode)refreshMode)
+                (bool)perfMetrics_mispredictions, (bool)manualLatencyReduction,
+                (float)manualSleepTime, (float)targetRefreshRate, (RefreshRateMode)refreshMode)
 
     EngineOptions()
       : latencyReduction(false),
@@ -101,6 +101,7 @@ struct EngineOptions final : public IAutoSerializable<EngineOptions>
         perfMetrics_execDelay(true),
         perfMetrics_deviceDelay(true),
         perfMetrics_work(true),
+        perfMetrics_mispredictions(true),
         manualLatencyReduction(false),
         manualSleepTime(0.0f),
         targetRefreshRate(60.0f),
@@ -488,6 +489,7 @@ class Engine
     FrameGraphSlops::LatencyInfo latestLatencyInfo;
     FrameGraph::Clock::time_point frameEndFixPoint;
     std::vector<std::chrono::nanoseconds> expectedFrameDurations;
+    std::vector<FrameGraph::Clock::time_point> estimatedFrameEndTimes;
     FrameGraph::Clock::time_point earliestPresentable;
 
     std::vector<EntityRenderData> entitiesToDraw;
@@ -501,6 +503,7 @@ class Engine
     StatCalculator<32> execDelayStats;
     StatCalculator<32> deviceDelayStats;
     StatCalculator<32> workStats;
+    StatCalculator<32> mispredictions;
 
     struct SubmissionTimestampsInfo
     {

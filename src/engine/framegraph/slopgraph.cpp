@@ -23,9 +23,9 @@ SlopGraph::FeedbackInfo SlopGraph::calculateSlop(SlopNodeId sourceNode, SlopNode
             nodeData[child.id].dependenceCount++;
             // 10us for measurement error
             drv::drv_assert(
-              endTime + child.depOffset <= getNodeInfos(child.id).startTimeNs + 10 * 1000,
+              endTime + child.depOffset <= getNodeInfos(child.id).startTimeNs + 1000 * 1000,
               "Invalid dependencies in slot graph");
-            drv::drv_assert(startTime <= getNodeInfos(child.id).startTimeNs + 10 * 1000,
+            drv::drv_assert(startTime <= getNodeInfos(child.id).startTimeNs + 1000 * 1000,
                             "Invalid dependencies in slot graph");
         }
     }
@@ -75,6 +75,7 @@ SlopGraph::FeedbackInfo SlopGraph::calculateSlop(SlopNodeId sourceNode, SlopNode
         int64_t sloppedMin = inf;
         int64_t asIsMin = inf;
         int64_t noImplicitMin = inf;
+        int64_t maxWorkTime = 0;
         for (uint32_t j = 0; j < getChildCount(node); ++j) {
             ChildInfo child = getChild(node, j);
             NodeInfos childInfo = getNodeInfos(child.id);
@@ -92,12 +93,15 @@ SlopGraph::FeedbackInfo SlopGraph::calculateSlop(SlopNodeId sourceNode, SlopNode
                             + nodeData[child.id].feedbackInfo.totalSlopNs - child.depOffset);
             asIsMin = std::min(asIsMin, childInfo.startTimeNs + childInfo.slopNs
                                           + childInfo.latencySleepNs - child.depOffset);
+            maxWorkTime = std::max(maxWorkTime, nodeData[child.id].feedbackInfo.workTimeNs);
         }
         nodeData[node].feedbackInfo.directSlopNs = asIsMin - nodeInfo.endTimeNs;
         nodeData[node].feedbackInfo.totalSlopNs = sloppedMin - nodeInfo.endTimeNs;
         nodeData[node].feedbackInfo.latencyNs = targetNodeInfo.endTimeNs - nodeInfo.startTimeNs;
         nodeData[node].feedbackInfo.extraSlopWithoutImplicitChildNs = noImplicitMin - sloppedMin;
         nodeData[node].feedbackInfo.sleepTimeNs = nodeInfo.latencySleepNs;
+        nodeData[node].feedbackInfo.workTimeNs =
+          maxWorkTime + (nodeInfo.endTimeNs - nodeInfo.startTimeNs);
     }
     // ---
 
