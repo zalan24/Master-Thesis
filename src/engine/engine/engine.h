@@ -145,11 +145,13 @@ struct PerformanceCaptureData final : public IAutoSerializable<PerformanceCaptur
     REFLECTABLE(
       (uint64_t)frameId, (double)fps, (double)frameTime, (double)softwareLatency,
       (double)latencySlop, (double)sleepTime, (double)executionDelay, (double)deviceDelay,
+      (double)workTime, (double)frameEndFixPoint,
       (std::map<std::string, std::map<std::string, std::vector<PerformanceCaptureCpuPackage>>>)
         stageToThreadToPackageList,
       (std::map<uint32_t, PerformanceCaptureInterval>)executionIntervals,
       (std::vector<PerformanceCaptureExecutionPackage>)executionPackages,
-      (std::map<std::string, std::vector<PerformanceCaptureDevicePackage>>)queueToDevicePackageList)
+      (std::map<std::string, std::vector<PerformanceCaptureDevicePackage>>)queueToDevicePackageList,
+      (EngineOptions)engineOptions)
 };
 
 class EngineInputListener final : public InputListener
@@ -487,6 +489,7 @@ class Engine
     bool latencyOptionsOpen = false;
     mutable std::mutex latencyInfoMutex;
     FrameGraphSlops::LatencyInfo latestLatencyInfo;
+    FrameGraphSlops::LatencyInfo captureLatencyInfo;
     FrameGraph::Clock::time_point frameEndFixPoint;
     std::vector<std::chrono::nanoseconds> expectedFrameDurations;
     std::vector<FrameGraph::Clock::time_point> estimatedFrameEndTimes;

@@ -83,7 +83,8 @@ class FrameGraph;
 class FrameGraphSlops final : public SlopGraph
 {
  public:
-    explicit FrameGraphSlops(uint32_t historySize) : slopHistory(historySize) {}
+    FrameGraphSlops(uint32_t historySize, uint32_t _paddingFrames)
+      : slopHistory(historySize), paddingFrames(_paddingFrames) {}
 
     uint32_t getNodeCount() const override;
     NodeInfos getNodeInfos(SlopNodeId node) const override;
@@ -132,8 +133,10 @@ class FrameGraphSlops final : public SlopGraph
     };
 
     LatencyInfo calculateSlop(FrameId frame, bool feedbackNodes);
+    uint32_t getPaddingFrames() const { return paddingFrames; }
 
  private:
+    uint32_t paddingFrames;
     FrameGraph* frameGraph = nullptr;
     NodeId inputFrameGraphNode;
     NodeId presentFrameGraphNode;

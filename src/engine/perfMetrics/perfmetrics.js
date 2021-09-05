@@ -156,6 +156,7 @@ function createTable() {
     let frametimeText = document.getElementById('info_frametime');
     let softLatencyText = document.getElementById('info_softwarelatency');
     let latencySlopText = document.getElementById('info_latencyslop');
+    let workText = document.getElementById('info_worktime');
     let execDelayText = document.getElementById('info_executiondelay');
     let deviceDelayText = document.getElementById('info_devicedelay');
 
@@ -164,6 +165,7 @@ function createTable() {
     frametimeText.innerHTML = `${Math.round(captureData.frameTime)}ms`;
     softLatencyText.innerHTML = `${Math.round(captureData.softwareLatency)}ms`;
     latencySlopText.innerHTML = `${Math.round(captureData.latencySlop)}ms`;
+    workText.innerHTML = `${Math.round(captureData.workTime)}ms`;
     execDelayText.innerHTML = `${Math.round(captureData.executionDelay)}ms`;
     deviceDelayText.innerHTML = `${Math.round(captureData.deviceDelay)}ms`;
 

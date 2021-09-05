@@ -252,7 +252,7 @@ Engine::Engine(int argc, char* argv[], const EngineConfig& cfg,
       FrameGraph::Node("presentFrame", FrameGraph::RECORD_STAGE | FrameGraph::EXECUTION_STAGE));
     mainRecordNode = frameGraph.addNode(FrameGraph::Node(
       "mainRecord",
-      FrameGraph::BEFORE_DRAW_STAGE | FrameGraph::RECORD_STAGE | FrameGraph::EXECUTION_STAGE));
+      FrameGraph::RECORD_STAGE | FrameGraph::EXECUTION_STAGE));
     acquireSwapchainNode = frameGraph.addNode(
       FrameGraph::Node("acquireSwapchain", FrameGraph::RECORD_STAGE | FrameGraph::EXECUTION_STAGE));
 
@@ -286,8 +286,8 @@ Engine::Engine(int argc, char* argv[], const EngineConfig& cfg,
     // TODO this should be synced with vblanks
     frameEndFixPoint = FrameGraph::Clock::now();
     earliestPresentable = FrameGraph::Clock::now();
-    expectedFrameDurations.resize(frameGraph.getMaxFramesInFlight() * 2 + 1);
-    estimatedFrameEndTimes.resize(frameGraph.getMaxFramesInFlight() * 2 + 1);
+    expectedFrameDurations.resize(frameGraph.getMaxFramesInFlight());
+    estimatedFrameEndTimes.resize(frameGraph.getMaxFramesInFlight());
 }
 
 void Engine::buildFrameGraph() {
@@ -499,7 +499,6 @@ bool Engine::sampleInput(FrameId frameId) {
         latencyInfo = latestLatencyInfo;
     }
     double refreshTimeMs = 1000.0 / fpsStats.getAvg();
-    TODO;  // this information is very old, work time calculation is error prone
     FrameGraph::Clock::time_point estimatedPrevEnd = latencyInfo.finishTime;
     for (FrameId frame = latencyInfo.frame + 1; frame < frameId; ++frame)
         estimatedPrevEnd += expectedFrameDurations[frame % expectedFrameDurations.size()];
@@ -738,10 +737,6 @@ void Engine::beforeDrawLoop() {
         else
             break;
         beforeDraw(beforeDrawFrame);
-        if (FrameGraph::NodeHandle nodeHandle = getFrameGraph().acquireNode(
-              mainRecordNode, FrameGraph::BEFORE_DRAW_STAGE, beforeDrawFrame);
-            nodeHandle) {
-        }
         if (!frameGraph.endStage(FrameGraph::BEFORE_DRAW_STAGE, beforeDrawFrame)) {
             assert(frameGraph.isStopped());
             break;
@@ -1253,6 +1248,7 @@ void Engine::readbackLoop(volatile bool* finished) {
             }
             timestsampRingBuffer[readbackFrame % timestsampRingBuffer.size()].clear();
 
+            FrameGraphSlops::LatencyInfo prevLatencyInfo = latestLatencyInfo;
             {
                 std::unique_lock<std::mutex> lock(latencyInfoMutex);
                 latestLatencyInfo = frameGraph.processSlops(readbackFrame);
@@ -1265,15 +1261,9 @@ void Engine::readbackLoop(volatile bool* finished) {
             const FrameGraph::Node* simStart =
               frameGraph.getNode(frameGraph.getStageStartNode(FrameGraph::SIMULATION_STAGE));
             const FrameGraph::Node* presentStart = frameGraph.getNode(presentFrameNode);
-            FrameGraph::Node::NodeTiming firstPresentTiming =
-              readbackFrame > 0
-                ? presentStart->getTiming(readbackFrame - 1, FrameGraph::RECORD_STAGE)
-                : simStart->getTiming(readbackFrame, FrameGraph::SIMULATION_STAGE);
-            FrameGraph::Node::NodeTiming endPresentTiming =
-              presentStart->getTiming(readbackFrame, FrameGraph::RECORD_STAGE);
 
             double frameTimeMs = double(std::chrono::duration_cast<std::chrono::nanoseconds>(
-                                          endPresentTiming.finish - firstPresentTiming.finish)
+                                          latestLatencyInfo.finishTime - prevLatencyInfo.finishTime)
                                           .count())
                                  / 1000000.0;
 
@@ -1288,7 +1278,7 @@ void Engine::readbackLoop(volatile bool* finished) {
                                   / 1000000.0);
             // estimatedFrameEndTimes[latestLatencyInfo.frame % estimatedFrameEndTimes.size()] =
             //   latestLatencyInfo.finishTime;
-            FrameId prevIndex = (latestLatencyInfo.frame + 1 - estimatedFrameEndTimes.size())
+            FrameId prevIndex = (latestLatencyInfo.frame + estimatedFrameEndTimes.size() - 1)
                                 % estimatedFrameEndTimes.size();
             const auto expectedDuration =
               expectedFrameDurations[latestLatencyInfo.frame % expectedFrameDurations.size()];
@@ -1298,11 +1288,13 @@ void Engine::readbackLoop(volatile bool* finished) {
                 mispredictions.feed(0);
             else
                 mispredictions.feed(1);
+            if (readbackFrame == perfCaptureFrame)
+                captureLatencyInfo = latestLatencyInfo;
 
             if (perfCaptureFrame != INVALID_FRAME
                 && perfCaptureFrame + frameGraph.getMaxFramesInFlight() <= readbackFrame) {
                 PerformanceCaptureData capture =
-                  generatePerfCapture(readbackFrame, latestLatencyInfo);
+                  generatePerfCapture(readbackFrame, captureLatencyInfo);
                 fs::path capturesFolder = fs::path{"captures"};
                 if (!fs::exists(capturesFolder))
                     fs::create_directories(capturesFolder);
@@ -1819,6 +1811,7 @@ PerformanceCaptureData Engine::generatePerfCapture(
     };
 
     PerformanceCaptureData ret;
+    ret.options = engineOptions;
     ret.frameId = targetFrame;
     ret.frameTime = getTimeDiff(firstPresentTiming.start, endPresentTiming.start) / frameCount;
     ret.fps = 1000.0 / ret.frameTime;
@@ -1828,8 +1821,11 @@ PerformanceCaptureData Engine::generatePerfCapture(
       double(std::chrono::nanoseconds(inputSampleTiming.latencySleepNs).count()) / 1000000.0;
     ret.latencySlop =
       double(std::chrono::nanoseconds(latency.inputSlop.totalSlopNs).count()) / 1000000.0;
+    ret.workTime =
+      double(std::chrono::nanoseconds(latency.inputSlop.workTimeNs).count()) / 1000000.0;
     ret.executionDelay = -1;
     ret.deviceDelay = -1;
+    ret.frameEndFixPoint = getTimeDiff(startTime, frameEndFixPoint);
 
     for (FrameId frame = firstFrame; frame <= lastReadyFrame; ++frame) {
         const FrameGraph::FrameExecutionPackagesTimings& timing =
