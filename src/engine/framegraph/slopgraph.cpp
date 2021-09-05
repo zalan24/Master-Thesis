@@ -68,8 +68,6 @@ SlopGraph::FeedbackInfo SlopGraph::calculateSlop(SlopNodeId sourceNode, SlopNode
     for (uint32_t i = nodeCount; i > 0; --i) {
         SlopNodeId node = topologicalOrder[i - 1];
         NodeInfos nodeInfo = getNodeInfos(node);
-        if (!nodeInfo.isDelayable)
-            continue;
         // a delayable node with no children can be delayed to any amount
         int64_t inf = nodeInfo.endTimeNs + 1000ll * 1000ll * 1000ll * 1000ll;  // 1000s
         int64_t sloppedMin = inf;
@@ -95,10 +93,13 @@ SlopGraph::FeedbackInfo SlopGraph::calculateSlop(SlopNodeId sourceNode, SlopNode
                                           + childInfo.latencySleepNs - child.depOffset);
             maxWorkTime = std::max(maxWorkTime, nodeData[child.id].feedbackInfo.workTimeNs);
         }
-        nodeData[node].feedbackInfo.directSlopNs = asIsMin - nodeInfo.endTimeNs;
-        nodeData[node].feedbackInfo.totalSlopNs = sloppedMin - nodeInfo.endTimeNs;
-        nodeData[node].feedbackInfo.latencyNs = targetNodeInfo.endTimeNs - nodeInfo.startTimeNs;
-        nodeData[node].feedbackInfo.extraSlopWithoutImplicitChildNs = noImplicitMin - sloppedMin;
+        if (nodeInfo.isDelayable) {
+            nodeData[node].feedbackInfo.directSlopNs = asIsMin - nodeInfo.endTimeNs;
+            nodeData[node].feedbackInfo.totalSlopNs = sloppedMin - nodeInfo.endTimeNs;
+            nodeData[node].feedbackInfo.latencyNs = targetNodeInfo.endTimeNs - nodeInfo.startTimeNs;
+            nodeData[node].feedbackInfo.extraSlopWithoutImplicitChildNs =
+              noImplicitMin - sloppedMin;
+        }
         nodeData[node].feedbackInfo.sleepTimeNs = nodeInfo.latencySleepNs;
         nodeData[node].feedbackInfo.workTimeNs =
           maxWorkTime + (nodeInfo.endTimeNs - nodeInfo.startTimeNs);

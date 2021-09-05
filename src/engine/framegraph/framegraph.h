@@ -84,7 +84,7 @@ class FrameGraphSlops final : public SlopGraph
 {
  public:
     FrameGraphSlops(uint32_t historySize, uint32_t _paddingFrames)
-      : slopHistory(historySize), paddingFrames(_paddingFrames) {}
+      : paddingFrames(_paddingFrames), slopHistory(historySize) {}
 
     uint32_t getNodeCount() const override;
     NodeInfos getNodeInfos(SlopNodeId node) const override;

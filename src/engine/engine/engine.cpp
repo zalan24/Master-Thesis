@@ -250,9 +250,8 @@ Engine::Engine(int argc, char* argv[], const EngineConfig& cfg,
       frameGraph.addNode(FrameGraph::Node("sample_input", FrameGraph::SIMULATION_STAGE));
     presentFrameNode = frameGraph.addNode(
       FrameGraph::Node("presentFrame", FrameGraph::RECORD_STAGE | FrameGraph::EXECUTION_STAGE));
-    mainRecordNode = frameGraph.addNode(FrameGraph::Node(
-      "mainRecord",
-      FrameGraph::RECORD_STAGE | FrameGraph::EXECUTION_STAGE));
+    mainRecordNode = frameGraph.addNode(
+      FrameGraph::Node("mainRecord", FrameGraph::RECORD_STAGE | FrameGraph::EXECUTION_STAGE));
     acquireSwapchainNode = frameGraph.addNode(
       FrameGraph::Node("acquireSwapchain", FrameGraph::RECORD_STAGE | FrameGraph::EXECUTION_STAGE));
 
@@ -1258,9 +1257,9 @@ void Engine::readbackLoop(volatile bool* finished) {
                   latestLatencyInfo.inputSlop.totalSlopNs <= latestLatencyInfo.inputSlop.latencyNs,
                   "Slop cannot be greater than latency");
 
-            const FrameGraph::Node* simStart =
-              frameGraph.getNode(frameGraph.getStageStartNode(FrameGraph::SIMULATION_STAGE));
-            const FrameGraph::Node* presentStart = frameGraph.getNode(presentFrameNode);
+            // const FrameGraph::Node* simStart =
+            //   frameGraph.getNode(frameGraph.getStageStartNode(FrameGraph::SIMULATION_STAGE));
+            // const FrameGraph::Node* presentStart = frameGraph.getNode(presentFrameNode);
 
             double frameTimeMs = double(std::chrono::duration_cast<std::chrono::nanoseconds>(
                                           latestLatencyInfo.finishTime - prevLatencyInfo.finishTime)
@@ -1811,7 +1810,7 @@ PerformanceCaptureData Engine::generatePerfCapture(
     };
 
     PerformanceCaptureData ret;
-    ret.options = engineOptions;
+    ret.engineOptions = engineOptions;
     ret.frameId = targetFrame;
     ret.frameTime = getTimeDiff(firstPresentTiming.start, endPresentTiming.start) / frameCount;
     ret.fps = 1000.0 / ret.frameTime;
