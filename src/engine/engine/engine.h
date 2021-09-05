@@ -59,8 +59,8 @@ struct EngineOptions final : public IAutoSerializable<EngineOptions>
     enum RefreshRateMode
     {
         UNLIMITED = 0,
-        DISCRETIZED = 1,
-        LIMITED = 2
+        LIMITED = 1,
+        DISCRETIZED = 2
     };
 
     static std::string get_enum_name(RefreshRateMode mode) {
@@ -493,7 +493,6 @@ class Engine
     FrameGraph::Clock::time_point frameEndFixPoint;
     std::vector<std::chrono::nanoseconds> expectedFrameDurations;
     std::vector<FrameGraph::Clock::time_point> estimatedFrameEndTimes;
-    FrameGraph::Clock::time_point earliestPresentable;
 
     std::vector<EntityRenderData> entitiesToDraw;
     FrameId perfCaptureFrame = INVALID_FRAME;

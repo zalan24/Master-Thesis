@@ -284,7 +284,6 @@ Engine::Engine(int argc, char* argv[], const EngineConfig& cfg,
     }
     // TODO this should be synced with vblanks
     frameEndFixPoint = FrameGraph::Clock::now();
-    earliestPresentable = FrameGraph::Clock::now();
     expectedFrameDurations.resize(frameGraph.getMaxFramesInFlight());
     estimatedFrameEndTimes.resize(frameGraph.getMaxFramesInFlight());
 }
@@ -497,12 +496,34 @@ bool Engine::sampleInput(FrameId frameId) {
         std::unique_lock<std::mutex> lock(latencyInfoMutex);
         latencyInfo = latestLatencyInfo;
     }
-    double refreshTimeMs = 1000.0 / fpsStats.getAvg();
+    double desiredSlop = double(engineOptions.desiredSlop);
+    int64_t desiredSlopNs = int64_t(desiredSlop * 1000000.0) int64_t intervalLen =
+      int64_t((1000.0 / double(engineOptions.targetRefreshRate)) * 1000000.0);
+    TODO;                     // fps contains sleep...
+    double refreshTimeMs = ;  //1000.0 / fpsStats.getAvg();
+    bool limitedFps = engineOptions.refreshMode == EngineOptions::LIMITED
+                      || engineOptions.refreshMode == EngineOptions::DISCRETIZED;
+    double headRoomMs = 0;
+    if (limitedFps && refreshTimeMs < intervalLen) {
+        headRoomMs = intervalLen - refreshTimeMs;
+        refreshTimeMs = intervalLen;
+    }
     FrameGraph::Clock::time_point estimatedPrevEnd = latencyInfo.finishTime;
     for (FrameId frame = latencyInfo.frame + 1; frame < frameId; ++frame)
         estimatedPrevEnd += expectedFrameDurations[frame % expectedFrameDurations.size()];
     FrameGraph::Clock::time_point estimatedCurrentEnd =
       estimatedPrevEnd + std::chrono::nanoseconds(int64_t(refreshTimeMs * 1000000.0));
+    if (engineOptions.refreshMode == EngineOptions::DISCRETIZED) {
+        int64_t sinceReferencePoint = std::chrono::duration_cast<std::chrono::nanoseconds>(
+                                        estimatedCurrentEnd - frameEndFixPoint)
+                                        .count();
+        int64_t mod = sinceReferencePoint % intervalLen;
+        // Can't save this frame, even by sacrificing the entire latency pool
+        if (desiredSlopNs < mod || int64_t(headRoomMs * 1000000.0) < mod)
+            sinceReferencePoint += intervalLen;
+        sinceReferencePoint -= mod;
+        estimatedCurrentEnd = frameEndFixPoint + std::chrono::nanoseconds(sinceReferencePoint);
+    }
 
     if (engineOptions.latencyReduction && fpsStats.hasInfo()
         && frameId > frameGraph.getMaxFramesInFlight()) {
@@ -513,22 +534,6 @@ bool Engine::sampleInput(FrameId frameId) {
               (double(latencyInfo.workAvg)
                + double(latencyInfo.workStdDiv) * double(engineOptions.workPrediction))
               / 1000000.0;
-            double desiredSlop = double(engineOptions.desiredSlop);
-
-            if (engineOptions.refreshMode == EngineOptions::LIMITED)
-                if (estimatedCurrentEnd < earliestPresentable)
-                    estimatedCurrentEnd = earliestPresentable;
-            if (engineOptions.refreshMode == EngineOptions::LIMITED
-                || engineOptions.refreshMode == EngineOptions::DISCRETIZED) {
-                int64_t sinceReferencePoint = std::chrono::duration_cast<std::chrono::nanoseconds>(
-                                                estimatedCurrentEnd - frameEndFixPoint)
-                                                .count();
-                int64_t intervalLen =
-                  int64_t((1000.0 / double(engineOptions.targetRefreshRate)) * 1000000.0);
-                sinceReferencePoint += intervalLen - (sinceReferencePoint % intervalLen);
-                estimatedCurrentEnd =
-                  frameEndFixPoint + std::chrono::nanoseconds(sinceReferencePoint);
-            }
 
             double targetDuration = double(std::chrono::duration_cast<std::chrono::nanoseconds>(
                                              estimatedCurrentEnd - FrameGraph::Clock::now())
@@ -554,8 +559,6 @@ bool Engine::sampleInput(FrameId frameId) {
       std::chrono::duration_cast<std::chrono::nanoseconds>(estimatedCurrentEnd - estimatedPrevEnd);
     estimatedFrameEndTimes[frameId % estimatedFrameEndTimes.size()] = estimatedCurrentEnd;
     expectedFrameDurations[frameId % expectedFrameDurations.size()] = duration;
-    if (engineOptions.refreshMode == EngineOptions::LIMITED)
-        earliestPresentable = estimatedPrevEnd + duration / 2;
     {
         // Try to acquire new input data
         std::unique_lock<std::mutex> lock(inputWaitMutex);
@@ -2157,7 +2160,7 @@ void Engine::drawUI(FrameId frameId) {
         {
             if (!engineOptions.latencyReduction)
                 ImGui::BeginDisabled();
-            const char* fpsModes[] = {"unlimited", "discretized", "limited"};
+            const char* fpsModes[] = {"unlimited", "limited", "discretized"};
             int currentMode = static_cast<int>(engineOptions.refreshMode);
             ImGui::Combo("Mode", &currentMode, fpsModes, IM_ARRAYSIZE(fpsModes));
             engineOptions.refreshMode = static_cast<EngineOptions::RefreshRateMode>(currentMode);

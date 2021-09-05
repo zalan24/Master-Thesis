@@ -1882,7 +1882,7 @@ FrameGraphSlops::LatencyInfo FrameGraphSlops::calculateSlop(FrameId frame, bool 
     if (info.deviceDelayNs < 0)
         info.deviceDelayNs = 0;
 
-    info.latencyNs = ret.inputSlop.latencyNs;
+    info.latencyNs = ret.inputSlop.latencyNs - ret.inputSlop.sleepTimeNs;
     // info.latencyNs - info.totalSlopNs - ret.inputSlop.sleepTimeNs;
     info.workNs = ret.inputSlop.workTimeNs - ret.inputSlop.sleepTimeNs;
     info.perFrameSlopNs = info.totalSlopNs - (info.execDelayNs + info.deviceDelayNs);
