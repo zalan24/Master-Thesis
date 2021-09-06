@@ -66,15 +66,16 @@ SlopGraph::LatencyInfo SlopGraph::calculateSlop(SlopNodeId sourceNode, SlopNodeI
 
     LatencyInfo ret;
 
+    int64_t inf = 1000ll * 1000ll * 1000ll * 1000ll;  // 1000s
+
     // Calculation of slops using dynamic programming
     for (uint32_t i = nodeCount; i > 0; --i) {
         SlopNodeId node = topologicalOrder[i - 1];
         NodeInfos nodeInfo = getNodeInfos(node);
         // a delayable node with no children can be delayed to any amount
-        int64_t inf = nodeInfo.endTimeNs + 1000ll * 1000ll * 1000ll * 1000ll;  // 1000s
-        int64_t sloppedMin = inf;
-        int64_t asIsMin = inf;
-        int64_t noImplicitMin = inf;
+        int64_t sloppedMin = inf + nodeInfo.endTimeNs;
+        int64_t asIsMin = inf + nodeInfo.endTimeNs;
+        int64_t noImplicitMin = inf + nodeInfo.endTimeNs;
         int64_t maxWorkTime = 0;
         for (uint32_t j = 0; j < getChildCount(node); ++j) {
             ChildInfo child = getChild(node, j);
@@ -108,24 +109,38 @@ SlopGraph::LatencyInfo SlopGraph::calculateSlop(SlopNodeId sourceNode, SlopNodeI
           maxWorkTime + (nodeInfo.endTimeNs - nodeInfo.startTimeNs);
     }
     // Calculation of fps limitations
+    int64_t minCpuStartNs = inf;
+    int64_t minExecStartNs = inf;
+    int64_t minDeviceStartNs = inf;
     for (uint32_t i = 0; i < nodeCount; ++i) {
         SlopNodeId node = topologicalOrder[i];
         NodeInfos nodeInfo = getNodeInfos(node);
         nodeData[node].feedbackInfo.earliestFinishTimeNs +=
           nodeInfo.endTimeNs - nodeInfo.startTimeNs - nodeInfo.latencySleepNs;
-        TODO;  // device work time includes cpu work time now
         switch (nodeInfo.type) {
             case CPU:
                 ret.cpuWorkNs =
                   std::max(nodeData[node].feedbackInfo.earliestFinishTimeNs, ret.cpuWorkNs);
+                minCpuStartNs =
+                  std::min(minCpuStartNs, nodeData[node].feedbackInfo.earliestFinishTimeNs
+                                            + nodeInfo.startTimeNs - nodeInfo.endTimeNs
+                                            + nodeInfo.latencySleepNs);
                 break;
             case EXEC:
                 ret.execWorkNs =
                   std::max(nodeData[node].feedbackInfo.earliestFinishTimeNs, ret.execWorkNs);
+                minExecStartNs =
+                  std::min(minExecStartNs, nodeData[node].feedbackInfo.earliestFinishTimeNs
+                                             + nodeInfo.startTimeNs - nodeInfo.endTimeNs
+                                             + nodeInfo.latencySleepNs);
                 break;
             case DEVICE:
                 ret.deviceWorkNs =
                   std::max(nodeData[node].feedbackInfo.earliestFinishTimeNs, ret.deviceWorkNs);
+                minDeviceStartNs =
+                  std::min(minDeviceStartNs, nodeData[node].feedbackInfo.earliestFinishTimeNs
+                                               + nodeInfo.startTimeNs - nodeInfo.endTimeNs
+                                               + nodeInfo.latencySleepNs);
                 break;
         }
         for (uint32_t j = 0; j < getChildCount(node); ++j) {
@@ -137,6 +152,10 @@ SlopGraph::LatencyInfo SlopGraph::calculateSlop(SlopNodeId sourceNode, SlopNodeI
         }
     }
     // ---
+
+    ret.cpuWorkNs -= minCpuStartNs;
+    ret.execWorkNs -= minExecStartNs;
+    ret.deviceWorkNs -= minDeviceStartNs;
 
     if (feedbackNodes)
         for (uint32_t i = 0; i < nodeCount; ++i)
