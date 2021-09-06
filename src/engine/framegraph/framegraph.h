@@ -120,19 +120,19 @@ class FrameGraphSlops final : public SlopGraph
         int64_t deviceDelayNs;
         int64_t workNs;
     };
-    struct LatencyInfo
+    struct ExtendedLatencyInfo
     {
         FrameId frame = INVALID_FRAME;
         int64_t workAvg = 0;
         int64_t workMin = 0;
         int64_t workMax = 0;
         int64_t workStdDiv = 0;
-        FeedbackInfo inputSlop;
+        LatencyInfo info;
         LatencyTimeInfo frameLatencyInfo;
         std::chrono::high_resolution_clock::time_point finishTime;
     };
 
-    LatencyInfo calculateSlop(FrameId frame, bool feedbackNodes);
+    ExtendedLatencyInfo calculateSlop(FrameId frame, bool feedbackNodes);
     uint32_t getPaddingFrames() const { return paddingFrames; }
 
  private:
@@ -607,7 +607,7 @@ class FrameGraph
     };
 
     const FrameExecutionPackagesTimings& getExecutionTiming(FrameId frame) const;
-    FrameGraphSlops::LatencyInfo processSlops(FrameId frame);
+    FrameGraphSlops::ExtendedLatencyInfo processSlops(FrameId frame);
 
  private:
     struct DependenceData

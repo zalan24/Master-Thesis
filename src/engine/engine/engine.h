@@ -82,7 +82,8 @@ struct EngineOptions final : public IAutoSerializable<EngineOptions>
     }
 
     REFLECTABLE((bool)latencyReduction, (float)desiredSlop, (float)workPrediction,
-                (bool)perfMetrics_window, (bool)perfMetrics_fps, (bool)perfMetrics_latency,
+                (bool)perfMetrics_window, (bool)perfMetrics_fps, (bool)perfMetrics_cpuWork,
+                (bool)perfMetrics_execWork, (bool)perfMetrics_deviceWork, (bool)perfMetrics_latency,
                 (bool)perfMetrics_slop, (bool)perfMetrics_perFrameSlop, (bool)perfMetrics_sleep,
                 (bool)perfMetrics_execDelay, (bool)perfMetrics_deviceDelay, (bool)perfMetrics_work,
                 (bool)perfMetrics_mispredictions, (bool)manualLatencyReduction,
@@ -94,6 +95,9 @@ struct EngineOptions final : public IAutoSerializable<EngineOptions>
         workPrediction(0),
         perfMetrics_window(true),
         perfMetrics_fps(true),
+        perfMetrics_cpuWork(true),
+        perfMetrics_execWork(true),
+        perfMetrics_deviceWork(true),
         perfMetrics_latency(true),
         perfMetrics_slop(true),
         perfMetrics_perFrameSlop(true),
@@ -488,8 +492,8 @@ class Engine
     bool wantToQuit = false;
     bool latencyOptionsOpen = false;
     mutable std::mutex latencyInfoMutex;
-    FrameGraphSlops::LatencyInfo latestLatencyInfo;
-    FrameGraphSlops::LatencyInfo captureLatencyInfo;
+    FrameGraphSlops::ExtendedLatencyInfo latestLatencyInfo;
+    FrameGraphSlops::ExtendedLatencyInfo captureLatencyInfo;
     FrameGraph::Clock::time_point frameEndFixPoint;
     std::vector<std::chrono::nanoseconds> expectedFrameDurations;
     std::vector<FrameGraph::Clock::time_point> estimatedFrameEndTimes;
@@ -498,6 +502,9 @@ class Engine
     FrameId perfCaptureFrame = INVALID_FRAME;
 
     StatCalculator<32> fpsStats;
+    StatCalculator<32> cpuWorkStats;
+    StatCalculator<32> execWorkStats;
+    StatCalculator<32> deviceWorkStats;
     StatCalculator<32> latencyStats;
     StatCalculator<32> slopStats;
     StatCalculator<32> perFrameSlopStats;
@@ -531,7 +538,7 @@ class Engine
     bool sampleInput(FrameId frameId);
     void drawUI(FrameId frameId);
     PerformanceCaptureData generatePerfCapture(FrameId lastReadyFrame,
-                                               const FrameGraphSlops::LatencyInfo& latency) const;
+                                               const FrameGraphSlops::ExtendedLatencyInfo& latency) const;
     AcquiredImageData mainRecord(FrameId frameId);
 
     static drv::PhysicalDevice::SelectionInfo get_device_selection_info(

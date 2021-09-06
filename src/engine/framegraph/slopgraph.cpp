@@ -5,8 +5,8 @@
 #include <corecontext.h>
 #include <drverror.h>
 
-SlopGraph::FeedbackInfo SlopGraph::calculateSlop(SlopNodeId sourceNode, SlopNodeId targetNode,
-                                                 bool feedbackNodes) {
+SlopGraph::LatencyInfo SlopGraph::calculateSlop(SlopNodeId sourceNode, SlopNodeId targetNode,
+                                                bool feedbackNodes) {
     const uint32_t nodeCount = getNodeCount();
     StackMemory::MemoryHandle<NodeData> nodeData(nodeCount, TEMPMEM);
     StackMemory::MemoryHandle<SlopNodeId> topologicalOrder(nodeCount, TEMPMEM);
@@ -64,7 +64,9 @@ SlopGraph::FeedbackInfo SlopGraph::calculateSlop(SlopNodeId sourceNode, SlopNode
     uint32_t indexOfTarget = uint32_t(targetItr - topologicalOrder.get());
     drv::drv_assert(indexOfSource < indexOfTarget, "Target node should be after the source node");
 
-    // calculation of slops using dynamic programming
+    LatencyInfo ret;
+
+    // Calculation of slops using dynamic programming
     for (uint32_t i = nodeCount; i > 0; --i) {
         SlopNodeId node = topologicalOrder[i - 1];
         NodeInfos nodeInfo = getNodeInfos(node);
@@ -101,13 +103,44 @@ SlopGraph::FeedbackInfo SlopGraph::calculateSlop(SlopNodeId sourceNode, SlopNode
               noImplicitMin - sloppedMin;
         }
         nodeData[node].feedbackInfo.sleepTimeNs = nodeInfo.latencySleepNs;
+        nodeData[node].feedbackInfo.earliestFinishTimeNs = 0;
         nodeData[node].feedbackInfo.workTimeNs =
           maxWorkTime + (nodeInfo.endTimeNs - nodeInfo.startTimeNs);
+    }
+    // Calculation of fps limitations
+    for (uint32_t i = 0; i < nodeCount; ++i) {
+        SlopNodeId node = topologicalOrder[i];
+        NodeInfos nodeInfo = getNodeInfos(node);
+        nodeData[node].feedbackInfo.earliestFinishTimeNs +=
+          nodeInfo.endTimeNs - nodeInfo.startTimeNs - nodeInfo.latencySleepNs;
+        TODO;  // device work time includes cpu work time now
+        switch (nodeInfo.type) {
+            case CPU:
+                ret.cpuWorkNs =
+                  std::max(nodeData[node].feedbackInfo.earliestFinishTimeNs, ret.cpuWorkNs);
+                break;
+            case EXEC:
+                ret.execWorkNs =
+                  std::max(nodeData[node].feedbackInfo.earliestFinishTimeNs, ret.execWorkNs);
+                break;
+            case DEVICE:
+                ret.deviceWorkNs =
+                  std::max(nodeData[node].feedbackInfo.earliestFinishTimeNs, ret.deviceWorkNs);
+                break;
+        }
+        for (uint32_t j = 0; j < getChildCount(node); ++j) {
+            ChildInfo child = getChild(node, j);
+            int64_t currentLimit =
+              nodeData[node].feedbackInfo.earliestFinishTimeNs + child.depOffset;
+            nodeData[child.id].feedbackInfo.earliestFinishTimeNs =
+              std::max(nodeData[child.id].feedbackInfo.earliestFinishTimeNs, currentLimit);
+        }
     }
     // ---
 
     if (feedbackNodes)
         for (uint32_t i = 0; i < nodeCount; ++i)
             feedBack(i, nodeData[i].feedbackInfo);
-    return nodeData[sourceNode].feedbackInfo;
+    ret.inputNodeInfo = nodeData[sourceNode].feedbackInfo;
+    return ret;
 }

@@ -1691,6 +1691,7 @@ void FrameGraphSlops::prepare(FrameId _frame) {
                 infos.endTimeNs = (nodeTiming.finish - origoTime).count();
                 infos.slopNs = nodeTiming.recordedSlopsNs;
                 infos.latencySleepNs = nodeTiming.latencySleepNs;
+                infos.type = SlopGraph::CPU;
                 feedInfo(targetNode, infos);
                 nodeOrder[slopNodeInd++] = {infos.startTimeNs, targetNode,
                                             getThreadId(nodeTiming.threadId)};
@@ -1719,6 +1720,7 @@ void FrameGraphSlops::prepare(FrameId _frame) {
             infos.endTimeNs = (executionTimings.packages[i].endTime - origoTime).count();
             infos.slopNs = 0;
             infos.latencySleepNs = 0;
+            infos.type = SlopGraph::EXEC;
             feedInfo(targetNode, infos);
             nodeOrder[slopNodeInd++] = {infos.startTimeNs, targetNode, 0};
             addDynamicDependency(
@@ -1744,6 +1746,7 @@ void FrameGraphSlops::prepare(FrameId _frame) {
                 infos.endTimeNs = (timing.finish - origoTime).count();
                 infos.slopNs = 0;
                 infos.latencySleepNs = 0;
+                infos.type = SlopGraph::DEVICE;
                 if (getFixedNodeData(sourceFixedNode).frameGraphNode == presentFrameGraphNode)
                     infos.isDelayable = false;
                 feedInfo(targetNode, infos);
@@ -1842,17 +1845,18 @@ void FrameGraphSlops::prepare(FrameId _frame) {
         presentNodeId = INVALID_SLOP_NODE;
 }
 
-FrameGraphSlops::LatencyInfo FrameGraphSlops::calculateSlop(FrameId frame, bool feedbackNodes) {
+FrameGraphSlops::ExtendedLatencyInfo FrameGraphSlops::calculateSlop(FrameId frame,
+                                                                    bool feedbackNodes) {
     drv::drv_assert(inputNode != INVALID_SLOP_NODE,
                     "FrameGraphSlops was not prepared before calculating slop");
     if (presentNodeId == INVALID_SLOP_NODE)
         return {};
-    LatencyInfo ret;
+    ExtendedLatencyInfo ret;
     ret.frame = frame;
-    ret.inputSlop =
+    ret.info =
       static_cast<SlopGraph*>(this)->calculateSlop(inputNode, presentNodeId, feedbackNodes);
     LatencyTimeInfo info;
-    info.totalSlopNs = ret.inputSlop.totalSlopNs;
+    info.totalSlopNs = ret.info.inputNodeInfo.totalSlopNs;
     info.execDelayNs = 0;
     info.deviceDelayNs = -1;
 
@@ -1882,9 +1886,9 @@ FrameGraphSlops::LatencyInfo FrameGraphSlops::calculateSlop(FrameId frame, bool 
     if (info.deviceDelayNs < 0)
         info.deviceDelayNs = 0;
 
-    info.latencyNs = ret.inputSlop.latencyNs - ret.inputSlop.sleepTimeNs;
-    // info.latencyNs - info.totalSlopNs - ret.inputSlop.sleepTimeNs;
-    info.workNs = ret.inputSlop.workTimeNs - ret.inputSlop.sleepTimeNs;
+    info.latencyNs = ret.info.inputNodeInfo.latencyNs - ret.info.inputNodeInfo.sleepTimeNs;
+    // info.latencyNs - info.totalSlopNs - ret.info.inputNodeInfo.sleepTimeNs;
+    info.workNs = ret.info.inputNodeInfo.workTimeNs - ret.info.inputNodeInfo.sleepTimeNs;
     info.perFrameSlopNs = info.totalSlopNs - (info.execDelayNs + info.deviceDelayNs);
     ret.frameLatencyInfo = slopHistory[frame % slopHistory.size()] = info;
     ret.finishTime = std::chrono::nanoseconds(getNodeInfos(presentNodeId).endTimeNs) + origoTime;
@@ -1909,7 +1913,7 @@ FrameGraphSlops::LatencyInfo FrameGraphSlops::calculateSlop(FrameId frame, bool 
     return ret;
 }
 
-FrameGraphSlops::LatencyInfo FrameGraph::processSlops(FrameId frame) {
+FrameGraphSlops::ExtendedLatencyInfo FrameGraph::processSlops(FrameId frame) {
     if (frame < slopsGraph.getPaddingFrames() * 2 + 1)
         return {};
     slopsGraph.prepare(frame - slopsGraph.getPaddingFrames());

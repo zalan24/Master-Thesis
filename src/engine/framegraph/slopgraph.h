@@ -9,6 +9,13 @@ class SlopGraph
     using SlopNodeId = uint32_t;
     static constexpr SlopNodeId INVALID_SLOP_NODE = std::numeric_limits<SlopNodeId>::max();
 
+    enum NodeType
+    {
+        CPU,
+        EXEC,
+        DEVICE
+    };
+
     struct NodeInfos
     {
         int64_t startTimeNs;
@@ -16,6 +23,7 @@ class SlopGraph
         int64_t slopNs;          // within the node's work time
         int64_t latencySleepNs;  // within the node's work time
         bool isDelayable = true;
+        NodeType type;
     };
 
     struct ChildInfo
@@ -41,11 +49,20 @@ class SlopGraph
         int64_t extraSlopWithoutImplicitChildNs = 0;
         int64_t sleepTimeNs = 0;
         int64_t workTimeNs = 0;  // from here until target node
+        int64_t earliestFinishTimeNs = 0;
     };
 
     virtual void feedBack(SlopNodeId node, const FeedbackInfo& info) = 0;
 
-    FeedbackInfo calculateSlop(SlopNodeId sourceNode, SlopNodeId targetNode, bool feedbackNodes);
+    struct LatencyInfo
+    {
+        FeedbackInfo inputNodeInfo;
+        int64_t cpuWorkNs = 0;
+        int64_t execWorkNs = 0;
+        int64_t deviceWorkNs = 0;
+    };
+
+    LatencyInfo calculateSlop(SlopNodeId sourceNode, SlopNodeId targetNode, bool feedbackNodes);
 
  protected:
     ~SlopGraph() = default;

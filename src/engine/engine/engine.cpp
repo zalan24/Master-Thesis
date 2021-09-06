@@ -491,22 +491,25 @@ bool Engine::sampleInput(FrameId frameId) {
     if (!inputHandle)
         return false;
 
-    FrameGraphSlops::LatencyInfo latencyInfo;
+    FrameGraphSlops::ExtendedLatencyInfo latencyInfo;
     {
         std::unique_lock<std::mutex> lock(latencyInfoMutex);
         latencyInfo = latestLatencyInfo;
     }
     double desiredSlop = double(engineOptions.desiredSlop);
-    int64_t desiredSlopNs = int64_t(desiredSlop * 1000000.0) int64_t intervalLen =
-      int64_t((1000.0 / double(engineOptions.targetRefreshRate)) * 1000000.0);
-    TODO;                     // fps contains sleep...
-    double refreshTimeMs = ;  //1000.0 / fpsStats.getAvg();
+    int64_t desiredSlopNs = int64_t(desiredSlop * 1000000.0);
+    double intervalLenMs = 1000.0 / double(engineOptions.targetRefreshRate);
+    int64_t intervalLenNs = int64_t(intervalLenMs * 1000000.0);
+    double refreshTimeCpuMs = cpuWorkStats.getAvg();
+    double refreshTimeExecMs = execWorkStats.getAvg();
+    double refreshTimeDeviceMs = deviceWorkStats.getAvg();
+    double refreshTimeMs = std::max({refreshTimeCpuMs, refreshTimeExecMs, refreshTimeDeviceMs});
     bool limitedFps = engineOptions.refreshMode == EngineOptions::LIMITED
                       || engineOptions.refreshMode == EngineOptions::DISCRETIZED;
     double headRoomMs = 0;
-    if (limitedFps && refreshTimeMs < intervalLen) {
-        headRoomMs = intervalLen - refreshTimeMs;
-        refreshTimeMs = intervalLen;
+    if (limitedFps && refreshTimeMs < intervalLenMs) {
+        headRoomMs = intervalLenMs - refreshTimeMs;
+        refreshTimeMs = intervalLenMs;
     }
     FrameGraph::Clock::time_point estimatedPrevEnd = latencyInfo.finishTime;
     for (FrameId frame = latencyInfo.frame + 1; frame < frameId; ++frame)
@@ -514,15 +517,15 @@ bool Engine::sampleInput(FrameId frameId) {
     FrameGraph::Clock::time_point estimatedCurrentEnd =
       estimatedPrevEnd + std::chrono::nanoseconds(int64_t(refreshTimeMs * 1000000.0));
     if (engineOptions.refreshMode == EngineOptions::DISCRETIZED) {
-        int64_t sinceReferencePoint = std::chrono::duration_cast<std::chrono::nanoseconds>(
-                                        estimatedCurrentEnd - frameEndFixPoint)
-                                        .count();
-        int64_t mod = sinceReferencePoint % intervalLen;
+        int64_t sinceReferencePointNs = std::chrono::duration_cast<std::chrono::nanoseconds>(
+                                          estimatedCurrentEnd - frameEndFixPoint)
+                                          .count();
+        int64_t mod = sinceReferencePointNs % intervalLenNs;
         // Can't save this frame, even by sacrificing the entire latency pool
         if (desiredSlopNs < mod || int64_t(headRoomMs * 1000000.0) < mod)
-            sinceReferencePoint += intervalLen;
-        sinceReferencePoint -= mod;
-        estimatedCurrentEnd = frameEndFixPoint + std::chrono::nanoseconds(sinceReferencePoint);
+            sinceReferencePointNs += intervalLenNs;
+        sinceReferencePointNs -= mod;
+        estimatedCurrentEnd = frameEndFixPoint + std::chrono::nanoseconds(sinceReferencePointNs);
     }
 
     if (engineOptions.latencyReduction && fpsStats.hasInfo()
@@ -1250,15 +1253,15 @@ void Engine::readbackLoop(volatile bool* finished) {
             }
             timestsampRingBuffer[readbackFrame % timestsampRingBuffer.size()].clear();
 
-            FrameGraphSlops::LatencyInfo prevLatencyInfo = latestLatencyInfo;
+            FrameGraphSlops::ExtendedLatencyInfo prevLatencyInfo = latestLatencyInfo;
             {
                 std::unique_lock<std::mutex> lock(latencyInfoMutex);
                 latestLatencyInfo = frameGraph.processSlops(readbackFrame);
             }
             if (latestLatencyInfo.frame != INVALID_FRAME)
-                drv::drv_assert(
-                  latestLatencyInfo.inputSlop.totalSlopNs <= latestLatencyInfo.inputSlop.latencyNs,
-                  "Slop cannot be greater than latency");
+                drv::drv_assert(latestLatencyInfo.info.inputNodeInfo.totalSlopNs
+                                  <= latestLatencyInfo.info.inputNodeInfo.latencyNs,
+                                "Slop cannot be greater than latency");
 
             // const FrameGraph::Node* simStart =
             //   frameGraph.getNode(frameGraph.getStageStartNode(FrameGraph::SIMULATION_STAGE));
@@ -1270,8 +1273,11 @@ void Engine::readbackLoop(volatile bool* finished) {
                                  / 1000000.0;
 
             fpsStats.feed(1000.0 / frameTimeMs);
-            latencyStats.feed(double(latestLatencyInfo.inputSlop.latencyNs) / 1000000.0);
-            slopStats.feed(double(latestLatencyInfo.inputSlop.totalSlopNs) / 1000000.0);
+            cpuWorkStats.feed(double(latestLatencyInfo.info.cpuWorkNs) / 1000000.0);
+            execWorkStats.feed(double(latestLatencyInfo.info.execWorkNs) / 1000000.0);
+            deviceWorkStats.feed(double(latestLatencyInfo.info.deviceWorkNs) / 1000000.0);
+            latencyStats.feed(double(latestLatencyInfo.info.inputNodeInfo.latencyNs) / 1000000.0);
+            slopStats.feed(double(latestLatencyInfo.info.inputNodeInfo.totalSlopNs) / 1000000.0);
             perFrameSlopStats.feed(double(latestLatencyInfo.frameLatencyInfo.perFrameSlopNs)
                                    / 1000000.0);
             workStats.feed(double(latestLatencyInfo.frameLatencyInfo.workNs) / 1000000.0);
@@ -1778,7 +1784,7 @@ void Engine::recordImGui(const AcquiredImageData&, drv::DrvCmdBufferRecorder* re
 }
 
 PerformanceCaptureData Engine::generatePerfCapture(
-  FrameId lastReadyFrame, const FrameGraphSlops::LatencyInfo& latency) const {
+  FrameId lastReadyFrame, const FrameGraphSlops::ExtendedLatencyInfo& latency) const {
     FrameId firstFrame = lastReadyFrame > frameGraph.getMaxFramesInFlight() * 2 + 1
                            ? lastReadyFrame - (frameGraph.getMaxFramesInFlight() * 2 + 1)
                            : 0;
@@ -1818,13 +1824,13 @@ PerformanceCaptureData Engine::generatePerfCapture(
     ret.frameTime = getTimeDiff(firstPresentTiming.start, endPresentTiming.start) / frameCount;
     ret.fps = 1000.0 / ret.frameTime;
     ret.softwareLatency =
-      double(std::chrono::nanoseconds(latency.inputSlop.latencyNs).count()) / 1000000.0;
+      double(std::chrono::nanoseconds(latency.info.inputNodeInfo.latencyNs).count()) / 1000000.0;
     ret.sleepTime =
       double(std::chrono::nanoseconds(inputSampleTiming.latencySleepNs).count()) / 1000000.0;
     ret.latencySlop =
-      double(std::chrono::nanoseconds(latency.inputSlop.totalSlopNs).count()) / 1000000.0;
+      double(std::chrono::nanoseconds(latency.info.inputNodeInfo.totalSlopNs).count()) / 1000000.0;
     ret.workTime =
-      double(std::chrono::nanoseconds(latency.inputSlop.workTimeNs).count()) / 1000000.0;
+      double(std::chrono::nanoseconds(latency.info.inputNodeInfo.workTimeNs).count()) / 1000000.0;
     ret.executionDelay = -1;
     ret.deviceDelay = -1;
     ret.frameEndFixPoint = getTimeDiff(startTime, frameEndFixPoint);
@@ -2077,6 +2083,9 @@ void Engine::drawUI(FrameId frameId) {
                 ImGui::Checkbox("Show perf metrics window", &engineOptions.perfMetrics_window);
                 ImGui::Separator();
                 ImGui::Checkbox("Fps", &engineOptions.perfMetrics_fps);
+                ImGui::Checkbox("Cpu work", &engineOptions.perfMetrics_cpuWork);
+                ImGui::Checkbox("Exec queue work", &engineOptions.perfMetrics_execWork);
+                ImGui::Checkbox("Device work", &engineOptions.perfMetrics_deviceWork);
                 ImGui::Checkbox("Latency", &engineOptions.perfMetrics_latency);
                 ImGui::Checkbox("Slop", &engineOptions.perfMetrics_slop);
                 ImGui::Checkbox("Per frame slop", &engineOptions.perfMetrics_perFrameSlop);
@@ -2127,6 +2136,15 @@ void Engine::drawUI(FrameId frameId) {
         if (engineOptions.perfMetrics_fps && fpsStats.hasInfo())
             ImGui::Text("Fps:             %3.0lf (~%4.1lf)", fpsStats.getAvg(),
                         fpsStats.getStdDiv());
+        if (engineOptions.perfMetrics_cpuWork && cpuWorkStats.hasInfo())
+            ImGui::Text("Cpu work:        %3.0lf (~%4.1lf) -> %3.0lf fps", cpuWorkStats.getAvg(),
+                        cpuWorkStats.getStdDiv(), (1000.0 / cpuWorkStats.getAvg()));
+        if (engineOptions.perfMetrics_execWork && execWorkStats.hasInfo())
+            ImGui::Text("Exec work:       %3.0lf (~%4.1lf) -> %3.0lf fps", execWorkStats.getAvg(),
+                        execWorkStats.getStdDiv(), (1000.0 / execWorkStats.getAvg()));
+        if (engineOptions.perfMetrics_deviceWork && deviceWorkStats.hasInfo())
+            ImGui::Text("Device work:     %3.0lf (~%4.1lf) -> %3.0lf fps", deviceWorkStats.getAvg(),
+                        deviceWorkStats.getStdDiv(), (1000.0 / deviceWorkStats.getAvg()));
         if (engineOptions.perfMetrics_latency && latencyStats.hasInfo())
             ImGui::Text("Latency:         %3.0lf (~%4.1lf)", latencyStats.getAvg(),
                         latencyStats.getStdDiv());
