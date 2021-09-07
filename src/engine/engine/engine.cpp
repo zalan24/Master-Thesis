@@ -500,10 +500,9 @@ bool Engine::sampleInput(FrameId frameId) {
     int64_t desiredSlopNs = int64_t(desiredSlop * 1000000.0);
     double intervalLenMs = 1000.0 / double(engineOptions.targetRefreshRate);
     int64_t intervalLenNs = int64_t(intervalLenMs * 1000000.0);
-    double refreshTimeCpuMs = cpuWorkStats.getAvg();
-    double refreshTimeExecMs = execWorkStats.getAvg();
-    double refreshTimeDeviceMs = deviceWorkStats.getAvg();
-    double refreshTimeMs = std::max({refreshTimeCpuMs, refreshTimeExecMs, refreshTimeDeviceMs});
+
+    double refreshTimeMs =
+      std::max({refreshTimeCpuAvgMs, refreshTimeExecAvgMs, refreshTimeDeviceAvgMs});
     bool limitedFps = engineOptions.refreshMode == EngineOptions::LIMITED
                       || engineOptions.refreshMode == EngineOptions::DISCRETIZED;
     double headRoomMs = 0;
@@ -533,10 +532,10 @@ bool Engine::sampleInput(FrameId frameId) {
         double sleepTimeMs = 0;
 
         if (!engineOptions.manualLatencyReduction) {
-            double estimatedWork =
-              (double(latencyInfo.workAvg)
-               + double(latencyInfo.workStdDiv) * double(engineOptions.workPrediction))
-              / 1000000.0;
+            double estimatedWork = worTimeAvgMs;
+            //   (double(latencyInfo.workAvg)
+            //    + double(latencyInfo.workStdDiv) * double(engineOptions.workPrediction))
+            //   / 1000000.0;
 
             double targetDuration = double(std::chrono::duration_cast<std::chrono::nanoseconds>(
                                              estimatedCurrentEnd - FrameGraph::Clock::now())
@@ -1273,17 +1272,36 @@ void Engine::readbackLoop(volatile bool* finished) {
                                  / 1000000.0;
 
             fpsStats.feed(1000.0 / frameTimeMs);
-            cpuWorkStats.feed(double(latestLatencyInfo.info.cpuWorkNs) / 1000000.0);
-            execWorkStats.feed(double(latestLatencyInfo.info.execWorkNs) / 1000000.0);
-            deviceWorkStats.feed(double(latestLatencyInfo.info.deviceWorkNs) / 1000000.0);
+            double workMs = double(latestLatencyInfo.frameLatencyInfo.workNs) / 1000000.0;
+            double cpuWorkMs = double(latestLatencyInfo.info.cpuWorkNs) / 1000000.0;
+            double execWorkMs = double(latestLatencyInfo.info.execWorkNs) / 1000000.0;
+            double deviceWorkMs = double(latestLatencyInfo.info.deviceWorkNs) / 1000000.0;
+            cpuWorkStats.feed(cpuWorkMs);
+            execWorkStats.feed(execWorkMs);
+            deviceWorkStats.feed(deviceWorkMs);
             latencyStats.feed(double(latestLatencyInfo.info.inputNodeInfo.latencyNs) / 1000000.0);
             slopStats.feed(double(latestLatencyInfo.info.inputNodeInfo.totalSlopNs) / 1000000.0);
             perFrameSlopStats.feed(double(latestLatencyInfo.frameLatencyInfo.perFrameSlopNs)
                                    / 1000000.0);
-            workStats.feed(double(latestLatencyInfo.frameLatencyInfo.workNs) / 1000000.0);
+            workStats.feed(workMs);
             execDelayStats.feed(double(latestLatencyInfo.frameLatencyInfo.execDelayNs) / 1000000.0);
             deviceDelayStats.feed(double(latestLatencyInfo.frameLatencyInfo.deviceDelayNs)
                                   / 1000000.0);
+            if (latestLatencyInfo.frame < frameGraph.getMaxFramesInFlight()) {
+                worTimeAvgMs = workMs;
+                refreshTimeCpuAvgMs = cpuWorkMs;
+                refreshTimeExecAvgMs = execWorkMs;
+                refreshTimeDeviceAvgMs = deviceWorkMs;
+            }
+            else {
+                worTimeAvgMs = lerp(workMs, worTimeAvgMs, double(engineOptions.workTimeSmoothing));
+                refreshTimeCpuAvgMs =
+                  lerp(cpuWorkMs, refreshTimeCpuAvgMs, double(engineOptions.workTimeSmoothing));
+                refreshTimeExecAvgMs =
+                  lerp(execWorkMs, refreshTimeExecAvgMs, double(engineOptions.workTimeSmoothing));
+                refreshTimeDeviceAvgMs = lerp(deviceWorkMs, refreshTimeDeviceAvgMs,
+                                              double(engineOptions.workTimeSmoothing));
+            }
             // estimatedFrameEndTimes[latestLatencyInfo.frame % estimatedFrameEndTimes.size()] =
             //   latestLatencyInfo.finishTime;
             FrameId prevIndex = (latestLatencyInfo.frame + estimatedFrameEndTimes.size() - 1)
@@ -2185,11 +2203,13 @@ void Engine::drawUI(FrameId frameId) {
             ImGui::DragFloat("Target fps", &engineOptions.targetRefreshRate, 0.5, 1.f, 1000.f,
                              "%.8f fps");
             ImGui::DragFloat("Desired slop", &engineOptions.desiredSlop, 0.1f, 0, 32, "%.8fms");
-            ImGui::DragFloat("Work prediction", &engineOptions.workPrediction, 0.05f, 0, 10,
-                             "avg + %.8f*stdDiv");
+            // ImGui::DragFloat("Work prediction", &engineOptions.workPrediction, 0.05f, 0, 10,
+            //                  "avg + %.8f*stdDiv");
             ImGui::Checkbox("Manual latency sleep ", &engineOptions.manualLatencyReduction);
             ImGui::DragFloat("Manual sleep time", &engineOptions.manualSleepTime, 0.1f, 0, 100,
                              "%.8fms");
+            ImGui::DragFloat("Work time smoothing", &engineOptions.workTimeSmoothing, 0.05f, 0.f,
+                             0.95f, "lerp(cur, avg, %.8f)");
             if (!engineOptions.latencyReduction)
                 ImGui::EndDisabled();
         }

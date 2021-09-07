@@ -81,18 +81,19 @@ struct EngineOptions final : public IAutoSerializable<EngineOptions>
         throw std::runtime_error("Couldn't decode enum");
     }
 
-    REFLECTABLE((bool)latencyReduction, (float)desiredSlop, (float)workPrediction,
-                (bool)perfMetrics_window, (bool)perfMetrics_fps, (bool)perfMetrics_cpuWork,
-                (bool)perfMetrics_execWork, (bool)perfMetrics_deviceWork, (bool)perfMetrics_latency,
-                (bool)perfMetrics_slop, (bool)perfMetrics_perFrameSlop, (bool)perfMetrics_sleep,
+    REFLECTABLE((bool)latencyReduction, (float)desiredSlop, (bool)perfMetrics_window,
+                (bool)perfMetrics_fps, (bool)perfMetrics_cpuWork, (bool)perfMetrics_execWork,
+                (bool)perfMetrics_deviceWork, (bool)perfMetrics_latency, (bool)perfMetrics_slop,
+                (bool)perfMetrics_perFrameSlop, (bool)perfMetrics_sleep,
                 (bool)perfMetrics_execDelay, (bool)perfMetrics_deviceDelay, (bool)perfMetrics_work,
                 (bool)perfMetrics_mispredictions, (bool)manualLatencyReduction,
-                (float)manualSleepTime, (float)targetRefreshRate, (RefreshRateMode)refreshMode)
+                (float)manualSleepTime, (float)targetRefreshRate, (RefreshRateMode)refreshMode,
+                (float)workTimeSmoothing)
 
     EngineOptions()
       : latencyReduction(false),
-        desiredSlop(1),
-        workPrediction(0),
+        desiredSlop(4),
+        // workPrediction(0),
         perfMetrics_window(true),
         perfMetrics_fps(true),
         perfMetrics_cpuWork(true),
@@ -109,7 +110,8 @@ struct EngineOptions final : public IAutoSerializable<EngineOptions>
         manualLatencyReduction(false),
         manualSleepTime(0.0f),
         targetRefreshRate(60.0f),
-        refreshMode(UNLIMITED) {}
+        refreshMode(UNLIMITED),
+        workTimeSmoothing(0.5f) {}
 };
 
 struct PerformanceCaptureCpuPackage final : public IAutoSerializable<PerformanceCaptureCpuPackage>
@@ -497,6 +499,10 @@ class Engine
     FrameGraph::Clock::time_point frameEndFixPoint;
     std::vector<std::chrono::nanoseconds> expectedFrameDurations;
     std::vector<FrameGraph::Clock::time_point> estimatedFrameEndTimes;
+    double worTimeAvgMs = 0;
+    double refreshTimeCpuAvgMs = 0;
+    double refreshTimeExecAvgMs = 0;
+    double refreshTimeDeviceAvgMs = 0;
 
     std::vector<EntityRenderData> entitiesToDraw;
     FrameId perfCaptureFrame = INVALID_FRAME;
@@ -537,8 +543,8 @@ class Engine
                  uint32_t semaphoreIndex);
     bool sampleInput(FrameId frameId);
     void drawUI(FrameId frameId);
-    PerformanceCaptureData generatePerfCapture(FrameId lastReadyFrame,
-                                               const FrameGraphSlops::ExtendedLatencyInfo& latency) const;
+    PerformanceCaptureData generatePerfCapture(
+      FrameId lastReadyFrame, const FrameGraphSlops::ExtendedLatencyInfo& latency) const;
     AcquiredImageData mainRecord(FrameId frameId);
 
     static drv::PhysicalDevice::SelectionInfo get_device_selection_info(
