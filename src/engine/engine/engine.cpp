@@ -1276,11 +1276,13 @@ void Engine::readbackLoop(volatile bool* finished) {
             double cpuWorkMs = double(latestLatencyInfo.info.cpuWorkNs) / 1000000.0;
             double execWorkMs = double(latestLatencyInfo.info.execWorkNs) / 1000000.0;
             double deviceWorkMs = double(latestLatencyInfo.info.deviceWorkNs) / 1000000.0;
+            double latencyMs = double(latestLatencyInfo.info.inputNodeInfo.latencyNs) / 1000000.0;
+            double slopMs = double(latestLatencyInfo.info.inputNodeInfo.totalSlopNs) / 1000000.0;
             cpuWorkStats.feed(cpuWorkMs);
             execWorkStats.feed(execWorkMs);
             deviceWorkStats.feed(deviceWorkMs);
-            latencyStats.feed(double(latestLatencyInfo.info.inputNodeInfo.latencyNs) / 1000000.0);
-            slopStats.feed(double(latestLatencyInfo.info.inputNodeInfo.totalSlopNs) / 1000000.0);
+            latencyStats.feed(latencyMs);
+            slopStats.feed(slopMs);
             perFrameSlopStats.feed(double(latestLatencyInfo.frameLatencyInfo.perFrameSlopNs)
                                    / 1000000.0);
             workStats.feed(workMs);
@@ -1304,16 +1306,36 @@ void Engine::readbackLoop(volatile bool* finished) {
             }
             // estimatedFrameEndTimes[latestLatencyInfo.frame % estimatedFrameEndTimes.size()] =
             //   latestLatencyInfo.finishTime;
-            FrameId prevIndex = (latestLatencyInfo.frame + estimatedFrameEndTimes.size() - 1)
-                                % estimatedFrameEndTimes.size();
-            const auto expectedDuration =
-              expectedFrameDurations[latestLatencyInfo.frame % expectedFrameDurations.size()];
-            const FrameGraph::Clock::time_point expectedFinishTime =
-              estimatedFrameEndTimes[prevIndex] + expectedDuration;
-            if (latestLatencyInfo.finishTime <= expectedFinishTime)
-                mispredictions.feed(0);
-            else
-                mispredictions.feed(1);
+            // FrameId prevIndex = (latestLatencyInfo.frame + estimatedFrameEndTimes.size() - 1)
+            //                     % estimatedFrameEndTimes.size();
+            // const auto expectedDuration =
+            //   expectedFrameDurations[latestLatencyInfo.frame % expectedFrameDurations.size()];
+            // const FrameGraph::Clock::time_point expectedFinishTime =
+            //   estimatedFrameEndTimes[prevIndex] + expectedDuration;
+            double skippedOrDelayed = 0;
+            switch (engineOptions.refreshMode) {
+                case EngineOptions::UNLIMITED:
+                    // skippedOrDelayed =
+                    //   (slopMs < double(engineOptions.desiredSlop) / 4.0) ? 1.0 : 0.0;
+                    // break;
+                case EngineOptions::LIMITED:
+                    skippedOrDelayed = -1;
+                    break;
+                case EngineOptions::DISCRETIZED: {
+                    double intervalLenMs = 1000.0 / double(engineOptions.targetRefreshRate);
+                    int64_t intervalLenNs = int64_t(intervalLenMs * 1000000.0);
+                    int64_t sinceReferencePointNs =
+                      std::chrono::duration_cast<std::chrono::nanoseconds>(
+                        latestLatencyInfo.finishTime - frameEndFixPoint)
+                        .count();
+                    int64_t completedInterval = sinceReferencePointNs / intervalLenNs;
+                    skippedOrDelayed =
+                      std::max(double(completedInterval - completedFrameIntervalId - 1), 0.0);
+                    completedFrameIntervalId = completedInterval;
+                    break;
+                }
+            }
+            skippedDelayed.feed(skippedOrDelayed);
             if (readbackFrame == perfCaptureFrame)
                 captureLatencyInfo = latestLatencyInfo;
 
@@ -2111,7 +2133,8 @@ void Engine::drawUI(FrameId frameId) {
                 ImGui::Checkbox("Execution delay", &engineOptions.perfMetrics_execDelay);
                 ImGui::Checkbox("Device delay", &engineOptions.perfMetrics_deviceDelay);
                 ImGui::Checkbox("Work time", &engineOptions.perfMetrics_work);
-                ImGui::Checkbox("Delayed frames", &engineOptions.perfMetrics_mispredictions);
+                ImGui::Checkbox("Skipped or delayed frames",
+                                &engineOptions.perfMetrics_skippedDelayed);
 
                 ImGui::EndMenu();
             }
@@ -2184,8 +2207,9 @@ void Engine::drawUI(FrameId frameId) {
         if (engineOptions.perfMetrics_deviceDelay && deviceDelayStats.hasInfo())
             ImGui::Text("Device delay:    %3.0f (~%4.1lf)", deviceDelayStats.getAvg(),
                         deviceDelayStats.getStdDiv());
-        if (engineOptions.perfMetrics_mispredictions && mispredictions.hasInfo())
-            ImGui::Text("Missprediction: %5.1lf%%", mispredictions.getAvg() * 100.0);
+        if (engineOptions.perfMetrics_skippedDelayed && skippedDelayed.hasInfo()
+            && skippedDelayed.getAvg() >= 0)
+            ImGui::Text("Skipped frames:  %5.1lf%%", skippedDelayed.getAvg() * 100.0);
 
         ImGui::End();
     }

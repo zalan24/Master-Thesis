@@ -86,7 +86,7 @@ struct EngineOptions final : public IAutoSerializable<EngineOptions>
                 (bool)perfMetrics_deviceWork, (bool)perfMetrics_latency, (bool)perfMetrics_slop,
                 (bool)perfMetrics_perFrameSlop, (bool)perfMetrics_sleep,
                 (bool)perfMetrics_execDelay, (bool)perfMetrics_deviceDelay, (bool)perfMetrics_work,
-                (bool)perfMetrics_mispredictions, (bool)manualLatencyReduction,
+                (bool)perfMetrics_skippedDelayed, (bool)manualLatencyReduction,
                 (float)manualSleepTime, (float)targetRefreshRate, (RefreshRateMode)refreshMode,
                 (float)workTimeSmoothing)
 
@@ -106,7 +106,7 @@ struct EngineOptions final : public IAutoSerializable<EngineOptions>
         perfMetrics_execDelay(true),
         perfMetrics_deviceDelay(true),
         perfMetrics_work(true),
-        perfMetrics_mispredictions(true),
+        perfMetrics_skippedDelayed(true),
         manualLatencyReduction(false),
         manualSleepTime(0.0f),
         targetRefreshRate(60.0f),
@@ -503,6 +503,7 @@ class Engine
     double refreshTimeCpuAvgMs = 0;
     double refreshTimeExecAvgMs = 0;
     double refreshTimeDeviceAvgMs = 0;
+    int64_t completedFrameIntervalId = 0;
 
     std::vector<EntityRenderData> entitiesToDraw;
     FrameId perfCaptureFrame = INVALID_FRAME;
@@ -518,7 +519,7 @@ class Engine
     StatCalculator<32> execDelayStats;
     StatCalculator<32> deviceDelayStats;
     StatCalculator<32> workStats;
-    StatCalculator<32> mispredictions;
+    StatCalculator<32> skippedDelayed;
 
     struct SubmissionTimestampsInfo
     {
