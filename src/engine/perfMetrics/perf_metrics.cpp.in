@@ -27,7 +27,7 @@ void generate_capture_file(const fs::path& target, const ISerializable* captureO
     std::stringstream ss;
     ss << std::move(jsonObj);
     std::string script =
-      std::regex_replace(get_stript(), captureDataRegex, "captureData = " + std::move(ss).str());
+      std::regex_replace(get_stript(), captureDataRegex, "captureData = " + std::move(ss).str()) + ";";
     std::string css = get_css();
     std::string html = std::regex_replace(std::regex_replace(get_html(), cssRegex, std::move(css)),
                                           jsRegex, std::move(script));
