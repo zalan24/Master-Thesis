@@ -434,7 +434,11 @@ function createTable() {
     stageNameTd.className = 'nametd';
     deviceStageTr.appendChild(stageNameTd);
 
+    let fixedFrameEndTime = captureData.frameEndFixPoint;
+    let frameInterval = captureData.engineOptions.refreshMode == "discretized" ? 1000.0 / captureData.engineOptions.targetRefreshRate : 0;
+
     threadsNamesTd = document.createElement('td');
+    let foundFirstGpu = false;
     for (let threadName in deviceNodes) {
         let threadTbl = document.createElement('table');
         threadTbl.className = 'threadtable';
@@ -452,6 +456,33 @@ function createTable() {
         let contentTd = document.createElement('td');
         contentTd.className = 'contenttd';
         contentTd.style.width = `${timeToWorldUnit * (maxTime - minTime)}px`;
+
+        if (!foundFirstGpu) {
+            contentTd.id = 'gpuTd';
+            foundFirstGpu = true;
+            if (frameInterval > 0) {
+                let firstInterval = Math.ceil((minTime - fixedFrameEndTime) / frameInterval) * frameInterval + fixedFrameEndTime;
+                let intervalCount = Math.ceil((maxTime - firstInterval) / frameInterval) + 1;
+                if (intervalCount > 0) {
+                    for (let i = 0; i < intervalCount; ++i) {
+                        let linesTbl = document.createElement('table');
+                        linesTbl.classList.add('markerlines');
+                        let linesTbdy = document.createElement('tbody');
+
+                        let tr = document.createElement('tr');
+                        let time = firstInterval + i*frameInterval;
+                        let td = document.createElement('td');
+                        td.innerText = `${Math.round(time - minTargetTime)}ms`;
+                        tr.appendChild(td);
+                        linesTbdy.appendChild(tr);
+
+                        linesTbl.appendChild(linesTbdy);
+                        contentTd.appendChild(linesTbl);
+                        linesTbl.style.left = `${timeToWorldUnit * (time - minTime)}px`;
+                    }
+                }
+            }
+        }
 
         for(let i in deviceNodes[threadName]) {
             let node = deviceNodes[threadName][i];

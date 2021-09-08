@@ -87,7 +87,7 @@ table {
     bottom: 0;
     left: 0;
     position: fixed;
-    z-index: 1;
+    z-index: 10;
     opacity: 0.4;
     background-color: rgb(107, 104, 86);
     /* border: 1px solid rgb(173, 166, 141); */
@@ -98,7 +98,7 @@ table {
     color: rgb(255, 244, 185);
 }
 
-.waitTime, .workTime, .resourceWaitTime {
+.waitTime, .workTime, .resourceWaitTime, .markerlines td {
     height: 40px;
     display: inline-block;
 }
@@ -225,4 +225,23 @@ table {
     border-radius: 5px;
     visibility: hidden;
     z-index: 2;
+}
+
+.markerlines {
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: 0;
+}
+/* .markerlines *{
+    background-color: transparent;
+} */
+
+.markerlines td{
+    text-align: left;
+    vertical-align: bottom;
+    font-size: 3px;
+    color: white;
+    border-left: 2px solid white;
+    overflow: hidden;
 }
