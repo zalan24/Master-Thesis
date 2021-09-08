@@ -533,16 +533,13 @@ bool Engine::sampleInput(FrameId frameId) {
 
         if (!engineOptions.manualLatencyReduction) {
             double estimatedWork = worTimeAvgMs;
-            //   (double(latencyInfo.workAvg)
-            //    + double(latencyInfo.workStdDiv) * double(engineOptions.workPrediction))
-            //   / 1000000.0;
 
             double targetDuration = double(std::chrono::duration_cast<std::chrono::nanoseconds>(
                                              estimatedCurrentEnd - FrameGraph::Clock::now())
                                              .count())
                                     / 1000000.0;
 
-            sleepTimeMs = targetDuration - estimatedWork - desiredSlop;
+            sleepTimeMs = targetDuration - estimatedWork - std::max(0.0, desiredSlop - headRoomMs);
         }
         else {
             sleepTimeMs = double(engineOptions.manualSleepTime);
