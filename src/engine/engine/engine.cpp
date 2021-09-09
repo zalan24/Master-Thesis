@@ -497,7 +497,9 @@ bool Engine::sampleInput(FrameId frameId) {
     }
     double desiredSlop = double(engineOptions.desiredSlop);
     int64_t desiredSlopNs = int64_t(desiredSlop * 1000000.0);
-    double intervalLenMs = 1000.0 / double(engineOptions.targetRefreshRate);
+    double intervalLenMs =
+      1000.0
+      / double(engineOptions.targetRefreshRate > 25 ? engineOptions.targetRefreshRate : 25.f);
     int64_t intervalLenNs = int64_t(intervalLenMs * 1000000.0);
 
     double refreshTimeMs =
