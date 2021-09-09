@@ -284,8 +284,7 @@ Engine::Engine(int argc, char* argv[], const EngineConfig& cfg,
     }
     // TODO this should be synced with vblanks
     frameEndFixPoint = FrameGraph::Clock::now();
-    expectedFrameDurations.resize(frameGraph.getMaxFramesInFlight());
-    estimatedFrameEndTimes.resize(frameGraph.getMaxFramesInFlight());
+    frameHistory.resize(frameGraph.getMaxFramesInFlight());
 }
 
 void Engine::buildFrameGraph() {
@@ -511,8 +510,12 @@ bool Engine::sampleInput(FrameId frameId) {
         refreshTimeMs = intervalLenMs;
     }
     FrameGraph::Clock::time_point estimatedPrevEnd = latencyInfo.finishTime;
-    for (FrameId frame = latencyInfo.frame + 1; frame < frameId; ++frame)
-        estimatedPrevEnd += expectedFrameDurations[frame % expectedFrameDurations.size()];
+    for (FrameId frame = latencyInfo.frame + 1; frame < frameId; ++frame) {
+        const FrameHistoryInfo& info = frameHistory[frame % frameHistory.size()];
+        estimatedPrevEnd += info.duration;
+        if (estimatedPrevEnd > info.estimatedEnd)
+            estimatedPrevEnd -= std::min(info.headRoom, estimatedPrevEnd - info.estimatedEnd);
+    }
     FrameGraph::Clock::time_point estimatedCurrentEnd =
       estimatedPrevEnd + std::chrono::nanoseconds(int64_t(refreshTimeMs * 1000000.0));
     if (engineOptions.refreshMode == EngineOptions::DISCRETIZED) {
@@ -539,7 +542,11 @@ bool Engine::sampleInput(FrameId frameId) {
                                              .count())
                                     / 1000000.0;
 
-            sleepTimeMs = targetDuration - estimatedWork - std::max(0.0, desiredSlop - headRoomMs);
+            sleepTimeMs = targetDuration - estimatedWork;
+            if (engineOptions.refreshMode == EngineOptions::LIMITED)
+                sleepTimeMs -= std::max(0.0, desiredSlop - headRoomMs);
+            else
+                sleepTimeMs -= desiredSlop;
         }
         else {
             sleepTimeMs = double(engineOptions.manualSleepTime);
@@ -556,8 +563,8 @@ bool Engine::sampleInput(FrameId frameId) {
     }
     std::chrono::nanoseconds duration =
       std::chrono::duration_cast<std::chrono::nanoseconds>(estimatedCurrentEnd - estimatedPrevEnd);
-    estimatedFrameEndTimes[frameId % estimatedFrameEndTimes.size()] = estimatedCurrentEnd;
-    expectedFrameDurations[frameId % expectedFrameDurations.size()] = duration;
+    frameHistory[frameId % frameHistory.size()] = {
+      duration, estimatedCurrentEnd, std::chrono::nanoseconds(int64_t(headRoomMs * 1000000.0))};
     {
         // Try to acquire new input data
         std::unique_lock<std::mutex> lock(inputWaitMutex);

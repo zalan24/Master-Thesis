@@ -497,8 +497,12 @@ class Engine
     FrameGraphSlops::ExtendedLatencyInfo latestLatencyInfo;
     FrameGraphSlops::ExtendedLatencyInfo captureLatencyInfo;
     FrameGraph::Clock::time_point frameEndFixPoint;
-    std::vector<std::chrono::nanoseconds> expectedFrameDurations;
-    std::vector<FrameGraph::Clock::time_point> estimatedFrameEndTimes;
+    struct FrameHistoryInfo {
+        std::chrono::nanoseconds duration;
+        FrameGraph::Clock::time_point estimatedEnd;
+        std::chrono::nanoseconds headRoom;
+    };
+    std::vector<FrameHistoryInfo> frameHistory;
     double worTimeAvgMs = 0;
     double refreshTimeCpuAvgMs = 0;
     double refreshTimeExecAvgMs = 0;
