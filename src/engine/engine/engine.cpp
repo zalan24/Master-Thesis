@@ -499,7 +499,7 @@ bool Engine::sampleInput(FrameId frameId) {
     int64_t desiredSlopNs = int64_t(desiredSlop * 1000000.0);
     double intervalLenMs =
       1000.0
-      / double(engineOptions.targetRefreshRate > 25 ? engineOptions.targetRefreshRate : 25.f);
+      / double(engineOptions.targetRefreshRate > 15 ? engineOptions.targetRefreshRate : 15.f);
     int64_t intervalLenNs = int64_t(intervalLenMs * 1000000.0);
 
     double refreshTimeMs =
@@ -539,10 +539,18 @@ bool Engine::sampleInput(FrameId frameId) {
         if (!engineOptions.manualLatencyReduction) {
             double estimatedWork = worTimeAvgMs;
 
-            double targetDuration = double(std::chrono::duration_cast<std::chrono::nanoseconds>(
-                                             estimatedCurrentEnd - FrameGraph::Clock::now())
-                                             .count())
-                                    / 1000000.0;
+            FrameGraph::Clock::time_point now = FrameGraph::Clock::now();
+            // recovery from errors
+            if (estimatedCurrentEnd > now + std::chrono::seconds(1))
+                estimatedCurrentEnd = now + std::chrono::seconds(1);
+            if (estimatedCurrentEnd < now)
+                estimatedCurrentEnd =
+                  now + std::chrono::nanoseconds(int64_t(estimatedWork * 1000000.0));
+
+            double targetDuration =
+              double(std::chrono::duration_cast<std::chrono::nanoseconds>(estimatedCurrentEnd - now)
+                       .count())
+              / 1000000.0;
 
             sleepTimeMs = targetDuration - estimatedWork;
             if (engineOptions.refreshMode == EngineOptions::LIMITED)
