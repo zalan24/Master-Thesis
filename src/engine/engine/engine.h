@@ -497,7 +497,10 @@ class Engine
     FrameGraphSlops::ExtendedLatencyInfo latestLatencyInfo;
     FrameGraphSlops::ExtendedLatencyInfo captureLatencyInfo;
     FrameGraph::Clock::time_point frameEndFixPoint;
-    struct FrameHistoryInfo {
+    res::ImageSet captureImage;
+    ImageStager captureImageStager;
+    struct FrameHistoryInfo
+    {
         std::chrono::nanoseconds duration;
         FrameGraph::Clock::time_point estimatedEnd;
         std::chrono::nanoseconds headRoom;
@@ -511,6 +514,13 @@ class Engine
 
     std::vector<EntityRenderData> entitiesToDraw;
     FrameId perfCaptureFrame = INVALID_FRAME;
+
+    struct PerFrameTempInfo
+    {
+        drv::ImagePtr captureImage = drv::get_null_ptr<drv::ImagePtr>();
+        bool captureHappening = false;
+    };
+    std::vector<PerFrameTempInfo> perFrameTempInfo;
 
     StatCalculator<32> fpsStats;
     StatCalculator<32> cpuWorkStats;

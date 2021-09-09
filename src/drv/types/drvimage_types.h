@@ -430,6 +430,14 @@ struct Extent3D
     uint32_t width;
     uint32_t height;
     uint32_t depth;
+
+    bool operator==(const Extent3D &rhs) const {
+        return width == rhs.width && height == rhs.height && depth == rhs.depth;
+    }
+
+    bool operator!=(const Extent3D &rhs) const {
+        return !(*this == rhs);
+    }
 };
 
 enum class SampleCount : uint32_t

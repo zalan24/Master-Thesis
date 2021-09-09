@@ -23,6 +23,10 @@
 #include <namethreads.h>
 #include <perf_metrics.h>
 
+#define STB_IMAGE_WRITE_IMPLEMENTATION
+
+#include <stb_image_write.h>
+
 #include "execution_queue.h"
 #include "imagestager.h"
 
@@ -285,6 +289,7 @@ Engine::Engine(int argc, char* argv[], const EngineConfig& cfg,
     // TODO this should be synced with vblanks
     frameEndFixPoint = FrameGraph::Clock::now();
     frameHistory.resize(frameGraph.getMaxFramesInFlight());
+    perFrameTempInfo.resize(frameGraph.getMaxFramesInFlight());
 }
 
 void Engine::buildFrameGraph() {
@@ -474,6 +479,8 @@ void Engine::initCursorEntitySystem() {
 }
 
 Engine::~Engine() {
+    captureImageStager.clear();
+    captureImage.close();
     fs::path optionsPath = fs::path{"engineOptions.json"};
     if (!fs::exists(optionsPath))
         fs::create_directories(optionsPath.parent_path());
@@ -618,6 +625,7 @@ void Engine::simulationLoop() {
                                      FrameGraph::SIMULATION_STAGE, simulationFrame);
             startNode) {
             garbageSystem.startGarbage(simulationFrame);
+            perFrameTempInfo[simulationFrame % perFrameTempInfo.size()] = {};
         }
         else
             break;
@@ -626,8 +634,9 @@ void Engine::simulationLoop() {
             assert(frameGraph.isStopped());
             break;
         }
-        if (mouseListener.popNeedPerfCapture())
+        if (mouseListener.popNeedPerfCapture()) {
             createPerformanceCapture(simulationFrame);
+        }
         simulate(simulationFrame);
         if (!frameGraph.endStage(FrameGraph::SIMULATION_STAGE, simulationFrame)) {
             assert(frameGraph.isStopped());
@@ -1214,9 +1223,21 @@ void Engine::readbackLoop(volatile bool* finished) {
         if (!frameGraph.startStage(FrameGraph::READBACK_STAGE, readbackFrame))
             break;
         readback(readbackFrame);
+
+        bool performCapture =
+          perfCaptureFrame != INVALID_FRAME
+          && perfCaptureFrame + frameGraph.getMaxFramesInFlight() <= readbackFrame;
+
+        TemporalResourceLockerDescriptor resourceDesc;
+        ImageStager::StagerId stagerId = 0;
+        if (performCapture) {
+            stagerId = captureImageStager.getStagerId(perfCaptureFrame);
+            captureImageStager.lockResource(resourceDesc, ImageStager::DOWNLOAD, stagerId);
+        }
+
         if (auto handle =
               frameGraph.acquireNode(frameGraph.getStageEndNode(FrameGraph::READBACK_STAGE),
-                                     FrameGraph::READBACK_STAGE, readbackFrame);
+                                     FrameGraph::READBACK_STAGE, readbackFrame, resourceDesc);
             handle) {
             for (const auto& itr :
                  timestsampRingBuffer[readbackFrame % timestsampRingBuffer.size()]) {
@@ -1350,14 +1371,13 @@ void Engine::readbackLoop(volatile bool* finished) {
                 }
             }
             skippedDelayed.feed(skippedOrDelayed);
-            if (readbackFrame == perfCaptureFrame)
+            fs::path capturesFolder = fs::path{"captures"};
+            if (perFrameTempInfo[readbackFrame % perFrameTempInfo.size()].captureHappening)
                 captureLatencyInfo = latestLatencyInfo;
 
-            if (perfCaptureFrame != INVALID_FRAME
-                && perfCaptureFrame + frameGraph.getMaxFramesInFlight() <= readbackFrame) {
+            if (performCapture) {
                 PerformanceCaptureData capture =
                   generatePerfCapture(readbackFrame, captureLatencyInfo);
-                fs::path capturesFolder = fs::path{"captures"};
                 if (!fs::exists(capturesFolder))
                     fs::create_directories(capturesFolder);
                 try {
@@ -1368,9 +1388,39 @@ void Engine::readbackLoop(volatile bool* finished) {
                       std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
                     struct tm timeinfo;
                     localtime_s(&timeinfo, &time);
-                    filename << "capture_" << std::put_time(&timeinfo, "%Y_%m_%d_%H_%M_%S") << "_"
-                             << perfCaptureFrame << ".html";
-                    fs::path capturePath = capturesFolder / fs::path{filename.str()};
+                    filename << "capture__" << std::put_time(&timeinfo, "%Y_%m_%d_%H_%M_%S") << "_"
+                             << perfCaptureFrame;
+
+                    drv::DeviceSize size;
+                    drv::DeviceSize rowPitch;
+                    drv::DeviceSize arrayPitch;
+                    drv::DeviceSize depthPitch;
+                    captureImageStager.getMemoryData(stagerId, 0, 0, size, rowPitch, arrayPitch,
+                                                     depthPitch);
+                    std::vector<uint32_t> pixels(size / 4);
+                    captureImageStager.getData(pixels.data(), 0, 0, stagerId, handle.getLock());
+                    drv::TextureInfo texInfo =
+                      drv::get_texture_info(captureImage.get().getImage(0));
+                    std::vector<uint8_t> decodedPixels(texInfo.extent.width * texInfo.extent.height
+                                                       * 3);
+                    for (uint32_t y = 0; y < texInfo.extent.height; ++y) {
+                        for (uint32_t x = 0; x < texInfo.extent.width; ++x) {
+                            uint32_t p = pixels[y * rowPitch / 4 + x];
+                            // uint8_t a = uint8_t(p >> 24);
+                            uint8_t r = uint8_t(p >> 16);
+                            uint8_t g = uint8_t(p >> 8);
+                            uint8_t b = uint8_t(p);
+                            decodedPixels[(y * texInfo.extent.width + x) * 3 + 0] = r;
+                            decodedPixels[(y * texInfo.extent.width + x) * 3 + 1] = g;
+                            decodedPixels[(y * texInfo.extent.width + x) * 3 + 2] = b;
+                        }
+                    }
+                    fs::path captureImagePath = capturesFolder / fs::path{filename.str() + ".png"};
+                    stbi_write_png(captureImagePath.string().c_str(), int(texInfo.extent.width),
+                                   int(texInfo.extent.height), 3, decodedPixels.data(),
+                                   int(texInfo.extent.width * 3));
+
+                    fs::path capturePath = capturesFolder / fs::path{filename.str() + ".html"};
                     generate_capture_file(capturePath, &capture);
                     LOG_ENGINE("Performance capture of frame %llu, saved to %s", perfCaptureFrame,
                                capturePath.string().c_str());
@@ -1765,6 +1815,30 @@ Engine::AcquiredImageData Engine::mainRecord(FrameId frameId) {
         swapChainData = acquiredSwapchainImage(nodeHandle);
         if (!swapChainData)
             return swapChainData;
+        drv::Extent3D swapchainExtent = drv::get_texture_info(swapChainData.image).extent;
+        if (!captureImage
+            || drv::get_texture_info(captureImage.get().getImage(0)).extent != swapchainExtent) {
+            drv::ImageSet::ImageInfo transferImageInfo;
+            transferImageInfo.imageId = drv::ImageId("captureTransferTex");
+            transferImageInfo.format = drv::get_texture_info(swapChainData.image).format;
+            transferImageInfo.extent = swapchainExtent;
+            transferImageInfo.mipLevels = 1;
+            transferImageInfo.arrayLayers = 1;
+            transferImageInfo.sampleCount = drv::SampleCount::SAMPLE_COUNT_1;
+            transferImageInfo.usage =
+              drv::ImageCreateInfo::TRANSFER_DST_BIT | drv::ImageCreateInfo::TRANSFER_SRC_BIT;
+            transferImageInfo.type = drv::ImageCreateInfo::TYPE_2D;
+            captureImageStager.clear();
+            captureImage = createResource<drv::ImageSet>(
+              getPhysicalDevice(), getDevice(),
+              std::vector<drv::ImageSet::ImageInfo>{transferImageInfo},
+              drv::ImageSet::PreferenceSelector(drv::MemoryType::DEVICE_LOCAL_BIT,
+                                                drv::MemoryType::DEVICE_LOCAL_BIT));
+            captureImageStager = ImageStager(this, captureImage.get().getImage(0),
+                                             getMaxFramesInFlight(), ImageStager::DOWNLOAD);
+        }
+        perFrameTempInfo[frameId % perFrameTempInfo.size()].captureImage =
+          captureImage.get().getImage(0);
     }
     else
         return {};
@@ -1777,10 +1851,42 @@ Engine::AcquiredImageData Engine::mainRecord(FrameId frameId) {
             Engine* engine;
             AcquiredImageData* swapChainData;
             FrameId frameId;
+            bool captureImage;
+            drv::ImagePtr captureImageTarget;
+            ImageStager* captureImageStager;
             static void record(const RecordData& data, drv::DrvCmdBufferRecorder* recorder) {
                 for (const auto& entity : data.engine->entitiesToDraw)
                     data.engine->entityManager.prepareTexture(entity.textureId, recorder);
                 data.engine->record(*data.swapChainData, recorder, data.frameId);
+                if (data.captureImage) {
+                    recorder->cmdImageBarrier({data.swapChainData->image,
+                                               drv::IMAGE_USAGE_TRANSFER_SOURCE,
+                                               drv::ImageMemoryBarrier::AUTO_TRANSITION});
+                    recorder->cmdImageBarrier({data.captureImageTarget,
+                                               drv::IMAGE_USAGE_TRANSFER_DESTINATION,
+                                               drv::ImageMemoryBarrier::AUTO_TRANSITION});
+                    drv::ImageCopyRegion region;
+                    region.dstOffset = {0, 0, 0};
+                    region.srcOffset = {0, 0, 0};
+                    region.extent = drv::get_texture_info(data.captureImageTarget).extent;
+                    region.srcSubresource.aspectMask = drv::COLOR_BIT;
+                    region.srcSubresource.baseArrayLayer = 0;
+                    region.srcSubresource.layerCount = 1;
+                    region.srcSubresource.mipLevel = 0;
+                    region.dstSubresource.aspectMask = drv::COLOR_BIT;
+                    region.dstSubresource.baseArrayLayer = 0;
+                    region.dstSubresource.layerCount = 1;
+                    region.dstSubresource.mipLevel = 0;
+                    recorder->cmdCopyImage(data.swapChainData->image, data.captureImageTarget, 1,
+                                           &region);
+                    recorder->cmdImageBarrier({data.captureImageTarget,
+                                               drv::IMAGE_USAGE_TRANSFER_SOURCE,
+                                               drv::ImageMemoryBarrier::AUTO_TRANSITION});
+                    data.captureImageStager->transferToStager(
+                      recorder, data.captureImageStager->getStagerId(data.frameId));
+                    recorder->cmdImageBarrier({data.swapChainData->image, drv::IMAGE_USAGE_PRESENT,
+                                               drv::ImageMemoryBarrier::AUTO_TRANSITION});
+                }
             }
             bool operator==(const RecordData& other) {
                 return engine == other.engine && swapChainData == other.swapChainData;
@@ -1790,7 +1896,12 @@ Engine::AcquiredImageData Engine::mainRecord(FrameId frameId) {
         std::sort(
           entitiesToDraw.begin(), entitiesToDraw.end(),
           [](const EntityRenderData& lhs, const EntityRenderData& rhs) { return lhs.z > rhs.z; });
-        RecordData recordData{this, &swapChainData, frameId};
+        bool needCaptureImage =
+          perFrameTempInfo[frameId % perFrameTempInfo.size()].captureHappening;
+        drv::ImagePtr captureImageTarget =
+          perFrameTempInfo[frameId % perFrameTempInfo.size()].captureImage;
+        RecordData recordData{
+          this, &swapChainData, frameId, needCaptureImage, captureImageTarget, &captureImageStager};
         {
             OneTimeCmdBuffer<RecordData> cmdBuffer(
               CMD_BUFFER_ID(), "main_draw", getSemaphorePool(), getPhysicalDevice(), getDevice(),
@@ -1802,7 +1913,8 @@ Engine::AcquiredImageData Engine::mainRecord(FrameId frameId) {
               ResourceStateValidationMode::NEVER_VALIDATE);
             submission.waitSemaphores.push_back(
               {swapChainData.imageAvailableSemaphore,
-               drv::IMAGE_USAGE_COLOR_OUTPUT_WRITE | drv::IMAGE_USAGE_TRANSFER_DESTINATION});
+               drv::IMAGE_USAGE_COLOR_OUTPUT_WRITE | drv::IMAGE_USAGE_TRANSFER_DESTINATION,
+               drv::IMAGE_USAGE_TRANSFER_SOURCE});
             submission.signalSemaphores.push_back(swapChainData.renderFinishedSemaphore);
             nodeHandle.submit(queueInfos.renderQueue.id, std::move(submission));
         }
@@ -2107,6 +2219,7 @@ PerformanceCaptureData Engine::generatePerfCapture(
 
 void Engine::createPerformanceCapture(FrameId targetFrame) {
     perfCaptureFrame = targetFrame;
+    perFrameTempInfo[targetFrame % perFrameTempInfo.size()].captureHappening = true;
 }
 
 static void HelpMarker(const char* desc) {
