@@ -20,9 +20,8 @@ std::string hash_binary(size_t size, const void* data) {
 std::string ISerializable::hash() const {
     std::stringstream ss;
     writeBin(ss);
-    std::vector<char> binary(size_t(ss.gcount()));
-    ss.read(binary.data(), ss.gcount());
-    return hash_binary(binary.size(), reinterpret_cast<const void*>(binary.data()));
+    std::string str = std::move(ss).str();
+    return hash_binary(str.length(), reinterpret_cast<const void*>(str.data()));
 }
 
 void IVirtualSerializable::writeJson(json& out) const {
