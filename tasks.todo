@@ -67,6 +67,29 @@ Get a triangle on screen:
             ☐ Add all necessary information
 
 
+    ☐ Document
+        ☐ What is latency?
+        ☐ Why is it important?
+        ☐ Where does it come from?
+            ☐ Explanation of cpu / execution queue / gpu pipeline
+        ☐ Naive solutions to eliminate it
+        ☐ Related work
+            ☐ COD & Reflex
+            ☐ What this project adds (to both COD and reflex)
+        ☐ Latency reduction algorithm used here (without perf measurementes: sleepTime = ...)
+            ☐ Explain unlimited/limited/discretized modes
+        ☐ How to obtain such values from a completed frame
+            ☐ Naive solutions and why they don't work (eg measuring cpu work time, disregarding dependencies and async calculations)
+                ☐ Use visual examples
+            ☐ Introduce frameGraph based representation
+            ☐ Show the slopGraph's algorithm and how it calculates different values
+                ☐ Try to use as many references to graph algorithms / theories as possible
+            ☐ Show that this is the correct solution
+        ☐ How to predict future values and what to predict
+            ☐ The frame end should be predicted, not the slop. Explain why
+        ☐ Results
+        ☐ Future work
+
     ☐ Replace resource descriptions in framegraph node queries with resource descriptor providers (which only determines physical resources after node's dependency wait)
 
 
