@@ -9,6 +9,8 @@
 
 #include <simplecpp.h>
 
+#include <shadertypes.h>
+
 #include <blockfile.h>
 // #include <features.h>
 // #include <shadertypes.h>
@@ -571,6 +573,170 @@ std::string Preprocessor::collectIncludes(const std::string& header,
     return hash_string(ret);
 }
 
+static ResourceObject generate_resource_object(const Resources& resources,
+                                               const PipelineResourceUsage& usages) {
+    ResourceObject ret;
+    for (const auto& itr : resources.variables) {
+        const std::string& name = itr.first;
+        if (usages.usages[ShaderBin::CS].usedVars.count(name))
+            ret.computeResources.shaderVars.insert(name);
+        if (usages.usages[ShaderBin::VS].usedVars.count(name))
+            ret.graphicsResources.shaderVars.insert(name);
+        if (usages.usages[ShaderBin::PS].usedVars.count(name))
+            ret.graphicsResources.shaderVars.insert(name);
+    }
+    return ret;
+}
+
+struct TypeInfo
+{
+    std::string cxxType;
+    size_t size;
+    size_t align;
+};
+
+static TypeInfo get_type_info(const std::string& type) {
+#define RET_TYPE(type) \
+    return { #type, sizeof(type), alignof(type) }
+    if (type == "int")
+        RET_TYPE(int32_t);
+    if (type == "int2")
+        RET_TYPE(int2);
+    if (type == "int3")
+        RET_TYPE(int3);
+    if (type == "int4")
+        RET_TYPE(int4);
+    if (type == "uint")
+        RET_TYPE(uint32_t);
+    if (type == "uint2")
+        RET_TYPE(uint2);
+    if (type == "uint3")
+        RET_TYPE(uint3);
+    if (type == "uint4")
+        RET_TYPE(uint4);
+    if (type == "float")
+        RET_TYPE(float);
+    if (type == "vec2")
+        RET_TYPE(vec2);
+    if (type == "vec3")
+        RET_TYPE(vec3);
+    if (type == "vec4")
+        RET_TYPE(vec4);
+    if (type == "mat44")
+        RET_TYPE(mat44);
+#undef RET_TYPE
+    throw std::runtime_error("Unkown type: " + type);
+}
+
+PushConstObjData ResourcePack::generateCXX(const std::string& structName,
+                                           const Resources& resources, std::ostream& out) const {
+    PushConstObjData ret;
+    ret.name = structName;
+    std::vector<std::string> initOrder;
+    initOrder.reserve(shaderVars.size());
+    std::map<std::string, TypeInfo> vars;
+    std::vector<std::string> sizeOrder;
+    std::map<std::string, size_t> offsets;
+    sizeOrder.reserve(shaderVars.size());
+    for (const std::string& var : shaderVars) {
+        auto typeItr = resources.variables.find(var);
+        if (typeItr == resources.variables.end())
+            throw std::runtime_error(
+              "Variable registered in resource pack is not found in the resource list");
+        vars[var] = get_type_info(typeItr->second);
+        sizeOrder.push_back(var);
+    }
+    std::sort(sizeOrder.begin(), sizeOrder.end(),
+              [&](const std::string& lhs, const std::string& rhs) {
+                  return vars[lhs].size > vars[rhs].size;
+              });
+    size_t predictedSize = 0;
+    auto gen_separator = [&](size_t align) {
+        size_t offset = predictedSize % align;
+        if (offset != 0) {
+            out << "    // padding of " << (align - offset) << "bytes\n";
+            predictedSize += align - offset;
+        }
+    };
+    auto export_var = [&](auto itr) {
+        const std::string& var = *itr;
+        gen_separator(vars[var].align);
+        out << "    " << vars[var].cxxType << " " << var << "; // offset: " << predictedSize
+            << "\n";
+        offsets[var] = predictedSize;
+        predictedSize += vars[var].size;
+        initOrder.push_back(var);
+        sizeOrder.erase(itr);
+    };
+    constexpr size_t structAlignas = 4;
+    out << "struct alignas(" << structAlignas << ") " << structName << " {\n";
+    while (sizeOrder.size() > 0) {
+        size_t requiredOffset = vars[sizeOrder[0]].align;
+        if (predictedSize % requiredOffset != 0) {
+            size_t padding = requiredOffset - (predictedSize % requiredOffset);
+            auto itr =
+              std::find_if(sizeOrder.begin(), sizeOrder.end(),
+                           [&](const std::string& var) { return vars[var].size <= padding; });
+            if (itr != sizeOrder.end()) {
+                export_var(itr);
+                continue;
+            }
+        }
+        export_var(sizeOrder.begin());
+    }
+    out << "    // size without padding at the end\n";
+    out << "    static constexpr size_t CONTENT_SIZE = " << predictedSize << ";\n";
+    ret.effectiveSize = predictedSize;
+    gen_separator(structAlignas);
+    out << "    " << structName << "(";
+    bool first = true;
+    for (const auto& [name, type] : resources.variables) {
+        if (!first)
+            out << ", ";
+        first = false;
+        if (std::find(initOrder.begin(), initOrder.end(), name) != initOrder.end())
+            out << "const " << type << " &_" << name;
+        else
+            out << "const " << type << " & /*" << name << "*/";
+    }
+    out << ")\n";
+    first = true;
+    for (const std::string& var : initOrder) {
+        out << (first ? "      : " : "      , ");
+        first = false;
+        out << var << "(_" << var << ")\n";
+    }
+    out << "    {\n";
+    out << "    }\n";
+    // out << "    " << structName << "(";
+    // first = true;
+    // for (const std::string& var : initOrder) {
+    //     if (!first)
+    //         out << ", ";
+    //     first = false;
+    //     auto itr = resources.variables.find(var);
+    //     assert(itr != resources.variables.end());
+    //     out << "const " << itr->second << " &_" << itr->first;
+    // }
+    // out << ")\n";
+    // first = true;
+    // for (const std::string& var : initOrder) {
+    //     out << (first ? "      : " : "      , ");
+    //     first = false;
+    //     out << var << "(_" << var << ")\n";
+    // }
+    // out << "    {\n";
+    // out << "    }\n";
+    out << "};\n";
+    for (const auto& [var, offset] : offsets) {
+        out << "static_assert(offsetof(" << structName << ", " << var << ") == " << offset
+            << ");\n";
+    }
+    out << "static_assert(sizeof(" << structName << ") == " << predictedSize << ");\n\n";
+    ret.structSize = predictedSize;
+    return ret;
+}
+
 void Preprocessor::processHeader(const fs::path& file, const fs::path& outdir) {
     std::string name = file.stem().string();
     for (char& c : name)
@@ -663,23 +829,28 @@ void Preprocessor::processHeader(const fs::path& file, const fs::path& outdir) {
         ShaderBin::StageConfig cfg =
           read_stage_configs(incData.resources, i, {incData.variants}, incData.variantMultiplier,
                              genInput, resourceUsage);
-        // if (incData.resourceObjects.find(resourceUsage) == incData.resourceObjects.end())
-        //     incData.resourceObjects[resourceUsage] =
-        //       generate_resource_object(resources, resourceUsage);
+        if (incData.resourceObjects.find(resourceUsage) == incData.resourceObjects.end())
+            incData.resourceObjects[resourceUsage] =
+              generate_resource_object(incData.resources, resourceUsage);
         // const ResourceObject& resourceObj = incData.resourceObjects[resourceUsage];
         incData.variantToResourceUsage[i] = resourceUsage;
     }
 
-    // uint32_t structId = 0;
-    // for (const auto& itr : incData.resourceObjects) {
-    //     for (const auto& [stages, pack] : itr.second.packs) {
-    //         if (incData.exportedPacks.find(pack) != incData.exportedPacks.end())
-    //             continue;
-    //         std::string structName =
-    //           "PushConstants_header_" + name + "_" + std::to_string(structId++);
-    //         incData.exportedPacks[pack] = pack.generateCXX(structName, resources, cxx);
-    //     }
-    // }
+    uint32_t structId = 0;
+    for (const auto& itr : incData.resourceObjects) {
+        if (itr.second.graphicsResources) {
+            std::string structName =
+              "PushConstants_header_" + name + "_graphics_" + std::to_string(structId++);
+            incData.exportedPacks[itr.second.graphicsResources] =
+              itr.second.graphicsResources.generateCXX(structName, incData.resources, cxx);
+        }
+        if (itr.second.computeResources) {
+            std::string structName =
+              "PushConstants_header_" + name + "_compute_" + std::to_string(structId++);
+            incData.exportedPacks[itr.second.computeResources] =
+              itr.second.computeResources.generateCXX(structName, incData.resources, cxx);
+        }
+    }
 
     header << "class " << registryClassName << " final : public ShaderDescriptorReg {\n";
     header << "  public:\n";
@@ -1000,7 +1171,7 @@ void Preprocessor::processSource(const fs::path& file, const fs::path& outdir) {
     //         }
     //     }
     //     ShaderBin::ShaderData shaderData;
-    //     std::map<PipelineResourceUsage, ResourceObject> resourceObjects;
+    std::map<PipelineResourceUsage, ResourceObject> resourceObjects;
     // std::vector<PipelineResourceUsage> variantToResourceUsage =
     //   generateShaderVariantToResourceUsages(objData);
     //     std::string genFile = "";
@@ -1022,18 +1193,17 @@ void Preprocessor::processSource(const fs::path& file, const fs::path& outdir) {
 
     header << "\n";
 
-    //     uint32_t structId = 0;
-    //     std::map<ResourcePack, std::string> exportedPacks;
-    //     for (const auto& itr : resourceObjects) {
-    //         for (const auto& [stages, pack] : itr.second.packs) {
-    //             if (exportedPacks.find(pack) != exportedPacks.end())
-    //                 continue;
-    //             std::string structName =
-    //               "PushConstants_" + shaderName + "_" + std::to_string(structId++);
-    //             exportedPacks[pack] = structName;
-    //             pack.generateCXX(structName, resources, cxx);
-    //         }
+    // uint32_t structId = 0;
+    // std::map<ResourcePack, std::string> exportedPacks;
+    // for (const auto& itr : resourceObjects) {
+    //     for (const auto& [stages, pack] : itr.second.packs) {
+    //         if (exportedPacks.find(pack) != exportedPacks.end())
+    //             continue;
+    //         std::string structName = "PushConstants_" + name + "_" + std::to_string(structId++);
+    //         exportedPacks[pack] = structName;
+    //         pack.generateCXX(structName, objData.resources, cxx);
     //     }
+    // }
 
     header << "class " << registryClassName << " final : public ShaderObjectRegistry {\n";
     header << "  public:\n";
@@ -1344,23 +1514,6 @@ void Preprocessor::cleanUp() {
     for (const auto& itr : unusedShaders)
         data.sources.erase(data.sources.find(itr));
 }
-
-// static ResourceObject generate_resource_object(const Resources& resources,
-//                                                const PipelineResourceUsage& usages) {
-//     ResourceObject ret;
-//     for (const auto& itr : resources.variables) {
-//         const std::string& name = itr.first;
-//         if (usages.csUsage.usedVars.count(name))
-//             ret.packs[ResourceObject::CS].shaderVars.insert(name);
-//         if (usages.vsUsage.usedVars.count(name))
-//             ret.packs[ResourceObject::VS].shaderVars.insert(name);
-//         if (usages.psUsage.usedVars.count(name))
-//             ret.packs[ResourceObject::PS].shaderVars.insert(name);
-//     }
-//     // TODO push constant ranges could be combined
-//     // overlaps should also be supported
-//     return ret;
-// }
 
 // bool generate_header(CompilerData& compileData, const std::string shaderFile) {
 //     if (!fs::exists(fs::path(compileData.outputFolder))
@@ -1854,155 +2007,6 @@ void Preprocessor::cleanUp() {
 //         }
 //     }
 //     return true;
-// }
-
-// struct TypeInfo
-// {
-//     std::string cxxType;
-//     size_t size;
-//     size_t align;
-// };
-
-// static TypeInfo get_type_info(const std::string& type) {
-// #define RET_TYPE(type) \
-//     return { #type, sizeof(type), alignof(type) }
-//     if (type == "int")
-//         RET_TYPE(int32_t);
-//     if (type == "int2")
-//         RET_TYPE(int2);
-//     if (type == "int3")
-//         RET_TYPE(int3);
-//     if (type == "int4")
-//         RET_TYPE(int4);
-//     if (type == "uint")
-//         RET_TYPE(uint32_t);
-//     if (type == "uint2")
-//         RET_TYPE(uint2);
-//     if (type == "uint3")
-//         RET_TYPE(uint3);
-//     if (type == "uint4")
-//         RET_TYPE(uint4);
-//     if (type == "float")
-//         RET_TYPE(float);
-//     if (type == "vec2")
-//         RET_TYPE(vec2);
-//     if (type == "vec3")
-//         RET_TYPE(vec3);
-//     if (type == "vec4")
-//         RET_TYPE(vec4);
-//     if (type == "mat44")
-//         RET_TYPE(mat44);
-// #undef RET_TYPE
-//     throw std::runtime_error("Unkown type: " + type);
-// }
-
-// PushConstObjData ResourcePack::generateCXX(const std::string& structName,
-//                                            const Resources& resources, std::ostream& out) const {
-//     PushConstObjData ret;
-//     ret.name = structName;
-//     std::vector<std::string> initOrder;
-//     initOrder.reserve(shaderVars.size());
-//     std::map<std::string, TypeInfo> vars;
-//     std::vector<std::string> sizeOrder;
-//     std::map<std::string, size_t> offsets;
-//     sizeOrder.reserve(shaderVars.size());
-//     for (const std::string& var : shaderVars) {
-//         auto typeItr = resources.variables.find(var);
-//         if (typeItr == resources.variables.end())
-//             throw std::runtime_error(
-//               "Variable registered in resource pack is not found in the resource list");
-//         vars[var] = get_type_info(typeItr->second);
-//         sizeOrder.push_back(var);
-//     }
-//     std::sort(sizeOrder.begin(), sizeOrder.end(),
-//               [&](const std::string& lhs, const std::string& rhs) {
-//                   return vars[lhs].size > vars[rhs].size;
-//               });
-//     size_t predictedSize = 0;
-//     auto gen_separator = [&](size_t align) {
-//         size_t offset = predictedSize % align;
-//         if (offset != 0) {
-//             out << "    // padding of " << (align - offset) << "bytes\n";
-//             predictedSize += align - offset;
-//         }
-//     };
-//     auto export_var = [&](auto itr) {
-//         const std::string& var = *itr;
-//         gen_separator(vars[var].align);
-//         out << "    " << vars[var].cxxType << " " << var << "; // offset: " << predictedSize
-//             << "\n";
-//         offsets[var] = predictedSize;
-//         predictedSize += vars[var].size;
-//         initOrder.push_back(var);
-//         sizeOrder.erase(itr);
-//     };
-//     constexpr size_t structAlignas = 4;
-//     out << "struct alignas(" << structAlignas << ") " << structName << " {\n";
-//     while (sizeOrder.size() > 0) {
-//         size_t requiredOffset = vars[sizeOrder[0]].align;
-//         if (predictedSize % requiredOffset != 0) {
-//             size_t padding = requiredOffset - (predictedSize % requiredOffset);
-//             auto itr =
-//               std::find_if(sizeOrder.begin(), sizeOrder.end(),
-//                            [&](const std::string& var) { return vars[var].size <= padding; });
-//             if (itr != sizeOrder.end()) {
-//                 export_var(itr);
-//                 continue;
-//             }
-//         }
-//         export_var(sizeOrder.begin());
-//     }
-//     out << "    // size without padding at the end\n";
-//     out << "    static constexpr size_t CONTENT_SIZE = " << predictedSize << ";\n";
-//     ret.effectiveSize = predictedSize;
-//     gen_separator(structAlignas);
-//     out << "    " << structName << "(";
-//     bool first = true;
-//     for (const auto& [name, type] : resources.variables) {
-//         if (!first)
-//             out << ", ";
-//         first = false;
-//         if (std::find(initOrder.begin(), initOrder.end(), name) != initOrder.end())
-//             out << "const " << type << " &_" << name;
-//         else
-//             out << "const " << type << " & /*" << name << "*/";
-//     }
-//     out << ")\n";
-//     first = true;
-//     for (const std::string& var : initOrder) {
-//         out << (first ? "      : " : "      , ");
-//         first = false;
-//         out << var << "(_" << var << ")\n";
-//     }
-//     out << "    {\n";
-//     out << "    }\n";
-//     out << "    " << structName << "(";
-//     first = true;
-//     for (const std::string& var : initOrder) {
-//         if (!first)
-//             out << ", ";
-//         first = false;
-//         auto itr = resources.variables.find(var);
-//         assert(itr != resources.variables.end());
-//         out << "const " << itr->second << " &_" << itr->first;
-//     }
-//     out << ")\n";
-//     first = true;
-//     for (const std::string& var : initOrder) {
-//         out << (first ? "      : " : "      , ");
-//         first = false;
-//         out << var << "(_" << var << ")\n";
-//     }
-//     out << "    {\n";
-//     out << "    }\n";
-//     out << "};\n";
-//     for (const auto& [var, offset] : offsets) {
-//         out << "static_assert(offsetof(" << structName << ", " << var << ") == " << offset
-//             << ");\n";
-//     }
-//     out << "static_assert(sizeof(" << structName << ") == " << predictedSize << ");\n\n";
-//     ret.structSize = predictedSize;
-//     return ret;
 // }
 
 // bool compile_shader(CompilerData& compileData, const std::string shaderFile) {

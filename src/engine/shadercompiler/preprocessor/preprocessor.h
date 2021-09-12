@@ -29,11 +29,7 @@ struct VariantConfig
 
 struct Variants final : public IAutoSerializable<Variants>
 {
-
-    REFLECTABLE
-    (
-        (std::map<std::string, std::vector<std::string>>) values
-    )
+    REFLECTABLE((std::map<std::string, std::vector<std::string>>)values)
 
     // std::map<std::string, std::vector<std::string>> values;
 
@@ -43,10 +39,7 @@ struct Variants final : public IAutoSerializable<Variants>
 struct Resources final : public IAutoSerializable<Resources>
 {
     // name -> type
-    REFLECTABLE
-    (
-        (std::map<std::string, std::string>) variables
-    )
+    REFLECTABLE((std::map<std::string, std::string>)variables)
 
     // std::map<std::string, std::string> variables;
     // std::map<std::string, std::string> staticVariables;
@@ -75,10 +68,7 @@ std::string format_variant(uint32_t variantId, const std::vector<Variants>& vari
 
 struct ResourceUsage final : public IAutoSerializable<ResourceUsage>
 {
-    REFLECTABLE
-    (
-        (std::set<std::string>) usedVars
-    )
+    REFLECTABLE((std::set<std::string>)usedVars)
 
     // std::set<std::string> usedVars;
     // TODO bindings
@@ -105,10 +95,7 @@ struct ResourceUsage final : public IAutoSerializable<ResourceUsage>
 
 struct PipelineResourceUsage final : public IAutoSerializable<PipelineResourceUsage>
 {
-    REFLECTABLE
-    (
-        (std::array<ResourceUsage, ShaderBin::NUM_STAGES>) usages
-    )
+    REFLECTABLE((std::array<ResourceUsage, ShaderBin::NUM_STAGES>)usages)
 
     // std::array<ResourceUsage, ShaderBin::NUM_STAGES> usages;
     bool operator<(const PipelineResourceUsage& other) const {
@@ -124,25 +111,63 @@ struct PipelineResourceUsage final : public IAutoSerializable<PipelineResourceUs
     // REFLECT()
 };
 
+struct PushConstObjData final : public IAutoSerializable<PushConstObjData>
+{
+    REFLECTABLE((std::string)name, (uint64_t)effectiveSize, (uint64_t)structSize)
+};
+
+struct ResourcePack final : public IAutoSerializable<ResourcePack>
+{
+    REFLECTABLE((std::set<std::string>)shaderVars)
+    bool operator<(const ResourcePack& other) const {
+        if (shaderVars.size() < other.shaderVars.size())
+            return true;
+        if (other.shaderVars.size() < shaderVars.size())
+            return false;
+        auto itr1 = shaderVars.begin();
+        auto itr2 = other.shaderVars.begin();
+        while (itr1 != shaderVars.end()) {
+            if (*itr1 < *itr2)
+                return true;
+            if (*itr2 < *itr1)
+                return false;
+            itr1++;
+            itr2++;
+        }
+        return false;
+    }
+
+    operator bool() const { return !shaderVars.empty(); }
+
+    PushConstObjData generateCXX(const std::string& structName, const Resources& resources,
+                                 std::ostream& out) const;
+    // TODO export offsets from CXX and compare (or vice versa)
+    void generateGLSL(const Resources& resources, std::ostream& out) const;
+};
+
+struct ResourceObject final : public IAutoSerializable<ResourceObject>
+{
+    // using Stages = uint32_t;
+    // enum Stage : Stages
+    // {
+    //     VS = 1,
+    //     PS = 2,
+    //     CS = 4
+    // };
+    REFLECTABLE((ResourcePack)graphicsResources, (ResourcePack)computeResources)
+};
+
 struct ShaderHeaderData final : public IAutoSerializable<ShaderHeaderData>
 {
-    REFLECTABLE
-    (
-        (std::string) name,
-        (std::string) fileHash,
-        (std::string) filePath,
-        (std::string) headerHash,
-        (std::string) cxxHash,
-        (Variants) variants,
-        (Resources) resources,
-        (std::string) descriptorClassName,
-        (std::string) descriptorRegistryClassName,
-        (uint32_t) totalVariantMultiplier,
-        (std::map<std::string, uint32_t>) variantMultiplier,
-        (std::vector<PipelineResourceUsage>) variantToResourceUsage,
-        (std::string) headerFileName,
-        (std::set<std::string>) includes
-    )
+    REFLECTABLE((std::string)name, (std::string)fileHash, (std::string)filePath,
+                (std::string)headerHash, (std::string)cxxHash, (Variants)variants,
+                (Resources)resources, (std::string)descriptorClassName,
+                (std::string)descriptorRegistryClassName, (uint32_t)totalVariantMultiplier,
+                (std::map<std::string, uint32_t>)variantMultiplier,
+                (std::map<PipelineResourceUsage, ResourceObject>)resourceObjects,
+                (std::vector<PipelineResourceUsage>)variantToResourceUsage,
+                (std::map<ResourcePack, PushConstObjData>)exportedPacks,
+                (std::string)headerFileName, (std::set<std::string>)includes)
 
     // std::string name;
     // std::string fileHash;
@@ -164,25 +189,13 @@ struct ShaderHeaderData final : public IAutoSerializable<ShaderHeaderData>
 
 struct ShaderObjectData final : public IAutoSerializable<ShaderObjectData>
 {
-    REFLECTABLE
-    (
-        (std::string) name,
-        (std::string) fileHash,
-        (std::string) headersHash,
-        (std::string) filePath,
-        (std::string) headerHash,
-        (std::string) cxxHash,
-        (std::string) className,
-        (std::string) registryClassName,
-        (std::string) headerFileName,
-        (uint32_t) variantCount,
-        (std::map<std::string, uint32_t>) headerVariantIdMultiplier,
-        (std::map<std::string, uint32_t>) variantIdMultiplier,
-        (std::vector<std::string>) allIncludes,
-        (std::vector<Variants>) variants,
-        (std::map<std::string, std::string>) headerLocations,
-        (Resources) resources
-    )
+    REFLECTABLE((std::string)name, (std::string)fileHash, (std::string)headersHash,
+                (std::string)filePath, (std::string)headerHash, (std::string)cxxHash,
+                (std::string)className, (std::string)registryClassName, (std::string)headerFileName,
+                (uint32_t)variantCount, (std::map<std::string, uint32_t>)headerVariantIdMultiplier,
+                (std::map<std::string, uint32_t>)variantIdMultiplier,
+                (std::vector<std::string>)allIncludes, (std::vector<Variants>)variants,
+                (std::map<std::string, std::string>)headerLocations, (Resources)resources)
 
     // std::string name;
     // std::string fileHash;
@@ -216,11 +229,8 @@ struct ShaderObjectData final : public IAutoSerializable<ShaderObjectData>
 
 struct PreprocessorData final : public IAutoSerializable<PreprocessorData>
 {
-    REFLECTABLE
-    (
-        (std::map<std::string, ShaderHeaderData>) headers,
-        (std::map<std::string, ShaderObjectData>) sources
-    )
+    REFLECTABLE((std::map<std::string, ShaderHeaderData>)headers,
+                (std::map<std::string, ShaderObjectData>)sources)
 
     // std::map<std::string, ShaderHeaderData> headers;
     // std::map<std::string, ShaderObjectData> sources;
@@ -272,51 +282,6 @@ class Preprocessor
 };
 
 // class Compiler;
-
-// struct PushConstObjData
-// {
-//     std::string name;
-//     size_t effectiveSize;
-//     size_t structSize;
-// };
-
-// struct ResourcePack
-// {
-//     std::set<std::string> shaderVars;
-//     bool operator<(const ResourcePack& other) const {
-//         if (shaderVars.size() < other.shaderVars.size())
-//             return true;
-//         if (other.shaderVars.size() < shaderVars.size())
-//             return false;
-//         auto itr1 = shaderVars.begin();
-//         auto itr2 = other.shaderVars.begin();
-//         while (itr1 != shaderVars.end()) {
-//             if (*itr1 < *itr2)
-//                 return true;
-//             if (*itr2 < *itr1)
-//                 return false;
-//             itr1++;
-//             itr2++;
-//         }
-//         return false;
-//     }
-//     PushConstObjData generateCXX(const std::string& structName, const Resources& resources,
-//                                  std::ostream& out) const;
-//     // TODO export offsets from CXX and compare (or vice versa)
-//     void generateGLSL(const Resources& resources, std::ostream& out) const;
-// };
-
-// struct ResourceObject
-// {
-//     using Stages = uint32_t;
-//     enum Stage : Stages
-//     {
-//         VS = 1,
-//         PS = 2,
-//         CS = 4
-//     };
-//     std::map<Stages, ResourcePack> packs;
-// };
 
 // struct IncludeData
 // {
