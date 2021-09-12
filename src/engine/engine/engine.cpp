@@ -1381,7 +1381,6 @@ void Engine::readbackLoop(volatile bool* finished) {
                 if (!fs::exists(capturesFolder))
                     fs::create_directories(capturesFolder);
                 try {
-                    generate_capture_file(capturesFolder / fs::path{"lastCapture.html"}, &capture);
                     std::stringstream filename;
 
                     auto time =
@@ -1415,13 +1414,17 @@ void Engine::readbackLoop(volatile bool* finished) {
                             decodedPixels[(y * texInfo.extent.width + x) * 3 + 2] = b;
                         }
                     }
-                    fs::path captureImagePath = capturesFolder / fs::path{filename.str() + ".png"};
-                    stbi_write_png(captureImagePath.string().c_str(), int(texInfo.extent.width),
+                    std::string imageFileName = filename.str() + ".png";
+                    std::string captureImageFile =
+                      (capturesFolder / fs::path{imageFileName}).string();
+                    stbi_write_png(captureImageFile.c_str(), int(texInfo.extent.width),
                                    int(texInfo.extent.height), 3, decodedPixels.data(),
                                    int(texInfo.extent.width * 3));
 
                     fs::path capturePath = capturesFolder / fs::path{filename.str() + ".html"};
-                    generate_capture_file(capturePath, &capture);
+                    generate_capture_file(capturesFolder / fs::path{"lastCapture.html"}, &capture,
+                                          imageFileName);
+                    generate_capture_file(capturePath, &capture, imageFileName);
                     LOG_ENGINE("Performance capture of frame %llu, saved to %s", perfCaptureFrame,
                                capturePath.string().c_str());
                 }
@@ -2038,15 +2041,23 @@ PerformanceCaptureData Engine::generatePerfCapture(
         return stageItr->second;
     };
 
+    for (uint32_t stageId = 0; stageId < FrameGraph::NUM_STAGES; ++stageId) {
+        FrameGraph::Stage stage = FrameGraph::get_stage(stageId);
+        if (stage == FrameGraph::EXECUTION_STAGE)
+            continue;
+        std::string stageName = FrameGraph::get_stage_name(stage);
+        ret.cpuStageOrder.push_back(stageName);
+    }
+
     for (NodeId id = 0; id < frameGraph.getNodeCount(); ++id) {
         const FrameGraph::Node* node = frameGraph.getNode(id);
         for (uint32_t stageId = 0; stageId < FrameGraph::NUM_STAGES; ++stageId) {
             FrameGraph::Stage stage = FrameGraph::get_stage(stageId);
             if (stage == FrameGraph::EXECUTION_STAGE)
                 continue;
-            std::string stageName = FrameGraph::get_stage_name(stage);
             if (!node->hasStage(stage))
                 continue;
+            std::string stageName = FrameGraph::get_stage_name(stage);
             for (FrameId frame = firstFrame; frame <= lastReadyFrame; ++frame) {
                 FrameGraph::Node::NodeTiming timing = node->getTiming(frame, stage);
                 PerformanceCaptureCpuPackage pkg;

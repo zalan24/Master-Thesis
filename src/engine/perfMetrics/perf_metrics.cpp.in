@@ -16,21 +16,27 @@ static std::string get_html() {
     return R"HTMLM(@HTML_FILE@)HTMLM";
 }
 
-void generate_capture_file(const fs::path& target, const ISerializable* captureObj) {
+void generate_capture_file(const fs::path& target, const ISerializable* captureObj,
+                           const std::string& screenShotFile) {
     if (!fs::exists(fs::path{target}.parent_path()))
         fs::create_directories(fs::path{target}.parent_path());
-    std::regex cssRegex("<link\\s+rel=\"stylesheet\"\\s+href=\"[^\"]*\"\\s*>");
+    std::regex cssRegex("<link\\s+rel=\"stylesheet\"\\s+href=\"perfmetrics.css\"\\s*>");
     std::regex jsRegex("<script\\s+src=\"[^\"]*\"\\s*><\\/script>");
+    std::regex imgRegex("<img\\s+src=\"[^\"]*\"\\s*>");
     std::regex captureDataRegex("captureData\\s*=\\s*\\{.*\\};");
     json jsonObj;
     captureObj->writeJson(jsonObj);
     std::stringstream ss;
     ss << std::move(jsonObj);
     std::string script =
-      std::regex_replace(get_stript(), captureDataRegex, "captureData = " + std::move(ss).str()) + ";";
+      std::regex_replace(get_stript(), captureDataRegex, "captureData = " + std::move(ss).str())
+      + ";";
     std::string css = get_css();
-    std::string html = std::regex_replace(std::regex_replace(get_html(), cssRegex, std::move(css)),
-                                          jsRegex, std::move(script));
+    std::string image = "<img src=\"" + screenShotFile + "\">";
+    std::string html = std::regex_replace(
+      std::regex_replace(std::regex_replace(get_html(), imgRegex, std::move(image)), cssRegex,
+                         std::move(css)),
+      jsRegex, std::move(script));
     std::ofstream out(target.string().c_str());
     out << std::move(html);
 }

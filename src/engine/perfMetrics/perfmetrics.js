@@ -149,8 +149,6 @@ function createTable() {
     if (oldTbl)
         oldTbl.remove();
 
-    const timeToWorldUnit = 2;
-
     let frameIdText = document.getElementById('info_frameid');
     let fpsText = document.getElementById('info_fps');
     let frametimeText = document.getElementById('info_frametime');
@@ -179,13 +177,17 @@ function createTable() {
     tbl.id = 'perftable';
     let tbdy = document.createElement('tbody');
 
+    let cpuStageOrder = captureData.cpuStageOrder;
     let cpuNodes = captureData.stageToThreadToPackageList;
     let deviceNodes = captureData.queueToDevicePackageList;
     let executionNodes = captureData.executionPackages;
     let minTime = null;
     let maxTime = null;
     let minTargetTime = null;
-    for (let stageName in cpuNodes) {
+    for (let stageNameId in cpuStageOrder) {
+        let stageName = cpuStageOrder[stageNameId];
+        if (!cpuNodes[stageName])
+            continue;
         for (let threadName in cpuNodes[stageName]) {
             for(let i in cpuNodes[stageName][threadName]) {
                 let node = cpuNodes[stageName][threadName][i];
@@ -217,10 +219,16 @@ function createTable() {
         }
     }
 
+    const tableStagesWidth = 300;
+    const timeToWorldUnit = (window.innerWidth - tableStagesWidth) / (maxTime - minTime);
+
     cpuPackageData = {};
     executionPackageData = {};
 
-    for (let stageName in cpuNodes) {
+    for (let stageNameId in cpuStageOrder) {
+        let stageName = cpuStageOrder[stageNameId];
+        if (!cpuNodes[stageName])
+            continue;
         let stageTr = document.createElement('tr');
 
         let stageNameTd = document.createElement('td');
@@ -317,6 +325,7 @@ function createTable() {
             threadsNamesTd.appendChild(threadTbl);
         }
         stageTr.appendChild(threadsNamesTd);
+        stageTr.classList.add('perftr');
         tbdy.appendChild(stageTr);
     }
 
@@ -652,8 +661,20 @@ function createTable() {
     applyViewTransform();
 }
 
+function onResize() {
+    createTable();
+    applyViewTransform();
+}
+
 function initPage() {
     createTable();
     viewMatrix = getModelTransform(document.getElementById('perftable'));
     applyViewTransform();
 }
+
+function toggleScreenShotSize() {
+    let div = document.getElementById('screenshot_container');
+    div.classList.toggle('fullscreen');
+}
+
+window.addEventListener("resize", onResize);

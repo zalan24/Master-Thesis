@@ -154,6 +154,7 @@ struct PerformanceCaptureData final : public IAutoSerializable<PerformanceCaptur
       (double)workTime, (double)frameEndFixPoint,
       (std::map<std::string, std::map<std::string, std::vector<PerformanceCaptureCpuPackage>>>)
         stageToThreadToPackageList,
+    (std::vector<std::string>) cpuStageOrder,
       (std::map<uint32_t, PerformanceCaptureInterval>)executionIntervals,
       (std::vector<PerformanceCaptureExecutionPackage>)executionPackages,
       (std::map<std::string, std::vector<PerformanceCaptureDevicePackage>>)queueToDevicePackageList,

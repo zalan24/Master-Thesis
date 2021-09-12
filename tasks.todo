@@ -56,16 +56,16 @@ Get a triangle on screen:
             ✔ Perf capture should contain the calculated slop for the source node (as a global reducible latency) @done (8/28/2021, 12:07:11 PM)
             ☐ Somehow warn about nodes, that have a high extra slop due to implicit dependency
             ☐ ??? Display per node slops on capture ???
+        ☐ Finalize
+            ✔ Show screenshot @done (9/12/2021, 2:02:39 PM)
+            ☐ Styling
+                ✔ Width should fit window (and react to resize window) @done (9/12/2021, 12:52:58 PM)
+                ✔ Padding around texts @done (9/12/2021, 12:53:01 PM)
+                ☐ No transparency upon hovering
+                ☐ Colors
+                ✔ Improve vsync lines @done (9/12/2021, 1:05:47 PM)
+            ☐ Add all necessary information
 
-    ☐ Latency reduction
-        ✘ Add extra info to nodes in the slop graph, which stored the amount of delay for that specific node @cancelled (8/28/2021, 12:35:28 PM)
-        ✘ Use this information for slop calculation @cancelled (8/28/2021, 12:35:40 PM)
-            ✘ Every node should have information about how much it was directly or indirectly delayed @cancelled (8/28/2021, 12:35:39 PM)
-            ✘ When a node needs to wait on a delayed node, slop is negative!!! @cancelled (8/28/2021, 12:35:38 PM)
-        ✔ Framegraph should check slop history for the input node when calculating latency @done (8/28/2021, 1:25:37 PM)
-            ✔ Return statistics about it (avg, min, max, spread, etc.) @done (8/28/2021, 1:25:39 PM)
-        ✔ Add an engine config param for min slop @done (9/1/2021, 11:12:35 AM)
-        ✔ If latency reduction is turned on and predicted latency value is higher, than min latency, sleep @done (9/1/2021, 11:12:31 AM)
 
     ☐ Replace resource descriptions in framegraph node queries with resource descriptor providers (which only determines physical resources after node's dependency wait)
 
