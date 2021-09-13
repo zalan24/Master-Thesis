@@ -185,7 +185,7 @@ void Game::recordCmdBufferRender(const AcquiredImageData& swapchainData,
     // //                             &shaderTestDesc);
     // testPass.draw(3, 1, 0, 0);
     testPass.bindGraphicsShader(get_dynamic_states(swapchainData.extent), {}, mandelbrotShader,
-                                &shaderGlobalDesc, &mandelbrotDesc);
+                                &mandelbrotDesc);
     testPass.draw(6, 1, 0, 0);
 
     testPass.beginSubpass(imGuiSubpass);

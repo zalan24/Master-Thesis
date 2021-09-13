@@ -50,6 +50,7 @@ preprocess_shaders(
     TARGET playgroundShaders
     TARGETS_DIR ${PROJECT_BINARY_DIR}/shaders/preprocessors
     OUT_DIR ${PROJECT_BINARY_DIR}/shaders/cpp
+    DRIVER_REQUIREMENTS ${HARDWARE_LIMITS}
     HEADERS ${SHADERS_HEADERS}
     SOURCES ${SHADERS_SOURCES}
 )

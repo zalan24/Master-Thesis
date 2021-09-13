@@ -10,7 +10,10 @@
       "request": "launch",
       "program": "${workspaceFolder}/build/src/engine/shadercompiler/ShaderPreprocessor.exe",
       "args": [
-        "--output", "${workspaceFolder}/build/shaders/cpp",
+        "--output",
+        "${workspaceFolder}/build/shaders/cpp",
+        "--hardware",
+        "${workspaceFolder}/data/compile/deviceLimits.json",
         "--target",
         "${workspaceFolder}/build/shaders/preprocessors/playgroundShaders.bin",
         "--headers",
@@ -31,8 +34,10 @@
       "request": "launch",
       "program": "${workspaceFolder}/build/src/engine/shadercompiler/ShaderCompiler.exe",
       "args": [
-        "--hardware", "${workspaceFolder}/data/compile/deviceLimits.json",
-        "--options", "${workspaceFolder}/data/compile/shaderCompileOptions.json",
+        "--hardware",
+        "${workspaceFolder}/data/compile/deviceLimits.json",
+        "--options",
+        "${workspaceFolder}/data/compile/shaderCompileOptions.json",
         "-o${workspaceFolder}/build/shaders/shaders.bin",
         "-c${workspaceFolder}/build/shaders/cache",
         "--files",
@@ -59,9 +64,18 @@
       "cwd": "${workspaceFolder}/build",
       "environment": [
         // {"name":"VK_LAYER_PATH", "value":"${workspaceFolder}/build/3rdParty/gfxreconstruct/bin/layer;${env:VK_LAYER_PATH}"},
-        {"name": "VK_LAYER_SETTINGS_PATH", "value": "${workspaceFolder}/data/captureCfg"},
-        {"name": "VK_APIDUMP_OUTPUT_RANGE", "value": "0-10-1"},
-        {"name": "VK_APIDUMP_LOG_FILENAME", "value": "${workspaceFolder}/build/api_dump_log.txt"},
+        {
+          "name": "VK_LAYER_SETTINGS_PATH",
+          "value": "${workspaceFolder}/data/captureCfg"
+        },
+        {
+          "name": "VK_APIDUMP_OUTPUT_RANGE",
+          "value": "0-10-1"
+        },
+        {
+          "name": "VK_APIDUMP_LOG_FILENAME",
+          "value": "${workspaceFolder}/build/api_dump_log.txt"
+        },
         // {"name": "VK_LAYER_PATH", "value": "${workspaceFolder}/build/vulkanLayers"}
       ],
       "console": "internalConsole",

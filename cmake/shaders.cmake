@@ -1,6 +1,6 @@
 function(preprocess_shaders)
     set(options)
-    set(oneValueArgs TARGET OUT_DIR TARGETS_DIR)
+    set(oneValueArgs TARGET OUT_DIR TARGETS_DIR DRIVER_REQUIREMENTS)
     set(multiValueArgs SOURCES HEADERS)
     cmake_parse_arguments(SHADERS "${options}" "${oneValueArgs}"
                                         "${multiValueArgs}" ${ARGN} )
@@ -25,9 +25,10 @@ function(preprocess_shaders)
         COMMAND  ShaderPreprocessor
             --output ${SHADERS_OUT_DIR}
             --target ${targetFile}
+            --hardware ${SHADERS_DRIVER_REQUIREMENTS}
             --headers ${SHADERS_HEADERS}
             --sources ${SHADERS_SOURCES}
-        DEPENDS  ${SHADERS_HEADERS} ${SHADERS_SOURCES} ShaderPreprocessor
+        DEPENDS  ${SHADERS_HEADERS} ${SHADERS_DRIVER_REQUIREMENTS} ${SHADERS_SOURCES} ShaderPreprocessor
     )
 
 

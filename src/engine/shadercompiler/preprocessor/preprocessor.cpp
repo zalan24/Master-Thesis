@@ -1043,7 +1043,8 @@ std::map<std::string, uint32_t> Preprocessor::getHeaderLocalVariants(
 //     return ret;
 // }
 
-void Preprocessor::processSource(const fs::path& file, const fs::path& outdir) {
+void Preprocessor::processSource(const fs::path& file, const fs::path& outdir,
+                                 const drv::DeviceLimits& drvLimits) {
     std::string name = file.stem().string();
     for (char& c : name)
         c = static_cast<char>(tolower(c));
@@ -1228,55 +1229,139 @@ void Preprocessor::processSource(const fs::path& file, const fs::path& outdir) {
     cxx << "        throw std::runtime_error(\"Shader not found: " << name << "\");\n";
     cxx << "    loadShader(shaderBin, *shader);\n";
 
-    std::map<PipelineResourceUsage, uint32_t> resourceUsageToConfigId;
-    // uint32_t configId = 0;
-    // for (const auto& usage : variantToResourceUsage) {
-    //     if (resourceUsageToConfigId.find(usage) != resourceUsageToConfigId.end())
-    //         continue;
-    //     cxx << "    {\n";
-    // cxx << "        drv::DrvShaderObjectRegistry::PushConstantRange ranges["
-    //     << object.packs.size() << "];\n";
-    // uint32_t rangeId = 0;
-    // for (const auto& [stages, pack] : object.packs) {
-    //     if (!pack.shaderVars.empty()) {
-    //         cxx << "        ranges[" << rangeId << "].stages = 0";
-    //         if (stages & ResourceObject::VS)
-    //             cxx << " | drv::ShaderStage::VERTEX_BIT";
-    //         if (stages & ResourceObject::PS)
-    //             cxx << " | drv::ShaderStage::FRAGMENT_BIT";
-    //         if (stages & ResourceObject::CS)
-    //             cxx << " | drv::ShaderStage::COMPUTE_BIT";
-    //         cxx << ";\n";
-    //         cxx << "        ranges[" << rangeId << "].offset = ";
-    //         if (rangeId == 0)
-    //             cxx << "0";
-    //         else
-    //             cxx << "ranges[" << rangeId - 1 << "].offset + ranges[" << rangeId - 1
-    //                 << "].size";
-    //         cxx << ";\n";
-    //         cxx << "        ranges[" << rangeId << "].size = sizeof("
-    //             << exportedPacks.find(pack)->second << ");\n";
-    //         rangeId++;
-    //     }
-    // }
-    //     cxx << "        drv::DrvShaderObjectRegistry::ConfigInfo config;\n";
-    //     cxx << "        config.numRanges = ;\n";  // << rangeId << ";\n";
-    //     cxx << "        config.ranges = ;\n";     //"ranges;\n";
-    //     cxx << "        reg->addConfig(config);\n";
-    //     cxx << "    }\n";
-    //     resourceUsageToConfigId[usage] = configId++;
-    // }
-    cxx << "    {\n";
-    cxx << "        drv::DrvShaderObjectRegistry::ConfigInfo config;\n";
-    cxx << "        config.numRanges = 0;\n";
-    cxx << "        config.ranges = nullptr;\n";
-    cxx << "        reg->addConfig(config);\n";
-    cxx << "    }\n";
+    struct PipelineData
+    {
+        std::map<std::string, ResourceObject> headerToResObj;
+        bool operator<(const PipelineData& rhs) const {
+            if (headerToResObj.size() != rhs.headerToResObj.size())
+                return headerToResObj.size() < rhs.headerToResObj.size();
+            {
+                auto itr1 = headerToResObj.begin();
+                auto itr2 = rhs.headerToResObj.begin();
+                while (itr1 != headerToResObj.end()) {
+                    if (itr1->first != itr2->first)
+                        return itr1->first < itr2->first;
+                    itr1++;
+                    itr2++;
+                }
+            }
+            {
+                auto itr1 = headerToResObj.begin();
+                auto itr2 = rhs.headerToResObj.begin();
+                while (itr1 != headerToResObj.end()) {
+                    if (itr1->second != itr2->second)
+                        return itr1->second < itr2->second;
+                    itr1++;
+                    itr2++;
+                }
+            }
+            return false;
+        }
+    };
+
+    std::vector<std::string> resourceShaderOrder;
+    resourceShaderOrder.reserve(objData.allIncludes.size());
+    // TODO this is just a dummy shader order
+    // usage statistics would work best here (probably)
+    // Headers append their resources in this order
+    for (auto itr = objData.allIncludes.rbegin(); itr != objData.allIncludes.rend(); ++itr)
+        resourceShaderOrder.push_back(*itr);
+
+    std::map<PipelineData, uint32_t> resourceUsageToConfigId;
+    std::vector<uint32_t> variantToConfigId;
+    variantToConfigId.reserve(objData.variantCount);
+    uint32_t configId = 0;
+    for (uint32_t shaderVariant = 0; shaderVariant < objData.variantCount; ++shaderVariant) {
+        PipelineData pipelineData;
+        for (const auto& h : objData.allIncludes) {
+            auto itr = data.headers.find(h);
+            assert(itr != data.headers.end());
+            uint32_t headerVariant = (shaderVariant / objData.headerVariantIdMultiplier[h])
+                                     % itr->second.totalVariantMultiplier;
+            PipelineResourceUsage headerResourceUsage =
+              itr->second.variantToResourceUsage[headerVariant];
+            ResourceObject headerResObj = itr->second.resourceObjects[headerResourceUsage];
+            pipelineData.headerToResObj[h] = headerResObj;
+        }
+        if (auto itr = resourceUsageToConfigId.find(pipelineData);
+            itr != resourceUsageToConfigId.end()) {
+            variantToConfigId.push_back(itr->second);
+            continue;
+        }
+
+        const size_t structAlignment = 1;
+
+        size_t computeSize = 0;
+        size_t graphicsSize = 0;
+        for (const auto& h : resourceShaderOrder) {
+            auto itr = data.headers.find(h);
+            assert(itr != data.headers.end());
+            const ResourceObject& resUsage = pipelineData.headerToResObj[h];
+            if (resUsage.graphicsResources) {
+                graphicsSize +=
+                  itr->second.exportedPacks.find(resUsage.graphicsResources)->second.effectiveSize;
+                if ((graphicsSize % structAlignment) != 0)
+                    graphicsSize += structAlignment - (graphicsSize % structAlignment);
+            }
+            if (resUsage.computeResources) {
+                computeSize +=
+                  itr->second.exportedPacks.find(resUsage.computeResources)->second.effectiveSize;
+                if ((computeSize % structAlignment) != 0)
+                    computeSize += structAlignment - (computeSize % structAlignment);
+            }
+        }
+        uint32_t rangeCount = 0;
+        if (computeSize)
+            rangeCount++;
+        if (graphicsSize)
+            rangeCount++;
+        if (graphicsSize > drvLimits.maxPushConstantsSize)
+            throw std::runtime_error(
+              "The graphics pipeline has exceeded the push const range size limit ("
+              + std::to_string(graphicsSize) + " > "
+              + std::to_string(drvLimits.maxPushConstantsSize) + ")");
+        if (computeSize > drvLimits.maxPushConstantsSize)
+            throw std::runtime_error(
+              "The compute pipeline has exceeded the push const range size limit ("
+              + std::to_string(computeSize) + " > " + std::to_string(drvLimits.maxPushConstantsSize)
+              + ")");
+
+        cxx << "    {\n";
+        cxx << "        drv::DrvShaderObjectRegistry::PushConstantRange ranges[" << rangeCount
+            << "];\n";
+        uint32_t rangeId = 0;
+        if (graphicsSize) {
+            cxx << "        ranges[" << rangeId
+                << "].stages = drv::ShaderStage::VERTEX_BIT | drv::ShaderStage::FRAGMENT_BIT;\n";
+            cxx << "        ranges[" << rangeId << "].offset = 0;\n";
+            cxx << "        ranges[" << rangeId << "].size = " << graphicsSize << ";\n";
+            rangeId++;
+        }
+        if (computeSize) {
+            cxx << "        ranges[" << rangeId << "].stages = drv::ShaderStage::COMPUTE_BIT;\n";
+            cxx << "        ranges[" << rangeId << "].offset = 0;\n";
+            cxx << "        ranges[" << rangeId << "].size = " << computeSize << ";\n";
+            rangeId++;
+        }
+        cxx << "        drv::DrvShaderObjectRegistry::ConfigInfo config;\n";
+        cxx << "        config.numRanges = " << rangeId << ";\n";
+        cxx << "        config.ranges = ranges;\n";
+        cxx << "        reg->addConfig(std::move(config));\n";
+        cxx << "    }\n";
+        resourceUsageToConfigId[pipelineData] = configId;
+        variantToConfigId.push_back(configId++);
+    }
+    // cxx << "    {\n";
+    // cxx << "        drv::DrvShaderObjectRegistry::ConfigInfo config;\n";
+    // cxx << "        config.numRanges = 0;\n";
+    // cxx << "        config.ranges = nullptr;\n";
+    // cxx << "        reg->addConfig(config);\n";
+    // cxx << "    }\n";
     cxx << "}\n\n";
 
     cxx << "static uint32_t CONFIG_INDEX[] = {";
     for (uint32_t i = 0; i < objData.variantCount; ++i)
-        cxx << "0, ";
+        cxx << variantToConfigId[i] << ", ";
     // for (uint32_t i = 0; i < variantToResourceUsage.size(); ++i) {
     //     if (i > 0)
     //         cxx << ", ";

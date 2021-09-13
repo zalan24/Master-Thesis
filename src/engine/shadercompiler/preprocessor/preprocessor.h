@@ -143,6 +143,8 @@ struct ResourcePack final : public IAutoSerializable<ResourcePack>
                                  std::ostream& out) const;
     // TODO export offsets from CXX and compare (or vice versa)
     void generateGLSL(const Resources& resources, std::ostream& out) const;
+    bool operator==(const ResourcePack& rhs) const { return !(*this < rhs) && !(rhs < *this); }
+    bool operator!=(const ResourcePack& rhs) const { return !(*this == rhs); }
 };
 
 struct ResourceObject final : public IAutoSerializable<ResourceObject>
@@ -155,6 +157,13 @@ struct ResourceObject final : public IAutoSerializable<ResourceObject>
     //     CS = 4
     // };
     REFLECTABLE((ResourcePack)graphicsResources, (ResourcePack)computeResources)
+    bool operator<(const ResourceObject& rhs) const {
+        if (graphicsResources != rhs.graphicsResources)
+            return graphicsResources < rhs.graphicsResources;
+        return computeResources < rhs.computeResources;
+    }
+    bool operator==(const ResourceObject& rhs) const { return !(*this < rhs) && !(rhs < *this); }
+    bool operator!=(const ResourceObject& rhs) const { return !(*this == rhs); }
 };
 
 struct ShaderHeaderData final : public IAutoSerializable<ShaderHeaderData>
@@ -250,7 +259,8 @@ class Preprocessor
 {
  public:
     void processHeader(const fs::path& file, const fs::path& outdir);
-    void processSource(const fs::path& file, const fs::path& outdir);
+    void processSource(const fs::path& file, const fs::path& outdir,
+                       const drv::DeviceLimits& drvLimits);
     void generateRegistryFile(const fs::path& file) const;
 
     void cleanUp();

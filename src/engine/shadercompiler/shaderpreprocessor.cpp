@@ -45,8 +45,8 @@ int main(int argc, char* argv[]) {
         // app.add_option("-c,--cache", cacheF, "Cache folder");
         // std::string generated = "";
         // app.add_option("-g,--generated", generated, "Folder to export generated shaders");
-        // std::string hardwareReq = "";
-        // app.add_option("--hardware", hardwareReq, "Hardware requirements config");
+        std::string hardwareReq = "";
+        app.add_option("--hardware", hardwareReq, "Hardware requirements config");
         // std::string compileOptionsFile = "";
         // app.add_option("--options", compileOptionsFile, "Compile options config");
         // // std::string hashFile = "";
@@ -71,15 +71,9 @@ int main(int argc, char* argv[]) {
         // std::regex headerRegex("(.*)\\.sh");
         // std::regex shaderRegex("(.*)\\.sd");
 
-        // drv::DeviceLimits limits;
-        // if (hardwareReq != "") {
-        //     std::ifstream limitsIn(hardwareReq.c_str());
-        //     if (!limitsIn.is_open()) {
-        //         std::cerr << "Could not open file: " << hardwareReq << std::endl;
-        //         return 1;
-        //     }
-        //     limits.read(limitsIn);
-        // }
+        drv::DeviceLimits limits;
+        if (hardwareReq != "")
+            limits.importFromFile(fs::path{hardwareReq});
 
         if (!fs::exists(fs::path{target}))
             fs::create_directories(fs::path{target}.parent_path());
@@ -95,7 +89,7 @@ int main(int argc, char* argv[]) {
         for (const auto& source : sources)  // sources have implicit headers
             preprocessor.processHeader(fs::path{source}, fs::path{outputDir});
         for (const auto& source : sources)
-            preprocessor.processSource(fs::path{source}, fs::path{outputDir});
+            preprocessor.processSource(fs::path{source}, fs::path{outputDir}, limits);
 
         preprocessor.generateRegistryFile(fs::path{outputDir} / fs::path{"shaderregistry.h"});
         preprocessor.cleanUp();
