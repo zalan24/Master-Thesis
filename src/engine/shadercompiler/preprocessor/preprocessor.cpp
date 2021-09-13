@@ -9,6 +9,7 @@
 
 #include <simplecpp.h>
 
+#include <shaderobject.h>
 #include <shadertypes.h>
 
 #include <blockfile.h>
@@ -591,8 +592,8 @@ static ResourceObject generate_resource_object(const Resources& resources,
 struct TypeInfo
 {
     std::string cxxType;
-    size_t size;
-    size_t align;
+    uint32_t size;
+    uint32_t align;
 };
 
 static TypeInfo get_type_info(const std::string& type) {
@@ -650,9 +651,9 @@ PushConstObjData ResourcePack::generateCXX(const std::string& structName,
               [&](const std::string& lhs, const std::string& rhs) {
                   return vars[lhs].size > vars[rhs].size;
               });
-    size_t predictedSize = 0;
-    auto gen_separator = [&](size_t align) {
-        size_t offset = predictedSize % align;
+    uint32_t predictedSize = 0;
+    auto gen_separator = [&](uint32_t align) {
+        uint32_t offset = predictedSize % align;
         if (offset != 0) {
             out << "    // padding of " << (align - offset) << "bytes\n";
             predictedSize += align - offset;
@@ -668,12 +669,12 @@ PushConstObjData ResourcePack::generateCXX(const std::string& structName,
         initOrder.push_back(var);
         sizeOrder.erase(itr);
     };
-    constexpr size_t structAlignas = 4;
+    constexpr uint32_t structAlignas = 4;
     out << "struct alignas(" << structAlignas << ") " << structName << " {\n";
     while (sizeOrder.size() > 0) {
-        size_t requiredOffset = vars[sizeOrder[0]].align;
+        uint32_t requiredOffset = vars[sizeOrder[0]].align;
         if (predictedSize % requiredOffset != 0) {
-            size_t padding = requiredOffset - (predictedSize % requiredOffset);
+            uint32_t padding = requiredOffset - (predictedSize % requiredOffset);
             auto itr =
               std::find_if(sizeOrder.begin(), sizeOrder.end(),
                            [&](const std::string& var) { return vars[var].size <= padding; });
@@ -685,7 +686,7 @@ PushConstObjData ResourcePack::generateCXX(const std::string& structName,
         export_var(sizeOrder.begin());
     }
     out << "    // size without padding at the end\n";
-    out << "    static constexpr size_t CONTENT_SIZE = " << predictedSize << ";\n";
+    out << "    static constexpr uint32_t CONTENT_SIZE = " << predictedSize << ";\n";
     ret.effectiveSize = predictedSize;
     gen_separator(structAlignas);
     out << "    " << structName << "(";
@@ -837,20 +838,52 @@ void Preprocessor::processHeader(const fs::path& file, const fs::path& outdir) {
     }
 
     uint32_t structId = 0;
+    std::map<std::string, uint32_t> graphicsPushConstStructNameToId;
+    std::map<std::string, uint32_t> computePushConstStructNameToId;
+    std::vector<std::string> structIdToName;
     for (const auto& itr : incData.resourceObjects) {
         if (itr.second.graphicsResources) {
+            // TODO
             std::string structName =
-              "PushConstants_header_" + name + "_graphics_" + std::to_string(structId++);
+              "PushConstants_header_" + name + "_graphics_" + std::to_string(structId);
+            graphicsPushConstStructNameToId[structName] = structId;
+            structId++;
+            structIdToName.push_back(structName);
             incData.exportedPacks[itr.second.graphicsResources] =
               itr.second.graphicsResources.generateCXX(structName, incData.resources, cxx);
         }
         if (itr.second.computeResources) {
             std::string structName =
-              "PushConstants_header_" + name + "_compute_" + std::to_string(structId++);
+              "PushConstants_header_" + name + "_compute_" + std::to_string(structId);
+            computePushConstStructNameToId[structName] = structId;
+            structId++;
+            structIdToName.push_back(structName);
             incData.exportedPacks[itr.second.computeResources] =
               itr.second.computeResources.generateCXX(structName, incData.resources, cxx);
         }
     }
+
+    std::vector<uint32_t> localVarintIdToStructIdGraphics;
+    std::vector<uint32_t> localVarintIdToStructIdCompute;
+    localVarintIdToStructIdGraphics.reserve(incData.totalVariantMultiplier);
+    localVarintIdToStructIdCompute.reserve(incData.totalVariantMultiplier);
+    for (uint32_t i = 0; i < incData.totalVariantMultiplier; ++i) {
+        PipelineResourceUsage resourceUsage = incData.variantToResourceUsage[i];
+        ResourceObject resObj = incData.resourceObjects[resourceUsage];
+        localVarintIdToStructIdGraphics.push_back(
+          graphicsPushConstStructNameToId[incData.exportedPacks[resObj.graphicsResources].name]);
+        localVarintIdToStructIdCompute.push_back(
+          computePushConstStructNameToId[incData.exportedPacks[resObj.computeResources].name]);
+    }
+
+    cxx << "static const uint32_t LOCAL_VARIANT_TO_PUSH_CONST_STRUCT_ID_GRAPHICS[] = {";
+    for (uint32_t i = 0; i < incData.totalVariantMultiplier; ++i)
+        cxx << localVarintIdToStructIdGraphics[i] << ", ";
+    cxx << "};\n";
+    cxx << "static const uint32_t LOCAL_VARIANT_TO_PUSH_CONST_STRUCT_ID_COMPUTE[] = {";
+    for (uint32_t i = 0; i < incData.totalVariantMultiplier; ++i)
+        cxx << localVarintIdToStructIdCompute[i] << ", ";
+    cxx << "};\n";
 
     header << "class " << registryClassName << " final : public ShaderDescriptorReg {\n";
     header << "  public:\n";
@@ -982,6 +1015,17 @@ void Preprocessor::processHeader(const fs::path& file, const fs::path& outdir) {
     header << "    uint32_t getLocalVariantId() const override;\n";
     cxx << "uint32_t " << className << "::getLocalVariantId() const {\n";
     cxx << "    return variantDesc.getLocalVariantId();\n";
+    cxx << "}\n";
+    // std::map<std::string, uint32_t> graphicsPushConstStructNameToId;
+    // std::map<std::string, uint32_t> computePushConstStructNameToId;
+    // incData.exportedPacks[itr.second.graphicsResources]
+    header << "    uint32_t getPushConstStructIdGraphics() const override;\n";
+    cxx << "uint32_t " << className << "::getPushConstStructIdGraphics() const {\n";
+    cxx << "    return LOCAL_VARIANT_TO_PUSH_CONST_STRUCT_ID_GRAPHICS[getLocalVariantId()];\n";
+    cxx << "}\n";
+    header << "    uint32_t getPushConstStructIdCompute() const override;\n";
+    cxx << "uint32_t " << className << "::getPushConstStructIdCompute() const {\n";
+    cxx << "    return LOCAL_VARIANT_TO_PUSH_CONST_STRUCT_ID_COMPUTE[getLocalVariantId()];\n";
     cxx << "}\n";
     header << "    " << className << "(drv::LogicalDevicePtr device, const " << registryClassName
            << " *_reg);\n";
@@ -1270,6 +1314,8 @@ void Preprocessor::processSource(const fs::path& file, const fs::path& outdir,
     std::map<PipelineData, uint32_t> resourceUsageToConfigId;
     std::vector<uint32_t> variantToConfigId;
     variantToConfigId.reserve(objData.variantCount);
+    std::map<std::string, std::vector<ShaderHeaderResInfo>> headerToConfigToResinfosGraphics;
+    std::map<std::string, std::vector<ShaderHeaderResInfo>> headerToConfigToResinfosCompute;
     uint32_t configId = 0;
     for (uint32_t shaderVariant = 0; shaderVariant < objData.variantCount; ++shaderVariant) {
         PipelineData pipelineData;
@@ -1289,26 +1335,37 @@ void Preprocessor::processSource(const fs::path& file, const fs::path& outdir,
             continue;
         }
 
-        const size_t structAlignment = 1;
+        const uint32_t structAlignment = 1;
 
-        size_t computeSize = 0;
-        size_t graphicsSize = 0;
+        uint32_t computeSize = 0;
+        uint32_t graphicsSize = 0;
         for (const auto& h : resourceShaderOrder) {
             auto itr = data.headers.find(h);
             assert(itr != data.headers.end());
             const ResourceObject& resUsage = pipelineData.headerToResObj[h];
+            ShaderHeaderResInfo graphicsInfo;
+            ShaderHeaderResInfo computeInfo;
+
             if (resUsage.graphicsResources) {
-                graphicsSize +=
+                graphicsInfo.pushConstOffset = graphicsSize;
+                uint32_t size =
                   itr->second.exportedPacks.find(resUsage.graphicsResources)->second.effectiveSize;
+                graphicsInfo.pushConstSize = size;
+                graphicsSize += size;
                 if ((graphicsSize % structAlignment) != 0)
                     graphicsSize += structAlignment - (graphicsSize % structAlignment);
             }
+            headerToConfigToResinfosGraphics[h].push_back(graphicsInfo);
             if (resUsage.computeResources) {
-                computeSize +=
+                computeInfo.pushConstOffset = computeSize;
+                uint32_t size =
                   itr->second.exportedPacks.find(resUsage.computeResources)->second.effectiveSize;
+                computeInfo.pushConstSize = size;
+                computeSize += size;
                 if ((computeSize % structAlignment) != 0)
                     computeSize += structAlignment - (computeSize % structAlignment);
             }
+            headerToConfigToResinfosCompute[h].push_back(computeInfo);
         }
         uint32_t rangeCount = 0;
         if (computeSize)
@@ -1351,25 +1408,24 @@ void Preprocessor::processSource(const fs::path& file, const fs::path& outdir,
         resourceUsageToConfigId[pipelineData] = configId;
         variantToConfigId.push_back(configId++);
     }
-    // cxx << "    {\n";
-    // cxx << "        drv::DrvShaderObjectRegistry::ConfigInfo config;\n";
-    // cxx << "        config.numRanges = 0;\n";
-    // cxx << "        config.ranges = nullptr;\n";
-    // cxx << "        reg->addConfig(config);\n";
-    // cxx << "    }\n";
     cxx << "}\n\n";
 
     cxx << "static uint32_t CONFIG_INDEX[] = {";
     for (uint32_t i = 0; i < objData.variantCount; ++i)
         cxx << variantToConfigId[i] << ", ";
-    // for (uint32_t i = 0; i < variantToResourceUsage.size(); ++i) {
-    //     if (i > 0)
-    //         cxx << ", ";
-    //     auto itr = resourceUsageToConfigId.find(variantToResourceUsage[i]);
-    //     assert(itr != resourceUsageToConfigId.end());
-    //     cxx << itr->second;
-    // }
     cxx << "};\n\n";
+    for (const auto& [header, infos] : headerToConfigToResinfosGraphics) {
+        cxx << "static ShaderHeaderResInfo CONFIG_TO_RES_GRAPHICS_" << header << "[] = {";
+        for (const auto& info : infos)
+            cxx << "{" << info.pushConstOffset << ", " << info.pushConstSize << "}, ";
+        cxx << "};\n\n";
+    }
+    for (const auto& [header, infos] : headerToConfigToResinfosCompute) {
+        cxx << "static ShaderHeaderResInfo CONFIG_TO_RES_COMPUTE_" << header << "[] = {";
+        for (const auto& info : infos)
+            cxx << "{" << info.pushConstOffset << ", " << info.pushConstSize << "}, ";
+        cxx << "};\n\n";
+    }
 
     header << "    static VariantId get_variant_id(";
     cxx << "ShaderObjectRegistry::VariantId " << registryClassName << "::get_variant_id(";
@@ -1462,22 +1518,22 @@ void Preprocessor::processSource(const fs::path& file, const fs::path& outdir,
         auto itr = data.headers.find(inc);
         assert(itr != data.headers.end());
         header
-          << "    static size_t getPushConstOffset(ShaderObjectRegistry::VariantId variantId, const "
+          << "    static ShaderHeaderResInfo getGraphicsResInfo(ShaderObjectRegistry::VariantId variantId, const "
           << itr->second.descriptorClassName << " *" << itr->second.name << ");\n";
-        cxx << "size_t " << className
-            << "::getPushConstOffset(ShaderObjectRegistry::VariantId variantId, const "
+        cxx << "ShaderHeaderResInfo " << className
+            << "::getGraphicsResInfo(ShaderObjectRegistry::VariantId variantId, const "
             << itr->second.descriptorClassName << " *" << itr->second.name << ") {\n";
-        cxx << "    // TODO\n";
-        cxx << "    return 0;\n";
+        cxx << "    uint32_t configId = CONFIG_INDEX[variantId];\n";
+        cxx << "    return CONFIG_TO_RES_GRAPHICS_" << inc << "[configId];\n";
         cxx << "}\n";
         header
-          << "    static size_t getPushConstSize(ShaderObjectRegistry::VariantId variantId, const "
+          << "    static ShaderHeaderResInfo getComputeResInfo(ShaderObjectRegistry::VariantId variantId, const "
           << itr->second.descriptorClassName << " *" << itr->second.name << ");\n";
-        cxx << "size_t " << className
-            << "::getPushConstSize(ShaderObjectRegistry::VariantId variantId, const "
+        cxx << "ShaderHeaderResInfo " << className
+            << "::getComputeResInfo(ShaderObjectRegistry::VariantId variantId, const "
             << itr->second.descriptorClassName << " *" << itr->second.name << ") {\n";
-        cxx << "    // TODO\n";
-        cxx << "    return 0;\n";
+        cxx << "    uint32_t configId = CONFIG_INDEX[variantId];\n";
+        cxx << "    return CONFIG_TO_RES_COMPUTE_" << inc << "[configId];\n";
         cxx << "}\n";
     }
     header

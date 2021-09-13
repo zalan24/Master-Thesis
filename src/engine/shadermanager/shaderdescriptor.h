@@ -25,6 +25,8 @@ class ShaderDescriptor
     virtual void setVariant(const std::string& variantName, int value) = 0;
     virtual std::vector<std::string> getVariantParamNames() const = 0;
     virtual uint32_t getLocalVariantId() const = 0;
+    virtual uint32_t getPushConstStructIdGraphics() const = 0;
+    virtual uint32_t getPushConstStructIdCompute() const = 0;
 
     DataVersionNumber getPushConstsVersionNumber() const { return pushConstVersionNumber; }
 

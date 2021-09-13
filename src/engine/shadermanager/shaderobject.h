@@ -9,6 +9,13 @@
 
 class Garbage;
 
+struct ShaderHeaderResInfo
+{
+    uint32_t pushConstOffset = 0;
+    uint32_t pushConstSize = 0;
+    operator bool() const { return pushConstSize > 0; }
+};
+
 class ShaderObject
 {
  public:

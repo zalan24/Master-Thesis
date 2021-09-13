@@ -113,7 +113,7 @@ struct PipelineResourceUsage final : public IAutoSerializable<PipelineResourceUs
 
 struct PushConstObjData final : public IAutoSerializable<PushConstObjData>
 {
-    REFLECTABLE((std::string)name, (uint64_t)effectiveSize, (uint64_t)structSize)
+    REFLECTABLE((std::string)name, (uint32_t)effectiveSize, (uint32_t)structSize)
 };
 
 struct ResourcePack final : public IAutoSerializable<ResourcePack>

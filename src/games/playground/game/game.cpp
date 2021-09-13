@@ -170,7 +170,7 @@ void Game::recordCmdBufferRender(const AcquiredImageData& swapchainData,
     testPass.clearColorAttachment(colorTagretColorAttachment,
                                   drv::ClearColorValue(0.f, 0.7f, 0.7f, 1.f), 1, &clearRect);
 
-    testPass.bindGraphicsShader(get_dynamic_states(swapchainData.extent), {}, testShader,
+    recorder->bindGraphicsShader(testPass, get_dynamic_states(swapchainData.extent), {}, testShader,
                                 &shaderGlobalDesc, &shaderTestDesc);
     // testShader.bindGraphicsInfo(ShaderObject::NORMAL_USAGE, testPass,
     //                             get_dynamic_states(swapChainextent), &shaderGlobalDesc,
@@ -178,13 +178,13 @@ void Game::recordCmdBufferRender(const AcquiredImageData& swapchainData,
     testPass.draw(3, 1, 0, 0);
 
     testPass.beginSubpass(swapchainSubpass);
-    // testPass.bindGraphicsShader(get_dynamic_states(swapchainData.extent), {}, inputAttachmentShader,
+    // recorder->bindGraphicsShader(testPass, get_dynamic_states(swapchainData.extent), {}, inputAttachmentShader,
     //                             &shaderGlobalDesc, &shaderInputAttachmentDesc);
     // // testShader.bindGraphicsInfo(ShaderObject::NORMAL_USAGE, testPass,
     // //                             get_dynamic_states(swapChainextent), &shaderGlobalDesc,
     // //                             &shaderTestDesc);
     // testPass.draw(3, 1, 0, 0);
-    testPass.bindGraphicsShader(get_dynamic_states(swapchainData.extent), {}, mandelbrotShader,
+    recorder->bindGraphicsShader(testPass, get_dynamic_states(swapchainData.extent), {}, mandelbrotShader,
                                 &mandelbrotDesc);
     testPass.draw(6, 1, 0, 0);
 

@@ -154,7 +154,8 @@ class DrvCmdBufferRecorder
     void registerBuffer(BufferPtr buffer, const BufferStartingState& state);
     void registerUndefinedImage(ImagePtr image, QueueFamilyPtr ownerShip = IGNORE_FAMILY);
     void autoRegisterImage(ImagePtr image, drv::ImageLayout preferrefLayout);
-    void autoRegisterImage(ImagePtr image, uint32_t layer, uint32_t mip, AspectFlagBits aspect, drv::ImageLayout preferrefLayout);
+    void autoRegisterImage(ImagePtr image, uint32_t layer, uint32_t mip, AspectFlagBits aspect,
+                           drv::ImageLayout preferrefLayout);
     void autoRegisterBuffer(BufferPtr buffer);
 
     void updateImageState(drv::ImagePtr image, const ImageTrackInfo& state,
@@ -184,9 +185,7 @@ class DrvCmdBufferRecorder
     }
 
     void setSemaphore(TimelineSemaphoreHandle* _semaphore) { semaphore = _semaphore; }
-    void setSemaphorePool(TimelineSemaphorePool* _semaphorePool) {
-        semaphorePool = _semaphorePool;
-    }
+    void setSemaphorePool(TimelineSemaphorePool* _semaphorePool) { semaphorePool = _semaphorePool; }
 
     void setResourceDescriptor(ResourceLockerDescriptor* _resourceUsage) {
         resourceUsage = _resourceUsage;
@@ -308,9 +307,10 @@ class DrvCmdBuffer
 
     using DrvRecordCallback = void (*)(const D&, DrvCmdBufferRecorder*);
 
-    explicit DrvCmdBuffer(CmdBufferId _id, std::string _name, IDriver* _driver, TimelineSemaphorePool* _semaphorePool,
-                          PhysicalDevicePtr _physicalDevice, LogicalDevicePtr _device,
-                          QueueFamilyPtr _queueFamily, DrvRecordCallback _recordCallback, uint64_t _firstSignalValue)
+    explicit DrvCmdBuffer(CmdBufferId _id, std::string _name, IDriver* _driver,
+                          TimelineSemaphorePool* _semaphorePool, PhysicalDevicePtr _physicalDevice,
+                          LogicalDevicePtr _device, QueueFamilyPtr _queueFamily,
+                          DrvRecordCallback _recordCallback, uint64_t _firstSignalValue)
       : id(_id),
         name(std::move(_name)),
         driver(_driver),

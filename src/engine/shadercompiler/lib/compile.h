@@ -87,8 +87,8 @@ struct PipelineResourceUsage
 struct PushConstObjData
 {
     std::string name;
-    size_t effectiveSize;
-    size_t structSize;
+    uint32_t effectiveSize;
+    uint32_t structSize;
 };
 
 struct ResourcePack
