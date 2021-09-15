@@ -36,6 +36,7 @@
 #include <runtimestats.h>
 #include <shaderbin.h>
 #include <cmdBuffer.hpp>
+#include <cmdRecorder.hpp>
 #include <oneTimeCmdBuffer.hpp>
 
 #include "bufferstager.h"
@@ -154,7 +155,7 @@ struct PerformanceCaptureData final : public IAutoSerializable<PerformanceCaptur
       (double)workTime, (double)frameEndFixPoint,
       (std::map<std::string, std::map<std::string, std::vector<PerformanceCaptureCpuPackage>>>)
         stageToThreadToPackageList,
-    (std::vector<std::string>) cpuStageOrder,
+      (std::vector<std::string>)cpuStageOrder,
       (std::map<uint32_t, PerformanceCaptureInterval>)executionIntervals,
       (std::vector<PerformanceCaptureExecutionPackage>)executionPackages,
       (std::map<std::string, std::vector<PerformanceCaptureDevicePackage>>)queueToDevicePackageList,
@@ -321,7 +322,7 @@ class Engine
 
     virtual void simulate(FrameId frameId) = 0;
     virtual void beforeDraw(FrameId frameId) = 0;
-    virtual void record(const AcquiredImageData& swapchainData, drv::DrvCmdBufferRecorder* recorder,
+    virtual void record(const AcquiredImageData& swapchainData, EngineCmdBufferRecorder* recorder,
                         FrameId frameId) = 0;
     virtual void recordGameUI(FrameId /*frameId*/) {}
     virtual void recordMenuOptionsUI(FrameId /*frameId*/) {}
@@ -331,7 +332,7 @@ class Engine
     virtual void releaseSwapchainResources() = 0;
     virtual void createSwapchainResources(const drv::Swapchain& swapchain) = 0;
 
-    void recordImGui(const AcquiredImageData& swapchainData, drv::DrvCmdBufferRecorder* recorder,
+    void recordImGui(const AcquiredImageData& swapchainData, EngineCmdBufferRecorder* recorder,
                      FrameId frameId);
 
     drv::TimelineSemaphorePool* getSemaphorePool() { return &semaphorePool; }
@@ -361,7 +362,7 @@ class Engine
     void initCursorEntitySystem();
     void initBeforeDrawEntitySystem();
 
-    void drawEntities(drv::DrvCmdBufferRecorder* recorder, drv::ImagePtr targetImage);
+    void drawEntities(EngineCmdBufferRecorder* recorder, drv::ImagePtr targetImage);
 
     NodeId getMainRecordNode() const { return mainRecordNode; }
 

@@ -1734,7 +1734,7 @@ void Engine::transferToStager(drv::CmdBufferId cmdBufferId, ImageStager& stager,
     nodeHandle.submit(queue, std::move(submission));
 }
 
-void Engine::drawEntities(drv::DrvCmdBufferRecorder* recorder, drv::ImagePtr targetImage) {
+void Engine::drawEntities(EngineCmdBufferRecorder* recorder, drv::ImagePtr targetImage) {
     drv::TextureInfo targetInfo = drv::get_texture_info(targetImage);
     if (targetInfo.extent.width == 0 || targetInfo.extent.height == 0)
         return;
@@ -1857,17 +1857,18 @@ Engine::AcquiredImageData Engine::mainRecord(FrameId frameId) {
             bool captureImage;
             drv::ImagePtr captureImageTarget;
             ImageStager* captureImageStager;
-            static void record(const RecordData& data, drv::DrvCmdBufferRecorder* recorder) {
+            static void record(const RecordData& data, drv::DrvCmdBufferRecorder* _recorder) {
+                EngineCmdBufferRecorder recorder(_recorder);
                 for (const auto& entity : data.engine->entitiesToDraw)
                     data.engine->entityManager.prepareTexture(entity.textureId, recorder);
-                data.engine->record(*data.swapChainData, recorder, data.frameId);
+                data.engine->record(*data.swapChainData, &recorder, data.frameId);
                 if (data.captureImage) {
-                    recorder->cmdImageBarrier({data.swapChainData->image,
-                                               drv::IMAGE_USAGE_TRANSFER_SOURCE,
-                                               drv::ImageMemoryBarrier::AUTO_TRANSITION});
-                    recorder->cmdImageBarrier({data.captureImageTarget,
-                                               drv::IMAGE_USAGE_TRANSFER_DESTINATION,
-                                               drv::ImageMemoryBarrier::AUTO_TRANSITION});
+                    recorder.cmdImageBarrier({data.swapChainData->image,
+                                              drv::IMAGE_USAGE_TRANSFER_SOURCE,
+                                              drv::ImageMemoryBarrier::AUTO_TRANSITION});
+                    recorder.cmdImageBarrier({data.captureImageTarget,
+                                              drv::IMAGE_USAGE_TRANSFER_DESTINATION,
+                                              drv::ImageMemoryBarrier::AUTO_TRANSITION});
                     drv::ImageCopyRegion region;
                     region.dstOffset = {0, 0, 0};
                     region.srcOffset = {0, 0, 0};
@@ -1880,15 +1881,15 @@ Engine::AcquiredImageData Engine::mainRecord(FrameId frameId) {
                     region.dstSubresource.baseArrayLayer = 0;
                     region.dstSubresource.layerCount = 1;
                     region.dstSubresource.mipLevel = 0;
-                    recorder->cmdCopyImage(data.swapChainData->image, data.captureImageTarget, 1,
-                                           &region);
-                    recorder->cmdImageBarrier({data.captureImageTarget,
-                                               drv::IMAGE_USAGE_TRANSFER_SOURCE,
-                                               drv::ImageMemoryBarrier::AUTO_TRANSITION});
+                    recorder.cmdCopyImage(data.swapChainData->image, data.captureImageTarget, 1,
+                                          &region);
+                    recorder.cmdImageBarrier({data.captureImageTarget,
+                                              drv::IMAGE_USAGE_TRANSFER_SOURCE,
+                                              drv::ImageMemoryBarrier::AUTO_TRANSITION});
                     data.captureImageStager->transferToStager(
                       recorder, data.captureImageStager->getStagerId(data.frameId));
-                    recorder->cmdImageBarrier({data.swapChainData->image, drv::IMAGE_USAGE_PRESENT,
-                                               drv::ImageMemoryBarrier::AUTO_TRANSITION});
+                    recorder.cmdImageBarrier({data.swapChainData->image, drv::IMAGE_USAGE_PRESENT,
+                                              drv::ImageMemoryBarrier::AUTO_TRANSITION});
                 }
             }
             bool operator==(const RecordData& other) {
@@ -1943,13 +1944,13 @@ Engine::ImGuiIniter::~ImGuiIniter() {
     window->closeImGui();
 }
 
-void Engine::recordImGui(const AcquiredImageData&, drv::DrvCmdBufferRecorder* recorder,
+void Engine::recordImGui(const AcquiredImageData&, EngineCmdBufferRecorder* recorder,
                          FrameId frame) {
     std::unique_lock<std::mutex> lock(inputSamplingMutex);
     window->newImGuiFrame(frame);
     drawUI(frame);
     window->recordImGui(frame);
-    window->drawImGui(frame, recorder->getCommandBuffer());
+    window->drawImGui(frame, recorder->get()->getCommandBuffer());
 }
 
 PerformanceCaptureData Engine::generatePerfCapture(

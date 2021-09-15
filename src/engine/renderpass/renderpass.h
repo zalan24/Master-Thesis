@@ -15,7 +15,6 @@ class EngineRenderPass final : public drv::CmdRenderPass
  private:
  public:
  private:
-
     // void unbind(SlotId id) {
     //     slots[id].headerReg = nullptr;
     //     if (id == highestId)
@@ -80,5 +79,4 @@ class EngineRenderPass final : public drv::CmdRenderPass
     //     if (id > highestId)
     //         highestId = id;
     // }
-
 };

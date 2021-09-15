@@ -32,7 +32,7 @@ class Game final : public Game3D
  protected:
     void simulate(FrameId frameId) override;
     void beforeDraw(FrameId frameId) override;
-    void record(const AcquiredImageData& swapchainData, drv::DrvCmdBufferRecorder* recorder,
+    void record(const AcquiredImageData& swapchainData, EngineCmdBufferRecorder* recorder,
                 FrameId frameId) override;
     void lockResources(TemporalResourceLockerDescriptor& resourceDesc, FrameId frameId) override;
     void readback(FrameId frameId) override;
@@ -71,11 +71,11 @@ class Game final : public Game3D
     ImageStager testImageStager;
 
     void recordCmdBufferClear(const AcquiredImageData& swapchainData,
-                              drv::DrvCmdBufferRecorder* recorder, FrameId frameId);
+                              EngineCmdBufferRecorder* recorder, FrameId frameId);
     void recordCmdBufferRender(const AcquiredImageData& swapchainData,
-                               drv::DrvCmdBufferRecorder* recorder, FrameId frameId);
+                               EngineCmdBufferRecorder* recorder, FrameId frameId);
     void recordCmdBufferBlit(const AcquiredImageData& swapchainData,
-                             drv::DrvCmdBufferRecorder* recorder, FrameId frameId);
+                             EngineCmdBufferRecorder* recorder, FrameId frameId);
 
     //  void recreateViews(uint32_t imageCount, const drv::ImagePtr* images);
     //  void initShader(drv::Extent2D extent);
