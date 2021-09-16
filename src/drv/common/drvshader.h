@@ -50,6 +50,7 @@ class DrvShaderObjectRegistry
     virtual uint32_t getNumConfigs() const = 0;
 
     virtual void addConfig(const ConfigInfo& config) = 0;
+    virtual PipelineLayoutPtr getPipelineLayout(uint32_t configId) const = 0;
 
  private:
 };

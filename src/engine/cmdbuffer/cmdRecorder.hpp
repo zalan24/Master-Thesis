@@ -2,6 +2,8 @@
 
 #include <algorithm>
 
+#include <corecontext.h>
+
 #include <drvcmdbuffer.h>
 
 class EngineCmdBufferRecorder
@@ -55,7 +57,10 @@ class EngineCmdBufferRecorder
         const ShaderObjectRegistry::VariantId variantId =
           S::Registry::get_variant_id((args->getVariantDesc())...);
         shader.bindGraphicsInfo(renderPass, dynamicStates, args..., States);
-        (bind(shader, variantId, args), ...);
+        drv::ShaderStage::FlagType shaderStages = drv::ShaderStage::VERTEX_BIT
+                                                  | drv::ShaderStage::GEOMETRY_BIT
+                                                  | drv::ShaderStage::FRAGMENT_BIT;
+        (bind(shader, variantId, args, shaderStages), ...);
         // PipelineCreateMode createMode, drv::CmdRenderPass &renderPass, const DynamicState &dynamicStates, const shader_global_descriptor *global, const shader_test_descriptor *test, const GraphicsPipelineStates &States = {}
         //  testShader.bindGraphicsInfo(ShaderObject::CREATE_WARNING, testPass,
         //                                 get_dynamic_states(swapChainData.extent), &shaderGlobalDesc,
@@ -69,6 +74,7 @@ class EngineCmdBufferRecorder
     {
         const ShaderDescriptorReg* headerReg = nullptr;
         const ShaderDescriptor* headerObj = nullptr;
+        drv::ShaderStage::FlagType shaderStages = 0;
         ShaderHeaderResInfo resInfo;
         ShaderDescriptor::DataVersionNumber pushConstVersion;
         uint32_t pushConstStructId;
@@ -98,7 +104,8 @@ class EngineCmdBufferRecorder
     }
 
     template <typename S, typename H>
-    void bind(const S& shader, ShaderObjectRegistry::VariantId variantId, const H* header) {
+    void bind(const S& shader, ShaderObjectRegistry::VariantId variantId, const H* header,
+              drv::ShaderStage::FlagType shaderStages) {
         ShaderHeaderResInfo resInfo = shader.getGraphicsResInfo(variantId, header);
         ShaderDescriptor::DataVersionNumber pushConstVersion = header->getPushConstsVersionNumber();
         uint32_t pushConstStructId = header->getPushConstStructIdGraphics();
@@ -120,11 +127,17 @@ class EngineCmdBufferRecorder
         if (slots[ownSlot].resInfo.pushConstOffset != resInfo.pushConstOffset
             || slots[ownSlot].resInfo.pushConstSize != resInfo.pushConstSize
             || slots[ownSlot].pushConstVersion != pushConstVersion
-            || slots[ownSlot].pushConstStructId != pushConstStructId) {
+            || slots[ownSlot].pushConstStructId != pushConstStructId
+            || (slots[ownSlot].shaderStages & shaderStages) != shaderStages) {
             slots[ownSlot].resInfo = resInfo;
             slots[ownSlot].pushConstVersion = pushConstVersion;
             slots[ownSlot].pushConstStructId = pushConstStructId;
-            // TODO update push consts
+            slots[ownSlot].shaderStages = shaderStages;
+            StackMemory::MemoryHandle<uint8_t> memory(resInfo.pushConstSize, TEMPMEM);
+            header->pushGraphicsConsts(memory);
+            // TODO
+            // impl->setPushConst(/*shader.getRegistry()->*/, shaderStages, resInfo.pushConstOffset,
+            //                    resInfo.pushConstSize, memory);
         }
     }
 };

@@ -1027,6 +1027,30 @@ void Preprocessor::processHeader(const fs::path& file, const fs::path& outdir) {
     cxx << "uint32_t " << className << "::getPushConstStructIdCompute() const {\n";
     cxx << "    return LOCAL_VARIANT_TO_PUSH_CONST_STRUCT_ID_COMPUTE[getLocalVariantId()];\n";
     cxx << "}\n";
+    header << "    void pushGraphicsConsts(void *dst) const override;\n";
+    cxx << "void " << className << "::pushGraphicsConsts(void *dst) const {\n";
+    cxx << "    switch (getPushConstStructIdGraphics()) {\n";
+    for (const auto& pack : incData.exportedPacks) {
+        auto idItr = graphicsPushConstStructNameToId.find(pack.second.name);
+        if (idItr == graphicsPushConstStructNameToId.end())
+            continue;
+        cxx << "      case " << idItr->second << ": {\n";
+        cxx << "        " << pack.second.name << " pack(";
+        bool first = true;
+        for (const auto& [name, type] : incData.resources.variables) {
+            if (!first)
+                cxx << ", ";
+            cxx << name;
+            first = false;
+        }
+        cxx << ");\n";
+        cxx << "        std::memcpy(dst, &pack, " << pack.second.name << "::CONTENT_SIZE);\n";
+        cxx << "      }\n";
+    }
+    cxx << "      default:\n";
+    cxx << "        throw std::runtime_error(\"Invalid push const struct id\");\n";
+    cxx << "    }\n";
+    cxx << "}\n";
     header << "    " << className << "(drv::LogicalDevicePtr device, const " << registryClassName
            << " *_reg);\n";
     cxx << className << "::" << className << "(drv::LogicalDevicePtr device, const "

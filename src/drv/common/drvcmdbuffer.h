@@ -199,6 +199,8 @@ class DrvCmdBufferRecorder
 
     PipelineStages::FlagType getSemaphoreStages() const { return semaphoreStages; }
 
+    virtual void setPushConst(PipelineLayoutPtr pipelineLayout, ShaderStage::FlagType shaderStages, uint32_t offset, uint32_t size, const void* src) = 0;
+
  protected:
     ImageTrackInfo& getImageState(drv::ImagePtr image, uint32_t ranges,
                                   const drv::ImageSubresourceRange* subresourceRanges,

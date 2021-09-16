@@ -158,6 +158,10 @@ class VulkanCmdBufferRecorder final : public drv::DrvCmdBufferRecorder
     void corrigate(const drv::StateCorrectionData& data) override;
     drv::PipelineStages::FlagType getAvailableStages() const override;
 
+    void setPushConst(drv::PipelineLayoutPtr pipelineLayout,
+                      drv::ShaderStage::FlagType shaderStages, uint32_t offset, uint32_t size,
+                      const void* src) override;
+
  private:
     FlexibleArray<BarrierInfo, drv_vulkan::MAX_NUM_PARALLEL_BARRIERS_IN_CMD_STATE> barriers;
     const drv::StateTrackingConfig* trackingConfig;
@@ -319,8 +323,8 @@ class DrvVulkan final : public drv::IDriver
                                                 const drv::CommandBufferCreateInfo* info) override;
     bool free_command_buffer(drv::LogicalDevicePtr device, drv::CommandPoolPtr pool,
                              unsigned int count, drv::CommandBufferPtr* buffers) override;
-    bool execute(drv::LogicalDevicePtr device, drv::QueuePtr queue, unsigned int count, const drv::ExecutionInfo* infos,
-                 drv::FencePtr fence) override;
+    bool execute(drv::LogicalDevicePtr device, drv::QueuePtr queue, unsigned int count,
+                 const drv::ExecutionInfo* infos, drv::FencePtr fence) override;
     drv::BufferPtr create_buffer(drv::LogicalDevicePtr device,
                                  const drv::BufferCreateInfo* info) override;
     bool destroy_buffer(drv::LogicalDevicePtr device, drv::BufferPtr buffer) override;
@@ -376,8 +380,9 @@ class DrvVulkan final : public drv::IDriver
                                        drv::LogicalDevicePtr device, IWindow* window,
                                        const drv::SwapchainCreateInfo* info) override;
     bool destroy_swapchain(drv::LogicalDevicePtr device, drv::SwapchainPtr swapchain) override;
-    drv::PresentResult present(drv::LogicalDevicePtr device, drv::QueuePtr queue, drv::SwapchainPtr swapchain,
-                               const drv::PresentInfo& info, uint32_t imageIndex) override;
+    drv::PresentResult present(drv::LogicalDevicePtr device, drv::QueuePtr queue,
+                               drv::SwapchainPtr swapchain, const drv::PresentInfo& info,
+                               uint32_t imageIndex) override;
     bool get_swapchain_images(drv::LogicalDevicePtr device, drv::SwapchainPtr swapchain,
                               uint32_t* count, drv::ImagePtr* images) override;
     drv::AcquireResult acquire_image(drv::LogicalDevicePtr device, drv::SwapchainPtr swapchain,
@@ -461,9 +466,10 @@ class DrvVulkan final : public drv::IDriver
     void perform_cpu_access(const drv::ResourceLockerDescriptor* resources,
                             const drv::ResourceLocker::Lock& lock) override;
 
-    bool get_image_memory_data(drv::LogicalDevicePtr device, drv::ImagePtr image, uint32_t layer, uint32_t mip,
-                               drv::DeviceSize& offset, drv::DeviceSize& size, drv::DeviceSize& rowPitch, drv::DeviceSize& arrayPitch,
-                                      drv::DeviceSize& depthPitch) override;
+    bool get_image_memory_data(drv::LogicalDevicePtr device, drv::ImagePtr image, uint32_t layer,
+                               uint32_t mip, drv::DeviceSize& offset, drv::DeviceSize& size,
+                               drv::DeviceSize& rowPitch, drv::DeviceSize& arrayPitch,
+                               drv::DeviceSize& depthPitch) override;
     void write_image_memory(drv::LogicalDevicePtr device, drv::ImagePtr image, uint32_t layer,
                             uint32_t mip, const drv::ResourceLocker::Lock& lock,
                             const void* srcMem) override;
@@ -478,7 +484,7 @@ class DrvVulkan final : public drv::IDriver
                             const drv::ResourceLocker::Lock& lock, void* dstMem) override;
 
     uint64_t sync_gpu_clock(drv::InstancePtr instance, drv::PhysicalDevicePtr physicalDevice,
-                        drv::LogicalDevicePtr device) override;
+                            drv::LogicalDevicePtr device) override;
 
     drv::TimestampQueryPoolPtr create_timestamp_query_pool(drv::LogicalDevicePtr device,
                                                            uint32_t timestampCount) override;
@@ -512,7 +518,7 @@ class DrvVulkan final : public drv::IDriver
         std::unordered_map<drv::QueuePtr, std::mutex> queueMutexes;
         // Clock::time_point lastSyncTimeHost;
         // uint64_t lastSyncTimeDeviceTicks = 0;
-        DrvVulkan *driver = nullptr;
+        DrvVulkan* driver = nullptr;
         drv::PhysicalDevicePtr physicalDevice = drv::get_null_ptr<drv::PhysicalDevicePtr>();
         drv::LogicalDevicePtr device = drv::get_null_ptr<drv::LogicalDevicePtr>();
         drv::FencePtr fence = drv::get_null_ptr<drv::FencePtr>();
@@ -522,7 +528,8 @@ class DrvVulkan final : public drv::IDriver
         float timestampPeriod = 1;
 
         LogicalDeviceData() = default;
-        LogicalDeviceData(DrvVulkan *driver, drv::PhysicalDevicePtr physicalDevice, drv::LogicalDevicePtr device);
+        LogicalDeviceData(DrvVulkan* driver, drv::PhysicalDevicePtr physicalDevice,
+                          drv::LogicalDevicePtr device);
         ~LogicalDeviceData();
         LogicalDeviceData(const LogicalDeviceData&) = delete;
         LogicalDeviceData& operator=(const LogicalDeviceData&) = delete;

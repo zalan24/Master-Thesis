@@ -24,6 +24,8 @@ class ShaderObjectRegistry
 
     const ShaderBin::StageConfig& getStageConfig(VariantId variantId) const;
 
+    //  PipelineLayoutPtr getPipelineLayout(uint32_t configId);
+
     friend class ShaderObject;
 
  protected:

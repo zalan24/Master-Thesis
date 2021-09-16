@@ -54,6 +54,8 @@ class ShaderObject
 
     const drv::DrvShader* getShader() const { return shader.get(); }
 
+    const ShaderObjectRegistry* getRegistry() const { return reg; }
+
  protected:
     drv::LogicalDevicePtr device;
     const ShaderObjectRegistry* reg;

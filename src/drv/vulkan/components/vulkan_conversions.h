@@ -75,6 +75,10 @@ inline VkSemaphore convertSemaphore(drv::TimelineSemaphorePtr semaphore) {
     return drv::resolve_ptr<VkSemaphore>(semaphore);
 }
 
+inline VkPipelineLayout convertPipelineLayout(drv::PipelineLayoutPtr layout) {
+    return drv::resolve_ptr<VkPipelineLayout>(layout);
+}
+
 inline VkFence convertFence(drv::FencePtr fence) {
     return drv::resolve_ptr<VkFence>(fence);
 }

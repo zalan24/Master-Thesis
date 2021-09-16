@@ -27,6 +27,7 @@ class ShaderDescriptor
     virtual uint32_t getLocalVariantId() const = 0;
     virtual uint32_t getPushConstStructIdGraphics() const = 0;
     virtual uint32_t getPushConstStructIdCompute() const = 0;
+    virtual void pushGraphicsConsts(void* dst) const = 0;
 
     DataVersionNumber getPushConstsVersionNumber() const { return pushConstVersionNumber; }
 

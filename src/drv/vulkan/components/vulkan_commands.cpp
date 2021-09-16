@@ -415,6 +415,14 @@ bool VulkanCmdBufferRecorder::cmdUseAsAttachment(
     return ret;
 }
 
+void VulkanCmdBufferRecorder::setPushConst(drv::PipelineLayoutPtr pipelineLayout,
+                                           drv::ShaderStage::FlagType shaderStages, uint32_t offset,
+                                           uint32_t size, const void* src) {
+    vkCmdPushConstants(convertCommandBuffer(getCommandBuffer()),
+                       convertPipelineLayout(pipelineLayout),
+                       static_cast<VkShaderStageFlags>(shaderStages), offset, size, src);
+}
+
 void VulkanCmdBufferRecorder::corrigate(const drv::StateCorrectionData& data) {
     static drv::PipelineStages::PipelineStageFlagBits supportedStageOrder[] = {
       drv::PipelineStages::TRANSFER_BIT,

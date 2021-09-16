@@ -69,6 +69,9 @@ class VulkanShaderObjRegistry final : public drv::DrvShaderObjectRegistry
     }
 
     VkPipelineLayout getLayout(uint32_t configId) const { return pipelineLayouts[configId]; }
+    drv::PipelineLayoutPtr getPipelineLayout(uint32_t configId) const override {
+        return drv::store_ptr<drv::PipelineLayoutPtr>(getLayout(configId));
+    }
 
  private:
     drv::LogicalDevicePtr device;
