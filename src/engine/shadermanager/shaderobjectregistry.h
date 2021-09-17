@@ -28,6 +28,9 @@ class ShaderObjectRegistry
 
     friend class ShaderObject;
 
+    virtual drv::PipelineLayoutPtr getPipelineLayout(
+      ShaderObjectRegistry::VariantId variantId) const = 0;
+
  protected:
     ~ShaderObjectRegistry();
 

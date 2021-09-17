@@ -133,11 +133,12 @@ class EngineCmdBufferRecorder
             slots[ownSlot].pushConstVersion = pushConstVersion;
             slots[ownSlot].pushConstStructId = pushConstStructId;
             slots[ownSlot].shaderStages = shaderStages;
-            StackMemory::MemoryHandle<uint8_t> memory(resInfo.pushConstSize, TEMPMEM);
-            header->pushGraphicsConsts(memory);
-            // TODO
-            // impl->setPushConst(/*shader.getRegistry()->*/, shaderStages, resInfo.pushConstOffset,
-            //                    resInfo.pushConstSize, memory);
+            if (header->hasPushConstsGraphics()) {
+                StackMemory::MemoryHandle<uint8_t> memory(resInfo.pushConstSize, TEMPMEM);
+                header->pushGraphicsConsts(memory);
+                impl->setPushConst(shader.getPipelineLayout(variantId), shaderStages,
+                                   resInfo.pushConstOffset, resInfo.pushConstSize, memory);
+            }
         }
     }
 };

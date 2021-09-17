@@ -865,15 +865,32 @@ void Preprocessor::processHeader(const fs::path& file, const fs::path& outdir) {
 
     std::vector<uint32_t> localVarintIdToStructIdGraphics;
     std::vector<uint32_t> localVarintIdToStructIdCompute;
+    uint32_t invalidStruct = std::numeric_limits<uint32_t>::max();
     localVarintIdToStructIdGraphics.reserve(incData.totalVariantMultiplier);
     localVarintIdToStructIdCompute.reserve(incData.totalVariantMultiplier);
     for (uint32_t i = 0; i < incData.totalVariantMultiplier; ++i) {
         PipelineResourceUsage resourceUsage = incData.variantToResourceUsage[i];
         ResourceObject resObj = incData.resourceObjects[resourceUsage];
-        localVarintIdToStructIdGraphics.push_back(
-          graphicsPushConstStructNameToId[incData.exportedPacks[resObj.graphicsResources].name]);
-        localVarintIdToStructIdCompute.push_back(
-          computePushConstStructNameToId[incData.exportedPacks[resObj.computeResources].name]);
+        if (auto itr = incData.exportedPacks.find(resObj.graphicsResources);
+            itr != incData.exportedPacks.end()) {
+            if (auto itr2 = graphicsPushConstStructNameToId.find(itr->second.name);
+                itr2 != graphicsPushConstStructNameToId.end())
+                localVarintIdToStructIdGraphics.push_back(itr2->second);
+            else
+                localVarintIdToStructIdGraphics.push_back(invalidStruct);
+        }
+        else
+            localVarintIdToStructIdGraphics.push_back(invalidStruct);
+        if (auto itr = incData.exportedPacks.find(resObj.computeResources);
+            itr != incData.exportedPacks.end()) {
+            if (auto itr2 = computePushConstStructNameToId.find(itr->second.name);
+                itr2 != computePushConstStructNameToId.end())
+                localVarintIdToStructIdCompute.push_back(itr2->second);
+            else
+                localVarintIdToStructIdCompute.push_back(invalidStruct);
+        }
+        else
+            localVarintIdToStructIdCompute.push_back(invalidStruct);
     }
 
     cxx << "static const uint32_t LOCAL_VARIANT_TO_PUSH_CONST_STRUCT_ID_GRAPHICS[] = {";
@@ -1019,6 +1036,11 @@ void Preprocessor::processHeader(const fs::path& file, const fs::path& outdir) {
     // std::map<std::string, uint32_t> graphicsPushConstStructNameToId;
     // std::map<std::string, uint32_t> computePushConstStructNameToId;
     // incData.exportedPacks[itr.second.graphicsResources]
+    header << "    bool hasPushConstsGraphics() const override;\n";
+    cxx << "bool " << className << "::hasPushConstsGraphics() const {\n";
+    cxx << "    return LOCAL_VARIANT_TO_PUSH_CONST_STRUCT_ID_GRAPHICS[getLocalVariantId()] != "
+        << invalidStruct << ";\n";
+    cxx << "}\n";
     header << "    uint32_t getPushConstStructIdGraphics() const override;\n";
     cxx << "uint32_t " << className << "::getPushConstStructIdGraphics() const {\n";
     cxx << "    return LOCAL_VARIANT_TO_PUSH_CONST_STRUCT_ID_GRAPHICS[getLocalVariantId()];\n";
@@ -1045,6 +1067,7 @@ void Preprocessor::processHeader(const fs::path& file, const fs::path& outdir) {
         }
         cxx << ");\n";
         cxx << "        std::memcpy(dst, &pack, " << pack.second.name << "::CONTENT_SIZE);\n";
+        cxx << "        break;\n";
         cxx << "      }\n";
     }
     cxx << "      default:\n";
@@ -1485,6 +1508,13 @@ void Preprocessor::processSource(const fs::path& file, const fs::path& outdir,
         << "::get_config_id(ShaderObjectRegistry::VariantId variantId) {\n";
     cxx << "    return CONFIG_INDEX[variantId];\n";
     cxx << "}\n";
+    header
+      << "    drv::PipelineLayoutPtr getPipelineLayout(ShaderObjectRegistry::VariantId variantId) const override;";
+    cxx << "drv::PipelineLayoutPtr " << registryClassName
+        << "::getPipelineLayout(ShaderObjectRegistry::VariantId variantId) const {\n";
+    cxx << "    uint32_t configId = CONFIG_INDEX[variantId];\n";
+    cxx << "    return reg->getPipelineLayout(configId);\n";
+    cxx << "}\n";
     header << "    friend class " << className << ";\n";
     header << "  protected:\n";
     // shaderObj
@@ -1581,6 +1611,12 @@ void Preprocessor::processSource(const fs::path& file, const fs::path& outdir,
     cxx << "    info.shader = getShader();\n";
     cxx << "    info.pipelineId = pipelineId;\n";
     cxx << "    renderPass.bindGraphicsPipeline(info);\n";
+    cxx << "}\n";
+    header
+      << "    drv::PipelineLayoutPtr getPipelineLayout(ShaderObjectRegistry::VariantId variantId) const override;";
+    cxx << "drv::PipelineLayoutPtr " << className
+        << "::getPipelineLayout(ShaderObjectRegistry::VariantId variantId) const {\n";
+    cxx << "    return reg->getPipelineLayout(variantId);\n";
     cxx << "}\n";
     header << "};\n";
 

@@ -54,7 +54,9 @@ class ShaderObject
 
     const drv::DrvShader* getShader() const { return shader.get(); }
 
-    const ShaderObjectRegistry* getRegistry() const { return reg; }
+    // const ShaderObjectRegistry* getRegistry() const { return reg; }
+    virtual drv::PipelineLayoutPtr getPipelineLayout(
+      ShaderObjectRegistry::VariantId variantId) const = 0;
 
  protected:
     drv::LogicalDevicePtr device;

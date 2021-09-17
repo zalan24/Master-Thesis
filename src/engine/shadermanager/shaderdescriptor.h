@@ -25,6 +25,7 @@ class ShaderDescriptor
     virtual void setVariant(const std::string& variantName, int value) = 0;
     virtual std::vector<std::string> getVariantParamNames() const = 0;
     virtual uint32_t getLocalVariantId() const = 0;
+    virtual bool hasPushConstsGraphics() const = 0;
     virtual uint32_t getPushConstStructIdGraphics() const = 0;
     virtual uint32_t getPushConstStructIdCompute() const = 0;
     virtual void pushGraphicsConsts(void* dst) const = 0;
@@ -36,8 +37,6 @@ class ShaderDescriptor
     virtual const ShaderDescriptorReg* getReg() const = 0;
 
  protected:
-    //  TODO;  // don't invalidate when a param is changed, that's not used in the variant???
-    //  TODO;  // invalidate when variant is changed and the used params struct changes
     void invalidatePushConsts() { pushConstVersionNumber++; }
 
  private:
