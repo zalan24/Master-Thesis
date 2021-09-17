@@ -14,6 +14,7 @@
 // #include <hardwareconfig.h>
 #include <serializable.h>
 #include <shaderbin.h>
+#include <shaderobject.h>
 
 // #include "compileconfig.h"
 // #include "shaderstats.h"
@@ -116,6 +117,13 @@ struct PushConstObjData final : public IAutoSerializable<PushConstObjData>
     REFLECTABLE((std::string)name, (uint32_t)effectiveSize, (uint32_t)structSize)
 };
 
+struct PushConstEntry
+{
+    uint32_t localOffset = 0;
+    std::string type;
+    std::string name;
+};
+
 struct ResourcePack final : public IAutoSerializable<ResourcePack>
 {
     REFLECTABLE((std::set<std::string>)shaderVars)
@@ -140,9 +148,8 @@ struct ResourcePack final : public IAutoSerializable<ResourcePack>
     operator bool() const { return !shaderVars.empty(); }
 
     PushConstObjData generateCXX(const std::string& structName, const Resources& resources,
-                                 std::ostream& out) const;
-    // TODO export offsets from CXX and compare (or vice versa)
-    void generateGLSL(const Resources& resources, std::ostream& out) const;
+                                 std::ostream& out,
+                                 std::vector<PushConstEntry>& pushConstEntries) const;
     bool operator==(const ResourcePack& rhs) const { return !(*this < rhs) && !(rhs < *this); }
     bool operator!=(const ResourcePack& rhs) const { return !(*this == rhs); }
 };
@@ -176,7 +183,10 @@ struct ShaderHeaderData final : public IAutoSerializable<ShaderHeaderData>
                 (std::map<PipelineResourceUsage, ResourceObject>)resourceObjects,
                 (std::vector<PipelineResourceUsage>)variantToResourceUsage,
                 (std::map<ResourcePack, PushConstObjData>)exportedPacks,
-                (std::string)headerFileName, (std::set<std::string>)includes)
+                (std::string)headerFileName, (std::set<std::string>)includes,
+                (std::vector<std::vector<PushConstEntry>>)structIdToGlslStructDesc,
+                (std::vector<uint32_t>)localVariantToStructIdGraphics,
+                (std::vector<uint32_t>)localVariantToStructIdCompute)
 
     // std::string name;
     // std::string fileHash;
@@ -198,13 +208,17 @@ struct ShaderHeaderData final : public IAutoSerializable<ShaderHeaderData>
 
 struct ShaderObjectData final : public IAutoSerializable<ShaderObjectData>
 {
-    REFLECTABLE((std::string)name, (std::string)fileHash, (std::string)headersHash,
-                (std::string)filePath, (std::string)headerHash, (std::string)cxxHash,
-                (std::string)className, (std::string)registryClassName, (std::string)headerFileName,
-                (uint32_t)variantCount, (std::map<std::string, uint32_t>)headerVariantIdMultiplier,
-                (std::map<std::string, uint32_t>)variantIdMultiplier,
-                (std::vector<std::string>)allIncludes, (std::vector<Variants>)variants,
-                (std::map<std::string, std::string>)headerLocations, (Resources)resources)
+    REFLECTABLE(
+      (std::string)name, (std::string)fileHash, (std::string)headersHash, (std::string)filePath,
+      (std::string)headerHash, (std::string)cxxHash, (std::string)className,
+      (std::string)registryClassName, (std::string)headerFileName, (uint32_t)variantCount,
+      (std::map<std::string, uint32_t>)headerVariantIdMultiplier,
+      (std::map<std::string, uint32_t>)variantIdMultiplier, (std::vector<std::string>)allIncludes,
+      (std::vector<Variants>)variants, (std::map<std::string, std::string>)headerLocations,
+      (Resources)resources,
+      (std::map<std::string, std::vector<ShaderHeaderResInfo>>)headerToConfigToResinfosGraphics,
+      (std::map<std::string, std::vector<ShaderHeaderResInfo>>)headerToConfigToResinfosCompute,
+      (std::vector<uint32_t>)variantToConfigId)
 
     // std::string name;
     // std::string fileHash;
