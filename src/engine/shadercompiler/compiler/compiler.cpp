@@ -231,7 +231,7 @@ void Compiler::generateShaders(const GenerateOptions& options, const fs::path& d
     }
 }
 
-static void generate_shader_code(std::ostream& out /* resources */) {
+static void generate_shader_code(std::ostream& out) {
     out << "#version 450\n";
     out << "#extension GL_ARB_separate_shader_objects : enable\n";
     if constexpr (featureconfig::params.shaderPrint)
@@ -454,6 +454,52 @@ bool Compiler::generateShaderCode(const ShaderObjectData& objData,
                                   const ShaderGenerationInput& genInput, uint32_t variantId,
                                   ShaderBin::Stage stage, std::ostream& out) const {
     generate_shader_code(out);
+    std::vector<PushConstEntry> pushConsts;
+    if (stage == ShaderBin::Stage::CS) {
+        for (const auto& [header, infos] : objData.headerToConfigToResinfosCompute) {
+            uint32_t localVariant = ;
+            uint32_t headerConfigId = ;
+            uint32_t structId = ;
+            for (PushConstEntry pushConst : incData.structIdToGlslStructDesc[structId]) {
+                pushConst.localOffset += infos[headerConfigId].pushConstOffset;
+                pushConsts.push_back(pushConst);
+            }
+        }
+    }
+    else {
+        for (const auto& [header, infos] : objData.headerToConfigToResinfosGraphics) {
+            uint32_t localVariant = ;
+            uint32_t headerConfigId = ;
+            uint32_t structId = ;
+            for (PushConstEntry pushConst : incData.structIdToGlslStructDesc[structId]) {
+                pushConst.localOffset += infos[headerConfigId].pushConstOffset;
+                pushConsts.push_back(pushConst);
+            }
+        }
+    }
+    if (!pushConsts.empty()) {
+        std::sort(pushConsts.begin(), pushConsts.end(),
+                  [](const PushConstEntry& lhs, const PushConstEntry& rhs) {
+                      return lhs.localOffset < rhs.localOffset;
+                  });
+        out << "layout( push_constant ) uniform pushConstants {\n";
+        for (const auto& itr : pushConsts)
+            out << "    layout(offset=" << itr.localOffset << ") " << itr.type << " " << itr.name
+                << ";\n";
+        out << "} PushConstants;\n";
+    }
+
+    // TODO iterate over headers / export push consts, offset by the header push const offset
+    // https://vkguide.dev/docs/chapter-3/push_constants/
+    //push constants block
+    // layout( push_constant ) uniform constants
+    // {
+    // 	vec4 data;
+    // 	mat4 render_matrix;
+    // } PushConstants;
+    //     layout(push_constant) uniform fragmentPushConstants {
+    //     layout(offset = 4) float test2;
+    // } u_pushConstants;
     PipelineResourceUsage resourceUsage;
     ShaderBin::StageConfig cfg =
       read_stage_configs(objData.resources, variantId, objData.variants,

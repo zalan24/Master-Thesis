@@ -9,10 +9,12 @@
 
 class Garbage;
 
-struct ShaderHeaderResInfo
+struct ShaderHeaderResInfo final : public IAutoSerializable<ShaderHeaderResInfo>
 {
-    uint32_t pushConstOffset = 0;
-    uint32_t pushConstSize = 0;
+    REFLECTABLE((uint32_t)pushConstOffset, (uint32_t)pushConstSize)
+
+    ShaderHeaderResInfo() : pushConstOffset(0), pushConstSize(0) {}
+
     operator bool() const { return pushConstSize > 0; }
 };
 

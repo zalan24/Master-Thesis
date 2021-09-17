@@ -9,7 +9,6 @@
 
 #include <simplecpp.h>
 
-#include <shaderobject.h>
 #include <shadertypes.h>
 
 #include <blockfile.h>
@@ -591,14 +590,15 @@ static ResourceObject generate_resource_object(const Resources& resources,
 
 struct TypeInfo
 {
+    std::string glslType;
     std::string cxxType;
     uint32_t size;
     uint32_t align;
 };
 
 static TypeInfo get_type_info(const std::string& type) {
-#define RET_TYPE(type) \
-    return { #type, sizeof(type), alignof(type) }
+#define RET_TYPE(cxxType) \
+    return { type, #cxxType, sizeof(type), alignof(type) }
     if (type == "int")
         RET_TYPE(int32_t);
     if (type == "int2")
@@ -630,7 +630,8 @@ static TypeInfo get_type_info(const std::string& type) {
 }
 
 PushConstObjData ResourcePack::generateCXX(const std::string& structName,
-                                           const Resources& resources, std::ostream& out) const {
+                                           const Resources& resources, std::ostream& out,
+                                           std::vector<PushConstEntry>& pushConstEntries) const {
     PushConstObjData ret;
     ret.name = structName;
     std::vector<std::string> initOrder;
@@ -664,6 +665,7 @@ PushConstObjData ResourcePack::generateCXX(const std::string& structName,
         gen_separator(vars[var].align);
         out << "    " << vars[var].cxxType << " " << var << "; // offset: " << predictedSize
             << "\n";
+        pushConstEntries.push_back({predictedSize, vars[var].glslType, var});
         offsets[var] = predictedSize;
         predictedSize += vars[var].size;
         initOrder.push_back(var);
@@ -847,19 +849,23 @@ void Preprocessor::processHeader(const fs::path& file, const fs::path& outdir) {
             std::string structName =
               "PushConstants_header_" + name + "_graphics_" + std::to_string(structId);
             graphicsPushConstStructNameToId[structName] = structId;
-            structId++;
             structIdToName.push_back(structName);
+            incData.structIdToGlslStructDesc.emplace_back();
             incData.exportedPacks[itr.second.graphicsResources] =
-              itr.second.graphicsResources.generateCXX(structName, incData.resources, cxx);
+              itr.second.graphicsResources.generateCXX(structName, incData.resources, cxx,
+                                                       incData.structIdToGlslStructDesc.back());
+            structId++;
         }
         if (itr.second.computeResources) {
             std::string structName =
               "PushConstants_header_" + name + "_compute_" + std::to_string(structId);
             computePushConstStructNameToId[structName] = structId;
-            structId++;
             structIdToName.push_back(structName);
+            incData.structIdToGlslStructDesc.emplace_back();
             incData.exportedPacks[itr.second.computeResources] =
-              itr.second.computeResources.generateCXX(structName, incData.resources, cxx);
+              itr.second.computeResources.generateCXX(structName, incData.resources, cxx,
+                                                      incData.structIdToGlslStructDesc.back());
+            structId++;
         }
     }
 
@@ -1361,8 +1367,6 @@ void Preprocessor::processSource(const fs::path& file, const fs::path& outdir,
     std::map<PipelineData, uint32_t> resourceUsageToConfigId;
     std::vector<uint32_t> variantToConfigId;
     variantToConfigId.reserve(objData.variantCount);
-    std::map<std::string, std::vector<ShaderHeaderResInfo>> headerToConfigToResinfosGraphics;
-    std::map<std::string, std::vector<ShaderHeaderResInfo>> headerToConfigToResinfosCompute;
     uint32_t configId = 0;
     for (uint32_t shaderVariant = 0; shaderVariant < objData.variantCount; ++shaderVariant) {
         PipelineData pipelineData;
@@ -1402,7 +1406,7 @@ void Preprocessor::processSource(const fs::path& file, const fs::path& outdir,
                 if ((graphicsSize % structAlignment) != 0)
                     graphicsSize += structAlignment - (graphicsSize % structAlignment);
             }
-            headerToConfigToResinfosGraphics[h].push_back(graphicsInfo);
+            objData.headerToConfigToResinfosGraphics[h].push_back(graphicsInfo);
             if (resUsage.computeResources) {
                 computeInfo.pushConstOffset = computeSize;
                 uint32_t size =
@@ -1412,7 +1416,7 @@ void Preprocessor::processSource(const fs::path& file, const fs::path& outdir,
                 if ((computeSize % structAlignment) != 0)
                     computeSize += structAlignment - (computeSize % structAlignment);
             }
-            headerToConfigToResinfosCompute[h].push_back(computeInfo);
+            objData.headerToConfigToResinfosCompute[h].push_back(computeInfo);
         }
         uint32_t rangeCount = 0;
         if (computeSize)
@@ -1461,13 +1465,13 @@ void Preprocessor::processSource(const fs::path& file, const fs::path& outdir,
     for (uint32_t i = 0; i < objData.variantCount; ++i)
         cxx << variantToConfigId[i] << ", ";
     cxx << "};\n\n";
-    for (const auto& [header, infos] : headerToConfigToResinfosGraphics) {
+    for (const auto& [header, infos] : objData.headerToConfigToResinfosGraphics) {
         cxx << "static ShaderHeaderResInfo CONFIG_TO_RES_GRAPHICS_" << header << "[] = {";
         for (const auto& info : infos)
             cxx << "{" << info.pushConstOffset << ", " << info.pushConstSize << "}, ";
         cxx << "};\n\n";
     }
-    for (const auto& [header, infos] : headerToConfigToResinfosCompute) {
+    for (const auto& [header, infos] : objData.headerToConfigToResinfosCompute) {
         cxx << "static ShaderHeaderResInfo CONFIG_TO_RES_COMPUTE_" << header << "[] = {";
         for (const auto& info : infos)
             cxx << "{" << info.pushConstOffset << ", " << info.pushConstSize << "}, ";
