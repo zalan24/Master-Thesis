@@ -1,0 +1,52 @@
+
+include {
+    global;
+    threeD;
+    forwardshading;
+    basicshapes;
+}
+
+descriptor {
+    variants {
+    }
+    resources {
+        vec3 albedo;
+    }
+}
+
+stages {
+    ps {
+        entry = main;
+        use albedo;
+    }
+    vs {
+        entry = main;
+    }
+}
+
+vs {
+    layout(location = 0) out vec3 worldPos;
+    layout(location = 1) out vec3 albedo;
+    layout(location = 2) out vec3 normal;
+    layout(location = 3) out vec2 tc;
+    void main() {
+        VertexData vertexData = getVertexData(gl_VertexIndex);
+        worldPos = getWorldSpacePoint(vertexData.pos).xyz;
+        albedo = PushConstants.albedo;
+        normal = getWorldSpaceDirection(vertexData.normal).xyz;
+        tc = vertexData.tc;
+
+        gl_Position = worldToScreenSpacePoint(worldPos);
+    }
+}
+
+ps {
+    layout(location = 0) in vec3 worldPos;
+    layout(location = 1) in vec3 albedo;
+    layout(location = 2) in vec3 normal;
+    layout(location = 3) in vec2 tc;
+
+    void main() {
+        outColor = vec4(shadePixel(worldPos, normal, albedo), 1.0);
+    }
+}

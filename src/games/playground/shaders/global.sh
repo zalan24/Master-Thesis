@@ -1,33 +1,33 @@
 descriptor {
   variants {
-  // testing stuff
-  renderPass:
-    color, depth, shadow;
-  someStuff:
-    stuff1, stuff2, stuff3;
+  // // testing stuff
+  // renderPass:
+  //   color, depth, shadow;
+  // someStuff:
+  //   stuff1, stuff2, stuff3;
   }
   resources {
-    mat4 viewProj;
-    vec3 cameraPos;
-    vec3 ambientLight;
-    vec3 sunLight;
-    vec3 sunDir;
+    // mat4 viewProj;
+    // vec3 cameraPos;
+    // vec3 ambientLight;
+    // vec3 sunLight;
+    // vec3 sunDir;
   }
 }
 
 stages {
   ps {
-#if renderPass == color
-    use ambientLight;
-    use sunLight;
-    use sunDir;
-#endif
+// #if renderPass == color
+//     use ambientLight;
+//     use sunLight;
+//     use sunDir;
+// #endif
   }
   vs {
-    use viewProj;
-#if someStuff == stuff1
-    use cameraPos;
-#endif
+//     use viewProj;
+// #if someStuff == stuff1
+//     use cameraPos;
+// #endif
   }
   attachments {
     outColor {

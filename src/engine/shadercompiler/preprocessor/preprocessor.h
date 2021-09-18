@@ -11,13 +11,10 @@
 #include <unordered_set>
 #include <vector>
 
-// #include <hardwareconfig.h>
 #include <serializable.h>
 #include <shaderbin.h>
 #include <shaderobject.h>
 
-// #include "compileconfig.h"
-// #include "shaderstats.h"
 
 namespace fs = std::filesystem;
 
@@ -34,19 +31,12 @@ struct Variants final : public IAutoSerializable<Variants>
 {
     REFLECTABLE((std::map<std::string, std::vector<std::string>>)values)
 
-    // std::map<std::string, std::vector<std::string>> values;
-
-    // REFLECT()
 };
 
 struct Resources final : public IAutoSerializable<Resources>
 {
     // name -> type
     REFLECTABLE((std::map<std::string, std::string>)variables)
-
-    // std::map<std::string, std::string> variables;
-    // std::map<std::string, std::string> staticVariables;
-    // std::map<std::string, std::string> dynamicVariables;
 
     Resources& operator+=(const Resources& rhs);
     Resources operator+(const Resources& rhs) const {
@@ -55,7 +45,6 @@ struct Resources final : public IAutoSerializable<Resources>
         return ret;
     }
 
-    // REFLECT()
 };
 
 struct ShaderGenerationInput
@@ -93,14 +82,12 @@ struct ResourceUsage final : public IAutoSerializable<ResourceUsage>
         return false;
     }
 
-    // REFLECT()
 };
 
 struct PipelineResourceUsage final : public IAutoSerializable<PipelineResourceUsage>
 {
     REFLECTABLE((std::array<ResourceUsage, ShaderBin::NUM_STAGES>)usages)
 
-    // std::array<ResourceUsage, ShaderBin::NUM_STAGES> usages;
     bool operator<(const PipelineResourceUsage& other) const {
         for (uint32_t i = 0; i < ShaderBin::NUM_STAGES; ++i) {
             if (usages[i] < other.usages[i])
@@ -111,7 +98,6 @@ struct PipelineResourceUsage final : public IAutoSerializable<PipelineResourceUs
         return false;
     }
 
-    // REFLECT()
 };
 
 struct PushConstObjData final : public IAutoSerializable<PushConstObjData>
@@ -159,13 +145,6 @@ struct ResourcePack final : public IAutoSerializable<ResourcePack>
 
 struct ResourceObject final : public IAutoSerializable<ResourceObject>
 {
-    // using Stages = uint32_t;
-    // enum Stage : Stages
-    // {
-    //     VS = 1,
-    //     PS = 2,
-    //     CS = 4
-    // };
     REFLECTABLE((ResourcePack)graphicsResources, (ResourcePack)computeResources)
     bool operator<(const ResourceObject& rhs) const {
         if (graphicsResources != rhs.graphicsResources)
@@ -191,22 +170,6 @@ struct ShaderHeaderData final : public IAutoSerializable<ShaderHeaderData>
                 (std::vector<uint32_t>)localVariantToStructIdGraphics,
                 (std::vector<uint32_t>)localVariantToStructIdCompute)
 
-    // std::string name;
-    // std::string fileHash;
-    // std::string filePath;
-    // std::string headerHash;
-    // std::string cxxHash;
-    // Variants variants;
-    // Resources resources;
-    // std::string descriptorClassName;
-    // std::string descriptorRegistryClassName;
-    // uint32_t totalVariantMultiplier;
-    // std::map<std::string, uint32_t> variantMultiplier;
-    // std::vector<PipelineResourceUsage> variantToResourceUsage;
-    // std::string headerFileName;
-    // std::set<std::string> includes;
-
-    // REFLECT()
 };
 
 struct ShaderObjectData final : public IAutoSerializable<ShaderObjectData>
@@ -223,24 +186,6 @@ struct ShaderObjectData final : public IAutoSerializable<ShaderObjectData>
       (std::map<std::string, std::vector<ShaderHeaderResInfo>>)headerToConfigToResinfosCompute,
       (std::vector<uint32_t>)variantToConfigId)
 
-    // std::string name;
-    // std::string fileHash;
-    // std::string headersHash;
-    // std::string filePath;
-    // std::string headerHash;
-    // std::string cxxHash;
-    // std::string className;
-    // std::string registryClassName;
-    // std::string headerFileName;
-    // uint32_t variantCount;
-    // std::map<std::string, uint32_t> headerVariantIdMultiplier;
-    // std::map<std::string, uint32_t> variantIdMultiplier;
-    // std::vector<std::string> allIncludes;
-    // std::vector<Variants> variants;
-    // std::map<std::string, std::string> headerLocations;
-    // Resources resources;
-    // ShaderBin::StageConfig stageConfigs;
-
     struct ComputeUnit
     {
         std::stringstream stages[ShaderBin::NUM_STAGES];
@@ -250,7 +195,6 @@ struct ShaderObjectData final : public IAutoSerializable<ShaderObjectData>
     ComputeUnit readComputeUnite(ShaderGenerationInput* outCfg = nullptr) const;
     ShaderGenerationInput readGenInput() const;
 
-    // REFLECT()
 };
 
 struct PreprocessorData final : public IAutoSerializable<PreprocessorData>
@@ -258,10 +202,6 @@ struct PreprocessorData final : public IAutoSerializable<PreprocessorData>
     REFLECTABLE((std::map<std::string, ShaderHeaderData>)headers,
                 (std::map<std::string, ShaderObjectData>)sources)
 
-    // std::map<std::string, ShaderHeaderData> headers;
-    // std::map<std::string, ShaderObjectData> sources;
-
-    // REFLECT()
 
  protected:
     bool needTimeStamp() const override { return true; }
@@ -285,12 +225,6 @@ class Preprocessor
     bool exportToFile(const fs::path& p) const { return data.exportToFile(p); }
     bool importFromFile(const fs::path& p) { return data.importFromFile(p); }
 
-    // void loadBin(std::istream& in) { data.readBin(in); }
-    // void exportDataBin(std::ostream& out) const { data.writeBin(out); }
-
-    // void loadJson(json& in) { data.readJson(in); }
-    // void exportDataJson(json& out) const { data.writeJson(out); }
-
  private:
     std::unordered_set<std::string> usedHeaders;
     std::unordered_set<std::string> usedShaders;
@@ -302,81 +236,6 @@ class Preprocessor
     std::string collectIncludes(const std::string& header,
                                 std::vector<std::string>& includes) const;
 
-    // std::vector<PipelineResourceUsage> generateShaderVariantToResourceUsages(
-    //   const ShaderObjectData& objData) const;
     std::map<std::string, uint32_t> getHeaderLocalVariants(uint32_t variantId,
                                                            const ShaderObjectData& objData) const;
 };
-
-// class Compiler;
-
-// struct IncludeData
-// {
-//     std::string name;
-//     std::filesystem::path shaderFileName;
-//     std::filesystem::path headerFileName;
-//     std::string descriptorClassName;
-//     std::string descriptorRegistryClassName;
-//     std::vector<std::string> included;
-//     uint32_t totalVariantMultiplier;
-//     Variants variants;
-//     std::unordered_map<std::string, uint32_t> variantMultiplier;
-//     std::map<PipelineResourceUsage, ResourceObject> resourceObjects;
-//     std::vector<PipelineResourceUsage> variantToResourceUsage;
-//     std::map<ResourcePack, PushConstObjData> exportedPacks;
-// };
-
-// struct ShaderRegistryOutput
-// {
-//     std::stringstream includes;
-//     std::stringstream headersStart;
-//     std::stringstream headersCtor;
-//     std::stringstream headersEnd;
-//     bool firstHeader = true;
-//     std::stringstream objectsStart;
-//     std::stringstream objectsCtor;
-//     std::stringstream objectsEnd;
-//     bool firstObj = true;
-// };
-
-// class Cache final : public ISerializable
-// {
-//  public:
-//     std::map<std::string, std::string> headerHashes;
-
-//     uint64_t getHeaderHash() const;
-
-//     void writeJson(json& out) const override;
-//     void readJson(const json& in) override;
-// };
-
-// class CompilerPreprocessor
-// {
-//  public:
-//  private:
-// };
-
-// bool read_variants(const BlockFile* blockFile, Variants& variants);
-// bool read_resources(const BlockFile* blockFile, Resources& resources);
-
-// struct CompilerData
-// {
-//     Cache cache;
-//     ShaderRegistryOutput registry;
-//     std::string outputFolder;
-//     fs::path debugPath;
-//     std::unordered_map<std::string, IncludeData> includeData;
-//     const Compiler* compiler;
-//     ShaderBin* shaderBin = nullptr;
-//     std::string genFolder;
-//     drv::DeviceLimits limits;
-//     CompileOptions options;
-//     ShaderCompilerStats stats;
-// };
-
-// bool compile_shader(CompilerData& compileData, const std::string shaderFile);
-
-// bool generate_header(CompilerData& compileData, const std::string shaderFile);
-
-// void init_registry(ShaderRegistryOutput& registry);
-// void finish_registry(ShaderRegistryOutput& registry);
