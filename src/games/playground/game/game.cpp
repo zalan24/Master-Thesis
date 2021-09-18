@@ -186,7 +186,7 @@ void Game::recordCmdBufferRender(const AcquiredImageData& swapchainData,
     // testPass.draw(3, 1, 0, 0);
     mandelbrotDesc.set_exitColor(vec3(0, 0, 0));
     mandelbrotDesc.set_midColor(
-      lerp(vec3(1, 0, 0), vec3(0, 1, 0), float(sin(double(frameId) * 0.01))));
+      lerp(vec3(1, 0, 0), vec3(0, 1, 0), float(sin(double(frameId) * 0.01) * 0.5 + 0.5)));
     mandelbrotDesc.set_peakColor(vec3(1, 1, 1));
     recorder->bindGraphicsShader(testPass, get_dynamic_states(swapchainData.extent), {},
                                  mandelbrotShader, &mandelbrotDesc);
