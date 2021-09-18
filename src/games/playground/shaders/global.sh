@@ -7,7 +7,7 @@ descriptor {
     stuff1, stuff2, stuff3;
   }
   resources {
-    mat44 viewProj;
+    mat4 viewProj;
     vec3 cameraPos;
     vec3 ambientLight;
     vec3 sunLight;

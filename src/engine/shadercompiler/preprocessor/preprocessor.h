@@ -21,6 +21,8 @@
 
 namespace fs = std::filesystem;
 
+static const uint32_t INVALID_STRUCT_ID = std::numeric_limits<uint32_t>::max();
+
 class BlockFile;
 
 struct VariantConfig
@@ -114,14 +116,15 @@ struct PipelineResourceUsage final : public IAutoSerializable<PipelineResourceUs
 
 struct PushConstObjData final : public IAutoSerializable<PushConstObjData>
 {
-    REFLECTABLE((std::string)name, (uint32_t)effectiveSize, (uint32_t)structSize)
+    REFLECTABLE((std::string)name, (uint32_t)effectiveSize, (uint32_t)structSize, (uint32_t)structAlignment)
 };
 
-struct PushConstEntry
+struct PushConstEntry final : public IAutoSerializable<PushConstEntry>
 {
-    uint32_t localOffset = 0;
-    std::string type;
-    std::string name;
+    REFLECTABLE((uint32_t)localOffset, (std::string)type, (std::string)name)
+    PushConstEntry() : localOffset(0) {}
+    PushConstEntry(uint32_t offset, std::string _type, std::string _name)
+      : localOffset(offset), type(std::move(_type)), name(std::move(_name)) {}
 };
 
 struct ResourcePack final : public IAutoSerializable<ResourcePack>

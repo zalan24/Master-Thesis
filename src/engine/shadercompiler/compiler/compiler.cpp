@@ -465,6 +465,8 @@ bool Compiler::generateShaderCode(const ShaderObjectData& objData,
               % incData.totalVariantMultiplier;
             uint32_t configId = objData.variantToConfigId[variantId];
             uint32_t structId = incData.localVariantToStructIdCompute[localVariant];
+            if (structId == INVALID_STRUCT_ID)
+                continue;
             for (PushConstEntry pushConst : incData.structIdToGlslStructDesc[structId]) {
                 pushConst.localOffset += infos[configId].pushConstOffset;
                 pushConsts.push_back(pushConst);
@@ -479,7 +481,9 @@ bool Compiler::generateShaderCode(const ShaderObjectData& objData,
               (variantId / objData.headerVariantIdMultiplier.find(header)->second)
               % incData.totalVariantMultiplier;
             uint32_t configId = objData.variantToConfigId[variantId];
-            uint32_t structId = incData.localVariantToStructIdCompute[localVariant];
+            uint32_t structId = incData.localVariantToStructIdGraphics[localVariant];
+            if (structId == INVALID_STRUCT_ID)
+                continue;
             for (PushConstEntry pushConst : incData.structIdToGlslStructDesc[structId]) {
                 pushConst.localOffset += infos[configId].pushConstOffset;
                 pushConsts.push_back(pushConst);
@@ -491,24 +495,13 @@ bool Compiler::generateShaderCode(const ShaderObjectData& objData,
                   [](const PushConstEntry& lhs, const PushConstEntry& rhs) {
                       return lhs.localOffset < rhs.localOffset;
                   });
-        out << "layout( push_constant ) uniform pushConstants {\n";
+        out << "layout(std430, push_constant) uniform pushConstants {\n";
         for (const auto& itr : pushConsts)
             out << "    layout(offset=" << itr.localOffset << ") " << itr.type << " " << itr.name
                 << ";\n";
         out << "} PushConstants;\n";
     }
 
-    // TODO iterate over headers / export push consts, offset by the header push const offset
-    // https://vkguide.dev/docs/chapter-3/push_constants/
-    //push constants block
-    // layout( push_constant ) uniform constants
-    // {
-    // 	vec4 data;
-    // 	mat4 render_matrix;
-    // } PushConstants;
-    //     layout(push_constant) uniform fragmentPushConstants {
-    //     layout(offset = 4) float test2;
-    // } u_pushConstants;
     PipelineResourceUsage resourceUsage;
     ShaderBin::StageConfig cfg =
       read_stage_configs(objData.resources, variantId, objData.variants,

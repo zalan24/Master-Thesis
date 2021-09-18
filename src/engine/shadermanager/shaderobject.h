@@ -15,6 +15,8 @@ struct ShaderHeaderResInfo final : public IAutoSerializable<ShaderHeaderResInfo>
     REFLECTABLE((uint32_t)pushConstOffset, (uint32_t)pushConstSize)
 
     ShaderHeaderResInfo() : pushConstOffset(0), pushConstSize(0) {}
+    ShaderHeaderResInfo(uint32_t offset, uint32_t size)
+      : pushConstOffset(offset), pushConstSize(size) {}
 
     operator bool() const { return pushConstSize > 0; }
 };

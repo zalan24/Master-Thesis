@@ -190,7 +190,7 @@ static void read_resources(const BlockFile* blockFile, Resources& resources) {
         return;
     const std::string* resourcesContent = blockFile->getContent();
     std::regex varReg{
-      "(uint|uint2|uint3|uint4|int|int2|int3|int4|float|vec2|vec3|vec4|mat44)\\s+(\\w+)\\s*;"};
+      "(uint|uint2|uint3|uint4|int|int2|int3|int4|float|vec2|vec3|vec4|mat4)\\s+(\\w+)\\s*;"};
     auto resourcesBegin =
       std::sregex_iterator(resourcesContent->begin(), resourcesContent->end(), varReg);
     auto resourcesEnd = std::sregex_iterator();
@@ -597,34 +597,34 @@ struct TypeInfo
 };
 
 static TypeInfo get_type_info(const std::string& type) {
-#define RET_TYPE(cxxType) \
-    return { type, #cxxType, sizeof(type), alignof(type) }
+#define RET_TYPE(cxxType, align) \
+    return { type, #cxxType, sizeof(cxxType), align }
     if (type == "int")
-        RET_TYPE(int32_t);
+        RET_TYPE(int32_t, 4);
     if (type == "int2")
-        RET_TYPE(int2);
+        RET_TYPE(int2, 8);
     if (type == "int3")
-        RET_TYPE(int3);
+        RET_TYPE(int3, 16);
     if (type == "int4")
-        RET_TYPE(int4);
+        RET_TYPE(int4, 16);
     if (type == "uint")
-        RET_TYPE(uint32_t);
+        RET_TYPE(uint32_t, 4);
     if (type == "uint2")
-        RET_TYPE(uint2);
+        RET_TYPE(uint2, 8);
     if (type == "uint3")
-        RET_TYPE(uint3);
+        RET_TYPE(uint3, 16);
     if (type == "uint4")
-        RET_TYPE(uint4);
+        RET_TYPE(uint4, 16);
     if (type == "float")
-        RET_TYPE(float);
+        RET_TYPE(float, 4);
     if (type == "vec2")
-        RET_TYPE(vec2);
+        RET_TYPE(vec2, 8);
     if (type == "vec3")
-        RET_TYPE(vec3);
+        RET_TYPE(vec3, 16);
     if (type == "vec4")
-        RET_TYPE(vec4);
-    if (type == "mat44")
-        RET_TYPE(mat44);
+        RET_TYPE(vec4, 16);
+    if (type == "mat4")
+        RET_TYPE(mat4, 16);
 #undef RET_TYPE
     throw std::runtime_error("Unkown type: " + type);
 }
@@ -653,15 +653,21 @@ PushConstObjData ResourcePack::generateCXX(const std::string& structName,
                   return vars[lhs].size > vars[rhs].size;
               });
     uint32_t predictedSize = 0;
+    uint32_t separatorId = 0;
     auto gen_separator = [&](uint32_t align) {
         uint32_t offset = predictedSize % align;
         if (offset != 0) {
             out << "    // padding of " << (align - offset) << "bytes\n";
+            for (uint32_t i = offset; i < align; ++i)
+                out << "    uint8_t __sep" << separatorId++ << ";\n";
             predictedSize += align - offset;
         }
     };
+    uint32_t firstAlignment = 0;
     auto export_var = [&](auto itr) {
         const std::string& var = *itr;
+        if (firstAlignment == 0)
+            firstAlignment = vars[var].align;
         gen_separator(vars[var].align);
         out << "    " << vars[var].cxxType << " " << var << "; // offset: " << predictedSize
             << "\n";
@@ -687,9 +693,14 @@ PushConstObjData ResourcePack::generateCXX(const std::string& structName,
         }
         export_var(sizeOrder.begin());
     }
+    if (firstAlignment == 0)
+        firstAlignment = 1;
     out << "    // size without padding at the end\n";
     out << "    static constexpr uint32_t CONTENT_SIZE = " << predictedSize << ";\n";
+    out << "    // based on the first member\n";
+    out << "    static constexpr uint32_t REQUIRED_ALIGNMENT = " << firstAlignment << ";\n";
     ret.effectiveSize = predictedSize;
+    ret.structAlignment = firstAlignment;
     gen_separator(structAlignas);
     out << "    " << structName << "(";
     bool first = true;
@@ -871,9 +882,8 @@ void Preprocessor::processHeader(const fs::path& file, const fs::path& outdir) {
 
     incData.localVariantToStructIdGraphics.clear();
     incData.localVariantToStructIdCompute.clear();
-    uint32_t invalidStruct = std::numeric_limits<uint32_t>::max();
     incData.localVariantToStructIdGraphics.reserve(incData.totalVariantMultiplier);
-    localVarintIdToStructIdCompute.reserve(incData.totalVariantMultiplier);
+    incData.localVariantToStructIdCompute.reserve(incData.totalVariantMultiplier);
     for (uint32_t i = 0; i < incData.totalVariantMultiplier; ++i) {
         PipelineResourceUsage resourceUsage = incData.variantToResourceUsage[i];
         ResourceObject resObj = incData.resourceObjects[resourceUsage];
@@ -883,20 +893,20 @@ void Preprocessor::processHeader(const fs::path& file, const fs::path& outdir) {
                 itr2 != graphicsPushConstStructNameToId.end())
                 incData.localVariantToStructIdGraphics.push_back(itr2->second);
             else
-                incData.localVariantToStructIdGraphics.push_back(invalidStruct);
+                incData.localVariantToStructIdGraphics.push_back(INVALID_STRUCT_ID);
         }
         else
-            incData.localVariantToStructIdGraphics.push_back(invalidStruct);
+            incData.localVariantToStructIdGraphics.push_back(INVALID_STRUCT_ID);
         if (auto itr = incData.exportedPacks.find(resObj.computeResources);
             itr != incData.exportedPacks.end()) {
             if (auto itr2 = computePushConstStructNameToId.find(itr->second.name);
                 itr2 != computePushConstStructNameToId.end())
                 incData.localVariantToStructIdCompute.push_back(itr2->second);
             else
-                incData.localVariantToStructIdCompute.push_back(invalidStruct);
+                incData.localVariantToStructIdCompute.push_back(INVALID_STRUCT_ID);
         }
         else
-            incData.localVariantToStructIdCompute.push_back(invalidStruct);
+            incData.localVariantToStructIdCompute.push_back(INVALID_STRUCT_ID);
     }
 
     cxx << "static const uint32_t LOCAL_VARIANT_TO_PUSH_CONST_STRUCT_ID_GRAPHICS[] = {";
@@ -1045,7 +1055,7 @@ void Preprocessor::processHeader(const fs::path& file, const fs::path& outdir) {
     header << "    bool hasPushConstsGraphics() const override;\n";
     cxx << "bool " << className << "::hasPushConstsGraphics() const {\n";
     cxx << "    return LOCAL_VARIANT_TO_PUSH_CONST_STRUCT_ID_GRAPHICS[getLocalVariantId()] != "
-        << invalidStruct << ";\n";
+        << INVALID_STRUCT_ID << ";\n";
     cxx << "}\n";
     header << "    uint32_t getPushConstStructIdGraphics() const override;\n";
     cxx << "uint32_t " << className << "::getPushConstStructIdGraphics() const {\n";
@@ -1385,8 +1395,6 @@ void Preprocessor::processSource(const fs::path& file, const fs::path& outdir,
             continue;
         }
 
-        const uint32_t structAlignment = 1;
-
         uint32_t computeSize = 0;
         uint32_t graphicsSize = 0;
         for (const auto& h : resourceShaderOrder) {
@@ -1398,22 +1406,28 @@ void Preprocessor::processSource(const fs::path& file, const fs::path& outdir,
 
             if (resUsage.graphicsResources) {
                 graphicsInfo.pushConstOffset = graphicsSize;
-                uint32_t size =
-                  itr->second.exportedPacks.find(resUsage.graphicsResources)->second.effectiveSize;
+                const PushConstObjData& pushConstData =
+                  itr->second.exportedPacks.find(resUsage.graphicsResources)->second;
+                uint32_t size = pushConstData.effectiveSize;
+                uint32_t structAlignment = pushConstData.structAlignment;
                 graphicsInfo.pushConstSize = size;
                 graphicsSize += size;
-                if ((graphicsSize % structAlignment) != 0)
-                    graphicsSize += structAlignment - (graphicsSize % structAlignment);
+                if ((graphicsInfo.pushConstOffset % structAlignment) != 0)
+                    graphicsInfo.pushConstOffset +=
+                      structAlignment - (graphicsInfo.pushConstOffset % structAlignment);
             }
             objData.headerToConfigToResinfosGraphics[h].push_back(graphicsInfo);
             if (resUsage.computeResources) {
                 computeInfo.pushConstOffset = computeSize;
-                uint32_t size =
-                  itr->second.exportedPacks.find(resUsage.computeResources)->second.effectiveSize;
+                const PushConstObjData& pushConstData =
+                  itr->second.exportedPacks.find(resUsage.computeResources)->second;
+                uint32_t size = pushConstData.effectiveSize;
+                uint32_t structAlignment = pushConstData.structAlignment;
                 computeInfo.pushConstSize = size;
                 computeSize += size;
-                if ((computeSize % structAlignment) != 0)
-                    computeSize += structAlignment - (computeSize % structAlignment);
+                if ((computeInfo.pushConstOffset % structAlignment) != 0)
+                    computeInfo.pushConstOffset +=
+                      structAlignment - (computeInfo.pushConstOffset % structAlignment);
             }
             objData.headerToConfigToResinfosCompute[h].push_back(computeInfo);
         }

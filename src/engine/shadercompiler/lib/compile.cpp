@@ -774,7 +774,7 @@ bool read_resources(const BlockFile* blockFile, Resources& resources) {
         return true;
     const std::string* resourcesContent = blockFile->getContent();
     std::regex varReg{
-      "(uint|uint2|uint3|uint4|int|int2|int3|int4|float|vec2|vec3|vec4|mat44)\\s+(\\w+)\\s*;"};
+      "(uint|uint2|uint3|uint4|int|int2|int3|int4|float|vec2|vec3|vec4|mat4)\\s+(\\w+)\\s*;"};
     auto resourcesBegin =
       std::sregex_iterator(resourcesContent->begin(), resourcesContent->end(), varReg);
     auto resourcesEnd = std::sregex_iterator();
@@ -1047,8 +1047,8 @@ static TypeInfo get_type_info(const std::string& type) {
         RET_TYPE(vec3);
     if (type == "vec4")
         RET_TYPE(vec4);
-    if (type == "mat44")
-        RET_TYPE(mat44);
+    if (type == "mat4")
+        RET_TYPE(mat4);
 #undef RET_TYPE
     throw std::runtime_error("Unkown type: " + type);
 }

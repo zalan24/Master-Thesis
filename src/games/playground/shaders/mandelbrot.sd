@@ -92,19 +92,19 @@ ps {
                 break;
             }
         }
-        vec3 exitColor = vec3(0.0, 0.0, 0.0);
-        vec3 midColor = vec3(0.0, 0.0, 0.9);
-        vec3 peakColor = vec3(1.0, 1.0, 1.0);
+        // vec3 exitColor = vec3(0.0, 0.0, 0.0);
+        // vec3 midColor = vec3(0.0, 0.0, 0.9);
+        // vec3 peakColor = vec3(1.0, 1.0, 1.0);
         if (exit == 0) {
-            outColor = vec4(exitColor, 1.0);
+            outColor = vec4(PushConstants.exitColor, 1.0);
         } else {
             float f = log(float(exit)) / log(float(iterations));
             if (f < 0.5) {
                 f = f*2;
-                outColor = mix(vec4(exitColor, 1.0), vec4(midColor, 1.0), f);
+                outColor = mix(vec4(PushConstants.exitColor, 1.0), vec4(PushConstants.midColor, 1.0), f);
             } else {
                 f = (f-0.5)*2;
-                outColor = mix(vec4(midColor, 1.0), vec4(peakColor, 1.0), f);
+                outColor = mix(vec4(PushConstants.midColor, 1.0), vec4(PushConstants.peakColor, 1.0), f);
             }
         }
     }
