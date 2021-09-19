@@ -1,5 +1,5 @@
 include {
-    global;
+    aglobal;
 }
 
 descriptor {
@@ -22,7 +22,7 @@ stages {
 
 vs {
     vec4 getWorldSpace(vec4 modelSpace) {
-      return mul(PushConstants.modelTm, modelSpace);
+      return PushConstants.modelTm * modelSpace;
     }
     vec4 getWorldSpacePoint(vec3 modelSpace) {
       return getWorldSpace(vec4(modelSpace, 1.0));
@@ -31,7 +31,7 @@ vs {
       return getWorldSpace(vec4(modelSpace, 0.0));
     }
     vec4 worldToScreenSpace(vec4 worldSpace) {
-      return mul(PushConstants.viewProj, worldSpace);
+      return PushConstants.viewProj * worldSpace;
     }
     vec4 worldToScreenSpacePoint(vec3 worldSpace) {
       return worldToScreenSpace(vec4(worldSpace, 1.0));

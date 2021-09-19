@@ -7,18 +7,20 @@
 #include <3dgame.h>
 #include <engine.h>
 #include <imagestager.h>
-#include <shaderregistry.h>
 #include <serializable.h>
+#include <shaderregistry.h>
 
+#include <shader_entityshader.h>
 #include <shader_inputatchm.h>
 #include <shader_mandelbrot.h>
 #include <shader_test.h>
 
 struct GameOptions final : public IAutoSerializable<GameOptions>
 {
-    REFLECTABLE((int) mandelBrotLevel)
+    REFLECTABLE((int)mandelBrotLevel, (float)fov, (float)rotationSpeed, (float)eyeDist,
+                (float)eyeHeight)
 
-    GameOptions() : mandelBrotLevel(1) {}
+    GameOptions() : mandelBrotLevel(1), fov(45), rotationSpeed(1), eyeDist(6), eyeHeight(4) {}
 };
 
 class Game final : public Game3D
@@ -45,7 +47,12 @@ class Game final : public Game3D
     ShaderHeaderRegistry shaderHeaders;
     ShaderObjRegistry shaderObjects;
     drv::DrvShader::DynamicStates dynamicStates;
-    shader_global_descriptor shaderGlobalDesc;
+    shader_aglobal_descriptor shaderGlobalDesc;
+    shader_threed_descriptor shader3dDescriptor;
+    shader_basicshape_descriptor shaderBasicShapeDescriptor;
+    shader_forwardshading_descriptor shaderForwardShaderDescriptor;
+    shader_entityshader_descriptor entityShaderDesc;
+    shader_entityshader entityShader;
     shader_test_descriptor shaderTestDesc;
     shader_test testShader;
     shader_mandelbrot_descriptor mandelbrotDesc;

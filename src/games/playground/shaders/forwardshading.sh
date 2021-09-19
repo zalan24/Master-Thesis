@@ -1,5 +1,5 @@
 include {
-    global;
+    aglobal;
 }
 
 descriptor {
@@ -32,8 +32,8 @@ ps {
 #if renderPass == color_pass
   vec3 shadePixel(vec3 worldPos, vec3 normal, vec3 albedo) {
     vec3 luminance = PushConstants.ambientLight;
-    float NdotL = abs(-dot(PushConstants.sunDir, normal));
-    luminance += NdotL * sunLight;
+    float NdotL = clamp(-dot(PushConstants.sunDir, normal), 0.0, 1.0);
+    luminance += NdotL * PushConstants.sunLight;
     return luminance * albedo;
   }
 #endif

@@ -70,6 +70,13 @@ Get a triangle on screen:
     ☐ Document
         ☐ What is latency?
         ☐ Why is it important?
+        ☐ How to measure it?
+            ☐ Show and explain LDAT
+            ☐ Show and explain internal software latency measurement
+            ☐ Explain what's different, what's missing in software latency (hardware latency, input that is pressed between input samplings have extra latency)
+            ☐ Explain why software latency is used (We can't really help the other aspects of latency; it can be measured in realtime in dynamic scenes)
+        ☐ Introduce example app
+            ☐ Explain why physics doesn't depend on input sampling
         ☐ Where does it come from?
             ☐ Explanation of cpu / execution queue / gpu pipeline
         ☐ Naive solutions to eliminate it

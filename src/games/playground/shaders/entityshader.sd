@@ -1,23 +1,23 @@
 
 include {
-    global;
-    threeD;
+    aglobal;
+    threed;
     forwardshading;
-    basicshapes;
+    basicshape;
 }
 
 descriptor {
     variants {
     }
     resources {
-        vec3 albedo;
+        vec3 entityAlbedo;
     }
 }
 
 stages {
     ps {
         entry = main;
-        use albedo;
+        use entityAlbedo;
     }
     vs {
         entry = main;
@@ -26,15 +26,19 @@ stages {
 
 vs {
     layout(location = 0) out vec3 worldPos;
-    layout(location = 1) out vec3 albedo;
+#if renderPass == color_pass
+    layout(location = 1) out vec3 vAlbedo;
     layout(location = 2) out vec3 normal;
     layout(location = 3) out vec2 tc;
+#endif
     void main() {
         VertexData vertexData = getVertexData(gl_VertexIndex);
         worldPos = getWorldSpacePoint(vertexData.pos).xyz;
-        albedo = PushConstants.albedo;
+#if renderPass == color_pass
+        vAlbedo = PushConstants.entityAlbedo;
         normal = getWorldSpaceDirection(vertexData.normal).xyz;
         tc = vertexData.tc;
+#endif
 
         gl_Position = worldToScreenSpacePoint(worldPos);
     }
@@ -42,11 +46,18 @@ vs {
 
 ps {
     layout(location = 0) in vec3 worldPos;
-    layout(location = 1) in vec3 albedo;
+#if renderPass == color_pass
+    layout(location = 1) in vec3 vAlbedo;
     layout(location = 2) in vec3 normal;
     layout(location = 3) in vec2 tc;
 
     void main() {
-        outColor = vec4(shadePixel(worldPos, normal, albedo), 1.0);
+        outColor = vec4(shadePixel(worldPos, normal, vAlbedo), 1.0);
     }
+#else
+    void main() {
+        outColor = vec4(0.0, 0.0, 0.0, 1.0);
+    }
+#endif
+
 }

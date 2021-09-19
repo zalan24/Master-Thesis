@@ -59,7 +59,7 @@ static void read_resources(const BlockFile* blockFile, Resources& resources) {
         return;
     const std::string* resourcesContent = blockFile->getContent();
     std::regex varReg{
-      "(uint|uint2|uint3|uint4|int|int2|int3|int4|float|vec2|vec3|vec4|mat4)\\s+(\\w+)\\s*;"};
+      "(uint|uvec2|uvec3|uvec4|int|ivec2|ivec3|ivec4|float|vec2|vec3|vec4|mat4)\\s+(\\w+)\\s*;"};
     auto resourcesBegin =
       std::sregex_iterator(resourcesContent->begin(), resourcesContent->end(), varReg);
     auto resourcesEnd = std::sregex_iterator();
@@ -470,20 +470,20 @@ static TypeInfo get_type_info(const std::string& type) {
     return { type, #cxxType, sizeof(cxxType), align }
     if (type == "int")
         RET_TYPE(int32_t, 4);
-    if (type == "int2")
-        RET_TYPE(int2, 8);
-    if (type == "int3")
-        RET_TYPE(int3, 16);
-    if (type == "int4")
-        RET_TYPE(int4, 16);
+    if (type == "ivec2")
+        RET_TYPE(ivec2, 8);
+    if (type == "ivec3")
+        RET_TYPE(ivec3, 16);
+    if (type == "ivec4")
+        RET_TYPE(ivec4, 16);
     if (type == "uint")
         RET_TYPE(uint32_t, 4);
-    if (type == "uint2")
-        RET_TYPE(uint2, 8);
-    if (type == "uint3")
-        RET_TYPE(uint3, 16);
-    if (type == "uint4")
-        RET_TYPE(uint4, 16);
+    if (type == "uvec2")
+        RET_TYPE(uvec2, 8);
+    if (type == "uvec3")
+        RET_TYPE(uvec3, 16);
+    if (type == "uvec4")
+        RET_TYPE(uvec4, 16);
     if (type == "float")
         RET_TYPE(float, 4);
     if (type == "vec2")
