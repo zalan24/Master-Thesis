@@ -109,8 +109,8 @@ class EntityManager final : public ISerializable
 
     void clearEntities();
 
-    void prepareTexture(uint32_t textureId, drv::DrvCmdBufferRecorder* recorder);
-    drv::ImagePtr getTexture(uint32_t textureId) const;
+    // void prepareTexture(uint32_t textureId, drv::DrvCmdBufferRecorder* recorder);
+    // drv::ImagePtr getTexture(uint32_t textureId) const;
 
  private:
     using Clock = std::chrono::high_resolution_clock;
@@ -133,16 +133,16 @@ class EntityManager final : public ISerializable
                           const EntitySystemInfo* info);
 
     std::unordered_map<std::string, EntityTemplate> esTemplates;
-    std::unordered_map<std::string, uint32_t> textureId;
+    // std::unordered_map<std::string, uint32_t> textureId;
     std::vector<EntitySystemInfo> esSignatures;
     std::vector<EntitySystemData> esSystems;
     uint32_t numGameEs = 0;
     uint32_t numEngineEs = 0;
     Clock::time_point startTime;
-    drv::ImageSet textures;
-    drv::ImageSet textureStager;
-    mutable std::mutex dirtyTextureMutex;
-    std::set<uint32_t> dirtyTextures;
+    // drv::ImageSet textures;
+    // drv::ImageSet textureStager;
+    // mutable std::mutex dirtyTextureMutex;
+    // std::set<uint32_t> dirtyTextures;
 
     mutable std::shared_mutex entitiesMutex;  // used when clearing
 };

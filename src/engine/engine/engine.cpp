@@ -221,7 +221,10 @@ Engine::Engine(int argc, char* argv[], const EngineConfig& cfg,
     runtimeStats(!launchArgs.clearRuntimeStats, launchArgs.runtimeStatsPersistanceBin,
                  launchArgs.runtimeStatsGameExportsBin, launchArgs.runtimeStatsCacheBin),
     entityManager(physicalDevice, device, &frameGraph, resourceFolders.textures),
-    timestsampRingBuffer(config.maxFramesInFlight + 1) {
+    timestsampRingBuffer(config.maxFramesInFlight + 1),
+    shaderHeaders(getDevice()),
+    shaderObjects(getDevice(), *getShaderBin(), shaderHeaders),
+{
     json configJson = ISerializable::serialize(config);
     std::stringstream ss;
     ss << configJson;
@@ -305,7 +308,7 @@ void Engine::buildFrameGraph() {
                     "Latency flash entity system was not registered ");
     drv::drv_assert(cameraEntitySystem.flag != 0, "Camera flash entity system was not registered ");
 
-    entityManager.addEntityTemplate("static",
+    entityManager.addEntityTemplate("dynobj",
                                     {physicsEntitySystem.flag | renderEntitySystem.flag, 0});
     entityManager.addEntityTemplate("cursor",
                                     {cursorEntitySystem.flag | renderEntitySystem.flag, 0});
@@ -378,12 +381,13 @@ void Engine::initImGui(drv::RenderPass* imGuiRenderpass) {
 void Engine::esCamera(EntityManager*, Engine* engine, FrameGraph::NodeHandle*, FrameGraph::Stage,
                       const EntityManager::EntitySystemParams&, Entity* entity) {
     drv::Extent2D extent = engine->window->getResolution();
-    entity->extra["ratio"] = float(extent.height) / float(extent.width);
+    entity->extra["ratio"] = float(extent.width) / float(extent.height);
 }
 
 void Engine::esPhysics(EntityManager*, Engine*, FrameGraph::NodeHandle*, FrameGraph::Stage,
                        const EntityManager::EntitySystemParams& params, Entity* entity) {
-    entity->position += entity->speed * params.dt;
+    // TODO bullet physics
+    // entity->position += entity->speed * params.dt;
 }
 
 void Engine::esBeforeDraw(EntityManager* entityManager, Engine* engine, FrameGraph::NodeHandle*,
@@ -391,6 +395,7 @@ void Engine::esBeforeDraw(EntityManager* entityManager, Engine* engine, FrameGra
                           Entity* entity) {
     if (entity->hidden)
         return;
+    TODO;
     EntityRenderData data;
     glm::vec2 camPos;
     glm::vec2 camSize;
@@ -433,25 +438,11 @@ void Engine::esLatencyFlash(EntityManager*, Engine* engine, FrameGraph::NodeHand
 
 void Engine::esCursor(EntityManager* entityManager, Engine* engine, FrameGraph::NodeHandle*,
                       FrameGraph::Stage, const EntityManager::EntitySystemParams&, Entity* entity) {
-    const Entity* camEntity = entityManager->getById(entityManager->getByName("camera"));
-    std::shared_lock<std::shared_mutex> camLock(camEntity->mutex);
-    entity->position = engine->mouseListener.getMousePos() * 2.f - 1.f;
-    if (auto itr = camEntity->extra.find("ratio"); itr != camEntity->extra.end())
-        entity->position.y *= itr->second;
-    // EntityRenderData data;
-    // glm::vec2 camPos = {0, 0};
-    // glm::vec2 camSize = {10, 10};
-    // data.relBottomLeft = (entity->position - entity->scale - camPos);
-    // data.relBottomLeft.x /= camSize.x;
-    // data.relBottomLeft.y /= camSize.y;
-    // data.relTopRight = (entity->position + entity->scale - camPos);
-    // data.relTopRight.x /= camSize.x;
-    // data.relTopRight.y /= camSize.y;
-    // data.z = entity->zPos;
-    // data.textureId = entity->textureId;
-    // if (data.relBottomLeft.x < 1 && data.relTopRight.x > -1 && data.relBottomLeft.y < 1
-    //     && data.relTopRight.y > -1)
-    //     engine->entitiesToDraw.push_back(std::move(data));
+    // const Entity* camEntity = entityManager->getById(entityManager->getByName("camera"));
+    // std::shared_lock<std::shared_mutex> camLock(camEntity->mutex);
+    // entity->position = engine->mouseListener.getMousePos() * 2.f - 1.f;
+    // if (auto itr = camEntity->extra.find("ratio"); itr != camEntity->extra.end())
+    //     entity->position.y *= itr->second;
 }
 
 void Engine::initPhysicsEntitySystem() {
@@ -1734,77 +1725,78 @@ void Engine::transferToStager(drv::CmdBufferId cmdBufferId, ImageStager& stager,
     nodeHandle.submit(queue, std::move(submission));
 }
 
-void Engine::drawEntities(EngineCmdBufferRecorder* recorder, drv::ImagePtr targetImage) {
-    drv::TextureInfo targetInfo = drv::get_texture_info(targetImage);
-    if (targetInfo.extent.width == 0 || targetInfo.extent.height == 0)
-        return;
-    for (const auto& entity : entitiesToDraw) {
-        drv::TextureInfo textureInfo =
-          drv::get_texture_info(entityManager.getTexture(entity.textureId));
+void Engine::drawEntities(EngineCmdBufferRecorder* recorder, EngineRenderPass* renderPass) {
+    TODO;
+    // uint32_t planeResolution = 2;
+    // uint32_t boxResolution = 2;
+    // uint32_t sphereResolution = 20;
+    // float brightness = 0.5;
+    // static const FrameGraph::Clock::time_point firstTime = FrameGraph::Clock::now();
+    // auto duration = FrameGraph::Clock::now() - firstTime;
+    // float phase =
+    //   float(std::chrono::duration_cast<std::chrono::milliseconds>(duration).count()) / 1000.f;
+    // const float speed = gameOptions.rotationSpeed;
+    // const float eyeDist = gameOptions.eyeDist;
+    // vec3 eyePos =
+    //   vec3(eyeDist * cosf(phase * speed), gameOptions.eyeHeight, eyeDist * sinf(phase * speed));
+    // shader3dDescriptor.set_eyePos(eyePos);
+    // mat4 view = glm::lookAtLH(eyePos, vec3(0, 0, 0), vec3(0, 1, 0));
+    // mat4 proj = glm::perspective(glm::radians(gameOptions.fov * 2),
+    //                              static_cast<float>(swapchainData.extent.width)
+    //                                / static_cast<float>(swapchainData.extent.height),
+    //                              0.01f, 150.0f);
+    // mat4 bsToGoodTm(1.f);
+    // bsToGoodTm[1] = -bsToGoodTm[1];
+    // bsToGoodTm[2] = -bsToGoodTm[2];
+    // proj = proj * bsToGoodTm;
+    // shader3dDescriptor.set_viewProj(proj * view);
+    // shaderForwardShaderDescriptor.set_ambientLight(vec3(0.1, 0.1, 0.1) * brightness);
+    // shaderForwardShaderDescriptor.set_sunDir(glm::normalize(vec3(-0.2, -0.8, 0.4)));
+    // shaderForwardShaderDescriptor.set_sunLight(vec3(1.0, 0.8, 0.7) * brightness);
+    // shaderForwardShaderDescriptor.setVariant_renderPass(
+    //   shader_forwardshading_descriptor::Renderpass::COLOR_PASS);
 
-        glm::vec2 clampedMin = glm::clamp(entity.relBottomLeft, glm::vec2(-1, -1), glm::vec2(1, 1));
-        glm::vec2 clampedMax = glm::clamp(entity.relTopRight, glm::vec2(-1, -1), glm::vec2(1, 1));
+    // mat4 planeModelTm(1.f);
+    // planeModelTm[0] = vec4(5, 0, 0, 0);
+    // planeModelTm[1] = vec4(0, 5, 0, 0);
+    // planeModelTm[2] = vec4(0, 0, 5, 0);
+    // planeModelTm[3] = vec4(0, 0, 0, 0);
+    // shader3dDescriptor.set_modelTm(planeModelTm);
+    // shaderBasicShapeDescriptor.set_resolution(planeResolution);
+    // shaderBasicShapeDescriptor.setVariant_Shape(shader_basicshape_descriptor::Shape::SHAPE_PLANE);
+    // entityShaderDesc.set_entityAlbedo(vec3(0.8, 0.8, 1.0));
+    // recorder->bindGraphicsShader(testPass, get_dynamic_states(swapchainData.extent), {},
+    //                              entityShader, &shader3dDescriptor, &shaderForwardShaderDescriptor,
+    //                              &shaderBasicShapeDescriptor, &shaderGlobalDesc, &entityShaderDesc);
+    // testPass.draw(6 * planeResolution * planeResolution, 1, 0, 0);
 
-        glm::vec2 size = entity.relTopRight - entity.relBottomLeft;
+    // mat4 boxModelTm(1.f);
+    // boxModelTm[0] = vec4(1, 0, 0, 0);
+    // boxModelTm[1] = vec4(0, 1, 0, 0);
+    // boxModelTm[2] = vec4(0, 0, 1, 0);
+    // boxModelTm[3] = vec4(0, 2, -1, 0);
+    // shader3dDescriptor.set_modelTm(boxModelTm);
+    // shaderBasicShapeDescriptor.set_resolution(boxResolution);
+    // shaderBasicShapeDescriptor.setVariant_Shape(shader_basicshape_descriptor::Shape::SHAPE_BOX);
+    // entityShaderDesc.set_entityAlbedo(vec3(1.0, 0.5, 0.1));
+    // recorder->bindGraphicsShader(testPass, get_dynamic_states(swapchainData.extent), {},
+    //                              entityShader, &shader3dDescriptor, &shaderForwardShaderDescriptor,
+    //                              &shaderBasicShapeDescriptor, &shaderGlobalDesc, &entityShaderDesc);
+    // testPass.draw(6 * 6 * boxResolution * boxResolution, 1, 0, 0);
 
-        glm::vec2 relMin = clampedMin - entity.relBottomLeft;
-        relMin.x /= size.x;
-        relMin.y /= size.y;
-        glm::vec2 relMax = clampedMax - entity.relBottomLeft;
-        relMax.x /= size.x;
-        relMax.y /= size.y;
-
-        drv::ImageBlit region;
-        region.srcSubresource.aspectMask = drv::COLOR_BIT;
-        region.srcSubresource.baseArrayLayer = 0;
-        region.srcSubresource.layerCount = 1;
-        region.srcSubresource.mipLevel = 0;
-        region.dstSubresource.aspectMask = drv::COLOR_BIT;
-        region.dstSubresource.baseArrayLayer = 0;
-        region.dstSubresource.layerCount = 1;
-        region.dstSubresource.mipLevel = 0;
-        region.srcOffsets[0] = drv::Offset3D{int(floorf(relMin.x * textureInfo.extent.width)),
-                                             int(floorf(relMin.y * textureInfo.extent.height)), 0};
-        region.srcOffsets[1] = drv::Offset3D{int(ceil(relMax.x * textureInfo.extent.width)),
-                                             int(ceil(relMax.y * textureInfo.extent.height)), 1};
-        region.dstOffsets[0] =
-          drv::Offset3D{int(floorf(((clampedMin.x * 0.5f) + 0.5f) * targetInfo.extent.width)),
-                        int(floorf(((clampedMin.y * 0.5f) + 0.5f) * targetInfo.extent.height)), 0};
-        region.dstOffsets[1] =
-          drv::Offset3D{int(ceil(((clampedMax.x * 0.5f) + 0.5f) * targetInfo.extent.width)),
-                        int(ceil(((clampedMax.y * 0.5f) + 0.5f) * targetInfo.extent.height)), 1};
-        for (uint32_t i : {0u, 1u}) {
-            if (region.dstOffsets[i].x < 0)
-                region.dstOffsets[i].x = 0;
-            if (region.dstOffsets[i].y < 0)
-                region.dstOffsets[i].y = 0;
-            if (region.dstOffsets[i].x > int(targetInfo.extent.width))
-                region.dstOffsets[i].x = int(targetInfo.extent.width);
-            if (region.dstOffsets[i].y > int(targetInfo.extent.height))
-                region.dstOffsets[i].y = int(targetInfo.extent.height);
-            if (region.srcOffsets[i].x < 0)
-                region.srcOffsets[i].x = 0;
-            if (region.srcOffsets[i].y < 0)
-                region.srcOffsets[i].y = 0;
-            if (region.srcOffsets[i].x > int(textureInfo.extent.width))
-                region.srcOffsets[i].x = int(textureInfo.extent.width);
-            if (region.srcOffsets[i].y > int(textureInfo.extent.height))
-                region.srcOffsets[i].y = int(textureInfo.extent.height);
-        }
-
-        if (region.srcOffsets[0].x < region.srcOffsets[1].x
-            && region.srcOffsets[0].y < region.srcOffsets[1].y
-            && region.dstOffsets[0].x < region.dstOffsets[1].x
-            && region.dstOffsets[0].y < region.dstOffsets[1].y) {
-            recorder->cmdImageBarrier({entityManager.getTexture(entity.textureId),
-                                       drv::IMAGE_USAGE_TRANSFER_SOURCE,
-                                       drv::ImageMemoryBarrier::AUTO_TRANSITION});
-            recorder->cmdImageBarrier({targetImage, drv::IMAGE_USAGE_TRANSFER_DESTINATION,
-                                       drv::ImageMemoryBarrier::AUTO_TRANSITION});
-            recorder->cmdBlitImage(entityManager.getTexture(entity.textureId), targetImage, 1,
-                                   &region, drv::ImageFilter::LINEAR);
-        }
-    }
+    // mat4 sphereModelTm(1.f);
+    // sphereModelTm[0] = vec4(1, 0, 0, 0);
+    // sphereModelTm[1] = vec4(0, 1, 0, 0);
+    // sphereModelTm[2] = vec4(0, 0, 1, 0);
+    // sphereModelTm[3] = vec4(0, 2, 1, 0);
+    // shader3dDescriptor.set_modelTm(sphereModelTm);
+    // shaderBasicShapeDescriptor.set_resolution(sphereResolution);
+    // shaderBasicShapeDescriptor.setVariant_Shape(shader_basicshape_descriptor::Shape::SHAPE_SPHERE);
+    // entityShaderDesc.set_entityAlbedo(vec3(0.1, 0.2, 0.9));
+    // recorder->bindGraphicsShader(testPass, get_dynamic_states(swapchainData.extent), {},
+    //                              entityShader, &shader3dDescriptor, &shaderForwardShaderDescriptor,
+    //                              &shaderBasicShapeDescriptor, &shaderGlobalDesc, &entityShaderDesc);
+    // testPass.draw(6 * sphereResolution * sphereResolution, 1, 0, 0);
 }
 
 Engine::AcquiredImageData Engine::mainRecord(FrameId frameId) {
@@ -1859,8 +1851,8 @@ Engine::AcquiredImageData Engine::mainRecord(FrameId frameId) {
             ImageStager* captureImageStager;
             static void record(const RecordData& data, drv::DrvCmdBufferRecorder* _recorder) {
                 EngineCmdBufferRecorder recorder(_recorder);
-                for (const auto& entity : data.engine->entitiesToDraw)
-                    data.engine->entityManager.prepareTexture(entity.textureId, recorder);
+                // for (const auto& entity : data.engine->entitiesToDraw)
+                //     data.engine->entityManager.prepareTexture(entity.textureId, recorder);
                 data.engine->record(*data.swapChainData, &recorder, data.frameId);
                 if (data.captureImage) {
                     recorder.cmdImageBarrier({data.swapChainData->image,
@@ -1897,9 +1889,9 @@ Engine::AcquiredImageData Engine::mainRecord(FrameId frameId) {
             }
             bool operator!=(const RecordData& other) { return !(*this == other); }
         };
-        std::sort(
-          entitiesToDraw.begin(), entitiesToDraw.end(),
-          [](const EntityRenderData& lhs, const EntityRenderData& rhs) { return lhs.z > rhs.z; });
+        // std::sort(
+        //   entitiesToDraw.begin(), entitiesToDraw.end(),
+        //   [](const EntityRenderData& lhs, const EntityRenderData& rhs) { return lhs.z > rhs.z; });
         bool needCaptureImage =
           perFrameTempInfo[frameId % perFrameTempInfo.size()].captureHappening;
         drv::ImagePtr captureImageTarget =

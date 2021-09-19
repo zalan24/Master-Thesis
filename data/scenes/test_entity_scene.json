@@ -4,86 +4,102 @@
         "name": "camera",
         "parentName": "",
         "position": [
-            0,
-            0.0
+            0.0,
+            3.0,
+            -6.0
         ],
-        "scale": [
-            10,
-            10
-        ],
-        "speed": [
+        "albedo": [
+            0.0,
             0.0,
             0.0
+        ],
+        "scale": 1,
+        "rotation": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
         ],
         "templateName": "camera",
-        "textureName": "",
-        "zPos": 0,
+        "modelName": "",
         "hidden": false,
         "extra": {}
     },
     {
         "mass": 1.0,
-        "name": "cursor",
-        "parentName": "camera",
+        "name": "ground",
+        "parentName": "",
+        "albedo": [
+            0.8,
+            0.8,
+            1.0
+        ],
         "position": [
             0.0,
-            0.0
-        ],
-        "scale": [
-            0.02,
-            0.02
-        ],
-        "speed": [
             0.0,
             0.0
         ],
-        "templateName": "cursor",
-        "textureName": "cursor.png",
-        "zPos": -1.0,
+        "scale": 10,
+        "rotation": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+        ],
+        "templateName": "dynobj",
+        "modelName": "plane",
         "hidden": false,
         "extra": {}
     },
     {
         "mass": 1.0,
-        "name": "latencyFlash",
-        "parentName": "camera",
-        "position": [
-            -0.9,
-            0.0
-        ],
-        "scale": [
-            0.1,
+        "name": "testBox",
+        "parentName": "",
+        "albedo": [
+            1.0,
+            0.5,
             0.1
         ],
-        "speed": [
+        "position": [
             0.0,
-            0.0
+            2.0,
+            1.0
         ],
-        "templateName": "latencyFlash",
-        "textureName": "white.png",
-        "zPos": -2.0,
+        "scale": 1,
+        "rotation": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+        ],
+        "templateName": "dynobj",
+        "modelName": "box",
         "hidden": false,
         "extra": {}
     },
     {
         "mass": 1.0,
-        "name": "colorTest",
+        "name": "testSphere",
         "parentName": "",
+        "albedo": [
+            0.1,
+            0.2,
+            0.9
+        ],
         "position": [
             0.0,
-            0.0
+            2.0,
+            -1.0
         ],
-        "scale": [
-            0.5,
-            0.5
+        "scale": 1,
+        "rotation": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
         ],
-        "speed": [
-            1,
-            0.0
-        ],
-        "templateName": "static",
-        "textureName": "test.png",
-        "zPos": 0.0,
+        "templateName": "dynobj",
+        "modelName": "sphere",
         "hidden": false,
         "extra": {}
     }

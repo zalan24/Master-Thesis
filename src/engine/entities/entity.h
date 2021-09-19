@@ -9,6 +9,7 @@
 #define GLM_FORCE_RADIANS
 #define GLM_LEFT_HAND
 #include <glm/glm.hpp>
+#include <glm/gtc/quaternion.hpp>
 
 #include <serializable.h>
 
@@ -21,31 +22,21 @@ struct Entity final : public IAutoSerializable<Entity>
       : name(""),
         templateName(""),
         parentName(""),
-        position(glm::vec2(0, 0)),
-        scale(glm::vec2(1, 1)),
-        speed(glm::vec2(0, 0)),
-        textureName(""),
+        albedo(glm::vec3(1, 1, 1)),
+        position(glm::vec3(0, 0, 0)),
+        scale(1),
+        rotation(),
+        modelName(""),
         mass(0),
-        zPos(0),
         hidden(false) {}
 
-    REFLECTABLE(
-        (std::string) name,
-        (std::string) templateName,
-        (std::string) parentName,
-        (glm::vec2) position,
-        (glm::vec2) scale,
-        (glm::vec2) speed,
-        (std::string) textureName,
-        (float) mass,
-        (float) zPos,
-        (bool) hidden,
-        (std::unordered_map<std::string, float>) extra
-    )
+    REFLECTABLE((std::string)name, (std::string)templateName, (std::string)parentName,
+                (glm::vec3)albedo, (glm::vec3)position, (float)scale, (glm::quat)rotation, (std::string)modelName,
+                (float)mass, (bool)hidden, (std::unordered_map<std::string, float>)extra)
 
     uint64_t engineBehaviour = 0;
     uint64_t gameBehaviour = 0;
-    uint32_t textureId = 0;
+    // uint32_t textureId = 0;
     EntityId parent = INVALID_ENTITY;
     mutable std::shared_mutex mutex;
 
@@ -53,17 +44,17 @@ struct Entity final : public IAutoSerializable<Entity>
       : name(other.name),
         templateName(other.templateName),
         parentName(other.parentName),
+        albedo(other.albedo),
         position(other.position),
         scale(other.scale),
-        speed(other.speed),
-        textureName(other.textureName),
+        rotation(other.rotation),
+        modelName(other.modelName),
         mass(other.mass),
-        zPos(other.zPos),
         hidden(other.hidden),
         extra(other.extra),
         engineBehaviour(other.engineBehaviour),
         gameBehaviour(other.gameBehaviour),
-        textureId(other.textureId),
+        // textureId(other.textureId),
         parent(other.parent) {}
     Entity& operator=(const Entity& other) {
         if (this == &other)
@@ -71,17 +62,17 @@ struct Entity final : public IAutoSerializable<Entity>
         name = other.name;
         templateName = other.templateName;
         parentName = other.parentName;
+        albedo = other.albedo;
         position = other.position;
         scale = other.scale;
-        speed = other.speed;
-        textureName = other.textureName;
+        rotation = other.rotation;
+        modelName = other.modelName;
         mass = other.mass;
-        zPos = other.zPos;
         hidden = other.hidden;
         extra = other.extra;
         engineBehaviour = other.engineBehaviour;
         gameBehaviour = other.gameBehaviour;
-        textureId = other.textureId;
+        // textureId = other.textureId;
         parent = other.parent;
         return *this;
     }
@@ -89,17 +80,17 @@ struct Entity final : public IAutoSerializable<Entity>
       : name(std::move(other.name)),
         templateName(std::move(other.templateName)),
         parentName(other.parentName),
+        albedo(other.albedo),
         position(other.position),
         scale(other.scale),
-        speed(other.speed),
-        textureName(std::move(other.textureName)),
+        rotation(other.rotation),
+        modelName(std::move(other.modelName)),
         mass(other.mass),
-        zPos(other.zPos),
         hidden(other.hidden),
         extra(other.extra),
         engineBehaviour(other.engineBehaviour),
         gameBehaviour(other.gameBehaviour),
-        textureId(other.textureId),
+        // textureId(other.textureId),
         parent(other.parent) {
         other.engineBehaviour = 0;
         other.gameBehaviour = 0;
@@ -110,17 +101,17 @@ struct Entity final : public IAutoSerializable<Entity>
         name = std::move(other.name);
         templateName = std::move(other.templateName);
         parentName = other.parentName;
+        albedo = other.albedo;
         position = other.position;
         scale = other.scale;
-        speed = other.speed;
-        textureName = std::move(other.textureName);
+        rotation = other.rotation;
+        modelName = std::move(other.modelName);
         mass = other.mass;
-        zPos = other.zPos;
         hidden = other.hidden;
         extra = other.extra;
         engineBehaviour = other.engineBehaviour;
         gameBehaviour = other.gameBehaviour;
-        textureId = other.textureId;
+        // textureId = other.textureId;
         parent = other.parent;
         other.engineBehaviour = 0;
         other.gameBehaviour = 0;

@@ -32,7 +32,9 @@
 #include <input.h>
 #include <inputmanager.h>
 #include <serializable.h>
+#include <shaderregistry.h>
 
+#include <renderpass.h>
 #include <runtimestats.h>
 #include <shaderbin.h>
 #include <cmdBuffer.hpp>
@@ -362,11 +364,14 @@ class Engine
     void initCursorEntitySystem();
     void initBeforeDrawEntitySystem();
 
-    void drawEntities(EngineCmdBufferRecorder* recorder, drv::ImagePtr targetImage);
+    void drawEntities(EngineCmdBufferRecorder* recorder, EngineRenderPass* renderPass);
 
     NodeId getMainRecordNode() const { return mainRecordNode; }
 
     void createPerformanceCapture(FrameId targetFrame);
+
+    const ShaderHeaderRegistry& getShaderHeaders() const {return shaderHeaders;}
+    const ShaderObjRegistry& getShaderObjects() const {return shaderObjects;}
 
  private:
     static constexpr uint64_t firstTimelineCalibrationTimeMs = 1000;
@@ -455,6 +460,8 @@ class Engine
     RuntimeStats runtimeStats;
     EntityManager entityManager;
     std::unique_ptr<ImGuiIniter> imGuiIniter;
+    ShaderHeaderRegistry shaderHeaders;
+    ShaderObjRegistry shaderObjects;
     EngineOptions engineOptions;
 
     NodeId inputSampleNode;

@@ -13,6 +13,7 @@
 
 #define GLM_FORCE_RADIANS
 #include <glm/glm.hpp>
+#include <glm/gtc/quaternion.hpp>
 
 #include <binary_io.h>
 #include <fixedarray.hpp>
@@ -333,6 +334,19 @@ class ISerializable
     }
 
     static bool serializeBin(std::ostream& out, const glm::vec3& value) {
+        return write_data(out, value);
+    }
+
+    static json serialize(const glm::quat& value) {
+        json out = json::array();
+        out.push_back(serialize(value.x));
+        out.push_back(serialize(value.y));
+        out.push_back(serialize(value.z));
+        out.push_back(serialize(value.w));
+        return out;
+    }
+
+    static bool serializeBin(std::ostream& out, const glm::quat& value) {
         return write_data(out, value);
     }
 
@@ -759,6 +773,19 @@ class ISerializable
     }
 
     static bool serializeBin(std::istream& in, glm::vec3& value) { return read_data(in, value); }
+
+    static void serialize(const json& in, glm::quat& value) {
+        if (!in.is_array())
+            throw std::runtime_error("Input json is not an array: " + in.dump());
+        if (in.size() != 3)
+            throw std::runtime_error("Wrong json array size, expecting size of 3: " + in.dump());
+        serialize(in[0], value.x);
+        serialize(in[1], value.y);
+        serialize(in[2], value.z);
+        serialize(in[3], value.w);
+    }
+
+    static bool serializeBin(std::istream& in, glm::quat& value) { return read_data(in, value); }
 
     static void serialize(const json& in, glm::vec4& value) {
         if (!in.is_array())

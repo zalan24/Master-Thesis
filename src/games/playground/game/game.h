@@ -8,7 +8,6 @@
 #include <engine.h>
 #include <imagestager.h>
 #include <serializable.h>
-#include <shaderregistry.h>
 
 #include <shader_entityshader.h>
 #include <shader_inputatchm.h>
@@ -44,8 +43,6 @@ class Game final : public Game3D
     void recordMenuOptionsUI(FrameId frameId) override;
 
  private:
-    ShaderHeaderRegistry shaderHeaders;
-    ShaderObjRegistry shaderObjects;
     drv::DrvShader::DynamicStates dynamicStates;
     shader_aglobal_descriptor shaderGlobalDesc;
     shader_threed_descriptor shader3dDescriptor;
@@ -57,8 +54,6 @@ class Game final : public Game3D
     shader_test testShader;
     shader_mandelbrot_descriptor mandelbrotDesc;
     shader_mandelbrot mandelbrotShader;
-    shader_inputatchm_descriptor shaderInputAttachmentDesc;
-    shader_inputatchm inputAttachmentShader;
 
     std::unique_ptr<drv::RenderPass> testRenderPass;
     drv::AttachmentId swapchainColorAttachment;
@@ -66,7 +61,6 @@ class Game final : public Game3D
     drv::SubpassId colorSubpass;
     drv::SubpassId swapchainSubpass;
     drv::SubpassId imGuiSubpass;
-    NodeId transferNode;
     std::vector<res::ImageView> imageViews;
     std::vector<std::vector<drv::RenderPass::AttachmentData>> attachments;
     std::vector<res::Framebuffer> swapchainFrameBuffers;
@@ -74,15 +68,10 @@ class Game final : public Game3D
     res::ImageView renderTargetView;
     GameOptions gameOptions;
 
-    res::ImageSet transferTexture;
-    ImageStager testImageStager;
-
     void recordCmdBufferClear(const AcquiredImageData& swapchainData,
                               EngineCmdBufferRecorder* recorder, FrameId frameId);
     void recordCmdBufferRender(const AcquiredImageData& swapchainData,
                                EngineCmdBufferRecorder* recorder, FrameId frameId);
-    void recordCmdBufferBlit(const AcquiredImageData& swapchainData,
-                             EngineCmdBufferRecorder* recorder, FrameId frameId);
 
     //  void recreateViews(uint32_t imageCount, const drv::ImagePtr* images);
     //  void initShader(drv::Extent2D extent);
