@@ -52,17 +52,15 @@ class Game final : public Game3D
     shader_forwardshading_descriptor shaderForwardShaderDescriptor;
     shader_entityshader_descriptor entityShaderDesc;
     shader_entityshader entityShader;
-    shader_test_descriptor shaderTestDesc;
-    shader_test testShader;
     shader_mandelbrot_descriptor mandelbrotDesc;
     shader_mandelbrot mandelbrotShader;
 
-    std::unique_ptr<drv::RenderPass> testRenderPass;
+    std::unique_ptr<drv::RenderPass> renderPass;
     drv::AttachmentId swapchainColorAttachment;
     drv::AttachmentId colorTagretColorAttachment;
-    drv::SubpassId colorSubpass;
-    drv::SubpassId swapchainSubpass;
-    drv::SubpassId imGuiSubpass;
+    drv::SubpassId backgroundSubpass;
+    drv::SubpassId contentSubpass;
+    drv::SubpassId foregroundSubpass;
     std::vector<res::ImageView> imageViews;
     std::vector<std::vector<drv::RenderPass::AttachmentData>> attachments;
     std::vector<res::Framebuffer> swapchainFrameBuffers;
@@ -70,11 +68,10 @@ class Game final : public Game3D
     res::ImageView renderTargetView;
     GameOptions gameOptions;
 
-    void recordCmdBufferClear(const AcquiredImageData& swapchainData,
-                              EngineCmdBufferRecorder* recorder, FrameId frameId);
-    void recordCmdBufferRender(const AcquiredImageData& swapchainData,
-                               EngineCmdBufferRecorder* recorder, FrameId frameId);
-
-    //  void recreateViews(uint32_t imageCount, const drv::ImagePtr* images);
-    //  void initShader(drv::Extent2D extent);
+    void recordCmdBufferBackground(const AcquiredImageData& swapchainData,
+                                   EngineCmdBufferRecorder* recorder, EngineRenderPass &pass, FrameId frameId);
+    void recordCmdBufferContent(const AcquiredImageData& swapchainData,
+                                EngineCmdBufferRecorder* recorder, EngineRenderPass &pass, FrameId frameId);
+    void recordCmdBufferForeground(const AcquiredImageData& swapchainData,
+                                   EngineCmdBufferRecorder* recorder, EngineRenderPass &pass, FrameId frameId);
 };

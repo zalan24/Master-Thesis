@@ -394,6 +394,7 @@ bool VulkanCmdBufferRecorder::cmdUseAsAttachment(
               s.ongoingWrites &= assumedState.ongoingWrites;
               s.ongoingReads &= assumedState.ongoingReads;
               s.usableStages = barrierDstStages.stageFlags;
+              drv::drv_assert(s.usableStages != 0, "Usable stages cannot be 0");
               usage.preserveUsableStages = 0;
           }
       });
@@ -409,6 +410,7 @@ bool VulkanCmdBufferRecorder::cmdUseAsAttachment(
           s.ongoingWrites = resultState.ongoingWrites;
           s.visible = resultState.visible;
           s.usableStages = resultState.usableStages;
+          drv::drv_assert(s.usableStages != 0, "Usable stages cannot be 0");
           if (drv::MemoryBarrier::get_write_bits(accessMask) != 0 || initialLayout != resultLayout)
               usage.preserveUsableStages = 0;
       });

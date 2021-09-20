@@ -822,6 +822,7 @@ void VulkanCmdBufferRecorder::add_memory_sync(
             barrierDstStage.add(dstStages);
             barrierSrcStage.add(drv::PipelineStages::TOP_OF_PIPE_BIT);
             subresourceData.usableStages = stages;
+            drv::drv_assert(subresourceData.usableStages != 0, "Usable stages cannot be 0");
             subresUsage.preserveUsableStages = 0;
         }
         subresourceData.ownership = newOwner;
@@ -837,6 +838,7 @@ void VulkanCmdBufferRecorder::add_memory_sync(
         subresourceData.dirtyMask = 0;
         subresourceData.visible = 0;
         subresourceData.usableStages = stages;
+        drv::drv_assert(subresourceData.usableStages != 0, "Usable stages cannot be 0");
         subresUsage.preserveUsableStages = 0;
         justFlushed = true;
     }
@@ -851,6 +853,7 @@ void VulkanCmdBufferRecorder::add_memory_sync(
         barrierDstStage.add(dstStages);
         barrier.dstAccessFlags |= missingVisibility;
         subresourceData.usableStages = stages;
+        drv::drv_assert(subresourceData.usableStages != 0, "Usable stages cannot be 0");
         subresourceData.visible |= missingVisibility;
         subresUsage.preserveUsableStages = 0;
     }
@@ -980,10 +983,14 @@ bool DrvVulkan::validate_and_apply_state_transitions(
                         state.visible = drv::MemoryBarrier::get_all_bits();
                     }
                 }
-                if (hadSemaphore)
+                if (hadSemaphore){ 
                     state.usableStages = usedStages;
-                else if (drv::is_null_ptr(state.multiQueueState.mainQueue))
+                    drv::drv_assert(state.usableStages != 0, "Usable stages cannot be 0");
+                }
+                else if (drv::is_null_ptr(state.multiQueueState.mainQueue)) {
                     state.usableStages = drv::PipelineStages::get_all_bits(drv::CMD_TYPE_ALL);
+                    drv::drv_assert(state.usableStages != 0, "Usable stages cannot be 0");
+                }
                 state.multiQueueState.mainSemaphore = timelineSemaphore;
                 state.multiQueueState.signalledValue = semaphoreSignalValue;
                 state.multiQueueState.submission = cmdBufferId;
@@ -1059,6 +1066,7 @@ bool DrvVulkan::validate_and_apply_state_transitions(
                     preservedStages &= usedStages;  // this is used as a dst stage for semaphores
                 static_cast<drv::ImageSubresourceTrackData&>(state) = result;
                 state.usableStages = state.usableStages | preservedStages;
+                drv::drv_assert(state.usableStages != 0, "Usable stages cannot be 0");
             }
             else {
                 drv::drv_assert(!requireOwnershipTransfer);
@@ -1201,10 +1209,14 @@ bool DrvVulkan::validate_and_apply_state_transitions(
                     state.visible = drv::MemoryBarrier::get_all_bits();
                 }
             }
-            if (hadSemaphore)
+            if (hadSemaphore){ 
                 state.usableStages = usedStages;
-            else if (drv::is_null_ptr(state.multiQueueState.mainQueue))
+                drv::drv_assert(state.usableStages != 0, "Usable stages cannot be 0");
+            }
+            else if (drv::is_null_ptr(state.multiQueueState.mainQueue)) {
                 state.usableStages = drv::PipelineStages::get_all_bits(drv::CMD_TYPE_ALL);
+                drv::drv_assert(state.usableStages != 0, "Usable stages cannot be 0");
+            }
             state.multiQueueState.mainSemaphore = timelineSemaphore;
             state.multiQueueState.signalledValue = semaphoreSignalValue;
             state.multiQueueState.submission = cmdBufferId;
@@ -1270,6 +1282,7 @@ bool DrvVulkan::validate_and_apply_state_transitions(
                 preservedStages &= usedStages;  // this is used as a dst stage for semaphores
             static_cast<drv::BufferSubresourceTrackData&>(state) = result;
             state.usableStages = state.usableStages | preservedStages;
+            drv::drv_assert(state.usableStages != 0, "Usable stages cannot be 0");
         }
         else {
             drv::drv_assert(!requireOwnershipTransfer);
@@ -1287,6 +1300,7 @@ bool DrvVulkan::validate_and_apply_state_transitions(
             originalState.ongoingWrites = 0;
             originalState.ownership = state.ownership;
             originalState.usableStages = state.multiQueueState.readingQueues[queueId].readingStages;
+            drv::drv_assert(state.usableStages != 0, "Usable stages cannot be 0");
             originalState.visible = drv::MemoryBarrier::get_all_bits();
             if (cacheHandle) {
                 StatsCacheWriter cacheWriter(cacheHandle);
