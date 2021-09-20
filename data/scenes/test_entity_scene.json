@@ -53,32 +53,6 @@
     },
     {
         "mass": 1.0,
-        "name": "testBox",
-        "parentName": "",
-        "albedo": [
-            1.0,
-            0.5,
-            0.1
-        ],
-        "position": [
-            0.0,
-            2.0,
-            1.0
-        ],
-        "scale": 1,
-        "rotation": [
-            0.0,
-            0.0,
-            0.0,
-            1.0
-        ],
-        "templateName": "dynobj",
-        "modelName": "box",
-        "hidden": false,
-        "extra": {}
-    },
-    {
-        "mass": 1.0,
         "name": "testSphere",
         "parentName": "",
         "albedo": [
@@ -100,6 +74,32 @@
         ],
         "templateName": "dynobj",
         "modelName": "sphere",
+        "hidden": false,
+        "extra": {}
+    },
+    {
+        "mass": 1.0,
+        "name": "testBox",
+        "parentName": "",
+        "albedo": [
+            1.0,
+            0.5,
+            0.1
+        ],
+        "position": [
+            0.0,
+            2.0,
+            1.0
+        ],
+        "scale": 1,
+        "rotation": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+        ],
+        "templateName": "dynobj",
+        "modelName": "box",
         "hidden": false,
         "extra": {}
     }

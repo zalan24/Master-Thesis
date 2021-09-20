@@ -32,7 +32,6 @@
 #include <input.h>
 #include <inputmanager.h>
 #include <serializable.h>
-#include <shaderregistry.h>
 
 #include <renderpass.h>
 #include <runtimestats.h>
@@ -364,14 +363,31 @@ class Engine
     void initCursorEntitySystem();
     void initBeforeDrawEntitySystem();
 
-    void drawEntities(EngineCmdBufferRecorder* recorder, EngineRenderPass* renderPass);
+    struct EntityRenderData
+    {
+        glm::mat4 modelTm;
+        glm::vec3 albedo;
+        std::string shape;
+    };
+
+    struct RendererData
+    {
+        glm::vec3 eyePos;
+        glm::vec3 eyeDir;
+        bool latencyFlash;
+        glm::vec2 cursorPos;
+        float ratio;
+    };
+
+    uint32_t getNumEntitiesToRender() const { return uint32_t(entitiesToDraw.size()); }
+    const EntityRenderData* getEntitiesToRender() const { return entitiesToDraw.data(); }
+    const RendererData& getRenderData(FrameId frame) const {
+        return perFrameTempInfo[frame % perFrameTempInfo.size()].renderData;
+    }
 
     NodeId getMainRecordNode() const { return mainRecordNode; }
 
     void createPerformanceCapture(FrameId targetFrame);
-
-    const ShaderHeaderRegistry& getShaderHeaders() const {return shaderHeaders;}
-    const ShaderObjRegistry& getShaderObjects() const {return shaderObjects;}
 
  private:
     static constexpr uint64_t firstTimelineCalibrationTimeMs = 1000;
@@ -393,14 +409,6 @@ class Engine
         std::vector<drv::Semaphore> imageAvailableSemaphores;
         std::vector<drv::Semaphore> renderFinishedSemaphores;
         SyncBlock(drv::LogicalDevicePtr device, uint32_t maxFramesInFlight);
-    };
-
-    struct EntityRenderData
-    {
-        glm::vec2 relBottomLeft;
-        glm::vec2 relTopRight;
-        uint32_t textureId;
-        float z;
     };
 
     struct ImGuiIniter
@@ -460,8 +468,6 @@ class Engine
     RuntimeStats runtimeStats;
     EntityManager entityManager;
     std::unique_ptr<ImGuiIniter> imGuiIniter;
-    ShaderHeaderRegistry shaderHeaders;
-    ShaderObjRegistry shaderObjects;
     EngineOptions engineOptions;
 
     NodeId inputSampleNode;
@@ -471,10 +477,9 @@ class Engine
     QueueInfo queueInfos;
     EntityManager::EntitySystemInfo physicsEntitySystem;
     EntityManager::EntitySystemInfo renderEntitySystem;
-    EntityManager::EntitySystemInfo cursorEntitySystem;
-    EntityManager::EntitySystemInfo latencyFlashEntitySystem;
     EntityManager::EntitySystemInfo cameraEntitySystem;
     drv::Clock::time_point nextTimelineCalibration;
+    drv::Clock::time_point lastLatencyFlashClick;
 
     uint32_t acquireImageSemaphoreId = 0;
     FrameId firstPresentableFrame = 0;
@@ -528,6 +533,7 @@ class Engine
     {
         drv::ImagePtr captureImage = drv::get_null_ptr<drv::ImagePtr>();
         bool captureHappening = false;
+        RendererData renderData;
     };
     std::vector<PerFrameTempInfo> perFrameTempInfo;
 
@@ -585,12 +591,6 @@ class Engine
     static void esBeforeDraw(EntityManager* entityManager, Engine* engine,
                              FrameGraph::NodeHandle* nodeHandle, FrameGraph::Stage stage,
                              const EntityManager::EntitySystemParams& params, Entity* entity);
-    static void esCursor(EntityManager* entityManager, Engine* engine,
-                         FrameGraph::NodeHandle* nodeHandle, FrameGraph::Stage stage,
-                         const EntityManager::EntitySystemParams& params, Entity* entity);
-    static void esLatencyFlash(EntityManager* entityManager, Engine* engine,
-                               FrameGraph::NodeHandle* nodeHandle, FrameGraph::Stage stage,
-                               const EntityManager::EntitySystemParams& params, Entity* entity);
     static void esCamera(EntityManager* entityManager, Engine* engine,
                          FrameGraph::NodeHandle* nodeHandle, FrameGraph::Stage stage,
                          const EntityManager::EntitySystemParams& params, Entity* entity);

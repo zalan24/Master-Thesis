@@ -17,18 +17,20 @@ Game::Game(int argc, char* argv[], const EngineConfig& config,
            const drv::StateTrackingConfig& trackingConfig, const std::string& shaderbinFile,
            const Resources& _resources, const Args& args)
   : Game3D(argc, argv, config, trackingConfig, shaderbinFile, _resources, args),
+    shaderHeaders(getDevice()),
+    shaderObjects(getDevice(), *getShaderBin(), shaderHeaders),
     dynamicStates(drv::DrvShader::DynamicStates::FIXED_SCISSOR,
                   drv::DrvShader::DynamicStates::FIXED_VIEWPORT),
-    shaderGlobalDesc(getDevice(), &getShaderHeaders().aglobal),
-    shader3dDescriptor(getDevice(), &getShaderHeaders().threed),
-    shaderBasicShapeDescriptor(getDevice(), &getShaderHeaders().basicshape),
-    shaderForwardShaderDescriptor(getDevice(), &getShaderHeaders().forwardshading),
-    entityShaderDesc(getDevice(), &getShaderHeaders().entityshader),
-    entityShader(getDevice(), &getShaderObjects().entityshader, dynamicStates),
-    shaderTestDesc(getDevice(), &getShaderHeaders().test),
-    testShader(getDevice(), &getShaderObjects().test, dynamicStates),
-    mandelbrotDesc(getDevice(), &getShaderHeaders().mandelbrot),
-    mandelbrotShader(getDevice(), &getShaderObjects().mandelbrot, dynamicStates) {
+    shaderGlobalDesc(getDevice(), &shaderHeaders.aglobal),
+    shader3dDescriptor(getDevice(), &shaderHeaders.threed),
+    shaderBasicShapeDescriptor(getDevice(), &shaderHeaders.basicshape),
+    shaderForwardShaderDescriptor(getDevice(), &shaderHeaders.forwardshading),
+    entityShaderDesc(getDevice(), &shaderHeaders.entityshader),
+    entityShader(getDevice(), &shaderObjects.entityshader, dynamicStates),
+    shaderTestDesc(getDevice(), &shaderHeaders.test),
+    testShader(getDevice(), &shaderObjects.test, dynamicStates),
+    mandelbrotDesc(getDevice(), &shaderHeaders.mandelbrot),
+    mandelbrotShader(getDevice(), &shaderObjects.mandelbrot, dynamicStates) {
     testRenderPass = drv::create_render_pass(getDevice(), "Test pass");
     drv::RenderPass::AttachmentInfo colorInfo;
     colorInfo.initialLayout = drv::ImageLayout::COLOR_ATTACHMENT_OPTIMAL;
@@ -175,20 +177,12 @@ void Game::recordCmdBufferRender(const AcquiredImageData& swapchainData,
     uint32_t boxResolution = 2;
     uint32_t sphereResolution = 20;
     float brightness = 0.5;
-    static const FrameGraph::Clock::time_point firstTime = FrameGraph::Clock::now();
-    auto duration = FrameGraph::Clock::now() - firstTime;
-    float phase =
-      float(std::chrono::duration_cast<std::chrono::milliseconds>(duration).count()) / 1000.f;
-    const float speed = gameOptions.rotationSpeed;
-    const float eyeDist = gameOptions.eyeDist;
-    vec3 eyePos =
-      vec3(eyeDist * cosf(phase * speed), gameOptions.eyeHeight, eyeDist * sinf(phase * speed));
-    shader3dDescriptor.set_eyePos(eyePos);
-    mat4 view = glm::lookAtLH(eyePos, vec3(0, 0, 0), vec3(0, 1, 0));
-    mat4 proj = glm::perspective(glm::radians(gameOptions.fov * 2),
-                                 static_cast<float>(swapchainData.extent.width)
-                                   / static_cast<float>(swapchainData.extent.height),
-                                 0.01f, 150.0f);
+    const RendererData rendererData = getRenderData(frameId);
+    shader3dDescriptor.set_eyePos(rendererData.eyePos);
+    mat4 view =
+      glm::lookAtLH(rendererData.eyePos, rendererData.eyePos + rendererData.eyeDir, vec3(0, 1, 0));
+    mat4 proj =
+      glm::perspective(glm::radians(gameOptions.fov * 2), rendererData.ratio, 0.01f, 150.0f);
     mat4 bsToGoodTm(1.f);
     bsToGoodTm[1] = -bsToGoodTm[1];
     bsToGoodTm[2] = -bsToGoodTm[2];
@@ -200,49 +194,45 @@ void Game::recordCmdBufferRender(const AcquiredImageData& swapchainData,
     shaderForwardShaderDescriptor.setVariant_renderPass(
       shader_forwardshading_descriptor::Renderpass::COLOR_PASS);
 
-    mat4 planeModelTm(1.f);
-    planeModelTm[0] = vec4(5, 0, 0, 0);
-    planeModelTm[1] = vec4(0, 5, 0, 0);
-    planeModelTm[2] = vec4(0, 0, 5, 0);
-    planeModelTm[3] = vec4(0, 0, 0, 0);
-    shader3dDescriptor.set_modelTm(planeModelTm);
-    shaderBasicShapeDescriptor.set_resolution(planeResolution);
-    shaderBasicShapeDescriptor.setVariant_Shape(shader_basicshape_descriptor::Shape::SHAPE_PLANE);
-    entityShaderDesc.set_entityAlbedo(vec3(0.8, 0.8, 1.0));
-    recorder->bindGraphicsShader(testPass, get_dynamic_states(swapchainData.extent), {},
-                                 entityShader, &shader3dDescriptor, &shaderForwardShaderDescriptor,
-                                 &shaderBasicShapeDescriptor, &shaderGlobalDesc, &entityShaderDesc);
-    testPass.draw(6 * planeResolution * planeResolution, 1, 0, 0);
+    uint32_t numEntities = getNumEntitiesToRender();
+    for (uint32_t i = 0; i < numEntities; ++i) {
+        const EntityRenderData& data = getEntitiesToRender()[i];
+        shader3dDescriptor.set_modelTm(data.modelTm);
+        entityShaderDesc.set_entityAlbedo(data.albedo);
 
-    mat4 boxModelTm(1.f);
-    boxModelTm[0] = vec4(1, 0, 0, 0);
-    boxModelTm[1] = vec4(0, 1, 0, 0);
-    boxModelTm[2] = vec4(0, 0, 1, 0);
-    boxModelTm[3] = vec4(0, 2, -1, 0);
-    shader3dDescriptor.set_modelTm(boxModelTm);
-    shaderBasicShapeDescriptor.set_resolution(boxResolution);
-    shaderBasicShapeDescriptor.setVariant_Shape(shader_basicshape_descriptor::Shape::SHAPE_BOX);
-    entityShaderDesc.set_entityAlbedo(vec3(1.0, 0.5, 0.1));
-    recorder->bindGraphicsShader(testPass, get_dynamic_states(swapchainData.extent), {},
-                                 entityShader, &shader3dDescriptor, &shaderForwardShaderDescriptor,
-                                 &shaderBasicShapeDescriptor, &shaderGlobalDesc, &entityShaderDesc);
-    testPass.draw(6 * 6 * boxResolution * boxResolution, 1, 0, 0);
-
-    mat4 sphereModelTm(1.f);
-    sphereModelTm[0] = vec4(1, 0, 0, 0);
-    sphereModelTm[1] = vec4(0, 1, 0, 0);
-    sphereModelTm[2] = vec4(0, 0, 1, 0);
-    sphereModelTm[3] = vec4(0, 2, 1, 0);
-    shader3dDescriptor.set_modelTm(sphereModelTm);
-    shaderBasicShapeDescriptor.set_resolution(sphereResolution);
-    shaderBasicShapeDescriptor.setVariant_Shape(shader_basicshape_descriptor::Shape::SHAPE_SPHERE);
-    entityShaderDesc.set_entityAlbedo(vec3(0.1, 0.2, 0.9));
-    recorder->bindGraphicsShader(testPass, get_dynamic_states(swapchainData.extent), {},
-                                 entityShader, &shader3dDescriptor, &shaderForwardShaderDescriptor,
-                                 &shaderBasicShapeDescriptor, &shaderGlobalDesc, &entityShaderDesc);
-    testPass.draw(6 * sphereResolution * sphereResolution, 1, 0, 0);
-
-    drawEntities(recorder, &testPass);
+        if (data.shape == "plane") {
+            shaderBasicShapeDescriptor.set_resolution(planeResolution);
+            shaderBasicShapeDescriptor.setVariant_Shape(
+              shader_basicshape_descriptor::Shape::SHAPE_PLANE);
+            recorder->bindGraphicsShader(
+              testPass, get_dynamic_states(swapchainData.extent), {}, entityShader,
+              &shader3dDescriptor, &shaderForwardShaderDescriptor, &shaderBasicShapeDescriptor,
+              &shaderGlobalDesc, &entityShaderDesc);
+            testPass.draw(6 * planeResolution * planeResolution, 1, 0, 0);
+        }
+        else if (data.shape == "box") {
+            shaderBasicShapeDescriptor.set_resolution(boxResolution);
+            shaderBasicShapeDescriptor.setVariant_Shape(
+              shader_basicshape_descriptor::Shape::SHAPE_BOX);
+            recorder->bindGraphicsShader(
+              testPass, get_dynamic_states(swapchainData.extent), {}, entityShader,
+              &shader3dDescriptor, &shaderForwardShaderDescriptor, &shaderBasicShapeDescriptor,
+              &shaderGlobalDesc, &entityShaderDesc);
+            testPass.draw(6 * 6 * boxResolution * boxResolution, 1, 0, 0);
+        }
+        else if (data.shape == "sphere") {
+            shaderBasicShapeDescriptor.set_resolution(sphereResolution);
+            shaderBasicShapeDescriptor.setVariant_Shape(
+              shader_basicshape_descriptor::Shape::SHAPE_SPHERE);
+            recorder->bindGraphicsShader(
+              testPass, get_dynamic_states(swapchainData.extent), {}, entityShader,
+              &shader3dDescriptor, &shaderForwardShaderDescriptor, &shaderBasicShapeDescriptor,
+              &shaderGlobalDesc, &entityShaderDesc);
+            testPass.draw(6 * sphereResolution * sphereResolution, 1, 0, 0);
+        }
+        else
+            throw std::runtime_error("Unknown shape: " + data.shape);
+    }
 
     testPass.beginSubpass(imGuiSubpass);
     recordImGui(swapchainData, recorder, frameId);
@@ -378,8 +368,6 @@ void Game::createSwapchainResources(const drv::Swapchain& swapchain) {
                                         globalDesc, greenVariant);
     testShader.prepareGraphicalPipeline(testRenderPass.get(), swapchainSubpass, dynStates,
                                         globalDesc, redVariant);
-    inputAttachmentShader.prepareGraphicalPipeline(testRenderPass.get(), colorSubpass, dynStates,
-                                                   globalDesc, {});
 
     initImGui(testRenderPass.get());
 }
@@ -387,9 +375,6 @@ void Game::createSwapchainResources(const drv::Swapchain& swapchain) {
 void Game::recordMenuOptionsUI(FrameId) {
     if (ImGui::BeginMenu("Camera")) {
         ImGui::DragFloat("Fov", &gameOptions.fov, 0.1f, 10, 80, "%.1f deg");
-        ImGui::DragFloat("Rotation speed", &gameOptions.rotationSpeed, 0.01f, 0, 10, "%.8f");
-        ImGui::DragFloat("Eye distance", &gameOptions.eyeDist, 0.01f, 1, 100, "%.8f");
-        ImGui::DragFloat("Eye height", &gameOptions.eyeHeight, 0.01f, -10, 10, "%.8f");
         ImGui::EndMenu();
     }
     if (ImGui::BeginMenu("Mandelbrot level")) {

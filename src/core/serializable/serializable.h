@@ -1,12 +1,12 @@
 #pragma once
 
+#include <filesystem>
 #include <map>
 #include <set>
 #include <string>
 #include <type_traits>
 #include <unordered_map>
 #include <vector>
-#include <filesystem>
 
 #include <nlohmann/json.hpp>
 #include <reflectable.hpp>
@@ -96,8 +96,8 @@ class ISerializable
     virtual void writeJson(json& out) const = 0;
     virtual void readJson(const json& in) = 0;
 
-    bool exportToFile(const fs::path &p) const;
-    bool importFromFile(const fs::path &p);
+    bool exportToFile(const fs::path& p) const;
+    bool importFromFile(const fs::path& p);
 
     std::string hash() const;
 
@@ -777,8 +777,8 @@ class ISerializable
     static void serialize(const json& in, glm::quat& value) {
         if (!in.is_array())
             throw std::runtime_error("Input json is not an array: " + in.dump());
-        if (in.size() != 3)
-            throw std::runtime_error("Wrong json array size, expecting size of 3: " + in.dump());
+        if (in.size() != 4)
+            throw std::runtime_error("Wrong json array size, expecting size of 4: " + in.dump());
         serialize(in[0], value.x);
         serialize(in[1], value.y);
         serialize(in[2], value.z);

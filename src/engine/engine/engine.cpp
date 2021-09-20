@@ -221,10 +221,7 @@ Engine::Engine(int argc, char* argv[], const EngineConfig& cfg,
     runtimeStats(!launchArgs.clearRuntimeStats, launchArgs.runtimeStatsPersistanceBin,
                  launchArgs.runtimeStatsGameExportsBin, launchArgs.runtimeStatsCacheBin),
     entityManager(physicalDevice, device, &frameGraph, resourceFolders.textures),
-    timestsampRingBuffer(config.maxFramesInFlight + 1),
-    shaderHeaders(getDevice()),
-    shaderObjects(getDevice(), *getShaderBin(), shaderHeaders),
-{
+    timestsampRingBuffer(config.maxFramesInFlight + 1) {
     json configJson = ISerializable::serialize(config);
     std::stringstream ss;
     ss << configJson;
@@ -291,6 +288,7 @@ Engine::Engine(int argc, char* argv[], const EngineConfig& cfg,
     }
     // TODO this should be synced with vblanks
     frameEndFixPoint = FrameGraph::Clock::now();
+    lastLatencyFlashClick = FrameGraph::Clock::now();
     frameHistory.resize(frameGraph.getMaxFramesInFlight());
     perFrameTempInfo.resize(frameGraph.getMaxFramesInFlight());
 }
@@ -303,28 +301,13 @@ void Engine::buildFrameGraph() {
 
     drv::drv_assert(renderEntitySystem.flag != 0, "Render entity system was not registered ");
     drv::drv_assert(physicsEntitySystem.flag != 0, "Physics entity system was not registered ");
-    drv::drv_assert(cursorEntitySystem.flag != 0, "Cursor entity system was not registered ");
-    drv::drv_assert(latencyFlashEntitySystem.flag != 0,
-                    "Latency flash entity system was not registered ");
     drv::drv_assert(cameraEntitySystem.flag != 0, "Camera flash entity system was not registered ");
 
     entityManager.addEntityTemplate("dynobj",
                                     {physicsEntitySystem.flag | renderEntitySystem.flag, 0});
-    entityManager.addEntityTemplate("cursor",
-                                    {cursorEntitySystem.flag | renderEntitySystem.flag, 0});
-    entityManager.addEntityTemplate("latencyFlash",
-                                    {latencyFlashEntitySystem.flag | renderEntitySystem.flag, 0});
     entityManager.addEntityTemplate("camera",
                                     {physicsEntitySystem.flag | cameraEntitySystem.flag, 0});
 
-    frameGraph.addDependency(
-      renderEntitySystem.nodeId,
-      FrameGraph::CpuDependency{latencyFlashEntitySystem.nodeId, FrameGraph::SIMULATION_STAGE,
-                                FrameGraph::BEFORE_DRAW_STAGE, 0});
-    frameGraph.addDependency(
-      renderEntitySystem.nodeId,
-      FrameGraph::CpuDependency{cursorEntitySystem.nodeId, FrameGraph::SIMULATION_STAGE,
-                                FrameGraph::BEFORE_DRAW_STAGE, 0});
     frameGraph.addDependency(
       renderEntitySystem.nodeId,
       FrameGraph::CpuDependency{cameraEntitySystem.nodeId, FrameGraph::SIMULATION_STAGE,
@@ -334,11 +317,7 @@ void Engine::buildFrameGraph() {
       FrameGraph::CpuDependency{inputSampleNode, FrameGraph::SIMULATION_STAGE,
                                 FrameGraph::SIMULATION_STAGE, 0});
     frameGraph.addDependency(
-      cursorEntitySystem.nodeId,
-      FrameGraph::CpuDependency{inputSampleNode, FrameGraph::SIMULATION_STAGE,
-                                FrameGraph::SIMULATION_STAGE, 0});
-    frameGraph.addDependency(
-      latencyFlashEntitySystem.nodeId,
+      cameraEntitySystem.nodeId,
       FrameGraph::CpuDependency{inputSampleNode, FrameGraph::SIMULATION_STAGE,
                                 FrameGraph::SIMULATION_STAGE, 0});
     frameGraph.addDependency(
@@ -378,10 +357,21 @@ void Engine::initImGui(drv::RenderPass* imGuiRenderpass) {
       config.imagesInSwapchain, swapchain.getImageCount());
 }
 
-void Engine::esCamera(EntityManager*, Engine* engine, FrameGraph::NodeHandle*, FrameGraph::Stage,
-                      const EntityManager::EntitySystemParams&, Entity* entity) {
+void Engine::esCamera(EntityManager*, Engine* engine, FrameGraph::NodeHandle* handle,
+                      FrameGraph::Stage, const EntityManager::EntitySystemParams&, Entity* entity) {
     drv::Extent2D extent = engine->window->getResolution();
-    entity->extra["ratio"] = float(extent.width) / float(extent.height);
+    // entity->extra["ratio"] = ;
+    RendererData& renderData =
+      engine->perFrameTempInfo[handle->getFrameId() % engine->perFrameTempInfo.size()].renderData;
+    renderData.latencyFlash = std::chrono::duration_cast<std::chrono::milliseconds>(
+                                FrameGraph::Clock::now() - engine->lastLatencyFlashClick)
+                                .count()
+                              < 300;
+    renderData.eyePos = entity->position;
+    renderData.eyeDir = static_cast<glm::mat3>(entity->rotation)[2];
+    renderData.ratio = float(extent.width) / float(extent.height);
+    renderData.cursorPos = engine->mouseListener.getMousePos() * 2.f - 1.f;
+    renderData.cursorPos.y *= renderData.ratio;
 }
 
 void Engine::esPhysics(EntityManager*, Engine*, FrameGraph::NodeHandle*, FrameGraph::Stage,
@@ -395,54 +385,22 @@ void Engine::esBeforeDraw(EntityManager* entityManager, Engine* engine, FrameGra
                           Entity* entity) {
     if (entity->hidden)
         return;
-    TODO;
+
     EntityRenderData data;
-    glm::vec2 camPos;
-    glm::vec2 camSize;
-    {
-        const Entity* camEntity = entityManager->getById(entityManager->getByName("camera"));
-        std::shared_lock<std::shared_mutex> camLock(camEntity->mutex);
-        camPos = camEntity->position;
-        camSize = camEntity->scale;
-        camSize.y *= camEntity->extra.find("ratio")->second;
-    }
-    data.z = entity->zPos;
-    data.textureId = entity->textureId;
-    Entity::EntityId parentId = entity->parent;
-    glm::vec2 pos = entity->position;
-    glm::vec2 scale = entity->scale;
-    while (parentId != Entity::INVALID_ENTITY) {
-        const Entity* parentEntity = entityManager->getById(parentId);
-        pos = parentEntity->scale * pos + parentEntity->position;
-        scale = scale * parentEntity->scale;
-        parentId = parentEntity->parent;
-    }
-    data.relBottomLeft = (pos - scale - camPos);
-    data.relBottomLeft.x /= camSize.x;
-    data.relBottomLeft.y /= camSize.y;
-    data.relTopRight = (pos + scale - camPos);
-    data.relTopRight.x /= camSize.x;
-    data.relTopRight.y /= camSize.y;
-    if (data.relBottomLeft.x < 1 && data.relTopRight.x > -1 && data.relBottomLeft.y < 1
-        && data.relTopRight.y > -1)
-        engine->entitiesToDraw.push_back(std::move(data));
-}
 
-void Engine::esLatencyFlash(EntityManager*, Engine* engine, FrameGraph::NodeHandle*,
-                            FrameGraph::Stage, const EntityManager::EntitySystemParams& params,
-                            Entity* entity) {
-    if (engine->mouseListener.isClicking())
-        entity->extra["visibleTime"] = params.uptime + 0.3f;
-    entity->hidden = !(params.uptime < entity->extra["visibleTime"]);
-}
+    glm::vec3 position = entity->position;
+    float scale = entity->scale;
+    glm::quat rotation = entity->rotation;
 
-void Engine::esCursor(EntityManager* entityManager, Engine* engine, FrameGraph::NodeHandle*,
-                      FrameGraph::Stage, const EntityManager::EntitySystemParams&, Entity* entity) {
-    // const Entity* camEntity = entityManager->getById(entityManager->getByName("camera"));
-    // std::shared_lock<std::shared_mutex> camLock(camEntity->mutex);
-    // entity->position = engine->mouseListener.getMousePos() * 2.f - 1.f;
-    // if (auto itr = camEntity->extra.find("ratio"); itr != camEntity->extra.end())
-    //     entity->position.y *= itr->second;
+    data.albedo = entity->albedo;
+    data.shape = entity->modelName;
+    glm::mat4 translationTm = glm::translate(glm::mat4(1.f), position);
+    glm::mat4 scaleTm = glm::scale(glm::mat4(1.f), glm::vec3(scale, scale, scale));
+    glm::mat4 rotTm = static_cast<glm::mat4>(rotation);
+    data.modelTm = translationTm * rotTm * scaleTm;
+
+    // TODO cull
+    engine->entitiesToDraw.push_back(std::move(data));
 }
 
 void Engine::initPhysicsEntitySystem() {
@@ -458,12 +416,6 @@ void Engine::initRenderEntitySystem() {
 }
 
 void Engine::initCursorEntitySystem() {
-    cursorEntitySystem = entityManager.addEntitySystem(
-      "cursorES", FrameGraph::SIMULATION_STAGE,
-      {EntityManager::EntitySystemInfo::ENGINE_SYSTEM, false}, esCursor);
-    latencyFlashEntitySystem = entityManager.addEntitySystem(
-      "latencyFlashES", FrameGraph::SIMULATION_STAGE,
-      {EntityManager::EntitySystemInfo::ENGINE_SYSTEM, false}, esLatencyFlash);
     cameraEntitySystem = entityManager.addEntitySystem(
       "cameraES", FrameGraph::SIMULATION_STAGE,
       {EntityManager::EntitySystemInfo::ENGINE_SYSTEM, false}, esCamera);
@@ -628,6 +580,8 @@ void Engine::simulationLoop() {
         if (mouseListener.popNeedPerfCapture()) {
             createPerformanceCapture(simulationFrame);
         }
+        if (mouseListener.isClicking())
+            lastLatencyFlashClick = FrameGraph::Clock::now();
         simulate(simulationFrame);
         if (!frameGraph.endStage(FrameGraph::SIMULATION_STAGE, simulationFrame)) {
             assert(frameGraph.isStopped());
@@ -1723,80 +1677,6 @@ void Engine::transferToStager(drv::CmdBufferId cmdBufferId, ImageStager& stager,
                               cmdBuffer.use(std::move(data)), getGarbageSystem(),
                               ResourceStateValidationMode::NEVER_VALIDATE);
     nodeHandle.submit(queue, std::move(submission));
-}
-
-void Engine::drawEntities(EngineCmdBufferRecorder* recorder, EngineRenderPass* renderPass) {
-    TODO;
-    // uint32_t planeResolution = 2;
-    // uint32_t boxResolution = 2;
-    // uint32_t sphereResolution = 20;
-    // float brightness = 0.5;
-    // static const FrameGraph::Clock::time_point firstTime = FrameGraph::Clock::now();
-    // auto duration = FrameGraph::Clock::now() - firstTime;
-    // float phase =
-    //   float(std::chrono::duration_cast<std::chrono::milliseconds>(duration).count()) / 1000.f;
-    // const float speed = gameOptions.rotationSpeed;
-    // const float eyeDist = gameOptions.eyeDist;
-    // vec3 eyePos =
-    //   vec3(eyeDist * cosf(phase * speed), gameOptions.eyeHeight, eyeDist * sinf(phase * speed));
-    // shader3dDescriptor.set_eyePos(eyePos);
-    // mat4 view = glm::lookAtLH(eyePos, vec3(0, 0, 0), vec3(0, 1, 0));
-    // mat4 proj = glm::perspective(glm::radians(gameOptions.fov * 2),
-    //                              static_cast<float>(swapchainData.extent.width)
-    //                                / static_cast<float>(swapchainData.extent.height),
-    //                              0.01f, 150.0f);
-    // mat4 bsToGoodTm(1.f);
-    // bsToGoodTm[1] = -bsToGoodTm[1];
-    // bsToGoodTm[2] = -bsToGoodTm[2];
-    // proj = proj * bsToGoodTm;
-    // shader3dDescriptor.set_viewProj(proj * view);
-    // shaderForwardShaderDescriptor.set_ambientLight(vec3(0.1, 0.1, 0.1) * brightness);
-    // shaderForwardShaderDescriptor.set_sunDir(glm::normalize(vec3(-0.2, -0.8, 0.4)));
-    // shaderForwardShaderDescriptor.set_sunLight(vec3(1.0, 0.8, 0.7) * brightness);
-    // shaderForwardShaderDescriptor.setVariant_renderPass(
-    //   shader_forwardshading_descriptor::Renderpass::COLOR_PASS);
-
-    // mat4 planeModelTm(1.f);
-    // planeModelTm[0] = vec4(5, 0, 0, 0);
-    // planeModelTm[1] = vec4(0, 5, 0, 0);
-    // planeModelTm[2] = vec4(0, 0, 5, 0);
-    // planeModelTm[3] = vec4(0, 0, 0, 0);
-    // shader3dDescriptor.set_modelTm(planeModelTm);
-    // shaderBasicShapeDescriptor.set_resolution(planeResolution);
-    // shaderBasicShapeDescriptor.setVariant_Shape(shader_basicshape_descriptor::Shape::SHAPE_PLANE);
-    // entityShaderDesc.set_entityAlbedo(vec3(0.8, 0.8, 1.0));
-    // recorder->bindGraphicsShader(testPass, get_dynamic_states(swapchainData.extent), {},
-    //                              entityShader, &shader3dDescriptor, &shaderForwardShaderDescriptor,
-    //                              &shaderBasicShapeDescriptor, &shaderGlobalDesc, &entityShaderDesc);
-    // testPass.draw(6 * planeResolution * planeResolution, 1, 0, 0);
-
-    // mat4 boxModelTm(1.f);
-    // boxModelTm[0] = vec4(1, 0, 0, 0);
-    // boxModelTm[1] = vec4(0, 1, 0, 0);
-    // boxModelTm[2] = vec4(0, 0, 1, 0);
-    // boxModelTm[3] = vec4(0, 2, -1, 0);
-    // shader3dDescriptor.set_modelTm(boxModelTm);
-    // shaderBasicShapeDescriptor.set_resolution(boxResolution);
-    // shaderBasicShapeDescriptor.setVariant_Shape(shader_basicshape_descriptor::Shape::SHAPE_BOX);
-    // entityShaderDesc.set_entityAlbedo(vec3(1.0, 0.5, 0.1));
-    // recorder->bindGraphicsShader(testPass, get_dynamic_states(swapchainData.extent), {},
-    //                              entityShader, &shader3dDescriptor, &shaderForwardShaderDescriptor,
-    //                              &shaderBasicShapeDescriptor, &shaderGlobalDesc, &entityShaderDesc);
-    // testPass.draw(6 * 6 * boxResolution * boxResolution, 1, 0, 0);
-
-    // mat4 sphereModelTm(1.f);
-    // sphereModelTm[0] = vec4(1, 0, 0, 0);
-    // sphereModelTm[1] = vec4(0, 1, 0, 0);
-    // sphereModelTm[2] = vec4(0, 0, 1, 0);
-    // sphereModelTm[3] = vec4(0, 2, 1, 0);
-    // shader3dDescriptor.set_modelTm(sphereModelTm);
-    // shaderBasicShapeDescriptor.set_resolution(sphereResolution);
-    // shaderBasicShapeDescriptor.setVariant_Shape(shader_basicshape_descriptor::Shape::SHAPE_SPHERE);
-    // entityShaderDesc.set_entityAlbedo(vec3(0.1, 0.2, 0.9));
-    // recorder->bindGraphicsShader(testPass, get_dynamic_states(swapchainData.extent), {},
-    //                              entityShader, &shader3dDescriptor, &shaderForwardShaderDescriptor,
-    //                              &shaderBasicShapeDescriptor, &shaderGlobalDesc, &entityShaderDesc);
-    // testPass.draw(6 * sphereResolution * sphereResolution, 1, 0, 0);
 }
 
 Engine::AcquiredImageData Engine::mainRecord(FrameId frameId) {

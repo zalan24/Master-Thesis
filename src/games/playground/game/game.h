@@ -13,13 +13,13 @@
 #include <shader_inputatchm.h>
 #include <shader_mandelbrot.h>
 #include <shader_test.h>
+#include <shaderregistry.h>
 
 struct GameOptions final : public IAutoSerializable<GameOptions>
 {
-    REFLECTABLE((int)mandelBrotLevel, (float)fov, (float)rotationSpeed, (float)eyeDist,
-                (float)eyeHeight)
+    REFLECTABLE((int)mandelBrotLevel, (float)fov)
 
-    GameOptions() : mandelBrotLevel(1), fov(45), rotationSpeed(1), eyeDist(6), eyeHeight(4) {}
+    GameOptions() : mandelBrotLevel(1), fov(45) {}
 };
 
 class Game final : public Game3D
@@ -43,6 +43,8 @@ class Game final : public Game3D
     void recordMenuOptionsUI(FrameId frameId) override;
 
  private:
+    ShaderHeaderRegistry shaderHeaders;
+    ShaderObjRegistry shaderObjects;
     drv::DrvShader::DynamicStates dynamicStates;
     shader_aglobal_descriptor shaderGlobalDesc;
     shader_threed_descriptor shader3dDescriptor;

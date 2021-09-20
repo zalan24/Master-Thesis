@@ -296,10 +296,14 @@ NodeId FrameGraph::addNode(Node&& node, bool applyTagDependencies) {
 }
 
 FrameGraph::Node* FrameGraph::getNode(NodeId id) {
+    if (id == INVALID_NODE)
+        return nullptr;
     return &nodes[id];
 }
 
 const FrameGraph::Node* FrameGraph::getNode(NodeId id) const {
+    if (id == INVALID_NODE)
+        return nullptr;
     return &nodes[id];
 }
 
@@ -1366,6 +1370,8 @@ ArtificialFrameGraphWorkLoad FrameGraph::getWorkLoad() const {
 void FrameGraph::setWorkLoad(const ArtificialFrameGraphWorkLoad& workLoad) {
     for (const auto& [nodeName, nodeWorkLoad] : workLoad.nodeLoad) {
         Node* node = getNode(getNodeId(nodeName));
+        if (!node)
+            continue;
         for (const auto& [stageName, stageWorkLoad] : nodeWorkLoad.cpuWorkLoad) {
             Stage stage = get_stage_by_name(stageName.c_str());
             node->setWorkLoad(stage, stageWorkLoad);
