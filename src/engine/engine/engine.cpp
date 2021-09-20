@@ -371,7 +371,7 @@ void Engine::esCamera(EntityManager*, Engine* engine, FrameGraph::NodeHandle* ha
     renderData.eyeDir = static_cast<glm::mat3>(entity->rotation)[2];
     renderData.ratio = float(extent.width) / float(extent.height);
     renderData.cursorPos = engine->mouseListener.getMousePos() * 2.f - 1.f;
-    renderData.cursorPos.y *= renderData.ratio;
+    // renderData.cursorPos.y *= renderData.ratio;
 }
 
 void Engine::esPhysics(EntityManager*, Engine*, FrameGraph::NodeHandle*, FrameGraph::Stage,

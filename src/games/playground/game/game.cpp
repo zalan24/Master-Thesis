@@ -28,7 +28,9 @@ Game::Game(int argc, char* argv[], const EngineConfig& config,
     entityShaderDesc(getDevice(), &shaderHeaders.entityshader),
     entityShader(getDevice(), &shaderObjects.entityshader, dynamicStates),
     mandelbrotDesc(getDevice(), &shaderHeaders.mandelbrot),
-    mandelbrotShader(getDevice(), &shaderObjects.mandelbrot, dynamicStates) {
+    mandelbrotShader(getDevice(), &shaderObjects.mandelbrot, dynamicStates),
+    cursorDesc(getDevice(), &shaderHeaders.cursor),
+    cursorShader(getDevice(), &shaderObjects.cursor, dynamicStates) {
     renderPass = drv::create_render_pass(getDevice(), "Game render pass");
     drv::RenderPass::AttachmentInfo colorInfo;
     colorInfo.initialLayout = drv::ImageLayout::COLOR_ATTACHMENT_OPTIMAL;
@@ -182,16 +184,25 @@ void Game::recordCmdBufferForeground(const AcquiredImageData& swapchainData,
 
     recordImGui(swapchainData, recorder, frameId);
 
-    // TODO mouse
+    const RendererData rendererData = getRenderData(frameId);
 
-    // TODO latency flash
-    // drv::ClearRect clearRect;
-    // clearRect.rect.offset = {100, 100};
-    // clearRect.rect.extent = {swapchainData.extent.width - 200, swapchainData.extent.height - 200};
-    // clearRect.baseLayer = 0;
-    // clearRect.layerCount = 1;
-    // pass.clearColorAttachment(colorTagretColorAttachment,
-    //                               drv::ClearColorValue(0.f, 0.7f, 0.7f, 1.f), 1, &clearRect);
+    cursorDesc.set_pos(rendererData.cursorPos);
+    cursorDesc.set_aspectRatio(rendererData.ratio);
+    recorder->bindGraphicsShader(pass, get_dynamic_states(swapchainData.extent), {}, cursorShader,
+                                 &shaderGlobalDesc, &cursorDesc);
+    pass.draw(3, 1, 0, 0);
+
+    if (rendererData.latencyFlash) {
+        drv::ClearRect clearRect;
+        uint32_t height = std::min(200u, swapchainData.extent.height);
+        uint32_t width = std::min(200u, swapchainData.extent.width);
+        clearRect.rect.offset = {0, int(swapchainData.extent.height - height) / 2};
+        clearRect.rect.extent = {width, height};
+        clearRect.baseLayer = 0;
+        clearRect.layerCount = 1;
+        pass.clearColorAttachment(swapchainColorAttachment,
+                                  drv::ClearColorValue(1.f, 1.0f, 1.0f, 1.f), 1, &clearRect);
+    }
 }
 
 void Game::lockResources(TemporalResourceLockerDescriptor&, FrameId) {
@@ -240,6 +251,7 @@ void Game::readback(FrameId) {
 void Game::releaseSwapchainResources() {
     getGarbageSystem()->useGarbage([this](Garbage* trashBin) {
         mandelbrotShader.clear(trashBin);
+        cursorShader.clear(trashBin);
         entityShader.clear(trashBin);
     });
     renderTargetView.close();

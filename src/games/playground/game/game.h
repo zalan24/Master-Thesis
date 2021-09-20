@@ -9,6 +9,7 @@
 #include <imagestager.h>
 #include <serializable.h>
 
+#include <shader_cursor.h>
 #include <shader_entityshader.h>
 #include <shader_inputatchm.h>
 #include <shader_mandelbrot.h>
@@ -54,6 +55,8 @@ class Game final : public Game3D
     shader_entityshader entityShader;
     shader_mandelbrot_descriptor mandelbrotDesc;
     shader_mandelbrot mandelbrotShader;
+    shader_cursor_descriptor cursorDesc;
+    shader_cursor cursorShader;
 
     std::unique_ptr<drv::RenderPass> renderPass;
     drv::AttachmentId swapchainColorAttachment;
@@ -69,9 +72,12 @@ class Game final : public Game3D
     GameOptions gameOptions;
 
     void recordCmdBufferBackground(const AcquiredImageData& swapchainData,
-                                   EngineCmdBufferRecorder* recorder, EngineRenderPass &pass, FrameId frameId);
+                                   EngineCmdBufferRecorder* recorder, EngineRenderPass& pass,
+                                   FrameId frameId);
     void recordCmdBufferContent(const AcquiredImageData& swapchainData,
-                                EngineCmdBufferRecorder* recorder, EngineRenderPass &pass, FrameId frameId);
+                                EngineCmdBufferRecorder* recorder, EngineRenderPass& pass,
+                                FrameId frameId);
     void recordCmdBufferForeground(const AcquiredImageData& swapchainData,
-                                   EngineCmdBufferRecorder* recorder, EngineRenderPass &pass, FrameId frameId);
+                                   EngineCmdBufferRecorder* recorder, EngineRenderPass& pass,
+                                   FrameId frameId);
 };
