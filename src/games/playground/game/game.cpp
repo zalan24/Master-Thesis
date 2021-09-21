@@ -43,7 +43,7 @@ Game::Game(int argc, char* argv[], const EngineConfig& config,
     colorInfo.stencilLoadOp = drv::AttachmentLoadOp::DONT_CARE;
     colorInfo.stencilStoreOp = drv::AttachmentStoreOp::DONT_CARE;
     drv::RenderPass::AttachmentInfo depthInfo;
-    depthInfo.initialLayout = drv::ImageLayout::UNDEFINED;
+    depthInfo.initialLayout = drv::ImageLayout::DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
     depthInfo.finalLayout = drv::ImageLayout::UNDEFINED;
     depthInfo.loadOp = drv::AttachmentLoadOp::CLEAR;
     depthInfo.storeOp = drv::AttachmentStoreOp::DONT_CARE;
@@ -238,9 +238,9 @@ void Game::record(const AcquiredImageData& swapchainData, EngineCmdBufferRecorde
     recorder->cmdImageBarrier(
       {depthTarget.get().getImage(),
        drv::IMAGE_USAGE_DEPTH_STENCIL_WRITE | drv::IMAGE_USAGE_DEPTH_STENCIL_WRITE,
-       drv::ImageLayout::UNDEFINED, false});
+       drv::ImageLayout::DEPTH_STENCIL_ATTACHMENT_OPTIMAL, false});
 
-    drv::ClearValue clearValues[2];
+    drv::ClearValue clearValues[3];
     clearValues[swapchainColorAttachment].type = drv::ClearValue::COLOR;
     clearValues[colorTagretColorAttachment].type = drv::ClearValue::COLOR;
     clearValues[swapchainColorAttachment].value.color = drv::ClearColorValue(0.0f, 0.0f, 0.0f, 1.f);
