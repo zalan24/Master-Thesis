@@ -107,7 +107,6 @@ void VulkanRenderPass::build_impl() {
                 attachmentAssumedStates[i].usableStages |=
                   drv::get_image_usage_stages(globalAttachmentUsages[i]).stageFlags
                   & tendToTrue.usableStages;
-                drv::drv_assert(attachmentAssumedStates[i].usableStages != 0, "Usable stages cannot be 0");
 
                 // Idea is to pick a stage, that's consistently usable, so that required stages can wait on it
                 // This stage should be a supported stage though
@@ -130,6 +129,8 @@ void VulkanRenderPass::build_impl() {
                         }
                     }
                 }
+                drv::drv_assert(attachmentAssumedStates[i].usableStages != 0,
+                                "Usable stages cannot be 0");
 
                 // Check for accesses, that don't have a corresponding stage
                 for (uint32_t j = 0;
@@ -156,7 +157,8 @@ void VulkanRenderPass::build_impl() {
         attachmentResultStates[i] = attachmentAssumedStates[i];
         if (attachments[i].initialLayout != attachments[i].finalLayout) {
             attachmentResultStates[i].visible = 0;
-            attachmentResultStates[i].usableStages = drv::PipelineStages::get_all_bits(drv::CMD_TYPE_ALL);
+            attachmentResultStates[i].usableStages =
+              drv::PipelineStages::get_all_bits(drv::CMD_TYPE_ALL);
             attachmentResultStates[i].dirtyMask = 0;
             attachmentResultStates[i].ongoingReads = 0;
             attachmentResultStates[i].ongoingWrites = 0;
@@ -347,7 +349,8 @@ void VulkanRenderPass::build_impl() {
                 externalOutputDep.dstAccessMask = static_cast<VkAccessFlags>(usedAccesses);
                 // attachmentResultStates[i].ongoingWrites.add(srcStages); -- it's synced
                 attachmentResultStates[i].usableStages = usedStages.stageFlags;
-                drv::drv_assert(attachmentResultStates[i].usableStages != 0, "Usable stages cannot be 0");
+                drv::drv_assert(attachmentResultStates[i].usableStages != 0,
+                                "Usable stages cannot be 0");
             }
         }
         if (externalOutputDep.srcStageMask != 0 && externalOutputDep.dstStageMask != 0)

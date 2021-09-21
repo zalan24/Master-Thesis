@@ -206,8 +206,10 @@ ImageTrackInfo& DrvCmdBufferRecorder::getImageState(
     // undefined, unknown queue family
     // let's hope, it works out
     ImageTrackInfo state(texInfo.arraySize, texInfo.numMips, texInfo.aspects);
-    for (uint32_t i = 0; i < state.guarantee.size(); ++i)
+    for (uint32_t i = 0; i < state.guarantee.size(); ++i) {
         state.guarantee[i].usableStages &= getAvailableStages();
+        drv::drv_assert(state.guarantee[i].usableStages != 0, "Usable stages cannot be 0");
+    }
     state.cmdState.state = state.guarantee;
     imageStates->emplace_back(image, std::move(state));
     return imageStates->back().second;
@@ -244,6 +246,7 @@ BufferTrackInfo& DrvCmdBufferRecorder::getBufferState(
     // let's hope, it works out
     BufferTrackInfo state;
     state.guarantee.usableStages &= getAvailableStages();
+    drv::drv_assert(state.guarantee.usableStages != 0, "Usable stages cannot be 0");
     state.cmdState.state = state.guarantee;
     bufferStates->emplace_back(buffer, std::move(state));
     return bufferStates->back().second;
@@ -266,8 +269,10 @@ void DrvCmdBufferRecorder::registerBuffer(BufferPtr buffer, const BufferStarting
     BufferTrackInfo bufState = knownBuffer ? (*bufferStates)[ind].second : BufferTrackInfo();
 
     bufState.guarantee = state;
-    if (!knownBuffer)
+    if (!knownBuffer) {
         bufState.guarantee.usableStages &= getAvailableStages();
+        drv::drv_assert(bufState.guarantee.usableStages != 0, "Usable stages cannot be 0");
+    }
     bufState.cmdState.state = bufState.guarantee;
     if (!knownBuffer)
         bufferStates->emplace_back(buffer, std::move(bufState));
@@ -304,9 +309,12 @@ void DrvCmdBufferRecorder::registerImage(ImagePtr image, const ImageStartingStat
             }
         }
     }
-    if (!knownImage)
-        for (uint32_t i = 0; i < imgState.guarantee.size(); ++i)
+    if (!knownImage) {
+        for (uint32_t i = 0; i < imgState.guarantee.size(); ++i) {
             imgState.guarantee[i].usableStages &= getAvailableStages();
+            drv::drv_assert(imgState.guarantee[i].usableStages != 0, "Usable stages cannot be 0");
+        }
+    }
     imgState.cmdState.state = imgState.guarantee;
     if (!knownImage)
         imageStates->emplace_back(image, std::move(imgState));

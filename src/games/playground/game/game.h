@@ -64,6 +64,7 @@ class Game final : public Game3D
     std::unique_ptr<drv::RenderPass> renderPass;
     drv::AttachmentId swapchainColorAttachment;
     drv::AttachmentId colorTagretColorAttachment;
+    drv::AttachmentId depthAttachment;
     drv::SubpassId backgroundSubpass;
     drv::SubpassId contentSubpass;
     drv::SubpassId foregroundSubpass;
@@ -72,15 +73,25 @@ class Game final : public Game3D
     std::vector<res::Framebuffer> swapchainFrameBuffers;
     res::ImageSet renderTarget;
     res::ImageView renderTargetView;
+    res::ImageSet depthTarget;
+    res::ImageView depthTargetView;
     GameOptions gameOptions;
 
-    void recordCmdBufferBackground(const AcquiredImageData& swapchainData,
+    struct RenderInfo
+    {
+        const RendererData* rendererData;
+        mat4 view;
+        mat4 proj;
+        mat4 viewProj;
+    };
+
+    void recordCmdBufferBackground(const RenderInfo& info, const AcquiredImageData& swapchainData,
                                    EngineCmdBufferRecorder* recorder, EngineRenderPass& pass,
                                    FrameId frameId);
-    void recordCmdBufferContent(const AcquiredImageData& swapchainData,
+    void recordCmdBufferContent(const RenderInfo& info, const AcquiredImageData& swapchainData,
                                 EngineCmdBufferRecorder* recorder, EngineRenderPass& pass,
                                 FrameId frameId);
-    void recordCmdBufferForeground(const AcquiredImageData& swapchainData,
+    void recordCmdBufferForeground(const RenderInfo& info, const AcquiredImageData& swapchainData,
                                    EngineCmdBufferRecorder* recorder, EngineRenderPass& pass,
                                    FrameId frameId);
 };

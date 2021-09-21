@@ -319,6 +319,7 @@ bool VulkanCmdBufferRecorder::cmdUseAsAttachment(
           mergedState.ongoingReads |= s.ongoingReads;
           mergedState.ongoingWrites |= s.ongoingWrites;
           mergedState.usableStages &= s.usableStages;
+          drv::drv_assert(mergedState.usableStages != 0, "Usable stages cannot be 0");
 
           drv::PipelineStages barrierSrcStages;
           drv::PipelineStages barrierDstStages;
@@ -374,9 +375,9 @@ bool VulkanCmdBufferRecorder::cmdUseAsAttachment(
           }
           if (barrierSrcStages.stageFlags & (~drv::PipelineStages::TOP_OF_PIPE_BIT) || needSync) {
               // This only happens, if the runtime stats is wrong
-              barrierDstStages.add(assumedState.usableStages);
               if (assumedState.usableStages == 0)
                   barrierDstStages.add(stages);
+              barrierDstStages.add(assumedState.usableStages);
 
               appendBarrier(barrierSrcStages, barrierDstStages, std::move(barrier));
               s.layout = initialLayout;

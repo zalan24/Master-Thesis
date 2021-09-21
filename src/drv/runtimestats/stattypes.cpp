@@ -1,5 +1,7 @@
 #include "stattypes.h"
 
+#include <drverror.h>
+
 void PipelineStagesStat::set(const drv::PipelineStages& _stages) {
     for (uint32_t i = 0; i < stages.size(); ++i)
         stages[i] = 0;
@@ -138,6 +140,7 @@ ImageLayoutStat::ImageLayoutStat() {
 
 void SimpleSubresStateStat::set(const drv::PerSubresourceRangeTrackData& data) {
     usableStages.set(drv::PipelineStages(data.usableStages));
+    drv::drv_assert(data.usableStages != 0, "Usable stages cannot be 0");
     writes.set(drv::PipelineStages(data.ongoingWrites));
     reads.set(drv::PipelineStages(data.ongoingReads));
     dirtyMask.set(data.dirtyMask);
@@ -146,6 +149,7 @@ void SimpleSubresStateStat::set(const drv::PerSubresourceRangeTrackData& data) {
 
 void SimpleSubresStateStat::append(const drv::PerSubresourceRangeTrackData& data) {
     usableStages.append(drv::PipelineStages(data.usableStages));
+    drv::drv_assert(data.usableStages != 0, "Usable stages cannot be 0");
     writes.append(drv::PipelineStages(data.ongoingWrites));
     reads.append(drv::PipelineStages(data.ongoingReads));
     dirtyMask.append(data.dirtyMask);
@@ -158,6 +162,7 @@ void SimpleSubresStateStat::get(drv::PerSubresourceRangeTrackData& data, bool te
       usableStages
         .get(tendTo ? PipelineStagesStat::TEND_TO_TRUE : PipelineStagesStat::TEND_TO_FALSE)
         .stageFlags;
+    drv::drv_assert(data.usableStages != 0, "Usable stages cannot be 0");
     data.ongoingWrites =
       writes.get(tendTo ? PipelineStagesStat::TEND_TO_TRUE : PipelineStagesStat::TEND_TO_FALSE)
         .stageFlags;

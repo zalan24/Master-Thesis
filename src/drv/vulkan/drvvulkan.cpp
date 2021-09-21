@@ -111,6 +111,8 @@ bool VulkanCmdBufferRecorder::requireFlush(const BarrierInfo& barrier0,
             if (barrier0.imageBarriers[i].subresourceSet.overlap(
                   barrier1.imageBarriers[j].subresourceSet))
                 return true;
+            i++;
+            j++;
         }
     }
     i = 0;
@@ -124,6 +126,8 @@ bool VulkanCmdBufferRecorder::requireFlush(const BarrierInfo& barrier0,
             if (barrier0.bufferBarriers[i].subresource.overlap(
                   barrier1.bufferBarriers[j].subresource))
                 return true;
+            i++;
+            j++;
         }
     }
     return false;
@@ -332,10 +336,10 @@ void VulkanCmdBufferRecorder::flushBarrier(BarrierInfo& barrier) {
                       convertImageLayout(barrier.imageBarriers[i].oldLayout);
                     vkImageBarriers[imageRangeCount].newLayout =
                       convertImageLayout(barrier.imageBarriers[i].newLayout);
-                    if (vkImageBarriers[imageRangeCount].newLayout == VK_IMAGE_LAYOUT_UNDEFINED)
-                        drv::drv_assert(
-                          vkImageBarriers[imageRangeCount].oldLayout == VK_IMAGE_LAYOUT_UNDEFINED,
-                          "Cannot transition to UNDEFINED layout");
+                    // if (vkImageBarriers[imageRangeCount].newLayout == VK_IMAGE_LAYOUT_UNDEFINED)
+                    //     drv::drv_assert(
+                    //       vkImageBarriers[imageRangeCount].oldLayout == VK_IMAGE_LAYOUT_UNDEFINED,
+                    //       "Cannot transition to UNDEFINED layout");
                     vkImageBarriers[imageRangeCount].srcQueueFamilyIndex =
                       barrier.imageBarriers[i].srcFamily != drv::IGNORE_FAMILY
                         ? convertFamilyToVk(barrier.imageBarriers[i].srcFamily)
@@ -983,7 +987,7 @@ bool DrvVulkan::validate_and_apply_state_transitions(
                         state.visible = drv::MemoryBarrier::get_all_bits();
                     }
                 }
-                if (hadSemaphore){ 
+                if (hadSemaphore) {
                     state.usableStages = usedStages;
                     drv::drv_assert(state.usableStages != 0, "Usable stages cannot be 0");
                 }
@@ -1088,6 +1092,7 @@ bool DrvVulkan::validate_and_apply_state_transitions(
                 originalState.ownership = state.ownership;
                 originalState.usableStages =
                   state.multiQueueState.readingQueues[queueId].readingStages;
+                drv::drv_assert(originalState.usableStages != 0, "Usable stages cannot be 0");
                 originalState.visible = drv::MemoryBarrier::get_all_bits();
                 if (cacheHandle) {
                     StatsCacheWriter cacheWriter(cacheHandle);
@@ -1209,7 +1214,7 @@ bool DrvVulkan::validate_and_apply_state_transitions(
                     state.visible = drv::MemoryBarrier::get_all_bits();
                 }
             }
-            if (hadSemaphore){ 
+            if (hadSemaphore) {
                 state.usableStages = usedStages;
                 drv::drv_assert(state.usableStages != 0, "Usable stages cannot be 0");
             }

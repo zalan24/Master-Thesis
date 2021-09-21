@@ -372,7 +372,7 @@ void Engine::esCamera(EntityManager*, Engine* engine, FrameGraph::NodeHandle* ha
     float brightness = 0.5;
     renderData.sunDir = glm::normalize(vec3(-0.2, -0.8, 0.4));
     renderData.sunLight = vec3(1.0, 0.8, 0.7) * brightness;
-    renderData.ambientLight = vec3(0.1, 0.1, 0.1) * brightness;
+    renderData.ambientLight = vec3(0.05, 0.1, 0.4) * brightness;
     renderData.eyePos = entity->position;
     renderData.eyeDir = static_cast<glm::mat3>(entity->rotation)[2];
     renderData.ratio = float(extent.width) / float(extent.height);

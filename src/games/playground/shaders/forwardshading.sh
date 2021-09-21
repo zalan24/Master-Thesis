@@ -15,6 +15,11 @@ descriptor {
 }
 
 stages {
+  states {
+    depthTest = true;
+    depthWrite = true;
+    depthCompare = less;
+  }
   ps {
 #if renderPass == color_pass
     use ambientLight;
@@ -23,8 +28,6 @@ stages {
 #elif renderPass == shadow_pass
     use sunDir;
 #endif
-  }
-  vs {
   }
 }
 

@@ -42,10 +42,18 @@ Game::Game(int argc, char* argv[], const EngineConfig& config,
     colorInfo.storeOp = drv::AttachmentStoreOp::STORE;
     colorInfo.stencilLoadOp = drv::AttachmentLoadOp::DONT_CARE;
     colorInfo.stencilStoreOp = drv::AttachmentStoreOp::DONT_CARE;
+    drv::RenderPass::AttachmentInfo depthInfo;
+    depthInfo.initialLayout = drv::ImageLayout::UNDEFINED;
+    depthInfo.finalLayout = drv::ImageLayout::UNDEFINED;
+    depthInfo.loadOp = drv::AttachmentLoadOp::CLEAR;
+    depthInfo.storeOp = drv::AttachmentStoreOp::DONT_CARE;
+    depthInfo.stencilLoadOp = drv::AttachmentLoadOp::DONT_CARE;
+    depthInfo.stencilStoreOp = drv::AttachmentStoreOp::DONT_CARE;
     // colorInfo.srcUsage = 0;
     // colorInfo.dstUsage = drv::IMAGE_USAGE_PRESENT;
     colorTagretColorAttachment = renderPass->createAttachment(std::move(colorInfo));
     swapchainColorAttachment = renderPass->createAttachment(std::move(colorInfo));
+    depthAttachment = renderPass->createAttachment(std::move(depthInfo));
     drv::SubpassInfo backgroundInfo;
     backgroundInfo.colorOutputs.push_back(
       {swapchainColorAttachment, drv::ImageLayout::COLOR_ATTACHMENT_OPTIMAL});
@@ -53,6 +61,8 @@ Game::Game(int argc, char* argv[], const EngineConfig& config,
     drv::SubpassInfo contentPassInfo;
     contentPassInfo.colorOutputs.push_back(
       {swapchainColorAttachment, drv::ImageLayout::COLOR_ATTACHMENT_OPTIMAL});
+    contentPassInfo.depthStencil = {depthAttachment,
+                                    drv::ImageLayout::DEPTH_STENCIL_ATTACHMENT_OPTIMAL};
     contentSubpass = renderPass->createSubpass(std::move(contentPassInfo));
     drv::SubpassInfo foregroundPass;
     foregroundPass.colorOutputs.push_back(
@@ -97,10 +107,19 @@ static ShaderObject::DynamicState get_dynamic_states(drv::Extent2D extent) {
     return ret;
 }
 
-void Game::recordCmdBufferBackground(const AcquiredImageData& swapchainData,
+void Game::recordCmdBufferBackground(const RenderInfo& info, const AcquiredImageData& swapchainData,
                                      EngineCmdBufferRecorder* recorder, EngineRenderPass& pass,
                                      FrameId frameId) {
     pass.beginSubpass(backgroundSubpass);
+
+    vec3 side = normalize(glm::cross(glm::vec3(0, 1, 0), info.rendererData->eyeDir));
+    vec3 up = glm::cross(info.rendererData->eyeDir, side);
+    mat4 invViewProj = glm::inverse(info.viewProj);
+    vec4 point = invViewProj * vec4(-1, -1, 1, 1);
+    point /= point.w;
+    fullscreenDesc.set_cameraUp(up);
+    fullscreenDesc.set_cameraDir(info.rendererData->eyeDir);
+    fullscreenDesc.set_topleftViewVec(glm::normalize(glm::vec3(point) - info.rendererData->eyePos));
 
     mandelbrotDesc.setVariant_Quality(
       static_cast<shader_mandelbrot_descriptor::Quality>(gameOptions.mandelBrotLevel));
@@ -113,17 +132,16 @@ void Game::recordCmdBufferBackground(const AcquiredImageData& swapchainData,
                                  &mandelbrotDesc);
     pass.draw(6, 1, 0, 0);
 
-    const RendererData rendererData = getRenderData(frameId);
-    skyDesc.set_sunDir(rendererData.sunDir);
-    skyDesc.set_sunLight(rendererData.sunLight);
-    skyDesc.set_ambientLight(rendererData.ambientLight);
-    skyDesc.set_eyeDir(rendererData.eyeDir);
+    skyDesc.set_sunDir(info.rendererData->sunDir);
+    skyDesc.set_sunLight(info.rendererData->sunLight);
+    skyDesc.set_ambientLight(info.rendererData->ambientLight);
+    skyDesc.set_eyeDir(info.rendererData->eyeDir);
     recorder->bindGraphicsShader(pass, get_dynamic_states(swapchainData.extent), {}, skyShader,
                                  &fullscreenDesc, &shaderGlobalDesc, &skyDesc);
     pass.draw(3, 1, 0, 0);
 }
 
-void Game::recordCmdBufferContent(const AcquiredImageData& swapchainData,
+void Game::recordCmdBufferContent(const RenderInfo& info, const AcquiredImageData& swapchainData,
                                   EngineCmdBufferRecorder* recorder, EngineRenderPass& pass,
                                   FrameId frameId) {
     pass.beginSubpass(contentSubpass);
@@ -131,20 +149,11 @@ void Game::recordCmdBufferContent(const AcquiredImageData& swapchainData,
     uint32_t planeResolution = 2;
     uint32_t boxResolution = 2;
     uint32_t sphereResolution = 20;
-    const RendererData rendererData = getRenderData(frameId);
-    shader3dDescriptor.set_eyePos(rendererData.eyePos);
-    mat4 view =
-      glm::lookAtLH(rendererData.eyePos, rendererData.eyePos + rendererData.eyeDir, vec3(0, 1, 0));
-    mat4 proj =
-      glm::perspective(glm::radians(gameOptions.fov * 2), rendererData.ratio, 0.01f, 150.0f);
-    mat4 bsToGoodTm(1.f);
-    bsToGoodTm[1] = -bsToGoodTm[1];
-    bsToGoodTm[2] = -bsToGoodTm[2];
-    proj = proj * bsToGoodTm;
-    shader3dDescriptor.set_viewProj(proj * view);
-    shaderForwardShaderDescriptor.set_ambientLight(rendererData.ambientLight);
-    shaderForwardShaderDescriptor.set_sunDir(rendererData.sunDir);
-    shaderForwardShaderDescriptor.set_sunLight(rendererData.sunLight);
+    shader3dDescriptor.set_eyePos(info.rendererData->eyePos);
+    shader3dDescriptor.set_viewProj(info.proj * info.view);
+    shaderForwardShaderDescriptor.set_ambientLight(info.rendererData->ambientLight);
+    shaderForwardShaderDescriptor.set_sunDir(info.rendererData->sunDir);
+    shaderForwardShaderDescriptor.set_sunLight(info.rendererData->sunLight);
     shaderForwardShaderDescriptor.setVariant_renderPass(
       shader_forwardshading_descriptor::Renderpass::COLOR_PASS);
 
@@ -189,22 +198,20 @@ void Game::recordCmdBufferContent(const AcquiredImageData& swapchainData,
     }
 }
 
-void Game::recordCmdBufferForeground(const AcquiredImageData& swapchainData,
+void Game::recordCmdBufferForeground(const RenderInfo& info, const AcquiredImageData& swapchainData,
                                      EngineCmdBufferRecorder* recorder, EngineRenderPass& pass,
                                      FrameId frameId) {
     pass.beginSubpass(foregroundSubpass);
 
     recordImGui(swapchainData, recorder, frameId);
 
-    const RendererData rendererData = getRenderData(frameId);
-
-    cursorDesc.set_pos(rendererData.cursorPos);
-    cursorDesc.set_aspectRatio(rendererData.ratio);
+    cursorDesc.set_pos(info.rendererData->cursorPos);
+    cursorDesc.set_aspectRatio(info.rendererData->ratio);
     recorder->bindGraphicsShader(pass, get_dynamic_states(swapchainData.extent), {}, cursorShader,
                                  &shaderGlobalDesc, &cursorDesc);
     pass.draw(3, 1, 0, 0);
 
-    if (rendererData.latencyFlash) {
+    if (info.rendererData->latencyFlash) {
         drv::ClearRect clearRect;
         uint32_t height = std::min(200u, swapchainData.extent.height);
         uint32_t width = std::min(200u, swapchainData.extent.width);
@@ -228,6 +235,10 @@ void Game::record(const AcquiredImageData& swapchainData, EngineCmdBufferRecorde
                                drv::ImageLayout::COLOR_ATTACHMENT_OPTIMAL, false});
     recorder->cmdImageBarrier({renderTarget.get().getImage(), drv::IMAGE_USAGE_COLOR_OUTPUT_WRITE,
                                drv::ImageLayout::COLOR_ATTACHMENT_OPTIMAL, false});
+    recorder->cmdImageBarrier(
+      {depthTarget.get().getImage(),
+       drv::IMAGE_USAGE_DEPTH_STENCIL_WRITE | drv::IMAGE_USAGE_DEPTH_STENCIL_WRITE,
+       drv::ImageLayout::UNDEFINED, false});
 
     drv::ClearValue clearValues[2];
     clearValues[swapchainColorAttachment].type = drv::ClearValue::COLOR;
@@ -235,15 +246,30 @@ void Game::record(const AcquiredImageData& swapchainData, EngineCmdBufferRecorde
     clearValues[swapchainColorAttachment].value.color = drv::ClearColorValue(0.0f, 0.0f, 0.0f, 1.f);
     clearValues[colorTagretColorAttachment].value.color =
       drv::ClearColorValue(0.0f, 0.0f, 0.0f, 1.f);
+    clearValues[depthAttachment].type = drv::ClearValue::DEPTH;
+    clearValues[depthAttachment].value.depthStencil = drv::ClearDepthStencilValue{1.f, 0u};
     drv::Rect2D renderArea;
     renderArea.extent = swapchainData.extent;
     renderArea.offset = {0, 0};
     EngineRenderPass pass(renderPass.get(), recorder->get(), renderArea,
                           swapchainFrameBuffers[swapchainData.imageIndex].get(), clearValues);
 
-    recordCmdBufferBackground(swapchainData, recorder, pass, frameId);
-    recordCmdBufferContent(swapchainData, recorder, pass, frameId);
-    recordCmdBufferForeground(swapchainData, recorder, pass, frameId);
+    const RendererData rendererData = getRenderData(frameId);
+    RenderInfo infos;
+    infos.rendererData = &rendererData;
+    infos.view =
+      glm::lookAtLH(rendererData.eyePos, rendererData.eyePos + rendererData.eyeDir, vec3(0, 1, 0));
+    infos.proj =
+      glm::perspective(glm::radians(gameOptions.fov * 2), rendererData.ratio, 0.01f, 150.0f);
+    mat4 bsToGoodTm(1.f);
+    bsToGoodTm[1] = -bsToGoodTm[1];
+    bsToGoodTm[2] = -bsToGoodTm[2];
+    infos.proj = infos.proj * bsToGoodTm;
+    infos.viewProj = infos.proj * infos.view;
+
+    recordCmdBufferBackground(infos, swapchainData, recorder, pass, frameId);
+    recordCmdBufferContent(infos, swapchainData, recorder, pass, frameId);
+    recordCmdBufferForeground(infos, swapchainData, recorder, pass, frameId);
 
     recorder->cmdImageBarrier({swapchainData.image, drv::IMAGE_USAGE_PRESENT,
                                drv::ImageMemoryBarrier::AUTO_TRANSITION, false});
@@ -269,6 +295,8 @@ void Game::releaseSwapchainResources() {
     });
     renderTargetView.close();
     renderTarget.close();
+    depthTargetView.close();
+    depthTarget.close();
     swapchainFrameBuffers.clear();
     attachments.clear();
     imageViews.clear();
@@ -285,16 +313,27 @@ void Game::createSwapchainResources(const drv::Swapchain& swapchain) {
     imageInfo.mipLevels = 1;
     imageInfo.arrayLayers = 1;
     imageInfo.sampleCount = drv::SampleCount::SAMPLE_COUNT_1;
-    // imageInfo.initialLayout = ;
-    // imageInfo.familyCount = 0;
     imageInfo.usage = drv::ImageCreateInfo::COLOR_ATTACHMENT_BIT
                       | drv::ImageCreateInfo::INPUT_ATTACHMENT_BIT
                       | drv::ImageCreateInfo::TRANSFER_SRC_BIT;
     imageInfo.type = drv::ImageCreateInfo::TYPE_2D;
-    // imageInfo.tiling = ;
-    // imageInfo.sharingType = ;
     renderTarget = createResource<drv::ImageSet>(
       getPhysicalDevice(), getDevice(), std::vector<drv::ImageSet::ImageInfo>{imageInfo},
+      drv::ImageSet::PreferenceSelector(drv::MemoryType::DEVICE_LOCAL_BIT,
+                                        drv::MemoryType::DEVICE_LOCAL_BIT));
+
+    drv::ImageSet::ImageInfo depthImageInfo;
+    depthImageInfo.imageId = drv::ImageId("targetDepth");
+    depthImageInfo.format = drv::ImageFormat::D32_SFLOAT;
+    depthImageInfo.extent = {swapchain.getCurrentEXtent().width,
+                             swapchain.getCurrentEXtent().height, 1};
+    depthImageInfo.mipLevels = 1;
+    depthImageInfo.arrayLayers = 1;
+    depthImageInfo.sampleCount = drv::SampleCount::SAMPLE_COUNT_1;
+    depthImageInfo.usage = drv::ImageCreateInfo::DEPTH_STENCIL_ATTACHMENT_BIT;
+    depthImageInfo.type = drv::ImageCreateInfo::TYPE_2D;
+    depthTarget = createResource<drv::ImageSet>(
+      getPhysicalDevice(), getDevice(), std::vector<drv::ImageSet::ImageInfo>{depthImageInfo},
       drv::ImageSet::PreferenceSelector(drv::MemoryType::DEVICE_LOCAL_BIT,
                                         drv::MemoryType::DEVICE_LOCAL_BIT));
 
@@ -313,11 +352,30 @@ void Game::createSwapchainResources(const drv::Swapchain& swapchain) {
         createInfo.subresourceRange.layerCount = 1;
         createInfo.subresourceRange.levelCount = 1;
         renderTargetView = createResource<drv::ImageView>(getDevice(), createInfo);
+
+        drv::ImageViewCreateInfo depthCreateInfo;
+        depthCreateInfo.image = depthTarget.get().getImage();
+        depthCreateInfo.type = drv::ImageViewCreateInfo::TYPE_2D;
+        depthCreateInfo.format = depthImageInfo.format;
+        depthCreateInfo.components.r = drv::ImageViewCreateInfo::ComponentSwizzle::IDENTITY;
+        depthCreateInfo.components.g = drv::ImageViewCreateInfo::ComponentSwizzle::IDENTITY;
+        depthCreateInfo.components.b = drv::ImageViewCreateInfo::ComponentSwizzle::IDENTITY;
+        depthCreateInfo.components.a = drv::ImageViewCreateInfo::ComponentSwizzle::IDENTITY;
+        depthCreateInfo.subresourceRange.aspectMask = drv::DEPTH_BIT;
+        depthCreateInfo.subresourceRange.baseArrayLayer = 0;
+        depthCreateInfo.subresourceRange.baseMipLevel = 0;
+        depthCreateInfo.subresourceRange.layerCount = 1;
+        depthCreateInfo.subresourceRange.levelCount = 1;
+        depthTargetView = createResource<drv::ImageView>(getDevice(), depthCreateInfo);
     }
 
     drv::RenderPass::AttachmentData colorTargetAttachment;
     colorTargetAttachment.image = renderTarget.get().getImage();
     colorTargetAttachment.view = renderTargetView.get();
+
+    drv::RenderPass::AttachmentData depthTargetAttachment;
+    depthTargetAttachment.image = depthTarget.get().getImage();
+    depthTargetAttachment.view = depthTargetView.get();
 
     for (uint32_t i = 0; i < swapchain.getImageCount(); ++i) {
         drv::ImageViewCreateInfo createInfo;
@@ -338,7 +396,7 @@ void Game::createSwapchainResources(const drv::Swapchain& swapchain) {
         drv::RenderPass::AttachmentData swapchainAttachment;
         swapchainAttachment.image = swapchain.getImages()[i];
         swapchainAttachment.view = imageViews.back().get();
-        attachments.push_back({colorTargetAttachment, swapchainAttachment});
+        attachments.push_back({colorTargetAttachment, swapchainAttachment, depthTargetAttachment});
     }
     if (!renderPass->isCompatible(attachments[0].data())) {
         renderPass->recreate(attachments[0].data());

@@ -26,6 +26,9 @@ stages {
 
 ps {
     void main() {
-        outColor = vec4(getTexcoord(), 0, 1);
+        vec3 view = getViewVec();
+        vec3 light = PushConstants.ambientLight * 2;
+        // light += ;
+        outColor = lightToColor(light);
     }
 }
