@@ -52,7 +52,7 @@ ps {
     layout(location = 3) in vec2 tc;
 
     void main() {
-        outColor = vec4(shadePixel(worldPos, normal, vAlbedo), 1.0);
+        outColor = lightToColor(shadePixel(worldPos, normal, vAlbedo));
     }
 #else
     void main() {

@@ -74,13 +74,21 @@ class Game final : public Game3D
     res::ImageView renderTargetView;
     GameOptions gameOptions;
 
-    void recordCmdBufferBackground(const AcquiredImageData& swapchainData,
+    struct RenderInfo
+    {
+        const RendererData* rendererData;
+        mat4 view;
+        mat4 proj;
+        mat4 viewProj;
+    };
+
+    void recordCmdBufferBackground(const RenderInfo& info, const AcquiredImageData& swapchainData,
                                    EngineCmdBufferRecorder* recorder, EngineRenderPass& pass,
                                    FrameId frameId);
-    void recordCmdBufferContent(const AcquiredImageData& swapchainData,
+    void recordCmdBufferContent(const RenderInfo& info, const AcquiredImageData& swapchainData,
                                 EngineCmdBufferRecorder* recorder, EngineRenderPass& pass,
                                 FrameId frameId);
-    void recordCmdBufferForeground(const AcquiredImageData& swapchainData,
+    void recordCmdBufferForeground(const RenderInfo& info, const AcquiredImageData& swapchainData,
                                    EngineCmdBufferRecorder* recorder, EngineRenderPass& pass,
                                    FrameId frameId);
 };

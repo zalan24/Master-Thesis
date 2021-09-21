@@ -97,10 +97,19 @@ static ShaderObject::DynamicState get_dynamic_states(drv::Extent2D extent) {
     return ret;
 }
 
-void Game::recordCmdBufferBackground(const AcquiredImageData& swapchainData,
+void Game::recordCmdBufferBackground(const RenderInfo& info, const AcquiredImageData& swapchainData,
                                      EngineCmdBufferRecorder* recorder, EngineRenderPass& pass,
                                      FrameId frameId) {
     pass.beginSubpass(backgroundSubpass);
+
+    vec3 side = normalize(glm::cross(glm::vec3(0, 1, 0), info.rendererData->eyeDir));
+    vec3 up = glm::cross(info.rendererData->eyeDir, side);
+    mat4 invViewProj = glm::inverse(info.viewProj);
+    vec4 point = invViewProj * vec4(-1, -1, 1, 1);
+    point /= point.w;
+    fullscreenDesc.set_cameraUp(up);
+    fullscreenDesc.set_cameraDir(info.rendererData->eyeDir);
+    fullscreenDesc.set_topleftViewVec(glm::normalize(glm::vec3(point) - info.rendererData->eyePos));
 
     mandelbrotDesc.setVariant_Quality(
       static_cast<shader_mandelbrot_descriptor::Quality>(gameOptions.mandelBrotLevel));
@@ -113,17 +122,16 @@ void Game::recordCmdBufferBackground(const AcquiredImageData& swapchainData,
                                  &mandelbrotDesc);
     pass.draw(6, 1, 0, 0);
 
-    const RendererData rendererData = getRenderData(frameId);
-    skyDesc.set_sunDir(rendererData.sunDir);
-    skyDesc.set_sunLight(rendererData.sunLight);
-    skyDesc.set_ambientLight(rendererData.ambientLight);
-    skyDesc.set_eyeDir(rendererData.eyeDir);
+    skyDesc.set_sunDir(info.rendererData->sunDir);
+    skyDesc.set_sunLight(info.rendererData->sunLight);
+    skyDesc.set_ambientLight(info.rendererData->ambientLight);
+    skyDesc.set_eyeDir(info.rendererData->eyeDir);
     recorder->bindGraphicsShader(pass, get_dynamic_states(swapchainData.extent), {}, skyShader,
                                  &fullscreenDesc, &shaderGlobalDesc, &skyDesc);
     pass.draw(3, 1, 0, 0);
 }
 
-void Game::recordCmdBufferContent(const AcquiredImageData& swapchainData,
+void Game::recordCmdBufferContent(const RenderInfo& info, const AcquiredImageData& swapchainData,
                                   EngineCmdBufferRecorder* recorder, EngineRenderPass& pass,
                                   FrameId frameId) {
     pass.beginSubpass(contentSubpass);
@@ -131,20 +139,11 @@ void Game::recordCmdBufferContent(const AcquiredImageData& swapchainData,
     uint32_t planeResolution = 2;
     uint32_t boxResolution = 2;
     uint32_t sphereResolution = 20;
-    const RendererData rendererData = getRenderData(frameId);
-    shader3dDescriptor.set_eyePos(rendererData.eyePos);
-    mat4 view =
-      glm::lookAtLH(rendererData.eyePos, rendererData.eyePos + rendererData.eyeDir, vec3(0, 1, 0));
-    mat4 proj =
-      glm::perspective(glm::radians(gameOptions.fov * 2), rendererData.ratio, 0.01f, 150.0f);
-    mat4 bsToGoodTm(1.f);
-    bsToGoodTm[1] = -bsToGoodTm[1];
-    bsToGoodTm[2] = -bsToGoodTm[2];
-    proj = proj * bsToGoodTm;
-    shader3dDescriptor.set_viewProj(proj * view);
-    shaderForwardShaderDescriptor.set_ambientLight(rendererData.ambientLight);
-    shaderForwardShaderDescriptor.set_sunDir(rendererData.sunDir);
-    shaderForwardShaderDescriptor.set_sunLight(rendererData.sunLight);
+    shader3dDescriptor.set_eyePos(info.rendererData->eyePos);
+    shader3dDescriptor.set_viewProj(info.proj * info.view);
+    shaderForwardShaderDescriptor.set_ambientLight(info.rendererData->ambientLight);
+    shaderForwardShaderDescriptor.set_sunDir(info.rendererData->sunDir);
+    shaderForwardShaderDescriptor.set_sunLight(info.rendererData->sunLight);
     shaderForwardShaderDescriptor.setVariant_renderPass(
       shader_forwardshading_descriptor::Renderpass::COLOR_PASS);
 
@@ -189,22 +188,20 @@ void Game::recordCmdBufferContent(const AcquiredImageData& swapchainData,
     }
 }
 
-void Game::recordCmdBufferForeground(const AcquiredImageData& swapchainData,
+void Game::recordCmdBufferForeground(const RenderInfo& info, const AcquiredImageData& swapchainData,
                                      EngineCmdBufferRecorder* recorder, EngineRenderPass& pass,
                                      FrameId frameId) {
     pass.beginSubpass(foregroundSubpass);
 
     recordImGui(swapchainData, recorder, frameId);
 
-    const RendererData rendererData = getRenderData(frameId);
-
-    cursorDesc.set_pos(rendererData.cursorPos);
-    cursorDesc.set_aspectRatio(rendererData.ratio);
+    cursorDesc.set_pos(info.rendererData->cursorPos);
+    cursorDesc.set_aspectRatio(info.rendererData->ratio);
     recorder->bindGraphicsShader(pass, get_dynamic_states(swapchainData.extent), {}, cursorShader,
                                  &shaderGlobalDesc, &cursorDesc);
     pass.draw(3, 1, 0, 0);
 
-    if (rendererData.latencyFlash) {
+    if (info.rendererData->latencyFlash) {
         drv::ClearRect clearRect;
         uint32_t height = std::min(200u, swapchainData.extent.height);
         uint32_t width = std::min(200u, swapchainData.extent.width);
@@ -241,9 +238,22 @@ void Game::record(const AcquiredImageData& swapchainData, EngineCmdBufferRecorde
     EngineRenderPass pass(renderPass.get(), recorder->get(), renderArea,
                           swapchainFrameBuffers[swapchainData.imageIndex].get(), clearValues);
 
-    recordCmdBufferBackground(swapchainData, recorder, pass, frameId);
-    recordCmdBufferContent(swapchainData, recorder, pass, frameId);
-    recordCmdBufferForeground(swapchainData, recorder, pass, frameId);
+    const RendererData rendererData = getRenderData(frameId);
+    RenderInfo infos;
+    infos.rendererData = &rendererData;
+    infos.view =
+      glm::lookAtLH(rendererData.eyePos, rendererData.eyePos + rendererData.eyeDir, vec3(0, 1, 0));
+    infos.proj =
+      glm::perspective(glm::radians(gameOptions.fov * 2), rendererData.ratio, 0.01f, 150.0f);
+    mat4 bsToGoodTm(1.f);
+    bsToGoodTm[1] = -bsToGoodTm[1];
+    bsToGoodTm[2] = -bsToGoodTm[2];
+    infos.proj = infos.proj * bsToGoodTm;
+    infos.viewProj = infos.proj * infos.view;
+
+    recordCmdBufferBackground(infos, swapchainData, recorder, pass, frameId);
+    recordCmdBufferContent(infos, swapchainData, recorder, pass, frameId);
+    recordCmdBufferForeground(infos, swapchainData, recorder, pass, frameId);
 
     recorder->cmdImageBarrier({swapchainData.image, drv::IMAGE_USAGE_PRESENT,
                                drv::ImageMemoryBarrier::AUTO_TRANSITION, false});
