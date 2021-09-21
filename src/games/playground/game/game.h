@@ -57,6 +57,9 @@ class Game final : public Game3D
     shader_mandelbrot mandelbrotShader;
     shader_cursor_descriptor cursorDesc;
     shader_cursor cursorShader;
+    shader_fullscreen_descriptor fullscreenDesc;
+    shader_sky_descriptor skyDesc;
+    shader_sky skyShader;
 
     std::unique_ptr<drv::RenderPass> renderPass;
     drv::AttachmentId swapchainColorAttachment;

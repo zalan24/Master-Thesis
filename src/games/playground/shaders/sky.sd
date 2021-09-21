@@ -1,0 +1,31 @@
+include {
+    aglobal;
+    fullscreen;
+}
+
+descriptor {
+    variants {
+    }
+    resources {
+        vec3 eyeDir;
+        vec3 sunDir;
+        vec3 sunLight;
+        vec3 ambientLight;
+    }
+}
+
+stages {
+    ps {
+        entry = main;
+        use eyeDir;
+        use sunDir;
+        use sunLight;
+        use ambientLight;
+    }
+}
+
+ps {
+    void main() {
+        outColor = vec4(getTexcoord(), 0, 1);
+    }
+}

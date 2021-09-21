@@ -30,7 +30,10 @@ Game::Game(int argc, char* argv[], const EngineConfig& config,
     mandelbrotDesc(getDevice(), &shaderHeaders.mandelbrot),
     mandelbrotShader(getDevice(), &shaderObjects.mandelbrot, dynamicStates),
     cursorDesc(getDevice(), &shaderHeaders.cursor),
-    cursorShader(getDevice(), &shaderObjects.cursor, dynamicStates) {
+    cursorShader(getDevice(), &shaderObjects.cursor, dynamicStates),
+    fullscreenDesc(getDevice(), &shaderHeaders.fullscreen),
+    skyDesc(getDevice(), &shaderHeaders.sky),
+    skyShader(getDevice(), &shaderObjects.sky, dynamicStates) {
     renderPass = drv::create_render_pass(getDevice(), "Game render pass");
     drv::RenderPass::AttachmentInfo colorInfo;
     colorInfo.initialLayout = drv::ImageLayout::COLOR_ATTACHMENT_OPTIMAL;
@@ -106,8 +109,18 @@ void Game::recordCmdBufferBackground(const AcquiredImageData& swapchainData,
       lerp(vec3(1, 0, 0), vec3(0, 1, 0), float(sin(double(frameId) * 0.01) * 0.5 + 0.5)));
     mandelbrotDesc.set_peakColor(vec3(1, 1, 1));
     recorder->bindGraphicsShader(pass, get_dynamic_states(swapchainData.extent), {},
-                                 mandelbrotShader, &mandelbrotDesc);
+                                 mandelbrotShader, &fullscreenDesc, &shaderGlobalDesc,
+                                 &mandelbrotDesc);
     pass.draw(6, 1, 0, 0);
+
+    const RendererData rendererData = getRenderData(frameId);
+    skyDesc.set_sunDir(rendererData.sunDir);
+    skyDesc.set_sunLight(rendererData.sunLight);
+    skyDesc.set_ambientLight(rendererData.ambientLight);
+    skyDesc.set_eyeDir(rendererData.eyeDir);
+    recorder->bindGraphicsShader(pass, get_dynamic_states(swapchainData.extent), {}, skyShader,
+                                 &fullscreenDesc, &shaderGlobalDesc, &skyDesc);
+    pass.draw(3, 1, 0, 0);
 }
 
 void Game::recordCmdBufferContent(const AcquiredImageData& swapchainData,
@@ -118,7 +131,6 @@ void Game::recordCmdBufferContent(const AcquiredImageData& swapchainData,
     uint32_t planeResolution = 2;
     uint32_t boxResolution = 2;
     uint32_t sphereResolution = 20;
-    float brightness = 0.5;
     const RendererData rendererData = getRenderData(frameId);
     shader3dDescriptor.set_eyePos(rendererData.eyePos);
     mat4 view =
@@ -130,9 +142,9 @@ void Game::recordCmdBufferContent(const AcquiredImageData& swapchainData,
     bsToGoodTm[2] = -bsToGoodTm[2];
     proj = proj * bsToGoodTm;
     shader3dDescriptor.set_viewProj(proj * view);
-    shaderForwardShaderDescriptor.set_ambientLight(vec3(0.1, 0.1, 0.1) * brightness);
-    shaderForwardShaderDescriptor.set_sunDir(glm::normalize(vec3(-0.2, -0.8, 0.4)));
-    shaderForwardShaderDescriptor.set_sunLight(vec3(1.0, 0.8, 0.7) * brightness);
+    shaderForwardShaderDescriptor.set_ambientLight(rendererData.ambientLight);
+    shaderForwardShaderDescriptor.set_sunDir(rendererData.sunDir);
+    shaderForwardShaderDescriptor.set_sunLight(rendererData.sunLight);
     shaderForwardShaderDescriptor.setVariant_renderPass(
       shader_forwardshading_descriptor::Renderpass::COLOR_PASS);
 
@@ -253,6 +265,7 @@ void Game::releaseSwapchainResources() {
         mandelbrotShader.clear(trashBin);
         cursorShader.clear(trashBin);
         entityShader.clear(trashBin);
+        skyShader.clear(trashBin);
     });
     renderTargetView.close();
     renderTarget.close();

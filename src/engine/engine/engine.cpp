@@ -23,6 +23,8 @@
 #include <namethreads.h>
 #include <perf_metrics.h>
 
+#include <shadertypes.h>
+
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 
 #include <stb_image_write.h>
@@ -367,11 +369,14 @@ void Engine::esCamera(EntityManager*, Engine* engine, FrameGraph::NodeHandle* ha
                                 FrameGraph::Clock::now() - engine->lastLatencyFlashClick)
                                 .count()
                               < 300;
+    float brightness = 0.5;
+    renderData.sunDir = glm::normalize(vec3(-0.2, -0.8, 0.4));
+    renderData.sunLight = vec3(1.0, 0.8, 0.7) * brightness;
+    renderData.ambientLight = vec3(0.1, 0.1, 0.1) * brightness;
     renderData.eyePos = entity->position;
     renderData.eyeDir = static_cast<glm::mat3>(entity->rotation)[2];
     renderData.ratio = float(extent.width) / float(extent.height);
     renderData.cursorPos = engine->mouseListener.getMousePos() * 2.f - 1.f;
-    // renderData.cursorPos.y *= renderData.ratio;
 }
 
 void Engine::esPhysics(EntityManager*, Engine*, FrameGraph::NodeHandle*, FrameGraph::Stage,

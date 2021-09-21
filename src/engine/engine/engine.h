@@ -372,6 +372,9 @@ class Engine
 
     struct RendererData
     {
+        glm::vec3 sunDir;
+        glm::vec3 sunLight;
+        glm::vec3 ambientLight;
         glm::vec3 eyePos;
         glm::vec3 eyeDir;
         bool latencyFlash;
