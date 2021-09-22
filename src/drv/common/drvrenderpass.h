@@ -39,6 +39,7 @@ struct SubpassInfo
 {
     std::vector<AttachmentRef> inputs;
     std::vector<AttachmentRef> colorOutputs;
+    std::vector<AttachmentRef> msaaResolve;
     std::vector<AttachmentId> preserve;
     std::vector<ResourceUsageInfo> resources;
     AttachmentRef depthStencil;

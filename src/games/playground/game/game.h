@@ -68,6 +68,7 @@ class Game final : public Game3D
     drv::SubpassId backgroundSubpass;
     drv::SubpassId contentSubpass;
     drv::SubpassId foregroundSubpass;
+    drv::SubpassId swapchainSubpass;
     std::vector<res::ImageView> imageViews;
     std::vector<std::vector<drv::RenderPass::AttachmentData>> attachments;
     std::vector<res::Framebuffer> swapchainFrameBuffers;
@@ -94,4 +95,7 @@ class Game final : public Game3D
     void recordCmdBufferForeground(const RenderInfo& info, const AcquiredImageData& swapchainData,
                                    EngineCmdBufferRecorder* recorder, EngineRenderPass& pass,
                                    FrameId frameId);
+    void recordCmdBufferSwapchain(const RenderInfo& info, const AcquiredImageData& swapchainData,
+                                  EngineCmdBufferRecorder* recorder, EngineRenderPass& pass,
+                                  FrameId frameId);
 };

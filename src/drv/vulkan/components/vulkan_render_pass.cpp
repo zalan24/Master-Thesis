@@ -82,6 +82,10 @@ void VulkanRenderPass::build_impl() {
                 usages |= drv::IMAGE_USAGE_COLOR_OUTPUT_WRITE;
             attachmentUsages[pass][subpasses[pass].colorOutputs[i].id] |= usages;
         }
+        for (uint32_t i = 0; i < subpasses[pass].msaaResolve.size(); ++i) {
+            attachmentUsages[pass][subpasses[pass].msaaResolve[i].id] |=
+              drv::IMAGE_USAGE_COLOR_OUTPUT_WRITE;
+        }
         for (uint32_t i = 0; i < attachments.size(); ++i)
             globalAttachmentUsages[i] |= attachmentUsages[pass][i];
     }
@@ -361,6 +365,7 @@ void VulkanRenderPass::build_impl() {
     uint32_t attachmentRefCount = 0;
     for (uint32_t i = 0; i < subpasses.size(); ++i)
         attachmentRefCount += subpasses[i].colorOutputs.size() + subpasses[i].inputs.size()
+                              + subpasses[i].msaaResolve.size()
                               + (subpasses[i].depthStencil.id != drv::INVALID_ATTACHMENT ? 1 : 0);
     attachmentRefs.resize(attachmentRefCount);
     uint32_t attachmentId = 0;
@@ -378,8 +383,14 @@ void VulkanRenderPass::build_impl() {
         vkSubpasses[i].pColorAttachments = attachmentRefs.data() + attachmentId;
         for (uint32_t j = 0; j < subpasses[i].colorOutputs.size(); ++j)
             attachmentRefs[attachmentId++] = get_attachment_ref(subpasses[i].colorOutputs[j]);
+        if (subpasses[i].msaaResolve.empty())
+            vkSubpasses[i].pResolveAttachments = nullptr;
+        else {
+            vkSubpasses[i].pResolveAttachments = attachmentRefs.data() + attachmentId;
+            for (uint32_t j = 0; j < subpasses[i].msaaResolve.size(); ++j)
+                attachmentRefs[attachmentId++] = get_attachment_ref(subpasses[i].msaaResolve[j]);
+        }
 
-        vkSubpasses[i].pResolveAttachments = nullptr;  // TODO multisampling
         if (subpasses[i].depthStencil.id != drv::UNUSED_ATTACHMENT)
             vkSubpasses[i].pDepthStencilAttachment =
               &(attachmentRefs[attachmentId++] = get_attachment_ref(subpasses[i].depthStencil));

@@ -37,11 +37,18 @@ Game::Game(int argc, char* argv[], const EngineConfig& config,
     renderPass = drv::create_render_pass(getDevice(), "Game render pass");
     drv::RenderPass::AttachmentInfo colorInfo;
     colorInfo.initialLayout = drv::ImageLayout::COLOR_ATTACHMENT_OPTIMAL;
-    colorInfo.finalLayout = drv::ImageLayout::PRESENT_SRC_KHR;
+    colorInfo.finalLayout = drv::ImageLayout::COLOR_ATTACHMENT_OPTIMAL;
     colorInfo.loadOp = drv::AttachmentLoadOp::CLEAR;
-    colorInfo.storeOp = drv::AttachmentStoreOp::STORE;
+    colorInfo.storeOp = drv::AttachmentStoreOp::DONT_CARE;
     colorInfo.stencilLoadOp = drv::AttachmentLoadOp::DONT_CARE;
     colorInfo.stencilStoreOp = drv::AttachmentStoreOp::DONT_CARE;
+    drv::RenderPass::AttachmentInfo swapchainInfo;
+    swapchainInfo.initialLayout = drv::ImageLayout::COLOR_ATTACHMENT_OPTIMAL;
+    swapchainInfo.finalLayout = drv::ImageLayout::PRESENT_SRC_KHR;
+    swapchainInfo.loadOp = drv::AttachmentLoadOp::LOAD;
+    swapchainInfo.storeOp = drv::AttachmentStoreOp::STORE;
+    swapchainInfo.stencilLoadOp = drv::AttachmentLoadOp::DONT_CARE;
+    swapchainInfo.stencilStoreOp = drv::AttachmentStoreOp::DONT_CARE;
     drv::RenderPass::AttachmentInfo depthInfo;
     depthInfo.initialLayout = drv::ImageLayout::DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
     depthInfo.finalLayout = drv::ImageLayout::UNDEFINED;
@@ -52,22 +59,28 @@ Game::Game(int argc, char* argv[], const EngineConfig& config,
     // colorInfo.srcUsage = 0;
     // colorInfo.dstUsage = drv::IMAGE_USAGE_PRESENT;
     colorTagretColorAttachment = renderPass->createAttachment(std::move(colorInfo));
-    swapchainColorAttachment = renderPass->createAttachment(std::move(colorInfo));
+    swapchainColorAttachment = renderPass->createAttachment(std::move(swapchainInfo));
     depthAttachment = renderPass->createAttachment(std::move(depthInfo));
     drv::SubpassInfo backgroundInfo;
     backgroundInfo.colorOutputs.push_back(
-      {swapchainColorAttachment, drv::ImageLayout::COLOR_ATTACHMENT_OPTIMAL});
+      {colorTagretColorAttachment, drv::ImageLayout::COLOR_ATTACHMENT_OPTIMAL});
     backgroundSubpass = renderPass->createSubpass(std::move(backgroundInfo));
     drv::SubpassInfo contentPassInfo;
     contentPassInfo.colorOutputs.push_back(
-      {swapchainColorAttachment, drv::ImageLayout::COLOR_ATTACHMENT_OPTIMAL});
+      {colorTagretColorAttachment, drv::ImageLayout::COLOR_ATTACHMENT_OPTIMAL});
     contentPassInfo.depthStencil = {depthAttachment,
                                     drv::ImageLayout::DEPTH_STENCIL_ATTACHMENT_OPTIMAL};
     contentSubpass = renderPass->createSubpass(std::move(contentPassInfo));
     drv::SubpassInfo foregroundPass;
     foregroundPass.colorOutputs.push_back(
+      {colorTagretColorAttachment, drv::ImageLayout::COLOR_ATTACHMENT_OPTIMAL});
+    foregroundPass.msaaResolve.push_back(
       {swapchainColorAttachment, drv::ImageLayout::COLOR_ATTACHMENT_OPTIMAL});
     foregroundSubpass = renderPass->createSubpass(std::move(foregroundPass));
+    drv::SubpassInfo swapchainPassInfo;
+    swapchainPassInfo.colorOutputs.push_back(
+      {swapchainColorAttachment, drv::ImageLayout::COLOR_ATTACHMENT_OPTIMAL});
+    swapchainSubpass = renderPass->createSubpass(std::move(swapchainPassInfo));
     renderPass->build();
 
     initPhysicsEntitySystem();
@@ -202,6 +215,12 @@ void Game::recordCmdBufferForeground(const RenderInfo& info, const AcquiredImage
                                      EngineCmdBufferRecorder* recorder, EngineRenderPass& pass,
                                      FrameId frameId) {
     pass.beginSubpass(foregroundSubpass);
+}
+
+void Game::recordCmdBufferSwapchain(const RenderInfo& info, const AcquiredImageData& swapchainData,
+                                    EngineCmdBufferRecorder* recorder, EngineRenderPass& pass,
+                                    FrameId frameId) {
+    pass.beginSubpass(swapchainSubpass);
 
     recordImGui(swapchainData, recorder, frameId);
 
@@ -270,6 +289,7 @@ void Game::record(const AcquiredImageData& swapchainData, EngineCmdBufferRecorde
     recordCmdBufferBackground(infos, swapchainData, recorder, pass, frameId);
     recordCmdBufferContent(infos, swapchainData, recorder, pass, frameId);
     recordCmdBufferForeground(infos, swapchainData, recorder, pass, frameId);
+    recordCmdBufferSwapchain(infos, swapchainData, recorder, pass, frameId);
 
     recorder->cmdImageBarrier({swapchainData.image, drv::IMAGE_USAGE_PRESENT,
                                drv::ImageMemoryBarrier::AUTO_TRANSITION, false});
@@ -312,7 +332,7 @@ void Game::createSwapchainResources(const drv::Swapchain& swapchain) {
     imageInfo.extent = {swapchain.getCurrentEXtent().width, swapchain.getCurrentEXtent().height, 1};
     imageInfo.mipLevels = 1;
     imageInfo.arrayLayers = 1;
-    imageInfo.sampleCount = drv::SampleCount::SAMPLE_COUNT_1;
+    imageInfo.sampleCount = drv::SampleCount::SAMPLE_COUNT_4;
     imageInfo.usage = drv::ImageCreateInfo::COLOR_ATTACHMENT_BIT
                       | drv::ImageCreateInfo::INPUT_ATTACHMENT_BIT
                       | drv::ImageCreateInfo::TRANSFER_SRC_BIT;
@@ -329,7 +349,7 @@ void Game::createSwapchainResources(const drv::Swapchain& swapchain) {
                              swapchain.getCurrentEXtent().height, 1};
     depthImageInfo.mipLevels = 1;
     depthImageInfo.arrayLayers = 1;
-    depthImageInfo.sampleCount = drv::SampleCount::SAMPLE_COUNT_1;
+    depthImageInfo.sampleCount = drv::SampleCount::SAMPLE_COUNT_4;
     depthImageInfo.usage = drv::ImageCreateInfo::DEPTH_STENCIL_ATTACHMENT_BIT;
     depthImageInfo.type = drv::ImageCreateInfo::TYPE_2D;
     depthTarget = createResource<drv::ImageSet>(
