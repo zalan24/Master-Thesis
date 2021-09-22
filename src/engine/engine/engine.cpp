@@ -54,6 +54,11 @@ bool EngineInputListener::processKeyboard(const Input::KeyboardEvent& event) {
             perfCapture = true;
         return true;
     }
+    else if (event.key == KEY_F11) {
+        if (event.type == event.PRESS)
+            toggleFreeCame = true;
+        return true;
+    }
     return false;
 }
 
@@ -101,6 +106,72 @@ static drv::Driver get_driver(const std::string& name) {
     if (name == "Vulkan")
         return drv::Driver::VULKAN;
     throw std::runtime_error("Unknown driver: " + name);
+}
+
+CameraControlInfo FreeCamInput::popCameraControls() {
+    FrameGraph::Clock::time_point currentTime = FrameGraph::Clock::now();
+    float durationS =
+      float(std::chrono::duration_cast<std::chrono::microseconds>(currentTime - lastSample).count())
+      / 1000000.0f;
+    lastSample = currentTime;
+    if (hasPrevData) {
+        CameraControlInfo ret;
+        glm::vec3 targetSpeed;
+        targetSpeed.x = (right ? 1 : 0) - (left ? 1 : 0);
+        targetSpeed.y = up ? 1 : 0;
+        targetSpeed.z = (forward ? 1 : 0) - (backward ? 1 : 0);
+
+        ret.translation = speed * durationS;
+
+        if (glm::dot(targetSpeed, targetSpeed) > 0)
+            targetSpeed = glm::normalize(targetSpeed) * (boost ? fastSpeed : normalSpeed);
+
+        float v = glm::length(speed - targetSpeed);
+
+        if (v > 0) {
+            if (drag.y != 0) {
+                float c = v + drag.x / drag.y;
+                v = c * exp(-drag.y * durationS) - drag.x / drag.y;
+            }
+            else
+                v -= drag.x * durationS;
+
+            if (v <= 0)
+                speed = targetSpeed;
+            else
+                speed = glm::normalize(speed - targetSpeed) * v + targetSpeed;
+        }
+
+        ret.rotation = cameraRotate;
+        cameraRotate = glm::vec2(0, 0);
+        return ret;
+    }
+    else {
+        cameraRotate = glm::vec2(0, 0);
+        hasPrevData = 1;
+        return {};
+    }
+}
+
+bool FreeCamInput::processKeyboard(const Input::KeyboardEvent& event) {
+    if (event.key == KEY_LEFT_SHIFT)
+        boost = event.type != Input::KeyboardEvent::RELEASE;
+    else if (event.key == KEY_W)
+        forward = event.type != Input::KeyboardEvent::RELEASE;
+    else if (event.key == KEY_S)
+        backward = event.type != Input::KeyboardEvent::RELEASE;
+    else if (event.key == KEY_A)
+        left = event.type != Input::KeyboardEvent::RELEASE;
+    else if (event.key == KEY_D)
+        right = event.type != Input::KeyboardEvent::RELEASE;
+    else if (event.key == KEY_E)
+        up = event.type != Input::KeyboardEvent::RELEASE;
+    return true;
+}
+
+bool FreeCamInput::processMouseMove(const Input::MouseMoveEvent& event) {
+    cameraRotate += glm::vec2(event.dX, event.dY) * rotationSpeed;
+    return true;
 }
 
 drv::PhysicalDevice::SelectionInfo Engine::get_device_selection_info(
@@ -275,6 +346,8 @@ Engine::Engine(int argc, char* argv[], const EngineConfig& cfg,
     inputManager.registerListener(imGuiInputListener.get(), 100);
     inputManager.registerListener(&mouseListener, 99);
 
+    freecamListener = std::make_unique<FreeCamInput>();
+
     drv::sync_gpu_clock(drvInstance, physicalDevice, device);
     nextTimelineCalibration =
       drv::Clock::now() + std::chrono::milliseconds(firstTimelineCalibrationTimeMs);
@@ -361,6 +434,28 @@ void Engine::initImGui(drv::RenderPass* imGuiRenderpass) {
 
 void Engine::esCamera(EntityManager*, Engine* engine, FrameGraph::NodeHandle* handle,
                       FrameGraph::Stage, const EntityManager::EntitySystemParams&, Entity* entity) {
+    CameraControlInfo cameraControls =
+      engine->perFrameTempInfo[handle->getFrameId() % engine->perFrameTempInfo.size()]
+        .cameraControls;
+
+    if (std::abs(cameraControls.rotation.x) > 0) {
+        entity->rotation =
+          glm::rotate(entity->rotation, cameraControls.rotation.x, glm::vec3(0, 1, 0));
+    }
+    if (std::abs(cameraControls.rotation.y) > 0) {
+        const double upMinAngle = 0.1;
+        double currentAngle = glm::pitch(entity->rotation) + M_PI / 2;
+        double angle = cameraControls.rotation.y;
+        if (angle < 0 && currentAngle + angle < upMinAngle)
+            angle = upMinAngle - currentAngle;
+        else if (angle > 0 && currentAngle + angle > M_PI - upMinAngle)
+            angle = M_PI - upMinAngle - currentAngle;
+        glm::quat rot = glm::angleAxis(static_cast<float>(angle), glm::vec3(1, 0, 0));
+        entity->rotation = entity->rotation * rot;
+    }
+
+    entity->position += entity->rotation * cameraControls.translation;
+
     drv::Extent2D extent = engine->window->getResolution();
     // entity->extra["ratio"] = ;
     RendererData& renderData =
@@ -436,6 +531,8 @@ Engine::~Engine() {
     garbageSystem.releaseAll();
     inputManager.unregisterListener(&mouseListener);
     inputManager.unregisterListener(imGuiInputListener.get());
+    if (inFreeCam)
+        inputManager.unregisterListener(freecamListener.get());
     LOG_ENGINE("Engine closed");
 }
 
@@ -539,6 +636,23 @@ bool Engine::sampleInput(FrameId frameId) {
     Input::InputEvent event;
     while (input.popEvent(event))
         inputManager.feedInput(std::move(event));
+
+    perFrameTempInfo[frameId % perFrameTempInfo.size()].cameraControls = {};
+    if (mouseListener.popToggleFreeCame()) {
+        if (!inFreeCam) {
+            inputManager.registerListener(freecamListener.get(), 98);
+            inFreeCam = true;
+        }
+        else {
+            inputManager.unregisterListener(freecamListener.get());
+            inFreeCam = false;
+        }
+    }
+    CameraControlInfo cameraControls = freecamListener->popCameraControls();
+    if (inFreeCam)
+        perFrameTempInfo[frameId % perFrameTempInfo.size()].cameraControls =
+          std::move(cameraControls);
+
     return true;
 }
 

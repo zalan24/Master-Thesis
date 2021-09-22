@@ -175,6 +175,7 @@ class EngineInputListener final : public InputListener
     bool isClicking() const { return clicking; }
     glm::vec2 getMousePos() const { return {mX, mY}; }
     bool popNeedPerfCapture() { return std::exchange(perfCapture, false); }
+    bool popToggleFreeCame() { return std::exchange(toggleFreeCame, false); }
 
  protected:
     bool processKeyboard(const Input::KeyboardEvent&) override;
@@ -185,8 +186,49 @@ class EngineInputListener final : public InputListener
  private:
     bool perfCapture = false;
     bool clicking = false;
+    bool toggleFreeCame = false;
     double mX;
     double mY;
+};
+
+struct CameraControlInfo
+{
+    glm::vec3 translation = glm::vec3(0, 0, 0);
+    glm::vec2 rotation;
+};
+
+class FreeCamInput final : public InputListener
+{
+ public:
+    FreeCamInput() : InputListener(true) {
+        boost = hasPrevData = left = right = forward = backward = up = 0;
+    }
+    ~FreeCamInput() override {}
+
+    CursorMode getCursorMode() override final { return LOCK; }
+
+    CameraControlInfo popCameraControls();
+
+ protected:
+    bool processKeyboard(const Input::KeyboardEvent& event) override final;
+    bool processMouseMove(const Input::MouseMoveEvent& event) override final;
+
+ private:
+    FrameGraph::Clock::time_point lastSample;
+    uint16_t hasPrevData : 1;
+    uint16_t left : 1;
+    uint16_t right : 1;
+    uint16_t forward : 1;
+    uint16_t backward : 1;
+    uint16_t up : 1;
+    uint16_t boost : 1;
+
+    glm::vec3 speed = glm::vec3(0, 0, 0);
+    glm::vec2 drag = glm::vec2(10, 50);
+    float normalSpeed = 2;
+    float fastSpeed = 50;
+    float rotationSpeed = 3;
+    glm::vec2 cameraRotate = glm::vec2(0, 0);
 };
 
 template <uint32_t N>
@@ -392,6 +434,8 @@ class Engine
 
     void createPerformanceCapture(FrameId targetFrame);
 
+    bool isInFreecam() const { return inFreeCam; }
+
  private:
     static constexpr uint64_t firstTimelineCalibrationTimeMs = 1000;
     static constexpr uint64_t otherTimelineCalibrationTimeMs = 10000;
@@ -442,6 +486,8 @@ class Engine
     Input input;
     InputManager inputManager;
     EngineInputListener mouseListener;
+    bool inFreeCam = false;
+    std::unique_ptr<FreeCamInput> freecamListener;
     std::unique_ptr<InputListener> imGuiInputListener;
     drv::DriverWrapper driver;
     drv::Window window;
@@ -537,6 +583,7 @@ class Engine
         drv::ImagePtr captureImage = drv::get_null_ptr<drv::ImagePtr>();
         bool captureHappening = false;
         RendererData renderData;
+        CameraControlInfo cameraControls;
     };
     std::vector<PerFrameTempInfo> perFrameTempInfo;
 

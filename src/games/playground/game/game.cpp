@@ -224,11 +224,13 @@ void Game::recordCmdBufferSwapchain(const RenderInfo& info, const AcquiredImageD
 
     recordImGui(swapchainData, recorder, frameId);
 
-    cursorDesc.set_pos(info.rendererData->cursorPos);
-    cursorDesc.set_aspectRatio(info.rendererData->ratio);
-    recorder->bindGraphicsShader(pass, get_dynamic_states(swapchainData.extent), {}, cursorShader,
-                                 &shaderGlobalDesc, &cursorDesc);
-    pass.draw(3, 1, 0, 0);
+    if (!isInFreecam()) {
+        cursorDesc.set_pos(info.rendererData->cursorPos);
+        cursorDesc.set_aspectRatio(info.rendererData->ratio);
+        recorder->bindGraphicsShader(pass, get_dynamic_states(swapchainData.extent), {},
+                                     cursorShader, &shaderGlobalDesc, &cursorDesc);
+        pass.draw(3, 1, 0, 0);
+    }
 
     if (info.rendererData->latencyFlash) {
         drv::ClearRect clearRect;
