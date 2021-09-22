@@ -51,6 +51,7 @@ drv::LogicalDevicePtr DrvVulkan::create_logical_device(const drv::LogicalDeviceC
         LOG_DRIVER_API(" - %s", deviceExtensions[i].extensionName);
 
     VkPhysicalDeviceFeatures deviceFeatures = {};
+    deviceFeatures.sampleRateShading = featureconfig::params.sampleRateShading;
 
     VkPhysicalDeviceVulkan12Features device12Features = {};
     device12Features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;

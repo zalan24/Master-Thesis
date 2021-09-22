@@ -15,5 +15,6 @@ struct Params
     Debugging debugLevel = DEBUGGING_NONE;
     bool shaderPrint = false;  // disables some validation features
     bool logResourcesCreations = false;
+    bool sampleRateShading = true;
 };
 }  // namespace featureconfig

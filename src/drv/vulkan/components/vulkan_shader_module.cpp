@@ -181,8 +181,9 @@ uint32_t VulkanShader::createGraphicalPipeline(const GraphicalPipelineCreateInfo
     multisampleInfo.pNext = nullptr;
     multisampleInfo.flags = 0;
     multisampleInfo.rasterizationSamples = static_cast<VkSampleCountFlagBits>(info.sampleCount);
-    multisampleInfo.sampleShadingEnable = VK_FALSE;  //TODO sample shading
-    multisampleInfo.minSampleShading = 1.0f;
+    multisampleInfo.sampleShadingEnable =
+      featureconfig::params.sampleRateShading ? VK_TRUE : VK_FALSE;
+    multisampleInfo.minSampleShading = 0.5f;
     // drv::drv_assert(info.sampleCount == drv::SampleCount::SAMPLE_COUNT_1, "Implement pSampleMask");
     multisampleInfo.pSampleMask = nullptr;             // TODO sample mask
     multisampleInfo.alphaToCoverageEnable = VK_FALSE;  // TODO alpha coverage
