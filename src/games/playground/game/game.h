@@ -18,9 +18,9 @@
 
 struct GameOptions final : public IAutoSerializable<GameOptions>
 {
-    REFLECTABLE((int)mandelBrotLevel, (float)fov)
+    REFLECTABLE((int)mandelBrotLevel, (float)fov, (float)gamma)
 
-    GameOptions() : mandelBrotLevel(1), fov(45) {}
+    GameOptions() : mandelBrotLevel(1), fov(45), gamma(1) {}
 };
 
 class Game final : public Game3D
