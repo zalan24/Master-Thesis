@@ -26,8 +26,21 @@ stages {
 
 ps {
     void main() {
+        float sunSizeCos = 0.01;
+
         vec3 view = getViewVec();
+        float cosFromSun = dot(-view, PushConstants.sunDir);
+
         vec3 light = PushConstants.ambientLight * 2;
+
+        if (cosFromSun > 1-sunSizeCos) {
+            // looking at the sun
+            light += PushConstants.sunLight;
+        }
+        if (cosFromSun > 0) {
+            light += PushConstants.sunLight * cosFromSun * 0.1;
+        }
+
         // light += ;
         outColor = lightToColor(light);
     }
