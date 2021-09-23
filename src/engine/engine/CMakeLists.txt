@@ -29,4 +29,5 @@ target_link_libraries(EngineLib PUBLIC
     PerfMetrics
     ImGuiLib
     EngineRenderPass
+    bullet3_external
 )
