@@ -438,7 +438,7 @@ void Game::createSwapchainResources(const drv::Swapchain& swapchain) {
 void Game::recordMenuOptionsUI(FrameId) {
     if (ImGui::BeginMenu("Camera")) {
         ImGui::DragFloat("Fov", &gameOptions.fov, 0.1f, 10, 80, "%.1f deg");
-        ImGui::DragFloat("Gamma", &gameOptions.gamma, 0.01f, 0.01, 10, "%.8f");
+        ImGui::DragFloat("Gamma", &gameOptions.gamma, 0.01f, 0.01f, 10, "%.8f");
         ImGui::EndMenu();
     }
     if (ImGui::BeginMenu("Mandelbrot level")) {
