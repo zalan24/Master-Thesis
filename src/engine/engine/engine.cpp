@@ -440,24 +440,26 @@ void Engine::esCamera(EntityManager*, Engine* engine, FrameGraph::NodeHandle* ha
 
     if (std::abs(cameraControls.rotation.x) > 0) {
         entity->rotation =
-          glm::rotate(entity->rotation, cameraControls.rotation.x, glm::vec3(0, 1, 0));
+          glm::angleAxis(cameraControls.rotation.x, glm::vec3(0, 1, 0)) * entity->rotation;
     }
     if (std::abs(cameraControls.rotation.y) > 0) {
         const double upMinAngle = 0.1;
-        double currentAngle = glm::pitch(entity->rotation) + M_PI / 2;
-        double angle = cameraControls.rotation.y;
+        double angle = double(cameraControls.rotation.y);
+        glm::vec3 dir = entity->rotation * glm::vec3(0, 0, 1);
+        double currentAngle = acos(double(dir.y));
+        // double currentAngle = glm::pitch(entity->rotation) + M_PI / 2;
         if (angle < 0 && currentAngle + angle < upMinAngle)
             angle = upMinAngle - currentAngle;
         else if (angle > 0 && currentAngle + angle > M_PI - upMinAngle)
             angle = M_PI - upMinAngle - currentAngle;
-        glm::quat rot = glm::angleAxis(static_cast<float>(angle), glm::vec3(1, 0, 0));
-        entity->rotation = entity->rotation * rot;
+        glm::quat rot =
+          glm::angleAxis(static_cast<float>(angle), glm::normalize(glm::vec3(dir.z, 0, -dir.x)));
+        entity->rotation = rot * entity->rotation;
     }
 
     entity->position += entity->rotation * cameraControls.translation;
 
     drv::Extent2D extent = engine->window->getResolution();
-    // entity->extra["ratio"] = ;
     RendererData& renderData =
       engine->perFrameTempInfo[handle->getFrameId() % engine->perFrameTempInfo.size()].renderData;
     renderData.latencyFlash = std::chrono::duration_cast<std::chrono::milliseconds>(
