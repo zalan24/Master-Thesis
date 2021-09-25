@@ -1,4 +1,5 @@
 # add_subdirectory(controller)
+add_subdirectory(physics)
 add_subdirectory(engine)
 # add_subdirectory(data)
 add_subdirectory(io)

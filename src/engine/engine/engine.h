@@ -33,6 +33,7 @@
 #include <inputmanager.h>
 #include <serializable.h>
 
+#include <physics.h>
 #include <renderpass.h>
 #include <runtimestats.h>
 #include <shaderbin.h>
@@ -516,6 +517,7 @@ class Engine
     FrameGraph frameGraph;
     RuntimeStats runtimeStats;
     EntityManager entityManager;
+    Physics physics;
     std::unique_ptr<ImGuiIniter> imGuiIniter;
     EngineOptions engineOptions;
 
