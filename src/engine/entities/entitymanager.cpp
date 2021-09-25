@@ -239,7 +239,7 @@ Entity::EntityId EntityManager::addEntity(Entity&& entity) {
         else
             throw std::runtime_error("Unknown shape: " + entity.modelName);
         entity.rigidBody = physics->addRigidBody(physicsShape, entity.mass, entity.scale,
-                                                 entity.position, entity.rotation);
+                                                 entity.position, entity.rotation, entity.velocity);
     }
     entities.push_back(std::move(entity));
     return ret;
@@ -374,3 +374,10 @@ Entity::EntityId EntityManager::getByName(const std::string& name) const {
             return Entity::EntityId(id);
     return Entity::INVALID_ENTITY;
 }
+
+// void EntityManager::setVelocity(Entity::EntityId entityId, const glm::vec3& velocity) {
+
+// }
+// glm::vec3 EntityManager::getVelocity(Entity::EntityId entityId) {
+
+// }

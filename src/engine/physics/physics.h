@@ -34,7 +34,7 @@ class Physics
     };
 
     RigidBodyPtr addRigidBody(Shape shape, float mass, const glm::vec3& size, const glm::vec3& pos,
-                              const glm::quat& rotation);
+                              const glm::quat& rotation, const glm::vec3& initialVelocity);
     void removeRigidBody(RigidBodyPtr bodyPtr);
 
     void stepSimulation(float deltaTimeS, int maxSubSteps, float fixedTimeStepS);
@@ -43,6 +43,7 @@ class Physics
     {
         glm::vec3 position;
         glm::quat rotation;
+        glm::vec3 velocity;
     };
 
     RigidBodyState getRigidBodyState(RigidBodyPtr bodyPtr) const;
@@ -53,22 +54,6 @@ class Physics
     std::unique_ptr<btCollisionDispatcher> dispatcher;
     std::unique_ptr<btSequentialImpulseConstraintSolver> solver;
     std::unique_ptr<btDiscreteDynamicsWorld> world;
-
-    struct SizeData
-    {
-        glm::vec3 size;
-        SizeData(const glm::vec3& _size) : size(_size) {}
-        bool operator<(const SizeData& s) const {
-            if (size.x != s.size.x)
-                return size.x < s.size.x;
-            if (size.y != s.size.y)
-                return size.y < s.size.y;
-            return size.z < s.size.z;
-        }
-    };
-
-    std::map<SizeData, std::unique_ptr<btSphereShape>> sphereShapes;
-    std::map<SizeData, std::unique_ptr<btBoxShape>> boxShapes;
 
     mutable std::mutex mutex;
 };

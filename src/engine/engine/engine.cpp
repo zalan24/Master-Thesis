@@ -493,6 +493,7 @@ void Engine::esPhysics(EntityManager* entityManager, Engine* engine, FrameGraph:
       engine->physics.getRigidBodyState(static_cast<RigidBodyPtr>(entity->rigidBody));
     entity->position = state.position;
     entity->rotation = state.rotation;
+    entity->velocity = state.velocity;
 
     if (entity->position.y < -1)
         entityManager->removeEntity(id);

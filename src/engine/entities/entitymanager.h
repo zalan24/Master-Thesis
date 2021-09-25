@@ -112,6 +112,9 @@ class EntityManager final : public ISerializable
 
     void clearEntities();
 
+    void setVelocity(Entity::EntityId entityId, const glm::vec3& velocity);
+    glm::vec3 getVelocity(Entity::EntityId entityId);
+
     // void prepareTexture(uint32_t textureId, drv::DrvCmdBufferRecorder* recorder);
     // drv::ImagePtr getTexture(uint32_t textureId) const;
 

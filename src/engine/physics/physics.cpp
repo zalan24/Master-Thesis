@@ -16,30 +16,14 @@ Physics::~Physics() {
 }
 
 RigidBodyPtr Physics::addRigidBody(Shape _shape, float _mass, const glm::vec3& _size,
-                                   const glm::vec3& _pos, const glm::quat& _rotation) {
+                                   const glm::vec3& _pos, const glm::quat& _rotation,
+                                   const glm::vec3& _initialVelocity) {
     // new btStaticPlaneShape();
-    SizeData sizeCode = SizeData(_size);
     btCollisionShape* shape = nullptr;
-    if (_shape == SPHERE) {
-        if (auto itr = sphereShapes.find(sizeCode); itr != sphereShapes.end())
-            shape = itr->second.get();
-        else {
-            std::unique_ptr<btSphereShape> sphere =
-              std::make_unique<btSphereShape>(btScalar(_size.x));
-            shape = sphere.get();
-            sphereShapes.insert({sizeCode, std::move(sphere)});
-        }
-    }
-    else if (_shape == CUBE) {
-        if (auto itr = boxShapes.find(sizeCode); itr != boxShapes.end())
-            shape = itr->second.get();
-        else {
-            std::unique_ptr<btBoxShape> cube =
-              std::make_unique<btBoxShape>(btVector3(_size.x, _size.y, _size.z));
-            shape = cube.get();
-            boxShapes.insert({sizeCode, std::move(cube)});
-        }
-    }
+    if (_shape == SPHERE)
+        shape = new btSphereShape(btScalar(_size.x));
+    else if (_shape == CUBE)
+        shape = new btBoxShape(btVector3(_size.x, _size.y, _size.z));
     if (!shape)
         throw std::runtime_error("Shape could not be initialized");
 
@@ -66,6 +50,7 @@ RigidBodyPtr Physics::addRigidBody(Shape _shape, float _mass, const glm::vec3& _
         std::unique_lock<std::mutex> lock(mutex);
         world->addRigidBody(body);
     }
+    body->setLinearVelocity(btVector3(_initialVelocity.x, _initialVelocity.y, _initialVelocity.z));
     return body;
 }
 
@@ -75,6 +60,7 @@ void Physics::removeRigidBody(RigidBodyPtr bodyPtr) {
         world->removeRigidBody(bodyPtr);
     }
     delete bodyPtr->getMotionState();
+    delete bodyPtr->getCollisionShape();
     delete bodyPtr;
 }
 
@@ -88,8 +74,10 @@ Physics::RigidBodyState Physics::getRigidBodyState(RigidBodyPtr bodyPtr) const {
     btTransform tm = bodyPtr->getWorldTransform();
     btQuaternion rotation = tm.getRotation();
     btVector3 position = tm.getOrigin();
+    btVector3 velocity = bodyPtr->getLinearVelocity();
     RigidBodyState ret;
     ret.position = glm::vec3(position.getX(), position.getY(), position.getZ());
     ret.rotation = glm::quat(rotation.getX(), rotation.getY(), rotation.getZ(), rotation.getW());
+    ret.velocity = glm::vec3(velocity.getX(), velocity.getY(), velocity.getZ());
     return ret;
 }

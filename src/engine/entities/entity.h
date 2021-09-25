@@ -31,8 +31,8 @@ struct Entity final : public IAutoSerializable<Entity>
         hidden(false) {}
 
     REFLECTABLE((std::string)name, (std::string)templateName, (std::string)parentName,
-                (glm::vec3)albedo, (glm::vec3)position, (glm::vec3)scale, (glm::quat)rotation,
-                (std::string)modelName, (float)mass, (bool)hidden,
+                (glm::vec3)albedo, (glm::vec3)position, (glm::vec3)velocity, (glm::vec3)scale,
+                (glm::quat)rotation, (std::string)modelName, (float)mass, (bool)hidden,
                 (std::unordered_map<std::string, float>)extra)
 
     uint64_t engineBehaviour = 0;
@@ -48,6 +48,7 @@ struct Entity final : public IAutoSerializable<Entity>
         parentName(other.parentName),
         albedo(other.albedo),
         position(other.position),
+        velocity(other.velocity),
         scale(other.scale),
         rotation(other.rotation),
         modelName(other.modelName),
@@ -67,6 +68,7 @@ struct Entity final : public IAutoSerializable<Entity>
         parentName = other.parentName;
         albedo = other.albedo;
         position = other.position;
+        velocity = other.velocity;
         scale = other.scale;
         rotation = other.rotation;
         modelName = other.modelName;
@@ -86,6 +88,7 @@ struct Entity final : public IAutoSerializable<Entity>
         parentName(other.parentName),
         albedo(other.albedo),
         position(other.position),
+        velocity(other.velocity),
         scale(other.scale),
         rotation(other.rotation),
         modelName(std::move(other.modelName)),
@@ -108,6 +111,7 @@ struct Entity final : public IAutoSerializable<Entity>
         parentName = other.parentName;
         albedo = other.albedo;
         position = other.position;
+        velocity = other.velocity;
         scale = other.scale;
         rotation = other.rotation;
         modelName = std::move(other.modelName);
