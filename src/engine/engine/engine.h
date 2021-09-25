@@ -522,6 +522,7 @@ class Engine
     EngineOptions engineOptions;
 
     NodeId inputSampleNode;
+    NodeId physicsSimulationNode;
     NodeId mainRecordNode;
     NodeId acquireSwapchainNode;
     NodeId presentFrameNode;
@@ -586,6 +587,8 @@ class Engine
         bool captureHappening = false;
         RendererData renderData;
         CameraControlInfo cameraControls;
+        FrameGraph::Clock::time_point frameStartTime;
+        double deltaTimeSec = 0;
     };
     std::vector<PerFrameTempInfo> perFrameTempInfo;
 
@@ -624,6 +627,7 @@ class Engine
     void present(drv::SwapchainPtr swapchain, FrameId frame, uint32_t imageIndex,
                  uint32_t semaphoreIndex);
     bool sampleInput(FrameId frameId);
+    bool simulatePhysics(FrameId frameId);
     void drawUI(FrameId frameId);
     PerformanceCaptureData generatePerfCapture(
       FrameId lastReadyFrame, const FrameGraphSlops::ExtendedLatencyInfo& latency) const;

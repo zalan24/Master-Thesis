@@ -1,6 +1,7 @@
 #pragma once
 
 #include <memory>
+#include <mutex>
 #include <unordered_map>
 
 #define GLM_FORCE_RADIANS
@@ -37,6 +38,16 @@ class Physics
                               const glm::quat& rotation);
     void removeRigidBody(RigidBodyPtr bodyPtr);
 
+    void stepSimulation(float deltaTimeS, int maxSubSteps, float fixedTimeStepS);
+
+    struct RigidBodyState
+    {
+        glm::vec3 position;
+        glm::quat rotation;
+    };
+
+    RigidBodyState getRigidBodyState(RigidBodyPtr bodyPtr) const;
+
  private:
     std::unique_ptr<btBroadphaseInterface> broadphase;
     std::unique_ptr<btDefaultCollisionConfiguration> collisionConfiguration;
@@ -46,6 +57,8 @@ class Physics
 
     std::unordered_map<uint32_t, std::unique_ptr<btSphereShape>> sphereShapes;
     std::unordered_map<uint32_t, std::unique_ptr<btBoxShape>> boxShapes;
+
+    mutable std::mutex mutex;
 
     static uint32_t encode_size(float size) { return uint32_t(size * float(1 << 16)); }
 };

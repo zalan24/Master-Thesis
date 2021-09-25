@@ -326,6 +326,8 @@ Engine::Engine(int argc, char* argv[], const EngineConfig& cfg,
 
     inputSampleNode =
       frameGraph.addNode(FrameGraph::Node("sample_input", FrameGraph::SIMULATION_STAGE));
+    physicsSimulationNode =
+      frameGraph.addNode(FrameGraph::Node("physics_simulation", FrameGraph::SIMULATION_STAGE));
     presentFrameNode = frameGraph.addNode(
       FrameGraph::Node("presentFrame", FrameGraph::RECORD_STAGE | FrameGraph::EXECUTION_STAGE));
     mainRecordNode = frameGraph.addNode(
@@ -384,6 +386,10 @@ void Engine::buildFrameGraph() {
     entityManager.addEntityTemplate("camera",
                                     {physicsEntitySystem.flag | cameraEntitySystem.flag, 0});
 
+    frameGraph.addDependency(
+      physicsEntitySystem.nodeId,
+      FrameGraph::CpuDependency{physicsSimulationNode, FrameGraph::SIMULATION_STAGE,
+                                FrameGraph::SIMULATION_STAGE, 0});
     frameGraph.addDependency(
       renderEntitySystem.nodeId,
       FrameGraph::CpuDependency{cameraEntitySystem.nodeId, FrameGraph::SIMULATION_STAGE,
@@ -477,13 +483,17 @@ void Engine::esCamera(EntityManager*, Engine* engine, FrameGraph::NodeHandle* ha
     renderData.cursorPos = engine->mouseListener.getMousePos() * 2.f - 1.f;
 }
 
-void Engine::esPhysics(EntityManager*, Engine*, FrameGraph::NodeHandle*, FrameGraph::Stage,
-                       const EntityManager::EntitySystemParams& params, Entity* entity) {
-    // TODO bullet physics
-    // entity->position += entity->speed * params.dt;
+void Engine::esPhysics(EntityManager*, Engine* engine, FrameGraph::NodeHandle*, FrameGraph::Stage,
+                       const EntityManager::EntitySystemParams&, Entity* entity) {
+    if (!entity->rigidBody)
+        return;
+    Physics::RigidBodyState state =
+      engine->physics.getRigidBodyState(static_cast<RigidBodyPtr>(entity->rigidBody));
+    entity->position = state.position;
+    entity->rotation = state.rotation;
 }
 
-void Engine::esBeforeDraw(EntityManager* entityManager, Engine* engine, FrameGraph::NodeHandle*,
+void Engine::esBeforeDraw(EntityManager*, Engine* engine, FrameGraph::NodeHandle*,
                           FrameGraph::Stage, const EntityManager::EntitySystemParams&,
                           Entity* entity) {
     if (entity->hidden)
@@ -537,6 +547,18 @@ Engine::~Engine() {
     if (inFreeCam)
         inputManager.unregisterListener(freecamListener.get());
     LOG_ENGINE("Engine closed");
+}
+
+bool Engine::simulatePhysics(FrameId frameId) {
+    FrameGraph::NodeHandle physicsHandle =
+      frameGraph.acquireNode(physicsSimulationNode, FrameGraph::SIMULATION_STAGE, frameId);
+    if (!physicsHandle)
+        return false;
+    const auto& frameInfo = perFrameTempInfo[frameId % perFrameTempInfo.size()];
+    if (frameId > 0) {
+        physics.stepSimulation(float(frameInfo.deltaTimeSec), 20, 0.008f);
+    }
+    return true;
 }
 
 bool Engine::sampleInput(FrameId frameId) {
@@ -690,11 +712,22 @@ void Engine::simulationLoop() {
                                      FrameGraph::SIMULATION_STAGE, simulationFrame);
             startNode) {
             garbageSystem.startGarbage(simulationFrame);
-            perFrameTempInfo[simulationFrame % perFrameTempInfo.size()] = {};
+            const auto& prevInfo = perFrameTempInfo[(simulationFrame + perFrameTempInfo.size() - 1)
+                                                    % perFrameTempInfo.size()];
+            auto& info = perFrameTempInfo[simulationFrame % perFrameTempInfo.size()] = {};
+            info.frameStartTime = FrameGraph::Clock::now();
+            info.deltaTimeSec = double(std::chrono::duration_cast<std::chrono::microseconds>(
+                                         info.frameStartTime - prevInfo.frameStartTime)
+                                         .count())
+                                / 1000000.0;
         }
         else
             break;
         runtimeStats.incrementFrame();
+        if (!simulatePhysics(simulationFrame)) {
+            assert(frameGraph.isStopped());
+            break;
+        }
         if (!sampleInput(simulationFrame)) {
             assert(frameGraph.isStopped());
             break;

@@ -63,12 +63,34 @@ RigidBodyPtr Physics::addRigidBody(Shape _shape, float _mass, float _size, const
     // can limit movement on axises
     body->setLinearFactor(btVector3(1, 1, 1));
 
-    world->addRigidBody(body);
+    {
+        std::unique_lock<std::mutex> lock(mutex);
+        world->addRigidBody(body);
+    }
     return body;
 }
 
 void Physics::removeRigidBody(RigidBodyPtr bodyPtr) {
-    world->removeRigidBody(bodyPtr);
+    {
+        std::unique_lock<std::mutex> lock(mutex);
+        world->removeRigidBody(bodyPtr);
+    }
     delete bodyPtr->getMotionState();
     delete bodyPtr;
+}
+
+void Physics::stepSimulation(float deltaTimeS, int maxSubSteps, float fixedTimeStepS) {
+    std::unique_lock<std::mutex> lock(mutex);
+    world->stepSimulation(deltaTimeS, maxSubSteps, fixedTimeStepS);
+}
+
+Physics::RigidBodyState Physics::getRigidBodyState(RigidBodyPtr bodyPtr) const {
+    std::unique_lock<std::mutex> lock(mutex);
+    btTransform tm = bodyPtr->getWorldTransform();
+    btQuaternion rotation = tm.getRotation();
+    btVector3 position = tm.getOrigin();
+    RigidBodyState ret;
+    ret.position = glm::vec3(position.getX(), position.getY(), position.getZ());
+    ret.rotation = glm::quat(rotation.getX(), rotation.getY(), rotation.getZ(), rotation.getW());
+    return ret;
 }
