@@ -1410,7 +1410,9 @@ void FrameGraph::Node::registerDeviceTiming(FrameId frameId, const DeviceTiming&
 void FrameGraph::initFrame(FrameId frameId) {
     for (auto& itr : nodes)
         itr.initFrame(frameId);
-    executionPackagesTiming[frameId % TIMING_HISTORY_SIZE].packages.clear();
+    auto& entry = executionPackagesTiming[frameId % TIMING_HISTORY_SIZE];
+    entry.packages.clear();
+    entry.minDelay = 0;
 }
 
 void FrameGraph::Node::initFrame(FrameId frameId) {

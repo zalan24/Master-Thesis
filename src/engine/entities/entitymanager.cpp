@@ -18,7 +18,7 @@ namespace fs = std::filesystem;
 
 EntityManager::EntityManager(drv::PhysicalDevicePtr _physicalDevice, drv::LogicalDevicePtr _device,
                              FrameGraph* _frameGraph, Physics* _physics,
-                             const std::string& textureFolder)
+                             const std::string& /*textureFolder*/)
   : physicalDevice(_physicalDevice), device(_device), frameGraph(_frameGraph), physics(_physics) {
     // std::vector<drv::ImageSet::ImageInfo> imageInfos;
     // std::vector<drv::ImageSet::ImageInfo> imageStagerInfos;
@@ -230,12 +230,10 @@ Entity::EntityId EntityManager::addEntity(Entity&& entity) {
     }
     std::unique_lock<std::shared_mutex> lock(entitiesMutex);
     Entity::EntityId ret = Entity::EntityId(entities.size());
-    if (entity.modelName != "") {
+    if (entity.mass >= 0) {
         Physics::Shape physicsShape;
         if (entity.modelName == "box")
             physicsShape = Physics::CUBE;
-        else if (entity.modelName == "plane")
-            physicsShape = Physics::QUAD;
         else if (entity.modelName == "sphere")
             physicsShape = Physics::SPHERE;
         else
@@ -304,8 +302,9 @@ void EntityManager::node_loop(EntityManager* entityManager, Engine* engine, Fram
                 if (params.dt > 0.5f)
                     params.dt = 0.016f;
                 prevTime[stageId] = currTime;
-                entityManager->performES(*info, [&](Entity* entity) {
-                    info->entitySystemCb(entityManager, engine, &nodeHandle, stage, params, entity);
+                entityManager->performES(*info, [&](Entity::EntityId id, Entity* entity) {
+                    info->entitySystemCb(entityManager, engine, &nodeHandle, stage, params, entity,
+                                         id);
                 });
             }
             else

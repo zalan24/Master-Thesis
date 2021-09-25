@@ -24,14 +24,14 @@ struct Entity final : public IAutoSerializable<Entity>
         parentName(""),
         albedo(glm::vec3(1, 1, 1)),
         position(glm::vec3(0, 0, 0)),
-        scale(1),
+        scale(glm::vec3(1, 1, 1)),
         rotation(),
         modelName(""),
         mass(0),
         hidden(false) {}
 
     REFLECTABLE((std::string)name, (std::string)templateName, (std::string)parentName,
-                (glm::vec3)albedo, (glm::vec3)position, (float)scale, (glm::quat)rotation,
+                (glm::vec3)albedo, (glm::vec3)position, (glm::vec3)scale, (glm::quat)rotation,
                 (std::string)modelName, (float)mass, (bool)hidden,
                 (std::unordered_map<std::string, float>)extra)
 

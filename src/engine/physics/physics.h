@@ -1,8 +1,8 @@
 #pragma once
 
+#include <map>
 #include <memory>
 #include <mutex>
-#include <unordered_map>
 
 #define GLM_FORCE_RADIANS
 #define GLM_LEFT_HAND
@@ -30,11 +30,10 @@ class Physics
     enum Shape
     {
         SPHERE,
-        CUBE,
-        QUAD
+        CUBE
     };
 
-    RigidBodyPtr addRigidBody(Shape shape, float mass, float size, const glm::vec3& pos,
+    RigidBodyPtr addRigidBody(Shape shape, float mass, const glm::vec3& size, const glm::vec3& pos,
                               const glm::quat& rotation);
     void removeRigidBody(RigidBodyPtr bodyPtr);
 
@@ -55,10 +54,21 @@ class Physics
     std::unique_ptr<btSequentialImpulseConstraintSolver> solver;
     std::unique_ptr<btDiscreteDynamicsWorld> world;
 
-    std::unordered_map<uint32_t, std::unique_ptr<btSphereShape>> sphereShapes;
-    std::unordered_map<uint32_t, std::unique_ptr<btBoxShape>> boxShapes;
+    struct SizeData
+    {
+        glm::vec3 size;
+        SizeData(const glm::vec3& _size) : size(_size) {}
+        bool operator<(const SizeData& s) const {
+            if (size.x != s.size.x)
+                return size.x < s.size.x;
+            if (size.y != s.size.y)
+                return size.y < s.size.y;
+            return size.z < s.size.z;
+        }
+    };
+
+    std::map<SizeData, std::unique_ptr<btSphereShape>> sphereShapes;
+    std::map<SizeData, std::unique_ptr<btBoxShape>> boxShapes;
 
     mutable std::mutex mutex;
-
-    static uint32_t encode_size(float size) { return uint32_t(size * float(1 << 16)); }
 };

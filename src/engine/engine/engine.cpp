@@ -440,7 +440,8 @@ void Engine::initImGui(drv::RenderPass* imGuiRenderpass) {
 }
 
 void Engine::esCamera(EntityManager*, Engine* engine, FrameGraph::NodeHandle* handle,
-                      FrameGraph::Stage, const EntityManager::EntitySystemParams&, Entity* entity) {
+                      FrameGraph::Stage, const EntityManager::EntitySystemParams&, Entity* entity,
+                      Entity::EntityId) {
     CameraControlInfo cameraControls =
       engine->perFrameTempInfo[handle->getFrameId() % engine->perFrameTempInfo.size()]
         .cameraControls;
@@ -483,32 +484,36 @@ void Engine::esCamera(EntityManager*, Engine* engine, FrameGraph::NodeHandle* ha
     renderData.cursorPos = engine->mouseListener.getMousePos() * 2.f - 1.f;
 }
 
-void Engine::esPhysics(EntityManager*, Engine* engine, FrameGraph::NodeHandle*, FrameGraph::Stage,
-                       const EntityManager::EntitySystemParams&, Entity* entity) {
+void Engine::esPhysics(EntityManager* entityManager, Engine* engine, FrameGraph::NodeHandle*,
+                       FrameGraph::Stage, const EntityManager::EntitySystemParams&, Entity* entity,
+                       Entity::EntityId id) {
     if (!entity->rigidBody)
         return;
     Physics::RigidBodyState state =
       engine->physics.getRigidBodyState(static_cast<RigidBodyPtr>(entity->rigidBody));
     entity->position = state.position;
     entity->rotation = state.rotation;
+
+    if (entity->position.y < -1)
+        entityManager->removeEntity(id);
 }
 
 void Engine::esBeforeDraw(EntityManager*, Engine* engine, FrameGraph::NodeHandle*,
                           FrameGraph::Stage, const EntityManager::EntitySystemParams&,
-                          Entity* entity) {
+                          Entity* entity, Entity::EntityId) {
     if (entity->hidden)
         return;
 
     EntityRenderData data;
 
     glm::vec3 position = entity->position;
-    float scale = entity->scale;
+    glm::vec3 scale = entity->scale;
     glm::quat rotation = entity->rotation;
 
     data.albedo = entity->albedo;
     data.shape = entity->modelName;
     glm::mat4 translationTm = glm::translate(glm::mat4(1.f), position);
-    glm::mat4 scaleTm = glm::scale(glm::mat4(1.f), glm::vec3(scale, scale, scale));
+    glm::mat4 scaleTm = glm::scale(glm::mat4(1.f), scale);
     glm::mat4 rotTm = static_cast<glm::mat4>(rotation);
     data.modelTm = translationTm * rotTm * scaleTm;
 

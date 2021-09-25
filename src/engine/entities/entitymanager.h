@@ -30,7 +30,8 @@ class EntityManager final : public ISerializable
     };
 
     using EntitySystemCb = void (*)(EntityManager*, Engine*, FrameGraph::NodeHandle*,
-                                    FrameGraph::Stage, const EntitySystemParams&, Entity*);
+                                    FrameGraph::Stage, const EntitySystemParams&, Entity*,
+                                    Entity::EntityId);
     struct EntityTemplate
     {
         uint64_t engineBehaviour = 0;
@@ -83,18 +84,19 @@ class EntityManager final : public ISerializable
     template <typename F>
     void performES(const EntitySystemInfo& system, F&& functor) {
         std::shared_lock<std::shared_mutex> lock(entitiesMutex);
-        for (auto& entity : entities) {
+        for (Entity::EntityId id = 0; id < Entity::EntityId(entities.size()); ++id) {
+            auto& entity = entities[size_t(id)];
             if (!((system.type == system.ENGINE_SYSTEM ? entity.engineBehaviour
                                                        : entity.gameBehaviour)
                   & system.flag))
                 continue;
             if (system.constSystem) {
                 std::shared_lock<std::shared_mutex> entityLock(entity.mutex);
-                functor(&entity);
+                functor(id, &entity);
             }
             else {
                 std::unique_lock<std::shared_mutex> entityLock(entity.mutex);
-                functor(&entity);
+                functor(id, &entity);
             }
         }
     }

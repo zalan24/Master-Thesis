@@ -1,6 +1,6 @@
 [
     {
-        "mass": 1.0,
+        "mass": -1.0,
         "name": "camera",
         "parentName": "",
         "position": [
@@ -13,7 +13,11 @@
             0.0,
             0.0
         ],
-        "scale": 1,
+        "scale": [
+            1.0,
+            1.0,
+            1.0
+        ],
         "rotation": [
             0.0,
             0.0,
@@ -26,7 +30,7 @@
         "extra": {}
     },
     {
-        "mass": 1.0,
+        "mass": 0.0,
         "name": "ground",
         "parentName": "",
         "albedo": [
@@ -36,10 +40,14 @@
         ],
         "position": [
             0.0,
-            0.0,
+            -0.05,
             0.0
         ],
-        "scale": 10,
+        "scale": [
+            10.0,
+            0.1,
+            10.0
+        ],
         "rotation": [
             0.0,
             0.0,
@@ -47,7 +55,7 @@
             1.0
         ],
         "templateName": "dynobj",
-        "modelName": "plane",
+        "modelName": "box",
         "hidden": false,
         "extra": {}
     },
@@ -61,11 +69,15 @@
             0.9
         ],
         "position": [
-            0.0,
+            -1.0,
             2.0,
-            -1.0
+            0.0
         ],
-        "scale": 1,
+        "scale": [
+            1.0,
+            1.0,
+            1.0
+        ],
         "rotation": [
             0.0,
             0.0,
@@ -87,11 +99,45 @@
             0.1
         ],
         "position": [
-            0.0,
+            1.0,
             2.0,
+            0.0
+        ],
+        "scale": [
+            1.0,
+            1.0,
             1.0
         ],
-        "scale": 1,
+        "rotation": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+        ],
+        "templateName": "dynobj",
+        "modelName": "box",
+        "hidden": false,
+        "extra": {}
+    },
+    {
+        "mass": 1.0,
+        "name": "testBox2",
+        "parentName": "",
+        "albedo": [
+            0.5,
+            0.5,
+            0.5
+        ],
+        "position": [
+            1.0,
+            5.0,
+            0.0
+        ],
+        "scale": [
+            1.0,
+            1.0,
+            1.0
+        ],
         "rotation": [
             0.0,
             0.0,

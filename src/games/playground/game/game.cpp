@@ -156,7 +156,7 @@ void Game::recordCmdBufferBackground(const RenderInfo& info, const AcquiredImage
 
 void Game::recordCmdBufferContent(const RenderInfo& info, const AcquiredImageData& swapchainData,
                                   EngineCmdBufferRecorder* recorder, EngineRenderPass& pass,
-                                  FrameId frameId) {
+                                  FrameId) {
     pass.beginSubpass(contentSubpass);
 
     uint32_t planeResolution = 2;
@@ -211,9 +211,9 @@ void Game::recordCmdBufferContent(const RenderInfo& info, const AcquiredImageDat
     }
 }
 
-void Game::recordCmdBufferForeground(const RenderInfo& info, const AcquiredImageData& swapchainData,
-                                     EngineCmdBufferRecorder* recorder, EngineRenderPass& pass,
-                                     FrameId frameId) {
+void Game::recordCmdBufferForeground(const RenderInfo& , const AcquiredImageData& ,
+                                     EngineCmdBufferRecorder* , EngineRenderPass& pass,
+                                     FrameId ) {
     pass.beginSubpass(foregroundSubpass);
 }
 

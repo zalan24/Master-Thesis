@@ -15,19 +15,17 @@ Physics::Physics()
 Physics::~Physics() {
 }
 
-RigidBodyPtr Physics::addRigidBody(Shape _shape, float _mass, float _size, const glm::vec3& _pos,
-                                   const glm::quat& _rotation) {
+RigidBodyPtr Physics::addRigidBody(Shape _shape, float _mass, const glm::vec3& _size,
+                                   const glm::vec3& _pos, const glm::quat& _rotation) {
     // new btStaticPlaneShape();
-    if (_shape == QUAD)
-        return nullptr;  // TODO
-    uint32_t sizeCode = encode_size(_size);
+    SizeData sizeCode = SizeData(_size);
     btCollisionShape* shape = nullptr;
     if (_shape == SPHERE) {
         if (auto itr = sphereShapes.find(sizeCode); itr != sphereShapes.end())
             shape = itr->second.get();
         else {
             std::unique_ptr<btSphereShape> sphere =
-              std::make_unique<btSphereShape>(btScalar(_size));
+              std::make_unique<btSphereShape>(btScalar(_size.x));
             shape = sphere.get();
             sphereShapes.insert({sizeCode, std::move(sphere)});
         }
@@ -37,7 +35,7 @@ RigidBodyPtr Physics::addRigidBody(Shape _shape, float _mass, float _size, const
             shape = itr->second.get();
         else {
             std::unique_ptr<btBoxShape> cube =
-              std::make_unique<btBoxShape>(btVector3(_size, _size, _size));
+              std::make_unique<btBoxShape>(btVector3(_size.x, _size.y, _size.z));
             shape = cube.get();
             boxShapes.insert({sizeCode, std::move(cube)});
         }
@@ -53,8 +51,9 @@ RigidBodyPtr Physics::addRigidBody(Shape _shape, float _mass, float _size, const
     shape->calculateLocalInertia(bodyMass, bodyInertia);
     btRigidBody::btRigidBodyConstructionInfo bodyCI =
       btRigidBody::btRigidBodyConstructionInfo(bodyMass, motionState, shape, bodyInertia);
-    bodyCI.m_restitution = 1.0f;
+    bodyCI.m_restitution = 0.0f;
     bodyCI.m_friction = 0.5f;
+    // bodyCI.
 
     RigidBodyPtr body = new btRigidBody(bodyCI);
 

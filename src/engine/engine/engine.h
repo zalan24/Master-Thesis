@@ -643,11 +643,11 @@ class Engine
 
     static void esPhysics(EntityManager* entityManager, Engine* engine,
                           FrameGraph::NodeHandle* nodeHandle, FrameGraph::Stage stage,
-                          const EntityManager::EntitySystemParams& params, Entity* entity);
+                          const EntityManager::EntitySystemParams& params, Entity* entity, Entity::EntityId id);
     static void esBeforeDraw(EntityManager* entityManager, Engine* engine,
                              FrameGraph::NodeHandle* nodeHandle, FrameGraph::Stage stage,
-                             const EntityManager::EntitySystemParams& params, Entity* entity);
+                             const EntityManager::EntitySystemParams& params, Entity* entity, Entity::EntityId id);
     static void esCamera(EntityManager* entityManager, Engine* engine,
                          FrameGraph::NodeHandle* nodeHandle, FrameGraph::Stage stage,
-                         const EntityManager::EntitySystemParams& params, Entity* entity);
+                         const EntityManager::EntitySystemParams& params, Entity* entity, Entity::EntityId id);
 };
