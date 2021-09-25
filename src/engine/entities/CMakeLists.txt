@@ -7,6 +7,9 @@ set_target_properties(  Entities
                         COMPILE_FLAGS ${TARGETCOMPILEFLAGS}
                         LINK_OPTIONS "${TARGET_LINK_FLAGS}")
 target_include_directories(Entities PUBLIC . ${CMAKE_CURRENT_BINARY_DIR})
+target_link_libraries(Entities PRIVATE
+    PhysicsLib
+)
 target_link_libraries(Entities PUBLIC
     EngineFramegraph
     glm_external

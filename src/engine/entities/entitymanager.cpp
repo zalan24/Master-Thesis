@@ -10,14 +10,16 @@
 
 #include <framegraph.h>
 #include <logger.h>
+#include <physics.h>
 
 #include "entity.h"
 
 namespace fs = std::filesystem;
 
 EntityManager::EntityManager(drv::PhysicalDevicePtr _physicalDevice, drv::LogicalDevicePtr _device,
-                             FrameGraph* _frameGraph, const std::string& textureFolder)
-  : physicalDevice(_physicalDevice), device(_device), frameGraph(_frameGraph) {
+                             FrameGraph* _frameGraph, Physics* _physics,
+                             const std::string& textureFolder)
+  : physicalDevice(_physicalDevice), device(_device), frameGraph(_frameGraph), physics(_physics) {
     // std::vector<drv::ImageSet::ImageInfo> imageInfos;
     // std::vector<drv::ImageSet::ImageInfo> imageStagerInfos;
     // std::vector<unsigned char*> imageData;
@@ -200,6 +202,8 @@ void EntityManager::clearEntities() {
 }
 
 Entity::EntityId EntityManager::addEntity(Entity&& entity) {
+    if (entity.templateName == "")
+        return Entity::INVALID_ENTITY;
     auto templateItr = esTemplates.find(entity.templateName);
     drv::drv_assert(templateItr != esTemplates.end(), "Unknown entity template");
     entity.gameBehaviour = templateItr->second.gameBehaviour;
@@ -226,8 +230,37 @@ Entity::EntityId EntityManager::addEntity(Entity&& entity) {
     }
     std::unique_lock<std::shared_mutex> lock(entitiesMutex);
     Entity::EntityId ret = Entity::EntityId(entities.size());
+    if (entity.modelName != "") {
+        Physics::Shape physicsShape;
+        if (entity.modelName == "box")
+            physicsShape = Physics::CUBE;
+        else if (entity.modelName == "plane")
+            physicsShape = Physics::QUAD;
+        else if (entity.modelName == "sphere")
+            physicsShape = Physics::SPHERE;
+        else
+            throw std::runtime_error("Unknown shape: " + entity.modelName);
+        entity.rigidBody = physics->addRigidBody(physicsShape, entity.mass, entity.scale,
+                                                 entity.position, entity.rotation);
+    }
     entities.push_back(std::move(entity));
     return ret;
+}
+
+void EntityManager::removeEntity(Entity::EntityId id) {
+    if (id == Entity::INVALID_ENTITY)
+        return;
+    std::shared_lock<std::shared_mutex> lock(entitiesMutex);
+    auto& entity = entities[size_t(id)];
+    if (entity.gameBehaviour == 0 && entity.engineBehaviour == 0)
+        return;
+    if (entity.rigidBody) {
+        physics->removeRigidBody(static_cast<RigidBodyPtr>(entity.rigidBody));
+        entity.rigidBody = nullptr;
+    }
+    entity.gameBehaviour = 0;
+    entity.engineBehaviour = 0;
+    entity.templateName = "";
 }
 
 EntityManager::EntitySystemInfo EntityManager::addEntitySystem(std::string name,
@@ -283,6 +316,8 @@ void EntityManager::node_loop(EntityManager* entityManager, Engine* engine, Fram
 }
 
 EntityManager::~EntityManager() {
+    for (Entity::EntityId i = 0; i < Entity::EntityId(entities.size()); ++i)
+        removeEntity(i);
     if (!esSystems.empty()) {
         for (auto& itr : esSystems)
             itr.thr.join();

@@ -516,8 +516,8 @@ class Engine
     drv::ResourceLocker resourceLocker;
     FrameGraph frameGraph;
     RuntimeStats runtimeStats;
-    EntityManager entityManager;
     Physics physics;
+    EntityManager entityManager;
     std::unique_ptr<ImGuiIniter> imGuiIniter;
     EngineOptions engineOptions;
 

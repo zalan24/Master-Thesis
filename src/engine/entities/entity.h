@@ -31,13 +31,15 @@ struct Entity final : public IAutoSerializable<Entity>
         hidden(false) {}
 
     REFLECTABLE((std::string)name, (std::string)templateName, (std::string)parentName,
-                (glm::vec3)albedo, (glm::vec3)position, (float)scale, (glm::quat)rotation, (std::string)modelName,
-                (float)mass, (bool)hidden, (std::unordered_map<std::string, float>)extra)
+                (glm::vec3)albedo, (glm::vec3)position, (float)scale, (glm::quat)rotation,
+                (std::string)modelName, (float)mass, (bool)hidden,
+                (std::unordered_map<std::string, float>)extra)
 
     uint64_t engineBehaviour = 0;
     uint64_t gameBehaviour = 0;
     // uint32_t textureId = 0;
     EntityId parent = INVALID_ENTITY;
+    void* rigidBody = nullptr;
     mutable std::shared_mutex mutex;
 
     Entity(const Entity& other)
@@ -55,7 +57,8 @@ struct Entity final : public IAutoSerializable<Entity>
         engineBehaviour(other.engineBehaviour),
         gameBehaviour(other.gameBehaviour),
         // textureId(other.textureId),
-        parent(other.parent) {}
+        parent(other.parent),
+        rigidBody(other.rigidBody) {}
     Entity& operator=(const Entity& other) {
         if (this == &other)
             return *this;
@@ -74,6 +77,7 @@ struct Entity final : public IAutoSerializable<Entity>
         gameBehaviour = other.gameBehaviour;
         // textureId = other.textureId;
         parent = other.parent;
+        rigidBody = other.rigidBody;
         return *this;
     }
     Entity(Entity&& other)
@@ -91,7 +95,8 @@ struct Entity final : public IAutoSerializable<Entity>
         engineBehaviour(other.engineBehaviour),
         gameBehaviour(other.gameBehaviour),
         // textureId(other.textureId),
-        parent(other.parent) {
+        parent(other.parent),
+        rigidBody(other.rigidBody) {
         other.engineBehaviour = 0;
         other.gameBehaviour = 0;
     }
@@ -113,6 +118,7 @@ struct Entity final : public IAutoSerializable<Entity>
         gameBehaviour = other.gameBehaviour;
         // textureId = other.textureId;
         parent = other.parent;
+        rigidBody = other.rigidBody;
         other.engineBehaviour = 0;
         other.gameBehaviour = 0;
         return *this;

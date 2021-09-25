@@ -10,19 +10,6 @@ target_include_directories(PhysicsLib PUBLIC . ${CMAKE_CURRENT_BINARY_DIR})
 target_link_libraries(PhysicsLib PRIVATE
     bullet3_external
 )
-# target_link_libraries(PhysicsLib PUBLIC
-#     InputLib
-#     EngineCmdBuffer
-#     EngineOneTimeCmdBuffer
-#     ShaderManager
-#     EngineFramegraph
-#     AnimationsEventPool
-#     RuntimeStats
-#     concurrent_queue_external
-#     loguru_external
-#     Entities
-#     TimestampPool
-#     PerfMetrics
-#     ImGuiLib
-#     EngineRenderPass
-# )
+target_link_libraries(PhysicsLib PUBLIC
+    glm_external
+)

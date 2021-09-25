@@ -17,6 +17,7 @@
 #include "entity.h"
 
 class Engine;
+class Physics;
 
 class EntityManager final : public ISerializable
 {
@@ -58,7 +59,7 @@ class EntityManager final : public ISerializable
     };
 
     EntityManager(drv::PhysicalDevicePtr physicalDevice, drv::LogicalDevicePtr device,
-                  FrameGraph* frameGraph, const std::string& textureFolder);
+                  FrameGraph* frameGraph, Physics* physics, const std::string& textureFolder);
     EntityManager(const EntityManager&) = delete;
     EntityManager& operator=(const EntityManager&) = delete;
 
@@ -119,6 +120,7 @@ class EntityManager final : public ISerializable
     drv::PhysicalDevicePtr physicalDevice;
     drv::LogicalDevicePtr device;
     FrameGraph* frameGraph;
+    Physics* physics;
 
     std::deque<Entity> entities;
 
