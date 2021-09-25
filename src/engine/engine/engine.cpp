@@ -379,15 +379,22 @@ void Engine::buildFrameGraph() {
 
     drv::drv_assert(renderEntitySystem.flag != 0, "Render entity system was not registered ");
     drv::drv_assert(physicsEntitySystem.flag != 0, "Physics entity system was not registered ");
+    drv::drv_assert(emitterEntitySystem.flag != 0, "Emitter entity system was not registered ");
     drv::drv_assert(cameraEntitySystem.flag != 0, "Camera flash entity system was not registered ");
 
     entityManager.addEntityTemplate("dynobj",
                                     {physicsEntitySystem.flag | renderEntitySystem.flag, 0});
     entityManager.addEntityTemplate("camera",
                                     {physicsEntitySystem.flag | cameraEntitySystem.flag, 0});
+    entityManager.addEntityTemplate("emitter",
+                                    {emitterEntitySystem.flag | physicsEntitySystem.flag, 0});
 
     frameGraph.addDependency(
       physicsEntitySystem.nodeId,
+      FrameGraph::CpuDependency{physicsSimulationNode, FrameGraph::SIMULATION_STAGE,
+                                FrameGraph::SIMULATION_STAGE, 0});
+    frameGraph.addDependency(
+      emitterEntitySystem.nodeId,
       FrameGraph::CpuDependency{physicsSimulationNode, FrameGraph::SIMULATION_STAGE,
                                 FrameGraph::SIMULATION_STAGE, 0});
     frameGraph.addDependency(
@@ -484,6 +491,73 @@ void Engine::esCamera(EntityManager*, Engine* engine, FrameGraph::NodeHandle* ha
     renderData.cursorPos = engine->mouseListener.getMousePos() * 2.f - 1.f;
 }
 
+void Engine::esEmitter(EntityManager* entityManager, Engine* engine, FrameGraph::NodeHandle*,
+                       FrameGraph::Stage, const EntityManager::EntitySystemParams& params,
+                       Entity* entity, Entity::EntityId) {
+    auto freqItr = entity->extra.find("freq");
+    drv::drv_assert(freqItr != entity->extra.end(), "Emitter entity needs freq component");
+    auto maxThetaItr = entity->extra.find("maxTheta");
+    drv::drv_assert(maxThetaItr != entity->extra.end(), "Emitter entity needs maxTheta component");
+    auto minSizeMulItr = entity->extra.find("minSizeMul");
+    drv::drv_assert(minSizeMulItr != entity->extra.end(),
+                    "Emitter entity needs minSizeMul component");
+    auto maxSizeMulItr = entity->extra.find("maxSizeMul");
+    drv::drv_assert(maxSizeMulItr != entity->extra.end(),
+                    "Emitter entity needs maxSizeMul component");
+    auto minSpeedItr = entity->extra.find("minSpeed");
+    drv::drv_assert(minSpeedItr != entity->extra.end(), "Emitter entity needs minSpeed component");
+    auto maxSpeedItr = entity->extra.find("maxSpeed");
+    drv::drv_assert(maxSpeedItr != entity->extra.end(), "Emitter entity needs maxSpeed component");
+    auto baseMassItr = entity->extra.find("baseMass");
+    drv::drv_assert(baseMassItr != entity->extra.end(), "Emitter entity needs baseMass component");
+    auto placeDistItr = entity->extra.find("placeDist");
+    drv::drv_assert(placeDistItr != entity->extra.end(),
+                    "Emitter entity needs placeDist component");
+    float& emitTimer = entity->extra["emitTimer"];
+    float& counter = entity->extra["emitCounter"];
+    if (emitTimer < 0)
+        emitTimer = 0;
+    emitTimer += params.dt;
+    float threshold = 1.0f / freqItr->second;
+    // this should avoid placing entities in the same position in case, they are emitted in the same frame
+    float timePassedSinceEmitted = 0;
+    while (threshold <= emitTimer) {
+        emitTimer -= threshold;
+
+        if (!entity->hidden) {
+            float phi = engine->genFloat01() * float(M_PI) * 2;
+            float theta = engine->genFloat01() * maxThetaItr->second;
+            glm::quat orientation = glm::quat(glm::vec3(phi, theta, 0));
+            orientation = entity->rotation * orientation;
+            glm::vec3 dir = orientation * glm::vec3(0, 0, 1);
+            float velocity = lerp(minSpeedItr->second, maxSpeedItr->second, engine->genFloat01());
+            float scale = lerp(minSizeMulItr->second, maxSizeMulItr->second, engine->genFloat01());
+
+            Entity ent;
+            ent.name = entity->name + "_emitted_" + std::to_string(counter);
+            ent.templateName = "dynobj";
+            ent.parentName = "";
+            ent.albedo = entity->albedo;
+            ent.velocity = entity->velocity + dir * velocity;
+            ent.position =
+              entity->position + dir * placeDistItr->second + ent.velocity * timePassedSinceEmitted;
+            ent.scale = entity->scale * scale;
+            ent.rotation = orientation;
+            ent.modelName = entity->modelName;
+            ent.mass = baseMassItr->second * ent.scale.x * ent.scale.y * ent.scale.z;
+            ent.hidden = false;
+
+            TODO; // entities are lock by this ES -> deadlock
+            entityManager->addEntity(std::move(ent));
+        }
+        timePassedSinceEmitted += threshold;
+        counter += 1;
+    }
+    //    Entity entity;
+    //                            std::uniform_int_distribution<int> distribution(1,6);
+    // int dice_roll = distribution(generator);
+}
+
 void Engine::esPhysics(EntityManager* entityManager, Engine* engine, FrameGraph::NodeHandle*,
                        FrameGraph::Stage, const EntityManager::EntitySystemParams&, Entity* entity,
                        Entity::EntityId id) {
@@ -526,6 +600,9 @@ void Engine::initPhysicsEntitySystem() {
     physicsEntitySystem = entityManager.addEntitySystem(
       "entityPhysics", FrameGraph::SIMULATION_STAGE,
       {EntityManager::EntitySystemInfo::ENGINE_SYSTEM, false}, esPhysics);
+    emitterEntitySystem = entityManager.addEntitySystem(
+      "emitterES", FrameGraph::SIMULATION_STAGE,
+      {EntityManager::EntitySystemInfo::ENGINE_SYSTEM, false}, esEmitter);
 }
 
 void Engine::initRenderEntitySystem() {

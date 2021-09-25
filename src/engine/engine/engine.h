@@ -4,6 +4,7 @@
 #include <atomic>
 #include <condition_variable>
 #include <mutex>
+#include <random>
 #include <string>
 #include <thread>
 #include <vector>
@@ -474,6 +475,15 @@ class Engine
         IWindow* window;
     };
 
+    std::default_random_engine generator;
+    mutable std::mutex generatorMutex;
+
+    float genFloat01() {
+        std::uniform_real_distribution<float> dist01(0, 1);
+        std::unique_lock<std::mutex> randomLock(generatorMutex);
+        return dist01(generator);
+    }
+
     EngineConfig config;
     Resources resourceFolders;
     Args launchArgs;
@@ -528,6 +538,7 @@ class Engine
     NodeId presentFrameNode;
     QueueInfo queueInfos;
     EntityManager::EntitySystemInfo physicsEntitySystem;
+    EntityManager::EntitySystemInfo emitterEntitySystem;
     EntityManager::EntitySystemInfo renderEntitySystem;
     EntityManager::EntitySystemInfo cameraEntitySystem;
     drv::Clock::time_point nextTimelineCalibration;
@@ -643,11 +654,18 @@ class Engine
 
     static void esPhysics(EntityManager* entityManager, Engine* engine,
                           FrameGraph::NodeHandle* nodeHandle, FrameGraph::Stage stage,
-                          const EntityManager::EntitySystemParams& params, Entity* entity, Entity::EntityId id);
+                          const EntityManager::EntitySystemParams& params, Entity* entity,
+                          Entity::EntityId id);
     static void esBeforeDraw(EntityManager* entityManager, Engine* engine,
                              FrameGraph::NodeHandle* nodeHandle, FrameGraph::Stage stage,
-                             const EntityManager::EntitySystemParams& params, Entity* entity, Entity::EntityId id);
+                             const EntityManager::EntitySystemParams& params, Entity* entity,
+                             Entity::EntityId id);
     static void esCamera(EntityManager* entityManager, Engine* engine,
                          FrameGraph::NodeHandle* nodeHandle, FrameGraph::Stage stage,
-                         const EntityManager::EntitySystemParams& params, Entity* entity, Entity::EntityId id);
+                         const EntityManager::EntitySystemParams& params, Entity* entity,
+                         Entity::EntityId id);
+    static void esEmitter(EntityManager* entityManager, Engine* engine,
+                          FrameGraph::NodeHandle* nodeHandle, FrameGraph::Stage stage,
+                          const EntityManager::EntitySystemParams& params, Entity* entity,
+                          Entity::EntityId id);
 };

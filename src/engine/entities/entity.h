@@ -24,6 +24,7 @@ struct Entity final : public IAutoSerializable<Entity>
         parentName(""),
         albedo(glm::vec3(1, 1, 1)),
         position(glm::vec3(0, 0, 0)),
+        velocity(glm::vec3(0, 0, 0)),
         scale(glm::vec3(1, 1, 1)),
         rotation(),
         modelName(""),
