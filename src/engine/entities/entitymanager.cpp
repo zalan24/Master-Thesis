@@ -217,6 +217,17 @@ Entity::EntityId EntityManager::addEntity(Entity&& entity) {
         entity.parent = getByName(entity.parentName);
         drv::drv_assert(entity.parent != Entity::INVALID_ENTITY, "Could not find parent entity");
     }
+    if (entity.mass >= 0) {
+        Physics::Shape physicsShape;
+        if (entity.modelName == "box")
+            physicsShape = Physics::CUBE;
+        else if (entity.modelName == "sphere")
+            physicsShape = Physics::SPHERE;
+        else
+            throw std::runtime_error("Unknown shape: " + entity.modelName);
+        entity.rigidBody = physics->addRigidBody(physicsShape, entity.mass, entity.scale,
+                                                 entity.position, entity.rotation, entity.velocity);
+    }
     {
         std::shared_lock<std::shared_mutex> lock(entitiesMutex);
         for (Entity::EntityId i = 0; i < Entity::EntityId(entities.size()); ++i) {
@@ -230,17 +241,6 @@ Entity::EntityId EntityManager::addEntity(Entity&& entity) {
     }
     std::unique_lock<std::shared_mutex> lock(entitiesMutex);
     Entity::EntityId ret = Entity::EntityId(entities.size());
-    if (entity.mass >= 0) {
-        Physics::Shape physicsShape;
-        if (entity.modelName == "box")
-            physicsShape = Physics::CUBE;
-        else if (entity.modelName == "sphere")
-            physicsShape = Physics::SPHERE;
-        else
-            throw std::runtime_error("Unknown shape: " + entity.modelName);
-        entity.rigidBody = physics->addRigidBody(physicsShape, entity.mass, entity.scale,
-                                                 entity.position, entity.rotation, entity.velocity);
-    }
     entities.push_back(std::move(entity));
     return ret;
 }
