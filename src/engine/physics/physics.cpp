@@ -27,6 +27,7 @@ RigidBodyPtr Physics::addRigidBody(Shape _shape, float _mass, const glm::vec3& _
     if (!shape)
         throw std::runtime_error("Shape could not be initialized");
 
+    // left handed -> right handed
     btQuaternion rotation(_rotation.x, _rotation.y, _rotation.z, _rotation.w);
     btVector3 position = btVector3(_pos.x, _pos.y, _pos.z);
     btDefaultMotionState* motionState = new btDefaultMotionState(btTransform(rotation, position));
@@ -49,8 +50,9 @@ RigidBodyPtr Physics::addRigidBody(Shape _shape, float _mass, const glm::vec3& _
     {
         std::unique_lock<std::mutex> lock(mutex);
         world->addRigidBody(body);
+        body->setLinearVelocity(
+          btVector3(_initialVelocity.x, _initialVelocity.y, _initialVelocity.z));
     }
-    body->setLinearVelocity(btVector3(_initialVelocity.x, _initialVelocity.y, _initialVelocity.z));
     return body;
 }
 
@@ -72,12 +74,15 @@ void Physics::stepSimulation(float deltaTimeS, int maxSubSteps, float fixedTimeS
 Physics::RigidBodyState Physics::getRigidBodyState(RigidBodyPtr bodyPtr) const {
     std::unique_lock<std::mutex> lock(mutex);
     btTransform tm = bodyPtr->getWorldTransform();
-    btQuaternion rotation = tm.getRotation();
+    btQuaternion rotation = bodyPtr->getOrientation();
+    // btQuaternion rotation = tm.getRotation();
     btVector3 position = tm.getOrigin();
     btVector3 velocity = bodyPtr->getLinearVelocity();
     RigidBodyState ret;
     ret.position = glm::vec3(position.getX(), position.getY(), position.getZ());
-    ret.rotation = glm::quat(rotation.getX(), rotation.getY(), rotation.getZ(), rotation.getW());
+    // right handed -> left handed
+    // glm::quat(w, x, y, z), because why not
+    ret.rotation = glm::quat(rotation.getW(), rotation.getX(), rotation.getY(), rotation.getZ());
     ret.velocity = glm::vec3(velocity.getX(), velocity.getY(), velocity.getZ());
     return ret;
 }

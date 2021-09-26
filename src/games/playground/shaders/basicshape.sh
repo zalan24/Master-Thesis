@@ -87,6 +87,11 @@ vs {
         ret.tc = ret.pos.xz * 0.5 + 0.5;
         ret.normal = vec3(0, ret.pos.y, 0);
 
+        // if (sideId == 0)
+        //     ret.pos.xz *= 0.5;
+        // if (sideId == 3)
+        //     ret.pos.xz *= 0.9;
+
         if ((sideId / 2) == 0) {
             // Along X
             ret.pos = ret.pos.yzx;
