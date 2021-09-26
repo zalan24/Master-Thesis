@@ -1666,22 +1666,27 @@ void FrameGraphSlops::prepare(FrameId _frame) {
     FrameId lastFrame = _frame + paddingFrames;
 
     uint32_t slopNodeCount = uint32_t(fixedNodes.size());
+    uint32_t executionNodeCount = 0;
+    StackMemory::MemoryHandle<uint32_t> executionCounts(lastFrame - firstFrame + 1, TEMPMEM);
     for (FrameId frameId = firstFrame; frameId <= lastFrame; ++frameId) {
         const FrameGraph::FrameExecutionPackagesTimings& executionTimings =
           frameGraph->getExecutionTiming(frameId);
-        slopNodeCount += uint32_t(executionTimings.packages.size());
+        executionCounts[frameId - firstFrame] = uint32_t(executionTimings.packages.size());
+        executionNodeCount += uint32_t(executionTimings.packages.size());
     }
+    slopNodeCount += executionNodeCount;
+    uint32_t deviceNodeCount = 0;
     for (NodeId id = 0; id < frameGraph->getNodeCount(); ++id) {
         const FrameGraph::Node* node = frameGraph->getNode(id);
         if (!node->hasExecution())
             continue;
         for (FrameId frameId = firstFrame; frameId <= lastFrame; ++frameId)
-            slopNodeCount += node->getDeviceTimingCount(frameId);
+            deviceNodeCount += node->getDeviceTimingCount(frameId);
     }
+    slopNodeCount += deviceNodeCount;
     StackMemory::MemoryHandle<NodeOrderInfo> nodeOrder(slopNodeCount, TEMPMEM);
     uint32_t slopNodeInd = 0;
 
-    uint32_t nodeCount = 0;
     for (NodeId id = 0; id < frameGraph->getNodeCount(); ++id) {
         const FrameGraph::Node* node = frameGraph->getNode(id);
         for (uint32_t stageId = 0; stageId < FrameGraph::NUM_STAGES; ++stageId) {
@@ -1703,11 +1708,10 @@ void FrameGraphSlops::prepare(FrameId _frame) {
                 feedInfo(targetNode, infos);
                 nodeOrder[slopNodeInd++] = {infos.startTimeNs, targetNode,
                                             getThreadId(nodeTiming.threadId)};
-                nodeCount++;
             }
         }
     }
-    drv::drv_assert(nodeCount == fixedNodes.size(), "Fixed node counting failed");
+    drv::drv_assert(slopNodeInd == fixedNodes.size(), "Fixed node counting failed");
 
     for (FrameId frameId = firstFrame; frameId <= lastFrame; ++frameId) {
         const FrameGraph::FrameExecutionPackagesTimings& executionTimings =
@@ -1735,7 +1739,13 @@ void FrameGraphSlops::prepare(FrameId _frame) {
               sourceNode, targetNode,
               std::min(0ll, submissionTime - getNodeInfos(sourceNode).endTimeNs));
         }
+        drv::drv_assert(
+          executionCounts[frameId - firstFrame] == uint32_t(executionTimings.packages.size()),
+          "Execution timing count changed");
     }
+
+    drv::drv_assert(slopNodeInd == fixedNodes.size() + executionNodeCount,
+                    "Execution node counting failed");
 
     for (NodeId id = 0; id < frameGraph->getNodeCount(); ++id) {
         const FrameGraph::Node* node = frameGraph->getNode(id);
@@ -1765,6 +1775,8 @@ void FrameGraphSlops::prepare(FrameId _frame) {
             }
         }
     }
+    drv::drv_assert(slopNodeInd == fixedNodes.size() + executionNodeCount + deviceNodeCount,
+                    "Device node counting failed");
     drv::drv_assert(slopNodeInd <= slopNodeCount, "Slop node counting failed");
 
     std::sort(nodeOrder.get(), nodeOrder.get() + slopNodeInd);

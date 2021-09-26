@@ -59,6 +59,11 @@ bool EngineInputListener::processKeyboard(const Input::KeyboardEvent& event) {
             toggleFreeCame = true;
         return true;
     }
+    else if (event.key == KEY_F) {
+        if (event.type == event.PRESS)
+            physicsFrozen = !physicsFrozen;
+        return true;
+    }
     return false;
 }
 
@@ -448,7 +453,7 @@ void Engine::initImGui(drv::RenderPass* imGuiRenderpass) {
 
 void Engine::esCamera(EntityManager*, Engine* engine, FrameGraph::NodeHandle* handle,
                       FrameGraph::Stage, const EntityManager::EntitySystemParams&, Entity* entity,
-                      Entity::EntityId) {
+                      Entity::EntityId, FlexibleArray<Entity, 4>&) {
     CameraControlInfo cameraControls =
       engine->perFrameTempInfo[handle->getFrameId() % engine->perFrameTempInfo.size()]
         .cameraControls;
@@ -491,9 +496,9 @@ void Engine::esCamera(EntityManager*, Engine* engine, FrameGraph::NodeHandle* ha
     renderData.cursorPos = engine->mouseListener.getMousePos() * 2.f - 1.f;
 }
 
-void Engine::esEmitter(EntityManager* entityManager, Engine* engine, FrameGraph::NodeHandle*,
-                       FrameGraph::Stage, const EntityManager::EntitySystemParams& params,
-                       Entity* entity, Entity::EntityId) {
+void Engine::esEmitter(EntityManager*, Engine* engine, FrameGraph::NodeHandle*, FrameGraph::Stage,
+                       const EntityManager::EntitySystemParams& params, Entity* entity,
+                       Entity::EntityId, FlexibleArray<Entity, 4>& outEntities) {
     auto freqItr = entity->extra.find("freq");
     drv::drv_assert(freqItr != entity->extra.end(), "Emitter entity needs freq component");
     auto maxThetaItr = entity->extra.find("maxTheta");
@@ -527,7 +532,8 @@ void Engine::esEmitter(EntityManager* entityManager, Engine* engine, FrameGraph:
         if (!entity->hidden) {
             float phi = engine->genFloat01() * float(M_PI) * 2;
             float theta = engine->genFloat01() * maxThetaItr->second;
-            glm::quat orientation = glm::quat(glm::vec3(phi, theta, 0));
+            glm::quat orientation =
+              glm::quat(glm::vec3(0, 0, phi)) * glm::quat(glm::vec3(theta, 0, 0));
             orientation = entity->rotation * orientation;
             glm::vec3 dir = orientation * glm::vec3(0, 0, 1);
             float velocity = lerp(minSpeedItr->second, maxSpeedItr->second, engine->genFloat01());
@@ -544,11 +550,15 @@ void Engine::esEmitter(EntityManager* entityManager, Engine* engine, FrameGraph:
             ent.scale = entity->scale * scale;
             ent.rotation = orientation;
             ent.modelName = entity->modelName;
-            ent.mass = baseMassItr->second * ent.scale.x * ent.scale.y * ent.scale.z;
+            if (baseMassItr->second > 0) {
+                ent.mass = baseMassItr->second * ent.scale.x * ent.scale.y * ent.scale.z;
+                drv::drv_assert(ent.mass > 0);
+            }
+            else
+                ent.mass = baseMassItr->second;
             ent.hidden = false;
 
-            TODO; // entities are lock by this ES -> deadlock
-            entityManager->addEntity(std::move(ent));
+            outEntities.push_back(std::move(ent));
         }
         timePassedSinceEmitted += threshold;
         counter += 1;
@@ -560,7 +570,7 @@ void Engine::esEmitter(EntityManager* entityManager, Engine* engine, FrameGraph:
 
 void Engine::esPhysics(EntityManager* entityManager, Engine* engine, FrameGraph::NodeHandle*,
                        FrameGraph::Stage, const EntityManager::EntitySystemParams&, Entity* entity,
-                       Entity::EntityId id) {
+                       Entity::EntityId id, FlexibleArray<Entity, 4>&) {
     if (!entity->rigidBody)
         return;
     Physics::RigidBodyState state =
@@ -575,7 +585,7 @@ void Engine::esPhysics(EntityManager* entityManager, Engine* engine, FrameGraph:
 
 void Engine::esBeforeDraw(EntityManager*, Engine* engine, FrameGraph::NodeHandle*,
                           FrameGraph::Stage, const EntityManager::EntitySystemParams&,
-                          Entity* entity, Entity::EntityId) {
+                          Entity* entity, Entity::EntityId, FlexibleArray<Entity, 4>&) {
     if (entity->hidden)
         return;
 
@@ -639,7 +649,7 @@ bool Engine::simulatePhysics(FrameId frameId) {
         return false;
     const auto& frameInfo = perFrameTempInfo[frameId % perFrameTempInfo.size()];
     if (frameId > 0) {
-        physics.stepSimulation(float(frameInfo.deltaTimeSec), 20, 0.008f);
+        physics.stepSimulation(float(isFrozen() ? 0 : frameInfo.deltaTimeSec), 20, 0.008f);
     }
     return true;
 }
@@ -815,6 +825,7 @@ void Engine::simulationLoop() {
             assert(frameGraph.isStopped());
             break;
         }
+        entityManager.setFrozen(isFrozen());
         if (mouseListener.popNeedPerfCapture()) {
             createPerformanceCapture(simulationFrame);
         }
@@ -1161,6 +1172,7 @@ bool Engine::execute(ExecutionPackage&& package) {
     bool recursiveExecution = false;
     drv::Clock::time_point startTime = drv::Clock::now();
     drv::CmdBufferId cmdBufferId = drv::CmdBufferId(-1);
+    bool needEndMarker = false;
     if (std::holds_alternative<ExecutionPackage::MessagePackage>(package.package)) {
         ExecutionPackage::MessagePackage& message =
           std::get<ExecutionPackage::MessagePackage>(package.package);
@@ -1175,6 +1187,7 @@ bool Engine::execute(ExecutionPackage&& package) {
                 FrameId frame = static_cast<FrameId>(message.value2);
                 frameGraph.getNode(nodeId)->registerExecutionFinish(frame);
                 frameGraph.executionFinished(nodeId, frame);
+                needEndMarker = true;
             } break;
             case ExecutionPackage::Message::FRAME_SUBMITTED: {
                 FrameId frame = static_cast<FrameId>(message.value1);
@@ -1378,7 +1391,7 @@ bool Engine::execute(ExecutionPackage&& package) {
                 return false;
         }
     }
-    if (!recursiveExecution)
+    if (!recursiveExecution && !needEndMarker)
         frameGraph.feedExecutionTiming(package.nodeId, package.frame, package.creationTime,
                                        startTime, drv::Clock::now(), cmdBufferId);
     return true;

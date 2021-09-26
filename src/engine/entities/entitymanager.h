@@ -13,6 +13,7 @@
 #include <drv_wrappers.h>
 
 #include <framegraph.h>
+#include <flexiblearray.hpp>
 
 #include "entity.h"
 
@@ -29,9 +30,10 @@ class EntityManager final : public ISerializable
         FrameId frameId;
     };
 
+    // return the number of added entities
     using EntitySystemCb = void (*)(EntityManager*, Engine*, FrameGraph::NodeHandle*,
                                     FrameGraph::Stage, const EntitySystemParams&, Entity*,
-                                    Entity::EntityId);
+                                    Entity::EntityId, FlexibleArray<Entity, 4>& outEntities);
     struct EntityTemplate
     {
         uint64_t engineBehaviour = 0;
@@ -83,22 +85,27 @@ class EntityManager final : public ISerializable
 
     template <typename F>
     void performES(const EntitySystemInfo& system, F&& functor) {
-        std::shared_lock<std::shared_mutex> lock(entitiesMutex);
-        for (Entity::EntityId id = 0; id < Entity::EntityId(entities.size()); ++id) {
-            auto& entity = entities[size_t(id)];
-            if (!((system.type == system.ENGINE_SYSTEM ? entity.engineBehaviour
-                                                       : entity.gameBehaviour)
-                  & system.flag))
-                continue;
-            if (system.constSystem) {
-                std::shared_lock<std::shared_mutex> entityLock(entity.mutex);
-                functor(id, &entity);
-            }
-            else {
-                std::unique_lock<std::shared_mutex> entityLock(entity.mutex);
-                functor(id, &entity);
+        FlexibleArray<Entity, 4> outEntities;
+        {
+            std::shared_lock<std::shared_mutex> lock(entitiesMutex);
+            for (Entity::EntityId id = 0; id < Entity::EntityId(entities.size()); ++id) {
+                auto& entity = entities[size_t(id)];
+                if (!((system.type == system.ENGINE_SYSTEM ? entity.engineBehaviour
+                                                           : entity.gameBehaviour)
+                      & system.flag))
+                    continue;
+                if (system.constSystem) {
+                    std::shared_lock<std::shared_mutex> entityLock(entity.mutex);
+                    functor(id, &entity, outEntities);
+                }
+                else {
+                    std::unique_lock<std::shared_mutex> entityLock(entity.mutex);
+                    functor(id, &entity, outEntities);
+                }
             }
         }
+        for (uint32_t i = 0; i < outEntities.size(); ++i)
+            addEntity(std::move(outEntities[i]));
     }
 
     template <typename F>
@@ -118,6 +125,8 @@ class EntityManager final : public ISerializable
     // void prepareTexture(uint32_t textureId, drv::DrvCmdBufferRecorder* recorder);
     // drv::ImagePtr getTexture(uint32_t textureId) const;
 
+    void setFrozen(bool _frozen) { frozen = _frozen; }
+
  private:
     using Clock = std::chrono::high_resolution_clock;
     using Duration = std::chrono::duration<double>;
@@ -126,6 +135,7 @@ class EntityManager final : public ISerializable
     drv::LogicalDevicePtr device;
     FrameGraph* frameGraph;
     Physics* physics;
+    bool frozen = false;
 
     std::deque<Entity> entities;
 

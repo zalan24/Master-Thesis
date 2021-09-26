@@ -299,12 +299,15 @@ void EntityManager::node_loop(EntityManager* entityManager, Engine* engine, Fram
                 params.dt =
                   float(std::chrono::duration_cast<Duration>(currTime - prevTime[stageId]).count());
                 // Avoid huge jumps on freezes and debug breaks
+                if (entityManager->frozen)
+                    params.dt = 0;
                 if (params.dt > 0.5f)
                     params.dt = 0.016f;
                 prevTime[stageId] = currTime;
-                entityManager->performES(*info, [&](Entity::EntityId id, Entity* entity) {
+                entityManager->performES(*info, [&](Entity::EntityId id, Entity* entity,
+                                                    FlexibleArray<Entity, 4>& outEntities) {
                     info->entitySystemCb(entityManager, engine, &nodeHandle, stage, params, entity,
-                                         id);
+                                         id, outEntities);
                 });
             }
             else

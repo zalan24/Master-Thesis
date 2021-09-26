@@ -178,6 +178,7 @@ class EngineInputListener final : public InputListener
     glm::vec2 getMousePos() const { return {mX, mY}; }
     bool popNeedPerfCapture() { return std::exchange(perfCapture, false); }
     bool popToggleFreeCame() { return std::exchange(toggleFreeCame, false); }
+    bool isPhysicsFrozen() const { return physicsFrozen; }
 
  protected:
     bool processKeyboard(const Input::KeyboardEvent&) override;
@@ -189,6 +190,7 @@ class EngineInputListener final : public InputListener
     bool perfCapture = false;
     bool clicking = false;
     bool toggleFreeCame = false;
+    bool physicsFrozen = false;
     double mX;
     double mY;
 };
@@ -356,6 +358,8 @@ class Engine
     }
 
     uint32_t getMaxFramesInFlight() const;
+
+    bool isFrozen() const { return mouseListener.isPhysicsFrozen(); }
 
  protected:
     // Needs to be called from game implementation after finishing the framegraph
@@ -655,17 +659,17 @@ class Engine
     static void esPhysics(EntityManager* entityManager, Engine* engine,
                           FrameGraph::NodeHandle* nodeHandle, FrameGraph::Stage stage,
                           const EntityManager::EntitySystemParams& params, Entity* entity,
-                          Entity::EntityId id);
+                          Entity::EntityId id, FlexibleArray<Entity, 4>& outEntities);
     static void esBeforeDraw(EntityManager* entityManager, Engine* engine,
                              FrameGraph::NodeHandle* nodeHandle, FrameGraph::Stage stage,
                              const EntityManager::EntitySystemParams& params, Entity* entity,
-                             Entity::EntityId id);
+                             Entity::EntityId id, FlexibleArray<Entity, 4>& outEntities);
     static void esCamera(EntityManager* entityManager, Engine* engine,
                          FrameGraph::NodeHandle* nodeHandle, FrameGraph::Stage stage,
                          const EntityManager::EntitySystemParams& params, Entity* entity,
-                         Entity::EntityId id);
+                         Entity::EntityId id, FlexibleArray<Entity, 4>& outEntities);
     static void esEmitter(EntityManager* entityManager, Engine* engine,
                           FrameGraph::NodeHandle* nodeHandle, FrameGraph::Stage stage,
                           const EntityManager::EntitySystemParams& params, Entity* entity,
-                          Entity::EntityId id);
+                          Entity::EntityId id, FlexibleArray<Entity, 4>& outEntities);
 };
