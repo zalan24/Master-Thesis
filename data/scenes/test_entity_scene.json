@@ -35,6 +35,44 @@
         "extra": {}
     },
     {
+        "mass": -1.0,
+        "name": "benchmark",
+        "parentName": "",
+        "position": [
+            0.0,
+            0.0,
+            -10.0
+        ],
+        "velocity": [
+            0.0,
+            0.0,
+            0.0
+        ],
+        "albedo": [
+            0.0,
+            0.0,
+            0.0
+        ],
+        "scale": [
+            1.0,
+            1.0,
+            1.0
+        ],
+        "rotation": [
+            0.0,
+            0.0,
+            0.0,
+            1.0
+        ],
+        "templateName": "benchmark",
+        "modelName": "",
+        "hidden": false,
+        "extra": {
+            "prepareTime": 5,
+            "period": 10
+        }
+    },
+    {
         "mass": 0.0,
         "name": "ground",
         "parentName": "",

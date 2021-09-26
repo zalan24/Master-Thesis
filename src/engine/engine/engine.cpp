@@ -385,7 +385,8 @@ void Engine::buildFrameGraph() {
     drv::drv_assert(renderEntitySystem.flag != 0, "Render entity system was not registered ");
     drv::drv_assert(physicsEntitySystem.flag != 0, "Physics entity system was not registered ");
     drv::drv_assert(emitterEntitySystem.flag != 0, "Emitter entity system was not registered ");
-    drv::drv_assert(cameraEntitySystem.flag != 0, "Camera flash entity system was not registered ");
+    drv::drv_assert(cameraEntitySystem.flag != 0, "Camera entity system was not registered ");
+    drv::drv_assert(benchmarkEntitySystem.flag != 0, "Banchmark entity system was not registered ");
 
     entityManager.addEntityTemplate("dynobj",
                                     {physicsEntitySystem.flag | renderEntitySystem.flag, 0});
@@ -393,6 +394,7 @@ void Engine::buildFrameGraph() {
                                     {physicsEntitySystem.flag | cameraEntitySystem.flag, 0});
     entityManager.addEntityTemplate("emitter",
                                     {emitterEntitySystem.flag | physicsEntitySystem.flag, 0});
+    entityManager.addEntityTemplate("benchmark", {benchmarkEntitySystem.flag, 0});
 
     frameGraph.addDependency(
       physicsEntitySystem.nodeId,
@@ -406,6 +408,10 @@ void Engine::buildFrameGraph() {
       renderEntitySystem.nodeId,
       FrameGraph::CpuDependency{cameraEntitySystem.nodeId, FrameGraph::SIMULATION_STAGE,
                                 FrameGraph::BEFORE_DRAW_STAGE, 0});
+    frameGraph.addDependency(
+      cameraEntitySystem.nodeId,
+      FrameGraph::CpuDependency{benchmarkEntitySystem.nodeId, FrameGraph::SIMULATION_STAGE,
+                                FrameGraph::SIMULATION_STAGE, 0});
     frameGraph.addDependency(
       cameraEntitySystem.nodeId,
       FrameGraph::CpuDependency{inputSampleNode, FrameGraph::SIMULATION_STAGE,
@@ -451,33 +457,63 @@ void Engine::initImGui(drv::RenderPass* imGuiRenderpass) {
       config.imagesInSwapchain, swapchain.getImageCount());
 }
 
-void Engine::esCamera(EntityManager*, Engine* engine, FrameGraph::NodeHandle* handle,
+void Engine::esBenchmark(EntityManager* entityManager, Engine* engine,
+                         FrameGraph::NodeHandle* nodeHandle, FrameGraph::Stage stage,
+                         const EntityManager::EntitySystemParams& params, Entity* entity,
+                         Entity::EntityId id, FlexibleArray<Entity, 4>& outEntities) {
+    auto prepareTimeItr = entity->extra.find("prepareTime");
+    drv::drv_assert(prepareTimeItr != entity->extra.end(),
+                    "Benchmark entity needs prepareTime component");
+    auto periodItr = entity->extra.find("period");
+    drv::drv_assert(periodItr != entity->extra.end(), "Benchmark entity needs period component");
+    float& timer = entity->extra["time"];
+    timer += params.dt;
+    if (timer > prepareTimeItr->second) {
+        float p = (timer - prepareTimeItr->second) / periodItr->second;
+        p -= float(int(p));
+        float c = cosf(p * float(M_PI) * 2.f);
+        float s = sinf(p * float(M_PI) * 2.f);
+        entity->rotation = glm::quat(c, 0, -s, 0);
+        entity->position = glm::vec3(0, 3, 0) - entity->rotation * glm::vec3(0, 0, 10.f);
+    }
+}
+
+void Engine::esCamera(EntityManager* entityManger, Engine* engine, FrameGraph::NodeHandle* handle,
                       FrameGraph::Stage, const EntityManager::EntitySystemParams&, Entity* entity,
                       Entity::EntityId, FlexibleArray<Entity, 4>&) {
-    CameraControlInfo cameraControls =
-      engine->perFrameTempInfo[handle->getFrameId() % engine->perFrameTempInfo.size()]
-        .cameraControls;
-
-    if (std::abs(cameraControls.rotation.x) > 0) {
-        entity->rotation =
-          glm::angleAxis(cameraControls.rotation.x, glm::vec3(0, 1, 0)) * entity->rotation;
+    if (!engine->isInFreecam()) {
+        Entity::EntityId benchmarkId = entityManger->getByName("benchmark");
+        if (benchmarkId != Entity::INVALID_ENTITY) {
+            Entity* benchmark = entityManger->getById(benchmarkId);
+            entity->position = benchmark->position;
+            entity->rotation = benchmark->rotation;
+        }
     }
-    if (std::abs(cameraControls.rotation.y) > 0) {
-        const double upMinAngle = 0.1;
-        double angle = double(cameraControls.rotation.y);
-        glm::vec3 dir = entity->rotation * glm::vec3(0, 0, 1);
-        double currentAngle = acos(double(dir.y));
-        // double currentAngle = glm::pitch(entity->rotation) + M_PI / 2;
-        if (angle < 0 && currentAngle + angle < upMinAngle)
-            angle = upMinAngle - currentAngle;
-        else if (angle > 0 && currentAngle + angle > M_PI - upMinAngle)
-            angle = M_PI - upMinAngle - currentAngle;
-        glm::quat rot =
-          glm::angleAxis(static_cast<float>(angle), glm::normalize(glm::vec3(dir.z, 0, -dir.x)));
-        entity->rotation = rot * entity->rotation;
-    }
+    else {
+        CameraControlInfo cameraControls =
+          engine->perFrameTempInfo[handle->getFrameId() % engine->perFrameTempInfo.size()]
+            .cameraControls;
+        if (std::abs(cameraControls.rotation.x) > 0) {
+            entity->rotation =
+              glm::angleAxis(cameraControls.rotation.x, glm::vec3(0, 1, 0)) * entity->rotation;
+        }
+        if (std::abs(cameraControls.rotation.y) > 0) {
+            const double upMinAngle = 0.1;
+            double angle = double(cameraControls.rotation.y);
+            glm::vec3 dir = entity->rotation * glm::vec3(0, 0, 1);
+            double currentAngle = acos(double(dir.y));
+            // double currentAngle = glm::pitch(entity->rotation) + M_PI / 2;
+            if (angle < 0 && currentAngle + angle < upMinAngle)
+                angle = upMinAngle - currentAngle;
+            else if (angle > 0 && currentAngle + angle > M_PI - upMinAngle)
+                angle = M_PI - upMinAngle - currentAngle;
+            glm::quat rot = glm::angleAxis(static_cast<float>(angle),
+                                           glm::normalize(glm::vec3(dir.z, 0, -dir.x)));
+            entity->rotation = rot * entity->rotation;
+        }
 
-    entity->position += entity->rotation * cameraControls.translation;
+        entity->position += entity->rotation * cameraControls.translation;
+    }
 
     drv::Extent2D extent = engine->window->getResolution();
     RendererData& renderData =
@@ -613,6 +649,9 @@ void Engine::initPhysicsEntitySystem() {
     emitterEntitySystem = entityManager.addEntitySystem(
       "emitterES", FrameGraph::SIMULATION_STAGE,
       {EntityManager::EntitySystemInfo::ENGINE_SYSTEM, false}, esEmitter);
+    benchmarkEntitySystem = entityManager.addEntitySystem(
+      "benchmarkES", FrameGraph::SIMULATION_STAGE,
+      {EntityManager::EntitySystemInfo::ENGINE_SYSTEM, false}, esBenchmark);
 }
 
 void Engine::initRenderEntitySystem() {

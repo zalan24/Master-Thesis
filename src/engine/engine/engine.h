@@ -545,6 +545,7 @@ class Engine
     EntityManager::EntitySystemInfo emitterEntitySystem;
     EntityManager::EntitySystemInfo renderEntitySystem;
     EntityManager::EntitySystemInfo cameraEntitySystem;
+    EntityManager::EntitySystemInfo benchmarkEntitySystem;
     drv::Clock::time_point nextTimelineCalibration;
     drv::Clock::time_point lastLatencyFlashClick;
 
@@ -665,6 +666,10 @@ class Engine
                              const EntityManager::EntitySystemParams& params, Entity* entity,
                              Entity::EntityId id, FlexibleArray<Entity, 4>& outEntities);
     static void esCamera(EntityManager* entityManager, Engine* engine,
+                         FrameGraph::NodeHandle* nodeHandle, FrameGraph::Stage stage,
+                         const EntityManager::EntitySystemParams& params, Entity* entity,
+                         Entity::EntityId id, FlexibleArray<Entity, 4>& outEntities);
+    static void esBenchmark(EntityManager* entityManager, Engine* engine,
                          FrameGraph::NodeHandle* nodeHandle, FrameGraph::Stage stage,
                          const EntityManager::EntitySystemParams& params, Entity* entity,
                          Entity::EntityId id, FlexibleArray<Entity, 4>& outEntities);
