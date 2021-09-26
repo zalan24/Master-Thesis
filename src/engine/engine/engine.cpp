@@ -468,12 +468,12 @@ void Engine::esBenchmark(EntityManager* entityManager, Engine* engine,
     drv::drv_assert(periodItr != entity->extra.end(), "Benchmark entity needs period component");
     float& timer = entity->extra["time"];
     timer += params.dt;
-    if (timer > prepareTimeItr->second) {
-        float p = (timer - prepareTimeItr->second) / periodItr->second;
+    float p = (timer - prepareTimeItr->second) / periodItr->second;
+    engine->perFrameTempInfo[nodeHandle->getFrameId() % engine->perFrameTempInfo.size()]
+      .benchmarkPeriod = p;
+    if (p >= 0) {
         p -= float(int(p));
-        float c = cosf(p * float(M_PI) * 2.f);
-        float s = sinf(p * float(M_PI) * 2.f);
-        entity->rotation = glm::quat(c, 0, -s, 0);
+        entity->rotation = glm::quat(glm::vec3(0, p * float(M_PI) * 2.f, 0));
         entity->position = glm::vec3(0, 3, 0) - entity->rotation * glm::vec3(0, 0, 10.f);
     }
 }
@@ -678,6 +678,22 @@ Engine::~Engine() {
     inputManager.unregisterListener(imGuiInputListener.get());
     if (inFreeCam)
         inputManager.unregisterListener(freecamListener.get());
+    if (!benchmarkData.empty()) {
+        fs::path benchmarkFile{"benchmark.csv"};
+        std::ofstream benchmarkOut(benchmarkFile.string().c_str());
+        if (benchmarkOut) {
+            while (!benchmarkData.empty()) {
+                BenchmarkData entry = benchmarkData.front();
+                benchmarkData.pop_front();
+                benchmarkOut << std::setprecision(3) << entry.period << ", " << entry.fps << ", "
+                             << entry.latency << ", " << entry.latencySlop << ", " << entry.cpuWork
+                             << ", " << entry.execWork << ", " << entry.deviceWork << ", "
+                             << entry.workTime << ", " << entry.missRate << std::endl;
+            }
+        }
+        else
+            LOG_F(ERROR, "Could not export benchmark data");
+    }
     LOG_ENGINE("Engine closed");
 }
 
@@ -1606,6 +1622,22 @@ void Engine::readbackLoop(volatile bool* finished) {
                 }
             }
             skippedDelayed.feed(skippedOrDelayed);
+
+            BenchmarkData benchmarkEntry;
+            benchmarkEntry.period =
+              perFrameTempInfo[readbackFrame % perFrameTempInfo.size()].benchmarkPeriod;
+            if (benchmarkEntry.period >= 0) {
+                benchmarkEntry.fps = float(1000.0 / frameTimeMs);
+                benchmarkEntry.latency = float(latencyMs);
+                benchmarkEntry.latencySlop = float(slopMs);
+                benchmarkEntry.cpuWork = float(cpuWorkMs);
+                benchmarkEntry.execWork = float(execWorkMs);
+                benchmarkEntry.deviceWork = float(deviceWorkMs);
+                benchmarkEntry.workTime = float(workMs);
+                benchmarkEntry.missRate = float(skippedDelayed.getAvg());
+                benchmarkData.push_back(std::move(benchmarkEntry));
+            }
+
             fs::path capturesFolder = fs::path{"captures"};
             if (perFrameTempInfo[readbackFrame % perFrameTempInfo.size()].captureHappening)
                 captureLatencyInfo = latestLatencyInfo;

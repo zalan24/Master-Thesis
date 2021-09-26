@@ -3,6 +3,7 @@
 #include <array>
 #include <atomic>
 #include <condition_variable>
+#include <deque>
 #include <mutex>
 #include <random>
 #include <string>
@@ -605,8 +606,24 @@ class Engine
         CameraControlInfo cameraControls;
         FrameGraph::Clock::time_point frameStartTime;
         double deltaTimeSec = 0;
+        float benchmarkPeriod = 0;
     };
     std::vector<PerFrameTempInfo> perFrameTempInfo;
+
+    struct BenchmarkData
+    {
+        // time measured in ms
+        float period;
+        float fps;
+        float latency;
+        float latencySlop;
+        float cpuWork;
+        float execWork;
+        float deviceWork;
+        float workTime;
+        float missRate;  // smoothened
+    };
+    std::deque<BenchmarkData> benchmarkData;
 
     StatCalculator<32> fpsStats;
     StatCalculator<32> cpuWorkStats;
@@ -619,7 +636,7 @@ class Engine
     StatCalculator<32> execDelayStats;
     StatCalculator<32> deviceDelayStats;
     StatCalculator<32> workStats;
-    StatCalculator<32> skippedDelayed;
+    StatCalculator<8> skippedDelayed;
 
     struct SubmissionTimestampsInfo
     {
@@ -670,9 +687,9 @@ class Engine
                          const EntityManager::EntitySystemParams& params, Entity* entity,
                          Entity::EntityId id, FlexibleArray<Entity, 4>& outEntities);
     static void esBenchmark(EntityManager* entityManager, Engine* engine,
-                         FrameGraph::NodeHandle* nodeHandle, FrameGraph::Stage stage,
-                         const EntityManager::EntitySystemParams& params, Entity* entity,
-                         Entity::EntityId id, FlexibleArray<Entity, 4>& outEntities);
+                            FrameGraph::NodeHandle* nodeHandle, FrameGraph::Stage stage,
+                            const EntityManager::EntitySystemParams& params, Entity* entity,
+                            Entity::EntityId id, FlexibleArray<Entity, 4>& outEntities);
     static void esEmitter(EntityManager* entityManager, Engine* engine,
                           FrameGraph::NodeHandle* nodeHandle, FrameGraph::Stage stage,
                           const EntityManager::EntitySystemParams& params, Entity* entity,
