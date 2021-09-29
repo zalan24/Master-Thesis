@@ -679,16 +679,34 @@ Engine::~Engine() {
     if (inFreeCam)
         inputManager.unregisterListener(freecamListener.get());
     if (!benchmarkData.empty()) {
-        fs::path benchmarkFile{"benchmark.csv"};
+        fs::path benchmarkFolder{"benchmarks"};
+        if (!fs::exists(benchmarkFolder))
+            fs::create_directories(benchmarkFolder);
+        std::stringstream filename;
+        auto time = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
+        struct tm timeinfo;
+        localtime_s(&timeinfo, &time);
+        filename << "benchmark__" << std::put_time(&timeinfo, "%Y_%m_%d_%H_%M_%S") << ".csv";
+        fs::path benchmarkFile = benchmarkFolder / fs::path{"benchmark.csv"};
+        fs::path benchmarkFileCopy = benchmarkFolder / fs::path{filename.str()};
         std::ofstream benchmarkOut(benchmarkFile.string().c_str());
-        if (benchmarkOut) {
+        std::ofstream benchmarkOutCopy(benchmarkFileCopy.string().c_str());
+        if (benchmarkOut || benchmarkOutCopy) {
             while (!benchmarkData.empty()) {
                 BenchmarkData entry = benchmarkData.front();
                 benchmarkData.pop_front();
-                benchmarkOut << std::setprecision(3) << entry.period << ", " << entry.fps << ", "
-                             << entry.latency << ", " << entry.latencySlop << ", " << entry.cpuWork
-                             << ", " << entry.execWork << ", " << entry.deviceWork << ", "
-                             << entry.workTime << ", " << entry.missRate << std::endl;
+                if (benchmarkOut)
+                    benchmarkOut << std::setprecision(3) << entry.period << ", " << entry.fps
+                                 << ", " << entry.latency << ", " << entry.latencySlop << ", "
+                                 << entry.cpuWork << ", " << entry.execWork << ", "
+                                 << entry.deviceWork << ", " << entry.workTime << ", "
+                                 << entry.missRate << std::endl;
+                if (benchmarkOutCopy)
+                    benchmarkOutCopy << std::setprecision(3) << entry.period << ", " << entry.fps
+                                     << ", " << entry.latency << ", " << entry.latencySlop << ", "
+                                     << entry.cpuWork << ", " << entry.execWork << ", "
+                                     << entry.deviceWork << ", " << entry.workTime << ", "
+                                     << entry.missRate << std::endl;
             }
         }
         else
