@@ -21,6 +21,23 @@
             }
         },
         {
+            "label": "Gen plots",
+            "type": "shell",
+            "command": "python scripts/generate_plots.py build/benchmarks/benchmark.csv gen/benchmark",
+            "options": {
+                "cwd": "${workspaceRoot}"
+            },
+            "problemMatcher": [],
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "dedicated",
+                "showReuseMessage": true,
+                "clear": true
+            }
+        },
+        {
             "label": "Cmake configure",
             "type": "shell",
             "command": "cmake -S . -B build/",

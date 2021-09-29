@@ -696,17 +696,17 @@ Engine::~Engine() {
                 BenchmarkData entry = benchmarkData.front();
                 benchmarkData.pop_front();
                 if (benchmarkOut)
-                    benchmarkOut << std::setprecision(3) << entry.period << ", " << entry.fps
-                                 << ", " << entry.latency << ", " << entry.latencySlop << ", "
-                                 << entry.cpuWork << ", " << entry.execWork << ", "
-                                 << entry.deviceWork << ", " << entry.workTime << ", "
-                                 << entry.missRate << std::endl;
+                    benchmarkOut << std::setprecision(16) << entry.period << std::setprecision(3)
+                                 << ", " << entry.fps << ", " << entry.latency << ", "
+                                 << entry.latencySlop << ", " << entry.cpuWork << ", "
+                                 << entry.execWork << ", " << entry.deviceWork << ", "
+                                 << entry.workTime << ", " << entry.missRate << std::endl;
                 if (benchmarkOutCopy)
-                    benchmarkOutCopy << std::setprecision(3) << entry.period << ", " << entry.fps
-                                     << ", " << entry.latency << ", " << entry.latencySlop << ", "
-                                     << entry.cpuWork << ", " << entry.execWork << ", "
-                                     << entry.deviceWork << ", " << entry.workTime << ", "
-                                     << entry.missRate << std::endl;
+                    benchmarkOutCopy
+                      << std::setprecision(16) << entry.period << std::setprecision(3) << ", "
+                      << entry.fps << ", " << entry.latency << ", " << entry.latencySlop << ", "
+                      << entry.cpuWork << ", " << entry.execWork << ", " << entry.deviceWork << ", "
+                      << entry.workTime << ", " << entry.missRate << std::endl;
             }
         }
         else
