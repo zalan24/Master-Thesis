@@ -615,7 +615,7 @@ void Engine::esPhysics(EntityManager* entityManager, Engine* engine, FrameGraph:
     entity->rotation = state.rotation;
     entity->velocity = state.velocity;
 
-    if (entity->position.y < -1)
+    if (entity->position.y < -50)
         entityManager->removeEntity(id);
 }
 

@@ -94,7 +94,7 @@
         // "--api_dump",
         // "--renderdoc",
         "--scene",
-        "${workspaceFolder}/data/scenes/test_entity_scene.json",
+        "${workspaceFolder}/data/scenes/test_benchmark_scene.json",
         "--no_persistance",
         "--runtime_stats_persistance",
         "${workspaceFolder}/build/statistics/runtimeStats.bin",
