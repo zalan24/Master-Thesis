@@ -8,7 +8,7 @@ from numpy import genfromtxt
 import matplotlib.pyplot as plt
 from scipy import interpolate
 
-RESOLUTION = 100
+RESOLUTION = 128
 
 def process_benchmark(source, dir):
     dtype = [
@@ -30,15 +30,9 @@ def process_benchmark(source, dir):
     shutil.copyfile(source, os.path.join(dir, 'source.csv'))
 
     data = genfromtxt(source, delimiter=',', dtype=dtype)
-    # np.sort(data, order='period')
-
-    # print(f'len: {data.size}')
-    # len = 
-
-    subarray = data[0:10]
-    # print(subarray['fps'])
-    # for row in data:
-        # print(f'aoeu {row}')
+    downsamplePoints = np.linspace(0, 1, num=RESOLUTION)
+    result = np.zeros(RESOLUTION, dtype=dtype)
+    result['period'] = downsamplePoints
 
     ind = 0
     lastInd = 0
@@ -46,7 +40,6 @@ def process_benchmark(source, dir):
     numSamples = 0
     for row in data:
         p = row['period'] % 1
-        # print(f'aoeu {row} {p} {lastP}')
         if p < lastP:
             # New period begins
             numSamples = numSamples+1
@@ -55,37 +48,66 @@ def process_benchmark(source, dir):
 
             period = subarray['period'] % 1
             for entry in dtype[1:]:
-                interpValues = interpolate.interp1d(period, subarray[entry[0]])
-                # TODO linear space resolution...
-                # linearValues = interpValues(numpy.linspace(0, 1, num=))
-                # TODO can I just use t=period????
-                # TODO create a window
-                # resampled = scipy.signal.resample(linearValues, RESOLUTION, window=)
-                # TODO sum these
+                interpValues = interpolate.interp1d(period, subarray[entry[0]], assume_sorted=True, fill_value="extrapolate")
+                minRes = period.size*4
+                resMul = int(np.ceil(minRes/RESOLUTION))
+                res = resMul * RESOLUTION
+                samplePoints = np.linspace(0, 1, num=res)
+                linearValues = interpValues(samplePoints)
+                window = []
+                for i in range(resMul):
+                    window.append((i + 1) / resMul / resMul)
+                for i in range(1, resMul):
+                    window.append((resMul - i) / resMul / resMul)
+                convolved = np.convolve(linearValues, window, mode='valid')
+                lostItems = resMul-1
+                # print(samplePoints[lostItems:-lostItems])
+                blurredValues = interpolate.interp1d(samplePoints[lostItems:-lostItems], convolved, assume_sorted=True, fill_value="extrapolate")
+                downsampled = blurredValues(downsamplePoints)
+                result[entry[0]] = result[entry[0]] + downsampled
 
-            print(f'aoeu {row}')
+            # print(f'aoeu {row}')
         lastP = p
         ind = ind+1
 
-    # TODO calc avg from summed samples
-    # TODO plot stuff
+    if numSamples == 0:
+        return
 
-    # flinear = interpolate.interp1d(x, y)
-    # fcubic = interpolate.interp1d(x, y, kind='cubic')
+    for entry in dtype[1:]:
+        result[entry[0]] = result[entry[0]] / float(numSamples)
 
-    # xnew = np.arange(0.001, 20, 1)
-    # ylinear = flinear(xnew)
-    # ycubic = fcubic(xnew)
-    # plt.plot(x, y, 'X', xnew, ylinear, 'x', xnew, ycubic, 'o')
+    np.savetxt(os.path.join(dir, 'downsampled.csv'), result, fmt='%.18e', delimiter=',', newline='\n')
+
+    plt.title("Fps")
+    plt.ylabel("fps")
+    plt.xlabel("period")
+    plt.plot(result['period'], result['fps'], '-', label="fps")
+    plt.legend()
+    plt.savefig(os.path.join(dir, 'fps.png'))
+    plt.clf()
+
+    plt.title("Work times")
+    plt.ylabel("ms")
+    plt.xlabel("period")
+    plt.plot(result['period'], result['workTime'], '-', label="Async work")
+    plt.plot(result['period'], result['cpuWork'], '-', label="CPU work")
+    plt.plot(result['period'], result['execWork'], '-', label="Execution work")
+    plt.plot(result['period'], result['deviceWork'], '-', label="Device work")
+    plt.legend()
+    plt.savefig(os.path.join(dir, 'worktime.png'))
+    plt.clf()
+
+    plt.title("Latency")
+    plt.ylabel("ms")
+    plt.xlabel("period")
+    plt.plot(result['period'], result['latency'], '-', label="Latency")
+    plt.plot(result['period'], result['slop'], '-', label="Slop")
+    plt.legend()
+    plt.savefig(os.path.join(dir, 'latency.png'))
+    plt.clf()
+
     # plt.show()
 
-    # x = np.arange(1,11)
-    # y = 2 * x + 5
-    # plt.title("Matplotlib demo")
-    # plt.xlabel("x axis caption")
-    # plt.ylabel("y axis caption")
-    # plt.plot(x,y)
-    # plt.savefig(os.path.join(dir, 'test.png'))
 
 if __name__=="__main__":
     parser = argparse.ArgumentParser()
