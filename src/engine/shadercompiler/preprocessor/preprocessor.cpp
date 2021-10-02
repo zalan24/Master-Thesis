@@ -1255,29 +1255,27 @@ void Preprocessor::processSource(const fs::path& file, const fs::path& outdir,
             ShaderHeaderResInfo computeInfo;
 
             if (resUsage.graphicsResources) {
-                graphicsInfo.pushConstOffset = graphicsSize;
                 const PushConstObjData& pushConstData =
                   itr->second.exportedPacks.find(resUsage.graphicsResources)->second;
                 uint32_t size = pushConstData.effectiveSize;
                 uint32_t structAlignment = pushConstData.structAlignment;
+                if ((graphicsSize % structAlignment) != 0)
+                    graphicsSize += structAlignment - (graphicsSize % structAlignment);
+                graphicsInfo.pushConstOffset = graphicsSize;
                 graphicsInfo.pushConstSize = size;
                 graphicsSize += size;
-                if ((graphicsInfo.pushConstOffset % structAlignment) != 0)
-                    graphicsInfo.pushConstOffset +=
-                      structAlignment - (graphicsInfo.pushConstOffset % structAlignment);
             }
             objData.headerToConfigToResinfosGraphics[h].push_back(graphicsInfo);
             if (resUsage.computeResources) {
-                computeInfo.pushConstOffset = computeSize;
                 const PushConstObjData& pushConstData =
                   itr->second.exportedPacks.find(resUsage.computeResources)->second;
                 uint32_t size = pushConstData.effectiveSize;
                 uint32_t structAlignment = pushConstData.structAlignment;
+                if ((computeSize % structAlignment) != 0)
+                    computeSize += structAlignment - (computeSize % structAlignment);
+                computeInfo.pushConstOffset = computeSize;
                 computeInfo.pushConstSize = size;
                 computeSize += size;
-                if ((computeInfo.pushConstOffset % structAlignment) != 0)
-                    computeInfo.pushConstOffset +=
-                      structAlignment - (computeInfo.pushConstOffset % structAlignment);
             }
             objData.headerToConfigToResinfosCompute[h].push_back(computeInfo);
         }

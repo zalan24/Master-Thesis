@@ -15,13 +15,13 @@ stages {
     }
   }
   ps {
-    // use gamma;
+    use gamma;
   }
 }
 
 global {
   float getGamma() {
-    return 1;
+    return PushConstants.gamma;
   }
 
   vec3 linearToneMapping(vec3 color)

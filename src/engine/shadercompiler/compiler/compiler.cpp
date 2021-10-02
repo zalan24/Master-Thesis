@@ -360,7 +360,12 @@ bool Compiler::generateShaderCode(const ShaderObjectData& objData,
                                   const ShaderGenerationInput& genInput, uint32_t variantId,
                                   ShaderBin::Stage stage, std::ostream& out) const {
     generate_shader_code(out);
-    std::vector<PushConstEntry> pushConsts;
+    struct PushConstInfo
+    {
+        PushConstEntry entry;
+        uint32_t headerOffset;
+    };
+    std::vector<PushConstInfo> pushConsts;
 
     if (stage == ShaderBin::Stage::CS) {
         for (const auto& [header, infos] : objData.headerToConfigToResinfosCompute) {
@@ -374,8 +379,7 @@ bool Compiler::generateShaderCode(const ShaderObjectData& objData,
             if (structId == INVALID_STRUCT_ID)
                 continue;
             for (PushConstEntry pushConst : incData.structIdToGlslStructDesc[structId]) {
-                pushConst.localOffset += infos[configId].pushConstOffset;
-                pushConsts.push_back(pushConst);
+                pushConsts.push_back({pushConst, infos[configId].pushConstOffset});
             }
         }
     }
@@ -391,20 +395,21 @@ bool Compiler::generateShaderCode(const ShaderObjectData& objData,
             if (structId == INVALID_STRUCT_ID)
                 continue;
             for (PushConstEntry pushConst : incData.structIdToGlslStructDesc[structId]) {
-                pushConst.localOffset += infos[configId].pushConstOffset;
-                pushConsts.push_back(pushConst);
+                pushConsts.push_back({pushConst, infos[configId].pushConstOffset});
             }
         }
     }
     if (!pushConsts.empty()) {
         std::sort(pushConsts.begin(), pushConsts.end(),
-                  [](const PushConstEntry& lhs, const PushConstEntry& rhs) {
-                      return lhs.localOffset < rhs.localOffset;
+                  [](const PushConstInfo& lhs, const PushConstInfo& rhs) {
+                      return lhs.entry.localOffset + lhs.headerOffset
+                             < rhs.entry.localOffset + rhs.headerOffset;
                   });
         out << "layout(std430, push_constant) uniform pushConstants {\n";
         for (const auto& itr : pushConsts)
-            out << "    layout(offset=" << itr.localOffset << ") " << itr.type << " " << itr.name
-                << ";\n";
+            out << "    layout(offset=" << (itr.entry.localOffset + itr.headerOffset) << ") "
+                << itr.entry.type << " " << itr.entry.name << "; // (" << itr.headerOffset << "+"
+                << itr.entry.localOffset << ")\n";
         out << "} PushConstants;\n";
     }
 
