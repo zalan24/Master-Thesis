@@ -66,6 +66,40 @@ Get a triangle on screen:
                 ✔ Improve vsync lines @done (9/12/2021, 1:05:47 PM)
             ☐ Add all necessary information
 
+    ☐ Finish app for thesis requirements
+        ☐ Fix perf metrics
+        ☐ Fix push const problem
+        ☐ Fix imgui???
+        ☐ Background mandelbrot should use shader var instead of interval
+        ☐ Create manual workload for: before input, after input, execution (submission of main render data) & device (background mandelbrot)
+            ☐ Support avg & stdDiv options for these
+        ☐ Add mandelbrot to the random objects with shader var for quality
+        ☐ Make it look nicer
+        ☐ Add camera recorder & reply in benchmark
+
+    ☐ Benchmarking & tests
+        ☐ Laboratory tests
+            ☐ Measurements will need: all data from capture + LDAT
+            ☐ Measure in configs:
+                ☐ No stdDiv & heigh stdDiv
+                ☐ Cpu limited (before input) & cpu limited (after input) & exec limited & gpu limited & exec + gpu limited (both accumulate delay)
+                ☐ No latency reduction & normal latency reduction & fps limited & discretized low latency pool (used with no stdDiv) & high latency pool (that actually works with high stdDiv)
+        ☐ Clean test
+            ☐ Have one giant cube with expensive mandelbrot
+            ☐ rotate camera from not seeing cube to filling the screen with it
+            ☐ When object not/partly-visible, cpu>=gpu
+            ☐ Accelerate rotation throughout the benchmark period
+            ☐ Compare no reduction & fps limit & discretized
+        ☐ Chaos
+            ☐ Create a scene where gpu & cpu perf are very similar -> both cpu and gpu are saturated with work, with some variance
+            ☐ Have objects with cheap mandelbrot, that are not always visible
+            ☐ Use emitters
+            ☐ Move the camera randomly around as expected in an fps game
+            ☐ Set up latency reduction in the best way possible
+            ☐ Compare no reduction & fps limit & discretized
+        ☐ Take captures in every test config
+        ☐ generate plots in every benchmark config
+
 
     ☐ Document
         ☐ What is latency?
