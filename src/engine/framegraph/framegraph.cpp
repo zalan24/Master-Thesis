@@ -1700,14 +1700,15 @@ void FrameGraphSlops::prepare(FrameId _frame) {
                 FrameId frameId = _frame + frame - paddingFrames;
                 auto nodeTiming = node->getTiming(frameId, stage);
                 NodeInfos infos;
+                infos.frameId = frameId;
+                infos.threadId = getThreadId(nodeTiming.threadId);
                 infos.startTimeNs = (nodeTiming.start - origoTime).count();
                 infos.endTimeNs = (nodeTiming.finish - origoTime).count();
                 infos.slopNs = nodeTiming.recordedSlopsNs;
                 infos.latencySleepNs = nodeTiming.latencySleepNs;
                 infos.type = SlopGraph::CPU;
                 feedInfo(targetNode, infos);
-                nodeOrder[slopNodeInd++] = {infos.startTimeNs, targetNode,
-                                            getThreadId(nodeTiming.threadId)};
+                nodeOrder[slopNodeInd++] = {infos.startTimeNs, targetNode, infos.threadId};
             }
         }
     }
@@ -1728,13 +1729,15 @@ void FrameGraphSlops::prepare(FrameId _frame) {
             int64_t submissionTime =
               (executionTimings.packages[i].submissionTime - origoTime).count();
             NodeInfos infos;
+            infos.frameId = frameId;
+            infos.threadId = 0;
             infos.startTimeNs = (executionTimings.packages[i].executionTime - origoTime).count();
             infos.endTimeNs = (executionTimings.packages[i].endTime - origoTime).count();
             infos.slopNs = 0;
             infos.latencySleepNs = 0;
             infos.type = SlopGraph::EXEC;
             feedInfo(targetNode, infos);
-            nodeOrder[slopNodeInd++] = {infos.startTimeNs, targetNode, 0};
+            nodeOrder[slopNodeInd++] = {infos.startTimeNs, targetNode, infos.threadId};
             addDynamicDependency(
               sourceNode, targetNode,
               std::min(0ll, submissionTime - getNodeInfos(sourceNode).endTimeNs));
@@ -1760,6 +1763,8 @@ void FrameGraphSlops::prepare(FrameId _frame) {
                   addDeviceDynNode(id, i, frameId, sourceFixedNode, sourceNode);
                 getSubmissionData(sourceNode).deviceWorkNode = targetNode;
                 NodeInfos infos;
+                infos.frameId = frameId;
+                infos.threadId = getQueueId(timing.queueId);
                 infos.startTimeNs = (timing.start - origoTime).count();
                 infos.endTimeNs = (timing.finish - origoTime).count();
                 infos.slopNs = 0;
@@ -1768,8 +1773,7 @@ void FrameGraphSlops::prepare(FrameId _frame) {
                 if (getFixedNodeData(sourceFixedNode).frameGraphNode == presentFrameGraphNode)
                     infos.isDelayable = false;
                 feedInfo(targetNode, infos);
-                nodeOrder[slopNodeInd++] = {infos.startTimeNs, targetNode,
-                                            getQueueId(timing.queueId)};
+                nodeOrder[slopNodeInd++] = {infos.startTimeNs, targetNode, infos.threadId};
                 getSubmissionData(sourceNode).deviceNodeOffsetNs =
                   get_offset(getNodeInfos(sourceNode), infos);
             }
@@ -1908,27 +1912,28 @@ FrameGraphSlops::ExtendedLatencyInfo FrameGraphSlops::calculateSlop(FrameId fram
 
     info.latencyNs = ret.info.inputNodeInfo.latencyNs - ret.info.inputNodeInfo.sleepTimeNs;
     // info.latencyNs - info.totalSlopNs - ret.info.inputNodeInfo.sleepTimeNs;
-    info.workNs = ret.info.inputNodeInfo.workTimeNs - ret.info.inputNodeInfo.sleepTimeNs;
+    info.asyncWorkNs = ret.info.asyncWorkNs - ret.info.inputNodeInfo.sleepTimeNs;
+    info.workFromInputNs = ret.info.inputNodeInfo.workTimeNs - ret.info.inputNodeInfo.sleepTimeNs;
     info.perFrameSlopNs = info.totalSlopNs - (info.execDelayNs + info.deviceDelayNs);
     ret.frameLatencyInfo = slopHistory[frame % slopHistory.size()] = info;
     ret.finishTime = std::chrono::nanoseconds(getNodeInfos(presentNodeId).endTimeNs) + origoTime;
-    if (frame >= slopHistory.size()) {
-        ret.workAvg = slopHistory[0].workNs;
-        ret.workMin = slopHistory[0].workNs;
-        ret.workMax = slopHistory[0].workNs;
-        ret.workStdDiv = 0;
-        for (uint32_t i = 1; i < slopHistory.size(); ++i) {
-            ret.workAvg += slopHistory[i].workNs;
-            ret.workMax = std::max(ret.workMax, slopHistory[i].workNs);
-            ret.workMin = std::min(ret.workMin, slopHistory[i].workNs);
-        }
-        ret.workAvg /= int64_t(slopHistory.size());
-        for (uint32_t i = 0; i < slopHistory.size(); ++i) {
-            int64_t diff = ret.workAvg - slopHistory[i].workNs;
-            ret.workStdDiv += diff * diff;
-        }
-        ret.workStdDiv = int64_t(sqrt(ret.workStdDiv / int64_t(slopHistory.size())));
-    }
+    // if (frame >= slopHistory.size()) {
+    //     ret.workAvg = slopHistory[0].workNs;
+    //     ret.workMin = slopHistory[0].workNs;
+    //     ret.workMax = slopHistory[0].workNs;
+    //     ret.workStdDiv = 0;
+    //     for (uint32_t i = 1; i < slopHistory.size(); ++i) {
+    //         ret.workAvg += slopHistory[i].workNs;
+    //         ret.workMax = std::max(ret.workMax, slopHistory[i].workNs);
+    //         ret.workMin = std::min(ret.workMin, slopHistory[i].workNs);
+    //     }
+    //     ret.workAvg /= int64_t(slopHistory.size());
+    //     for (uint32_t i = 0; i < slopHistory.size(); ++i) {
+    //         int64_t diff = ret.workAvg - slopHistory[i].workNs;
+    //         ret.workStdDiv += diff * diff;
+    //     }
+    //     ret.workStdDiv = int64_t(sqrt(ret.workStdDiv / int64_t(slopHistory.size())));
+    // }
     presentNodeId = INVALID_SLOP_NODE;
     return ret;
 }

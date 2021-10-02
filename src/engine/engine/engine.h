@@ -627,6 +627,7 @@ class Engine
 
     StatCalculator<32> fpsStats;
     StatCalculator<32> cpuWorkStats;
+    StatCalculator<32> cpuOverlapStats;
     StatCalculator<32> execWorkStats;
     StatCalculator<32> deviceWorkStats;
     StatCalculator<32> latencyStats;

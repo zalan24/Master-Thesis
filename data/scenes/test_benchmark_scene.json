@@ -235,7 +235,7 @@
             "maxTheta": 0.207,
             "minSpeed": 10,
             "maxSpeed": 20,
-            "freq": 24,
+            "freq": 48,
             "placeDist": 0.5
         }
     }

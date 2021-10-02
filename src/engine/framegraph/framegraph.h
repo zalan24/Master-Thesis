@@ -118,15 +118,16 @@ class FrameGraphSlops final : public SlopGraph
         int64_t perFrameSlopNs;
         int64_t execDelayNs;
         int64_t deviceDelayNs;
-        int64_t workNs;
+        int64_t asyncWorkNs;
+        int64_t workFromInputNs;
     };
     struct ExtendedLatencyInfo
     {
         FrameId frame = INVALID_FRAME;
-        int64_t workAvg = 0;
-        int64_t workMin = 0;
-        int64_t workMax = 0;
-        int64_t workStdDiv = 0;
+        // int64_t workAvg = 0;
+        // int64_t workMin = 0;
+        // int64_t workMax = 0;
+        // int64_t workStdDiv = 0;
         LatencyInfo info;
         LatencyTimeInfo frameLatencyInfo;
         std::chrono::high_resolution_clock::time_point finishTime;

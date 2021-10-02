@@ -68,6 +68,11 @@ SlopGraph::LatencyInfo SlopGraph::calculateSlop(SlopNodeId sourceNode, SlopNodeI
 
     int64_t inf = 1000ll * 1000ll * 1000ll * 1000ll;  // 1000s
 
+    int64_t highestWorkTime = 0;
+    int64_t highestCpuWorkTime = 0;
+    int64_t highestExecWorkTime = 0;
+    int64_t highestDeviceWorkTime = 0;
+
     // Calculation of slops using dynamic programming
     for (uint32_t i = nodeCount; i > 0; --i) {
         SlopNodeId node = topologicalOrder[i - 1];
@@ -77,6 +82,7 @@ SlopGraph::LatencyInfo SlopGraph::calculateSlop(SlopNodeId sourceNode, SlopNodeI
         int64_t asIsMin = inf + nodeInfo.endTimeNs;
         int64_t noImplicitMin = inf + nodeInfo.endTimeNs;
         int64_t maxWorkTime = 0;
+        int64_t maxSpecializedWorkTime = 0;
         for (uint32_t j = 0; j < getChildCount(node); ++j) {
             ChildInfo child = getChild(node, j);
             NodeInfos childInfo = getNodeInfos(child.id);
@@ -94,7 +100,13 @@ SlopGraph::LatencyInfo SlopGraph::calculateSlop(SlopNodeId sourceNode, SlopNodeI
                             + nodeData[child.id].feedbackInfo.totalSlopNs - child.depOffset);
             asIsMin = std::min(asIsMin, childInfo.startTimeNs + childInfo.slopNs
                                           + childInfo.latencySleepNs - child.depOffset);
-            maxWorkTime = std::max(maxWorkTime, nodeData[child.id].feedbackInfo.workTimeNs);
+            if (nodeInfo.frameId == childInfo.frameId) {
+                maxWorkTime = std::max(maxWorkTime, nodeData[child.id].feedbackInfo.workTimeNs);
+                if (nodeInfo.type == childInfo.type)
+                    maxSpecializedWorkTime =
+                      std::max(maxSpecializedWorkTime,
+                               nodeData[child.id].feedbackInfo.specializedWorkTimeNs);
+            }
         }
         if (nodeInfo.isDelayable) {
             nodeData[node].feedbackInfo.directSlopNs = asIsMin - nodeInfo.endTimeNs;
@@ -107,55 +119,36 @@ SlopGraph::LatencyInfo SlopGraph::calculateSlop(SlopNodeId sourceNode, SlopNodeI
         nodeData[node].feedbackInfo.earliestFinishTimeNs = 0;
         nodeData[node].feedbackInfo.workTimeNs =
           maxWorkTime + (nodeInfo.endTimeNs - nodeInfo.startTimeNs);
-    }
-    // Calculation of fps limitations
-    int64_t minCpuStartNs = inf;
-    int64_t minExecStartNs = inf;
-    int64_t minDeviceStartNs = inf;
-    for (uint32_t i = 0; i < nodeCount; ++i) {
-        SlopNodeId node = topologicalOrder[i];
-        NodeInfos nodeInfo = getNodeInfos(node);
-        nodeData[node].feedbackInfo.earliestFinishTimeNs +=
-          nodeInfo.endTimeNs - nodeInfo.startTimeNs - nodeInfo.latencySleepNs;
-        switch (nodeInfo.type) {
-            case CPU:
-                ret.cpuWorkNs =
-                  std::max(nodeData[node].feedbackInfo.earliestFinishTimeNs, ret.cpuWorkNs);
-                minCpuStartNs =
-                  std::min(minCpuStartNs, nodeData[node].feedbackInfo.earliestFinishTimeNs
-                                            + nodeInfo.startTimeNs - nodeInfo.endTimeNs
-                                            + nodeInfo.latencySleepNs);
-                break;
-            case EXEC:
-                ret.execWorkNs =
-                  std::max(nodeData[node].feedbackInfo.earliestFinishTimeNs, ret.execWorkNs);
-                minExecStartNs =
-                  std::min(minExecStartNs, nodeData[node].feedbackInfo.earliestFinishTimeNs
-                                             + nodeInfo.startTimeNs - nodeInfo.endTimeNs
-                                             + nodeInfo.latencySleepNs);
-                break;
-            case DEVICE:
-                ret.deviceWorkNs =
-                  std::max(nodeData[node].feedbackInfo.earliestFinishTimeNs, ret.deviceWorkNs);
-                minDeviceStartNs =
-                  std::min(minDeviceStartNs, nodeData[node].feedbackInfo.earliestFinishTimeNs
-                                               + nodeInfo.startTimeNs - nodeInfo.endTimeNs
-                                               + nodeInfo.latencySleepNs);
-                break;
-        }
-        for (uint32_t j = 0; j < getChildCount(node); ++j) {
-            ChildInfo child = getChild(node, j);
-            int64_t currentLimit =
-              nodeData[node].feedbackInfo.earliestFinishTimeNs + child.depOffset;
-            nodeData[child.id].feedbackInfo.earliestFinishTimeNs =
-              std::max(nodeData[child.id].feedbackInfo.earliestFinishTimeNs, currentLimit);
+        nodeData[node].feedbackInfo.specializedWorkTimeNs =
+          maxSpecializedWorkTime + (nodeInfo.endTimeNs - nodeInfo.startTimeNs);
+        if (nodeInfo.frameId == targetNodeInfo.frameId) {
+            if (highestWorkTime < nodeData[node].feedbackInfo.workTimeNs)
+                highestWorkTime = nodeData[node].feedbackInfo.workTimeNs;
+            switch (nodeInfo.type) {
+                case CPU:
+                    if (highestCpuWorkTime < nodeData[node].feedbackInfo.specializedWorkTimeNs)
+                        highestCpuWorkTime = nodeData[node].feedbackInfo.specializedWorkTimeNs;
+                    break;
+                case EXEC:
+                    if (highestExecWorkTime < nodeData[node].feedbackInfo.specializedWorkTimeNs)
+                        highestExecWorkTime = nodeData[node].feedbackInfo.specializedWorkTimeNs;
+                    break;
+                case DEVICE:
+                    if (highestDeviceWorkTime < nodeData[node].feedbackInfo.specializedWorkTimeNs)
+                        highestDeviceWorkTime = nodeData[node].feedbackInfo.specializedWorkTimeNs;
+                    break;
+            }
         }
     }
     // ---
 
-    ret.cpuWorkNs -= minCpuStartNs;
-    ret.execWorkNs -= minExecStartNs;
-    ret.deviceWorkNs -= minDeviceStartNs;
+    ret.asyncWorkNs = highestWorkTime;
+    ret.cpuWorkNs = highestCpuWorkTime;
+    ret.maxCpuOverlapNs = ;
+    ret.execWorkNs = highestExecWorkTime;
+    ret.maxExecOverlapNs = ;
+    ret.deviceWorkNs = highestDeviceWorkTime;
+    ret.maxDeviceOverlapNs = ;
 
     if (feedbackNodes)
         for (uint32_t i = 0; i < nodeCount; ++i)

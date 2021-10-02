@@ -24,6 +24,8 @@ class SlopGraph
         int64_t latencySleepNs;  // within the node's work time
         bool isDelayable = true;
         NodeType type;
+        uint64_t frameId;
+        uint32_t threadId;
     };
 
     struct ChildInfo
@@ -48,7 +50,9 @@ class SlopGraph
         // if it's too high, it's recommended to separate the two nodes onto different threads or reorder them
         int64_t extraSlopWithoutImplicitChildNs = 0;
         int64_t sleepTimeNs = 0;
-        int64_t workTimeNs = 0;  // from here until target node
+        int64_t workTimeNs = 0;  // from here on
+        // from here on within the same stage (cpu, exec, device)
+        int64_t specializedWorkTimeNs = 0;
         int64_t earliestFinishTimeNs = 0;
     };
 
@@ -57,9 +61,13 @@ class SlopGraph
     struct LatencyInfo
     {
         FeedbackInfo inputNodeInfo;
+        int64_t asyncWorkNs = 0;
         int64_t cpuWorkNs = 0;
+        int64_t maxCpuOverlapNs = 0;
         int64_t execWorkNs = 0;
+        int64_t maxExecOverlapNs = 0;
         int64_t deviceWorkNs = 0;
+        int64_t maxDeviceOverlapNs = 0;
     };
 
     LatencyInfo calculateSlop(SlopNodeId sourceNode, SlopNodeId targetNode, bool feedbackNodes);

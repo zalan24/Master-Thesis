@@ -409,6 +409,10 @@ void Engine::buildFrameGraph() {
       FrameGraph::CpuDependency{cameraEntitySystem.nodeId, FrameGraph::SIMULATION_STAGE,
                                 FrameGraph::BEFORE_DRAW_STAGE, 0});
     frameGraph.addDependency(
+      renderEntitySystem.nodeId,
+      FrameGraph::CpuDependency{physicsSimulationNode, FrameGraph::SIMULATION_STAGE,
+                                FrameGraph::BEFORE_DRAW_STAGE, 0});
+    frameGraph.addDependency(
       cameraEntitySystem.nodeId,
       FrameGraph::CpuDependency{benchmarkEntitySystem.nodeId, FrameGraph::SIMULATION_STAGE,
                                 FrameGraph::SIMULATION_STAGE, 0});
@@ -1576,13 +1580,20 @@ void Engine::readbackLoop(volatile bool* finished) {
                                  / 1000000.0;
 
             fpsStats.feed(1000.0 / frameTimeMs);
-            double workMs = double(latestLatencyInfo.frameLatencyInfo.workNs) / 1000000.0;
+            double workMs = double(latestLatencyInfo.frameLatencyInfo.asyncWorkNs) / 1000000.0;
             double cpuWorkMs = double(latestLatencyInfo.info.cpuWorkNs) / 1000000.0;
+            double cpuOverlapMs = double(latestLatencyInfo.info.maxCpuOverlapNs) / 1000000.0;
             double execWorkMs = double(latestLatencyInfo.info.execWorkNs) / 1000000.0;
+            double execOverlapMs = double(latestLatencyInfo.info.maxExecOverlapNs) / 1000000.0;
             double deviceWorkMs = double(latestLatencyInfo.info.deviceWorkNs) / 1000000.0;
+            double deviceOverlapMs = double(latestLatencyInfo.info.maxDeviceOverlapNs) / 1000000.0;
             double latencyMs = double(latestLatencyInfo.info.inputNodeInfo.latencyNs) / 1000000.0;
             double slopMs = double(latestLatencyInfo.info.inputNodeInfo.totalSlopNs) / 1000000.0;
+            double cpuLimitMs = cpuWorkMs - cpuOverlapMs;
+            double execLimitMs = execWorkMs - execOverlapMs;
+            double deviceLimitMs = deviceWorkMs - deviceOverlapMs;
             cpuWorkStats.feed(cpuWorkMs);
+            cpuOverlapStats.feed(cpuOverlapMs);
             execWorkStats.feed(execWorkMs);
             deviceWorkStats.feed(deviceWorkMs);
             latencyStats.feed(latencyMs);
@@ -1595,17 +1606,17 @@ void Engine::readbackLoop(volatile bool* finished) {
                                   / 1000000.0);
             if (latestLatencyInfo.frame < frameGraph.getMaxFramesInFlight()) {
                 worTimeAvgMs = workMs;
-                refreshTimeCpuAvgMs = cpuWorkMs;
-                refreshTimeExecAvgMs = execWorkMs;
-                refreshTimeDeviceAvgMs = deviceWorkMs;
+                refreshTimeCpuAvgMs = cpuLimitMs;
+                refreshTimeExecAvgMs = execLimitMs;
+                refreshTimeDeviceAvgMs = deviceLimitMs;
             }
             else {
                 worTimeAvgMs = lerp(workMs, worTimeAvgMs, double(engineOptions.workTimeSmoothing));
                 refreshTimeCpuAvgMs =
-                  lerp(cpuWorkMs, refreshTimeCpuAvgMs, double(engineOptions.workTimeSmoothing));
+                  lerp(cpuLimitMs, refreshTimeCpuAvgMs, double(engineOptions.workTimeSmoothing));
                 refreshTimeExecAvgMs =
-                  lerp(execWorkMs, refreshTimeExecAvgMs, double(engineOptions.workTimeSmoothing));
-                refreshTimeDeviceAvgMs = lerp(deviceWorkMs, refreshTimeDeviceAvgMs,
+                  lerp(execLimitMs, refreshTimeExecAvgMs, double(engineOptions.workTimeSmoothing));
+                refreshTimeDeviceAvgMs = lerp(deviceLimitMs, refreshTimeDeviceAvgMs,
                                               double(engineOptions.workTimeSmoothing));
             }
             // estimatedFrameEndTimes[latestLatencyInfo.frame % estimatedFrameEndTimes.size()] =
@@ -2212,7 +2223,7 @@ PerformanceCaptureData Engine::generatePerfCapture(
     ret.latencySlop =
       double(std::chrono::nanoseconds(latency.info.inputNodeInfo.totalSlopNs).count()) / 1000000.0;
     ret.workTime =
-      double(std::chrono::nanoseconds(latency.info.inputNodeInfo.workTimeNs).count()) / 1000000.0;
+      double(std::chrono::nanoseconds(latency.frameLatencyInfo.asyncWorkNs).count()) / 1000000.0;
     ret.executionDelay = -1;
     ret.deviceDelay = -1;
     ret.frameEndFixPoint = getTimeDiff(startTime, frameEndFixPoint);
@@ -2528,9 +2539,11 @@ void Engine::drawUI(FrameId frameId) {
         if (engineOptions.perfMetrics_fps && fpsStats.hasInfo())
             ImGui::Text("Fps:             %3.0lf (~%4.1lf)", fpsStats.getAvg(),
                         fpsStats.getStdDiv());
-        if (engineOptions.perfMetrics_cpuWork && cpuWorkStats.hasInfo())
+        if (engineOptions.perfMetrics_cpuWork && cpuWorkStats.hasInfo()
+            && cpuOverlapStats.hasInfo())
             ImGui::Text("Cpu work:        %3.0lf (~%4.1lf) -> %3.0lf fps", cpuWorkStats.getAvg(),
-                        cpuWorkStats.getStdDiv(), (1000.0 / cpuWorkStats.getAvg()));
+                        cpuWorkStats.getStdDiv(),
+                        (1000.0 / (cpuWorkStats.getAvg() - cpuOverlapStats.getAvg())));
         if (engineOptions.perfMetrics_execWork && execWorkStats.hasInfo())
             ImGui::Text("Exec work:       %3.0lf (~%4.1lf) -> %3.0lf fps", execWorkStats.getAvg(),
                         execWorkStats.getStdDiv(), (1000.0 / execWorkStats.getAvg()));
