@@ -458,7 +458,7 @@ void Engine::initImGui(drv::RenderPass* imGuiRenderpass) {
     imGuiIniter = std::make_unique<ImGuiIniter>(
       static_cast<IWindow*>(window), drvInstance, physicalDevice, device,
       queueInfos.renderQueue.handle, queueInfos.HtoDQueue.handle, imGuiRenderpass,
-      config.imagesInSwapchain, swapchain.getImageCount());
+      frameGraph.getMaxFramesInFlight(), frameGraph.getMaxFramesInFlight());
 }
 
 void Engine::esBenchmark(EntityManager* entityManager, Engine* engine,

@@ -69,7 +69,7 @@ Get a triangle on screen:
     ☐ Finish app for thesis requirements
         ✔ Fix perf metrics @done (10/2/2021, 8:45:12 PM)
         ☐ Fix push const problem
-        ☐ Fix imgui???
+        ✔ Fix imgui??? @done (10/2/2021, 8:50:23 PM)
         ☐ Background mandelbrot should use shader var instead of interval
         ☐ Create manual workload for: before input, after input, execution (submission of main render data) & device (background mandelbrot)
             ☐ Support avg & stdDiv options for these
