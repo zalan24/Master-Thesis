@@ -5,6 +5,25 @@
 #include <corecontext.h>
 #include <drverror.h>
 
+static constexpr int64_t INF = 1000ll * 1000ll * 1000ll * 1000ll;  // 1000s
+
+struct QueueInfo
+{
+    int64_t startNs = INF;
+    int64_t endNs = -INF;
+    SlopGraph::NodeType nodeType;
+    void append(int64_t start, int64_t end, SlopGraph::NodeType _nodeType) {
+        if (startNs != INF)
+            drv::drv_assert(nodeType == _nodeType,
+                            "A node from a different stage is registered with the same queue id");
+        if (start < startNs)
+            startNs = start;
+        if (endNs < end)
+            endNs = end;
+        nodeType = _nodeType;
+    }
+};
+
 SlopGraph::LatencyInfo SlopGraph::calculateSlop(SlopNodeId sourceNode, SlopNodeId targetNode,
                                                 bool feedbackNodes) {
     const uint32_t nodeCount = getNodeCount();
@@ -66,21 +85,21 @@ SlopGraph::LatencyInfo SlopGraph::calculateSlop(SlopNodeId sourceNode, SlopNodeI
 
     LatencyInfo ret;
 
-    int64_t inf = 1000ll * 1000ll * 1000ll * 1000ll;  // 1000s
-
     int64_t highestWorkTime = 0;
     int64_t highestCpuWorkTime = 0;
     int64_t highestExecWorkTime = 0;
     int64_t highestDeviceWorkTime = 0;
+
+    std::unordered_map<uint32_t, QueueInfo> queueInfos;
 
     // Calculation of slops using dynamic programming
     for (uint32_t i = nodeCount; i > 0; --i) {
         SlopNodeId node = topologicalOrder[i - 1];
         NodeInfos nodeInfo = getNodeInfos(node);
         // a delayable node with no children can be delayed to any amount
-        int64_t sloppedMin = inf + nodeInfo.endTimeNs;
-        int64_t asIsMin = inf + nodeInfo.endTimeNs;
-        int64_t noImplicitMin = inf + nodeInfo.endTimeNs;
+        int64_t sloppedMin = INF + nodeInfo.endTimeNs;
+        int64_t asIsMin = INF + nodeInfo.endTimeNs;
+        int64_t noImplicitMin = INF + nodeInfo.endTimeNs;
         int64_t maxWorkTime = 0;
         int64_t maxSpecializedWorkTime = 0;
         for (uint32_t j = 0; j < getChildCount(node); ++j) {
@@ -118,10 +137,14 @@ SlopGraph::LatencyInfo SlopGraph::calculateSlop(SlopNodeId sourceNode, SlopNodeI
         nodeData[node].feedbackInfo.sleepTimeNs = nodeInfo.latencySleepNs;
         nodeData[node].feedbackInfo.earliestFinishTimeNs = 0;
         nodeData[node].feedbackInfo.workTimeNs =
-          maxWorkTime + (nodeInfo.endTimeNs - nodeInfo.startTimeNs);
+          maxWorkTime + (nodeInfo.endTimeNs - nodeInfo.startTimeNs - nodeInfo.latencySleepNs);
         nodeData[node].feedbackInfo.specializedWorkTimeNs =
-          maxSpecializedWorkTime + (nodeInfo.endTimeNs - nodeInfo.startTimeNs);
+          maxSpecializedWorkTime
+          + (nodeInfo.endTimeNs - nodeInfo.startTimeNs - nodeInfo.latencySleepNs);
         if (nodeInfo.frameId == targetNodeInfo.frameId) {
+            // Node's (start,end) timings in a theorised compact frame
+            queueInfos[nodeInfo.threadId].append(-nodeData[node].feedbackInfo.workTimeNs,
+                                                 -maxWorkTime, nodeInfo.type);
             if (highestWorkTime < nodeData[node].feedbackInfo.workTimeNs)
                 highestWorkTime = nodeData[node].feedbackInfo.workTimeNs;
             switch (nodeInfo.type) {
@@ -142,13 +165,58 @@ SlopGraph::LatencyInfo SlopGraph::calculateSlop(SlopNodeId sourceNode, SlopNodeI
     }
     // ---
 
+    // --- Calculating compact timings
+    std::unordered_map<uint32_t, QueueInfo> compactQueueInfos;
+    for (uint32_t i = 0; i < nodeCount; ++i) {
+        SlopNodeId node = topologicalOrder[i];
+        NodeInfos nodeInfo = getNodeInfos(node);
+        if (nodeInfo.frameId != targetNodeInfo.frameId)
+            continue;
+        int64_t minStartTime = queueInfos[nodeInfo.threadId].startNs;
+        for (uint32_t j = 0; j < getChildCount(node); ++j) {
+            ChildInfo child = getChild(node, j);
+            NodeInfos childInfo = getNodeInfos(child.id);
+            if (nodeInfo.frameId == childInfo.frameId) {
+                minStartTime =
+                  std::min(minStartTime, nodeData[child.id].feedbackInfo.compactStartNs);
+            }
+        }
+        nodeData[node].feedbackInfo.compactStartNs = minStartTime;
+        // Node's (start,end) timings in a theorised compact frame
+        compactQueueInfos[nodeInfo.threadId].append(
+          minStartTime,
+          minStartTime + (nodeInfo.endTimeNs - nodeInfo.startTimeNs - nodeInfo.latencySleepNs),
+          nodeInfo.type);
+    }
+    // ---
+
+    ret.nextFrameOffsetNs = 0;
+    ret.cpuNextFrameOffsetNs = 0;
+    ret.execNextFrameOffsetNs = 0;
+    ret.deviceNextFrameOffsetNs = 0;
+    for (const auto& queueInfo : compactQueueInfos) {
+        int64_t diff = queueInfo.second.endNs - queueInfo.second.startNs;
+        if (ret.nextFrameOffsetNs < diff)
+            ret.nextFrameOffsetNs = diff;
+        switch (queueInfo.second.nodeType) {
+            case CPU:
+                if (ret.cpuNextFrameOffsetNs < diff)
+                    ret.cpuNextFrameOffsetNs = diff;
+                break;
+            case EXEC:
+                if (ret.execNextFrameOffsetNs < diff)
+                    ret.execNextFrameOffsetNs = diff;
+                break;
+            case DEVICE:
+                if (ret.deviceNextFrameOffsetNs < diff)
+                    ret.deviceNextFrameOffsetNs = diff;
+                break;
+        }
+    }
     ret.asyncWorkNs = highestWorkTime;
     ret.cpuWorkNs = highestCpuWorkTime;
-    ret.maxCpuOverlapNs = ;
     ret.execWorkNs = highestExecWorkTime;
-    ret.maxExecOverlapNs = ;
     ret.deviceWorkNs = highestDeviceWorkTime;
-    ret.maxDeviceOverlapNs = ;
 
     if (feedbackNodes)
         for (uint32_t i = 0; i < nodeCount; ++i)

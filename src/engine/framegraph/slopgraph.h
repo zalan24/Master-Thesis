@@ -54,6 +54,7 @@ class SlopGraph
         // from here on within the same stage (cpu, exec, device)
         int64_t specializedWorkTimeNs = 0;
         int64_t earliestFinishTimeNs = 0;
+        int64_t compactStartNs = 0;
     };
 
     virtual void feedBack(SlopNodeId node, const FeedbackInfo& info) = 0;
@@ -62,12 +63,13 @@ class SlopGraph
     {
         FeedbackInfo inputNodeInfo;
         int64_t asyncWorkNs = 0;
+        int64_t nextFrameOffsetNs = 0;
         int64_t cpuWorkNs = 0;
-        int64_t maxCpuOverlapNs = 0;
+        int64_t cpuNextFrameOffsetNs = 0;
         int64_t execWorkNs = 0;
-        int64_t maxExecOverlapNs = 0;
+        int64_t execNextFrameOffsetNs = 0;
         int64_t deviceWorkNs = 0;
-        int64_t maxDeviceOverlapNs = 0;
+        int64_t deviceNextFrameOffsetNs = 0;
     };
 
     LatencyInfo calculateSlop(SlopNodeId sourceNode, SlopNodeId targetNode, bool feedbackNodes);

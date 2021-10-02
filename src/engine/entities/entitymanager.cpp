@@ -248,7 +248,7 @@ Entity::EntityId EntityManager::addEntity(Entity&& entity) {
 void EntityManager::removeEntity(Entity::EntityId id) {
     if (id == Entity::INVALID_ENTITY)
         return;
-    std::shared_lock<std::shared_mutex> lock(entitiesMutex);
+    // std::shared_lock<std::shared_mutex> lock(entitiesMutex);
     auto& entity = entities[size_t(id)];
     if (entity.gameBehaviour == 0 && entity.engineBehaviour == 0)
         return;
@@ -370,7 +370,7 @@ void EntityManager::addEntityTemplate(std::string name, EntityTemplate entityTem
 // }
 
 Entity::EntityId EntityManager::getByName(const std::string& name) const {
-    std::shared_lock<std::shared_mutex> lock(entitiesMutex);
+    // std::shared_lock<std::shared_mutex> lock(entitiesMutex);
     for (size_t id = 0; id < entities.size(); ++id)
         if ((entities[id].gameBehaviour != 0 || entities[id].engineBehaviour != 0)
             && entities[id].name == name)

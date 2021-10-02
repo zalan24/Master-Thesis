@@ -87,9 +87,9 @@ struct EngineOptions final : public IAutoSerializable<EngineOptions>
     }
 
     REFLECTABLE((bool)latencyReduction, (float)desiredSlop, (bool)perfMetrics_window,
-                (bool)perfMetrics_fps, (bool)perfMetrics_cpuWork, (bool)perfMetrics_execWork,
-                (bool)perfMetrics_deviceWork, (bool)perfMetrics_latency, (bool)perfMetrics_slop,
-                (bool)perfMetrics_perFrameSlop, (bool)perfMetrics_sleep,
+                (bool)perfMetrics_fps, (bool)perfMetrics_theoreticalFps, (bool)perfMetrics_cpuWork,
+                (bool)perfMetrics_execWork, (bool)perfMetrics_deviceWork, (bool)perfMetrics_latency,
+                (bool)perfMetrics_slop, (bool)perfMetrics_perFrameSlop, (bool)perfMetrics_sleep,
                 (bool)perfMetrics_execDelay, (bool)perfMetrics_deviceDelay, (bool)perfMetrics_work,
                 (bool)perfMetrics_skippedDelayed, (bool)manualLatencyReduction,
                 (float)manualSleepTime, (float)targetRefreshRate, (RefreshRateMode)refreshMode,
@@ -101,6 +101,7 @@ struct EngineOptions final : public IAutoSerializable<EngineOptions>
         // workPrediction(0),
         perfMetrics_window(true),
         perfMetrics_fps(true),
+        perfMetrics_theoreticalFps(true),
         perfMetrics_cpuWork(true),
         perfMetrics_execWork(true),
         perfMetrics_deviceWork(true),
@@ -590,9 +591,10 @@ class Engine
     };
     std::vector<FrameHistoryInfo> frameHistory;
     double worTimeAvgMs = 0;
-    double refreshTimeCpuAvgMs = 0;
-    double refreshTimeExecAvgMs = 0;
-    double refreshTimeDeviceAvgMs = 0;
+    double frameOffsetAvgMs = 0;
+    // double refreshTimeCpuAvgMs = 0;
+    // double refreshTimeExecAvgMs = 0;
+    // double refreshTimeDeviceAvgMs = 0;
     int64_t completedFrameIntervalId = 0;
 
     std::vector<EntityRenderData> entitiesToDraw;
@@ -626,10 +628,13 @@ class Engine
     std::deque<BenchmarkData> benchmarkData;
 
     StatCalculator<32> fpsStats;
+    StatCalculator<32> theoreticalFpsStats;
     StatCalculator<32> cpuWorkStats;
-    StatCalculator<32> cpuOverlapStats;
+    StatCalculator<32> cpuOffsetStats;
     StatCalculator<32> execWorkStats;
+    StatCalculator<32> execOffsetStats;
     StatCalculator<32> deviceWorkStats;
+    StatCalculator<32> deviceOffsetStats;
     StatCalculator<32> latencyStats;
     StatCalculator<32> slopStats;
     StatCalculator<32> perFrameSlopStats;

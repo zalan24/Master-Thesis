@@ -67,7 +67,7 @@ Get a triangle on screen:
             ☐ Add all necessary information
 
     ☐ Finish app for thesis requirements
-        ☐ Fix perf metrics
+        ✔ Fix perf metrics @done (10/2/2021, 8:45:12 PM)
         ☐ Fix push const problem
         ☐ Fix imgui???
         ☐ Background mandelbrot should use shader var instead of interval
@@ -76,6 +76,7 @@ Get a triangle on screen:
         ☐ Add mandelbrot to the random objects with shader var for quality
         ☐ Make it look nicer
         ☐ Add camera recorder & reply in benchmark
+        ☐ Make the capture have the final look (remove record/end node for example or not)
 
     ☐ Benchmarking & tests
         ☐ Laboratory tests
