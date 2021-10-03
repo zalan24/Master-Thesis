@@ -211,9 +211,8 @@ void Game::recordCmdBufferContent(const RenderInfo& info, const AcquiredImageDat
     }
 }
 
-void Game::recordCmdBufferForeground(const RenderInfo& , const AcquiredImageData& ,
-                                     EngineCmdBufferRecorder* , EngineRenderPass& pass,
-                                     FrameId ) {
+void Game::recordCmdBufferForeground(const RenderInfo&, const AcquiredImageData&,
+                                     EngineCmdBufferRecorder*, EngineRenderPass& pass, FrameId) {
     pass.beginSubpass(foregroundSubpass);
 }
 
@@ -242,6 +241,21 @@ void Game::recordCmdBufferSwapchain(const RenderInfo& info, const AcquiredImageD
         clearRect.layerCount = 1;
         pass.clearColorAttachment(swapchainColorAttachment,
                                   drv::ClearColorValue(1.f, 1.0f, 1.0f, 1.f), 1, &clearRect);
+    }
+    if (info.rendererData->cameraRecord) {
+        auto diff = FrameGraph::Clock::now() - getStartupTime();
+        long long diffS = std::chrono::duration_cast<std::chrono::seconds>(diff).count();
+        if ((diffS % 2) == 0) {
+            drv::ClearRect clearRect;
+            uint32_t height = std::min(10u, swapchainData.extent.height);
+            uint32_t width = std::min(10u, swapchainData.extent.width);
+            clearRect.rect.offset = {int(swapchainData.extent.width - width), 0};
+            clearRect.rect.extent = {width, height};
+            clearRect.baseLayer = 0;
+            clearRect.layerCount = 1;
+            pass.clearColorAttachment(swapchainColorAttachment,
+                                      drv::ClearColorValue(1.f, 0.0f, 0.0f, 1.f), 1, &clearRect);
+        }
     }
 }
 

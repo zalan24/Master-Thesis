@@ -120,6 +120,20 @@ struct EngineOptions final : public IAutoSerializable<EngineOptions>
         workTimeSmoothing(0.5f) {}
 };
 
+struct TransformRecordEntry final : public IAutoSerializable<TransformRecordEntry>
+{
+    REFLECTABLE((glm::quat)orientation, (glm::vec3)position, (float)timeMs)
+
+    TransformRecordEntry() = default;
+    TransformRecordEntry(const glm::quat& _orientation, const glm::vec3& _position, float _timeMs)
+      : orientation(_orientation), position(_position), timeMs(_timeMs) {}
+};
+
+struct TransformRecord final : public IAutoSerializable<TransformRecord>
+{
+    REFLECTABLE((std::vector<TransformRecordEntry>)entries)
+};
+
 struct PerformanceCaptureCpuPackage final : public IAutoSerializable<PerformanceCaptureCpuPackage>
 {
     REFLECTABLE((std::string)name, (uint64_t)frameId, (uint32_t)packageId, (double)slopDuration,
@@ -180,6 +194,7 @@ class EngineInputListener final : public InputListener
     glm::vec2 getMousePos() const { return {mX, mY}; }
     bool popNeedPerfCapture() { return std::exchange(perfCapture, false); }
     bool popToggleFreeCame() { return std::exchange(toggleFreeCame, false); }
+    bool popToggleRecording() { return std::exchange(toggleRecording, false); }
     bool isPhysicsFrozen() const { return physicsFrozen; }
 
  protected:
@@ -193,6 +208,7 @@ class EngineInputListener final : public InputListener
     bool clicking = false;
     bool toggleFreeCame = false;
     bool physicsFrozen = false;
+    bool toggleRecording = false;
     double mX;
     double mY;
 };
@@ -363,6 +379,8 @@ class Engine
 
     bool isFrozen() const { return mouseListener.isPhysicsFrozen(); }
 
+    FrameGraph::Clock::time_point getStartupTime() const {return frameEndFixPoint;}
+
  protected:
     // Needs to be called from game implementation after finishing the framegraph
     void buildFrameGraph();
@@ -428,6 +446,7 @@ class Engine
         glm::vec3 eyePos;
         glm::vec3 eyeDir;
         bool latencyFlash;
+        bool cameraRecord;
         glm::vec2 cursorPos;
         float ratio;
     };
@@ -581,6 +600,7 @@ class Engine
     FrameGraphSlops::ExtendedLatencyInfo latestLatencyInfo;
     FrameGraphSlops::ExtendedLatencyInfo captureLatencyInfo;
     FrameGraph::Clock::time_point frameEndFixPoint;
+    FrameGraph::Clock::time_point startupTime;
     res::ImageSet captureImage;
     ImageStager captureImageStager;
     struct FrameHistoryInfo
@@ -655,6 +675,11 @@ class Engine
         uint32_t endTimestampBufferIndex;
     };
     std::vector<std::vector<SubmissionTimestampsInfo>> timestsampRingBuffer;
+
+    bool isRecording = false;
+    bool hasStartedRecording = false;
+    FrameGraph::Clock::time_point cameraRecordStart;
+    TransformRecord cameraRecord;
 
     void simulationLoop();
     void beforeDrawLoop();

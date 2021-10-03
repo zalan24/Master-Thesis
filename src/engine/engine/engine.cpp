@@ -59,6 +59,11 @@ bool EngineInputListener::processKeyboard(const Input::KeyboardEvent& event) {
             toggleFreeCame = true;
         return true;
     }
+    else if (event.key == KEY_F7) {
+        if (event.type == event.PRESS)
+            toggleRecording = true;
+        return true;
+    }
     else if (event.key == KEY_F) {
         if (event.type == event.PRESS)
             physicsFrozen = !physicsFrozen;
@@ -371,6 +376,7 @@ Engine::Engine(int argc, char* argv[], const EngineConfig& cfg,
     }
     // TODO this should be synced with vblanks
     frameEndFixPoint = FrameGraph::Clock::now();
+    startupTime = FrameGraph::Clock::now();
     lastLatencyFlashClick = FrameGraph::Clock::now();
     frameHistory.resize(frameGraph.getMaxFramesInFlight());
     perFrameTempInfo.resize(frameGraph.getMaxFramesInFlight());
@@ -461,10 +467,9 @@ void Engine::initImGui(drv::RenderPass* imGuiRenderpass) {
       frameGraph.getMaxFramesInFlight(), frameGraph.getMaxFramesInFlight());
 }
 
-void Engine::esBenchmark(EntityManager* entityManager, Engine* engine,
-                         FrameGraph::NodeHandle* nodeHandle, FrameGraph::Stage stage,
-                         const EntityManager::EntitySystemParams& params, Entity* entity,
-                         Entity::EntityId id, FlexibleArray<Entity, 4>& outEntities) {
+void Engine::esBenchmark(EntityManager*, Engine* engine, FrameGraph::NodeHandle* nodeHandle,
+                         FrameGraph::Stage, const EntityManager::EntitySystemParams& params,
+                         Entity* entity, Entity::EntityId, FlexibleArray<Entity, 4>&) {
     auto prepareTimeItr = entity->extra.find("prepareTime");
     drv::drv_assert(prepareTimeItr != entity->extra.end(),
                     "Benchmark entity needs prepareTime component");
@@ -520,12 +525,14 @@ void Engine::esCamera(EntityManager* entityManger, Engine* engine, FrameGraph::N
     }
 
     drv::Extent2D extent = engine->window->getResolution();
+    FrameGraph::Clock::time_point now = FrameGraph::Clock::now();
     RendererData& renderData =
       engine->perFrameTempInfo[handle->getFrameId() % engine->perFrameTempInfo.size()].renderData;
-    renderData.latencyFlash = std::chrono::duration_cast<std::chrono::milliseconds>(
-                                FrameGraph::Clock::now() - engine->lastLatencyFlashClick)
-                                .count()
-                              < 300;
+    renderData.latencyFlash =
+      std::chrono::duration_cast<std::chrono::milliseconds>(now - engine->lastLatencyFlashClick)
+        .count()
+      < 300;
+    renderData.cameraRecord = engine->hasStartedRecording;
     float brightness = 0.5;
     renderData.sunDir = glm::normalize(vec3(-0.2, -0.8, 0.4));
     renderData.sunLight = vec3(1.0, 0.4, 0.2) * brightness * 8.f;
@@ -534,6 +541,39 @@ void Engine::esCamera(EntityManager* entityManger, Engine* engine, FrameGraph::N
     renderData.eyeDir = static_cast<glm::mat3>(entity->rotation)[2];
     renderData.ratio = float(extent.width) / float(extent.height);
     renderData.cursorPos = engine->mouseListener.getMousePos() * 2.f - 1.f;
+
+    if (engine->isRecording != engine->hasStartedRecording) {
+        if (!engine->hasStartedRecording) {
+            engine->cameraRecordStart = now;
+            LOG_ENGINE("Camera recording has started");
+        }
+        else {
+            fs::path recordsFolder{"cameraRecords"};
+            if (!fs::exists(recordsFolder))
+                fs::create_directories(recordsFolder);
+            std::stringstream filename;
+            auto time = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
+            struct tm timeinfo;
+            localtime_s(&timeinfo, &time);
+            filename << "camera__" << std::put_time(&timeinfo, "%Y_%m_%d_%H_%M_%S") << ".bin";
+            fs::path recordFile = recordsFolder / fs::path{filename.str()};
+            fs::path recordFile2 = recordsFolder / fs::path{"latest.bin"};
+
+            engine->cameraRecord.exportToFile(recordFile);
+            engine->cameraRecord.exportToFile(recordFile2);
+            LOG_ENGINE("Camera record saved to: %s", recordFile.string().c_str());
+            engine->cameraRecord.entries.clear();
+        }
+        engine->hasStartedRecording = engine->isRecording;
+    }
+    if (engine->hasStartedRecording) {
+        float timeMs = float(std::chrono::duration_cast<std::chrono::milliseconds>(
+                               now - engine->cameraRecordStart)
+                               .count())
+                       / 1000.f;
+        engine->cameraRecord.entries.push_back(
+          TransformRecordEntry{entity->rotation, entity->position, timeMs});
+    }
 }
 
 void Engine::esEmitter(EntityManager*, Engine* engine, FrameGraph::NodeHandle*, FrameGraph::Stage,
@@ -842,6 +882,8 @@ bool Engine::sampleInput(FrameId frameId) {
             inFreeCam = false;
         }
     }
+    if (mouseListener.popToggleRecording())
+        isRecording = !isRecording;
     CameraControlInfo cameraControls = freecamListener->popCameraControls();
     if (inFreeCam)
         perFrameTempInfo[frameId % perFrameTempInfo.size()].cameraControls =

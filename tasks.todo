@@ -77,6 +77,10 @@ Get a triangle on screen:
         ☐ Make it look nicer
         ☐ Add camera recorder & reply in benchmark
         ☐ Make the capture have the final look (remove record/end node for example or not)
+        ☐ Disable resize?
+        ☐ Culling?
+        ☐ Set up test scenes
+        ☐ Finalize plots
 
     ☐ Benchmarking & tests
         ☐ Laboratory tests
