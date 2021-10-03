@@ -512,6 +512,30 @@ void Engine::esBenchmark(EntityManager*, Engine* engine, FrameGraph::NodeHandle*
             entity->rotation = glm::quat(glm::vec3(0, p * float(M_PI) * 2.f, 0));
             entity->position = glm::vec3(0, 3, 0) - entity->rotation * glm::vec3(0, 0, 10.f);
         }
+        if (motionItr->second == "intensifyingRotation") {
+            auto minRotFreqItr = entity->extra.find("minRotFreq");
+            drv::drv_assert(minRotFreqItr != entity->extra.end(),
+                            "This benchmark entity needs minRotFreq component");
+            auto maxRotFreqItr = entity->extra.find("maxRotFreq");
+            drv::drv_assert(maxRotFreqItr != entity->extra.end(),
+                            "This benchmark entity needs maxRotFreq component");
+            auto rotAngleItr = entity->extra.find("rotAngle");
+            drv::drv_assert(rotAngleItr != entity->extra.end(),
+                            "This benchmark entity needs rotAngle component");
+            auto rotMaxPowItr = entity->extra.find("rotMaxPow");
+            drv::drv_assert(rotMaxPowItr != entity->extra.end(),
+                            "This benchmark entity needs rotMaxPow component");
+            float freq = lerp(minRotFreqItr->second, maxRotFreqItr->second, p * p * p);
+            double s = sin(M_PI * 2 * double(freq * periodTime * p));
+            double sgn = s > 0 ? 1 : -1;
+            s = sgn
+                * (1.0
+                   - pow(1.0 - abs(s), lerp(1.0, double(rotMaxPowItr->second), double(p * p * p))));
+            s = s * 0.5 + 0.5;
+            float angle = float(lerp(0.0, double(rotAngleItr->second) / 180.0 * M_PI, s));
+            entity->rotation = glm::quat(glm::vec3(0, angle, 0));
+            // entity->position = glm::vec3(0, 3, 0) - entity->rotation * glm::vec3(0, 0, 10.f);
+        }
         else {
             drv::drv_assert(isFromFile, "Unknown rotation");
             engine->benchmarkCameraMotion.interpolate(

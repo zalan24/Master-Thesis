@@ -41,7 +41,7 @@ Get a triangle on screen:
         ✔ Background mandelbrot should use shader var instead of interval @done (10/3/2021, 7:08:26 PM)
         ✔ Create manual workload for: before input, after input, execution (submission of main render data) & device (background mandelbrot) @done (10/3/2021, 7:16:13 PM)
             ✔ Support avg & stdDiv options for these @done (10/3/2021, 6:56:18 PM)
-        ☐ Add mandelbrot to the random objects with shader var for quality
+        ✔ Add mandelbrot to the random objects with shader var for quality @done (10/3/2021, 8:37:26 PM)
         ☐ Make it look nicer
         ✔ Add camera recorder & reply in benchmark @done (10/3/2021, 12:35:35 PM)
         ☐ Make the capture have the final look (remove record/end node for example or not)
@@ -49,6 +49,8 @@ Get a triangle on screen:
         ✔ Culling? @done (10/3/2021, 2:34:05 PM)
         ☐ Set up test scenes
         ☐ Finalize plots
+        ☐ Be able to start exe without args. Double click on exe should work
+        ☐ Be able to specify settings file, so that each benchmark config can keep it's own engine options
 
     ☐ Benchmarking & tests
         ☐ Laboratory tests

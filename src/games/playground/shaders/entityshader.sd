@@ -58,7 +58,45 @@ ps {
     layout(location = 4) in vec3 eyeToWorld;
 
     void main() {
-        outColor = lightToColor(shadePixel(normalize(eyeToWorld), worldPos, normalize(normal), vAlbedo, tc_specular_mandelbrot.z));
+        vec3 albedo = vec3(vAlbedo);
+        float specular = tc_specular_mandelbrot.z;
+        uint iterations = uint(round(max(PushConstants.mandelbrotQuality, 0.0)));
+        if (iterations > 0) {
+            vec2 c = tc_specular_mandelbrot.xy * 2.0 - 1.0;
+            c *= 2.0;
+            c.x -= 1;
+            c.y *= 0.5;
+            vec2 x = vec2(0.0, 0.0);
+            uint exit = 0;
+            for (uint i = 0; i < iterations; ++i) {
+                x = vec2(x.x*x.x - x.y*x.y, 2.0 * x.x*x.y) + c;
+                if (length(x) > 2.0)
+                {
+                    exit = i+1;
+                    break;
+                }
+            }
+            vec3 exitColor = albedo * 0.8;
+            vec3 midColor = albedo * 0.9;
+            vec3 peakColor = 1.0 - (1.0-albedo)*0.6;
+            if (exit == 0) {
+                albedo = exitColor;
+                specular = 0;
+            } else {
+                float f = log(float(exit)) / log(float(iterations));
+                specular *= f * 0.5 + 0.5;
+                if (f < 0.5) {
+                    f = f*2;
+                    albedo = mix(vec3(albedo), vec3(midColor), f);
+                } else {
+                    f = (f-0.5)*2;
+                    albedo = mix(vec3(midColor), vec3(peakColor), f);
+                }
+            }
+        }
+
+        // albedo = vec3(abs(tc_specular_mandelbrot.xy * 2.0 - 1.0), 0);
+        outColor = lightToColor(shadePixel(normalize(eyeToWorld), worldPos, normalize(normal), albedo, specular));
     }
 #else
     void main() {
