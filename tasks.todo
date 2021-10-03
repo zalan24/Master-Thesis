@@ -34,45 +34,13 @@ Get a triangle on screen:
         ☐ Also add avg amount of memory in framemem
         ☐ And maybe something about stackmem
 
-    ☐ Performance capture
-        ✔ cpu node dependencies @done (8/6/2021, 1:44:16 PM)
-            ✔ depended and dependent nodes should be displayed when hovering a node @done (8/6/2021, 1:44:05 PM)
-            ✔ Ones that actually delayed the current node or were actually delayed should be highlighted @done (8/6/2021, 1:44:13 PM)
-        ✔ Resource locks @done (8/6/2021, 1:44:20 PM)
-            ✔ Add a new time point, when the depended nodes are complete, but the resources not yet @done (8/6/2021, 1:44:19 PM)
-        ✔ swapchain acquire and present should be displayed @done (8/6/2021, 1:44:23 PM)
-        ✔ Execution queue @done (8/7/2021, 10:28:59 AM)
-            ✔ Hovering a node should highlight it's execution time range @done (8/7/2021, 8:59:46 AM)
-            ✔ Display execution packages and somehow link them to the source node (requires node info in packages) @done (8/7/2021, 8:59:50 AM)
-            ✔ Display cpu node wait on execution @done (8/7/2021, 10:28:57 AM)
-        ✔ Device queue @done (8/7/2021, 10:58:59 AM)
-            ✔ Display gpu complete waits @done (8/7/2021, 10:58:57 AM)
-            ✔ Display gpu node waits @done (8/7/2021, 10:58:58 AM)
-        ☐ Deal with slop
-            ✔ Implement slop graph for framegraph @done (8/28/2021, 12:06:42 PM)
-            ✔ Create one slop graph object in graph building and reuse when needed @done (8/28/2021, 12:06:46 PM)
-            ✔ FrameGraph should have a function for slop calculation, called in readback end, right before perf capture @done (8/28/2021, 12:06:54 PM)
-            ✔ Node history should store slop info. Updated by slop graph's feedback @done (8/28/2021, 12:06:59 PM)
-            ✔ Perf capture should contain the calculated slop for the source node (as a global reducible latency) @done (8/28/2021, 12:07:11 PM)
-            ☐ Somehow warn about nodes, that have a high extra slop due to implicit dependency
-            ☐ ??? Display per node slops on capture ???
-        ☐ Finalize
-            ✔ Show screenshot @done (9/12/2021, 2:02:39 PM)
-            ☐ Styling
-                ✔ Width should fit window (and react to resize window) @done (9/12/2021, 12:52:58 PM)
-                ✔ Padding around texts @done (9/12/2021, 12:53:01 PM)
-                ☐ No transparency upon hovering
-                ☐ Colors
-                ✔ Improve vsync lines @done (9/12/2021, 1:05:47 PM)
-            ☐ Add all necessary information
-
     ☐ Finish app for thesis requirements
         ✔ Fix perf metrics @done (10/2/2021, 8:45:12 PM)
         ✔ Fix push const problem @done (10/2/2021, 9:24:23 PM)
         ✔ Fix imgui??? @done (10/2/2021, 8:50:23 PM)
         ☐ Background mandelbrot should use shader var instead of interval
         ☐ Create manual workload for: before input, after input, execution (submission of main render data) & device (background mandelbrot)
-            ☐ Support avg & stdDiv options for these
+            ✔ Support avg & stdDiv options for these @done (10/3/2021, 6:56:18 PM)
         ☐ Add mandelbrot to the random objects with shader var for quality
         ☐ Make it look nicer
         ✔ Add camera recorder & reply in benchmark @done (10/3/2021, 12:35:35 PM)

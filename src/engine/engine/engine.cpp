@@ -2564,6 +2564,7 @@ void Engine::drawUI(FrameId frameId) {
         }
         if (ImGui::BeginMenu("Options")) {
             ImGui::MenuItem("Latency", nullptr, &latencyOptionsOpen);
+            ImGui::MenuItem("Workload", nullptr, &workloadOptionsOpen);
             ImGui::EndMenu();
         }
         if (ImGui::BeginMenu("View")) {
@@ -2691,6 +2692,28 @@ void Engine::drawUI(FrameId frameId) {
             if (!engineOptions.latencyReduction)
                 ImGui::EndDisabled();
         }
+
+        ImGui::End();
+    }
+
+    if (workloadOptionsOpen) {
+        ImGui::Begin("Workload options", &workloadOptionsOpen, 0);
+        ImGui::DragFloat("Before input avg", &engineOptions.manualWorkload_beforeInputAvg, 0.5, 0.f,
+                         100.f, "%.8f ms");
+        ImGui::DragFloat("Before input std div", &engineOptions.manualWorkload_beforeInputStdDiv,
+                         0.25, 0.f, 50.f, "~%.8f ms");
+        ImGui::DragFloat("After input avg", &engineOptions.manualWorkload_afterInputAvg, 0.5, 0.f,
+                         100.f, "%.8f ms");
+        ImGui::DragFloat("After input std div", &engineOptions.manualWorkload_afterInputStdDiv,
+                         0.25, 0.f, 50.f, "~%.8f ms");
+        ImGui::DragFloat("Exec avg", &engineOptions.manualWorkload_execInputAvg, 0.5, 0.f, 100.f,
+                         "%.8f ms");
+        ImGui::DragFloat("Exec std div", &engineOptions.manualWorkload_execInputStdDiv, 0.25, 0.f,
+                         50.f, "~%.8f ms");
+        ImGui::DragFloat("Device avg", &engineOptions.manualWorkload_deviceInputAvg, 1.f, 0.f,
+                         10000.f, "%.8f iterations");
+        ImGui::DragFloat("Device std div", &engineOptions.manualWorkload_deviceInputStdDiv, 1.f,
+                         0.f, 5000.f, "~%.8f iterations");
 
         ImGui::End();
     }

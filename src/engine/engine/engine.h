@@ -93,7 +93,11 @@ struct EngineOptions final : public IAutoSerializable<EngineOptions>
                 (bool)perfMetrics_execDelay, (bool)perfMetrics_deviceDelay, (bool)perfMetrics_work,
                 (bool)perfMetrics_skippedDelayed, (bool)manualLatencyReduction,
                 (float)manualSleepTime, (float)targetRefreshRate, (RefreshRateMode)refreshMode,
-                (float)workTimeSmoothing)
+                (float)workTimeSmoothing, (float)manualWorkload_beforeInputAvg,
+                (float)manualWorkload_beforeInputStdDiv, (float)manualWorkload_afterInputAvg,
+                (float)manualWorkload_afterInputStdDiv, (float)manualWorkload_execInputAvg,
+                (float)manualWorkload_execInputStdDiv, (float)manualWorkload_deviceInputAvg,
+                (float)manualWorkload_deviceInputStdDiv)
 
     EngineOptions()
       : latencyReduction(false),
@@ -117,7 +121,15 @@ struct EngineOptions final : public IAutoSerializable<EngineOptions>
         manualSleepTime(0.0f),
         targetRefreshRate(60.0f),
         refreshMode(UNLIMITED),
-        workTimeSmoothing(0.5f) {}
+        workTimeSmoothing(0.5f),
+        manualWorkload_beforeInputAvg(0),
+        manualWorkload_beforeInputStdDiv(0),
+        manualWorkload_afterInputAvg(0),
+        manualWorkload_afterInputStdDiv(0),
+        manualWorkload_execInputAvg(0),
+        manualWorkload_execInputStdDiv(0),
+        manualWorkload_deviceInputAvg(0),
+        manualWorkload_deviceInputStdDiv(0) {}
 };
 
 struct TransformRecordEntry final : public IAutoSerializable<TransformRecordEntry>
@@ -600,6 +612,7 @@ class Engine
     std::filesystem::file_time_type workLoadFileModificationDate;
     bool wantToQuit = false;
     bool latencyOptionsOpen = false;
+    bool workloadOptionsOpen = false;
     mutable std::mutex latencyInfoMutex;
     FrameGraphSlops::ExtendedLatencyInfo latestLatencyInfo;
     FrameGraphSlops::ExtendedLatencyInfo captureLatencyInfo;
