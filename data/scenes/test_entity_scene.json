@@ -32,7 +32,8 @@
         "templateName": "camera",
         "modelName": "",
         "hidden": false,
-        "extra": {}
+        "extra": {},
+        "extraStr": {}
     },
     {
         "mass": -1.0,
@@ -70,7 +71,8 @@
         "extra": {
             "prepareTime": 5,
             "period": 10
-        }
+        },
+        "extraStr": {}
     },
     {
         "mass": 0.0,
@@ -105,7 +107,8 @@
         "templateName": "dynobj",
         "modelName": "box",
         "hidden": false,
-        "extra": {}
+        "extra": {},
+        "extraStr": {}
     },
     {
         "mass": 1.0,
@@ -140,7 +143,8 @@
         "templateName": "dynobj",
         "modelName": "sphere",
         "hidden": false,
-        "extra": {}
+        "extra": {},
+        "extraStr": {}
     },
     {
         "mass": 1.0,
@@ -175,7 +179,8 @@
         "templateName": "dynobj",
         "modelName": "box",
         "hidden": false,
-        "extra": {}
+        "extra": {},
+        "extraStr": {}
     },
     {
         "mass": 1.0,
@@ -210,7 +215,8 @@
         "templateName": "dynobj",
         "modelName": "box",
         "hidden": false,
-        "extra": {}
+        "extra": {},
+        "extraStr": {}
     },
     {
         "mass": -1.0,
@@ -254,6 +260,7 @@
             "maxSpeed": 20,
             "freq": 8,
             "placeDist": 0.5
-        }
+        },
+        "extraStr": {}
     }
 ]

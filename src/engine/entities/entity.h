@@ -34,7 +34,8 @@ struct Entity final : public IAutoSerializable<Entity>
     REFLECTABLE((std::string)name, (std::string)templateName, (std::string)parentName,
                 (glm::vec3)albedo, (glm::vec3)position, (glm::vec3)velocity, (glm::vec3)scale,
                 (glm::quat)rotation, (std::string)modelName, (float)mass, (bool)hidden,
-                (std::unordered_map<std::string, float>)extra)
+                (std::unordered_map<std::string, float>)extra,
+                (std::unordered_map<std::string, std::string>)extraStr)
 
     uint64_t engineBehaviour = 0;
     uint64_t gameBehaviour = 0;
@@ -56,6 +57,7 @@ struct Entity final : public IAutoSerializable<Entity>
         mass(other.mass),
         hidden(other.hidden),
         extra(other.extra),
+        extraStr(other.extraStr),
         engineBehaviour(other.engineBehaviour),
         gameBehaviour(other.gameBehaviour),
         // textureId(other.textureId),
@@ -76,6 +78,7 @@ struct Entity final : public IAutoSerializable<Entity>
         mass = other.mass;
         hidden = other.hidden;
         extra = other.extra;
+        extraStr = other.extraStr;
         engineBehaviour = other.engineBehaviour;
         gameBehaviour = other.gameBehaviour;
         // textureId = other.textureId;
@@ -96,6 +99,7 @@ struct Entity final : public IAutoSerializable<Entity>
         mass(other.mass),
         hidden(other.hidden),
         extra(other.extra),
+        extraStr(other.extraStr),
         engineBehaviour(other.engineBehaviour),
         gameBehaviour(other.gameBehaviour),
         // textureId(other.textureId),
@@ -119,6 +123,7 @@ struct Entity final : public IAutoSerializable<Entity>
         mass = other.mass;
         hidden = other.hidden;
         extra = other.extra;
+        extraStr = other.extraStr;
         engineBehaviour = other.engineBehaviour;
         gameBehaviour = other.gameBehaviour;
         // textureId = other.textureId;

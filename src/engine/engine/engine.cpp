@@ -475,15 +475,49 @@ void Engine::esBenchmark(EntityManager*, Engine* engine, FrameGraph::NodeHandle*
                     "Benchmark entity needs prepareTime component");
     auto periodItr = entity->extra.find("period");
     drv::drv_assert(periodItr != entity->extra.end(), "Benchmark entity needs period component");
+    auto motionItr = entity->extraStr.find("motion");
+    drv::drv_assert(motionItr != entity->extraStr.end(),
+                    "Benchmark entity needs motion string component");
     float& timer = entity->extra["time"];
     timer += params.dt;
-    float p = (timer - prepareTimeItr->second) / periodItr->second;
+    const std::string ending = ".bin";
+    bool isFromFile = motionItr->second.length() > ending.size()
+                      && motionItr->second.compare(motionItr->second.length() - ending.length(),
+                                                   ending.length(), ending)
+                           == 0;
+    if (isFromFile && motionItr->second != engine->loadedCameraMotion) {
+        try {
+            engine->benchmarkCameraMotion.importFromFile(fs::path{motionItr->second});
+            drv::drv_assert(!engine->benchmarkCameraMotion.entries.empty(),
+                            "Camera motions is empty");
+        }
+        catch (const std::exception& e) {
+            LOG_F(ERROR, "Could not load camera motion: %s, reason: %s", motionItr->second.c_str(),
+                  e.what());
+            throw;
+        }
+        engine->loadedCameraMotion = motionItr->second;
+    }
+    float periodTime = periodItr->second;
+    if (periodTime < 0) {
+        drv::drv_assert(isFromFile, "Auto period only works with motions loaded from file");
+        periodTime = engine->benchmarkCameraMotion.entries.back().timeMs / 1000.f;
+    }
+    float p = (timer - prepareTimeItr->second) / periodTime;
     engine->perFrameTempInfo[nodeHandle->getFrameId() % engine->perFrameTempInfo.size()]
       .benchmarkPeriod = p;
     if (p >= 0) {
         p -= float(int(p));
-        entity->rotation = glm::quat(glm::vec3(0, p * float(M_PI) * 2.f, 0));
-        entity->position = glm::vec3(0, 3, 0) - entity->rotation * glm::vec3(0, 0, 10.f);
+        if (motionItr->second == "rotate") {
+            entity->rotation = glm::quat(glm::vec3(0, p * float(M_PI) * 2.f, 0));
+            entity->position = glm::vec3(0, 3, 0) - entity->rotation * glm::vec3(0, 0, 10.f);
+        }
+        else {
+            drv::drv_assert(isFromFile, "Unknown rotation");
+            engine->benchmarkCameraMotion.interpolate(
+              p * engine->benchmarkCameraMotion.entries.back().timeMs, entity->rotation,
+              entity->position);
+        }
     }
 }
 
@@ -567,7 +601,7 @@ void Engine::esCamera(EntityManager* entityManger, Engine* engine, FrameGraph::N
         engine->hasStartedRecording = engine->isRecording;
     }
     if (engine->hasStartedRecording) {
-        float timeMs = float(std::chrono::duration_cast<std::chrono::milliseconds>(
+        float timeMs = float(std::chrono::duration_cast<std::chrono::microseconds>(
                                now - engine->cameraRecordStart)
                                .count())
                        / 1000.f;
@@ -2659,4 +2693,36 @@ void Engine::drawUI(FrameId frameId) {
     }
 
     recordGameUI(frameId);
+}
+
+void TransformRecord::interpolate(float time, glm::quat& orientation, glm::vec3& position) const {
+    drv::drv_assert(!entries.empty(), "TransfromRecord object is empty");
+    if (time <= entries[0].timeMs) {
+        orientation = entries[0].orientation;
+        position = entries[0].position;
+    }
+    else if (time >= entries.back().timeMs) {
+        orientation = entries.back().orientation;
+        position = entries.back().position;
+    }
+    else {
+        uint32_t a = 0;
+        uint32_t b = uint32_t(entries.size());
+        while (a + 1 < b) {
+            uint32_t m = (a + b) / 2;
+            if (time < entries[m].timeMs)
+                b = m;
+            else
+                a = m;
+        }
+        if (b == entries.size()) {
+            orientation = entries[a].orientation;
+            position = entries[a].position;
+        }
+        else {
+            float p = (time - entries[a].timeMs) / (entries[b].timeMs - entries[a].timeMs);
+            position = lerp(entries[a].position, entries[b].position, p);
+            orientation = glm::slerp(entries[a].orientation, entries[b].orientation, p);
+        }
+    }
 }

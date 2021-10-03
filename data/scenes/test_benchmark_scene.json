@@ -32,7 +32,8 @@
         "templateName": "camera",
         "modelName": "",
         "hidden": false,
-        "extra": {}
+        "extra": {},
+        "extraStr": {}
     },
     {
         "mass": -1.0,
@@ -69,7 +70,10 @@
         "hidden": false,
         "extra": {
             "prepareTime": 5,
-            "period": 10
+            "period": -1
+        },
+        "extraStr": {
+            "motion": "../data/cameraRecords/test.bin"
         }
     },
     {
@@ -105,7 +109,8 @@
         "templateName": "dynobj",
         "modelName": "sphere",
         "hidden": false,
-        "extra": {}
+        "extra": {},
+        "extraStr": {}
     },
     {
         "mass": -1.0,
@@ -149,7 +154,8 @@
             "maxSpeed": 10,
             "freq": 8,
             "placeDist": 0.5
-        }
+        },
+        "extraStr": {}
     },
     {
         "mass": -1.0,
@@ -193,7 +199,8 @@
             "maxSpeed": 10,
             "freq": 8,
             "placeDist": 0.5
-        }
+        },
+        "extraStr": {}
     },
     {
         "mass": -1.0,
@@ -237,6 +244,7 @@
             "maxSpeed": 20,
             "freq": 48,
             "placeDist": 0.5
-        }
+        },
+        "extraStr": {}
     }
 ]

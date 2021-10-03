@@ -132,6 +132,8 @@ struct TransformRecordEntry final : public IAutoSerializable<TransformRecordEntr
 struct TransformRecord final : public IAutoSerializable<TransformRecord>
 {
     REFLECTABLE((std::vector<TransformRecordEntry>)entries)
+
+    void interpolate(float time, glm::quat& orientation, glm::vec3& position) const;
 };
 
 struct PerformanceCaptureCpuPackage final : public IAutoSerializable<PerformanceCaptureCpuPackage>
@@ -379,7 +381,7 @@ class Engine
 
     bool isFrozen() const { return mouseListener.isPhysicsFrozen(); }
 
-    FrameGraph::Clock::time_point getStartupTime() const {return frameEndFixPoint;}
+    FrameGraph::Clock::time_point getStartupTime() const { return frameEndFixPoint; }
 
  protected:
     // Needs to be called from game implementation after finishing the framegraph
@@ -680,6 +682,9 @@ class Engine
     bool hasStartedRecording = false;
     FrameGraph::Clock::time_point cameraRecordStart;
     TransformRecord cameraRecord;
+
+    std::string loadedCameraMotion = "";
+    TransformRecord benchmarkCameraMotion;
 
     void simulationLoop();
     void beforeDrawLoop();
