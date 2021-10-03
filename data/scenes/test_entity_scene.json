@@ -32,6 +32,8 @@
         "templateName": "camera",
         "modelName": "",
         "hidden": false,
+        "specular": 0,
+        "mandelbrot": 0,
         "extra": {},
         "extraStr": {}
     },
@@ -68,6 +70,8 @@
         "templateName": "benchmark",
         "modelName": "",
         "hidden": false,
+        "specular": 0,
+        "mandelbrot": 0,
         "extra": {
             "prepareTime": 5,
             "period": 10
@@ -107,6 +111,8 @@
         "templateName": "dynobj",
         "modelName": "box",
         "hidden": false,
+        "specular": 0,
+        "mandelbrot": 0,
         "extra": {},
         "extraStr": {}
     },
@@ -143,6 +149,8 @@
         "templateName": "dynobj",
         "modelName": "sphere",
         "hidden": false,
+        "specular": 0,
+        "mandelbrot": 0,
         "extra": {},
         "extraStr": {}
     },
@@ -179,6 +187,8 @@
         "templateName": "dynobj",
         "modelName": "box",
         "hidden": false,
+        "specular": 0,
+        "mandelbrot": 0,
         "extra": {},
         "extraStr": {}
     },
@@ -215,6 +225,8 @@
         "templateName": "dynobj",
         "modelName": "box",
         "hidden": false,
+        "specular": 0,
+        "mandelbrot": 0,
         "extra": {},
         "extraStr": {}
     },
@@ -251,6 +263,8 @@
         "templateName": "emitter",
         "modelName": "box",
         "hidden": false,
+        "specular": 0,
+        "mandelbrot": 0,
         "extra": {
             "minSizeMul": 0.5,
             "maxSizeMul": 2.0,

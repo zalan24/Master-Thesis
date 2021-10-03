@@ -437,6 +437,8 @@ class Engine
     {
         glm::mat4 modelTm;
         glm::vec3 albedo;
+        float specular;
+        float mandelbrot;
         std::string shape;
     };
 

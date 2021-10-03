@@ -29,12 +29,14 @@ struct Entity final : public IAutoSerializable<Entity>
         rotation(),
         modelName(""),
         mass(0),
-        hidden(false) {}
+        hidden(false),
+        specular(0),
+        mandelbrot(0) {}
 
     REFLECTABLE((std::string)name, (std::string)templateName, (std::string)parentName,
                 (glm::vec3)albedo, (glm::vec3)position, (glm::vec3)velocity, (glm::vec3)scale,
                 (glm::quat)rotation, (std::string)modelName, (float)mass, (bool)hidden,
-                (std::unordered_map<std::string, float>)extra,
+                (float)specular, (float)mandelbrot, (std::unordered_map<std::string, float>)extra,
                 (std::unordered_map<std::string, std::string>)extraStr)
 
     uint64_t engineBehaviour = 0;
@@ -56,6 +58,8 @@ struct Entity final : public IAutoSerializable<Entity>
         modelName(other.modelName),
         mass(other.mass),
         hidden(other.hidden),
+        specular(other.specular),
+        mandelbrot(other.mandelbrot),
         extra(other.extra),
         extraStr(other.extraStr),
         engineBehaviour(other.engineBehaviour),
@@ -77,6 +81,8 @@ struct Entity final : public IAutoSerializable<Entity>
         modelName = other.modelName;
         mass = other.mass;
         hidden = other.hidden;
+        specular = other.specular;
+        mandelbrot = other.mandelbrot;
         extra = other.extra;
         extraStr = other.extraStr;
         engineBehaviour = other.engineBehaviour;
@@ -98,6 +104,8 @@ struct Entity final : public IAutoSerializable<Entity>
         modelName(std::move(other.modelName)),
         mass(other.mass),
         hidden(other.hidden),
+        specular(other.specular),
+        mandelbrot(other.mandelbrot),
         extra(other.extra),
         extraStr(other.extraStr),
         engineBehaviour(other.engineBehaviour),
@@ -122,6 +130,8 @@ struct Entity final : public IAutoSerializable<Entity>
         modelName = std::move(other.modelName);
         mass = other.mass;
         hidden = other.hidden;
+        specular = other.specular;
+        mandelbrot = other.mandelbrot;
         extra = other.extra;
         extraStr = other.extraStr;
         engineBehaviour = other.engineBehaviour;

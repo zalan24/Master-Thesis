@@ -664,6 +664,8 @@ void Engine::esEmitter(EntityManager*, Engine* engine, FrameGraph::NodeHandle*, 
             ent.scale = entity->scale * scale;
             ent.rotation = orientation;
             ent.modelName = entity->modelName;
+            ent.specular = entity->specular;
+            ent.mandelbrot = entity->mandelbrot;
             if (baseMassItr->second > 0) {
                 ent.mass = baseMassItr->second * ent.scale.x * ent.scale.y * ent.scale.z;
                 drv::drv_assert(ent.mass > 0);
@@ -710,6 +712,8 @@ void Engine::esBeforeDraw(EntityManager*, Engine* engine, FrameGraph::NodeHandle
     glm::quat rotation = entity->rotation;
 
     data.albedo = entity->albedo;
+    data.specular = entity->specular;
+    data.mandelbrot = entity->mandelbrot;
     data.shape = entity->modelName;
     glm::mat4 translationTm = glm::translate(glm::mat4(1.f), position);
     glm::mat4 scaleTm = glm::scale(glm::mat4(1.f), scale);
