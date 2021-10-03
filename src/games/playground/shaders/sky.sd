@@ -27,6 +27,7 @@ stages {
 ps {
     void main() {
         float sunSizeCos = 0.01;
+        float minCos = -0.3;
 
         vec3 view = getViewVec();
         float cosFromSun = dot(-view, PushConstants.sunDir);
@@ -36,9 +37,10 @@ ps {
         if (cosFromSun > 1-sunSizeCos) {
             // looking at the sun
             light += PushConstants.sunLight;
-        }
-        if (cosFromSun > 0) {
-            light += PushConstants.sunLight * cosFromSun * 0.1;
+        } else if (cosFromSun >= minCos) {
+            float f = (cosFromSun - minCos) / (1-sunSizeCos - minCos);
+            f = exp(f) - 1.0;
+            light += PushConstants.sunLight * f * 0.1;
         }
 
         // light += ;
