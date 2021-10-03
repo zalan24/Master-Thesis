@@ -716,7 +716,6 @@ void Engine::esBeforeDraw(EntityManager*, Engine* engine, FrameGraph::NodeHandle
     glm::mat4 rotTm = static_cast<glm::mat4>(rotation);
     data.modelTm = translationTm * rotTm * scaleTm;
 
-    // TODO cull
     engine->entitiesToDraw.push_back(std::move(data));
 }
 

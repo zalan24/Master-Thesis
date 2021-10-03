@@ -173,6 +173,41 @@ void Game::recordCmdBufferContent(const RenderInfo& info, const AcquiredImageDat
     uint32_t numEntities = getNumEntitiesToRender();
     for (uint32_t i = 0; i < numEntities; ++i) {
         const EntityRenderData& data = getEntitiesToRender()[i];
+
+        glm::vec3 position = data.modelTm[3];
+        float boundingSphereRadius =
+          sqrtf(2.0f
+                * std::max({glm::dot(data.modelTm[0], data.modelTm[0]),
+                            glm::dot(data.modelTm[1], data.modelTm[1]),
+                            glm::dot(data.modelTm[2], data.modelTm[2])}));
+
+        if (glm::distance(position, info.rendererData->eyePos) > boundingSphereRadius) {
+            glm::vec3 eyeToPos = position - info.rendererData->eyePos;
+            float d = glm::dot(eyeToPos, info.rendererData->eyeDir);
+            if (d <= 0)
+                continue;
+            glm::vec3 closestInView = info.rendererData->eyePos + info.rendererData->eyeDir * d;
+            if (glm::distance(closestInView, position) > boundingSphereRadius * 1.1f) {
+                glm::vec3 eyeToPosInView = info.view * glm::vec4(eyeToPos, 0.0f);
+                float viewAngle = asinf(boundingSphereRadius / glm::length(eyeToPos));
+                float horizontalViewAngle = atan2f(eyeToPosInView.x, eyeToPosInView.z);
+                float verticalViewAngle = atan2f(eyeToPosInView.y, eyeToPosInView.z);
+                mat4 invProj = glm::inverse(info.proj);
+                vec4 point = invProj * vec4(1, -1, 1, 1);
+                point /= point.w;
+                glm::vec3 topRight = glm::vec3(point);
+                float fovX = atan2f(topRight.x, topRight.z);
+                float fovY = atan2f(topRight.y, topRight.z);
+                drv::drv_assert(fovX > 0 && fovY > 0);
+                if ((horizontalViewAngle < 0 && horizontalViewAngle + viewAngle < -fovX)
+                    || (horizontalViewAngle > 0 && horizontalViewAngle - viewAngle > fovX))
+                    continue;
+                if ((verticalViewAngle < 0 && verticalViewAngle + viewAngle < -fovY)
+                    || (verticalViewAngle > 0 && verticalViewAngle - viewAngle > fovY))
+                    continue;
+            }
+        }
+
         shader3dDescriptor.set_modelTm(data.modelTm);
         entityShaderDesc.set_entityAlbedo(data.albedo);
 

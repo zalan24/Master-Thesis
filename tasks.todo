@@ -78,7 +78,7 @@ Get a triangle on screen:
         ✔ Add camera recorder & reply in benchmark @done (10/3/2021, 12:35:35 PM)
         ☐ Make the capture have the final look (remove record/end node for example or not)
         ☐ Disable resize?
-        ☐ Culling?
+        ✔ Culling? @done (10/3/2021, 2:34:05 PM)
         ☐ Set up test scenes
         ☐ Finalize plots
 
