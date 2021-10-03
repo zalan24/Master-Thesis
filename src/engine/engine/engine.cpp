@@ -814,6 +814,12 @@ bool Engine::sampleInput(FrameId frameId) {
     if (!inputHandle)
         return false;
 
+    float beforeSleep = genNormalDistribution(engineOptions.manualWorkload_beforeInputAvg,
+                                              engineOptions.manualWorkload_beforeInputStdDiv);
+    if (beforeSleep > 0)
+        FrameGraph::busy_sleep(
+          std::chrono::microseconds(static_cast<long long>(beforeSleep * 1000.f)));
+
     FrameGraphSlops::ExtendedLatencyInfo latencyInfo;
     {
         std::unique_lock<std::mutex> lock(latencyInfoMutex);
@@ -925,6 +931,12 @@ bool Engine::sampleInput(FrameId frameId) {
     if (inFreeCam)
         perFrameTempInfo[frameId % perFrameTempInfo.size()].cameraControls =
           std::move(cameraControls);
+
+    float afterSleep = genNormalDistribution(engineOptions.manualWorkload_afterInputAvg,
+                                             engineOptions.manualWorkload_afterInputStdDiv);
+    if (afterSleep > 0)
+        FrameGraph::busy_sleep(
+          std::chrono::microseconds(static_cast<long long>(afterSleep * 1000.f)));
 
     return true;
 }
@@ -1519,6 +1531,11 @@ bool Engine::execute(ExecutionPackage&& package) {
         executionInfo.numSignalTimelineSemaphores = signalTimelineSemaphoreCount;
         executionInfo.signalTimelineSemaphores = signalTimelineSemaphores;
         executionInfo.timelineSignalValues = signalTimelineSemaphoreValues;
+        float execSleep = genNormalDistribution(engineOptions.manualWorkload_execInputAvg,
+                                                engineOptions.manualWorkload_execInputStdDiv);
+        if (execSleep > 0)
+            FrameGraph::busy_sleep(
+              std::chrono::microseconds(static_cast<long long>(execSleep * 1000.f)));
         drv::execute(getDevice(), cmdBuffer.queue, 1, &executionInfo);
         if (needTimestamps) {
             submissionTimestampInfo.submissionTime = drv::Clock::now();
