@@ -38,7 +38,7 @@ Get a triangle on screen:
         ✔ Fix perf metrics @done (10/2/2021, 8:45:12 PM)
         ✔ Fix push const problem @done (10/2/2021, 9:24:23 PM)
         ✔ Fix imgui??? @done (10/2/2021, 8:50:23 PM)
-        ☐ Background mandelbrot should use shader var instead of interval
+        ✔ Background mandelbrot should use shader var instead of interval @done (10/3/2021, 7:08:26 PM)
         ☐ Create manual workload for: before input, after input, execution (submission of main render data) & device (background mandelbrot)
             ✔ Support avg & stdDiv options for these @done (10/3/2021, 6:56:18 PM)
         ☐ Add mandelbrot to the random objects with shader var for quality

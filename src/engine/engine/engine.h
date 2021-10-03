@@ -479,6 +479,24 @@ class Engine
 
     bool isInFreecam() const { return inFreeCam; }
 
+    const EngineOptions& getOptions() const { return engineOptions; }
+
+    float genFloat01() {
+        std::uniform_real_distribution<float> dist01(0, 1);
+        std::unique_lock<std::mutex> randomLock(generatorMutex);
+        return dist01(generator);
+    }
+
+    float genNormalDistribution(float avg, float stdDiv) {
+        if (stdDiv > 0) {
+            std::normal_distribution<float> dist(avg, stdDiv);
+            std::unique_lock<std::mutex> randomLock(generatorMutex);
+            return dist(generator);
+        }
+        else
+            return avg;
+    }
+
  private:
     static constexpr uint64_t firstTimelineCalibrationTimeMs = 1000;
     static constexpr uint64_t otherTimelineCalibrationTimeMs = 10000;
@@ -518,12 +536,6 @@ class Engine
 
     std::default_random_engine generator;
     mutable std::mutex generatorMutex;
-
-    float genFloat01() {
-        std::uniform_real_distribution<float> dist01(0, 1);
-        std::unique_lock<std::mutex> randomLock(generatorMutex);
-        return dist01(generator);
-    }
 
     EngineConfig config;
     Resources resourceFolders;

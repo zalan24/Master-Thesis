@@ -134,8 +134,8 @@ void Game::recordCmdBufferBackground(const RenderInfo& info, const AcquiredImage
     fullscreenDesc.set_cameraDir(info.rendererData->eyeDir);
     fullscreenDesc.set_topleftViewVec(glm::normalize(glm::vec3(point) - info.rendererData->eyePos));
 
-    mandelbrotDesc.setVariant_Quality(
-      static_cast<shader_mandelbrot_descriptor::Quality>(gameOptions.mandelBrotLevel));
+    mandelbrotDesc.set_iterations(genNormalDistribution(
+      getOptions().manualWorkload_deviceInputAvg, getOptions().manualWorkload_deviceInputStdDiv));
     mandelbrotDesc.set_exitColor(vec3(0, 0, 0));
     mandelbrotDesc.set_midColor(
       lerp(vec3(1, 0, 0), vec3(0, 1, 0), float(sin(double(frameId) * 0.01) * 0.5 + 0.5)));
@@ -490,16 +490,6 @@ void Game::recordMenuOptionsUI(FrameId) {
     if (ImGui::BeginMenu("Camera")) {
         ImGui::DragFloat("Fov", &gameOptions.fov, 0.1f, 10, 80, "%.1f deg");
         ImGui::DragFloat("Gamma", &gameOptions.gamma, 0.01f, 0.01f, 10, "%.8f");
-        ImGui::EndMenu();
-    }
-    if (ImGui::BeginMenu("Mandelbrot level")) {
-        int from = static_cast<int>(shader_mandelbrot_descriptor::Quality::QUALITY1);
-        int to = static_cast<int>(shader_mandelbrot_descriptor::Quality::QUALITY10);
-        char label[128];
-        for (int i = from; i <= to; ++i) {
-            sprintf(label, "Quality %d", i + 1);
-            ImGui::RadioButton(label, &gameOptions.mandelBrotLevel, i);
-        }
         ImGui::EndMenu();
     }
 }

@@ -5,12 +5,12 @@ include {
 
 descriptor {
     variants {
-        Quality: quality1, quality2, quality3, quality4, quality5, quality6, quality7, quality8, quality9, quality10;
     }
     resources {
         vec3 exitColor;
         vec3 midColor;
         vec3 peakColor;
+        float iterations;
     }
 }
 
@@ -20,34 +20,13 @@ stages {
         use exitColor;
         use midColor;
         use peakColor;
+        use iterations;
     }
 }
 
 ps {
     void main() {
-        uint quality = 1;
-        #if Quality == quality1
-            quality = 1;
-        #elif Quality == quality2
-            quality = 2;
-        #elif Quality == quality3
-            quality = 3;
-        #elif Quality == quality4
-            quality = 4;
-        #elif Quality == quality5
-            quality = 5;
-        #elif Quality == quality6
-            quality = 6;
-        #elif Quality == quality7
-            quality = 7;
-        #elif Quality == quality8
-            quality = 8;
-        #elif Quality == quality9
-            quality = 9;
-        #elif Quality == quality10
-            quality = 10;
-        #endif
-        uint iterations = 100 * quality * quality;
+        uint iterations = uint(round(max(PushConstants.iterations, 0.0)));
         vec2 c = screenpos * 2.0;
         c.x -= 1;
         c.y *= 0.5;
