@@ -475,6 +475,7 @@ void Engine::esBenchmark(EntityManager*, Engine* engine, FrameGraph::NodeHandle*
                     "Benchmark entity needs prepareTime component");
     auto periodItr = entity->extra.find("period");
     drv::drv_assert(periodItr != entity->extra.end(), "Benchmark entity needs period component");
+    auto exitAfterItr = entity->extra.find("exitAfter");
     auto motionItr = entity->extraStr.find("motion");
     drv::drv_assert(motionItr != entity->extraStr.end(),
                     "Benchmark entity needs motion string component");
@@ -506,6 +507,10 @@ void Engine::esBenchmark(EntityManager*, Engine* engine, FrameGraph::NodeHandle*
     float p = (timer - prepareTimeItr->second) / periodTime;
     engine->perFrameTempInfo[nodeHandle->getFrameId() % engine->perFrameTempInfo.size()]
       .benchmarkPeriod = p;
+    if (exitAfterItr != entity->extra.end()) {
+        if (p > exitAfterItr->second)
+            engine->wantToQuit = true;
+    }
     if (p >= 0) {
         p -= float(int(p));
         if (motionItr->second == "rotate") {

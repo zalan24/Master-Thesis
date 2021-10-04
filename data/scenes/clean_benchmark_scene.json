@@ -78,7 +78,8 @@
             "minRotFreq": 0.03,
             "maxRotFreq": 0.1,
             "rotAngle": 50,
-            "rotMaxPow": 5
+            "rotMaxPow": 5,
+            "exitAfter": 1
         },
         "extraStr": {
             "motion": "intensifyingRotation"
