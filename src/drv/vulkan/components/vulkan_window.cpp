@@ -245,6 +245,7 @@ VulkanWindow::WindowObject::WindowObject(int _width, int _height, const std::str
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 2);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
     glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
+    glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
     glfwSetErrorCallback(error_callback);
     window = glfwCreateWindow(_width, _height, title.c_str(), nullptr, nullptr);
     drv::drv_assert(window, "Window context creation failed");

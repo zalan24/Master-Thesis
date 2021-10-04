@@ -45,14 +45,14 @@ Get a triangle on screen:
         ☐ Make it look nicer
         ✔ Add camera recorder & reply in benchmark @done (10/3/2021, 12:35:35 PM)
         ☐ Make the capture have the final look (remove record/end node for example or not)
-        ☐ Disable resize?
+        ✔ Disable resize? @done (10/4/2021, 1:02:37 PM)
         ✔ Culling? @done (10/3/2021, 2:34:05 PM)
         ☐ Set up test scenes
         ☐ Finalize plots
         ✘ Be able to start exe without args. Double click on exe should work @cancelled (10/4/2021, 12:43:23 PM)
         ✔ Have scripts to run the exe @done (10/4/2021, 12:43:33 PM)
         ✔ Be able to specify settings file, so that each benchmark config can keep it's own engine options @done (10/4/2021, 12:43:34 PM)
-        ☐ Scripted tests
+        ✔ Scripted tests @done (10/4/2021, 12:57:47 PM)
 
     ☐ Benchmarking & tests
         ☐ Laboratory tests
