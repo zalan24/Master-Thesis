@@ -74,14 +74,15 @@ int main(int argc, char* argv[]) {
         app.add_option("-t,--trackingConfig", trackingConfig, "Path to the tracking config file");
         std::string shaderbin = "";
         app.add_option("-s,--shaderbin", shaderbin, "Path to the shader bin file");
-        std::string modelResources = "";
-        app.add_option("-m,--models", modelResources, "Path to the model resources json file");
+        // std::string modelResources = "";
+        // app.add_option("-m,--models", modelResources, "Path to the model resources json file");
         app.add_option("-d,--data", resources.assets, "Path to the data folder");
         Engine::Args args;
         app.add_flag("-r,--renderdoc", args.renderdocEnabled, "Enable renderdoc layer");
         app.add_flag("-g,--gfx", args.gfxCaptureEnabled, "Enable gfx capture layer");
         app.add_flag("--api_dump", args.apiDumpEnabled, "Enable vulkan api dump");
         app.add_option("--scene", args.sceneToLoad, "Which scene file to open");
+        app.add_option("--options", args.engineOptionsFile, "Engine options file");
         app.add_flag("--no_persistance", args.clearRuntimeStats,
                      "Don't load any previously exported runtime stats");
         app.add_option("--runtime_stats_persistance", args.runtimeStatsPersistanceBin,

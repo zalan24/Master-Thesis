@@ -318,6 +318,7 @@ class Engine
         std::string runtimeStatsCacheBin;
         std::string reportFile;
         std::string sceneToLoad;
+        std::string engineOptionsFile;
         bool clearRuntimeStats = false;
     };
 

@@ -365,7 +365,7 @@ Engine::Engine(int argc, char* argv[], const EngineConfig& cfg,
     nextTimelineCalibration =
       drv::Clock::now() + std::chrono::milliseconds(firstTimelineCalibrationTimeMs);
 
-    fs::path optionsPath = fs::path{"engineOptions.json"};
+    fs::path optionsPath = fs::path{launchArgs.engineOptionsFile};
     if (fs::exists(optionsPath)) {
         try {
             engineOptions.importFromFile(optionsPath);
@@ -779,7 +779,7 @@ void Engine::initCursorEntitySystem() {
 Engine::~Engine() {
     captureImageStager.clear();
     captureImage.close();
-    fs::path optionsPath = fs::path{"engineOptions.json"};
+    fs::path optionsPath = fs::path{launchArgs.engineOptionsFile};
     if (!fs::exists(optionsPath))
         fs::create_directories(optionsPath.parent_path());
     engineOptions.exportToFile(optionsPath);
