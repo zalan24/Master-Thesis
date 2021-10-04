@@ -451,6 +451,8 @@ class Engine
         glm::mat4 modelTm;
         glm::vec3 albedo;
         float specular;
+        float bumpyness;
+        float bumpScale;
         float mandelbrot;
         std::string shape;
     };

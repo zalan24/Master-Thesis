@@ -33,6 +33,8 @@
         "modelName": "",
         "hidden": false,
         "specular": 0,
+        "bumpyness": 0,
+        "bumpScale": 1,
         "mandelbrot": 0,
         "extra": {},
         "extraStr": {}
@@ -71,6 +73,8 @@
         "modelName": "",
         "hidden": false,
         "specular": 0,
+        "bumpyness": 0,
+        "bumpScale": 1,
         "mandelbrot": 0,
         "extra": {
             "prepareTime": 5,
@@ -119,6 +123,8 @@
         "modelName": "box",
         "hidden": false,
         "specular": 1,
+        "bumpyness": 1,
+        "bumpScale": 10,
         "mandelbrot": 0,
         "extra": {},
         "extraStr": {}
@@ -157,6 +163,8 @@
         "modelName": "box",
         "hidden": false,
         "specular": 1,
+        "bumpyness": 0,
+        "bumpScale": 1,
         "mandelbrot": 1500,
         "extra": {},
         "extraStr": {}
@@ -195,6 +203,8 @@
         "modelName": "sphere",
         "hidden": false,
         "specular": 1,
+        "bumpyness": 0,
+        "bumpScale": 1,
         "mandelbrot": 1500,
         "extra": {},
         "extraStr": {}

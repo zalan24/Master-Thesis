@@ -31,12 +31,15 @@ struct Entity final : public IAutoSerializable<Entity>
         mass(0),
         hidden(false),
         specular(0),
+        bumpyness(0),
+        bumpScale(1),
         mandelbrot(0) {}
 
     REFLECTABLE((std::string)name, (std::string)templateName, (std::string)parentName,
                 (glm::vec3)albedo, (glm::vec3)position, (glm::vec3)velocity, (glm::vec3)scale,
                 (glm::quat)rotation, (std::string)modelName, (float)mass, (bool)hidden,
-                (float)specular, (float)mandelbrot, (std::unordered_map<std::string, float>)extra,
+                (float)specular, (float)bumpyness, (float)bumpScale, (float)mandelbrot,
+                (std::unordered_map<std::string, float>)extra,
                 (std::unordered_map<std::string, std::string>)extraStr)
 
     uint64_t engineBehaviour = 0;
@@ -59,6 +62,8 @@ struct Entity final : public IAutoSerializable<Entity>
         mass(other.mass),
         hidden(other.hidden),
         specular(other.specular),
+        bumpyness(other.bumpyness),
+        bumpScale(other.bumpScale),
         mandelbrot(other.mandelbrot),
         extra(other.extra),
         extraStr(other.extraStr),
@@ -82,6 +87,8 @@ struct Entity final : public IAutoSerializable<Entity>
         mass = other.mass;
         hidden = other.hidden;
         specular = other.specular;
+        bumpyness = other.bumpyness;
+        bumpScale = other.bumpScale;
         mandelbrot = other.mandelbrot;
         extra = other.extra;
         extraStr = other.extraStr;
@@ -105,6 +112,8 @@ struct Entity final : public IAutoSerializable<Entity>
         mass(other.mass),
         hidden(other.hidden),
         specular(other.specular),
+        bumpyness(other.bumpyness),
+        bumpScale(other.bumpScale),
         mandelbrot(other.mandelbrot),
         extra(other.extra),
         extraStr(other.extraStr),
@@ -131,6 +140,8 @@ struct Entity final : public IAutoSerializable<Entity>
         mass = other.mass;
         hidden = other.hidden;
         specular = other.specular;
+        bumpyness = other.bumpyness;
+        bumpScale = other.bumpScale;
         mandelbrot = other.mandelbrot;
         extra = other.extra;
         extraStr = other.extraStr;

@@ -211,6 +211,8 @@ void Game::recordCmdBufferContent(const RenderInfo& info, const AcquiredImageDat
         shader3dDescriptor.set_modelTm(data.modelTm);
         entityShaderDesc.set_entityAlbedo(data.albedo);
         entityShaderDesc.set_specularStrength(data.specular);
+        entityShaderDesc.set_bumpyness(data.bumpyness);
+        entityShaderDesc.set_bumpScale(data.bumpScale);
         entityShaderDesc.set_mandelbrotQuality(data.mandelbrot);
 
         if (data.shape == "plane") {

@@ -13,6 +13,8 @@ descriptor {
         vec3 entityAlbedo;
         float specularStrength;
         float mandelbrotQuality;
+        float bumpyness;
+        float bumpScale;
     }
 }
 
@@ -22,6 +24,8 @@ stages {
         use entityAlbedo;
         use specularStrength;
         use mandelbrotQuality;
+        use bumpyness;
+        use bumpScale;
     }
     vs {
         entry = main;
@@ -95,8 +99,12 @@ ps {
             }
         }
 
-        // albedo = vec3(abs(tc_specular_mandelbrot.xy * 2.0 - 1.0), 0);
-        outColor = lightToColor(shadePixel(normalize(eyeToWorld), worldPos, normalize(normal), albedo, specular));
+        if (PushConstants.bumpyness > 0) {
+            vec2 bumpTc = tc_specular_mandelbrot.xy * PushConstants.bumpScale;
+            albedo = vec3(0.0, 0.0, 0.0);
+            albedo.x = perlinNoise(bumpTc, 2);
+        }
+        outColor = lightToColor(shadePixel(normalize(eyeToWorld), worldPos, normalize(normal), albedo, specular, 1.0));
     }
 #else
     void main() {

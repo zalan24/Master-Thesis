@@ -694,6 +694,8 @@ void Engine::esEmitter(EntityManager*, Engine* engine, FrameGraph::NodeHandle*, 
             ent.rotation = orientation;
             ent.modelName = entity->modelName;
             ent.specular = entity->specular;
+            ent.bumpyness = entity->bumpyness;
+            ent.bumpScale = entity->bumpScale;
             ent.mandelbrot = entity->mandelbrot;
             if (baseMassItr->second > 0) {
                 ent.mass = baseMassItr->second * ent.scale.x * ent.scale.y * ent.scale.z;
@@ -742,6 +744,8 @@ void Engine::esBeforeDraw(EntityManager*, Engine* engine, FrameGraph::NodeHandle
 
     data.albedo = entity->albedo;
     data.specular = entity->specular;
+    data.bumpyness = entity->bumpyness;
+    data.bumpScale = entity->bumpScale;
     data.mandelbrot = entity->mandelbrot;
     data.shape = entity->modelName;
     glm::mat4 translationTm = glm::translate(glm::mat4(1.f), position);
