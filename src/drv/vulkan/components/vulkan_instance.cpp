@@ -23,11 +23,11 @@ static const char* const gfxLayers[] = {"VK_LAYER_LUNARG_gfxreconstruct"};
 
 static const char* const apiDumpLayers[] = {"VK_LAYER_LUNARG_api_dump"};
 
-#ifdef DEBUG
-static const char* const debugLayers[] = {"VK_LAYER_LUNARG_monitor"};
-#else
+// #ifdef DEBUG
+// static const char* const debugLayers[] = {"VK_LAYER_LUNARG_monitor"};
+// #else
 static const char* const debugLayers[] = {};
-#endif
+// #endif
 
 using namespace drv_vulkan;
 

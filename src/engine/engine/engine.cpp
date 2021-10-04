@@ -973,6 +973,7 @@ bool Engine::sampleInput(FrameId frameId) {
 void Engine::simulationLoop() {
     RUNTIME_STAT_SCOPE(simulationLoop);
     loguru::set_thread_name("simulate");
+    LOG_ENGINE("Simulation thread started");
     FrameId simulationFrame = 0;
     while (!frameGraph.isStopped()) {
         mainKernelCv.notify_one();
@@ -1034,6 +1035,7 @@ void Engine::simulationLoop() {
         }
         simulationFrame++;
     }
+    LOG_ENGINE("Simulation thread stopped");
 }
 
 drv::Swapchain::OldSwapchinData Engine::recreateSwapchain() {
@@ -1126,6 +1128,7 @@ Engine::AcquiredImageData Engine::acquiredSwapchainImage(
 void Engine::beforeDrawLoop() {
     RUNTIME_STAT_SCOPE(beforeDrawLoop);
     loguru::set_thread_name("beforeDraw");
+    LOG_ENGINE("Before draw thread started");
     FrameId beforeDrawFrame = 0;
     while (!frameGraph.isStopped()) {
         if (auto startNode =
@@ -1160,11 +1163,13 @@ void Engine::beforeDrawLoop() {
         }
         beforeDrawFrame++;
     }
+    LOG_ENGINE("Before draw thread stopped");
 }
 
 void Engine::recordCommandsLoop() {
     RUNTIME_STAT_SCOPE(recordLoop);
     loguru::set_thread_name("record");
+    LOG_ENGINE("Record commands thread started");
     FrameId recordFrame = 0;
     while (!frameGraph.isStopped()) {
         mainKernelCv.notify_one();
@@ -1206,6 +1211,7 @@ void Engine::recordCommandsLoop() {
     frameGraph.getGlobalExecutionQueue()->push(ExecutionPackage(
       recordFrame, INVALID_NODE,
       ExecutionPackage::MessagePackage{ExecutionPackage::Message::QUIT, 0, 0, nullptr}));
+    LOG_ENGINE("Record commands thread stopped");
 }
 
 class AccessValidationCallback final : public drv::ResourceStateTransitionCallback
@@ -1601,6 +1607,7 @@ bool Engine::execute(ExecutionPackage&& package) {
 void Engine::executeCommandsLoop() {
     RUNTIME_STAT_SCOPE(executionLoop);
     loguru::set_thread_name("execution");
+    LOG_ENGINE("Execution thread started");
     std::unique_lock<std::mutex> executionLock(executionMutex);
     while (true) {
         ExecutionPackage package;
@@ -1610,11 +1617,13 @@ void Engine::executeCommandsLoop() {
             if (!execute(std::move(package)))
                 return;
     }
+    LOG_ENGINE("Execution thread stopped");
 }
 
 void Engine::readbackLoop(volatile bool* finished) {
     RUNTIME_STAT_SCOPE(readbackLoop);
     loguru::set_thread_name("readback");
+    LOG_ENGINE("Readback thread started");
     FrameId readbackFrame = 0;
     while (!frameGraph.isStopped()) {
         if (!frameGraph.startStage(FrameGraph::READBACK_STAGE, readbackFrame))
@@ -1872,11 +1881,13 @@ void Engine::readbackLoop(volatile bool* finished) {
     }
     *finished = true;
     {
+        LOG_ENGINE("Doing some cleanup...");
         // wait for execution queue to finish
         std::unique_lock<std::mutex> executionLock(executionMutex);
         drv::device_wait_idle(device);
         garbageSystem.releaseAll();
     }
+    LOG_ENGINE("Readback thread stopped");
 }
 
 void Engine::gameLoop() {
@@ -1886,6 +1897,7 @@ void Engine::gameLoop() {
 
     volatile bool readbackFinished = false;
 
+    LOG_ENGINE("Starting loop threads...");
     std::thread simulationThread(&Engine::simulationLoop, this);
     std::thread beforeDrawThread(&Engine::beforeDrawLoop, this);
     std::thread recordThread(&Engine::recordCommandsLoop, this);
@@ -1893,24 +1905,29 @@ void Engine::gameLoop() {
     std::thread readbackThread(&Engine::readbackLoop, this, &readbackFinished);
 
     try {
+        LOG_ENGINE("Initing runtime stats...");
         runtimeStats.initExecution();
 
+        LOG_ENGINE("Naming threads...");
         set_thread_name(&simulationThread, "simulation");
         set_thread_name(&beforeDrawThread, "beforeDraw");
         set_thread_name(&recordThread, "record");
         set_thread_name(&executeThread, "execute");
         set_thread_name(&readbackThread, "readback");
 
+        LOG_ENGINE("Starting entity manager...");
         entityManager.startFrameGraph(this);
 
         IWindow* w = window;
         while (!w->shouldClose() && !wantToQuit) {
             mainLoopKernel();
         }
+        LOG_ENGINE("Sending stop signal to frameGraph...");
         frameGraph.stopExecution(false);
         while (!readbackFinished) {
             mainLoopKernel();
         }
+        LOG_ENGINE("Joining threads...");
         simulationThread.join();
         beforeDrawThread.join();
         recordThread.join();
@@ -1919,6 +1936,7 @@ void Engine::gameLoop() {
 
         drv::sync_gpu_clock(drvInstance, physicalDevice, device);
 
+        LOG_ENGINE("Exporting stuff...");
         entityManager.exportToFile(fs::path{"prev_scene.json"});
 
         runtimeStats.stopExecution();
@@ -1947,6 +1965,7 @@ void Engine::gameLoop() {
         readbackThread.join();
         throw;
     }
+    LOG_ENGINE("Game loop successfully ended");
 }
 
 void Engine::mainLoopKernel() {

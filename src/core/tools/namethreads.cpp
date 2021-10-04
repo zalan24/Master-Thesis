@@ -2,8 +2,8 @@
 
 #include <map>
 #include <mutex>
-#include <thread>
 #include <sstream>
+#include <thread>
 
 // https://stackoverflow.com/questions/10121560/stdthread-naming-your-thread
 
@@ -44,8 +44,9 @@ static void SetThreadName(uint32_t dwThreadID, const char* threadName) {
     info.dwFlags = 0;
 
     // __try {
-    RaiseException(MS_VC_EXCEPTION, 0, sizeof(info) / sizeof(ULONG_PTR),
-                   reinterpret_cast<ULONG_PTR*>(&info));
+    // WTF is this anyway??
+    // RaiseException(MS_VC_EXCEPTION, 0, sizeof(info) / sizeof(ULONG_PTR),
+    //                reinterpret_cast<ULONG_PTR*>(&info));
     // }
     // __except (EXCEPTION_EXECUTE_HANDLER) {
     // }

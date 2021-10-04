@@ -33,6 +33,10 @@
 
 build/
 gen/
+launchers/logs
+launchers/benchmarks
+launchers/statistics
+launchers/prev_scene.json
 data/models/*
 .vscode/ipch/
 .cache/
