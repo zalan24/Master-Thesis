@@ -34,6 +34,7 @@
 build/
 gen/
 launchers/logs
+launchers/results
 launchers/benchmarks
 launchers/statistics
 launchers/prev_scene.json
