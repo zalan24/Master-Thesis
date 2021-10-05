@@ -123,7 +123,7 @@
         "modelName": "box",
         "hidden": false,
         "specular": 1,
-        "bumpyness": 1,
+        "bumpyness": 0.2,
         "bumpScale": 10,
         "mandelbrot": 0,
         "extra": {},

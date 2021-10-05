@@ -69,6 +69,8 @@ class VulkanWindow final : public IWindow
 
     VkSurfaceKHR getSurface();
 
+    void requireNoImGuiFrame() const;
+
  private:
     class GLFWInit
     {
@@ -138,6 +140,7 @@ class VulkanWindow final : public IWindow
     int width = 0;
     int height = 0;
     uint64_t imGuiInitFrame = std::numeric_limits<uint64_t>::max();
+    std::atomic<bool> insideImGuiFrame = false;
 
     mutable std::mutex resolutionMutex;
 

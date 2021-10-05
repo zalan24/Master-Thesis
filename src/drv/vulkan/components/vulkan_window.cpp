@@ -54,7 +54,8 @@ void VulkanWindow::error_callback [[noreturn]] (int, const char* description) {
 class VulkanGlfwImGuiInputListener final : public InputListener
 {
  public:
-    VulkanGlfwImGuiInputListener(GLFWwindow* _window) : InputListener(false), window(_window) {}
+    VulkanGlfwImGuiInputListener(VulkanWindow* _vulkanWindow, GLFWwindow* _window)
+      : InputListener(false), vulkanWindow(_vulkanWindow), window(_window) {}
     ~VulkanGlfwImGuiInputListener() override {}
 
     CursorMode getCursorMode() override final { return DONT_CARE; }
@@ -73,29 +74,35 @@ class VulkanGlfwImGuiInputListener final : public InputListener
                 action = GLFW_REPEAT;
                 break;
         }
+        vulkanWindow->requireNoImGuiFrame();
         ImGui_ImplGlfw_KeyCallback(window, e.key, e.scancode, action, e.mods);
         return false;
     }
     bool processMouseButton(const Input::MouseButtenEvent& e) override {
         int action = e.type == Input::MouseButtenEvent::PRESS ? GLFW_PRESS : GLFW_RELEASE;
+        vulkanWindow->requireNoImGuiFrame();
         ImGui_ImplGlfw_MouseButtonCallback(window, e.buttonId, action, e.mods);
         return false;
     }
     bool processScroll(const Input::ScrollEvent& e) override {
+        vulkanWindow->requireNoImGuiFrame();
         ImGui_ImplGlfw_ScrollCallback(window, e.x, e.y);
         return false;
     }
     bool processWindowFocus(const Input::WindowFocusEvent& e) override {
+        vulkanWindow->requireNoImGuiFrame();
         ImGui_ImplGlfw_WindowFocusCallback(window, e.focus);
         return false;
     }
 
     bool processCursorEntered(const Input::CursorEnterEvent& e) override {
+        vulkanWindow->requireNoImGuiFrame();
         ImGui_ImplGlfw_CursorEnterCallback(window, e.entered);
         return false;
     }
 
     bool processChar(const Input::CharEvent& e) override {
+        vulkanWindow->requireNoImGuiFrame();
         ImGui_ImplGlfw_CharCallback(window, e.c);
         return false;
     }
@@ -107,11 +114,17 @@ class VulkanGlfwImGuiInputListener final : public InputListener
     // }
 
  private:
+    VulkanWindow* vulkanWindow;
     GLFWwindow* window;
 };
 
 std::unique_ptr<InputListener> VulkanWindow::createImGuiInputListener() {
-    return std::make_unique<VulkanGlfwImGuiInputListener>(window.get());
+    return std::make_unique<VulkanGlfwImGuiInputListener>(this, window.get());
+}
+
+void VulkanWindow::requireNoImGuiFrame() const {
+    drv::drv_assert(!insideImGuiFrame.load(),
+                    "ImGui can't process input, while inside imGui frame");
 }
 
 SwapChainSupportDetails drv_vulkan::query_swap_chain_support(drv::PhysicalDevicePtr physicalDevice,
@@ -553,6 +566,7 @@ VulkanWindow::ImGuiHelper::~ImGuiHelper() {
 void VulkanWindow::newImGuiFrame(uint64_t frame) {
     if (imGuiHelper == nullptr)
         return;
+    insideImGuiFrame.store(true);
     if (imGuiInitFrame == std::numeric_limits<uint64_t>::max())
         imGuiInitFrame = frame;
 
@@ -565,6 +579,7 @@ void VulkanWindow::recordImGui(uint64_t frame) {
     if (imGuiHelper == nullptr || frame < imGuiInitFrame)
         return;
     ImGui::Render();
+    insideImGuiFrame.store(false);
 }
 
 void VulkanWindow::drawImGui(uint64_t frame, drv::CommandBufferPtr cmdBuffer) {

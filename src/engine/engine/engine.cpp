@@ -694,7 +694,7 @@ void Engine::esEmitter(EntityManager*, Engine* engine, FrameGraph::NodeHandle*, 
             ent.rotation = orientation;
             ent.modelName = entity->modelName;
             ent.specular = entity->specular;
-            ent.bumpyness = entity->bumpyness;
+            ent.bumpyness = entity->bumpyness * ent.scale.x * ent.scale.y * ent.scale.z;
             ent.bumpScale = entity->bumpScale;
             ent.mandelbrot = entity->mandelbrot;
             if (baseMassItr->second > 0) {
@@ -943,9 +943,12 @@ bool Engine::sampleInput(FrameId frameId) {
         mainKernelCv.notify_one();
         waitForInputCv.wait_for(lock, std::chrono::microseconds(500));
     }
-    Input::InputEvent event;
-    while (input.popEvent(event))
-        inputManager.feedInput(std::move(event));
+    {
+        std::unique_lock<std::mutex> lock(inputSamplingMutex);
+        Input::InputEvent event;
+        while (input.popEvent(event))
+            inputManager.feedInput(std::move(event));
+    }
 
     perFrameTempInfo[frameId % perFrameTempInfo.size()].cameraControls = {};
     if (mouseListener.popToggleFreeCame()) {
@@ -2324,10 +2327,12 @@ Engine::ImGuiIniter::~ImGuiIniter() {
 
 void Engine::recordImGui(const AcquiredImageData&, EngineCmdBufferRecorder* recorder,
                          FrameId frame) {
-    std::unique_lock<std::mutex> lock(inputSamplingMutex);
-    window->newImGuiFrame(frame);
-    drawUI(frame);
-    window->recordImGui(frame);
+    {
+        std::unique_lock<std::mutex> lock(inputSamplingMutex);
+        window->newImGuiFrame(frame);
+        drawUI(frame);
+        window->recordImGui(frame);
+    }
     window->drawImGui(frame, recorder->get()->getCommandBuffer());
 }
 

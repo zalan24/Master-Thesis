@@ -99,12 +99,20 @@ ps {
             }
         }
 
+        vec3 norm = normalize(normal);
+
         if (PushConstants.bumpyness > 0) {
             vec2 bumpTc = tc_specular_mandelbrot.xy * PushConstants.bumpScale;
-            albedo = vec3(0.0, 0.0, 0.0);
-            albedo.x = perlinNoise(bumpTc, 2);
+            float displacement = perlinNoise(bumpTc, 2); //[0, 1]
+            displacement = displacement * PushConstants.bumpyness;
+            // albedo = vec3(0.0, 0.0, 0.0);
+            // albedo.x = displacement;
+            vec3 displaced = worldPos + norm * displacement;
+            vec3 dx = dFdx(displaced);
+            vec3 dy = dFdy(displaced);
+            norm = normalize(cross(dx, dy));
         }
-        outColor = lightToColor(shadePixel(normalize(eyeToWorld), worldPos, normalize(normal), albedo, specular, 1.0));
+        outColor = lightToColor(shadePixel(normalize(eyeToWorld), worldPos, norm, albedo, specular, 1.0));
     }
 #else
     void main() {
