@@ -61,6 +61,10 @@ ps {
     layout(location = 3) in vec4 tc_specular_mandelbrot;
     layout(location = 4) in vec3 eyeToWorld;
 
+    float sampleBumpmap(vec2 tc) {
+        return perlinNoise(tc * PushConstants.bumpScale, 4); //[0, 1]
+    }
+
     void main() {
         vec3 albedo = vec3(vAlbedo);
         float specular = tc_specular_mandelbrot.z;
@@ -101,23 +105,70 @@ ps {
 
         vec3 norm = normalize(normal);
 
+        float selfShadow = dot(norm, PushConstants.sunDir) < 0 ? 1.0 : 0.0;
+        float selfShadowThreshold = 0.15;
+
         if (PushConstants.bumpyness > 0) {
-            vec2 bumpTc = tc_specular_mandelbrot.xy * PushConstants.bumpScale;
-            float displacement = perlinNoise(bumpTc, 2); //[0, 1]
-            displacement = displacement * PushConstants.bumpyness;
-            // albedo = vec3(0.0, 0.0, 0.0);
-            // albedo.x = displacement;
+            float unscaledDisplacement = sampleBumpmap(tc_specular_mandelbrot.xy);
+            float displacement = unscaledDisplacement * PushConstants.bumpyness;
             vec3 displaced = worldPos + norm * displacement;
             vec3 dx = dFdx(displaced);
             vec3 dy = dFdy(displaced);
             norm = normalize(cross(dx, dy));
+
+            vec3 dxWp = dFdx(worldPos);
+            vec3 dyWp = dFdy(worldPos);
+
+            vec2 dxTc = dFdx(tc_specular_mandelbrot.xy*2.0-1.0);
+            vec2 dyTc = dFdy(tc_specular_mandelbrot.xy*2.0-1.0);
+
+            vec3 tcX;
+            vec3 tcY;
+            if (abs(dxTc.x) >= abs(dxTc.y)) {
+                tcY = (dyWp - dyTc.x/dxTc.x*dxWp) / (dyTc.y - dyTc.x/dxTc.x*dxTc.y);
+                tcX = (dxWp - tcY*dxTc.y) / dxTc.x;
+            } else {
+                tcX = (dyWp - dyTc.y/dxTc.y*dxWp) / (dyTc.x - dyTc.y/dxTc.y*dxTc.x);
+                tcY = (dxWp - tcX*dxTc.x) / dxTc.y;
+            }
+            vec3 tcZ = normalize(cross(tcX, tcY)) * PushConstants.bumpyness;
+            if (dot(tcZ, normal) < 0)
+                tcZ = -tcZ;
+            // vec3 tcPos = worldPos - tcX*(tc_specular_mandelbrot.x*2.0-1.0) - tcY*(tc_specular_mandelbrot.y*2.0-1.0);
+
+            vec3 tc_sunDir = vec3(
+                dot(tcX, PushConstants.sunDir)/dot(tcX, tcX),
+                dot(tcY, PushConstants.sunDir)/dot(tcY, tcY),
+                dot(tcZ, PushConstants.sunDir)/dot(tcZ, tcZ));
+            if (tc_sunDir.z < 0) {
+                // sun points towards surface
+                vec3 traceDir = -tc_sunDir;
+                float diff = 1.0 - unscaledDisplacement;
+                float moveLen = diff / traceDir.z;
+                int iterations = 8;
+                vec3 sampleOrigo = vec3(tc_specular_mandelbrot.x * 2.0 - 1.0, tc_specular_mandelbrot.y * 2.0 - 1.0, unscaledDisplacement);
+                for (int i = 0; i < iterations; ++i) {
+                    float p = (float(i) + 0.5) / float(iterations);
+                    vec3 samplePos = sampleOrigo + traceDir * moveLen * p;
+                    vec2 sampleTc = samplePos.xy * 0.5 + 0.5;
+                    float h = sampleBumpmap(sampleTc);
+                    // float threshold = min(selfShadowThreshold, h - displacement);
+                    // float threshold = min(selfShadowThreshold, samplePos.z - displacement);
+                    if (samplePos.z < h) {
+                        if (samplePos.z <= h-selfShadowThreshold) {
+                            selfShadow = 0.0;
+                            break;
+                        } else
+                            selfShadow = min(selfShadow, (samplePos.z-h+selfShadowThreshold)/selfShadowThreshold);
+                    }
+                }
+            }
         }
-        outColor = lightToColor(shadePixel(normalize(eyeToWorld), worldPos, norm, albedo, specular, 1.0));
+        outColor = lightToColor(shadePixel(normalize(eyeToWorld), worldPos, norm, albedo, specular, selfShadow));
     }
 #else
     void main() {
         outColor = vec4(0.0, 0.0, 0.0, 1.0);
     }
 #endif
-
 }
