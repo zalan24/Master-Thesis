@@ -62,10 +62,10 @@ Get a triangle on screen:
                 ☐ Cpu limited (before input) & cpu limited (after input) & exec limited & gpu limited & exec + gpu limited (both accumulate delay)
                 ☐ No latency reduction & normal latency reduction & fps limited & discretized low latency pool (used with no stdDiv) & high latency pool (that actually works with high stdDiv)
         ☐ Clean test
-            ☐ Have one giant cube with expensive mandelbrot
-            ☐ rotate camera from not seeing cube to filling the screen with it
-            ☐ When object not/partly-visible, cpu>=gpu
-            ☐ Accelerate rotation throughout the benchmark period
+            ✔ Have one giant cube with expensive mandelbrot @done (10/7/2021, 11:33:40 AM)
+            ✔ rotate camera from not seeing cube to filling the screen with it @done (10/7/2021, 11:33:46 AM)
+            ✔ When object not/partly-visible, cpu>=gpu @done (10/7/2021, 11:39:09 AM)
+            ✔ Accelerate rotation throughout the benchmark period @done (10/7/2021, 11:33:59 AM)
             ☐ Compare no reduction & fps limit & discretized
         ☐ Chaos
             ☐ Create a scene where gpu & cpu perf are very similar -> both cpu and gpu are saturated with work, with some variance
