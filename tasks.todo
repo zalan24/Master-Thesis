@@ -58,9 +58,10 @@ Get a triangle on screen:
         ☐ Laboratory tests
             ☐ Measurements will need: all data from capture + LDAT
             ☐ Measure in configs:
-                ☐ No stdDiv & heigh stdDiv
-                ☐ Cpu limited (before input) & cpu limited (after input) & exec limited & gpu limited & exec + gpu limited (both accumulate delay)
-                ☐ No latency reduction & normal latency reduction & fps limited & discretized low latency pool (used with no stdDiv) & high latency pool (that actually works with high stdDiv)
+                ✔ No stdDiv & heigh stdDiv @done (10/7/2021, 1:15:48 PM)
+                ✔ Cpu limited (before input) & cpu limited (after input) & exec limited & gpu limited & exec + gpu limited (both accumulate delay) @done (10/7/2021, 1:15:53 PM)
+                ✔ No latency reduction & normal latency reduction & fps limited & discretized low latency pool (used with no stdDiv) & high latency pool (that actually works with high stdDiv) @done (10/7/2021, 1:23:55 PM)
+            ☐ Generate a csv with relevant data when a capture is created (values that are exported to the capture + whatever)
         ☐ Clean test
             ✔ Have one giant cube with expensive mandelbrot @done (10/7/2021, 11:33:40 AM)
             ✔ rotate camera from not seeing cube to filling the screen with it @done (10/7/2021, 11:33:46 AM)
@@ -74,7 +75,6 @@ Get a triangle on screen:
             ☐ Move the camera randomly around as expected in an fps game
             ☐ Set up latency reduction in the best way possible
             ☐ Compare no reduction & fps limit & discretized
-        ☐ Take captures in every test config
         ☐ generate plots in every benchmark config
 
 
