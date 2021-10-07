@@ -36,7 +36,18 @@
         "bumpyness": 0,
         "bumpScale": 1,
         "mandelbrot": 0,
-        "extra": {},
+        "extra": {
+            "brightness": 0.5,
+            "sunDirX": -0.3,
+            "sunDirY": -0.2,
+            "sunDirZ": -0.4,
+            "sunLightR": 8.0,
+            "sunLightG": 3.2,
+            "sunLightB": 1.6,
+            "ambientLightR": 0.05,
+            "ambientLightG": 0.1,
+            "ambientLightB": 0.4
+        },
         "extraStr": {}
     },
     {
@@ -123,8 +134,8 @@
         "modelName": "box",
         "hidden": false,
         "specular": 1,
-        "bumpyness": 0.2,
-        "bumpScale": 10,
+        "bumpyness": 0.1,
+        "bumpScale": 20,
         "mandelbrot": 0,
         "extra": {},
         "extraStr": {}

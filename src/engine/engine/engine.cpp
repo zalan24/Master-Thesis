@@ -587,6 +587,31 @@ void Engine::esCamera(EntityManager* entityManger, Engine* engine, FrameGraph::N
         entity->position += entity->rotation * cameraControls.translation;
     }
 
+    auto brightnessItr = entity->extra.find("brightness");
+    drv::drv_assert(brightnessItr != entity->extra.end(),
+                    "Camera entity needs brightness component");
+    auto sunDirXItr = entity->extra.find("sunDirX");
+    drv::drv_assert(sunDirXItr != entity->extra.end(), "Camera entity needs sunDirX component");
+    auto sunDirYItr = entity->extra.find("sunDirY");
+    drv::drv_assert(sunDirYItr != entity->extra.end(), "Camera entity needs sunDirY component");
+    auto sunDirZItr = entity->extra.find("sunDirZ");
+    drv::drv_assert(sunDirZItr != entity->extra.end(), "Camera entity needs sunDirZ component");
+    auto sunLightRItr = entity->extra.find("sunLightR");
+    drv::drv_assert(sunLightRItr != entity->extra.end(), "Camera entity needs sunLightR component");
+    auto sunLightGItr = entity->extra.find("sunLightG");
+    drv::drv_assert(sunLightGItr != entity->extra.end(), "Camera entity needs sunLightG component");
+    auto sunLightBItr = entity->extra.find("sunLightB");
+    drv::drv_assert(sunLightBItr != entity->extra.end(), "Camera entity needs sunLightB component");
+    auto ambientLightRItr = entity->extra.find("ambientLightR");
+    drv::drv_assert(ambientLightRItr != entity->extra.end(),
+                    "Camera entity needs ambientLightR component");
+    auto ambientLightGItr = entity->extra.find("ambientLightG");
+    drv::drv_assert(ambientLightGItr != entity->extra.end(),
+                    "Camera entity needs ambientLightG component");
+    auto ambientLightBItr = entity->extra.find("ambientLightB");
+    drv::drv_assert(ambientLightBItr != entity->extra.end(),
+                    "Camera entity needs ambientLightB component");
+
     drv::Extent2D extent = engine->window->getResolution();
     FrameGraph::Clock::time_point now = FrameGraph::Clock::now();
     RendererData& renderData =
@@ -596,10 +621,14 @@ void Engine::esCamera(EntityManager* entityManger, Engine* engine, FrameGraph::N
         .count()
       < 300;
     renderData.cameraRecord = engine->hasStartedRecording;
-    float brightness = 0.5;
-    renderData.sunDir = glm::normalize(vec3(-0.2, -0.8, 0.4));
-    renderData.sunLight = vec3(1.0, 0.4, 0.2) * brightness * 8.f;
-    renderData.ambientLight = vec3(0.05, 0.1, 0.4) * brightness;
+    float brightness = brightnessItr->second;
+    renderData.sunDir =
+      glm::normalize(vec3(sunDirXItr->second, sunDirYItr->second, sunDirZItr->second));
+    renderData.sunLight =
+      vec3(sunLightRItr->second, sunLightGItr->second, sunLightBItr->second) * brightness;
+    renderData.ambientLight =
+      vec3(ambientLightRItr->second, ambientLightGItr->second, ambientLightBItr->second)
+      * brightness;
     renderData.eyePos = entity->position;
     renderData.eyeDir = static_cast<glm::mat3>(entity->rotation)[2];
     renderData.ratio = float(extent.width) / float(extent.height);
