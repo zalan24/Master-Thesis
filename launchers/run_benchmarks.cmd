@@ -16,7 +16,6 @@ SET BenchmarkFolder=%CurrentDir%\%CurrentBenchmark%
 mkdir %BenchmarkFolder%
 python ../scripts/generate_plots.py benchmarks/benchmark.csv %BenchmarkFolder%
 XCOPY /q logs\all.log %BenchmarkFolder%
-echo %Scene%
 XCOPY /q %Scene% %BenchmarkFolder%
 XCOPY /q %EngineOption% %BenchmarkFolder%
 

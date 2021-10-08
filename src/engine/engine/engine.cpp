@@ -517,7 +517,10 @@ void Engine::esBenchmark(EntityManager*, Engine* engine, FrameGraph::NodeHandle*
             entity->rotation = glm::quat(glm::vec3(0, p * float(M_PI) * 2.f, 0));
             entity->position = glm::vec3(0, 3, 0) - entity->rotation * glm::vec3(0, 0, 10.f);
         }
-        if (motionItr->second == "intensifyingRotation") {
+        else if (motionItr->second == "none") {
+            // nothing to do
+        }
+        else if (motionItr->second == "intensifyingRotation") {
             auto minRotFreqItr = entity->extra.find("minRotFreq");
             drv::drv_assert(minRotFreqItr != entity->extra.end(),
                             "This benchmark entity needs minRotFreq component");
