@@ -55,6 +55,56 @@ XCOPY /q logs\all.log %BenchmarkFolder%
 XCOPY /q %Scene% %BenchmarkFolder%
 XCOPY /q %EngineOption% %BenchmarkFolder%
 
+@REM Realistic scene
+
+SET CurrentBenchmark=realistic_control
+SET EngineOption=..\data\engineOptions\benchmark_realistic_control.json
+SET Scene=..\data\scenes\realistic_benchmark_scene.json
+"../build/src/games/playground/Playground.exe" -c../data/configs/playground_default.json -t../data/configs/trackingConfig.json -d../data/ --scene %Scene% --options %EngineOption% --no_persistance --runtime_stats_persistance statistics/runtimeStats.bin --runtime_stats_game_exports statistics/runtimeStatsGameExports.bin --runtime_stats_cache statistics/runtimeStatsCache.bin -s../build/shaders/shaders.bin --report statistics/report.txt
+  if errorlevel 1 goto error
+SET BenchmarkFolder=%CurrentDir%\%CurrentBenchmark%
+mkdir %BenchmarkFolder%
+python ../scripts/generate_plots.py benchmarks/benchmark.csv %BenchmarkFolder%
+XCOPY /q logs\all.log %BenchmarkFolder%
+XCOPY /q %Scene% %BenchmarkFolder%
+XCOPY /q %EngineOption% %BenchmarkFolder%
+
+SET CurrentBenchmark=realistic_unlimited
+SET EngineOption=..\data\engineOptions\benchmark_realistic_unlimited.json
+SET Scene=..\data\scenes\realistic_benchmark_scene.json
+"../build/src/games/playground/Playground.exe" -c../data/configs/playground_default.json -t../data/configs/trackingConfig.json -d../data/ --scene %Scene% --options %EngineOption% --no_persistance --runtime_stats_persistance statistics/runtimeStats.bin --runtime_stats_game_exports statistics/runtimeStatsGameExports.bin --runtime_stats_cache statistics/runtimeStatsCache.bin -s../build/shaders/shaders.bin --report statistics/report.txt
+  if errorlevel 1 goto error
+SET BenchmarkFolder=%CurrentDir%\%CurrentBenchmark%
+mkdir %BenchmarkFolder%
+python ../scripts/generate_plots.py benchmarks/benchmark.csv %BenchmarkFolder%
+XCOPY /q logs\all.log %BenchmarkFolder%
+XCOPY /q %Scene% %BenchmarkFolder%
+XCOPY /q %EngineOption% %BenchmarkFolder%
+
+SET CurrentBenchmark=realistic_limited
+SET EngineOption=..\data\engineOptions\benchmark_realistic_limited.json
+SET Scene=..\data\scenes\realistic_benchmark_scene.json
+"../build/src/games/playground/Playground.exe" -c../data/configs/playground_default.json -t../data/configs/trackingConfig.json -d../data/ --scene %Scene% --options %EngineOption% --no_persistance --runtime_stats_persistance statistics/runtimeStats.bin --runtime_stats_game_exports statistics/runtimeStatsGameExports.bin --runtime_stats_cache statistics/runtimeStatsCache.bin -s../build/shaders/shaders.bin --report statistics/report.txt
+  if errorlevel 1 goto error
+SET BenchmarkFolder=%CurrentDir%\%CurrentBenchmark%
+mkdir %BenchmarkFolder%
+python ../scripts/generate_plots.py benchmarks/benchmark.csv %BenchmarkFolder%
+XCOPY /q logs\all.log %BenchmarkFolder%
+XCOPY /q %Scene% %BenchmarkFolder%
+XCOPY /q %EngineOption% %BenchmarkFolder%
+
+SET CurrentBenchmark=realistic_vsync
+SET EngineOption=..\data\engineOptions\benchmark_realistic_vsync.json
+SET Scene=..\data\scenes\realistic_benchmark_scene.json
+"../build/src/games/playground/Playground.exe" -c../data/configs/playground_default.json -t../data/configs/trackingConfig.json -d../data/ --scene %Scene% --options %EngineOption% --no_persistance --runtime_stats_persistance statistics/runtimeStats.bin --runtime_stats_game_exports statistics/runtimeStatsGameExports.bin --runtime_stats_cache statistics/runtimeStatsCache.bin -s../build/shaders/shaders.bin --report statistics/report.txt
+  if errorlevel 1 goto error
+SET BenchmarkFolder=%CurrentDir%\%CurrentBenchmark%
+mkdir %BenchmarkFolder%
+python ../scripts/generate_plots.py benchmarks/benchmark.csv %BenchmarkFolder%
+XCOPY /q logs\all.log %BenchmarkFolder%
+XCOPY /q %Scene% %BenchmarkFolder%
+XCOPY /q %EngineOption% %BenchmarkFolder%
+
 goto EOF
 
 :error
