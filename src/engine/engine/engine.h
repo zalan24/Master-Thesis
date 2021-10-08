@@ -261,7 +261,7 @@ class FreeCamInput final : public InputListener
 
     glm::vec3 speed = glm::vec3(0, 0, 0);
     glm::vec2 drag = glm::vec2(10, 50);
-    float normalSpeed = 2;
+    float normalSpeed = 10;
     float fastSpeed = 50;
     float rotationSpeed = 3;
     glm::vec2 cameraRotate = glm::vec2(0, 0);

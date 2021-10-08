@@ -758,7 +758,7 @@ void Engine::esPhysics(EntityManager* entityManager, Engine* engine, FrameGraph:
     entity->rotation = state.rotation;
     entity->velocity = state.velocity;
 
-    if (entity->position.y < -50)
+    if (entity->position.y < -10)
         entityManager->removeEntity(id);
 }
 
@@ -868,7 +868,7 @@ bool Engine::simulatePhysics(FrameId frameId) {
         return false;
     const auto& frameInfo = perFrameTempInfo[frameId % perFrameTempInfo.size()];
     if (frameId > 0) {
-        physics.stepSimulation(float(isFrozen() ? 0 : frameInfo.deltaTimeSec), 20, 0.008f);
+        physics.stepSimulation(float(isFrozen() ? 0 : frameInfo.deltaTimeSec), 20, 0.0016f);
     }
     return true;
 }

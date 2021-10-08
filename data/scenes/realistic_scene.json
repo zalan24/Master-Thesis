@@ -169,5 +169,299 @@
         "mandelbrot": 1500,
         "extra": {},
         "extraStr": {}
+    },
+    {
+        "mass": -1.0,
+        "name": "boxEmitter1",
+        "parentName": "",
+        "albedo": [
+            0.3,
+            0.8,
+            0.7
+        ],
+        "position": [
+            0.0,
+            5.0,
+            -150.0
+        ],
+        "velocity": [
+            0.0,
+            0.0,
+            0.0
+        ],
+        "scale": [
+            0.2,
+            0.2,
+            0.2
+        ],
+        "rotation": [
+            -0.707,
+            0.0,
+            0.0,
+            0.707
+        ],
+        "templateName": "emitter",
+        "modelName": "box",
+        "hidden": false,
+        "specular": 1,
+        "bumpyness": 0,
+        "bumpScale": 1,
+        "mandelbrot": 0,
+        "extra": {
+            "minSizeMul": 0.5,
+            "maxSizeMul": 2.0,
+            "baseMass": 1,
+            "maxTheta": 0.107,
+            "minSpeed": 10,
+            "maxSpeed": 20,
+            "freq": 21,
+            "placeDist": 0.5
+        },
+        "extraStr": {}
+    },
+    {
+        "mass": -1.0,
+        "name": "boxEmitter2",
+        "parentName": "",
+        "albedo": [
+            0.3,
+            0.8,
+            0.7
+        ],
+        "position": [
+            100.0,
+            5.0,
+            -50.0
+        ],
+        "velocity": [
+            0.0,
+            0.0,
+            0.0
+        ],
+        "scale": [
+            0.2,
+            0.2,
+            0.2
+        ],
+        "rotation": [
+            -0.707,
+            0.0,
+            0.0,
+            0.707
+        ],
+        "templateName": "emitter",
+        "modelName": "box",
+        "hidden": false,
+        "specular": 1,
+        "bumpyness": 0,
+        "bumpScale": 1,
+        "mandelbrot": 0,
+        "extra": {
+            "minSizeMul": 0.5,
+            "maxSizeMul": 2.0,
+            "baseMass": 1,
+            "maxTheta": 0.107,
+            "minSpeed": 10,
+            "maxSpeed": 20,
+            "freq": 21,
+            "placeDist": 0.5
+        },
+        "extraStr": {}
+    },
+    {
+        "mass": -1.0,
+        "name": "boxEmitter3",
+        "parentName": "",
+        "albedo": [
+            0.3,
+            0.8,
+            0.7
+        ],
+        "position": [
+            -100.0,
+            5.0,
+            -50.0
+        ],
+        "velocity": [
+            0.0,
+            0.0,
+            0.0
+        ],
+        "scale": [
+            0.2,
+            0.2,
+            0.2
+        ],
+        "rotation": [
+            -0.707,
+            0.0,
+            0.0,
+            0.707
+        ],
+        "templateName": "emitter",
+        "modelName": "box",
+        "hidden": false,
+        "specular": 1,
+        "bumpyness": 0,
+        "bumpScale": 1,
+        "mandelbrot": 0,
+        "extra": {
+            "minSizeMul": 0.5,
+            "maxSizeMul": 2.0,
+            "baseMass": 1,
+            "maxTheta": 0.107,
+            "minSpeed": 10,
+            "maxSpeed": 20,
+            "freq": 21,
+            "placeDist": 0.5
+        },
+        "extraStr": {}
+    },
+    {
+        "mass": -1.0,
+        "name": "boxEmitter1Top",
+        "parentName": "",
+        "albedo": [
+            0.3,
+            0.8,
+            0.7
+        ],
+        "position": [
+            0.0,
+            15.0,
+            -150.0
+        ],
+        "velocity": [
+            0.0,
+            0.0,
+            0.0
+        ],
+        "scale": [
+            0.2,
+            0.2,
+            0.2
+        ],
+        "rotation": [
+            0.707,
+            0.0,
+            0.0,
+            0.707
+        ],
+        "templateName": "emitter",
+        "modelName": "box",
+        "hidden": false,
+        "specular": 1,
+        "bumpyness": 0,
+        "bumpScale": 1,
+        "mandelbrot": 0,
+        "extra": {
+            "minSizeMul": 0.5,
+            "maxSizeMul": 2.0,
+            "baseMass": 1,
+            "maxTheta": 0.107,
+            "minSpeed": 10,
+            "maxSpeed": 20,
+            "freq": 16,
+            "placeDist": 0.5
+        },
+        "extraStr": {}
+    },
+    {
+        "mass": -1.0,
+        "name": "boxEmitter2Top",
+        "parentName": "",
+        "albedo": [
+            0.3,
+            0.8,
+            0.7
+        ],
+        "position": [
+            100.0,
+            15.0,
+            -50.0
+        ],
+        "velocity": [
+            0.0,
+            0.0,
+            0.0
+        ],
+        "scale": [
+            0.2,
+            0.2,
+            0.2
+        ],
+        "rotation": [
+            0.707,
+            0.0,
+            0.0,
+            0.707
+        ],
+        "templateName": "emitter",
+        "modelName": "box",
+        "hidden": false,
+        "specular": 1,
+        "bumpyness": 0,
+        "bumpScale": 1,
+        "mandelbrot": 0,
+        "extra": {
+            "minSizeMul": 0.5,
+            "maxSizeMul": 2.0,
+            "baseMass": 1,
+            "maxTheta": 0.107,
+            "minSpeed": 10,
+            "maxSpeed": 20,
+            "freq": 16,
+            "placeDist": 0.5
+        },
+        "extraStr": {}
+    },
+    {
+        "mass": -1.0,
+        "name": "boxEmitter3Top",
+        "parentName": "",
+        "albedo": [
+            0.3,
+            0.8,
+            0.7
+        ],
+        "position": [
+            -100.0,
+            15.0,
+            -50.0
+        ],
+        "velocity": [
+            0.0,
+            0.0,
+            0.0
+        ],
+        "scale": [
+            0.2,
+            0.2,
+            0.2
+        ],
+        "rotation": [
+            0.707,
+            0.0,
+            0.0,
+            0.707
+        ],
+        "templateName": "emitter",
+        "modelName": "box",
+        "hidden": false,
+        "specular": 1,
+        "bumpyness": 0,
+        "bumpScale": 1,
+        "mandelbrot": 0,
+        "extra": {
+            "minSizeMul": 0.5,
+            "maxSizeMul": 2.0,
+            "baseMass": 1,
+            "maxTheta": 0.107,
+            "minSpeed": 10,
+            "maxSpeed": 20,
+            "freq": 16,
+            "placeDist": 0.5
+        },
+        "extraStr": {}
     }
 ]

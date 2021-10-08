@@ -334,7 +334,7 @@ void Game::record(const AcquiredImageData& swapchainData, EngineCmdBufferRecorde
     infos.view =
       glm::lookAtLH(rendererData.eyePos, rendererData.eyePos + rendererData.eyeDir, vec3(0, 1, 0));
     infos.proj =
-      glm::perspective(glm::radians(gameOptions.fov * 2), rendererData.ratio, 0.01f, 150.0f);
+      glm::perspective(glm::radians(gameOptions.fov * 2), rendererData.ratio, 0.01f, 1000.0f);
     mat4 bsToGoodTm(1.f);
     bsToGoodTm[1] = -bsToGoodTm[1];
     bsToGoodTm[2] = -bsToGoodTm[2];
