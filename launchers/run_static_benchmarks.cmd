@@ -637,6 +637,3 @@ pause
 exit /b 1
 
 :EOF
-
-echo Success
-pause
