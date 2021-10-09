@@ -846,13 +846,20 @@ Engine::~Engine() {
                                  << ", " << entry.fps << ", " << entry.latency << ", "
                                  << entry.latencySlop << ", " << entry.cpuWork << ", "
                                  << entry.execWork << ", " << entry.deviceWork << ", "
-                                 << entry.workTime << ", " << entry.missRate << std::endl;
+                                 << entry.workTime << ", " << entry.missRate << ", "
+                                 << entry.execDelay << ", " << entry.deviceDelay << ", "
+                                 << entry.potentialFps << ", " << entry.potentialCpuFps << ", "
+                                 << entry.potentialExecFps << ", " << entry.potentialDeviceFps
+                                 << std::endl;
                 if (benchmarkOutCopy)
                     benchmarkOutCopy
                       << std::setprecision(16) << entry.period << std::setprecision(3) << ", "
                       << entry.fps << ", " << entry.latency << ", " << entry.latencySlop << ", "
                       << entry.cpuWork << ", " << entry.execWork << ", " << entry.deviceWork << ", "
-                      << entry.workTime << ", " << entry.missRate << std::endl;
+                      << entry.workTime << ", " << entry.missRate << ", " << entry.execDelay << ", "
+                      << entry.deviceDelay << ", " << entry.potentialFps << ", "
+                      << entry.potentialCpuFps << ", " << entry.potentialExecFps << ", "
+                      << entry.potentialDeviceFps << std::endl;
             }
         }
         else
@@ -1780,9 +1787,11 @@ void Engine::readbackLoop(volatile bool* finished) {
             perFrameSlopStats.feed(double(latestLatencyInfo.frameLatencyInfo.perFrameSlopNs)
                                    / 1000000.0);
             workStats.feed(workMs);
-            execDelayStats.feed(double(latestLatencyInfo.frameLatencyInfo.execDelayNs) / 1000000.0);
-            deviceDelayStats.feed(double(latestLatencyInfo.frameLatencyInfo.deviceDelayNs)
-                                  / 1000000.0);
+            double execDelayMs = double(latestLatencyInfo.frameLatencyInfo.execDelayNs) / 1000000.0;
+            double deviceDelayMs =
+              double(latestLatencyInfo.frameLatencyInfo.deviceDelayNs) / 1000000.0;
+            execDelayStats.feed(execDelayMs);
+            deviceDelayStats.feed(deviceDelayMs);
             if (latestLatencyInfo.frame < frameGraph.getMaxFramesInFlight()) {
                 worTimeAvgMs = workAfterInputMs;
                 frameOffsetAvgMs = frameOffsetMs;
@@ -1844,6 +1853,12 @@ void Engine::readbackLoop(volatile bool* finished) {
                 benchmarkEntry.deviceWork = float(deviceWorkMs);
                 benchmarkEntry.workTime = float(workMs);
                 benchmarkEntry.missRate = float(skippedDelayed.getAvg());
+                benchmarkEntry.execDelay = float(execDelayMs);
+                benchmarkEntry.deviceDelay = float(deviceDelayMs);
+                benchmarkEntry.potentialFps = 1000.0f / float(frameOffsetMs);
+                benchmarkEntry.potentialCpuFps = 1000.0f / float(cpuOffsetMs);
+                benchmarkEntry.potentialExecFps = 1000.0f / float(execOffsetMs);
+                benchmarkEntry.potentialDeviceFps = 1000.0f / float(deviceOffsetMs);
                 benchmarkData.push_back(std::move(benchmarkEntry));
             }
 

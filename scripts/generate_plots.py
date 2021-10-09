@@ -20,7 +20,13 @@ def process_benchmark(source, dir):
         ('execWork', float),
         ('deviceWork', float),
         ('workTime', float),
-        ('missRate', float)]
+        ('missRate', float),
+        ('execDelay', float),
+        ('deviceDelay', float),
+        ('potentialFps', float),
+        ('potentialCpuFps', float),
+        ('potentialExecFps', float),
+        ('potentialDeviceFps', float)]
     os.makedirs(dir, exist_ok=True)
 
     files = glob.glob(os.path.join(dir, '*'))
@@ -82,6 +88,10 @@ def process_benchmark(source, dir):
     plt.ylabel("fps")
     plt.xlabel("period")
     plt.plot(result['period'], result['fps'], '-', label="fps")
+    plt.plot(result['period'], result['potentialFps'], '-', label="Potential fps")
+    plt.plot(result['period'], result['potentialCpuFps'], '-', label="CPU fps")
+    plt.plot(result['period'], result['potentialExecFps'], '-', label="Exec fps")
+    plt.plot(result['period'], result['potentialDeviceFps'], '-', label="GPU fps")
     plt.legend()
     plt.savefig(os.path.join(dir, 'fps.png'))
     plt.clf()
@@ -97,16 +107,44 @@ def process_benchmark(source, dir):
     plt.savefig(os.path.join(dir, 'worktime.png'))
     plt.clf()
 
-    plt.title("Latency")
+    plt.title("Latency & work time")
+    plt.ylabel("ms")
+    plt.xlabel("period")
+    plt.plot(result['period'], result['workTime'], '-', label="Async work")
+    plt.plot(result['period'], result['latency'], '-', label="Latency")
+    plt.plot(result['period'], result['slop'], '-', label="Slop")
+    plt.legend()
+    plt.savefig(os.path.join(dir, 'latency_work.png'))
+    plt.clf()
+
+    plt.title("Latency & delay")
     plt.ylabel("ms")
     plt.xlabel("period")
     plt.plot(result['period'], result['latency'], '-', label="Latency")
     plt.plot(result['period'], result['slop'], '-', label="Slop")
+    plt.plot(result['period'], result['execDelay'] + result['deviceDelay'], '-', label="Total delay")
     plt.legend()
-    plt.savefig(os.path.join(dir, 'latency.png'))
+    plt.savefig(os.path.join(dir, 'latency_delay.png'))
     plt.clf()
 
-    # plt.show()
+    plt.title("Bottleneck & delay")
+    plt.ylabel("ms")
+    plt.xlabel("period")
+    plt.plot(result['period'], 1000 / result['potentialCpuFps'], '-', label="CPU work")
+    plt.plot(result['period'], 1000 / result['potentialDeviceFps'], '-', label="GPU work")
+    plt.plot(result['period'], result['execDelay'] + result['deviceDelay'], '-', label="Total delay")
+    plt.legend()
+    plt.savefig(os.path.join(dir, 'bottleneck_delay.png'))
+    plt.clf()
+
+    plt.title("Miss rate")
+    plt.ylabel("fps & rate(%)")
+    plt.xlabel("period")
+    plt.plot(result['period'], result['fps'], '-', label="fps")
+    plt.plot(result['period'], result['missRate'] * 100, '-', label="Miss rate")
+    plt.legend()
+    plt.savefig(os.path.join(dir, 'missrate.png'))
+    plt.clf()
 
 
 if __name__=="__main__":

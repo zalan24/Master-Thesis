@@ -676,6 +676,12 @@ class Engine
         float deviceWork;
         float workTime;
         float missRate;  // smoothened
+        float execDelay;
+        float deviceDelay;
+        float potentialFps;
+        float potentialCpuFps;
+        float potentialExecFps;
+        float potentialDeviceFps;
     };
     std::deque<BenchmarkData> benchmarkData;
 

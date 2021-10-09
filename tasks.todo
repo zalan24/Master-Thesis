@@ -49,6 +49,28 @@ Get a triangle on screen:
         ✔ Culling? @done (10/3/2021, 2:34:05 PM)
         ☐ Set up test scenes
         ☐ Finalize plots
+            ☐ Static benchmarks
+                ☐ Generate a table, where there is a row for each config containing all useful information (fps, latency, missed frames, config description)
+                ☐ All data should be read from benchmark data or config file used for the benchmark
+            ☐ Other benchmarks
+                ✔ Add delays to the benchmark @done (10/9/2021, 1:43:56 PM)
+                ✔ Add potential fps for all types to the benchmark @done (10/9/2021, 1:43:57 PM)
+                ✔ Plots @done (10/9/2021, 2:01:46 PM)
+                    ✔ Fps + potential fps (for testing) @done (10/9/2021, 1:59:09 PM)
+                    ✔ Async work time + latency + slop @done (10/9/2021, 1:59:10 PM)
+                    ✔ Latency + Slop + sum of delays @done (10/9/2021, 1:59:10 PM)
+                    ✔ Cpu frame time + device frame time + sum of delays (frame time = 1000ms/potential fps) @done (10/9/2021, 1:59:11 PM)
+                    ✔ Fps + miss rate (if applicable) @done (10/9/2021, 2:01:44 PM)
+                ☐ Combined plots (from different configs)
+                    ☐ Fps with all modes
+                    ☐ Latency with all modes
+                    ☐ All worktime values (separately) with all modes (this is just for testing, won't be in the document)
+                    ☐ Slop with all modes (why not)
+                    ☐ Both delays (separately) for all modes
+                    ☐ All potential fps value (separately) for all modes (also for testing)
+                ☐ Tweek realistic scene to have less noise
+                ☐ Tweek realistic scene to be more gpu limited
+                ☐ Tweek plot image size vs benchmark length in realistic scene
         ✘ Be able to start exe without args. Double click on exe should work @cancelled (10/4/2021, 12:43:23 PM)
         ✔ Have scripts to run the exe @done (10/4/2021, 12:43:33 PM)
         ✔ Be able to specify settings file, so that each benchmark config can keep it's own engine options @done (10/4/2021, 12:43:34 PM)
