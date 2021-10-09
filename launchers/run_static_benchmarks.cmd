@@ -34,6 +34,7 @@ SET EngineOption=..\data\engineOptions\%CurrentBenchmark%.json
 python ../scripts/generate_plots.py benchmarks/benchmark.csv %TempFolder%
 XCOPY /q %TempFolder%\downsampled.csv %BenchmarkFolder%
 XCOPY /q %TempFolder%\source.csv %BenchmarkFolder%
+XCOPY /q %EngineOption% %BenchmarkFolder%
 ren %BenchmarkFolder%\downsampled.csv %CurrentBenchmark%_downsampled.csv
 ren %BenchmarkFolder%\source.csv %CurrentBenchmark%_source.csv
   if errorlevel 1 goto error
@@ -46,6 +47,7 @@ SET EngineOption=..\data\engineOptions\%CurrentBenchmark%.json
 python ../scripts/generate_plots.py benchmarks/benchmark.csv %TempFolder%
 XCOPY /q %TempFolder%\downsampled.csv %BenchmarkFolder%
 XCOPY /q %TempFolder%\source.csv %BenchmarkFolder%
+XCOPY /q %EngineOption% %BenchmarkFolder%
 ren %BenchmarkFolder%\downsampled.csv %CurrentBenchmark%_downsampled.csv
 ren %BenchmarkFolder%\source.csv %CurrentBenchmark%_source.csv
   if errorlevel 1 goto error
@@ -58,6 +60,7 @@ SET EngineOption=..\data\engineOptions\%CurrentBenchmark%.json
 python ../scripts/generate_plots.py benchmarks/benchmark.csv %TempFolder%
 XCOPY /q %TempFolder%\downsampled.csv %BenchmarkFolder%
 XCOPY /q %TempFolder%\source.csv %BenchmarkFolder%
+XCOPY /q %EngineOption% %BenchmarkFolder%
 ren %BenchmarkFolder%\downsampled.csv %CurrentBenchmark%_downsampled.csv
 ren %BenchmarkFolder%\source.csv %CurrentBenchmark%_source.csv
   if errorlevel 1 goto error
@@ -70,6 +73,7 @@ SET EngineOption=..\data\engineOptions\%CurrentBenchmark%.json
 python ../scripts/generate_plots.py benchmarks/benchmark.csv %TempFolder%
 XCOPY /q %TempFolder%\downsampled.csv %BenchmarkFolder%
 XCOPY /q %TempFolder%\source.csv %BenchmarkFolder%
+XCOPY /q %EngineOption% %BenchmarkFolder%
 ren %BenchmarkFolder%\downsampled.csv %CurrentBenchmark%_downsampled.csv
 ren %BenchmarkFolder%\source.csv %CurrentBenchmark%_source.csv
   if errorlevel 1 goto error
@@ -82,6 +86,7 @@ SET EngineOption=..\data\engineOptions\%CurrentBenchmark%.json
 python ../scripts/generate_plots.py benchmarks/benchmark.csv %TempFolder%
 XCOPY /q %TempFolder%\downsampled.csv %BenchmarkFolder%
 XCOPY /q %TempFolder%\source.csv %BenchmarkFolder%
+XCOPY /q %EngineOption% %BenchmarkFolder%
 ren %BenchmarkFolder%\downsampled.csv %CurrentBenchmark%_downsampled.csv
 ren %BenchmarkFolder%\source.csv %CurrentBenchmark%_source.csv
   if errorlevel 1 goto error
@@ -94,6 +99,7 @@ SET EngineOption=..\data\engineOptions\%CurrentBenchmark%.json
 python ../scripts/generate_plots.py benchmarks/benchmark.csv %TempFolder%
 XCOPY /q %TempFolder%\downsampled.csv %BenchmarkFolder%
 XCOPY /q %TempFolder%\source.csv %BenchmarkFolder%
+XCOPY /q %EngineOption% %BenchmarkFolder%
 ren %BenchmarkFolder%\downsampled.csv %CurrentBenchmark%_downsampled.csv
 ren %BenchmarkFolder%\source.csv %CurrentBenchmark%_source.csv
   if errorlevel 1 goto error
@@ -106,6 +112,7 @@ SET EngineOption=..\data\engineOptions\%CurrentBenchmark%.json
 python ../scripts/generate_plots.py benchmarks/benchmark.csv %TempFolder%
 XCOPY /q %TempFolder%\downsampled.csv %BenchmarkFolder%
 XCOPY /q %TempFolder%\source.csv %BenchmarkFolder%
+XCOPY /q %EngineOption% %BenchmarkFolder%
 ren %BenchmarkFolder%\downsampled.csv %CurrentBenchmark%_downsampled.csv
 ren %BenchmarkFolder%\source.csv %CurrentBenchmark%_source.csv
   if errorlevel 1 goto error
@@ -118,6 +125,7 @@ SET EngineOption=..\data\engineOptions\%CurrentBenchmark%.json
 python ../scripts/generate_plots.py benchmarks/benchmark.csv %TempFolder%
 XCOPY /q %TempFolder%\downsampled.csv %BenchmarkFolder%
 XCOPY /q %TempFolder%\source.csv %BenchmarkFolder%
+XCOPY /q %EngineOption% %BenchmarkFolder%
 ren %BenchmarkFolder%\downsampled.csv %CurrentBenchmark%_downsampled.csv
 ren %BenchmarkFolder%\source.csv %CurrentBenchmark%_source.csv
   if errorlevel 1 goto error
@@ -130,6 +138,7 @@ SET EngineOption=..\data\engineOptions\%CurrentBenchmark%.json
 python ../scripts/generate_plots.py benchmarks/benchmark.csv %TempFolder%
 XCOPY /q %TempFolder%\downsampled.csv %BenchmarkFolder%
 XCOPY /q %TempFolder%\source.csv %BenchmarkFolder%
+XCOPY /q %EngineOption% %BenchmarkFolder%
 ren %BenchmarkFolder%\downsampled.csv %CurrentBenchmark%_downsampled.csv
 ren %BenchmarkFolder%\source.csv %CurrentBenchmark%_source.csv
   if errorlevel 1 goto error
@@ -142,6 +151,7 @@ SET EngineOption=..\data\engineOptions\%CurrentBenchmark%.json
 python ../scripts/generate_plots.py benchmarks/benchmark.csv %TempFolder%
 XCOPY /q %TempFolder%\downsampled.csv %BenchmarkFolder%
 XCOPY /q %TempFolder%\source.csv %BenchmarkFolder%
+XCOPY /q %EngineOption% %BenchmarkFolder%
 ren %BenchmarkFolder%\downsampled.csv %CurrentBenchmark%_downsampled.csv
 ren %BenchmarkFolder%\source.csv %CurrentBenchmark%_source.csv
   if errorlevel 1 goto error
@@ -154,6 +164,7 @@ SET EngineOption=..\data\engineOptions\%CurrentBenchmark%.json
 python ../scripts/generate_plots.py benchmarks/benchmark.csv %TempFolder%
 XCOPY /q %TempFolder%\downsampled.csv %BenchmarkFolder%
 XCOPY /q %TempFolder%\source.csv %BenchmarkFolder%
+XCOPY /q %EngineOption% %BenchmarkFolder%
 ren %BenchmarkFolder%\downsampled.csv %CurrentBenchmark%_downsampled.csv
 ren %BenchmarkFolder%\source.csv %CurrentBenchmark%_source.csv
   if errorlevel 1 goto error
@@ -166,6 +177,7 @@ SET EngineOption=..\data\engineOptions\%CurrentBenchmark%.json
 python ../scripts/generate_plots.py benchmarks/benchmark.csv %TempFolder%
 XCOPY /q %TempFolder%\downsampled.csv %BenchmarkFolder%
 XCOPY /q %TempFolder%\source.csv %BenchmarkFolder%
+XCOPY /q %EngineOption% %BenchmarkFolder%
 ren %BenchmarkFolder%\downsampled.csv %CurrentBenchmark%_downsampled.csv
 ren %BenchmarkFolder%\source.csv %CurrentBenchmark%_source.csv
   if errorlevel 1 goto error
@@ -178,6 +190,7 @@ SET EngineOption=..\data\engineOptions\%CurrentBenchmark%.json
 python ../scripts/generate_plots.py benchmarks/benchmark.csv %TempFolder%
 XCOPY /q %TempFolder%\downsampled.csv %BenchmarkFolder%
 XCOPY /q %TempFolder%\source.csv %BenchmarkFolder%
+XCOPY /q %EngineOption% %BenchmarkFolder%
 ren %BenchmarkFolder%\downsampled.csv %CurrentBenchmark%_downsampled.csv
 ren %BenchmarkFolder%\source.csv %CurrentBenchmark%_source.csv
   if errorlevel 1 goto error
@@ -190,6 +203,7 @@ SET EngineOption=..\data\engineOptions\%CurrentBenchmark%.json
 python ../scripts/generate_plots.py benchmarks/benchmark.csv %TempFolder%
 XCOPY /q %TempFolder%\downsampled.csv %BenchmarkFolder%
 XCOPY /q %TempFolder%\source.csv %BenchmarkFolder%
+XCOPY /q %EngineOption% %BenchmarkFolder%
 ren %BenchmarkFolder%\downsampled.csv %CurrentBenchmark%_downsampled.csv
 ren %BenchmarkFolder%\source.csv %CurrentBenchmark%_source.csv
   if errorlevel 1 goto error
@@ -202,6 +216,7 @@ SET EngineOption=..\data\engineOptions\%CurrentBenchmark%.json
 python ../scripts/generate_plots.py benchmarks/benchmark.csv %TempFolder%
 XCOPY /q %TempFolder%\downsampled.csv %BenchmarkFolder%
 XCOPY /q %TempFolder%\source.csv %BenchmarkFolder%
+XCOPY /q %EngineOption% %BenchmarkFolder%
 ren %BenchmarkFolder%\downsampled.csv %CurrentBenchmark%_downsampled.csv
 ren %BenchmarkFolder%\source.csv %CurrentBenchmark%_source.csv
   if errorlevel 1 goto error
@@ -214,6 +229,7 @@ SET EngineOption=..\data\engineOptions\%CurrentBenchmark%.json
 python ../scripts/generate_plots.py benchmarks/benchmark.csv %TempFolder%
 XCOPY /q %TempFolder%\downsampled.csv %BenchmarkFolder%
 XCOPY /q %TempFolder%\source.csv %BenchmarkFolder%
+XCOPY /q %EngineOption% %BenchmarkFolder%
 ren %BenchmarkFolder%\downsampled.csv %CurrentBenchmark%_downsampled.csv
 ren %BenchmarkFolder%\source.csv %CurrentBenchmark%_source.csv
   if errorlevel 1 goto error
@@ -226,6 +242,7 @@ SET EngineOption=..\data\engineOptions\%CurrentBenchmark%.json
 python ../scripts/generate_plots.py benchmarks/benchmark.csv %TempFolder%
 XCOPY /q %TempFolder%\downsampled.csv %BenchmarkFolder%
 XCOPY /q %TempFolder%\source.csv %BenchmarkFolder%
+XCOPY /q %EngineOption% %BenchmarkFolder%
 ren %BenchmarkFolder%\downsampled.csv %CurrentBenchmark%_downsampled.csv
 ren %BenchmarkFolder%\source.csv %CurrentBenchmark%_source.csv
   if errorlevel 1 goto error
@@ -238,6 +255,7 @@ SET EngineOption=..\data\engineOptions\%CurrentBenchmark%.json
 python ../scripts/generate_plots.py benchmarks/benchmark.csv %TempFolder%
 XCOPY /q %TempFolder%\downsampled.csv %BenchmarkFolder%
 XCOPY /q %TempFolder%\source.csv %BenchmarkFolder%
+XCOPY /q %EngineOption% %BenchmarkFolder%
 ren %BenchmarkFolder%\downsampled.csv %CurrentBenchmark%_downsampled.csv
 ren %BenchmarkFolder%\source.csv %CurrentBenchmark%_source.csv
   if errorlevel 1 goto error
@@ -250,6 +268,7 @@ SET EngineOption=..\data\engineOptions\%CurrentBenchmark%.json
 python ../scripts/generate_plots.py benchmarks/benchmark.csv %TempFolder%
 XCOPY /q %TempFolder%\downsampled.csv %BenchmarkFolder%
 XCOPY /q %TempFolder%\source.csv %BenchmarkFolder%
+XCOPY /q %EngineOption% %BenchmarkFolder%
 ren %BenchmarkFolder%\downsampled.csv %CurrentBenchmark%_downsampled.csv
 ren %BenchmarkFolder%\source.csv %CurrentBenchmark%_source.csv
   if errorlevel 1 goto error
@@ -262,6 +281,7 @@ SET EngineOption=..\data\engineOptions\%CurrentBenchmark%.json
 python ../scripts/generate_plots.py benchmarks/benchmark.csv %TempFolder%
 XCOPY /q %TempFolder%\downsampled.csv %BenchmarkFolder%
 XCOPY /q %TempFolder%\source.csv %BenchmarkFolder%
+XCOPY /q %EngineOption% %BenchmarkFolder%
 ren %BenchmarkFolder%\downsampled.csv %CurrentBenchmark%_downsampled.csv
 ren %BenchmarkFolder%\source.csv %CurrentBenchmark%_source.csv
   if errorlevel 1 goto error
@@ -274,6 +294,7 @@ SET EngineOption=..\data\engineOptions\%CurrentBenchmark%.json
 python ../scripts/generate_plots.py benchmarks/benchmark.csv %TempFolder%
 XCOPY /q %TempFolder%\downsampled.csv %BenchmarkFolder%
 XCOPY /q %TempFolder%\source.csv %BenchmarkFolder%
+XCOPY /q %EngineOption% %BenchmarkFolder%
 ren %BenchmarkFolder%\downsampled.csv %CurrentBenchmark%_downsampled.csv
 ren %BenchmarkFolder%\source.csv %CurrentBenchmark%_source.csv
   if errorlevel 1 goto error
@@ -286,6 +307,7 @@ SET EngineOption=..\data\engineOptions\%CurrentBenchmark%.json
 python ../scripts/generate_plots.py benchmarks/benchmark.csv %TempFolder%
 XCOPY /q %TempFolder%\downsampled.csv %BenchmarkFolder%
 XCOPY /q %TempFolder%\source.csv %BenchmarkFolder%
+XCOPY /q %EngineOption% %BenchmarkFolder%
 ren %BenchmarkFolder%\downsampled.csv %CurrentBenchmark%_downsampled.csv
 ren %BenchmarkFolder%\source.csv %CurrentBenchmark%_source.csv
   if errorlevel 1 goto error
@@ -298,6 +320,7 @@ SET EngineOption=..\data\engineOptions\%CurrentBenchmark%.json
 python ../scripts/generate_plots.py benchmarks/benchmark.csv %TempFolder%
 XCOPY /q %TempFolder%\downsampled.csv %BenchmarkFolder%
 XCOPY /q %TempFolder%\source.csv %BenchmarkFolder%
+XCOPY /q %EngineOption% %BenchmarkFolder%
 ren %BenchmarkFolder%\downsampled.csv %CurrentBenchmark%_downsampled.csv
 ren %BenchmarkFolder%\source.csv %CurrentBenchmark%_source.csv
   if errorlevel 1 goto error
@@ -310,6 +333,7 @@ SET EngineOption=..\data\engineOptions\%CurrentBenchmark%.json
 python ../scripts/generate_plots.py benchmarks/benchmark.csv %TempFolder%
 XCOPY /q %TempFolder%\downsampled.csv %BenchmarkFolder%
 XCOPY /q %TempFolder%\source.csv %BenchmarkFolder%
+XCOPY /q %EngineOption% %BenchmarkFolder%
 ren %BenchmarkFolder%\downsampled.csv %CurrentBenchmark%_downsampled.csv
 ren %BenchmarkFolder%\source.csv %CurrentBenchmark%_source.csv
   if errorlevel 1 goto error
@@ -322,6 +346,7 @@ SET EngineOption=..\data\engineOptions\%CurrentBenchmark%.json
 python ../scripts/generate_plots.py benchmarks/benchmark.csv %TempFolder%
 XCOPY /q %TempFolder%\downsampled.csv %BenchmarkFolder%
 XCOPY /q %TempFolder%\source.csv %BenchmarkFolder%
+XCOPY /q %EngineOption% %BenchmarkFolder%
 ren %BenchmarkFolder%\downsampled.csv %CurrentBenchmark%_downsampled.csv
 ren %BenchmarkFolder%\source.csv %CurrentBenchmark%_source.csv
   if errorlevel 1 goto error
@@ -334,6 +359,7 @@ SET EngineOption=..\data\engineOptions\%CurrentBenchmark%.json
 python ../scripts/generate_plots.py benchmarks/benchmark.csv %TempFolder%
 XCOPY /q %TempFolder%\downsampled.csv %BenchmarkFolder%
 XCOPY /q %TempFolder%\source.csv %BenchmarkFolder%
+XCOPY /q %EngineOption% %BenchmarkFolder%
 ren %BenchmarkFolder%\downsampled.csv %CurrentBenchmark%_downsampled.csv
 ren %BenchmarkFolder%\source.csv %CurrentBenchmark%_source.csv
   if errorlevel 1 goto error
@@ -346,6 +372,7 @@ SET EngineOption=..\data\engineOptions\%CurrentBenchmark%.json
 python ../scripts/generate_plots.py benchmarks/benchmark.csv %TempFolder%
 XCOPY /q %TempFolder%\downsampled.csv %BenchmarkFolder%
 XCOPY /q %TempFolder%\source.csv %BenchmarkFolder%
+XCOPY /q %EngineOption% %BenchmarkFolder%
 ren %BenchmarkFolder%\downsampled.csv %CurrentBenchmark%_downsampled.csv
 ren %BenchmarkFolder%\source.csv %CurrentBenchmark%_source.csv
   if errorlevel 1 goto error
@@ -358,6 +385,7 @@ SET EngineOption=..\data\engineOptions\%CurrentBenchmark%.json
 python ../scripts/generate_plots.py benchmarks/benchmark.csv %TempFolder%
 XCOPY /q %TempFolder%\downsampled.csv %BenchmarkFolder%
 XCOPY /q %TempFolder%\source.csv %BenchmarkFolder%
+XCOPY /q %EngineOption% %BenchmarkFolder%
 ren %BenchmarkFolder%\downsampled.csv %CurrentBenchmark%_downsampled.csv
 ren %BenchmarkFolder%\source.csv %CurrentBenchmark%_source.csv
   if errorlevel 1 goto error
@@ -370,6 +398,7 @@ SET EngineOption=..\data\engineOptions\%CurrentBenchmark%.json
 python ../scripts/generate_plots.py benchmarks/benchmark.csv %TempFolder%
 XCOPY /q %TempFolder%\downsampled.csv %BenchmarkFolder%
 XCOPY /q %TempFolder%\source.csv %BenchmarkFolder%
+XCOPY /q %EngineOption% %BenchmarkFolder%
 ren %BenchmarkFolder%\downsampled.csv %CurrentBenchmark%_downsampled.csv
 ren %BenchmarkFolder%\source.csv %CurrentBenchmark%_source.csv
   if errorlevel 1 goto error
@@ -382,6 +411,7 @@ SET EngineOption=..\data\engineOptions\%CurrentBenchmark%.json
 python ../scripts/generate_plots.py benchmarks/benchmark.csv %TempFolder%
 XCOPY /q %TempFolder%\downsampled.csv %BenchmarkFolder%
 XCOPY /q %TempFolder%\source.csv %BenchmarkFolder%
+XCOPY /q %EngineOption% %BenchmarkFolder%
 ren %BenchmarkFolder%\downsampled.csv %CurrentBenchmark%_downsampled.csv
 ren %BenchmarkFolder%\source.csv %CurrentBenchmark%_source.csv
   if errorlevel 1 goto error
@@ -394,6 +424,7 @@ SET EngineOption=..\data\engineOptions\%CurrentBenchmark%.json
 python ../scripts/generate_plots.py benchmarks/benchmark.csv %TempFolder%
 XCOPY /q %TempFolder%\downsampled.csv %BenchmarkFolder%
 XCOPY /q %TempFolder%\source.csv %BenchmarkFolder%
+XCOPY /q %EngineOption% %BenchmarkFolder%
 ren %BenchmarkFolder%\downsampled.csv %CurrentBenchmark%_downsampled.csv
 ren %BenchmarkFolder%\source.csv %CurrentBenchmark%_source.csv
   if errorlevel 1 goto error
@@ -406,6 +437,7 @@ SET EngineOption=..\data\engineOptions\%CurrentBenchmark%.json
 python ../scripts/generate_plots.py benchmarks/benchmark.csv %TempFolder%
 XCOPY /q %TempFolder%\downsampled.csv %BenchmarkFolder%
 XCOPY /q %TempFolder%\source.csv %BenchmarkFolder%
+XCOPY /q %EngineOption% %BenchmarkFolder%
 ren %BenchmarkFolder%\downsampled.csv %CurrentBenchmark%_downsampled.csv
 ren %BenchmarkFolder%\source.csv %CurrentBenchmark%_source.csv
   if errorlevel 1 goto error
@@ -418,6 +450,7 @@ SET EngineOption=..\data\engineOptions\%CurrentBenchmark%.json
 python ../scripts/generate_plots.py benchmarks/benchmark.csv %TempFolder%
 XCOPY /q %TempFolder%\downsampled.csv %BenchmarkFolder%
 XCOPY /q %TempFolder%\source.csv %BenchmarkFolder%
+XCOPY /q %EngineOption% %BenchmarkFolder%
 ren %BenchmarkFolder%\downsampled.csv %CurrentBenchmark%_downsampled.csv
 ren %BenchmarkFolder%\source.csv %CurrentBenchmark%_source.csv
   if errorlevel 1 goto error
@@ -430,6 +463,7 @@ SET EngineOption=..\data\engineOptions\%CurrentBenchmark%.json
 python ../scripts/generate_plots.py benchmarks/benchmark.csv %TempFolder%
 XCOPY /q %TempFolder%\downsampled.csv %BenchmarkFolder%
 XCOPY /q %TempFolder%\source.csv %BenchmarkFolder%
+XCOPY /q %EngineOption% %BenchmarkFolder%
 ren %BenchmarkFolder%\downsampled.csv %CurrentBenchmark%_downsampled.csv
 ren %BenchmarkFolder%\source.csv %CurrentBenchmark%_source.csv
   if errorlevel 1 goto error
@@ -442,6 +476,7 @@ SET EngineOption=..\data\engineOptions\%CurrentBenchmark%.json
 python ../scripts/generate_plots.py benchmarks/benchmark.csv %TempFolder%
 XCOPY /q %TempFolder%\downsampled.csv %BenchmarkFolder%
 XCOPY /q %TempFolder%\source.csv %BenchmarkFolder%
+XCOPY /q %EngineOption% %BenchmarkFolder%
 ren %BenchmarkFolder%\downsampled.csv %CurrentBenchmark%_downsampled.csv
 ren %BenchmarkFolder%\source.csv %CurrentBenchmark%_source.csv
   if errorlevel 1 goto error
@@ -454,6 +489,7 @@ SET EngineOption=..\data\engineOptions\%CurrentBenchmark%.json
 python ../scripts/generate_plots.py benchmarks/benchmark.csv %TempFolder%
 XCOPY /q %TempFolder%\downsampled.csv %BenchmarkFolder%
 XCOPY /q %TempFolder%\source.csv %BenchmarkFolder%
+XCOPY /q %EngineOption% %BenchmarkFolder%
 ren %BenchmarkFolder%\downsampled.csv %CurrentBenchmark%_downsampled.csv
 ren %BenchmarkFolder%\source.csv %CurrentBenchmark%_source.csv
   if errorlevel 1 goto error
@@ -466,6 +502,7 @@ SET EngineOption=..\data\engineOptions\%CurrentBenchmark%.json
 python ../scripts/generate_plots.py benchmarks/benchmark.csv %TempFolder%
 XCOPY /q %TempFolder%\downsampled.csv %BenchmarkFolder%
 XCOPY /q %TempFolder%\source.csv %BenchmarkFolder%
+XCOPY /q %EngineOption% %BenchmarkFolder%
 ren %BenchmarkFolder%\downsampled.csv %CurrentBenchmark%_downsampled.csv
 ren %BenchmarkFolder%\source.csv %CurrentBenchmark%_source.csv
   if errorlevel 1 goto error
@@ -478,6 +515,7 @@ SET EngineOption=..\data\engineOptions\%CurrentBenchmark%.json
 python ../scripts/generate_plots.py benchmarks/benchmark.csv %TempFolder%
 XCOPY /q %TempFolder%\downsampled.csv %BenchmarkFolder%
 XCOPY /q %TempFolder%\source.csv %BenchmarkFolder%
+XCOPY /q %EngineOption% %BenchmarkFolder%
 ren %BenchmarkFolder%\downsampled.csv %CurrentBenchmark%_downsampled.csv
 ren %BenchmarkFolder%\source.csv %CurrentBenchmark%_source.csv
   if errorlevel 1 goto error
@@ -490,6 +528,7 @@ SET EngineOption=..\data\engineOptions\%CurrentBenchmark%.json
 python ../scripts/generate_plots.py benchmarks/benchmark.csv %TempFolder%
 XCOPY /q %TempFolder%\downsampled.csv %BenchmarkFolder%
 XCOPY /q %TempFolder%\source.csv %BenchmarkFolder%
+XCOPY /q %EngineOption% %BenchmarkFolder%
 ren %BenchmarkFolder%\downsampled.csv %CurrentBenchmark%_downsampled.csv
 ren %BenchmarkFolder%\source.csv %CurrentBenchmark%_source.csv
   if errorlevel 1 goto error
@@ -502,6 +541,7 @@ SET EngineOption=..\data\engineOptions\%CurrentBenchmark%.json
 python ../scripts/generate_plots.py benchmarks/benchmark.csv %TempFolder%
 XCOPY /q %TempFolder%\downsampled.csv %BenchmarkFolder%
 XCOPY /q %TempFolder%\source.csv %BenchmarkFolder%
+XCOPY /q %EngineOption% %BenchmarkFolder%
 ren %BenchmarkFolder%\downsampled.csv %CurrentBenchmark%_downsampled.csv
 ren %BenchmarkFolder%\source.csv %CurrentBenchmark%_source.csv
   if errorlevel 1 goto error
@@ -514,6 +554,7 @@ SET EngineOption=..\data\engineOptions\%CurrentBenchmark%.json
 python ../scripts/generate_plots.py benchmarks/benchmark.csv %TempFolder%
 XCOPY /q %TempFolder%\downsampled.csv %BenchmarkFolder%
 XCOPY /q %TempFolder%\source.csv %BenchmarkFolder%
+XCOPY /q %EngineOption% %BenchmarkFolder%
 ren %BenchmarkFolder%\downsampled.csv %CurrentBenchmark%_downsampled.csv
 ren %BenchmarkFolder%\source.csv %CurrentBenchmark%_source.csv
   if errorlevel 1 goto error
@@ -526,6 +567,7 @@ SET EngineOption=..\data\engineOptions\%CurrentBenchmark%.json
 python ../scripts/generate_plots.py benchmarks/benchmark.csv %TempFolder%
 XCOPY /q %TempFolder%\downsampled.csv %BenchmarkFolder%
 XCOPY /q %TempFolder%\source.csv %BenchmarkFolder%
+XCOPY /q %EngineOption% %BenchmarkFolder%
 ren %BenchmarkFolder%\downsampled.csv %CurrentBenchmark%_downsampled.csv
 ren %BenchmarkFolder%\source.csv %CurrentBenchmark%_source.csv
   if errorlevel 1 goto error
@@ -538,6 +580,7 @@ SET EngineOption=..\data\engineOptions\%CurrentBenchmark%.json
 python ../scripts/generate_plots.py benchmarks/benchmark.csv %TempFolder%
 XCOPY /q %TempFolder%\downsampled.csv %BenchmarkFolder%
 XCOPY /q %TempFolder%\source.csv %BenchmarkFolder%
+XCOPY /q %EngineOption% %BenchmarkFolder%
 ren %BenchmarkFolder%\downsampled.csv %CurrentBenchmark%_downsampled.csv
 ren %BenchmarkFolder%\source.csv %CurrentBenchmark%_source.csv
   if errorlevel 1 goto error
@@ -550,6 +593,7 @@ SET EngineOption=..\data\engineOptions\%CurrentBenchmark%.json
 python ../scripts/generate_plots.py benchmarks/benchmark.csv %TempFolder%
 XCOPY /q %TempFolder%\downsampled.csv %BenchmarkFolder%
 XCOPY /q %TempFolder%\source.csv %BenchmarkFolder%
+XCOPY /q %EngineOption% %BenchmarkFolder%
 ren %BenchmarkFolder%\downsampled.csv %CurrentBenchmark%_downsampled.csv
 ren %BenchmarkFolder%\source.csv %CurrentBenchmark%_source.csv
   if errorlevel 1 goto error
@@ -562,6 +606,7 @@ SET EngineOption=..\data\engineOptions\%CurrentBenchmark%.json
 python ../scripts/generate_plots.py benchmarks/benchmark.csv %TempFolder%
 XCOPY /q %TempFolder%\downsampled.csv %BenchmarkFolder%
 XCOPY /q %TempFolder%\source.csv %BenchmarkFolder%
+XCOPY /q %EngineOption% %BenchmarkFolder%
 ren %BenchmarkFolder%\downsampled.csv %CurrentBenchmark%_downsampled.csv
 ren %BenchmarkFolder%\source.csv %CurrentBenchmark%_source.csv
   if errorlevel 1 goto error
@@ -574,6 +619,7 @@ SET EngineOption=..\data\engineOptions\%CurrentBenchmark%.json
 python ../scripts/generate_plots.py benchmarks/benchmark.csv %TempFolder%
 XCOPY /q %TempFolder%\downsampled.csv %BenchmarkFolder%
 XCOPY /q %TempFolder%\source.csv %BenchmarkFolder%
+XCOPY /q %EngineOption% %BenchmarkFolder%
 ren %BenchmarkFolder%\downsampled.csv %CurrentBenchmark%_downsampled.csv
 ren %BenchmarkFolder%\source.csv %CurrentBenchmark%_source.csv
   if errorlevel 1 goto error
@@ -586,6 +632,7 @@ SET EngineOption=..\data\engineOptions\%CurrentBenchmark%.json
 python ../scripts/generate_plots.py benchmarks/benchmark.csv %TempFolder%
 XCOPY /q %TempFolder%\downsampled.csv %BenchmarkFolder%
 XCOPY /q %TempFolder%\source.csv %BenchmarkFolder%
+XCOPY /q %EngineOption% %BenchmarkFolder%
 ren %BenchmarkFolder%\downsampled.csv %CurrentBenchmark%_downsampled.csv
 ren %BenchmarkFolder%\source.csv %CurrentBenchmark%_source.csv
   if errorlevel 1 goto error
@@ -598,6 +645,7 @@ SET EngineOption=..\data\engineOptions\%CurrentBenchmark%.json
 python ../scripts/generate_plots.py benchmarks/benchmark.csv %TempFolder%
 XCOPY /q %TempFolder%\downsampled.csv %BenchmarkFolder%
 XCOPY /q %TempFolder%\source.csv %BenchmarkFolder%
+XCOPY /q %EngineOption% %BenchmarkFolder%
 ren %BenchmarkFolder%\downsampled.csv %CurrentBenchmark%_downsampled.csv
 ren %BenchmarkFolder%\source.csv %CurrentBenchmark%_source.csv
   if errorlevel 1 goto error
@@ -610,6 +658,7 @@ SET EngineOption=..\data\engineOptions\%CurrentBenchmark%.json
 python ../scripts/generate_plots.py benchmarks/benchmark.csv %TempFolder%
 XCOPY /q %TempFolder%\downsampled.csv %BenchmarkFolder%
 XCOPY /q %TempFolder%\source.csv %BenchmarkFolder%
+XCOPY /q %EngineOption% %BenchmarkFolder%
 ren %BenchmarkFolder%\downsampled.csv %CurrentBenchmark%_downsampled.csv
 ren %BenchmarkFolder%\source.csv %CurrentBenchmark%_source.csv
   if errorlevel 1 goto error
@@ -622,10 +671,13 @@ SET EngineOption=..\data\engineOptions\%CurrentBenchmark%.json
 python ../scripts/generate_plots.py benchmarks/benchmark.csv %TempFolder%
 XCOPY /q %TempFolder%\downsampled.csv %BenchmarkFolder%
 XCOPY /q %TempFolder%\source.csv %BenchmarkFolder%
+XCOPY /q %EngineOption% %BenchmarkFolder%
 ren %BenchmarkFolder%\downsampled.csv %CurrentBenchmark%_downsampled.csv
 ren %BenchmarkFolder%\source.csv %CurrentBenchmark%_source.csv
   if errorlevel 1 goto error
 
+python ../scripts/generate_static_table.py %BenchmarkFolder% %BenchmarkFolder%
+  if errorlevel 1 goto error
 
 
 goto EOF

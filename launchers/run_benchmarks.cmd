@@ -18,6 +18,7 @@ python ../scripts/generate_plots.py benchmarks/benchmark.csv %BenchmarkFolder%
 XCOPY /q logs\all.log %BenchmarkFolder%
 XCOPY /q %Scene% %BenchmarkFolder%
 XCOPY /q %EngineOption% %BenchmarkFolder%
+SET CleanControlDownsampled=%BenchmarkFolder%\downsampled.csv
 
 SET CurrentBenchmark=clean_unlimited
 SET EngineOption=..\data\engineOptions\benchmark_clean_unlimited.json
@@ -30,6 +31,7 @@ python ../scripts/generate_plots.py benchmarks/benchmark.csv %BenchmarkFolder%
 XCOPY /q logs\all.log %BenchmarkFolder%
 XCOPY /q %Scene% %BenchmarkFolder%
 XCOPY /q %EngineOption% %BenchmarkFolder%
+SET CleanUnlimitedDownsampled=%BenchmarkFolder%\downsampled.csv
 
 SET CurrentBenchmark=clean_limited
 SET EngineOption=..\data\engineOptions\benchmark_clean_limited.json
@@ -42,6 +44,7 @@ python ../scripts/generate_plots.py benchmarks/benchmark.csv %BenchmarkFolder%
 XCOPY /q logs\all.log %BenchmarkFolder%
 XCOPY /q %Scene% %BenchmarkFolder%
 XCOPY /q %EngineOption% %BenchmarkFolder%
+SET CleanLimitedDownsampled=%BenchmarkFolder%\downsampled.csv
 
 SET CurrentBenchmark=clean_vsync
 SET EngineOption=..\data\engineOptions\benchmark_clean_vsync.json
@@ -54,6 +57,10 @@ python ../scripts/generate_plots.py benchmarks/benchmark.csv %BenchmarkFolder%
 XCOPY /q logs\all.log %BenchmarkFolder%
 XCOPY /q %Scene% %BenchmarkFolder%
 XCOPY /q %EngineOption% %BenchmarkFolder%
+SET CleanVsyncDownsampled=%BenchmarkFolder%\downsampled.csv
+
+python ../scripts/generate_combined_plots.py %CurrentDir%\clean_combined %CleanControlDownsampled% %CleanUnlimitedDownsampled% %CleanLimitedDownsampled% %CleanVsyncDownsampled%
+  if errorlevel 1 goto error
 
 @REM Realistic scene
 
@@ -68,6 +75,7 @@ python ../scripts/generate_plots.py benchmarks/benchmark.csv %BenchmarkFolder%
 XCOPY /q logs\all.log %BenchmarkFolder%
 XCOPY /q %Scene% %BenchmarkFolder%
 XCOPY /q %EngineOption% %BenchmarkFolder%
+SET RealisticControlDownsampled=%BenchmarkFolder%\downsampled.csv
 
 SET CurrentBenchmark=realistic_unlimited
 SET EngineOption=..\data\engineOptions\benchmark_realistic_unlimited.json
@@ -80,6 +88,7 @@ python ../scripts/generate_plots.py benchmarks/benchmark.csv %BenchmarkFolder%
 XCOPY /q logs\all.log %BenchmarkFolder%
 XCOPY /q %Scene% %BenchmarkFolder%
 XCOPY /q %EngineOption% %BenchmarkFolder%
+SET RealisticUnlimitedDownsampled=%BenchmarkFolder%\downsampled.csv
 
 SET CurrentBenchmark=realistic_limited
 SET EngineOption=..\data\engineOptions\benchmark_realistic_limited.json
@@ -92,6 +101,7 @@ python ../scripts/generate_plots.py benchmarks/benchmark.csv %BenchmarkFolder%
 XCOPY /q logs\all.log %BenchmarkFolder%
 XCOPY /q %Scene% %BenchmarkFolder%
 XCOPY /q %EngineOption% %BenchmarkFolder%
+SET RealisticLimitedDownsampled=%BenchmarkFolder%\downsampled.csv
 
 SET CurrentBenchmark=realistic_vsync
 SET EngineOption=..\data\engineOptions\benchmark_realistic_vsync.json
@@ -104,6 +114,10 @@ python ../scripts/generate_plots.py benchmarks/benchmark.csv %BenchmarkFolder%
 XCOPY /q logs\all.log %BenchmarkFolder%
 XCOPY /q %Scene% %BenchmarkFolder%
 XCOPY /q %EngineOption% %BenchmarkFolder%
+SET RealisticVsyncDownsampled=%BenchmarkFolder%\downsampled.csv
+
+python ../scripts/generate_combined_plots.py %CurrentDir%\realistic_combined %RealisticControlDownsampled% %RealisticUnlimitedDownsampled% %RealisticLimitedDownsampled% %RealisticVsyncDownsampled%
+  if errorlevel 1 goto error
 
 goto EOF
 

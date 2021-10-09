@@ -49,9 +49,9 @@ Get a triangle on screen:
         ✔ Culling? @done (10/3/2021, 2:34:05 PM)
         ☐ Set up test scenes
         ☐ Finalize plots
-            ☐ Static benchmarks
-                ☐ Generate a table, where there is a row for each config containing all useful information (fps, latency, missed frames, config description)
-                ☐ All data should be read from benchmark data or config file used for the benchmark
+            ✔ Static benchmarks @done (10/9/2021, 9:09:44 PM)
+                ✔ Generate a table, where there is a row for each config containing all useful information (fps, latency, missed frames, config description) @done (10/9/2021, 9:09:42 PM)
+                ✔ All data should be read from benchmark data or config file used for the benchmark @done (10/9/2021, 7:42:18 PM)
             ☐ Other benchmarks
                 ✔ Add delays to the benchmark @done (10/9/2021, 1:43:56 PM)
                 ✔ Add potential fps for all types to the benchmark @done (10/9/2021, 1:43:57 PM)
@@ -61,13 +61,13 @@ Get a triangle on screen:
                     ✔ Latency + Slop + sum of delays @done (10/9/2021, 1:59:10 PM)
                     ✔ Cpu frame time + device frame time + sum of delays (frame time = 1000ms/potential fps) @done (10/9/2021, 1:59:11 PM)
                     ✔ Fps + miss rate (if applicable) @done (10/9/2021, 2:01:44 PM)
-                ☐ Combined plots (from different configs)
-                    ☐ Fps with all modes
-                    ☐ Latency with all modes
-                    ☐ All worktime values (separately) with all modes (this is just for testing, won't be in the document)
-                    ☐ Slop with all modes (why not)
-                    ☐ Both delays (separately) for all modes
-                    ☐ All potential fps value (separately) for all modes (also for testing)
+                ✔ Combined plots (from different configs) @done (10/9/2021, 6:38:06 PM)
+                    ✔ Fps with all modes @done (10/9/2021, 6:27:02 PM)
+                    ✔ Latency with all modes @done (10/9/2021, 6:29:37 PM)
+                    ✔ All worktime values (separately) with all modes (this is just for testing, won't be in the document) @done (10/9/2021, 6:38:05 PM)
+                    ✔ Slop with all modes (why not) @done (10/9/2021, 6:32:38 PM)
+                    ✔ Sum of delays for all modes @done (10/9/2021, 6:32:40 PM)
+                    ✔ All potential fps value (separately) for all modes (also for testing) @done (10/9/2021, 6:35:02 PM)
                 ☐ Tweek realistic scene to have less noise
                 ☐ Tweek realistic scene to be more gpu limited
                 ☐ Tweek plot image size vs benchmark length in realistic scene
