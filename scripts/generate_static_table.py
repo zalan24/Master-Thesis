@@ -59,6 +59,10 @@ def process_benchmarks(sourcedir, dir):
                     info['noise'] = 'yes'
                 else:
                     info['noise'] = 'no'
+                if conf['manualWorkload_beforeInputAvg'] > 0:
+                    info['beforeInput'] = 'yes'
+                else:
+                    info['beforeInput'] = 'no'
                 if info['cpuWork'] < info['execWork']:
                     if info['execWork'] < info['deviceWork']:
                         info['bottleneck'] = 'exec+gpu'
@@ -81,6 +85,7 @@ def process_benchmarks(sourcedir, dir):
     propertiesToPlot = [
         ('latencyMode', 'Latency reduction mode'),
         ('noise', 'Noisy fps'),
+        ('beforeInput', 'Workload before input'),
         ('latencyPool', 'Latency pool'),
         ('targetFps', 'Target fps'),
         ('bottleneck', 'Bottleneck'),

@@ -642,7 +642,7 @@ class Engine
         std::chrono::nanoseconds headRoom;
     };
     std::vector<FrameHistoryInfo> frameHistory;
-    double worTimeAvgMs = 0;
+    double worTimeAfterInputAvgMs = 0;
     double frameOffsetAvgMs = 0;
     // double refreshTimeCpuAvgMs = 0;
     // double refreshTimeExecAvgMs = 0;

@@ -938,7 +938,7 @@ bool Engine::sampleInput(FrameId frameId) {
         double sleepTimeMs = 0;
 
         if (!engineOptions.manualLatencyReduction) {
-            double estimatedWork = worTimeAvgMs;
+            double estimatedWork = worTimeAfterInputAvgMs;
 
             FrameGraph::Clock::time_point now = FrameGraph::Clock::now();
             // recovery from errors
@@ -1793,12 +1793,12 @@ void Engine::readbackLoop(volatile bool* finished) {
             execDelayStats.feed(execDelayMs);
             deviceDelayStats.feed(deviceDelayMs);
             if (latestLatencyInfo.frame < frameGraph.getMaxFramesInFlight()) {
-                worTimeAvgMs = workAfterInputMs;
+                worTimeAfterInputAvgMs = workAfterInputMs;
                 frameOffsetAvgMs = frameOffsetMs;
             }
             else {
-                worTimeAvgMs =
-                  lerp(workAfterInputMs, worTimeAvgMs, double(engineOptions.workTimeSmoothing));
+                worTimeAfterInputAvgMs = lerp(workAfterInputMs, worTimeAfterInputAvgMs,
+                                              double(engineOptions.workTimeSmoothing));
                 frameOffsetAvgMs =
                   lerp(frameOffsetMs, frameOffsetAvgMs, double(engineOptions.workTimeSmoothing));
                 // refreshTimeCpuAvgMs =
