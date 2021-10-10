@@ -83,20 +83,19 @@ Get a triangle on screen:
                 ✔ No stdDiv & heigh stdDiv @done (10/7/2021, 1:15:48 PM)
                 ✔ Cpu limited (before input) & cpu limited (after input) & exec limited & gpu limited & exec + gpu limited (both accumulate delay) @done (10/7/2021, 1:15:53 PM)
                 ✔ No latency reduction & normal latency reduction & fps limited & discretized low latency pool (used with no stdDiv) & high latency pool (that actually works with high stdDiv) @done (10/7/2021, 1:23:55 PM)
-            ☐ Generate a csv with relevant data when a capture is created (values that are exported to the capture + whatever)
+            ✔ Generate a csv with relevant data when a capture is created (values that are exported to the capture + whatever) @done (10/10/2021, 1:32:22 PM)
         ☐ Clean test
             ✔ Have one giant cube with expensive mandelbrot @done (10/7/2021, 11:33:40 AM)
             ✔ rotate camera from not seeing cube to filling the screen with it @done (10/7/2021, 11:33:46 AM)
             ✔ When object not/partly-visible, cpu>=gpu @done (10/7/2021, 11:39:09 AM)
             ✔ Accelerate rotation throughout the benchmark period @done (10/7/2021, 11:33:59 AM)
-            ☐ Compare no reduction & fps limit & discretized
+            ✔ Compare no reduction & fps limit & discretized @done (10/10/2021, 1:32:34 PM)
         ☐ Chaos
             ☐ Create a scene where gpu & cpu perf are very similar -> both cpu and gpu are saturated with work, with some variance
-            ☐ Have objects with cheap mandelbrot, that are not always visible
-            ☐ Use emitters
-            ☐ Move the camera randomly around as expected in an fps game
+            ✔ Use emitters @done (10/10/2021, 1:32:43 PM)
+            ✔ Move the camera randomly around as expected in an fps game @done (10/10/2021, 1:32:45 PM)
             ☐ Set up latency reduction in the best way possible
-            ☐ Compare no reduction & fps limit & discretized
+            ✔ Compare no reduction & fps limit & discretized @done (10/10/2021, 1:33:06 PM)
         ☐ generate plots in every benchmark config
 
 
