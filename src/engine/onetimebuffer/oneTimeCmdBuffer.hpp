@@ -4,6 +4,8 @@
 #include <garbagesystem.h>
 #include <cmdBuffer.hpp>
 
+#include <drvresourceptrs.hpp>
+
 template <typename T>
 class OneTimeCmdBuffer final : public EngineCmdBuffer<T>
 {
@@ -27,12 +29,16 @@ class OneTimeCmdBuffer final : public EngineCmdBuffer<T>
     //  void finishQueueWork();
 
     //  drv::CommandBufferPtr getCommandBuffer() const { return cmdBuffer.commandBufferPtr; }
-    OneTimeCmdBuffer(drv::CmdBufferId _id, std::string _name, drv::TimelineSemaphorePool* _semaphorePool, drv::PhysicalDevicePtr _physicalDevice,
-                     drv::LogicalDevicePtr _device, drv::QueuePtr _queue,
-                     drv::CommandBufferBank* _bufferBank, GarbageSystem* _garbageSystem,
-                     typename drv::DrvCmdBuffer<T>::DrvRecordCallback&& _callback, uint64_t _firstSignalValue)
+    OneTimeCmdBuffer(drv::CmdBufferId _id, std::string _name,
+                     drv::TimelineSemaphorePool* _semaphorePool,
+                     drv::PhysicalDevicePtr _physicalDevice, drv::LogicalDevicePtr _device,
+                     drv::QueuePtr _queue, drv::CommandBufferBank* _bufferBank,
+                     GarbageSystem* _garbageSystem,
+                     typename drv::DrvCmdBuffer<T>::DrvRecordCallback&& _callback,
+                     uint64_t _firstSignalValue)
       : EngineCmdBuffer<T>(_id, std::move(_name), _semaphorePool, _physicalDevice, _device,
-                           drv::get_queue_family(_device, _queue), std::move(_callback), _firstSignalValue),
+                           drv::get_queue_family(_device, _queue), std::move(_callback),
+                           _firstSignalValue),
         queue(_queue),
         bufferBank(_bufferBank),
         garbageSystem(_garbageSystem) {}
@@ -94,9 +100,9 @@ class OneTimeCmdBuffer final : public EngineCmdBuffer<T>
     //    waitTimelineSemaphores;
 
     void close() {
-        if (is_null_ptr(queue))
+        if (drv::is_null_ptr(queue))
             return;
         releaseCommandBuffer(cmdBuffer.commandBufferPtr);
-        reset_ptr(queue);
+        drv::reset_ptr(queue);
     }
 };

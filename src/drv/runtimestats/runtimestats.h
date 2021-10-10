@@ -18,6 +18,8 @@ namespace fs = std::filesystem;
 #include "statscache.h"
 #if ENABLE_RUNTIME_STATS_GENERATION
 #    include "persistance.h"
+#else
+class PersistanceNodeData;
 #endif
 
 class RuntimeStatNode
@@ -174,11 +176,11 @@ class StatsCacheReader
 
     const StatsCache* getHandle() const { return cache; }
 
-    operator bool() const {return cache != nullptr;}
+    operator bool() const { return cache != nullptr; }
 
-private:
-     const StatsCache* cache;
-     std::shared_lock<std::shared_mutex> lock;
+ private:
+    const StatsCache* cache;
+    std::shared_lock<std::shared_mutex> lock;
 };
 
 class StatsCacheWriter
@@ -193,9 +195,9 @@ class StatsCacheWriter
 
     StatsCache* getHandle() const { return cache; }
 
-    operator bool() const {return cache != nullptr;}
+    operator bool() const { return cache != nullptr; }
 
-private:
+ private:
     StatsCache* cache;
     std::unique_lock<std::shared_mutex> lock;
 };
