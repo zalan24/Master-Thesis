@@ -3,6 +3,10 @@
 #include <cstdint>
 #include <limits>
 
+static constexpr int64_t INT64_INF = 1000ll * 1000ll * 1000ll * 1000ll;  // 1000s
+
+static_assert(INT64_INF / 1000000 == 1000000);
+
 class SlopGraph
 {
  public:
@@ -50,11 +54,11 @@ class SlopGraph
         // if it's too high, it's recommended to separate the two nodes onto different threads or reorder them
         int64_t extraSlopWithoutImplicitChildNs = 0;
         int64_t sleepTimeNs = 0;
-        int64_t workTimeNs = 0;  // from here on
+        int64_t workTimeNs = INT64_INF;  // from here on
         // from here on within the same stage (cpu, exec, device)
         int64_t specializedWorkTimeNs = 0;
         int64_t earliestFinishTimeNs = 0;
-        int64_t compactStartNs = 0;
+        int64_t compactStartNs = -INT64_INF;
     };
 
     virtual void feedBack(SlopNodeId node, const FeedbackInfo& info) = 0;

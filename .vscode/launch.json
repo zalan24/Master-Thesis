@@ -93,7 +93,7 @@
         // "--api_dump",
         // "--renderdoc",
         "--scene",
-        "${workspaceFolder}/data/scenes/realistic_scene.json",
+        "${workspaceFolder}/data/scenes/clean_scene.json",
         "--options",
         "${workspaceFolder}/build/engineOptions.json",
         "--no_persistance",

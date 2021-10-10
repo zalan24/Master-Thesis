@@ -5,21 +5,26 @@
 #include <corecontext.h>
 #include <drverror.h>
 
-static constexpr int64_t INF = 1000ll * 1000ll * 1000ll * 1000ll;  // 1000s
-
 struct QueueInfo
 {
-    int64_t startNs = INF;
-    int64_t endNs = -INF;
+    int startInd = -1;
+    int endInd = -1;
+    int64_t startNs = INT64_INF;
+    int64_t endNs = -INT64_INF;
     SlopGraph::NodeType nodeType;
-    void append(int64_t start, int64_t end, SlopGraph::NodeType _nodeType) {
-        if (startNs != INF)
+    void append(int64_t start, int64_t end, SlopGraph::NodeType _nodeType, int nodeInd) {
+        if (startInd != -1) {
             drv::drv_assert(nodeType == _nodeType,
                             "A node from a different stage is registered with the same queue id");
-        if (start < startNs)
+        }
+        if (start < startNs) {
+            startInd = nodeInd;
             startNs = start;
-        if (endNs < end)
+        }
+        if (endNs < end) {
             endNs = end;
+            endInd = nodeInd;
+        }
         nodeType = _nodeType;
     }
 };
@@ -97,14 +102,16 @@ SlopGraph::LatencyInfo SlopGraph::calculateSlop(SlopNodeId sourceNode, SlopNodeI
         SlopNodeId node = topologicalOrder[i - 1];
         NodeInfos nodeInfo = getNodeInfos(node);
         // a delayable node with no children can be delayed to any amount
-        int64_t sloppedMin = INF + nodeInfo.endTimeNs;
-        int64_t asIsMin = INF + nodeInfo.endTimeNs;
-        int64_t noImplicitMin = INF + nodeInfo.endTimeNs;
+        int64_t sloppedMin = INT64_INF + nodeInfo.endTimeNs;
+        int64_t asIsMin = INT64_INF + nodeInfo.endTimeNs;
+        int64_t noImplicitMin = INT64_INF + nodeInfo.endTimeNs;
         int64_t maxWorkTime = 0;
         int64_t maxSpecializedWorkTime = 0;
         for (uint32_t j = 0; j < getChildCount(node); ++j) {
             ChildInfo child = getChild(node, j);
             NodeInfos childInfo = getNodeInfos(child.id);
+            drv::drv_assert(nodeData[child.id].feedbackInfo.workTimeNs != INT64_INF,
+                            "Child node's compact start hasn't been initialized yet");
             if (child.isImplicit) {
                 drv::drv_assert(nodeData[node].feedbackInfo.implicitChild == INVALID_SLOP_NODE,
                                 "Only one implicit child can exist");
@@ -144,7 +151,7 @@ SlopGraph::LatencyInfo SlopGraph::calculateSlop(SlopNodeId sourceNode, SlopNodeI
         if (nodeInfo.frameId == targetNodeInfo.frameId) {
             // Node's (start,end) timings in a theorised compact frame
             queueInfos[nodeInfo.threadId].append(-nodeData[node].feedbackInfo.workTimeNs,
-                                                 -maxWorkTime, nodeInfo.type);
+                                                 -maxWorkTime, nodeInfo.type, i - 1);
             if (highestWorkTime < nodeData[node].feedbackInfo.workTimeNs)
                 highestWorkTime = nodeData[node].feedbackInfo.workTimeNs;
             switch (nodeInfo.type) {
@@ -166,27 +173,34 @@ SlopGraph::LatencyInfo SlopGraph::calculateSlop(SlopNodeId sourceNode, SlopNodeI
     // ---
 
     // --- Calculating compact timings
-    std::unordered_map<uint32_t, QueueInfo> compactQueueInfos;
-    for (uint32_t i = 0; i < nodeCount; ++i) {
-        SlopNodeId node = topologicalOrder[i];
-        NodeInfos nodeInfo = getNodeInfos(node);
-        if (nodeInfo.frameId != targetNodeInfo.frameId)
-            continue;
-        int64_t minStartTime = queueInfos[nodeInfo.threadId].startNs;
-        for (uint32_t j = 0; j < getChildCount(node); ++j) {
-            ChildInfo child = getChild(node, j);
-            NodeInfos childInfo = getNodeInfos(child.id);
-            if (nodeInfo.frameId == childInfo.frameId) {
-                minStartTime =
-                  std::min(minStartTime, nodeData[child.id].feedbackInfo.compactStartNs);
+    std::unordered_map<uint32_t, std::pair<int64_t, SlopGraph::NodeType>> compactQueueDurations;
+    StackMemory::MemoryHandle<int64_t> durations(nodeCount, TEMPMEM);
+    for (const auto& queueInfo : queueInfos) {
+        uint32_t start = uint32_t(queueInfo.second.startInd);
+        uint32_t end = uint32_t(queueInfo.second.endInd);
+        SlopNodeId startNode = topologicalOrder[start];
+        SlopNodeId endNode = topologicalOrder[end];
+        memset(durations, 0, sizeof(durations[0]) * nodeCount);
+        for (uint32_t i = start; i <= end; ++i) {
+            SlopNodeId node = topologicalOrder[i];
+            NodeInfos nodeInfo = getNodeInfos(node);
+            if (nodeInfo.frameId != targetNodeInfo.frameId)
+                continue;
+            int64_t duration = nodeInfo.endTimeNs - nodeInfo.startTimeNs - nodeInfo.latencySleepNs;
+            durations[node] += duration;
+            for (uint32_t j = 0; j < getChildCount(node); ++j) {
+                ChildInfo child = getChild(node, j);
+                NodeInfos childInfo = getNodeInfos(child.id);
+                if (nodeInfo.frameId == childInfo.frameId) {
+                    durations[child.id] = std::max(durations[child.id], durations[node]);
+                }
             }
         }
-        nodeData[node].feedbackInfo.compactStartNs = minStartTime;
-        // Node's (start,end) timings in a theorised compact frame
-        compactQueueInfos[nodeInfo.threadId].append(
-          minStartTime,
-          minStartTime + (nodeInfo.endTimeNs - nodeInfo.startTimeNs - nodeInfo.latencySleepNs),
-          nodeInfo.type);
+        NodeInfos startNodeInfo = getNodeInfos(startNode);
+        int64_t startDuration =
+          startNodeInfo.endTimeNs - startNodeInfo.startTimeNs - startNodeInfo.latencySleepNs;
+        compactQueueDurations[queueInfo.first] = std::make_pair(
+          durations[endNode] - durations[startNode] + startDuration, queueInfo.second.nodeType);
     }
     // ---
 
@@ -194,11 +208,11 @@ SlopGraph::LatencyInfo SlopGraph::calculateSlop(SlopNodeId sourceNode, SlopNodeI
     ret.cpuNextFrameOffsetNs = 0;
     ret.execNextFrameOffsetNs = 0;
     ret.deviceNextFrameOffsetNs = 0;
-    for (const auto& queueInfo : compactQueueInfos) {
-        int64_t diff = queueInfo.second.endNs - queueInfo.second.startNs;
+    for (const auto& queueInfo : compactQueueDurations) {
+        int64_t diff = queueInfo.second.first;
         if (ret.nextFrameOffsetNs < diff)
             ret.nextFrameOffsetNs = diff;
-        switch (queueInfo.second.nodeType) {
+        switch (queueInfo.second.second) {
             case CPU:
                 if (ret.cpuNextFrameOffsetNs < diff)
                     ret.cpuNextFrameOffsetNs = diff;
