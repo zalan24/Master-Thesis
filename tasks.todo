@@ -68,14 +68,14 @@ Get a triangle on screen:
                     ✔ Slop with all modes (why not) @done (10/9/2021, 6:32:38 PM)
                     ✔ Sum of delays for all modes @done (10/9/2021, 6:32:40 PM)
                     ✔ All potential fps value (separately) for all modes (also for testing) @done (10/9/2021, 6:35:02 PM)
-                ☐ Tweek realistic scene to have less noise
-                    ☐ Probably just use after input cpp workload
+                ✔ Tweek realistic scene to have less noise @done (10/10/2021, 4:32:53 PM)
+                    ✔ Probably just use after input cpp workload @done (10/10/2021, 4:32:50 PM)
                 ☐ Tweek realistic scene to be more gpu limited
-                    ☐ Should be 60 fps looking ot the heavy objects from the starting point
-                    ☐ Should be 70 fps cpu limited when looking at the sky
-                    ☐ Gpu limit should be 80 fps when looking at the sky
-                    ☐ Cpu noise should be low, but present
-                    ☐ Gpu noise is not necessary, should be low or none
+                    ✔ Should be 60 fps looking ot the heavy objects from the starting point @done (10/10/2021, 4:32:55 PM)
+                    ✔ Should be 70 fps cpu limited when looking at the sky @done (10/10/2021, 4:32:57 PM)
+                    ✔ Gpu limit should be 80 fps when looking at the sky @done (10/10/2021, 4:33:01 PM)
+                    ✔ Cpu noise should be low, but present @done (10/10/2021, 4:33:04 PM)
+                    ✔ Gpu noise is not necessary, should be low or none @done (10/10/2021, 4:33:06 PM)
                 ☐ Tweek plot image size vs benchmark length in realistic scene
         ✘ Be able to start exe without args. Double click on exe should work @cancelled (10/4/2021, 12:43:23 PM)
         ✔ Have scripts to run the exe @done (10/4/2021, 12:43:33 PM)

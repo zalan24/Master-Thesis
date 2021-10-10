@@ -5,8 +5,8 @@
         "parentName": "",
         "position": [
             0.0,
-            3.0,
-            -6.0
+            5.0,
+            -12.0
         ],
         "velocity": [
             0.0,
@@ -126,7 +126,7 @@
         "specular": 1,
         "bumpyness": 0,
         "bumpScale": 1,
-        "mandelbrot": 1500,
+        "mandelbrot": 500,
         "extra": {},
         "extraStr": {}
     },
@@ -166,7 +166,7 @@
         "specular": 1,
         "bumpyness": 0,
         "bumpScale": 1,
-        "mandelbrot": 1500,
+        "mandelbrot": 500,
         "extra": {},
         "extraStr": {}
     },
@@ -214,8 +214,8 @@
             "maxTheta": 0.107,
             "minSpeed": 10,
             "maxSpeed": 20,
-            "freq": 21,
-            "placeDist": 0.5
+            "freq": 32,
+            "placeDist": 1
         },
         "extraStr": {}
     },
@@ -263,8 +263,8 @@
             "maxTheta": 0.107,
             "minSpeed": 10,
             "maxSpeed": 20,
-            "freq": 21,
-            "placeDist": 0.5
+            "freq": 32,
+            "placeDist": 1
         },
         "extraStr": {}
     },
@@ -312,8 +312,8 @@
             "maxTheta": 0.107,
             "minSpeed": 10,
             "maxSpeed": 20,
-            "freq": 21,
-            "placeDist": 0.5
+            "freq": 32,
+            "placeDist": 1
         },
         "extraStr": {}
     },
@@ -328,7 +328,7 @@
         ],
         "position": [
             0.0,
-            15.0,
+            20.0,
             -150.0
         ],
         "velocity": [
@@ -377,7 +377,7 @@
         ],
         "position": [
             100.0,
-            15.0,
+            20.0,
             -50.0
         ],
         "velocity": [
@@ -426,7 +426,7 @@
         ],
         "position": [
             -100.0,
-            15.0,
+            20.0,
             -50.0
         ],
         "velocity": [

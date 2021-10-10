@@ -37,6 +37,8 @@ launchers/logs
 launchers/results
 launchers/benchmarks
 launchers/statistics
+launchers/captures
+launchers/cameraRecords
 launchers/prev_scene.json
 data/models/*
 .vscode/ipch/

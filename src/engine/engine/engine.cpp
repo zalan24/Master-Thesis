@@ -1007,12 +1007,6 @@ bool Engine::sampleInput(FrameId frameId) {
         perFrameTempInfo[frameId % perFrameTempInfo.size()].cameraControls =
           std::move(cameraControls);
 
-    float afterSleep = genNormalDistribution(engineOptions.manualWorkload_afterInputAvg,
-                                             engineOptions.manualWorkload_afterInputStdDiv);
-    if (afterSleep > 0)
-        FrameGraph::busy_sleep(
-          std::chrono::microseconds(static_cast<long long>(afterSleep * 1000.f)));
-
     return true;
 }
 
@@ -1075,7 +1069,17 @@ void Engine::simulationLoop() {
         if (mouseListener.isClicking())
             lastLatencyFlashClick = FrameGraph::Clock::now();
         simulate(simulationFrame);
-        if (!frameGraph.endStage(FrameGraph::SIMULATION_STAGE, simulationFrame)) {
+        if (auto endNode =
+              frameGraph.acquireNode(frameGraph.getStageEndNode(FrameGraph::SIMULATION_STAGE),
+                                     FrameGraph::SIMULATION_STAGE, simulationFrame);
+            endNode) {
+            float afterSleep = genNormalDistribution(engineOptions.manualWorkload_afterInputAvg,
+                                                     engineOptions.manualWorkload_afterInputStdDiv);
+            if (afterSleep > 0)
+                FrameGraph::busy_sleep(
+                  std::chrono::microseconds(static_cast<long long>(afterSleep * 1000.f)));
+        }
+        else {
             assert(frameGraph.isStopped());
             break;
         }
