@@ -36,7 +36,7 @@ class TimelineSemaphorePool final : public AsyncPool<TimelineSemaphorePool, Time
 {
  public:
     explicit TimelineSemaphorePool(drv::LogicalDevicePtr _device, uint64_t _startValueOffset)
-      : device(_device), startValueOffset(_startValueOffset) {}
+      : AsyncPool<TimelineSemaphorePool, TimelineSemaphoreItem>("semaphorePool"), device(_device), startValueOffset(_startValueOffset) {}
 
     TimelineSemaphoreHandle tryAcquire(uint64_t firstSignalValue) noexcept;
     TimelineSemaphoreHandle acquire(uint64_t firstSignalValue);

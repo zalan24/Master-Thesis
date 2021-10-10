@@ -16,7 +16,7 @@ struct EventPoolItem
 class EventPool final : public AsyncPool<EventPool, EventPoolItem>
 {
  public:
-    explicit EventPool(drv::LogicalDevicePtr _device) : device(_device) {}
+    explicit EventPool(drv::LogicalDevicePtr _device) : AsyncPool<EventPool, EventPoolItem>("eventPool"), device(_device) {}
 
     class EventHandle
     {

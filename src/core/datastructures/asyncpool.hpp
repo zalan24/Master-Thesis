@@ -12,7 +12,7 @@ template <typename Child, typename ItemExt>
 class AsyncPool
 {
  public:
-    explicit AsyncPool(uint32_t _warnLimit = 0) : warnLimit(_warnLimit) {}
+    explicit AsyncPool(const char* _name, uint32_t _warnLimit = 0) : name(_name), warnLimit(_warnLimit) {}
 
     AsyncPool(const AsyncPool&) = delete;
     AsyncPool& operator=(const AsyncPool&) = delete;
@@ -35,7 +35,7 @@ class AsyncPool
         std::unique_lock<std::shared_mutex> lock(vectorMutex);
         ItemIndex count = acquiredCount.load();
         if (count > 0)
-            LOG_F(ERROR, "Not all items were freed. Remaining: %d", count);
+            LOG_F(ERROR, "Not all items were freed. Remaining: %d <%s>", count, name);
         assert(count == 0);
         items.clear();
         currentIndex = 0;
@@ -73,7 +73,7 @@ class AsyncPool
             throw std::runtime_error("Newly created item is not suitable to be acquired");
         static_cast<Child*>(this)->acquireExt(items[ret].itmExt, args...);
         if (items.size() == warnLimit)
-            LOG_F(WARNING, "There are too many items in this pool: %lld", items.size());
+            LOG_F(WARNING, "There are too many items in this pool: %lld <%s>", items.size(), name);
         items.back().used = true;
         acquiredCount.fetch_add(1);
         return ItemIndex(ret);
@@ -102,6 +102,7 @@ class AsyncPool
             return *this;
         }
     };
+    const char* name;
     std::atomic<ItemIndex> currentIndex = 0;
     std::atomic<ItemIndex> acquiredCount = 0;
     std::vector<ItemImpl> items;

@@ -41,7 +41,10 @@ class OneTimeCmdBuffer final : public EngineCmdBuffer<T>
                            _firstSignalValue),
         queue(_queue),
         bufferBank(_bufferBank),
-        garbageSystem(_garbageSystem) {}
+        garbageSystem(_garbageSystem)
+    {
+        drv::drv_assert(!drv::is_null_ptr(queue), "OneTimeCmdBuffer is initialized in the moved from state");
+    }
 
     OneTimeCmdBuffer(const OneTimeCmdBuffer&) = delete;
     OneTimeCmdBuffer& operator=(const OneTimeCmdBuffer&) = delete;
@@ -68,6 +71,7 @@ class OneTimeCmdBuffer final : public EngineCmdBuffer<T>
 
  protected:
     drv::CommandBufferPtr acquireCommandBuffer() override {
+        drv::drv_assert(!drv::is_null_ptr(queue), "OneTimeCmdBuffer is in the moved from state when calling acquireCommandBuffer()");
         drv::CommandBufferBankGroupInfo acquireInfo(drv::get_queue_family(this->getDevice(), queue),
                                                     false, drv::CommandBufferType::PRIMARY);
         drv::drv_assert(!cmdBuffer);

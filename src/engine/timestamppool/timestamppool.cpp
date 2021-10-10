@@ -3,7 +3,8 @@
 // #include <cassert>
 
 TimestampPool::TimestampPool(drv::LogicalDevicePtr _device, uint32_t startingSize)
-  : device(_device) {
+  : AsyncPool<TimestampPool, TimestampPoolItem>("timestampPool"),
+    device(_device) {
     std::unique_lock<std::shared_mutex> lock(poolsMutex);
     pools.push_back(drv::TimestampQueryPool(device, startingSize));
 }
