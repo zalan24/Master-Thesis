@@ -47,7 +47,7 @@ Get a triangle on screen:
         ✘ Make the capture have the final look (remove record/end node for example or not) @cancelled (10/6/2021, 12:37:15 PM)
         ✔ Disable resize? @done (10/4/2021, 1:02:37 PM)
         ✔ Culling? @done (10/3/2021, 2:34:05 PM)
-        ☐ Set up test scenes
+        ✔ Set up test scenes @done (10/10/2021, 7:59:45 PM)
         ☐ Finalize plots
             ✔ Static benchmarks @done (10/9/2021, 9:09:44 PM)
                 ✔ Generate a table, where there is a row for each config containing all useful information (fps, latency, missed frames, config description) @done (10/9/2021, 9:09:42 PM)
@@ -70,13 +70,14 @@ Get a triangle on screen:
                     ✔ All potential fps value (separately) for all modes (also for testing) @done (10/9/2021, 6:35:02 PM)
                 ✔ Tweek realistic scene to have less noise @done (10/10/2021, 4:32:53 PM)
                     ✔ Probably just use after input cpp workload @done (10/10/2021, 4:32:50 PM)
-                ☐ Tweek realistic scene to be more gpu limited
+                ✔ Tweek realistic scene to be more gpu limited @done (10/10/2021, 7:59:41 PM)
                     ✔ Should be 60 fps looking ot the heavy objects from the starting point @done (10/10/2021, 4:32:55 PM)
                     ✔ Should be 70 fps cpu limited when looking at the sky @done (10/10/2021, 4:32:57 PM)
                     ✔ Gpu limit should be 80 fps when looking at the sky @done (10/10/2021, 4:33:01 PM)
                     ✔ Cpu noise should be low, but present @done (10/10/2021, 4:33:04 PM)
                     ✔ Gpu noise is not necessary, should be low or none @done (10/10/2021, 4:33:06 PM)
                 ☐ Tweek plot image size vs benchmark length in realistic scene
+                ☐ Tweek static scenes
         ✘ Be able to start exe without args. Double click on exe should work @cancelled (10/4/2021, 12:43:23 PM)
         ✔ Have scripts to run the exe @done (10/4/2021, 12:43:33 PM)
         ✔ Be able to specify settings file, so that each benchmark config can keep it's own engine options @done (10/4/2021, 12:43:34 PM)
@@ -85,7 +86,7 @@ Get a triangle on screen:
     ☐ Benchmarking & tests
         ☐ Laboratory tests
             ☐ Measurements will need: all data from capture + LDAT
-            ☐ Measure in configs:
+            ✔ Measure in configs: @done (10/10/2021, 8:00:15 PM)
                 ✔ No stdDiv & heigh stdDiv @done (10/7/2021, 1:15:48 PM)
                 ✔ Cpu limited (before input) & cpu limited (after input) & exec limited & gpu limited & exec + gpu limited (both accumulate delay) @done (10/7/2021, 1:15:53 PM)
                 ✔ No latency reduction & normal latency reduction & fps limited & discretized low latency pool (used with no stdDiv) & high latency pool (that actually works with high stdDiv) @done (10/7/2021, 1:23:55 PM)
@@ -97,12 +98,12 @@ Get a triangle on screen:
             ✔ Accelerate rotation throughout the benchmark period @done (10/7/2021, 11:33:59 AM)
             ✔ Compare no reduction & fps limit & discretized @done (10/10/2021, 1:32:34 PM)
         ☐ Chaos
-            ☐ Create a scene where gpu & cpu perf are very similar -> both cpu and gpu are saturated with work, with some variance
+            ✔ Create a scene where gpu & cpu perf are very similar -> both cpu and gpu are saturated with work, with some variance @done (10/10/2021, 8:00:08 PM)
             ✔ Use emitters @done (10/10/2021, 1:32:43 PM)
             ✔ Move the camera randomly around as expected in an fps game @done (10/10/2021, 1:32:45 PM)
-            ☐ Set up latency reduction in the best way possible
+            ✔ Set up latency reduction in the best way possible @done (10/10/2021, 8:00:03 PM)
             ✔ Compare no reduction & fps limit & discretized @done (10/10/2021, 1:33:06 PM)
-        ☐ generate plots in every benchmark config
+        ✔ generate plots in every benchmark config @done (10/10/2021, 8:00:23 PM)
 
 
     ☐ Document
