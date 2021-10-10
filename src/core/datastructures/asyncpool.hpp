@@ -12,7 +12,8 @@ template <typename Child, typename ItemExt>
 class AsyncPool
 {
  public:
-    explicit AsyncPool(const char* _name, uint32_t _warnLimit = 0) : name(_name), warnLimit(_warnLimit) {}
+    explicit AsyncPool(const char* _name, uint32_t _warnLimit = 0)
+      : name(_name), warnLimit(_warnLimit) {}
 
     AsyncPool(const AsyncPool&) = delete;
     AsyncPool& operator=(const AsyncPool&) = delete;
@@ -25,7 +26,8 @@ class AsyncPool
         static_cast<Child*>(this)->releaseExt(items[itemIndex].itmExt);
         assert(items[itemIndex].used.load() == true);
         items[itemIndex].used = false;
-        assert(acquiredCount.fetch_sub(1) > 0);
+        ItemIndex count = acquiredCount.fetch_sub(1);
+        assert(count > 0);
     }
 
  protected:

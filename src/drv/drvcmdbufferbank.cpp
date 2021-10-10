@@ -20,7 +20,8 @@ CommandBufferCirculator::~CommandBufferCirculator() {
 CommandBufferCirculator::CommandBufferCirculator(LogicalDevicePtr _device, QueueFamilyPtr _family,
                                                  CommandBufferType _type,
                                                  bool _render_pass_continueos)
-  : AsyncPool<CommandBufferCirculator, CommandBufferCirculatorItem>("commandBufferCirculator"),
+  : AsyncPool<CommandBufferCirculator, CommandBufferCirculatorItem>("commandBufferCirculator",
+                                                                    1024),
     device(_device),
     family(_family),
     pool(device, family, get_create_info()),
