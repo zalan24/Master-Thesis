@@ -39,7 +39,7 @@
         "extra": {
             "prepareTime": 5,
             "period": -1,
-            "exitAfter": 1
+            "exitAfter": 3
         },
         "extraStr": {
             "motion": "../data/cameraRecords/realistic_benchmark.bin"
