@@ -223,8 +223,9 @@ bool DrvVulkan::delete_instance(drv::InstancePtr ptr) {
     if (featureconfig::params.debugLevel != featureconfig::DEBUGGING_NONE)
         drv::drv_assert(instance->vkDestroyDebugUtilsMessengerEXT != nullptr,
                         "An extension functios was not loaded");
-    instance->vkDestroyDebugUtilsMessengerEXT(instance->instance, instance->debugMessenger,
-                                              nullptr);
+    if (instance->debugMessenger)
+        instance->vkDestroyDebugUtilsMessengerEXT(instance->instance, instance->debugMessenger,
+                                                  nullptr);
     if (instance->instance != VK_NULL_HANDLE)
         vkDestroyInstance(instance->instance, nullptr);
     delete drv::resolve_ptr<Instance*>(ptr);
