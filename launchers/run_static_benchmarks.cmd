@@ -5,6 +5,7 @@ SET resulultsFolder=results
 IF NOT exist %resulultsFolder% ( mkdir %resulultsFolder% )
 
 SET CurrentDir=%resulultsFolder%\static_benchmark_%DATE:/=-%_%TIME::=-%
+SET CurrentDir=%CurrentDir: =_%
 SET TempFolder=%resulultsFolder%\temp
 mkdir %CurrentDir%
 
@@ -19,6 +20,7 @@ XCOPY /q %Scene% %BenchmarkFolder%
 @REM "../build/src/games/playground/Playground.exe" -c../data/configs/playground_default.json -t../data/configs/trackingConfig.json -d../data/ --scene %Scene% --options %EngineOption% --no_persistance --runtime_stats_persistance statistics/runtimeStats.bin --runtime_stats_game_exports statistics/runtimeStatsGameExports.bin --runtime_stats_cache statistics/runtimeStatsCache.bin -s../build/shaders/shaders.bin --report statistics/report.txt
 @REM   if errorlevel 1 goto error
 @REM python ../scripts/generate_plots.py benchmarks/benchmark.csv %TempFolder%
+@REM   if errorlevel 1 goto error
 @REM XCOPY /q %TempFolder%\downsampled.csv %BenchmarkFolder%
 @REM XCOPY /q %TempFolder%\source.csv %BenchmarkFolder%
 @REM ren %BenchmarkFolder%\downsampled.csv %CurrentBenchmark%_downsampled.csv
@@ -32,6 +34,7 @@ SET EngineOption=..\data\engineOptions\%CurrentBenchmark%.json
 "../build/src/games/playground/Playground.exe" -c../data/configs/playground_default.json -t../data/configs/trackingConfig.json -d../data/ --scene %Scene% --options %EngineOption% --no_persistance --runtime_stats_persistance statistics/runtimeStats.bin --runtime_stats_game_exports statistics/runtimeStatsGameExports.bin --runtime_stats_cache statistics/runtimeStatsCache.bin -s../build/shaders/shaders.bin --report statistics/report.txt
   if errorlevel 1 goto error
 python ../scripts/generate_plots.py benchmarks/benchmark.csv %TempFolder%
+  if errorlevel 1 goto error
 XCOPY /q %TempFolder%\downsampled.csv %BenchmarkFolder%
 XCOPY /q %TempFolder%\source.csv %BenchmarkFolder%
 XCOPY /q %EngineOption% %BenchmarkFolder%
@@ -45,6 +48,7 @@ SET EngineOption=..\data\engineOptions\%CurrentBenchmark%.json
 "../build/src/games/playground/Playground.exe" -c../data/configs/playground_default.json -t../data/configs/trackingConfig.json -d../data/ --scene %Scene% --options %EngineOption% --no_persistance --runtime_stats_persistance statistics/runtimeStats.bin --runtime_stats_game_exports statistics/runtimeStatsGameExports.bin --runtime_stats_cache statistics/runtimeStatsCache.bin -s../build/shaders/shaders.bin --report statistics/report.txt
   if errorlevel 1 goto error
 python ../scripts/generate_plots.py benchmarks/benchmark.csv %TempFolder%
+  if errorlevel 1 goto error
 XCOPY /q %TempFolder%\downsampled.csv %BenchmarkFolder%
 XCOPY /q %TempFolder%\source.csv %BenchmarkFolder%
 XCOPY /q %EngineOption% %BenchmarkFolder%
@@ -58,6 +62,7 @@ SET EngineOption=..\data\engineOptions\%CurrentBenchmark%.json
 "../build/src/games/playground/Playground.exe" -c../data/configs/playground_default.json -t../data/configs/trackingConfig.json -d../data/ --scene %Scene% --options %EngineOption% --no_persistance --runtime_stats_persistance statistics/runtimeStats.bin --runtime_stats_game_exports statistics/runtimeStatsGameExports.bin --runtime_stats_cache statistics/runtimeStatsCache.bin -s../build/shaders/shaders.bin --report statistics/report.txt
   if errorlevel 1 goto error
 python ../scripts/generate_plots.py benchmarks/benchmark.csv %TempFolder%
+  if errorlevel 1 goto error
 XCOPY /q %TempFolder%\downsampled.csv %BenchmarkFolder%
 XCOPY /q %TempFolder%\source.csv %BenchmarkFolder%
 XCOPY /q %EngineOption% %BenchmarkFolder%
@@ -71,6 +76,7 @@ SET EngineOption=..\data\engineOptions\%CurrentBenchmark%.json
 "../build/src/games/playground/Playground.exe" -c../data/configs/playground_default.json -t../data/configs/trackingConfig.json -d../data/ --scene %Scene% --options %EngineOption% --no_persistance --runtime_stats_persistance statistics/runtimeStats.bin --runtime_stats_game_exports statistics/runtimeStatsGameExports.bin --runtime_stats_cache statistics/runtimeStatsCache.bin -s../build/shaders/shaders.bin --report statistics/report.txt
   if errorlevel 1 goto error
 python ../scripts/generate_plots.py benchmarks/benchmark.csv %TempFolder%
+  if errorlevel 1 goto error
 XCOPY /q %TempFolder%\downsampled.csv %BenchmarkFolder%
 XCOPY /q %TempFolder%\source.csv %BenchmarkFolder%
 XCOPY /q %EngineOption% %BenchmarkFolder%
@@ -84,6 +90,7 @@ SET EngineOption=..\data\engineOptions\%CurrentBenchmark%.json
 "../build/src/games/playground/Playground.exe" -c../data/configs/playground_default.json -t../data/configs/trackingConfig.json -d../data/ --scene %Scene% --options %EngineOption% --no_persistance --runtime_stats_persistance statistics/runtimeStats.bin --runtime_stats_game_exports statistics/runtimeStatsGameExports.bin --runtime_stats_cache statistics/runtimeStatsCache.bin -s../build/shaders/shaders.bin --report statistics/report.txt
   if errorlevel 1 goto error
 python ../scripts/generate_plots.py benchmarks/benchmark.csv %TempFolder%
+  if errorlevel 1 goto error
 XCOPY /q %TempFolder%\downsampled.csv %BenchmarkFolder%
 XCOPY /q %TempFolder%\source.csv %BenchmarkFolder%
 XCOPY /q %EngineOption% %BenchmarkFolder%
@@ -97,6 +104,7 @@ SET EngineOption=..\data\engineOptions\%CurrentBenchmark%.json
 "../build/src/games/playground/Playground.exe" -c../data/configs/playground_default.json -t../data/configs/trackingConfig.json -d../data/ --scene %Scene% --options %EngineOption% --no_persistance --runtime_stats_persistance statistics/runtimeStats.bin --runtime_stats_game_exports statistics/runtimeStatsGameExports.bin --runtime_stats_cache statistics/runtimeStatsCache.bin -s../build/shaders/shaders.bin --report statistics/report.txt
   if errorlevel 1 goto error
 python ../scripts/generate_plots.py benchmarks/benchmark.csv %TempFolder%
+  if errorlevel 1 goto error
 XCOPY /q %TempFolder%\downsampled.csv %BenchmarkFolder%
 XCOPY /q %TempFolder%\source.csv %BenchmarkFolder%
 XCOPY /q %EngineOption% %BenchmarkFolder%
@@ -110,6 +118,7 @@ SET EngineOption=..\data\engineOptions\%CurrentBenchmark%.json
 "../build/src/games/playground/Playground.exe" -c../data/configs/playground_default.json -t../data/configs/trackingConfig.json -d../data/ --scene %Scene% --options %EngineOption% --no_persistance --runtime_stats_persistance statistics/runtimeStats.bin --runtime_stats_game_exports statistics/runtimeStatsGameExports.bin --runtime_stats_cache statistics/runtimeStatsCache.bin -s../build/shaders/shaders.bin --report statistics/report.txt
   if errorlevel 1 goto error
 python ../scripts/generate_plots.py benchmarks/benchmark.csv %TempFolder%
+  if errorlevel 1 goto error
 XCOPY /q %TempFolder%\downsampled.csv %BenchmarkFolder%
 XCOPY /q %TempFolder%\source.csv %BenchmarkFolder%
 XCOPY /q %EngineOption% %BenchmarkFolder%
@@ -123,6 +132,7 @@ SET EngineOption=..\data\engineOptions\%CurrentBenchmark%.json
 "../build/src/games/playground/Playground.exe" -c../data/configs/playground_default.json -t../data/configs/trackingConfig.json -d../data/ --scene %Scene% --options %EngineOption% --no_persistance --runtime_stats_persistance statistics/runtimeStats.bin --runtime_stats_game_exports statistics/runtimeStatsGameExports.bin --runtime_stats_cache statistics/runtimeStatsCache.bin -s../build/shaders/shaders.bin --report statistics/report.txt
   if errorlevel 1 goto error
 python ../scripts/generate_plots.py benchmarks/benchmark.csv %TempFolder%
+  if errorlevel 1 goto error
 XCOPY /q %TempFolder%\downsampled.csv %BenchmarkFolder%
 XCOPY /q %TempFolder%\source.csv %BenchmarkFolder%
 XCOPY /q %EngineOption% %BenchmarkFolder%
@@ -136,6 +146,7 @@ SET EngineOption=..\data\engineOptions\%CurrentBenchmark%.json
 "../build/src/games/playground/Playground.exe" -c../data/configs/playground_default.json -t../data/configs/trackingConfig.json -d../data/ --scene %Scene% --options %EngineOption% --no_persistance --runtime_stats_persistance statistics/runtimeStats.bin --runtime_stats_game_exports statistics/runtimeStatsGameExports.bin --runtime_stats_cache statistics/runtimeStatsCache.bin -s../build/shaders/shaders.bin --report statistics/report.txt
   if errorlevel 1 goto error
 python ../scripts/generate_plots.py benchmarks/benchmark.csv %TempFolder%
+  if errorlevel 1 goto error
 XCOPY /q %TempFolder%\downsampled.csv %BenchmarkFolder%
 XCOPY /q %TempFolder%\source.csv %BenchmarkFolder%
 XCOPY /q %EngineOption% %BenchmarkFolder%
@@ -149,6 +160,7 @@ SET EngineOption=..\data\engineOptions\%CurrentBenchmark%.json
 "../build/src/games/playground/Playground.exe" -c../data/configs/playground_default.json -t../data/configs/trackingConfig.json -d../data/ --scene %Scene% --options %EngineOption% --no_persistance --runtime_stats_persistance statistics/runtimeStats.bin --runtime_stats_game_exports statistics/runtimeStatsGameExports.bin --runtime_stats_cache statistics/runtimeStatsCache.bin -s../build/shaders/shaders.bin --report statistics/report.txt
   if errorlevel 1 goto error
 python ../scripts/generate_plots.py benchmarks/benchmark.csv %TempFolder%
+  if errorlevel 1 goto error
 XCOPY /q %TempFolder%\downsampled.csv %BenchmarkFolder%
 XCOPY /q %TempFolder%\source.csv %BenchmarkFolder%
 XCOPY /q %EngineOption% %BenchmarkFolder%
@@ -162,6 +174,7 @@ SET EngineOption=..\data\engineOptions\%CurrentBenchmark%.json
 "../build/src/games/playground/Playground.exe" -c../data/configs/playground_default.json -t../data/configs/trackingConfig.json -d../data/ --scene %Scene% --options %EngineOption% --no_persistance --runtime_stats_persistance statistics/runtimeStats.bin --runtime_stats_game_exports statistics/runtimeStatsGameExports.bin --runtime_stats_cache statistics/runtimeStatsCache.bin -s../build/shaders/shaders.bin --report statistics/report.txt
   if errorlevel 1 goto error
 python ../scripts/generate_plots.py benchmarks/benchmark.csv %TempFolder%
+  if errorlevel 1 goto error
 XCOPY /q %TempFolder%\downsampled.csv %BenchmarkFolder%
 XCOPY /q %TempFolder%\source.csv %BenchmarkFolder%
 XCOPY /q %EngineOption% %BenchmarkFolder%
@@ -175,6 +188,7 @@ SET EngineOption=..\data\engineOptions\%CurrentBenchmark%.json
 "../build/src/games/playground/Playground.exe" -c../data/configs/playground_default.json -t../data/configs/trackingConfig.json -d../data/ --scene %Scene% --options %EngineOption% --no_persistance --runtime_stats_persistance statistics/runtimeStats.bin --runtime_stats_game_exports statistics/runtimeStatsGameExports.bin --runtime_stats_cache statistics/runtimeStatsCache.bin -s../build/shaders/shaders.bin --report statistics/report.txt
   if errorlevel 1 goto error
 python ../scripts/generate_plots.py benchmarks/benchmark.csv %TempFolder%
+  if errorlevel 1 goto error
 XCOPY /q %TempFolder%\downsampled.csv %BenchmarkFolder%
 XCOPY /q %TempFolder%\source.csv %BenchmarkFolder%
 XCOPY /q %EngineOption% %BenchmarkFolder%
@@ -188,6 +202,7 @@ SET EngineOption=..\data\engineOptions\%CurrentBenchmark%.json
 "../build/src/games/playground/Playground.exe" -c../data/configs/playground_default.json -t../data/configs/trackingConfig.json -d../data/ --scene %Scene% --options %EngineOption% --no_persistance --runtime_stats_persistance statistics/runtimeStats.bin --runtime_stats_game_exports statistics/runtimeStatsGameExports.bin --runtime_stats_cache statistics/runtimeStatsCache.bin -s../build/shaders/shaders.bin --report statistics/report.txt
   if errorlevel 1 goto error
 python ../scripts/generate_plots.py benchmarks/benchmark.csv %TempFolder%
+  if errorlevel 1 goto error
 XCOPY /q %TempFolder%\downsampled.csv %BenchmarkFolder%
 XCOPY /q %TempFolder%\source.csv %BenchmarkFolder%
 XCOPY /q %EngineOption% %BenchmarkFolder%
@@ -201,6 +216,7 @@ SET EngineOption=..\data\engineOptions\%CurrentBenchmark%.json
 "../build/src/games/playground/Playground.exe" -c../data/configs/playground_default.json -t../data/configs/trackingConfig.json -d../data/ --scene %Scene% --options %EngineOption% --no_persistance --runtime_stats_persistance statistics/runtimeStats.bin --runtime_stats_game_exports statistics/runtimeStatsGameExports.bin --runtime_stats_cache statistics/runtimeStatsCache.bin -s../build/shaders/shaders.bin --report statistics/report.txt
   if errorlevel 1 goto error
 python ../scripts/generate_plots.py benchmarks/benchmark.csv %TempFolder%
+  if errorlevel 1 goto error
 XCOPY /q %TempFolder%\downsampled.csv %BenchmarkFolder%
 XCOPY /q %TempFolder%\source.csv %BenchmarkFolder%
 XCOPY /q %EngineOption% %BenchmarkFolder%
@@ -214,6 +230,7 @@ SET EngineOption=..\data\engineOptions\%CurrentBenchmark%.json
 "../build/src/games/playground/Playground.exe" -c../data/configs/playground_default.json -t../data/configs/trackingConfig.json -d../data/ --scene %Scene% --options %EngineOption% --no_persistance --runtime_stats_persistance statistics/runtimeStats.bin --runtime_stats_game_exports statistics/runtimeStatsGameExports.bin --runtime_stats_cache statistics/runtimeStatsCache.bin -s../build/shaders/shaders.bin --report statistics/report.txt
   if errorlevel 1 goto error
 python ../scripts/generate_plots.py benchmarks/benchmark.csv %TempFolder%
+  if errorlevel 1 goto error
 XCOPY /q %TempFolder%\downsampled.csv %BenchmarkFolder%
 XCOPY /q %TempFolder%\source.csv %BenchmarkFolder%
 XCOPY /q %EngineOption% %BenchmarkFolder%
@@ -227,6 +244,7 @@ SET EngineOption=..\data\engineOptions\%CurrentBenchmark%.json
 "../build/src/games/playground/Playground.exe" -c../data/configs/playground_default.json -t../data/configs/trackingConfig.json -d../data/ --scene %Scene% --options %EngineOption% --no_persistance --runtime_stats_persistance statistics/runtimeStats.bin --runtime_stats_game_exports statistics/runtimeStatsGameExports.bin --runtime_stats_cache statistics/runtimeStatsCache.bin -s../build/shaders/shaders.bin --report statistics/report.txt
   if errorlevel 1 goto error
 python ../scripts/generate_plots.py benchmarks/benchmark.csv %TempFolder%
+  if errorlevel 1 goto error
 XCOPY /q %TempFolder%\downsampled.csv %BenchmarkFolder%
 XCOPY /q %TempFolder%\source.csv %BenchmarkFolder%
 XCOPY /q %EngineOption% %BenchmarkFolder%
@@ -240,6 +258,7 @@ SET EngineOption=..\data\engineOptions\%CurrentBenchmark%.json
 "../build/src/games/playground/Playground.exe" -c../data/configs/playground_default.json -t../data/configs/trackingConfig.json -d../data/ --scene %Scene% --options %EngineOption% --no_persistance --runtime_stats_persistance statistics/runtimeStats.bin --runtime_stats_game_exports statistics/runtimeStatsGameExports.bin --runtime_stats_cache statistics/runtimeStatsCache.bin -s../build/shaders/shaders.bin --report statistics/report.txt
   if errorlevel 1 goto error
 python ../scripts/generate_plots.py benchmarks/benchmark.csv %TempFolder%
+  if errorlevel 1 goto error
 XCOPY /q %TempFolder%\downsampled.csv %BenchmarkFolder%
 XCOPY /q %TempFolder%\source.csv %BenchmarkFolder%
 XCOPY /q %EngineOption% %BenchmarkFolder%
@@ -253,6 +272,7 @@ SET EngineOption=..\data\engineOptions\%CurrentBenchmark%.json
 "../build/src/games/playground/Playground.exe" -c../data/configs/playground_default.json -t../data/configs/trackingConfig.json -d../data/ --scene %Scene% --options %EngineOption% --no_persistance --runtime_stats_persistance statistics/runtimeStats.bin --runtime_stats_game_exports statistics/runtimeStatsGameExports.bin --runtime_stats_cache statistics/runtimeStatsCache.bin -s../build/shaders/shaders.bin --report statistics/report.txt
   if errorlevel 1 goto error
 python ../scripts/generate_plots.py benchmarks/benchmark.csv %TempFolder%
+  if errorlevel 1 goto error
 XCOPY /q %TempFolder%\downsampled.csv %BenchmarkFolder%
 XCOPY /q %TempFolder%\source.csv %BenchmarkFolder%
 XCOPY /q %EngineOption% %BenchmarkFolder%
@@ -266,6 +286,7 @@ SET EngineOption=..\data\engineOptions\%CurrentBenchmark%.json
 "../build/src/games/playground/Playground.exe" -c../data/configs/playground_default.json -t../data/configs/trackingConfig.json -d../data/ --scene %Scene% --options %EngineOption% --no_persistance --runtime_stats_persistance statistics/runtimeStats.bin --runtime_stats_game_exports statistics/runtimeStatsGameExports.bin --runtime_stats_cache statistics/runtimeStatsCache.bin -s../build/shaders/shaders.bin --report statistics/report.txt
   if errorlevel 1 goto error
 python ../scripts/generate_plots.py benchmarks/benchmark.csv %TempFolder%
+  if errorlevel 1 goto error
 XCOPY /q %TempFolder%\downsampled.csv %BenchmarkFolder%
 XCOPY /q %TempFolder%\source.csv %BenchmarkFolder%
 XCOPY /q %EngineOption% %BenchmarkFolder%
@@ -279,6 +300,7 @@ SET EngineOption=..\data\engineOptions\%CurrentBenchmark%.json
 "../build/src/games/playground/Playground.exe" -c../data/configs/playground_default.json -t../data/configs/trackingConfig.json -d../data/ --scene %Scene% --options %EngineOption% --no_persistance --runtime_stats_persistance statistics/runtimeStats.bin --runtime_stats_game_exports statistics/runtimeStatsGameExports.bin --runtime_stats_cache statistics/runtimeStatsCache.bin -s../build/shaders/shaders.bin --report statistics/report.txt
   if errorlevel 1 goto error
 python ../scripts/generate_plots.py benchmarks/benchmark.csv %TempFolder%
+  if errorlevel 1 goto error
 XCOPY /q %TempFolder%\downsampled.csv %BenchmarkFolder%
 XCOPY /q %TempFolder%\source.csv %BenchmarkFolder%
 XCOPY /q %EngineOption% %BenchmarkFolder%
@@ -292,6 +314,7 @@ SET EngineOption=..\data\engineOptions\%CurrentBenchmark%.json
 "../build/src/games/playground/Playground.exe" -c../data/configs/playground_default.json -t../data/configs/trackingConfig.json -d../data/ --scene %Scene% --options %EngineOption% --no_persistance --runtime_stats_persistance statistics/runtimeStats.bin --runtime_stats_game_exports statistics/runtimeStatsGameExports.bin --runtime_stats_cache statistics/runtimeStatsCache.bin -s../build/shaders/shaders.bin --report statistics/report.txt
   if errorlevel 1 goto error
 python ../scripts/generate_plots.py benchmarks/benchmark.csv %TempFolder%
+  if errorlevel 1 goto error
 XCOPY /q %TempFolder%\downsampled.csv %BenchmarkFolder%
 XCOPY /q %TempFolder%\source.csv %BenchmarkFolder%
 XCOPY /q %EngineOption% %BenchmarkFolder%
@@ -305,6 +328,7 @@ SET EngineOption=..\data\engineOptions\%CurrentBenchmark%.json
 "../build/src/games/playground/Playground.exe" -c../data/configs/playground_default.json -t../data/configs/trackingConfig.json -d../data/ --scene %Scene% --options %EngineOption% --no_persistance --runtime_stats_persistance statistics/runtimeStats.bin --runtime_stats_game_exports statistics/runtimeStatsGameExports.bin --runtime_stats_cache statistics/runtimeStatsCache.bin -s../build/shaders/shaders.bin --report statistics/report.txt
   if errorlevel 1 goto error
 python ../scripts/generate_plots.py benchmarks/benchmark.csv %TempFolder%
+  if errorlevel 1 goto error
 XCOPY /q %TempFolder%\downsampled.csv %BenchmarkFolder%
 XCOPY /q %TempFolder%\source.csv %BenchmarkFolder%
 XCOPY /q %EngineOption% %BenchmarkFolder%
@@ -318,6 +342,7 @@ SET EngineOption=..\data\engineOptions\%CurrentBenchmark%.json
 "../build/src/games/playground/Playground.exe" -c../data/configs/playground_default.json -t../data/configs/trackingConfig.json -d../data/ --scene %Scene% --options %EngineOption% --no_persistance --runtime_stats_persistance statistics/runtimeStats.bin --runtime_stats_game_exports statistics/runtimeStatsGameExports.bin --runtime_stats_cache statistics/runtimeStatsCache.bin -s../build/shaders/shaders.bin --report statistics/report.txt
   if errorlevel 1 goto error
 python ../scripts/generate_plots.py benchmarks/benchmark.csv %TempFolder%
+  if errorlevel 1 goto error
 XCOPY /q %TempFolder%\downsampled.csv %BenchmarkFolder%
 XCOPY /q %TempFolder%\source.csv %BenchmarkFolder%
 XCOPY /q %EngineOption% %BenchmarkFolder%
@@ -331,6 +356,7 @@ SET EngineOption=..\data\engineOptions\%CurrentBenchmark%.json
 "../build/src/games/playground/Playground.exe" -c../data/configs/playground_default.json -t../data/configs/trackingConfig.json -d../data/ --scene %Scene% --options %EngineOption% --no_persistance --runtime_stats_persistance statistics/runtimeStats.bin --runtime_stats_game_exports statistics/runtimeStatsGameExports.bin --runtime_stats_cache statistics/runtimeStatsCache.bin -s../build/shaders/shaders.bin --report statistics/report.txt
   if errorlevel 1 goto error
 python ../scripts/generate_plots.py benchmarks/benchmark.csv %TempFolder%
+  if errorlevel 1 goto error
 XCOPY /q %TempFolder%\downsampled.csv %BenchmarkFolder%
 XCOPY /q %TempFolder%\source.csv %BenchmarkFolder%
 XCOPY /q %EngineOption% %BenchmarkFolder%
@@ -344,6 +370,7 @@ SET EngineOption=..\data\engineOptions\%CurrentBenchmark%.json
 "../build/src/games/playground/Playground.exe" -c../data/configs/playground_default.json -t../data/configs/trackingConfig.json -d../data/ --scene %Scene% --options %EngineOption% --no_persistance --runtime_stats_persistance statistics/runtimeStats.bin --runtime_stats_game_exports statistics/runtimeStatsGameExports.bin --runtime_stats_cache statistics/runtimeStatsCache.bin -s../build/shaders/shaders.bin --report statistics/report.txt
   if errorlevel 1 goto error
 python ../scripts/generate_plots.py benchmarks/benchmark.csv %TempFolder%
+  if errorlevel 1 goto error
 XCOPY /q %TempFolder%\downsampled.csv %BenchmarkFolder%
 XCOPY /q %TempFolder%\source.csv %BenchmarkFolder%
 XCOPY /q %EngineOption% %BenchmarkFolder%
@@ -357,6 +384,7 @@ SET EngineOption=..\data\engineOptions\%CurrentBenchmark%.json
 "../build/src/games/playground/Playground.exe" -c../data/configs/playground_default.json -t../data/configs/trackingConfig.json -d../data/ --scene %Scene% --options %EngineOption% --no_persistance --runtime_stats_persistance statistics/runtimeStats.bin --runtime_stats_game_exports statistics/runtimeStatsGameExports.bin --runtime_stats_cache statistics/runtimeStatsCache.bin -s../build/shaders/shaders.bin --report statistics/report.txt
   if errorlevel 1 goto error
 python ../scripts/generate_plots.py benchmarks/benchmark.csv %TempFolder%
+  if errorlevel 1 goto error
 XCOPY /q %TempFolder%\downsampled.csv %BenchmarkFolder%
 XCOPY /q %TempFolder%\source.csv %BenchmarkFolder%
 XCOPY /q %EngineOption% %BenchmarkFolder%
@@ -370,6 +398,7 @@ SET EngineOption=..\data\engineOptions\%CurrentBenchmark%.json
 "../build/src/games/playground/Playground.exe" -c../data/configs/playground_default.json -t../data/configs/trackingConfig.json -d../data/ --scene %Scene% --options %EngineOption% --no_persistance --runtime_stats_persistance statistics/runtimeStats.bin --runtime_stats_game_exports statistics/runtimeStatsGameExports.bin --runtime_stats_cache statistics/runtimeStatsCache.bin -s../build/shaders/shaders.bin --report statistics/report.txt
   if errorlevel 1 goto error
 python ../scripts/generate_plots.py benchmarks/benchmark.csv %TempFolder%
+  if errorlevel 1 goto error
 XCOPY /q %TempFolder%\downsampled.csv %BenchmarkFolder%
 XCOPY /q %TempFolder%\source.csv %BenchmarkFolder%
 XCOPY /q %EngineOption% %BenchmarkFolder%
@@ -383,6 +412,7 @@ SET EngineOption=..\data\engineOptions\%CurrentBenchmark%.json
 "../build/src/games/playground/Playground.exe" -c../data/configs/playground_default.json -t../data/configs/trackingConfig.json -d../data/ --scene %Scene% --options %EngineOption% --no_persistance --runtime_stats_persistance statistics/runtimeStats.bin --runtime_stats_game_exports statistics/runtimeStatsGameExports.bin --runtime_stats_cache statistics/runtimeStatsCache.bin -s../build/shaders/shaders.bin --report statistics/report.txt
   if errorlevel 1 goto error
 python ../scripts/generate_plots.py benchmarks/benchmark.csv %TempFolder%
+  if errorlevel 1 goto error
 XCOPY /q %TempFolder%\downsampled.csv %BenchmarkFolder%
 XCOPY /q %TempFolder%\source.csv %BenchmarkFolder%
 XCOPY /q %EngineOption% %BenchmarkFolder%
@@ -396,6 +426,7 @@ SET EngineOption=..\data\engineOptions\%CurrentBenchmark%.json
 "../build/src/games/playground/Playground.exe" -c../data/configs/playground_default.json -t../data/configs/trackingConfig.json -d../data/ --scene %Scene% --options %EngineOption% --no_persistance --runtime_stats_persistance statistics/runtimeStats.bin --runtime_stats_game_exports statistics/runtimeStatsGameExports.bin --runtime_stats_cache statistics/runtimeStatsCache.bin -s../build/shaders/shaders.bin --report statistics/report.txt
   if errorlevel 1 goto error
 python ../scripts/generate_plots.py benchmarks/benchmark.csv %TempFolder%
+  if errorlevel 1 goto error
 XCOPY /q %TempFolder%\downsampled.csv %BenchmarkFolder%
 XCOPY /q %TempFolder%\source.csv %BenchmarkFolder%
 XCOPY /q %EngineOption% %BenchmarkFolder%
@@ -409,6 +440,7 @@ SET EngineOption=..\data\engineOptions\%CurrentBenchmark%.json
 "../build/src/games/playground/Playground.exe" -c../data/configs/playground_default.json -t../data/configs/trackingConfig.json -d../data/ --scene %Scene% --options %EngineOption% --no_persistance --runtime_stats_persistance statistics/runtimeStats.bin --runtime_stats_game_exports statistics/runtimeStatsGameExports.bin --runtime_stats_cache statistics/runtimeStatsCache.bin -s../build/shaders/shaders.bin --report statistics/report.txt
   if errorlevel 1 goto error
 python ../scripts/generate_plots.py benchmarks/benchmark.csv %TempFolder%
+  if errorlevel 1 goto error
 XCOPY /q %TempFolder%\downsampled.csv %BenchmarkFolder%
 XCOPY /q %TempFolder%\source.csv %BenchmarkFolder%
 XCOPY /q %EngineOption% %BenchmarkFolder%
@@ -422,6 +454,7 @@ SET EngineOption=..\data\engineOptions\%CurrentBenchmark%.json
 "../build/src/games/playground/Playground.exe" -c../data/configs/playground_default.json -t../data/configs/trackingConfig.json -d../data/ --scene %Scene% --options %EngineOption% --no_persistance --runtime_stats_persistance statistics/runtimeStats.bin --runtime_stats_game_exports statistics/runtimeStatsGameExports.bin --runtime_stats_cache statistics/runtimeStatsCache.bin -s../build/shaders/shaders.bin --report statistics/report.txt
   if errorlevel 1 goto error
 python ../scripts/generate_plots.py benchmarks/benchmark.csv %TempFolder%
+  if errorlevel 1 goto error
 XCOPY /q %TempFolder%\downsampled.csv %BenchmarkFolder%
 XCOPY /q %TempFolder%\source.csv %BenchmarkFolder%
 XCOPY /q %EngineOption% %BenchmarkFolder%
@@ -435,6 +468,7 @@ SET EngineOption=..\data\engineOptions\%CurrentBenchmark%.json
 "../build/src/games/playground/Playground.exe" -c../data/configs/playground_default.json -t../data/configs/trackingConfig.json -d../data/ --scene %Scene% --options %EngineOption% --no_persistance --runtime_stats_persistance statistics/runtimeStats.bin --runtime_stats_game_exports statistics/runtimeStatsGameExports.bin --runtime_stats_cache statistics/runtimeStatsCache.bin -s../build/shaders/shaders.bin --report statistics/report.txt
   if errorlevel 1 goto error
 python ../scripts/generate_plots.py benchmarks/benchmark.csv %TempFolder%
+  if errorlevel 1 goto error
 XCOPY /q %TempFolder%\downsampled.csv %BenchmarkFolder%
 XCOPY /q %TempFolder%\source.csv %BenchmarkFolder%
 XCOPY /q %EngineOption% %BenchmarkFolder%
@@ -448,6 +482,7 @@ SET EngineOption=..\data\engineOptions\%CurrentBenchmark%.json
 "../build/src/games/playground/Playground.exe" -c../data/configs/playground_default.json -t../data/configs/trackingConfig.json -d../data/ --scene %Scene% --options %EngineOption% --no_persistance --runtime_stats_persistance statistics/runtimeStats.bin --runtime_stats_game_exports statistics/runtimeStatsGameExports.bin --runtime_stats_cache statistics/runtimeStatsCache.bin -s../build/shaders/shaders.bin --report statistics/report.txt
   if errorlevel 1 goto error
 python ../scripts/generate_plots.py benchmarks/benchmark.csv %TempFolder%
+  if errorlevel 1 goto error
 XCOPY /q %TempFolder%\downsampled.csv %BenchmarkFolder%
 XCOPY /q %TempFolder%\source.csv %BenchmarkFolder%
 XCOPY /q %EngineOption% %BenchmarkFolder%
@@ -461,6 +496,7 @@ SET EngineOption=..\data\engineOptions\%CurrentBenchmark%.json
 "../build/src/games/playground/Playground.exe" -c../data/configs/playground_default.json -t../data/configs/trackingConfig.json -d../data/ --scene %Scene% --options %EngineOption% --no_persistance --runtime_stats_persistance statistics/runtimeStats.bin --runtime_stats_game_exports statistics/runtimeStatsGameExports.bin --runtime_stats_cache statistics/runtimeStatsCache.bin -s../build/shaders/shaders.bin --report statistics/report.txt
   if errorlevel 1 goto error
 python ../scripts/generate_plots.py benchmarks/benchmark.csv %TempFolder%
+  if errorlevel 1 goto error
 XCOPY /q %TempFolder%\downsampled.csv %BenchmarkFolder%
 XCOPY /q %TempFolder%\source.csv %BenchmarkFolder%
 XCOPY /q %EngineOption% %BenchmarkFolder%
@@ -474,6 +510,7 @@ SET EngineOption=..\data\engineOptions\%CurrentBenchmark%.json
 "../build/src/games/playground/Playground.exe" -c../data/configs/playground_default.json -t../data/configs/trackingConfig.json -d../data/ --scene %Scene% --options %EngineOption% --no_persistance --runtime_stats_persistance statistics/runtimeStats.bin --runtime_stats_game_exports statistics/runtimeStatsGameExports.bin --runtime_stats_cache statistics/runtimeStatsCache.bin -s../build/shaders/shaders.bin --report statistics/report.txt
   if errorlevel 1 goto error
 python ../scripts/generate_plots.py benchmarks/benchmark.csv %TempFolder%
+  if errorlevel 1 goto error
 XCOPY /q %TempFolder%\downsampled.csv %BenchmarkFolder%
 XCOPY /q %TempFolder%\source.csv %BenchmarkFolder%
 XCOPY /q %EngineOption% %BenchmarkFolder%
@@ -487,6 +524,7 @@ SET EngineOption=..\data\engineOptions\%CurrentBenchmark%.json
 "../build/src/games/playground/Playground.exe" -c../data/configs/playground_default.json -t../data/configs/trackingConfig.json -d../data/ --scene %Scene% --options %EngineOption% --no_persistance --runtime_stats_persistance statistics/runtimeStats.bin --runtime_stats_game_exports statistics/runtimeStatsGameExports.bin --runtime_stats_cache statistics/runtimeStatsCache.bin -s../build/shaders/shaders.bin --report statistics/report.txt
   if errorlevel 1 goto error
 python ../scripts/generate_plots.py benchmarks/benchmark.csv %TempFolder%
+  if errorlevel 1 goto error
 XCOPY /q %TempFolder%\downsampled.csv %BenchmarkFolder%
 XCOPY /q %TempFolder%\source.csv %BenchmarkFolder%
 XCOPY /q %EngineOption% %BenchmarkFolder%
@@ -500,6 +538,7 @@ SET EngineOption=..\data\engineOptions\%CurrentBenchmark%.json
 "../build/src/games/playground/Playground.exe" -c../data/configs/playground_default.json -t../data/configs/trackingConfig.json -d../data/ --scene %Scene% --options %EngineOption% --no_persistance --runtime_stats_persistance statistics/runtimeStats.bin --runtime_stats_game_exports statistics/runtimeStatsGameExports.bin --runtime_stats_cache statistics/runtimeStatsCache.bin -s../build/shaders/shaders.bin --report statistics/report.txt
   if errorlevel 1 goto error
 python ../scripts/generate_plots.py benchmarks/benchmark.csv %TempFolder%
+  if errorlevel 1 goto error
 XCOPY /q %TempFolder%\downsampled.csv %BenchmarkFolder%
 XCOPY /q %TempFolder%\source.csv %BenchmarkFolder%
 XCOPY /q %EngineOption% %BenchmarkFolder%
@@ -513,6 +552,7 @@ SET EngineOption=..\data\engineOptions\%CurrentBenchmark%.json
 "../build/src/games/playground/Playground.exe" -c../data/configs/playground_default.json -t../data/configs/trackingConfig.json -d../data/ --scene %Scene% --options %EngineOption% --no_persistance --runtime_stats_persistance statistics/runtimeStats.bin --runtime_stats_game_exports statistics/runtimeStatsGameExports.bin --runtime_stats_cache statistics/runtimeStatsCache.bin -s../build/shaders/shaders.bin --report statistics/report.txt
   if errorlevel 1 goto error
 python ../scripts/generate_plots.py benchmarks/benchmark.csv %TempFolder%
+  if errorlevel 1 goto error
 XCOPY /q %TempFolder%\downsampled.csv %BenchmarkFolder%
 XCOPY /q %TempFolder%\source.csv %BenchmarkFolder%
 XCOPY /q %EngineOption% %BenchmarkFolder%
@@ -526,6 +566,7 @@ SET EngineOption=..\data\engineOptions\%CurrentBenchmark%.json
 "../build/src/games/playground/Playground.exe" -c../data/configs/playground_default.json -t../data/configs/trackingConfig.json -d../data/ --scene %Scene% --options %EngineOption% --no_persistance --runtime_stats_persistance statistics/runtimeStats.bin --runtime_stats_game_exports statistics/runtimeStatsGameExports.bin --runtime_stats_cache statistics/runtimeStatsCache.bin -s../build/shaders/shaders.bin --report statistics/report.txt
   if errorlevel 1 goto error
 python ../scripts/generate_plots.py benchmarks/benchmark.csv %TempFolder%
+  if errorlevel 1 goto error
 XCOPY /q %TempFolder%\downsampled.csv %BenchmarkFolder%
 XCOPY /q %TempFolder%\source.csv %BenchmarkFolder%
 XCOPY /q %EngineOption% %BenchmarkFolder%
@@ -539,6 +580,7 @@ SET EngineOption=..\data\engineOptions\%CurrentBenchmark%.json
 "../build/src/games/playground/Playground.exe" -c../data/configs/playground_default.json -t../data/configs/trackingConfig.json -d../data/ --scene %Scene% --options %EngineOption% --no_persistance --runtime_stats_persistance statistics/runtimeStats.bin --runtime_stats_game_exports statistics/runtimeStatsGameExports.bin --runtime_stats_cache statistics/runtimeStatsCache.bin -s../build/shaders/shaders.bin --report statistics/report.txt
   if errorlevel 1 goto error
 python ../scripts/generate_plots.py benchmarks/benchmark.csv %TempFolder%
+  if errorlevel 1 goto error
 XCOPY /q %TempFolder%\downsampled.csv %BenchmarkFolder%
 XCOPY /q %TempFolder%\source.csv %BenchmarkFolder%
 XCOPY /q %EngineOption% %BenchmarkFolder%
@@ -552,6 +594,7 @@ SET EngineOption=..\data\engineOptions\%CurrentBenchmark%.json
 "../build/src/games/playground/Playground.exe" -c../data/configs/playground_default.json -t../data/configs/trackingConfig.json -d../data/ --scene %Scene% --options %EngineOption% --no_persistance --runtime_stats_persistance statistics/runtimeStats.bin --runtime_stats_game_exports statistics/runtimeStatsGameExports.bin --runtime_stats_cache statistics/runtimeStatsCache.bin -s../build/shaders/shaders.bin --report statistics/report.txt
   if errorlevel 1 goto error
 python ../scripts/generate_plots.py benchmarks/benchmark.csv %TempFolder%
+  if errorlevel 1 goto error
 XCOPY /q %TempFolder%\downsampled.csv %BenchmarkFolder%
 XCOPY /q %TempFolder%\source.csv %BenchmarkFolder%
 XCOPY /q %EngineOption% %BenchmarkFolder%
@@ -565,6 +608,7 @@ SET EngineOption=..\data\engineOptions\%CurrentBenchmark%.json
 "../build/src/games/playground/Playground.exe" -c../data/configs/playground_default.json -t../data/configs/trackingConfig.json -d../data/ --scene %Scene% --options %EngineOption% --no_persistance --runtime_stats_persistance statistics/runtimeStats.bin --runtime_stats_game_exports statistics/runtimeStatsGameExports.bin --runtime_stats_cache statistics/runtimeStatsCache.bin -s../build/shaders/shaders.bin --report statistics/report.txt
   if errorlevel 1 goto error
 python ../scripts/generate_plots.py benchmarks/benchmark.csv %TempFolder%
+  if errorlevel 1 goto error
 XCOPY /q %TempFolder%\downsampled.csv %BenchmarkFolder%
 XCOPY /q %TempFolder%\source.csv %BenchmarkFolder%
 XCOPY /q %EngineOption% %BenchmarkFolder%
@@ -578,6 +622,7 @@ SET EngineOption=..\data\engineOptions\%CurrentBenchmark%.json
 "../build/src/games/playground/Playground.exe" -c../data/configs/playground_default.json -t../data/configs/trackingConfig.json -d../data/ --scene %Scene% --options %EngineOption% --no_persistance --runtime_stats_persistance statistics/runtimeStats.bin --runtime_stats_game_exports statistics/runtimeStatsGameExports.bin --runtime_stats_cache statistics/runtimeStatsCache.bin -s../build/shaders/shaders.bin --report statistics/report.txt
   if errorlevel 1 goto error
 python ../scripts/generate_plots.py benchmarks/benchmark.csv %TempFolder%
+  if errorlevel 1 goto error
 XCOPY /q %TempFolder%\downsampled.csv %BenchmarkFolder%
 XCOPY /q %TempFolder%\source.csv %BenchmarkFolder%
 XCOPY /q %EngineOption% %BenchmarkFolder%
@@ -591,6 +636,7 @@ SET EngineOption=..\data\engineOptions\%CurrentBenchmark%.json
 "../build/src/games/playground/Playground.exe" -c../data/configs/playground_default.json -t../data/configs/trackingConfig.json -d../data/ --scene %Scene% --options %EngineOption% --no_persistance --runtime_stats_persistance statistics/runtimeStats.bin --runtime_stats_game_exports statistics/runtimeStatsGameExports.bin --runtime_stats_cache statistics/runtimeStatsCache.bin -s../build/shaders/shaders.bin --report statistics/report.txt
   if errorlevel 1 goto error
 python ../scripts/generate_plots.py benchmarks/benchmark.csv %TempFolder%
+  if errorlevel 1 goto error
 XCOPY /q %TempFolder%\downsampled.csv %BenchmarkFolder%
 XCOPY /q %TempFolder%\source.csv %BenchmarkFolder%
 XCOPY /q %EngineOption% %BenchmarkFolder%
@@ -604,6 +650,7 @@ SET EngineOption=..\data\engineOptions\%CurrentBenchmark%.json
 "../build/src/games/playground/Playground.exe" -c../data/configs/playground_default.json -t../data/configs/trackingConfig.json -d../data/ --scene %Scene% --options %EngineOption% --no_persistance --runtime_stats_persistance statistics/runtimeStats.bin --runtime_stats_game_exports statistics/runtimeStatsGameExports.bin --runtime_stats_cache statistics/runtimeStatsCache.bin -s../build/shaders/shaders.bin --report statistics/report.txt
   if errorlevel 1 goto error
 python ../scripts/generate_plots.py benchmarks/benchmark.csv %TempFolder%
+  if errorlevel 1 goto error
 XCOPY /q %TempFolder%\downsampled.csv %BenchmarkFolder%
 XCOPY /q %TempFolder%\source.csv %BenchmarkFolder%
 XCOPY /q %EngineOption% %BenchmarkFolder%
@@ -617,6 +664,7 @@ SET EngineOption=..\data\engineOptions\%CurrentBenchmark%.json
 "../build/src/games/playground/Playground.exe" -c../data/configs/playground_default.json -t../data/configs/trackingConfig.json -d../data/ --scene %Scene% --options %EngineOption% --no_persistance --runtime_stats_persistance statistics/runtimeStats.bin --runtime_stats_game_exports statistics/runtimeStatsGameExports.bin --runtime_stats_cache statistics/runtimeStatsCache.bin -s../build/shaders/shaders.bin --report statistics/report.txt
   if errorlevel 1 goto error
 python ../scripts/generate_plots.py benchmarks/benchmark.csv %TempFolder%
+  if errorlevel 1 goto error
 XCOPY /q %TempFolder%\downsampled.csv %BenchmarkFolder%
 XCOPY /q %TempFolder%\source.csv %BenchmarkFolder%
 XCOPY /q %EngineOption% %BenchmarkFolder%
@@ -630,6 +678,7 @@ SET EngineOption=..\data\engineOptions\%CurrentBenchmark%.json
 "../build/src/games/playground/Playground.exe" -c../data/configs/playground_default.json -t../data/configs/trackingConfig.json -d../data/ --scene %Scene% --options %EngineOption% --no_persistance --runtime_stats_persistance statistics/runtimeStats.bin --runtime_stats_game_exports statistics/runtimeStatsGameExports.bin --runtime_stats_cache statistics/runtimeStatsCache.bin -s../build/shaders/shaders.bin --report statistics/report.txt
   if errorlevel 1 goto error
 python ../scripts/generate_plots.py benchmarks/benchmark.csv %TempFolder%
+  if errorlevel 1 goto error
 XCOPY /q %TempFolder%\downsampled.csv %BenchmarkFolder%
 XCOPY /q %TempFolder%\source.csv %BenchmarkFolder%
 XCOPY /q %EngineOption% %BenchmarkFolder%
@@ -643,6 +692,7 @@ SET EngineOption=..\data\engineOptions\%CurrentBenchmark%.json
 "../build/src/games/playground/Playground.exe" -c../data/configs/playground_default.json -t../data/configs/trackingConfig.json -d../data/ --scene %Scene% --options %EngineOption% --no_persistance --runtime_stats_persistance statistics/runtimeStats.bin --runtime_stats_game_exports statistics/runtimeStatsGameExports.bin --runtime_stats_cache statistics/runtimeStatsCache.bin -s../build/shaders/shaders.bin --report statistics/report.txt
   if errorlevel 1 goto error
 python ../scripts/generate_plots.py benchmarks/benchmark.csv %TempFolder%
+  if errorlevel 1 goto error
 XCOPY /q %TempFolder%\downsampled.csv %BenchmarkFolder%
 XCOPY /q %TempFolder%\source.csv %BenchmarkFolder%
 XCOPY /q %EngineOption% %BenchmarkFolder%
@@ -656,6 +706,7 @@ SET EngineOption=..\data\engineOptions\%CurrentBenchmark%.json
 "../build/src/games/playground/Playground.exe" -c../data/configs/playground_default.json -t../data/configs/trackingConfig.json -d../data/ --scene %Scene% --options %EngineOption% --no_persistance --runtime_stats_persistance statistics/runtimeStats.bin --runtime_stats_game_exports statistics/runtimeStatsGameExports.bin --runtime_stats_cache statistics/runtimeStatsCache.bin -s../build/shaders/shaders.bin --report statistics/report.txt
   if errorlevel 1 goto error
 python ../scripts/generate_plots.py benchmarks/benchmark.csv %TempFolder%
+  if errorlevel 1 goto error
 XCOPY /q %TempFolder%\downsampled.csv %BenchmarkFolder%
 XCOPY /q %TempFolder%\source.csv %BenchmarkFolder%
 XCOPY /q %EngineOption% %BenchmarkFolder%
@@ -669,6 +720,7 @@ SET EngineOption=..\data\engineOptions\%CurrentBenchmark%.json
 "../build/src/games/playground/Playground.exe" -c../data/configs/playground_default.json -t../data/configs/trackingConfig.json -d../data/ --scene %Scene% --options %EngineOption% --no_persistance --runtime_stats_persistance statistics/runtimeStats.bin --runtime_stats_game_exports statistics/runtimeStatsGameExports.bin --runtime_stats_cache statistics/runtimeStatsCache.bin -s../build/shaders/shaders.bin --report statistics/report.txt
   if errorlevel 1 goto error
 python ../scripts/generate_plots.py benchmarks/benchmark.csv %TempFolder%
+  if errorlevel 1 goto error
 XCOPY /q %TempFolder%\downsampled.csv %BenchmarkFolder%
 XCOPY /q %TempFolder%\source.csv %BenchmarkFolder%
 XCOPY /q %EngineOption% %BenchmarkFolder%

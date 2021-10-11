@@ -5,6 +5,7 @@ SET resulultsFolder=results
 IF NOT exist %resulultsFolder% ( mkdir %resulultsFolder% )
 
 SET CurrentDir=%resulultsFolder%\%DATE:/=-%_%TIME::=-%
+SET CurrentDir=%CurrentDir: =_%
 mkdir %CurrentDir%
 
 @REM Warmup run
@@ -16,6 +17,7 @@ SET Scene=..\data\scenes\clean_benchmark_scene.json
 SET BenchmarkFolder=%CurrentDir%\%CurrentBenchmark%
 mkdir %BenchmarkFolder%
 python ../scripts/generate_plots.py benchmarks/benchmark.csv %BenchmarkFolder%
+  if errorlevel 1 goto error
 XCOPY /q logs\all.log %BenchmarkFolder%
 XCOPY /q %Scene% %BenchmarkFolder%
 XCOPY /q %EngineOption% %BenchmarkFolder%
@@ -31,6 +33,7 @@ SET Scene=..\data\scenes\clean_benchmark_scene.json
 SET BenchmarkFolder=%CurrentDir%\%CurrentBenchmark%
 mkdir %BenchmarkFolder%
 python ../scripts/generate_plots.py benchmarks/benchmark.csv %BenchmarkFolder%
+  if errorlevel 1 goto error
 XCOPY /q logs\all.log %BenchmarkFolder%
 XCOPY /q %Scene% %BenchmarkFolder%
 XCOPY /q %EngineOption% %BenchmarkFolder%
@@ -44,6 +47,7 @@ SET Scene=..\data\scenes\clean_benchmark_scene.json
 SET BenchmarkFolder=%CurrentDir%\%CurrentBenchmark%
 mkdir %BenchmarkFolder%
 python ../scripts/generate_plots.py benchmarks/benchmark.csv %BenchmarkFolder%
+  if errorlevel 1 goto error
 XCOPY /q logs\all.log %BenchmarkFolder%
 XCOPY /q %Scene% %BenchmarkFolder%
 XCOPY /q %EngineOption% %BenchmarkFolder%
@@ -57,6 +61,7 @@ SET Scene=..\data\scenes\clean_benchmark_scene.json
 SET BenchmarkFolder=%CurrentDir%\%CurrentBenchmark%
 mkdir %BenchmarkFolder%
 python ../scripts/generate_plots.py benchmarks/benchmark.csv %BenchmarkFolder%
+  if errorlevel 1 goto error
 XCOPY /q logs\all.log %BenchmarkFolder%
 XCOPY /q %Scene% %BenchmarkFolder%
 XCOPY /q %EngineOption% %BenchmarkFolder%
@@ -70,6 +75,7 @@ SET Scene=..\data\scenes\clean_benchmark_scene.json
 SET BenchmarkFolder=%CurrentDir%\%CurrentBenchmark%
 mkdir %BenchmarkFolder%
 python ../scripts/generate_plots.py benchmarks/benchmark.csv %BenchmarkFolder%
+  if errorlevel 1 goto error
 XCOPY /q logs\all.log %BenchmarkFolder%
 XCOPY /q %Scene% %BenchmarkFolder%
 XCOPY /q %EngineOption% %BenchmarkFolder%
@@ -88,6 +94,7 @@ SET Scene=..\data\scenes\realistic_benchmark_scene.json
 SET BenchmarkFolder=%CurrentDir%\%CurrentBenchmark%
 mkdir %BenchmarkFolder%
 python ../scripts/generate_plots.py benchmarks/benchmark.csv %BenchmarkFolder%
+  if errorlevel 1 goto error
 XCOPY /q logs\all.log %BenchmarkFolder%
 XCOPY /q %Scene% %BenchmarkFolder%
 XCOPY /q %EngineOption% %BenchmarkFolder%
@@ -101,6 +108,7 @@ SET Scene=..\data\scenes\realistic_benchmark_scene.json
 SET BenchmarkFolder=%CurrentDir%\%CurrentBenchmark%
 mkdir %BenchmarkFolder%
 python ../scripts/generate_plots.py benchmarks/benchmark.csv %BenchmarkFolder%
+  if errorlevel 1 goto error
 XCOPY /q logs\all.log %BenchmarkFolder%
 XCOPY /q %Scene% %BenchmarkFolder%
 XCOPY /q %EngineOption% %BenchmarkFolder%
@@ -114,6 +122,7 @@ SET Scene=..\data\scenes\realistic_benchmark_scene.json
 SET BenchmarkFolder=%CurrentDir%\%CurrentBenchmark%
 mkdir %BenchmarkFolder%
 python ../scripts/generate_plots.py benchmarks/benchmark.csv %BenchmarkFolder%
+  if errorlevel 1 goto error
 XCOPY /q logs\all.log %BenchmarkFolder%
 XCOPY /q %Scene% %BenchmarkFolder%
 XCOPY /q %EngineOption% %BenchmarkFolder%
@@ -127,6 +136,7 @@ SET Scene=..\data\scenes\realistic_benchmark_scene.json
 SET BenchmarkFolder=%CurrentDir%\%CurrentBenchmark%
 mkdir %BenchmarkFolder%
 python ../scripts/generate_plots.py benchmarks/benchmark.csv %BenchmarkFolder%
+  if errorlevel 1 goto error
 XCOPY /q logs\all.log %BenchmarkFolder%
 XCOPY /q %Scene% %BenchmarkFolder%
 XCOPY /q %EngineOption% %BenchmarkFolder%
