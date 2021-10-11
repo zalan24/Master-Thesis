@@ -84,14 +84,14 @@ Get a triangle on screen:
         ✔ Scripted tests @done (10/4/2021, 12:57:47 PM)
 
     ☐ Benchmarking & tests
-        ☐ Laboratory tests
-            ☐ Measurements will need: all data from capture + LDAT
+        ✔ Laboratory tests @done (10/11/2021, 12:44:36 PM)
+            ✔ Measurements will need: all data from capture + LDAT @done (10/11/2021, 12:44:35 PM)
                 ✔ Captures @done (10/11/2021, 11:43:21 AM)
                     ✔ device+none @done (10/11/2021, 11:43:16 AM)
                     ✔ device+unlimited @done (10/11/2021, 11:43:16 AM)
                     ✔ device+vsync @done (10/11/2021, 11:43:17 AM)
                     ✔ Take a (few) capture(s) from the realistic scene, only for the image @done (10/11/2021, 11:43:20 AM)
-                ☐ LDAT
+                ✔ LDAT @done (10/11/2021, 12:44:32 PM)
             ✔ Measure in configs: @done (10/10/2021, 8:00:15 PM)
                 ✔ No stdDiv & heigh stdDiv @done (10/7/2021, 1:15:48 PM)
                 ✔ Cpu limited (before input) & cpu limited (after input) & exec limited & gpu limited & exec + gpu limited (both accumulate delay) @done (10/7/2021, 1:15:53 PM)
