@@ -1,0 +1,1040 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="UTF-8">
+
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+        <style>body {
+    background-color: rgb(54, 52, 46);
+}
+
+html, body {
+    margin: 0; height: 100%;
+    overflow: clip;
+}
+
+#perftable {
+    top: 0;
+    left: 0;
+    position: absolute;
+    /* width: 100%; */
+    /* height: fit-content; */
+}
+
+.threadtable {
+    /* width: fit-content; */
+    /* height: fit-content; */
+    background-color:  rgb(68, 66, 57);
+    border-bottom: 1px solid rgb(100, 97, 84);
+    border-top: 1px solid rgb(100, 97, 84);
+}
+
+#perftable * {
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    -khtml-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+}
+
+#perftable > tbody > tr {
+    /* width: fit-content; */
+    /* width: 30px; */
+    /* width: 3% */
+    /* height: fit-content; */
+    background-color:  rgb(59, 57, 50);
+    border-bottom: 2px solid rgb(148, 144, 124);
+    border-top: 2px solid rgb(148, 144, 124);
+}
+
+
+.stageName, .threadName {
+    color: rgb(255, 244, 185);
+    overflow: hidden;
+}
+
+.threadName {
+    width: 200px;
+}
+
+.stageName {
+    width: 20px;
+    margin: 5px;
+    transform: rotate(180deg);
+    writing-mode: vertical-rl;
+}
+
+table {
+    border-collapse: collapse;
+    /* width: 100%; */
+}
+
+.info_name {
+    text-align: right;
+}
+
+.info_value {
+    text-align: right;
+    min-width: 75px;
+}
+
+#infos td {
+    padding-left: 5px;
+    padding-right: 5px;
+}
+
+
+#infos {
+    bottom: 0;
+    left: 0;
+    position: fixed;
+    z-index: 10;
+    opacity: 0.4;
+    background-color: rgb(107, 104, 86);
+    /* border: 1px solid rgb(173, 166, 141); */
+    border-top-right-radius: 10px;
+}
+
+#infos {
+    color: rgb(255, 244, 185);
+}
+
+#screenshot_container  {
+    z-index: 11;
+    position: fixed;
+    right: 0;
+    bottom: 0;
+    /* position: relative; */
+    /* width: 200px;
+    height: 200px; */
+    /* box-shadow: 0 0 5px gray; */
+    padding: 0;
+}
+
+#screenshot_container img {
+    width: auto;
+    height: 200px;
+    /* object-fit: contain; */
+    position: absolute;
+    right: 0;
+    bottom: 0;
+}
+
+#screenshot_container .btn {
+    position: absolute;
+    bottom: 3px;
+    right: 3px;
+    background-color: #555;
+    color: white;
+    font-size: 16px;
+    padding: 5px 7px;
+    border: none;
+    cursor: pointer;
+    border-radius: 5px;
+}
+
+#screenshot_container .btn:hover {
+    background-color: black;
+}
+
+#screenshot_container.fullscreen {
+    background-color: rgba(59, 57, 50, 0.7);
+    width: 100%;
+    height: 100%;
+}
+
+#screenshot_container.fullscreen img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    position: absolute;
+}
+
+
+.waitTime, .workTime, .resourceWaitTime, .markerlines td {
+    height: 40px;
+    display: inline-block;
+}
+
+.contenttd {
+    height: 45px;
+    position: relative;
+}
+
+.waitTime {
+    background-color: rgb(119, 73, 43);
+}
+
+.resourceWaitTime {
+    background-color: rgb(43, 57, 119);
+}
+
+.workTime {
+    background-color: brown;
+}
+
+.otherFrame .waitTime {
+    background-color: rgb(82, 57, 40);
+}
+
+.otherFrame .resourceWaitTime {
+    background-color: rgb(35, 44, 83);
+}
+
+.otherFrame .workTime {
+    background-color: rgb(97, 39, 39);
+}
+
+.textWrapper {
+    position: absolute;
+    overflow: clip;
+}
+
+.nodeText {
+    font-size: x-small;
+    color: white;
+    /* overflow: clip; */
+    white-space: nowrap;
+    text-align: right;
+    padding-left: 5px;
+    padding-right: 5px;
+    /* position: absolute; */
+    /* left: 3px; */
+    /* padding-left: 3px; */
+    /* padding-top: 3px; */
+}
+
+.cpuNode:hover .textWrapper {
+    overflow: visible;
+}
+
+.cpuNode:hover {
+    z-index: 2;
+}
+
+.activeDepended .nodeText {
+    overflow: visible;
+    z-index: 1;
+}
+
+.activeDependent .nodeText {
+    overflow: visible;
+    z-index: 1;
+}
+
+.issued .nodeText {
+    overflow: visible;
+    z-index: 1;
+}
+
+.nodeWrapper, #execInterval {
+    position: absolute;
+    bottom: 0;
+}
+
+/* .currentFrame {
+}
+
+.selectedFrame {
+}
+
+.otherFrame {
+} */
+
+.cpuNode:hover .nodeText {
+    overflow: visible;
+    z-index: 1;
+}
+
+.cpuNode {
+    z-index: 0;
+    opacity: 0.5;
+    width: max-content;
+    position: relative;
+}
+
+.cpuNode:hover {
+    /* z-index: 2; */
+    opacity: 1;
+}
+
+.depended, .activeDepended, .dependent, .activeDependent, .issued {
+    z-index: 1;
+    border-radius: 5px;
+}
+
+.depended {
+    border: dashed 2px rgb(167, 23, 23);
+}
+
+.activeDepended {
+    border: solid 2px rgb(206, 10, 10);
+}
+
+.dependent {
+    border: dashed 2px rgb(23, 45, 167);
+}
+
+.activeDependent {
+    border: solid 2px rgb(10, 23, 206);
+}
+
+.issued {
+    border: solid 2px wheat;
+}
+
+#execInterval {
+    height: 30px;
+    border: solid 2px wheat;
+    border-radius: 5px;
+    visibility: hidden;
+    z-index: 2;
+}
+
+.markerlines {
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: 0;
+}
+/* .markerlines *{
+    background-color: transparent;
+} */
+
+.markerlines td {
+    /* background-color: transparent; */
+    text-align: left;
+    vertical-align: bottom;
+    font-size: 3px;
+    color: white;
+    border-left: 2px solid white;
+    overflow: hidden;
+}
+</style>
+        <script>let captureData = {"cpuStageOrder":["simulation","beforeDraw","record","readback"],"deviceDelay":41.98956,"engineOptions":{"desiredSlop":3.0,"latencyReduction":false,"manualLatencyReduction":false,"manualSleepTime":0.0,"manualWorkload_afterInputAvg":4.0,"manualWorkload_afterInputStdDiv":0.0,"manualWorkload_beforeInputAvg":0.0,"manualWorkload_beforeInputStdDiv":0.0,"manualWorkload_deviceInputAvg":1000.0,"manualWorkload_deviceInputStdDiv":0.0,"manualWorkload_execInputAvg":0.0,"manualWorkload_execInputStdDiv":0.0,"perfMetrics_cpuWork":true,"perfMetrics_deviceDelay":true,"perfMetrics_deviceWork":true,"perfMetrics_execDelay":true,"perfMetrics_execWork":true,"perfMetrics_fps":true,"perfMetrics_latency":true,"perfMetrics_perFrameSlop":true,"perfMetrics_skippedDelayed":true,"perfMetrics_sleep":true,"perfMetrics_slop":true,"perfMetrics_theoreticalFps":true,"perfMetrics_window":true,"perfMetrics_work":true,"refreshMode":"unlimited","targetRefreshRate":60.0,"workTimeSmoothing":0.5},"executionDelay":3.13,"executionIntervals":[[48,{"endTime":-84.1537,"startTime":-84.154}],[49,{"endTime":-67.2508,"startTime":-67.2512}],[50,{"endTime":-50.6148,"startTime":-50.6151}],[51,{"endTime":-33.9818,"startTime":-33.9824}],[52,{"endTime":-17.6151,"startTime":-17.6154}],[53,{"endTime":-0.0569,"startTime":-0.0572}],[54,{"endTime":15.8864,"startTime":15.8861}],[55,{"endTime":33.0784,"startTime":33.0781}],[56,{"endTime":49.0799,"startTime":49.0796}],[57,{"endTime":66.1603,"startTime":66.1599}],[58,{"endTime":83.6751,"startTime":83.6746}],[59,{"endTime":99.6775,"startTime":99.6772}],[60,{"endTime":-67.2534,"startTime":-67.5717}],[61,{"endTime":-50.6168,"startTime":-51.0282}],[62,{"endTime":-33.9842,"startTime":-34.1956}],[63,{"endTime":-17.6167,"startTime":-17.8225}],[64,{"endTime":-0.0589,"startTime":-0.4451}],[65,{"endTime":15.8851,"startTime":15.6199}],[66,{"endTime":33.0763,"startTime":32.8623}],[67,{"endTime":49.0785,"startTime":48.6974}],[68,{"endTime":66.1576,"startTime":65.9289}],[69,{"endTime":83.6733,"startTime":83.2623}],[70,{"endTime":99.676,"startTime":99.263}],[71,{"endTime":116.1671,"startTime":115.7749}],[120,{"endTime":-67.5759,"startTime":-70.7053}],[121,{"endTime":-51.0325,"startTime":-54.0457}],[122,{"endTime":-34.201,"startTime":-37.4253}],[123,{"endTime":-17.8451,"startTime":-20.4653}],[124,{"endTime":-0.4487,"startTime":-4.1898}],[125,{"endTime":15.6151,"startTime":12.2824}],[126,{"endTime":32.8563,"startTime":28.9429}],[127,{"endTime":48.6934,"startTime":45.4879}],[128,{"endTime":65.923,"startTime":62.1095}],[129,{"endTime":83.2583,"startTime":80.1907}],[130,{"endTime":99.2591,"startTime":96.5035}],[131,{"endTime":115.771,"startTime":112.9951}],[132,{"endTime":-83.6679,"startTime":-84.1504}],[133,{"endTime":-66.6399,"startTime":-67.2494}],[134,{"endTime":-50.0681,"startTime":-50.613}],[135,{"endTime":-33.5683,"startTime":-33.98}],[136,{"endTime":-17.0189,"startTime":-17.6135}],[137,{"endTime":1.2153,"startTime":-0.0369}],[138,{"endTime":19.7967,"startTime":15.9007}],[139,{"endTime":33.4847,"startTime":33.0809}],[140,{"endTime":49.6505,"startTime":49.0814}],[141,{"endTime":66.7932,"startTime":66.1628}],[142,{"endTime":84.06,"startTime":83.6966}],[143,{"endTime":100.1989,"startTime":99.6935}],[144,{"endTime":-84.1512,"startTime":-84.1514}],[145,{"endTime":-67.2501,"startTime":-67.2504}],[146,{"endTime":-50.6142,"startTime":-50.6144}],[147,{"endTime":-33.981,"startTime":-33.9812}],[148,{"endTime":-17.6144,"startTime":-17.6146}],[149,{"endTime":-0.0377,"startTime":-0.0379}],[150,{"endTime":15.8999,"startTime":15.8996}],[151,{"endTime":33.0794,"startTime":33.0791}],[152,{"endTime":49.0806,"startTime":49.0803}],[153,{"endTime":66.161,"startTime":66.1608}],[154,{"endTime":83.6949,"startTime":83.6947}],[155,{"endTime":99.6927,"startTime":99.6925}]],"executionPackages":[{"endTime":-84.1539,"issueTime":-87.3388,"minimalDelayInFrame":true,"packageId":0,"slopDuration":46.330496,"sourcePackageId":48,"startTime":-84.1541},{"endTime":-84.1514,"issueTime":-87.3283,"minimalDelayInFrame":false,"packageId":1,"slopDuration":46.328096,"sourcePackageId":144,"startTime":-84.1515},{"endTime":-84.1503,"issueTime":-84.3723,"minimalDelayInFrame":false,"packageId":2,"slopDuration":46.327096,"sourcePackageId":132,"startTime":-84.1504},{"endTime":-83.6691,"issueTime":-83.7595,"minimalDelayInFrame":false,"packageId":3,"slopDuration":45.934996,"sourcePackageId":132,"startTime":-83.7582},{"endTime":-70.7052,"issueTime":-70.7347,"minimalDelayInFrame":false,"packageId":4,"slopDuration":1000000.0,"sourcePackageId":120,"startTime":-70.7094},{"endTime":-67.5786,"issueTime":-70.7113,"minimalDelayInFrame":false,"packageId":5,"slopDuration":1000000.0,"sourcePackageId":120,"startTime":-70.7019},{"endTime":-67.5716,"issueTime":-70.6895,"minimalDelayInFrame":false,"packageId":6,"slopDuration":1000000.0,"sourcePackageId":60,"startTime":-67.5719},{"endTime":-67.2542,"issueTime":-70.6876,"minimalDelayInFrame":false,"packageId":7,"slopDuration":1000000.0,"sourcePackageId":60,"startTime":-67.5714},{"endTime":-67.2512,"issueTime":-70.6613,"minimalDelayInFrame":true,"packageId":8,"slopDuration":46.092788,"sourcePackageId":49,"startTime":-67.2513},{"endTime":-67.2503,"issueTime":-70.6478,"minimalDelayInFrame":false,"packageId":9,"slopDuration":46.091988,"sourcePackageId":145,"startTime":-67.2504},{"endTime":-67.2493,"issueTime":-67.5255,"minimalDelayInFrame":false,"packageId":10,"slopDuration":46.091088,"sourcePackageId":133,"startTime":-67.2494},{"endTime":-66.641,"issueTime":-66.74,"minimalDelayInFrame":false,"packageId":11,"slopDuration":45.580688,"sourcePackageId":133,"startTime":-66.7389},{"endTime":-54.0454,"issueTime":-54.084,"minimalDelayInFrame":false,"packageId":12,"slopDuration":1000000.0,"sourcePackageId":121,"startTime":-54.0507},{"endTime":-51.0348,"issueTime":-54.0437,"minimalDelayInFrame":false,"packageId":13,"slopDuration":1000000.0,"sourcePackageId":121,"startTime":-54.0423},{"endTime":-51.0281,"issueTime":-54.0251,"minimalDelayInFrame":false,"packageId":14,"slopDuration":1000000.0,"sourcePackageId":61,"startTime":-51.0285},{"endTime":-50.6177,"issueTime":-54.0239,"minimalDelayInFrame":false,"packageId":15,"slopDuration":1000000.0,"sourcePackageId":61,"startTime":-51.0279},{"endTime":-50.615,"issueTime":-53.9962,"minimalDelayInFrame":true,"packageId":16,"slopDuration":46.067992,"sourcePackageId":50,"startTime":-50.6152},{"endTime":-50.6143,"issueTime":-53.9839,"minimalDelayInFrame":false,"packageId":17,"slopDuration":46.067492,"sourcePackageId":146,"startTime":-50.6145},{"endTime":-50.6129,"issueTime":-50.9546,"minimalDelayInFrame":false,"packageId":18,"slopDuration":46.066192,"sourcePackageId":134,"startTime":-50.613},{"endTime":-50.0693,"issueTime":-50.1927,"minimalDelayInFrame":false,"packageId":19,"slopDuration":45.644892,"sourcePackageId":134,"startTime":-50.1916},{"endTime":-37.4252,"issueTime":-37.437,"minimalDelayInFrame":false,"packageId":20,"slopDuration":1000000.0,"sourcePackageId":122,"startTime":-37.4289},{"endTime":-34.2045,"issueTime":-37.4255,"minimalDelayInFrame":false,"packageId":21,"slopDuration":1000000.0,"sourcePackageId":122,"startTime":-37.422},{"endTime":-34.1955,"issueTime":-37.4044,"minimalDelayInFrame":false,"packageId":22,"slopDuration":1000000.0,"sourcePackageId":62,"startTime":-34.1962},{"endTime":-33.9851,"issueTime":-37.4035,"minimalDelayInFrame":false,"packageId":23,"slopDuration":1000000.0,"sourcePackageId":62,"startTime":-34.195},{"endTime":-33.9823,"issueTime":-37.3249,"minimalDelayInFrame":true,"packageId":24,"slopDuration":45.894916,"sourcePackageId":51,"startTime":-33.9825},{"endTime":-33.9812,"issueTime":-37.3148,"minimalDelayInFrame":false,"packageId":25,"slopDuration":45.893916,"sourcePackageId":147,"startTime":-33.9813},{"endTime":-33.98,"issueTime":-34.1711,"minimalDelayInFrame":false,"packageId":26,"slopDuration":45.892816,"sourcePackageId":135,"startTime":-33.9801},{"endTime":-33.5694,"issueTime":-33.695,"minimalDelayInFrame":false,"packageId":27,"slopDuration":45.606816,"sourcePackageId":135,"startTime":-33.694},{"endTime":-20.4646,"issueTime":-20.4774,"minimalDelayInFrame":false,"packageId":28,"slopDuration":1000000.0,"sourcePackageId":123,"startTime":-20.4689},{"endTime":-17.8481,"issueTime":-20.4698,"minimalDelayInFrame":false,"packageId":29,"slopDuration":1000000.0,"sourcePackageId":123,"startTime":-20.4593},{"endTime":-17.8224,"issueTime":-20.4541,"minimalDelayInFrame":false,"packageId":30,"slopDuration":1000000.0,"sourcePackageId":63,"startTime":-17.8228},{"endTime":-17.6173,"issueTime":-20.4532,"minimalDelayInFrame":false,"packageId":31,"slopDuration":1000000.0,"sourcePackageId":63,"startTime":-17.8222},{"endTime":-17.6153,"issueTime":-20.4334,"minimalDelayInFrame":false,"packageId":32,"slopDuration":46.093044,"sourcePackageId":52,"startTime":-17.6155},{"endTime":-17.6146,"issueTime":-20.4228,"minimalDelayInFrame":false,"packageId":33,"slopDuration":46.092444,"sourcePackageId":148,"startTime":-17.6147},{"endTime":-17.6135,"issueTime":-17.7889,"minimalDelayInFrame":false,"packageId":34,"slopDuration":46.091444,"sourcePackageId":136,"startTime":-17.6136},{"endTime":-17.0202,"issueTime":-17.1669,"minimalDelayInFrame":false,"packageId":35,"slopDuration":45.643344,"sourcePackageId":136,"startTime":-17.1654},{"endTime":-4.1893,"issueTime":-4.2096,"minimalDelayInFrame":false,"packageId":36,"slopDuration":1000000.0,"sourcePackageId":124,"startTime":-4.195},{"endTime":-0.4513,"issueTime":-4.192,"minimalDelayInFrame":false,"packageId":37,"slopDuration":1000000.0,"sourcePackageId":124,"startTime":-4.186},{"endTime":-0.445,"issueTime":-4.1678,"minimalDelayInFrame":true,"packageId":38,"slopDuration":1000000.0,"sourcePackageId":64,"startTime":-0.4454},{"endTime":-0.096,"issueTime":-4.1663,"minimalDelayInFrame":false,"packageId":39,"slopDuration":1000000.0,"sourcePackageId":64,"startTime":-0.4445},{"endTime":-0.0572,"issueTime":-4.1371,"minimalDelayInFrame":false,"packageId":40,"slopDuration":45.176692,"sourcePackageId":53,"startTime":-0.0573},{"endTime":-0.0378,"issueTime":-4.1293,"minimalDelayInFrame":true,"packageId":41,"slopDuration":45.157492,"sourcePackageId":149,"startTime":-0.038},{"endTime":-0.0368,"issueTime":-0.4002,"minimalDelayInFrame":false,"packageId":42,"slopDuration":45.156692,"sourcePackageId":137,"startTime":-0.037},{"endTime":1.2139,"issueTime":1.1186,"minimalDelayInFrame":false,"packageId":43,"slopDuration":44.000092,"sourcePackageId":137,"startTime":1.1198},{"endTime":12.2825,"issueTime":12.2647,"minimalDelayInFrame":false,"packageId":44,"slopDuration":1000000.0,"sourcePackageId":125,"startTime":12.2736},{"endTime":15.6121,"issueTime":12.2745,"minimalDelayInFrame":false,"packageId":45,"slopDuration":1000000.0,"sourcePackageId":125,"startTime":12.2855},{"endTime":15.62,"issueTime":12.3113,"minimalDelayInFrame":false,"packageId":46,"slopDuration":1000000.0,"sourcePackageId":65,"startTime":15.6195},{"endTime":15.8846,"issueTime":12.3151,"minimalDelayInFrame":false,"packageId":47,"slopDuration":1000000.0,"sourcePackageId":65,"startTime":15.6202},{"endTime":15.8861,"issueTime":12.3427,"minimalDelayInFrame":false,"packageId":48,"slopDuration":45.74686,"sourcePackageId":54,"startTime":15.886},{"endTime":15.8997,"issueTime":12.3529,"minimalDelayInFrame":false,"packageId":49,"slopDuration":45.73336,"sourcePackageId":150,"startTime":15.8996},{"endTime":15.9008,"issueTime":15.6312,"minimalDelayInFrame":false,"packageId":50,"slopDuration":45.73246,"sourcePackageId":138,"startTime":15.9006},{"endTime":19.7954,"issueTime":19.6431,"minimalDelayInFrame":false,"packageId":51,"slopDuration":41.98896,"sourcePackageId":138,"startTime":19.6443},{"endTime":28.9429,"issueTime":28.924,"minimalDelayInFrame":false,"packageId":52,"slopDuration":1000000.0,"sourcePackageId":126,"startTime":28.9378},{"endTime":32.8529,"issueTime":28.9388,"minimalDelayInFrame":false,"packageId":53,"slopDuration":1000000.0,"sourcePackageId":126,"startTime":28.9472},{"endTime":32.8623,"issueTime":28.9629,"minimalDelayInFrame":false,"packageId":54,"slopDuration":1000000.0,"sourcePackageId":66,"startTime":32.8616},{"endTime":33.0755,"issueTime":28.9634,"minimalDelayInFrame":true,"packageId":55,"slopDuration":1000000.0,"sourcePackageId":66,"startTime":32.8625},{"endTime":33.0782,"issueTime":29.0065,"minimalDelayInFrame":true,"packageId":56,"slopDuration":46.740508,"sourcePackageId":55,"startTime":33.0781},{"endTime":33.0791,"issueTime":29.0146,"minimalDelayInFrame":false,"packageId":57,"slopDuration":46.739708,"sourcePackageId":151,"startTime":33.079},{"endTime":33.0809,"issueTime":32.8724,"minimalDelayInFrame":false,"packageId":58,"slopDuration":46.738008,"sourcePackageId":139,"startTime":33.0808},{"endTime":33.4835,"issueTime":33.3903,"minimalDelayInFrame":false,"packageId":59,"slopDuration":46.427708,"sourcePackageId":139,"startTime":33.3912},{"endTime":45.4887,"issueTime":45.4753,"minimalDelayInFrame":false,"packageId":60,"slopDuration":1000000.0,"sourcePackageId":127,"startTime":45.4834},{"endTime":48.6909,"issueTime":45.487,"minimalDelayInFrame":false,"packageId":61,"slopDuration":1000000.0,"sourcePackageId":127,"startTime":45.4927},{"endTime":48.6974,"issueTime":45.5082,"minimalDelayInFrame":false,"packageId":62,"slopDuration":1000000.0,"sourcePackageId":67,"startTime":48.6971},{"endTime":49.0779,"issueTime":45.5088,"minimalDelayInFrame":false,"packageId":63,"slopDuration":1000000.0,"sourcePackageId":67,"startTime":48.6976},{"endTime":49.0796,"issueTime":45.5693,"minimalDelayInFrame":false,"packageId":64,"slopDuration":46.975856,"sourcePackageId":56,"startTime":49.0795},{"endTime":49.0804,"issueTime":45.578,"minimalDelayInFrame":false,"packageId":65,"slopDuration":46.975156,"sourcePackageId":152,"startTime":49.0803},{"endTime":49.0814,"issueTime":48.774,"minimalDelayInFrame":false,"packageId":66,"slopDuration":46.974256,"sourcePackageId":140,"startTime":49.0813},{"endTime":49.636,"issueTime":49.4443,"minimalDelayInFrame":false,"packageId":67,"slopDuration":46.610056,"sourcePackageId":140,"startTime":49.4456},{"endTime":62.1095,"issueTime":62.0929,"minimalDelayInFrame":false,"packageId":68,"slopDuration":1000000.0,"sourcePackageId":128,"startTime":62.1038},{"endTime":65.9164,"issueTime":62.1066,"minimalDelayInFrame":false,"packageId":69,"slopDuration":1000000.0,"sourcePackageId":128,"startTime":62.1111},{"endTime":65.929,"issueTime":62.1262,"minimalDelayInFrame":true,"packageId":70,"slopDuration":1000000.0,"sourcePackageId":68,"startTime":65.9283},{"endTime":66.1567,"issueTime":62.1267,"minimalDelayInFrame":false,"packageId":71,"slopDuration":1000000.0,"sourcePackageId":68,"startTime":65.9294},{"endTime":66.16,"issueTime":62.1601,"minimalDelayInFrame":true,"packageId":72,"slopDuration":46.375472,"sourcePackageId":57,"startTime":66.1598},{"endTime":66.1608,"issueTime":62.1743,"minimalDelayInFrame":false,"packageId":73,"slopDuration":46.374772,"sourcePackageId":153,"startTime":66.1607},{"endTime":66.1629,"issueTime":65.939,"minimalDelayInFrame":false,"packageId":74,"slopDuration":46.372772,"sourcePackageId":141,"startTime":66.1628},{"endTime":66.7917,"issueTime":66.5844,"minimalDelayInFrame":false,"packageId":75,"slopDuration":45.949972,"sourcePackageId":141,"startTime":66.5857},{"endTime":80.1907,"issueTime":80.1731,"minimalDelayInFrame":false,"packageId":76,"slopDuration":1000000.0,"sourcePackageId":129,"startTime":80.1844},{"endTime":83.2558,"issueTime":80.1891,"minimalDelayInFrame":false,"packageId":77,"slopDuration":1000000.0,"sourcePackageId":129,"startTime":80.195},{"endTime":83.2624,"issueTime":80.2115,"minimalDelayInFrame":false,"packageId":78,"slopDuration":1000000.0,"sourcePackageId":69,"startTime":83.262},{"endTime":83.6727,"issueTime":80.2118,"minimalDelayInFrame":false,"packageId":79,"slopDuration":1000000.0,"sourcePackageId":69,"startTime":83.2629},{"endTime":83.6746,"issueTime":80.2341,"minimalDelayInFrame":true,"packageId":80,"slopDuration":45.579888,"sourcePackageId":58,"startTime":83.6745},{"endTime":83.6948,"issueTime":80.2453,"minimalDelayInFrame":false,"packageId":81,"slopDuration":45.579088,"sourcePackageId":154,"startTime":83.6754},{"endTime":83.6967,"issueTime":83.3347,"minimalDelayInFrame":false,"packageId":82,"slopDuration":45.577288,"sourcePackageId":142,"startTime":83.6966},{"endTime":84.0589,"issueTime":83.9152,"minimalDelayInFrame":false,"packageId":83,"slopDuration":45.357588,"sourcePackageId":142,"startTime":83.9164},{"endTime":96.5045,"issueTime":96.4881,"minimalDelayInFrame":false,"packageId":84,"slopDuration":1000000.0,"sourcePackageId":130,"startTime":96.4995},{"endTime":99.2563,"issueTime":96.501,"minimalDelayInFrame":false,"packageId":85,"slopDuration":1000000.0,"sourcePackageId":130,"startTime":96.5087},{"endTime":99.263,"issueTime":96.5265,"minimalDelayInFrame":false,"packageId":86,"slopDuration":1000000.0,"sourcePackageId":70,"startTime":99.2627},{"endTime":99.6754,"issueTime":96.5272,"minimalDelayInFrame":false,"packageId":87,"slopDuration":1000000.0,"sourcePackageId":70,"startTime":99.2632},{"endTime":99.6773,"issueTime":96.5515,"minimalDelayInFrame":false,"packageId":88,"slopDuration":46.183736,"sourcePackageId":59,"startTime":99.6771},{"endTime":99.6925,"issueTime":96.5615,"minimalDelayInFrame":true,"packageId":89,"slopDuration":46.168636,"sourcePackageId":155,"startTime":99.6924},{"endTime":99.6935,"issueTime":99.3233,"minimalDelayInFrame":false,"packageId":90,"slopDuration":46.167736,"sourcePackageId":143,"startTime":99.6934},{"endTime":100.1978,"issueTime":100.0763,"minimalDelayInFrame":false,"packageId":91,"slopDuration":45.783936,"sourcePackageId":143,"startTime":100.0773},{"endTime":112.9951,"issueTime":112.9839,"minimalDelayInFrame":false,"packageId":92,"slopDuration":1000000.0,"sourcePackageId":131,"startTime":112.9911},{"endTime":115.7683,"issueTime":112.9934,"minimalDelayInFrame":false,"packageId":93,"slopDuration":1000000.0,"sourcePackageId":131,"startTime":112.9991},{"endTime":115.775,"issueTime":113.016,"minimalDelayInFrame":false,"packageId":94,"slopDuration":1000000.0,"sourcePackageId":71,"startTime":115.7746},{"endTime":116.1665,"issueTime":113.0162,"minimalDelayInFrame":false,"packageId":95,"slopDuration":1000000.0,"sourcePackageId":71,"startTime":115.7752}],"fps":65.31756857528231,"frameEndFixPoint":-10749.025,"frameId":649,"frameTime":15.309816666666668,"latencySlop":52.51556,"queueToDevicePackageList":{"render":[{"endTime":-22.325976,"slopDuration":0.0,"sourceExecPackageId":3,"startTime":-37.734104,"submissionTime":-83.6696},{"endTime":-5.585624,"slopDuration":0.0,"sourceExecPackageId":11,"startTime":-21.060312,"submissionTime":-66.6417},{"endTime":10.935592,"slopDuration":0.0,"sourceExecPackageId":19,"startTime":-4.424408,"submissionTime":-50.0829},{"endTime":27.433256,"slopDuration":0.0,"sourceExecPackageId":27,"startTime":12.037416,"submissionTime":-33.5699},{"endTime":44.118312,"slopDuration":0.0,"sourceExecPackageId":35,"startTime":28.623144,"submissionTime":-17.0207},{"endTime":60.66308,"slopDuration":0.0,"sourceExecPackageId":43,"startTime":45.213992,"submissionTime":1.2133},{"endTime":79.108392,"slopDuration":0.0,"sourceExecPackageId":51,"startTime":61.78436,"submissionTime":19.7948},{"endTime":95.308072,"slopDuration":0.0,"sourceExecPackageId":59,"startTime":79.911208,"submissionTime":33.4828},{"endTime":111.803688,"slopDuration":0.0,"sourceExecPackageId":67,"startTime":96.246056,"submissionTime":49.6354},{"endTime":128.2522,"slopDuration":0.0,"sourceExecPackageId":75,"startTime":112.741672,"submissionTime":66.791},{"endTime":144.95876,"slopDuration":0.0,"sourceExecPackageId":83,"startTime":129.416488,"submissionTime":84.0583},{"endTime":161.454376,"slopDuration":0.0,"sourceExecPackageId":91,"startTime":145.981736,"submissionTime":100.1973}]},"sleepTime":0.0,"softwareLatency":79.071292,"stageToThreadToPackageList":{"beforeDraw":{"beforeDraw":[{"availableTime":-113.681,"depended":[0],"dependent":[25,36,48,204],"deviceDepended":[],"endTime":-100.2482,"execDepended":[],"frameId":643,"gpuDoneDep":{},"name":"beforeDraw/start","packageId":24,"resAvailableTime":-100.2489,"slopDuration":58.865896,"startTime":-100.2488},{"availableTime":-95.9898,"depended":[1,24,36],"dependent":[26,37,49,205],"deviceDepended":[],"endTime":-83.9631,"execDepended":[],"frameId":644,"gpuDoneDep":{},"name":"beforeDraw/start","packageId":25,"resAvailableTime":-83.9637,"slopDuration":58.906788,"startTime":-83.9636},{"availableTime":-79.6589,"depended":[2,25,37],"dependent":[27,38,50,206],"deviceDepended":[],"endTime":-67.1028,"execDepended":[],"frameId":645,"gpuDoneDep":{},"name":"beforeDraw/start","packageId":26,"resAvailableTime":-67.1035,"slopDuration":58.785592,"startTime":-67.1033},{"availableTime":-62.6931,"depended":[3,26,38],"dependent":[28,39,51,207],"deviceDepended":[],"endTime":-50.4218,"execDepended":[],"frameId":646,"gpuDoneDep":{},"name":"beforeDraw/start","packageId":27,"resAvailableTime":-50.4223,"slopDuration":58.729416,"startTime":-50.4222},{"availableTime":-46.0426,"depended":[4,27,39],"dependent":[29,40,52,208],"deviceDepended":[],"endTime":-34.0604,"execDepended":[],"frameId":647,"gpuDoneDep":{},"name":"beforeDraw/start","packageId":28,"resAvailableTime":-34.0608,"slopDuration":59.304244,"startTime":-34.0607},{"availableTime":-29.8047,"depended":[5,28,40],"dependent":[30,41,53,209],"deviceDepended":[],"endTime":-20.3229,"execDepended":[],"frameId":648,"gpuDoneDep":{},"name":"beforeDraw/start","packageId":29,"resAvailableTime":-20.3282,"slopDuration":60.204092,"startTime":-20.3269},{"availableTime":-15.6588,"depended":[6,29,41],"dependent":[31,42,54,210],"deviceDepended":[],"endTime":0.0256,"execDepended":[],"frameId":649,"gpuDoneDep":{},"name":"beforeDraw/start","packageId":30,"resAvailableTime":0.0245,"slopDuration":54.32726,"startTime":0.025},{"availableTime":5.155,"depended":[7,30,42],"dependent":[32,43,55,211],"deviceDepended":[],"endTime":16.0744,"execDepended":[],"frameId":650,"gpuDoneDep":{},"name":"beforeDraw/start","packageId":31,"resAvailableTime":16.074,"slopDuration":59.379808,"startTime":16.0741},{"availableTime":20.3886,"depended":[8,31,43],"dependent":[33,44,56,212],"deviceDepended":[],"endTime":33.0137,"execDepended":[],"frameId":651,"gpuDoneDep":{},"name":"beforeDraw/start","packageId":32,"resAvailableTime":33.0132,"slopDuration":59.200156,"startTime":33.0133},{"availableTime":37.2665,"depended":[9,32,44],"dependent":[34,45,57,213],"deviceDepended":[],"endTime":49.2172,"execDepended":[],"frameId":652,"gpuDoneDep":{},"name":"beforeDraw/start","packageId":33,"resAvailableTime":49.2165,"slopDuration":58.919172,"startTime":49.2167},{"availableTime":53.8733,"depended":[10,33,45],"dependent":[35,46,58,214],"deviceDepended":[],"endTime":66.3217,"execDepended":[],"frameId":653,"gpuDoneDep":{},"name":"beforeDraw/start","packageId":34,"resAvailableTime":66.3211,"slopDuration":59.291988,"startTime":66.3213},{"availableTime":70.6885,"depended":[11,34,46],"dependent":[47,59,215],"deviceDepended":[],"endTime":83.7229,"execDepended":[],"frameId":654,"gpuDoneDep":{},"name":"beforeDraw/start","packageId":35,"resAvailableTime":83.7221,"slopDuration":58.632136,"startTime":83.7223},{"availableTime":-100.245,"depended":[24,204],"dependent":[25,37,72],"deviceDepended":[],"endTime":-95.9912,"execDepended":[],"frameId":643,"gpuDoneDep":{},"name":"beforeDraw/end","packageId":36,"resAvailableTime":-95.9917,"slopDuration":1000000.0,"startTime":-95.9915},{"availableTime":-83.9603,"depended":[25,36,205],"dependent":[26,38,73],"deviceDepended":[],"endTime":-79.6597,"execDepended":[],"frameId":644,"gpuDoneDep":{},"name":"beforeDraw/end","packageId":37,"resAvailableTime":-79.6603,"slopDuration":1000000.0,"startTime":-79.6602},{"availableTime":-67.0995,"depended":[26,37,206],"dependent":[27,39,74],"deviceDepended":[],"endTime":-62.6944,"execDepended":[],"frameId":645,"gpuDoneDep":{},"name":"beforeDraw/end","packageId":38,"resAvailableTime":-62.6948,"slopDuration":1000000.0,"startTime":-62.6946},{"availableTime":-50.4189,"depended":[27,38,207],"dependent":[28,40,75],"deviceDepended":[],"endTime":-46.0438,"execDepended":[],"frameId":646,"gpuDoneDep":{},"name":"beforeDraw/end","packageId":39,"resAvailableTime":-46.0444,"slopDuration":1000000.0,"startTime":-46.0441},{"availableTime":-34.0572,"depended":[28,39,208],"dependent":[29,41,76],"deviceDepended":[],"endTime":-29.8059,"execDepended":[],"frameId":647,"gpuDoneDep":{},"name":"beforeDraw/end","packageId":40,"resAvailableTime":-29.8064,"slopDuration":1000000.0,"startTime":-29.8061},{"availableTime":-20.3124,"depended":[29,40,209],"dependent":[30,42,77],"deviceDepended":[],"endTime":-15.6605,"execDepended":[],"frameId":648,"gpuDoneDep":{},"name":"beforeDraw/end","packageId":41,"resAvailableTime":-15.6612,"slopDuration":1000000.0,"startTime":-15.6609},{"availableTime":0.0288,"depended":[30,41,210],"dependent":[31,43,78],"deviceDepended":[],"endTime":5.1538,"execDepended":[],"frameId":649,"gpuDoneDep":{},"name":"beforeDraw/end","packageId":42,"resAvailableTime":5.1533,"slopDuration":1000000.0,"startTime":5.1535},{"availableTime":16.0772,"depended":[31,42,211],"dependent":[32,44,79],"deviceDepended":[],"endTime":20.3875,"execDepended":[],"frameId":650,"gpuDoneDep":{},"name":"beforeDraw/end","packageId":43,"resAvailableTime":20.387,"slopDuration":1000000.0,"startTime":20.3873},{"availableTime":33.0165,"depended":[32,43,212],"dependent":[33,45,80],"deviceDepended":[],"endTime":37.2657,"execDepended":[],"frameId":651,"gpuDoneDep":{},"name":"beforeDraw/end","packageId":44,"resAvailableTime":37.2653,"slopDuration":1000000.0,"startTime":37.2654},{"availableTime":49.2201,"depended":[33,44,213],"dependent":[34,46,81],"deviceDepended":[],"endTime":53.872,"execDepended":[],"frameId":652,"gpuDoneDep":{},"name":"beforeDraw/end","packageId":45,"resAvailableTime":53.8714,"slopDuration":1000000.0,"startTime":53.8717},{"availableTime":66.325,"depended":[34,45,214],"dependent":[35,47,82],"deviceDepended":[],"endTime":70.6876,"execDepended":[],"frameId":653,"gpuDoneDep":{},"name":"beforeDraw/end","packageId":46,"resAvailableTime":70.6872,"slopDuration":1000000.0,"startTime":70.6874},{"availableTime":83.7266,"depended":[35,46,215],"dependent":[83],"deviceDepended":[],"endTime":88.0867,"execDepended":[],"frameId":654,"gpuDoneDep":{},"name":"beforeDraw/end","packageId":47,"resAvailableTime":88.086,"slopDuration":1000000.0,"startTime":88.0863}],"entityRender":[{"availableTime":-113.6953,"depended":[24,108,156,192],"dependent":[36,132,157,205],"deviceDepended":[],"endTime":-95.9965,"execDepended":[],"frameId":643,"gpuDoneDep":{},"name":"entityRender","packageId":204,"resAvailableTime":-96.0346,"slopDuration":57.559996,"startTime":-96.0341},{"availableTime":-95.9931,"depended":[25,109,132,157,193,204],"dependent":[37,133,158,206],"deviceDepended":[],"endTime":-79.665,"execDepended":[],"frameId":644,"gpuDoneDep":{},"name":"entityRender","packageId":205,"resAvailableTime":-79.6992,"slopDuration":57.720888,"startTime":-79.6985},{"availableTime":-79.6618,"depended":[26,110,133,158,194,205],"dependent":[38,134,159,207],"deviceDepended":[],"endTime":-62.7009,"execDepended":[],"frameId":645,"gpuDoneDep":{},"name":"entityRender","packageId":206,"resAvailableTime":-62.7192,"slopDuration":57.392192,"startTime":-62.7188},{"availableTime":-62.6977,"depended":[27,111,134,159,195,206],"dependent":[39,135,160,208],"deviceDepended":[],"endTime":-46.0496,"execDepended":[],"frameId":646,"gpuDoneDep":{},"name":"entityRender","packageId":207,"resAvailableTime":-46.0656,"slopDuration":57.486216,"startTime":-46.0652},{"availableTime":-46.0462,"depended":[28,112,135,160,196,207],"dependent":[40,136,161,209],"deviceDepended":[],"endTime":-29.8113,"execDepended":[],"frameId":647,"gpuDoneDep":{},"name":"entityRender","packageId":208,"resAvailableTime":-29.8286,"slopDuration":57.667044,"startTime":-29.8282},{"availableTime":-29.8084,"depended":[29,113,136,161,197,208],"dependent":[41,137,162,210],"deviceDepended":[],"endTime":-15.6681,"execDepended":[],"frameId":648,"gpuDoneDep":{},"name":"entityRender","packageId":209,"resAvailableTime":-15.7215,"slopDuration":59.268892,"startTime":-15.7211},{"availableTime":-15.6643,"depended":[30,114,137,162,198,209],"dependent":[42,138,163,211],"deviceDepended":[],"endTime":5.1481,"execDepended":[],"frameId":649,"gpuDoneDep":{},"name":"entityRender","packageId":210,"resAvailableTime":5.1317,"slopDuration":52.47306,"startTime":5.1321},{"availableTime":5.1518,"depended":[31,115,138,163,199,210],"dependent":[43,139,164,212],"deviceDepended":[],"endTime":20.3808,"execDepended":[],"frameId":650,"gpuDoneDep":{},"name":"entityRender","packageId":211,"resAvailableTime":20.3645,"slopDuration":58.920108,"startTime":20.3649},{"availableTime":20.384,"depended":[32,116,139,164,200,211],"dependent":[44,140,165,213],"deviceDepended":[],"endTime":37.2609,"execDepended":[],"frameId":651,"gpuDoneDep":{},"name":"entityRender","packageId":212,"resAvailableTime":37.2532,"slopDuration":58.124256,"startTime":37.2535},{"availableTime":37.2643,"depended":[33,117,140,165,201,212],"dependent":[45,141,166,214],"deviceDepended":[],"endTime":53.8665,"execDepended":[],"frameId":652,"gpuDoneDep":{},"name":"entityRender","packageId":213,"resAvailableTime":53.8283,"slopDuration":58.023472,"startTime":53.8288},{"availableTime":53.8699,"depended":[34,118,141,166,202,213],"dependent":[46,142,167,215],"deviceDepended":[],"endTime":70.6824,"execDepended":[],"frameId":653,"gpuDoneDep":{},"name":"entityRender","packageId":214,"resAvailableTime":70.6761,"slopDuration":58.010688,"startTime":70.6764},{"availableTime":70.6852,"depended":[35,119,142,167,203,214],"dependent":[47,143],"deviceDepended":[],"endTime":88.0802,"execDepended":[],"frameId":654,"gpuDoneDep":{},"name":"entityRender","packageId":215,"resAvailableTime":88.0461,"slopDuration":57.027836,"startTime":88.0466}]},"readback":{"readback":[{"availableTime":-34.0832,"depended":[12,36,60],"dependent":[84],"deviceDepended":[],"endTime":-34.0686,"execDepended":[48],"frameId":643,"gpuDoneDep":{},"name":"readback/start","packageId":72,"resAvailableTime":-34.0692,"slopDuration":0.0,"startTime":-34.0689},{"availableTime":-20.4864,"depended":[13,37,61,84],"dependent":[85],"deviceDepended":[],"endTime":-20.4818,"execDepended":[49],"frameId":644,"gpuDoneDep":{},"name":"readback/start","packageId":73,"resAvailableTime":-20.4833,"slopDuration":0.0,"startTime":-20.4828},{"availableTime":-0.0041,"depended":[14,38,62,85],"dependent":[86],"deviceDepended":[],"endTime":-0.0028,"execDepended":[50],"frameId":645,"gpuDoneDep":{},"name":"readback/start","packageId":74,"resAvailableTime":-0.0032,"slopDuration":0.0,"startTime":-0.003},{"availableTime":16.028,"depended":[15,39,63,86],"dependent":[87],"deviceDepended":[],"endTime":16.0294,"execDepended":[51],"frameId":646,"gpuDoneDep":{},"name":"readback/start","packageId":75,"resAvailableTime":16.029,"slopDuration":0.0,"startTime":16.0292},{"availableTime":32.958,"depended":[16,40,64,87],"dependent":[88],"deviceDepended":[],"endTime":32.9669,"execDepended":[52],"frameId":647,"gpuDoneDep":{},"name":"readback/start","packageId":76,"resAvailableTime":32.9662,"slopDuration":0.0,"startTime":32.9666},{"availableTime":49.1879,"depended":[17,41,65,88],"dependent":[89],"deviceDepended":[],"endTime":49.1897,"execDepended":[53],"frameId":648,"gpuDoneDep":{},"name":"readback/start","packageId":77,"resAvailableTime":49.1891,"slopDuration":0.0,"startTime":49.1894},{"availableTime":66.2504,"depended":[18,42,66,89],"dependent":[90],"deviceDepended":[],"endTime":66.252,"execDepended":[54],"frameId":649,"gpuDoneDep":{},"name":"readback/start","packageId":78,"resAvailableTime":66.2515,"slopDuration":0.0,"startTime":66.2518},{"availableTime":83.6503,"depended":[19,43,67,90],"dependent":[91],"deviceDepended":[],"endTime":83.6515,"execDepended":[55],"frameId":650,"gpuDoneDep":{},"name":"readback/start","packageId":79,"resAvailableTime":83.651,"slopDuration":0.0,"startTime":83.6513},{"availableTime":99.8074,"depended":[20,44,68,91],"dependent":[92],"deviceDepended":[],"endTime":99.809,"execDepended":[56],"frameId":651,"gpuDoneDep":{},"name":"readback/start","packageId":80,"resAvailableTime":99.8085,"slopDuration":0.0,"startTime":99.8088},{"availableTime":116.2757,"depended":[21,45,69,92],"dependent":[93],"deviceDepended":[],"endTime":116.2902,"execDepended":[57],"frameId":652,"gpuDoneDep":{},"name":"readback/start","packageId":81,"resAvailableTime":116.2897,"slopDuration":0.0,"startTime":116.29},{"availableTime":132.8534,"depended":[22,46,70,93],"dependent":[94],"deviceDepended":[],"endTime":132.855,"execDepended":[58],"frameId":653,"gpuDoneDep":{},"name":"readback/start","packageId":82,"resAvailableTime":132.8545,"slopDuration":0.0,"startTime":132.8548},{"availableTime":149.2908,"depended":[23,47,71,94],"dependent":[95],"deviceDepended":[],"endTime":149.292,"execDepended":[59],"frameId":654,"gpuDoneDep":{},"name":"readback/start","packageId":83,"resAvailableTime":149.2914,"slopDuration":0.0,"startTime":149.2918},{"availableTime":-33.9827,"depended":[72],"dependent":[5,73],"deviceDepended":[],"endTime":-20.5128,"execDepended":[60],"frameId":643,"gpuDoneDep":{"DtoH":643,"HtoD":643,"compute":643,"input":643,"present":643,"render":643},"name":"readback/end","packageId":84,"resAvailableTime":-20.7999,"slopDuration":0.0,"startTime":-20.7962},{"availableTime":-20.4784,"depended":[73],"dependent":[6,74],"deviceDepended":[],"endTime":-0.0087,"execDepended":[61],"frameId":644,"gpuDoneDep":{"DtoH":644,"HtoD":644,"compute":644,"input":644,"present":644,"render":644},"name":"readback/end","packageId":85,"resAvailableTime":-4.2197,"slopDuration":0.0,"startTime":-4.2134},{"availableTime":-0.0021,"depended":[74],"dependent":[7,75],"deviceDepended":[],"endTime":16.0233,"execDepended":[62],"frameId":645,"gpuDoneDep":{"DtoH":645,"HtoD":645,"compute":645,"input":645,"present":645,"render":645},"name":"readback/end","packageId":86,"resAvailableTime":12.2582,"slopDuration":0.0,"startTime":12.2616},{"availableTime":16.03,"depended":[75],"dependent":[8,76],"deviceDepended":[],"endTime":32.9526,"execDepended":[63],"frameId":646,"gpuDoneDep":{"DtoH":646,"HtoD":646,"compute":646,"input":646,"present":646,"render":646},"name":"readback/end","packageId":87,"resAvailableTime":28.9163,"slopDuration":0.0,"startTime":28.9204},{"availableTime":32.9684,"depended":[76],"dependent":[9,77],"deviceDepended":[],"endTime":49.1834,"execDepended":[64],"frameId":647,"gpuDoneDep":{"DtoH":647,"HtoD":647,"compute":647,"input":647,"present":647,"render":647},"name":"readback/end","packageId":88,"resAvailableTime":45.4692,"slopDuration":0.0,"startTime":45.4717},{"availableTime":49.1906,"depended":[77],"dependent":[10,78],"deviceDepended":[],"endTime":66.2458,"execDepended":[65],"frameId":648,"gpuDoneDep":{"DtoH":648,"HtoD":648,"compute":648,"input":648,"present":648,"render":648},"name":"readback/end","packageId":89,"resAvailableTime":62.0852,"slopDuration":0.0,"startTime":62.09},{"availableTime":66.2529,"depended":[78],"dependent":[11,79],"deviceDepended":[],"endTime":83.6458,"execDepended":[66],"frameId":649,"gpuDoneDep":{"DtoH":649,"HtoD":649,"compute":649,"input":649,"present":649,"render":649},"name":"readback/end","packageId":90,"resAvailableTime":80.1663,"slopDuration":0.0,"startTime":80.1695},{"availableTime":83.6523,"depended":[79],"dependent":[80],"deviceDepended":[],"endTime":99.8032,"execDepended":[67],"frameId":650,"gpuDoneDep":{"DtoH":650,"HtoD":650,"compute":650,"input":650,"present":650,"render":650},"name":"readback/end","packageId":91,"resAvailableTime":96.4819,"slopDuration":0.0,"startTime":96.4853},{"availableTime":99.8097,"depended":[80],"dependent":[81],"deviceDepended":[],"endTime":116.2716,"execDepended":[68],"frameId":651,"gpuDoneDep":{"DtoH":651,"HtoD":651,"compute":651,"input":651,"present":651,"render":651},"name":"readback/end","packageId":92,"resAvailableTime":112.9769,"slopDuration":0.0,"startTime":112.9796},{"availableTime":116.2909,"depended":[81],"dependent":[82],"deviceDepended":[],"endTime":132.8493,"execDepended":[69],"frameId":652,"gpuDoneDep":{"DtoH":652,"HtoD":652,"compute":652,"input":652,"present":652,"render":652},"name":"readback/end","packageId":93,"resAvailableTime":129.6587,"slopDuration":0.0,"startTime":129.6624},{"availableTime":132.8556,"depended":[82],"dependent":[83],"deviceDepended":[],"endTime":149.2863,"execDepended":[70],"frameId":653,"gpuDoneDep":{"DtoH":653,"HtoD":653,"compute":653,"input":653,"present":653,"render":653},"name":"readback/end","packageId":94,"resAvailableTime":146.2038,"slopDuration":0.0,"startTime":146.2066},{"availableTime":149.3069,"depended":[83],"dependent":[],"deviceDepended":[],"endTime":-79814152.0101,"execDepended":[71],"frameId":654,"gpuDoneDep":{"DtoH":654,"HtoD":654,"compute":654,"input":654,"present":654,"render":654},"name":"readback/end","packageId":95,"resAvailableTime":163.1774,"slopDuration":0.0,"startTime":212.7757}]},"record":{"record":[{"availableTime":-87.3432,"depended":[24],"dependent":[49,60,120,132,144],"deviceDepended":[],"endTime":-87.3379,"execDepended":[],"frameId":643,"gpuDoneDep":{},"name":"record/start","packageId":48,"resAvailableTime":-87.3395,"slopDuration":45.957096,"startTime":-87.3394},{"availableTime":-70.6645,"depended":[25,48,60],"dependent":[50,61,121,133,145],"deviceDepended":[],"endTime":-70.6602,"execDepended":[],"frameId":644,"gpuDoneDep":{},"name":"record/start","packageId":49,"resAvailableTime":-70.6621,"slopDuration":45.605688,"startTime":-70.662},{"availableTime":-53.9989,"depended":[26,49,61],"dependent":[51,62,122,134,146],"deviceDepended":[],"endTime":-53.9946,"execDepended":[60],"frameId":645,"gpuDoneDep":{},"name":"record/start","packageId":50,"resAvailableTime":-53.997,"slopDuration":45.679692,"startTime":-53.9969},{"availableTime":-37.3484,"depended":[27,50,62],"dependent":[52,63,123,135,147],"deviceDepended":[],"endTime":-37.3242,"execDepended":[61],"frameId":646,"gpuDoneDep":{},"name":"record/start","packageId":51,"resAvailableTime":-37.3253,"slopDuration":45.632916,"startTime":-37.3253},{"availableTime":-20.4364,"depended":[28,51,63],"dependent":[53,64,124,136,148],"deviceDepended":[],"endTime":-20.4331,"execDepended":[62],"frameId":647,"gpuDoneDep":{},"name":"record/start","packageId":52,"resAvailableTime":-20.4341,"slopDuration":45.677744,"startTime":-20.4339},{"availableTime":-4.1397,"depended":[29,52,64],"dependent":[54,65,125,137,149],"deviceDepended":[],"endTime":-4.1364,"execDepended":[63],"frameId":648,"gpuDoneDep":{},"name":"record/start","packageId":53,"resAvailableTime":-4.1377,"slopDuration":44.018892,"startTime":-4.1377},{"availableTime":12.339,"depended":[30,53,65],"dependent":[55,66,126,138,150],"deviceDepended":[],"endTime":12.3432,"execDepended":[64],"frameId":649,"gpuDoneDep":{},"name":"record/start","packageId":54,"resAvailableTime":12.3419,"slopDuration":42.01086,"startTime":12.342},{"availableTime":29.0036,"depended":[31,54,66],"dependent":[56,67,127,139,151],"deviceDepended":[],"endTime":29.007,"execDepended":[65],"frameId":650,"gpuDoneDep":{},"name":"record/start","packageId":55,"resAvailableTime":29.0059,"slopDuration":46.448208,"startTime":29.006},{"availableTime":45.5465,"depended":[32,55,67],"dependent":[57,68,128,140,152],"deviceDepended":[],"endTime":45.5694,"execDepended":[66],"frameId":651,"gpuDoneDep":{},"name":"record/start","packageId":56,"resAvailableTime":45.5481,"slopDuration":46.644856,"startTime":45.569},{"availableTime":62.1571,"depended":[33,56,68],"dependent":[58,69,129,141,153],"deviceDepended":[],"endTime":62.1608,"execDepended":[67],"frameId":652,"gpuDoneDep":{},"name":"record/start","packageId":57,"resAvailableTime":62.1591,"slopDuration":45.977272,"startTime":62.1591},{"availableTime":80.2313,"depended":[34,57,69],"dependent":[59,70,130,142,154],"deviceDepended":[],"endTime":80.2355,"execDepended":[68],"frameId":653,"gpuDoneDep":{},"name":"record/start","packageId":58,"resAvailableTime":80.2336,"slopDuration":45.379988,"startTime":80.2337},{"availableTime":96.5473,"depended":[35,58,70],"dependent":[71,131,143,155],"deviceDepended":[],"endTime":96.5523,"execDepended":[69],"frameId":654,"gpuDoneDep":{},"name":"record/start","packageId":59,"resAvailableTime":96.5501,"slopDuration":45.804836,"startTime":96.5502},{"availableTime":-70.6953,"depended":[48,120,132,144],"dependent":[5,49,61,72],"deviceDepended":[],"endTime":-70.687,"execDepended":[],"frameId":643,"gpuDoneDep":{},"name":"record/end","packageId":60,"resAvailableTime":-70.6905,"slopDuration":1000000.0,"startTime":-70.6905},{"availableTime":-54.0313,"depended":[49,60,121,133,145],"dependent":[6,50,62,73],"deviceDepended":[],"endTime":-54.0226,"execDepended":[],"frameId":644,"gpuDoneDep":{},"name":"record/end","packageId":61,"resAvailableTime":-54.026,"slopDuration":1000000.0,"startTime":-54.0259},{"availableTime":-37.4102,"depended":[50,61,122,134,146],"dependent":[7,51,63,74],"deviceDepended":[],"endTime":-37.4024,"execDepended":[],"frameId":645,"gpuDoneDep":{},"name":"record/end","packageId":62,"resAvailableTime":-37.4057,"slopDuration":1000000.0,"startTime":-37.4057},{"availableTime":-20.4599,"depended":[51,62,123,135,147],"dependent":[8,52,64,75],"deviceDepended":[],"endTime":-20.4525,"execDepended":[],"frameId":646,"gpuDoneDep":{},"name":"record/end","packageId":63,"resAvailableTime":-20.4562,"slopDuration":1000000.0,"startTime":-20.4561},{"availableTime":-4.1749,"depended":[52,63,124,136,148],"dependent":[9,53,65,76],"deviceDepended":[],"endTime":-4.1648,"execDepended":[],"frameId":647,"gpuDoneDep":{},"name":"record/end","packageId":64,"resAvailableTime":-4.1687,"slopDuration":1000000.0,"startTime":-4.1686},{"availableTime":12.2921,"depended":[53,64,125,137,149],"dependent":[10,54,66,77],"deviceDepended":[],"endTime":12.3166,"execDepended":[],"frameId":648,"gpuDoneDep":{},"name":"record/end","packageId":65,"resAvailableTime":12.3033,"slopDuration":1000000.0,"startTime":12.3033},{"availableTime":28.9552,"depended":[54,65,126,138,150],"dependent":[11,55,67,78],"deviceDepended":[],"endTime":28.9642,"execDepended":[],"frameId":649,"gpuDoneDep":{},"name":"record/end","packageId":66,"resAvailableTime":28.9616,"slopDuration":1000000.0,"startTime":28.9617},{"availableTime":45.5015,"depended":[55,66,127,139,151],"dependent":[56,68,79],"deviceDepended":[],"endTime":45.5264,"execDepended":[],"frameId":650,"gpuDoneDep":{},"name":"record/end","packageId":67,"resAvailableTime":45.5067,"slopDuration":1000000.0,"startTime":45.5068},{"availableTime":62.1189,"depended":[56,67,128,140,152],"dependent":[57,69,80],"deviceDepended":[],"endTime":62.1293,"execDepended":[],"frameId":651,"gpuDoneDep":{},"name":"record/end","packageId":68,"resAvailableTime":62.1232,"slopDuration":1000000.0,"startTime":62.1233},{"availableTime":80.2063,"depended":[57,68,129,141,153],"dependent":[58,70,81],"deviceDepended":[],"endTime":80.2124,"execDepended":[],"frameId":652,"gpuDoneDep":{},"name":"record/end","packageId":69,"resAvailableTime":80.2112,"slopDuration":1000000.0,"startTime":80.2113},{"availableTime":96.5194,"depended":[58,69,130,142,154],"dependent":[59,71,82],"deviceDepended":[],"endTime":96.5285,"execDepended":[],"frameId":653,"gpuDoneDep":{},"name":"record/end","packageId":70,"resAvailableTime":96.5253,"slopDuration":1000000.0,"startTime":96.5254},{"availableTime":113.0094,"depended":[59,70,131,143,155],"dependent":[83],"deviceDepended":[],"endTime":113.0177,"execDepended":[],"frameId":654,"gpuDoneDep":{},"name":"record/end","packageId":71,"resAvailableTime":113.0145,"slopDuration":1000000.0,"startTime":113.0146},{"availableTime":-83.7546,"depended":[48],"dependent":[60,121],"deviceDepended":[],"endTime":-70.7093,"execDepended":[],"frameId":643,"gpuDoneDep":{"DtoH":640,"HtoD":640,"compute":640,"input":640,"present":640,"render":640},"name":"presentFrame","packageId":120,"resAvailableTime":-70.7438,"slopDuration":1000000.0,"startTime":-70.7382},{"availableTime":-66.736,"depended":[49,120],"dependent":[61,122],"deviceDepended":[],"endTime":-54.0417,"execDepended":[],"frameId":644,"gpuDoneDep":{"DtoH":641,"HtoD":641,"compute":641,"input":641,"present":641,"render":641},"name":"presentFrame","packageId":121,"resAvailableTime":-54.1085,"slopDuration":1000000.0,"startTime":-54.0867},{"availableTime":-50.1885,"depended":[50,121],"dependent":[62,123],"deviceDepended":[],"endTime":-37.4234,"execDepended":[],"frameId":645,"gpuDoneDep":{"DtoH":642,"HtoD":642,"compute":642,"input":642,"present":642,"render":642},"name":"presentFrame","packageId":122,"resAvailableTime":-37.4435,"slopDuration":1000000.0,"startTime":-37.4391},{"availableTime":-33.6906,"depended":[51,122],"dependent":[63,124],"deviceDepended":[],"endTime":-20.4684,"execDepended":[],"frameId":646,"gpuDoneDep":{"DtoH":643,"HtoD":643,"compute":643,"input":643,"present":643,"render":643},"name":"presentFrame","packageId":123,"resAvailableTime":-20.4806,"slopDuration":1000000.0,"startTime":-20.4794},{"availableTime":-17.1598,"depended":[52,123],"dependent":[64,125],"deviceDepended":[],"endTime":-4.1899,"execDepended":[],"frameId":647,"gpuDoneDep":{"DtoH":644,"HtoD":644,"compute":644,"input":644,"present":644,"render":644},"name":"presentFrame","packageId":124,"resAvailableTime":-4.2197,"slopDuration":1000000.0,"startTime":-4.214},{"availableTime":1.1233,"depended":[53,124],"dependent":[65,126],"deviceDepended":[],"endTime":12.2775,"execDepended":[],"frameId":648,"gpuDoneDep":{"DtoH":645,"HtoD":645,"compute":645,"input":645,"present":645,"render":645},"name":"presentFrame","packageId":125,"resAvailableTime":12.2582,"slopDuration":1000000.0,"startTime":12.2615},{"availableTime":19.6478,"depended":[54,125],"dependent":[66,127],"deviceDepended":[],"endTime":28.9403,"execDepended":[],"frameId":649,"gpuDoneDep":{"DtoH":646,"HtoD":646,"compute":646,"input":646,"present":646,"render":646},"name":"presentFrame","packageId":126,"resAvailableTime":28.9159,"slopDuration":1000000.0,"startTime":28.9205},{"availableTime":33.3941,"depended":[55,126],"dependent":[67,128],"deviceDepended":[],"endTime":45.4888,"execDepended":[],"frameId":650,"gpuDoneDep":{"DtoH":647,"HtoD":647,"compute":647,"input":647,"present":647,"render":647},"name":"presentFrame","packageId":127,"resAvailableTime":45.4689,"slopDuration":1000000.0,"startTime":45.4726},{"availableTime":49.4494,"depended":[56,127],"dependent":[68,129],"deviceDepended":[],"endTime":62.1083,"execDepended":[],"frameId":651,"gpuDoneDep":{"DtoH":648,"HtoD":648,"compute":648,"input":648,"present":648,"render":648},"name":"presentFrame","packageId":128,"resAvailableTime":62.0852,"slopDuration":1000000.0,"startTime":62.0898},{"availableTime":66.5887,"depended":[57,128],"dependent":[69,130],"deviceDepended":[],"endTime":80.1915,"execDepended":[],"frameId":652,"gpuDoneDep":{"DtoH":649,"HtoD":649,"compute":649,"input":649,"present":649,"render":649},"name":"presentFrame","packageId":129,"resAvailableTime":80.1664,"slopDuration":1000000.0,"startTime":80.1695},{"availableTime":83.9196,"depended":[58,129],"dependent":[70,131],"deviceDepended":[],"endTime":96.5047,"execDepended":[],"frameId":653,"gpuDoneDep":{"DtoH":650,"HtoD":650,"compute":650,"input":650,"present":650,"render":650},"name":"presentFrame","packageId":130,"resAvailableTime":96.4816,"slopDuration":1000000.0,"startTime":96.485},{"availableTime":100.081,"depended":[59,130],"dependent":[71],"deviceDepended":[],"endTime":112.9957,"execDepended":[],"frameId":654,"gpuDoneDep":{"DtoH":651,"HtoD":651,"compute":651,"input":651,"present":651,"render":651},"name":"presentFrame","packageId":131,"resAvailableTime":112.9768,"slopDuration":1000000.0,"startTime":112.9796},{"availableTime":-84.375,"depended":[48,144,204],"dependent":[60,133,205],"deviceDepended":[],"endTime":-83.7563,"execDepended":[],"frameId":643,"gpuDoneDep":{},"name":"mainRecord","packageId":132,"resAvailableTime":-84.374,"slopDuration":45.936296,"startTime":-84.3728},{"availableTime":-67.528,"depended":[49,132,145,205],"dependent":[61,134,206],"deviceDepended":[],"endTime":-66.7374,"execDepended":[],"frameId":644,"gpuDoneDep":{},"name":"mainRecord","packageId":133,"resAvailableTime":-67.5271,"slopDuration":45.581788,"startTime":-67.5259},{"availableTime":-50.9693,"depended":[50,133,146,206],"dependent":[62,135,207],"deviceDepended":[],"endTime":-50.1899,"execDepended":[],"frameId":645,"gpuDoneDep":{},"name":"mainRecord","packageId":134,"resAvailableTime":-50.9685,"slopDuration":45.645992,"startTime":-50.9547},{"availableTime":-34.1732,"depended":[51,134,147,207],"dependent":[63,136,208],"deviceDepended":[],"endTime":-33.692,"execDepended":[],"frameId":646,"gpuDoneDep":{},"name":"mainRecord","packageId":135,"resAvailableTime":-34.1722,"slopDuration":45.607816,"startTime":-34.1712},{"availableTime":-17.7915,"depended":[52,135,148,208],"dependent":[64,137,209],"deviceDepended":[],"endTime":-17.1623,"execDepended":[],"frameId":647,"gpuDoneDep":{},"name":"mainRecord","packageId":136,"resAvailableTime":-17.7905,"slopDuration":45.644844,"startTime":-17.7891},{"availableTime":-0.4029,"depended":[53,136,149,209],"dependent":[65,138,210],"deviceDepended":[],"endTime":1.1217,"execDepended":[],"frameId":648,"gpuDoneDep":{},"name":"mainRecord","packageId":137,"resAvailableTime":-0.4018,"slopDuration":44.001292,"startTime":-0.4005},{"availableTime":15.6287,"depended":[54,137,150,210],"dependent":[66,139,211],"deviceDepended":[],"endTime":19.6463,"execDepended":[],"frameId":649,"gpuDoneDep":{},"name":"mainRecord","packageId":138,"resAvailableTime":15.6299,"slopDuration":41.99016,"startTime":15.631},{"availableTime":32.8699,"depended":[55,138,151,211],"dependent":[67,140,212],"deviceDepended":[],"endTime":33.3927,"execDepended":[],"frameId":650,"gpuDoneDep":{},"name":"mainRecord","packageId":139,"resAvailableTime":32.8712,"slopDuration":46.428608,"startTime":32.8723},{"availableTime":48.7722,"depended":[56,139,152,212],"dependent":[68,141,213],"deviceDepended":[],"endTime":49.4477,"execDepended":[],"frameId":651,"gpuDoneDep":{},"name":"mainRecord","packageId":140,"resAvailableTime":48.7732,"slopDuration":46.611356,"startTime":48.7738},{"availableTime":65.9364,"depended":[57,140,153,213],"dependent":[69,142,214],"deviceDepended":[],"endTime":66.5874,"execDepended":[],"frameId":652,"gpuDoneDep":{},"name":"mainRecord","packageId":141,"resAvailableTime":65.9376,"slopDuration":45.951272,"startTime":65.9387},{"availableTime":83.3321,"depended":[58,141,154,214],"dependent":[70,143,215],"deviceDepended":[],"endTime":83.9182,"execDepended":[],"frameId":653,"gpuDoneDep":{},"name":"mainRecord","packageId":142,"resAvailableTime":83.3332,"slopDuration":45.358788,"startTime":83.3343},{"availableTime":99.321,"depended":[59,142,155,215],"dependent":[71],"deviceDepended":[],"endTime":100.0791,"execDepended":[],"frameId":654,"gpuDoneDep":{},"name":"mainRecord","packageId":143,"resAvailableTime":99.3222,"slopDuration":45.784936,"startTime":99.3231},{"availableTime":-87.3298,"depended":[48],"dependent":[60,132,145],"deviceDepended":[],"endTime":-84.3782,"execDepended":[],"frameId":643,"gpuDoneDep":{},"name":"acquireSwapchain","packageId":144,"resAvailableTime":-87.3287,"slopDuration":45.941696,"startTime":-87.3286},{"availableTime":-70.6509,"depended":[49,144],"dependent":[61,133,146],"deviceDepended":[],"endTime":-67.5314,"execDepended":[],"frameId":644,"gpuDoneDep":{},"name":"acquireSwapchain","packageId":145,"resAvailableTime":-70.6485,"slopDuration":45.587288,"startTime":-70.6484},{"availableTime":-53.9863,"depended":[50,145],"dependent":[62,134,147],"deviceDepended":[],"endTime":-50.9719,"execDepended":[],"frameId":645,"gpuDoneDep":{},"name":"acquireSwapchain","packageId":146,"resAvailableTime":-53.9849,"slopDuration":45.663192,"startTime":-53.9848},{"availableTime":-37.3161,"depended":[51,146],"dependent":[63,135,148],"deviceDepended":[],"endTime":-34.1757,"execDepended":[],"frameId":646,"gpuDoneDep":{},"name":"acquireSwapchain","packageId":147,"resAvailableTime":-37.3153,"slopDuration":45.612316,"startTime":-37.3152},{"availableTime":-20.4252,"depended":[52,147],"dependent":[64,136,149],"deviceDepended":[],"endTime":-17.8074,"execDepended":[],"frameId":647,"gpuDoneDep":{},"name":"acquireSwapchain","packageId":148,"resAvailableTime":-20.4241,"slopDuration":45.663144,"startTime":-20.4241},{"availableTime":-4.1314,"depended":[53,148],"dependent":[65,137,150],"deviceDepended":[],"endTime":-0.4055,"execDepended":[],"frameId":648,"gpuDoneDep":{},"name":"acquireSwapchain","packageId":149,"resAvailableTime":-4.1302,"slopDuration":44.006292,"startTime":-4.1301},{"availableTime":12.3509,"depended":[54,149],"dependent":[66,138,151],"deviceDepended":[],"endTime":15.6255,"execDepended":[],"frameId":649,"gpuDoneDep":{},"name":"acquireSwapchain","packageId":150,"resAvailableTime":12.3519,"slopDuration":41.99566,"startTime":12.3519},{"availableTime":29.0134,"depended":[55,150],"dependent":[67,139,152],"deviceDepended":[],"endTime":32.8666,"execDepended":[],"frameId":650,"gpuDoneDep":{},"name":"acquireSwapchain","packageId":151,"resAvailableTime":29.014,"slopDuration":46.434308,"startTime":29.0141},{"availableTime":45.5757,"depended":[56,151],"dependent":[68,140,153],"deviceDepended":[],"endTime":48.7541,"execDepended":[],"frameId":651,"gpuDoneDep":{},"name":"acquireSwapchain","packageId":152,"resAvailableTime":45.5772,"slopDuration":46.631056,"startTime":45.5773},{"availableTime":62.1714,"depended":[57,152],"dependent":[69,141,154],"deviceDepended":[],"endTime":65.9332,"execDepended":[],"frameId":652,"gpuDoneDep":{},"name":"acquireSwapchain","packageId":153,"resAvailableTime":62.1733,"slopDuration":45.956772,"startTime":62.1734},{"availableTime":80.2437,"depended":[58,153],"dependent":[70,142,155],"deviceDepended":[],"endTime":83.3289,"execDepended":[],"frameId":653,"gpuDoneDep":{},"name":"acquireSwapchain","packageId":154,"resAvailableTime":80.2446,"slopDuration":45.364188,"startTime":80.2446},{"availableTime":96.5598,"depended":[59,154],"dependent":[71,143],"deviceDepended":[],"endTime":99.3178,"execDepended":[],"frameId":654,"gpuDoneDep":{},"name":"acquireSwapchain","packageId":155,"resAvailableTime":96.5606,"slopDuration":45.790236,"startTime":96.5607}]},"simulation":{"benchmarkES":[{"availableTime":-118.0152,"depended":[0],"dependent":[12,181,192],"deviceDepended":[],"endTime":-100.1958,"execDepended":[],"frameId":643,"gpuDoneDep":{},"name":"benchmarkES","packageId":180,"resAvailableTime":-100.223,"slopDuration":61.715196,"startTime":-100.2226},{"availableTime":-100.193,"depended":[1,180],"dependent":[13,182,193],"deviceDepended":[],"endTime":-83.9316,"execDepended":[],"frameId":644,"gpuDoneDep":{},"name":"benchmarkES","packageId":181,"resAvailableTime":-83.9458,"slopDuration":61.946988,"startTime":-83.9455},{"availableTime":-83.9297,"depended":[2,181],"dependent":[14,183,194],"deviceDepended":[],"endTime":-67.0574,"execDepended":[],"frameId":645,"gpuDoneDep":{},"name":"benchmarkES","packageId":182,"resAvailableTime":-67.0668,"slopDuration":61.724592,"startTime":-67.0665},{"availableTime":-67.0555,"depended":[3,182],"dependent":[15,184,195],"deviceDepended":[],"endTime":-50.383,"execDepended":[],"frameId":646,"gpuDoneDep":{},"name":"benchmarkES","packageId":183,"resAvailableTime":-50.3967,"slopDuration":61.789416,"startTime":-50.3965},{"availableTime":-50.3792,"depended":[4,183],"dependent":[16,185,196],"deviceDepended":[],"endTime":-33.9936,"execDepended":[],"frameId":647,"gpuDoneDep":{},"name":"benchmarkES","packageId":184,"resAvailableTime":-34.0228,"slopDuration":61.825144,"startTime":-34.0226},{"availableTime":-33.9909,"depended":[5,184],"dependent":[17,186,197],"deviceDepended":[],"endTime":-20.187,"execDepended":[],"frameId":648,"gpuDoneDep":{},"name":"benchmarkES","packageId":185,"resAvailableTime":-20.2472,"slopDuration":63.724992,"startTime":-20.2463},{"availableTime":-20.1799,"depended":[6,185],"dependent":[18,187,198],"deviceDepended":[],"endTime":0.0646,"execDepended":[],"frameId":649,"gpuDoneDep":{},"name":"benchmarkES","packageId":186,"resAvailableTime":0.0504,"slopDuration":57.53376,"startTime":0.0507},{"availableTime":0.0665,"depended":[7,186],"dependent":[19,188,199],"deviceDepended":[],"endTime":16.106,"execDepended":[],"frameId":650,"gpuDoneDep":{},"name":"benchmarkES","packageId":187,"resAvailableTime":16.0982,"slopDuration":63.160908,"startTime":16.0984},{"availableTime":16.108,"depended":[8,187],"dependent":[20,189,200],"deviceDepended":[],"endTime":33.0808,"execDepended":[],"frameId":651,"gpuDoneDep":{},"name":"benchmarkES","packageId":188,"resAvailableTime":33.0422,"slopDuration":62.281956,"startTime":33.0423},{"availableTime":33.0837,"depended":[9,188],"dependent":[21,190,201],"deviceDepended":[],"endTime":49.2641,"execDepended":[],"frameId":652,"gpuDoneDep":{},"name":"benchmarkES","packageId":189,"resAvailableTime":49.2506,"slopDuration":62.573672,"startTime":49.2508},{"availableTime":49.2659,"depended":[10,189],"dependent":[22,191,202],"deviceDepended":[],"endTime":66.3635,"execDepended":[],"frameId":653,"gpuDoneDep":{},"name":"benchmarkES","packageId":190,"resAvailableTime":66.3486,"slopDuration":62.316188,"startTime":66.3486},{"availableTime":66.3664,"depended":[11,190],"dependent":[23,203],"deviceDepended":[],"endTime":83.7634,"execDepended":[],"frameId":654,"gpuDoneDep":{},"name":"benchmarkES","packageId":191,"resAvailableTime":83.7546,"slopDuration":61.304536,"startTime":83.7549}],"cameraES":[{"availableTime":-113.7854,"depended":[0,96,156,180],"dependent":[12,157,193,204],"deviceDepended":[],"endTime":-96.1098,"execDepended":[],"frameId":643,"gpuDoneDep":{},"name":"cameraES","packageId":192,"resAvailableTime":-96.1167,"slopDuration":57.635696,"startTime":-96.1163},{"availableTime":-96.1056,"depended":[1,97,157,181,192],"dependent":[13,158,194,205],"deviceDepended":[],"endTime":-79.7199,"execDepended":[],"frameId":644,"gpuDoneDep":{},"name":"cameraES","packageId":193,"resAvailableTime":-79.7272,"slopDuration":57.742288,"startTime":-79.7269},{"availableTime":-79.7156,"depended":[2,98,158,182,193],"dependent":[14,159,195,206],"deviceDepended":[],"endTime":-62.7543,"execDepended":[],"frameId":645,"gpuDoneDep":{},"name":"cameraES","packageId":194,"resAvailableTime":-62.7607,"slopDuration":57.427692,"startTime":-62.7605},{"availableTime":-62.7504,"depended":[3,99,159,183,194],"dependent":[15,160,196,207],"deviceDepended":[],"endTime":-46.1448,"execDepended":[],"frameId":646,"gpuDoneDep":{},"name":"cameraES","packageId":195,"resAvailableTime":-46.1598,"slopDuration":57.565816,"startTime":-46.1594},{"availableTime":-46.1407,"depended":[4,100,160,184,195],"dependent":[16,161,197,208],"deviceDepended":[],"endTime":-29.8638,"execDepended":[],"frameId":647,"gpuDoneDep":{},"name":"cameraES","packageId":196,"resAvailableTime":-29.8715,"slopDuration":57.702644,"startTime":-29.8711},{"availableTime":-29.8595,"depended":[5,101,161,185,196],"dependent":[17,162,198,209],"deviceDepended":[],"endTime":-15.7831,"execDepended":[],"frameId":648,"gpuDoneDep":{},"name":"cameraES","packageId":197,"resAvailableTime":-15.7932,"slopDuration":59.330892,"startTime":-15.7929},{"availableTime":-15.7786,"depended":[6,102,162,186,197],"dependent":[18,163,199,210],"deviceDepended":[],"endTime":5.0965,"execDepended":[],"frameId":649,"gpuDoneDep":{},"name":"cameraES","packageId":198,"resAvailableTime":5.0895,"slopDuration":52.50866,"startTime":5.0897},{"availableTime":5.1005,"depended":[7,103,163,187,198],"dependent":[19,164,200,211],"deviceDepended":[],"endTime":20.3286,"execDepended":[],"frameId":650,"gpuDoneDep":{},"name":"cameraES","packageId":199,"resAvailableTime":20.3102,"slopDuration":58.956408,"startTime":20.3105},{"availableTime":20.333,"depended":[8,104,164,188,199],"dependent":[20,165,201,212],"deviceDepended":[],"endTime":37.2451,"execDepended":[],"frameId":651,"gpuDoneDep":{},"name":"cameraES","packageId":200,"resAvailableTime":37.2298,"slopDuration":58.132656,"startTime":37.2301},{"availableTime":37.2495,"depended":[9,105,165,189,200],"dependent":[21,166,202,213],"deviceDepended":[],"endTime":53.7355,"execDepended":[],"frameId":652,"gpuDoneDep":{},"name":"cameraES","packageId":201,"resAvailableTime":53.7207,"slopDuration":58.116772,"startTime":53.721},{"availableTime":53.7525,"depended":[10,106,166,190,201],"dependent":[22,167,203,214],"deviceDepended":[],"endTime":70.5976,"execDepended":[],"frameId":653,"gpuDoneDep":{},"name":"cameraES","packageId":202,"resAvailableTime":70.5899,"slopDuration":58.089488,"startTime":70.5902},{"availableTime":70.6681,"depended":[11,107,167,191,202],"dependent":[23,215],"deviceDepended":[],"endTime":87.9683,"execDepended":[],"frameId":654,"gpuDoneDep":{},"name":"cameraES","packageId":203,"resAvailableTime":87.9615,"slopDuration":57.106136,"startTime":87.9618}],"emitterES":[{"availableTime":-117.9999,"depended":[0,108,156],"dependent":[12,157,169],"deviceDepended":[],"endTime":-100.1763,"execDepended":[],"frameId":643,"gpuDoneDep":{},"name":"emitterES","packageId":168,"resAvailableTime":-100.1868,"slopDuration":1000000.0,"startTime":-100.1866},{"availableTime":-100.1758,"depended":[1,109,157,168],"dependent":[13,158,170],"deviceDepended":[],"endTime":-83.9068,"execDepended":[],"frameId":644,"gpuDoneDep":{},"name":"emitterES","packageId":169,"resAvailableTime":-83.917,"slopDuration":1000000.0,"startTime":-83.9169},{"availableTime":-83.9063,"depended":[2,110,158,169],"dependent":[14,159,171],"deviceDepended":[],"endTime":-67.047,"execDepended":[],"frameId":645,"gpuDoneDep":{},"name":"emitterES","packageId":170,"resAvailableTime":-67.049,"slopDuration":1000000.0,"startTime":-67.0489},{"availableTime":-67.0466,"depended":[3,111,159,170],"dependent":[15,160,172],"deviceDepended":[],"endTime":-50.3631,"execDepended":[],"frameId":646,"gpuDoneDep":{},"name":"emitterES","packageId":171,"resAvailableTime":-50.373,"slopDuration":1000000.0,"startTime":-50.3729},{"availableTime":-50.3626,"depended":[4,112,160,171],"dependent":[16,161,173],"deviceDepended":[],"endTime":-33.9364,"execDepended":[],"frameId":647,"gpuDoneDep":{},"name":"emitterES","packageId":172,"resAvailableTime":-33.9402,"slopDuration":1000000.0,"startTime":-33.94},{"availableTime":-33.9356,"depended":[5,113,161,172],"dependent":[17,162,174],"deviceDepended":[],"endTime":-20.0774,"execDepended":[],"frameId":648,"gpuDoneDep":{},"name":"emitterES","packageId":173,"resAvailableTime":-20.1195,"slopDuration":1000000.0,"startTime":-20.1183},{"availableTime":-20.076,"depended":[6,114,162,173],"dependent":[18,163,175],"deviceDepended":[],"endTime":0.0821,"execDepended":[],"frameId":649,"gpuDoneDep":{},"name":"emitterES","packageId":174,"resAvailableTime":0.0726,"slopDuration":1000000.0,"startTime":0.0727},{"availableTime":0.0825,"depended":[7,115,163,174],"dependent":[19,164,176],"deviceDepended":[],"endTime":16.129,"execDepended":[],"frameId":650,"gpuDoneDep":{},"name":"emitterES","packageId":175,"resAvailableTime":16.1264,"slopDuration":1000000.0,"startTime":16.1265},{"availableTime":16.1295,"depended":[8,116,164,175],"dependent":[20,165,177],"deviceDepended":[],"endTime":33.1106,"execDepended":[],"frameId":651,"gpuDoneDep":{},"name":"emitterES","packageId":176,"resAvailableTime":33.1084,"slopDuration":1000000.0,"startTime":33.1085},{"availableTime":33.1111,"depended":[9,117,165,176],"dependent":[21,166,178],"deviceDepended":[],"endTime":49.2721,"execDepended":[],"frameId":652,"gpuDoneDep":{},"name":"emitterES","packageId":177,"resAvailableTime":49.2698,"slopDuration":1000000.0,"startTime":49.2699},{"availableTime":49.2725,"depended":[10,118,166,177],"dependent":[22,167,179],"deviceDepended":[],"endTime":66.393,"execDepended":[],"frameId":653,"gpuDoneDep":{},"name":"emitterES","packageId":178,"resAvailableTime":66.3831,"slopDuration":1000000.0,"startTime":66.3832},{"availableTime":66.3934,"depended":[11,119,167,178],"dependent":[23],"deviceDepended":[],"endTime":83.7807,"execDepended":[],"frameId":654,"gpuDoneDep":{},"name":"emitterES","packageId":179,"resAvailableTime":83.7782,"slopDuration":1000000.0,"startTime":83.7784}],"entityPhysics":[{"availableTime":-118.0116,"depended":[0,108],"dependent":[12,157,168,192,204],"deviceDepended":[],"endTime":-100.1973,"execDepended":[],"frameId":643,"gpuDoneDep":{},"name":"entityPhysics","packageId":156,"resAvailableTime":-100.2236,"slopDuration":61.716696,"startTime":-100.2233},{"availableTime":-100.1951,"depended":[1,109,156,168,192,204],"dependent":[13,158,169,193,205],"deviceDepended":[],"endTime":-83.931,"execDepended":[],"frameId":644,"gpuDoneDep":{},"name":"entityPhysics","packageId":157,"resAvailableTime":-83.9404,"slopDuration":61.946388,"startTime":-83.9401},{"availableTime":-83.9278,"depended":[2,110,157,169,193,205],"dependent":[14,159,170,194,206],"deviceDepended":[],"endTime":-67.0627,"execDepended":[],"frameId":645,"gpuDoneDep":{},"name":"entityPhysics","packageId":158,"resAvailableTime":-67.0738,"slopDuration":61.729892,"startTime":-67.0735},{"availableTime":-67.0606,"depended":[3,111,158,170,194,206],"dependent":[15,160,171,195,207],"deviceDepended":[],"endTime":-50.383,"execDepended":[],"frameId":646,"gpuDoneDep":{},"name":"entityPhysics","packageId":159,"resAvailableTime":-50.393,"slopDuration":61.789416,"startTime":-50.3927},{"availableTime":-50.3812,"depended":[4,112,159,171,195,207],"dependent":[16,161,172,196,208],"deviceDepended":[],"endTime":-33.9899,"execDepended":[],"frameId":647,"gpuDoneDep":{},"name":"entityPhysics","packageId":160,"resAvailableTime":-34.0158,"slopDuration":61.821444,"startTime":-34.0157},{"availableTime":-33.9874,"depended":[5,113,160,172,196,208],"dependent":[17,162,173,197,209],"deviceDepended":[],"endTime":-20.1378,"execDepended":[],"frameId":648,"gpuDoneDep":{},"name":"entityPhysics","packageId":161,"resAvailableTime":-20.1908,"slopDuration":63.675792,"startTime":-20.1902},{"availableTime":-20.1288,"depended":[6,114,161,173,197,209],"dependent":[18,163,174,198,210],"deviceDepended":[],"endTime":0.0596,"execDepended":[],"frameId":649,"gpuDoneDep":{},"name":"entityPhysics","packageId":162,"resAvailableTime":0.0484,"slopDuration":57.53876,"startTime":0.0486},{"availableTime":0.0625,"depended":[7,115,162,174,198,210],"dependent":[19,164,175,199,211],"deviceDepended":[],"endTime":16.1196,"execDepended":[],"frameId":650,"gpuDoneDep":{},"name":"entityPhysics","packageId":163,"resAvailableTime":16.1033,"slopDuration":63.147308,"startTime":16.1036},{"availableTime":16.1215,"depended":[8,116,163,175,199,211],"dependent":[20,165,176,200,212],"deviceDepended":[],"endTime":33.1012,"execDepended":[],"frameId":651,"gpuDoneDep":{},"name":"entityPhysics","packageId":164,"resAvailableTime":33.0949,"slopDuration":62.261556,"startTime":33.0953},{"availableTime":33.102,"depended":[9,117,164,176,200,212],"dependent":[21,166,177,201,213],"deviceDepended":[],"endTime":49.2542,"execDepended":[],"frameId":652,"gpuDoneDep":{},"name":"entityPhysics","packageId":165,"resAvailableTime":49.2451,"slopDuration":62.583572,"startTime":49.2453},{"availableTime":49.2568,"depended":[10,118,165,177,201,213],"dependent":[22,167,178,202,214],"deviceDepended":[],"endTime":66.3751,"execDepended":[],"frameId":653,"gpuDoneDep":{},"name":"entityPhysics","packageId":166,"resAvailableTime":66.3541,"slopDuration":62.304588,"startTime":66.3549},{"availableTime":66.3768,"depended":[11,119,166,178,202,214],"dependent":[23,179,203,215],"deviceDepended":[],"endTime":83.7691,"execDepended":[],"frameId":654,"gpuDoneDep":{},"name":"entityPhysics","packageId":167,"resAvailableTime":83.7496,"slopDuration":61.298836,"startTime":83.7498}],"simulation":[{"availableTime":-113.6599,"depended":[],"dependent":[1,12,24,96,108,156,168,180,192],"deviceDepended":[],"endTime":-100.2702,"execDepended":[],"frameId":643,"gpuDoneDep":{},"name":"simulation/start","packageId":0,"resAvailableTime":-100.2728,"slopDuration":57.681696,"startTime":-100.2725},{"availableTime":-95.9756,"depended":[0,12],"dependent":[2,13,25,97,109,157,169,181,193],"deviceDepended":[],"endTime":-83.9874,"execDepended":[],"frameId":644,"gpuDoneDep":{},"name":"simulation/start","packageId":1,"resAvailableTime":-83.9899,"slopDuration":57.790388,"startTime":-83.9896},{"availableTime":-79.6247,"depended":[1,13],"dependent":[3,14,26,98,110,158,170,182,194],"deviceDepended":[],"endTime":-67.1155,"execDepended":[],"frameId":645,"gpuDoneDep":{},"name":"simulation/start","packageId":2,"resAvailableTime":-67.118,"slopDuration":57.448892,"startTime":-67.1178},{"availableTime":-62.6863,"depended":[2,14],"dependent":[4,15,27,99,111,159,171,183,195],"deviceDepended":[],"endTime":-50.4341,"execDepended":[],"frameId":646,"gpuDoneDep":{},"name":"simulation/start","packageId":3,"resAvailableTime":-50.4364,"slopDuration":57.611616,"startTime":-50.4361},{"availableTime":-46.0451,"depended":[3,15],"dependent":[5,16,28,100,112,160,172,184,196],"deviceDepended":[],"endTime":-34.0729,"execDepended":[],"frameId":647,"gpuDoneDep":{},"name":"simulation/start","packageId":4,"resAvailableTime":-34.0757,"slopDuration":57.751544,"startTime":-34.0754},{"availableTime":-29.7963,"depended":[4,16,60,84],"dependent":[6,17,29,101,113,161,173,185,197],"deviceDepended":[],"endTime":-20.3846,"execDepended":[],"frameId":648,"gpuDoneDep":{},"name":"simulation/start","packageId":5,"resAvailableTime":-20.3934,"slopDuration":59.436092,"startTime":-20.3914},{"availableTime":-15.6397,"depended":[5,17,61,85],"dependent":[7,18,30,102,114,162,174,186,198],"deviceDepended":[],"endTime":0.0022,"execDepended":[],"frameId":649,"gpuDoneDep":{},"name":"simulation/start","packageId":6,"resAvailableTime":-0.0009,"slopDuration":52.53006,"startTime":0.0},{"availableTime":5.1634,"depended":[6,18,62,86],"dependent":[8,19,31,103,115,163,175,187,199],"deviceDepended":[],"endTime":16.0619,"execDepended":[],"frameId":650,"gpuDoneDep":{},"name":"simulation/start","packageId":7,"resAvailableTime":16.059,"slopDuration":59.001508,"startTime":16.0593},{"availableTime":20.3895,"depended":[7,19,63,87],"dependent":[9,20,32,104,116,164,176,188,200],"deviceDepended":[],"endTime":32.9761,"execDepended":[],"frameId":651,"gpuDoneDep":{},"name":"simulation/start","packageId":8,"resAvailableTime":32.9678,"slopDuration":58.186456,"startTime":32.9682},{"availableTime":37.3057,"depended":[8,20,64,88],"dependent":[10,21,33,105,117,165,177,189,201],"deviceDepended":[],"endTime":49.1948,"execDepended":[],"frameId":652,"gpuDoneDep":{},"name":"simulation/start","packageId":9,"resAvailableTime":49.1922,"slopDuration":58.164072,"startTime":49.1927},{"availableTime":53.8848,"depended":[9,21,65,89],"dependent":[11,22,34,106,118,166,178,190,202],"deviceDepended":[],"endTime":66.3092,"execDepended":[],"frameId":653,"gpuDoneDep":{},"name":"simulation/start","packageId":10,"resAvailableTime":66.3069,"slopDuration":58.110788,"startTime":66.3072},{"availableTime":70.6722,"depended":[10,22,66,90],"dependent":[23,35,107,119,167,179,191,203],"deviceDepended":[],"endTime":83.7105,"execDepended":[],"frameId":654,"gpuDoneDep":{},"name":"simulation/start","packageId":11,"resAvailableTime":83.708,"slopDuration":57.153036,"startTime":83.7083},{"availableTime":-96.1459,"depended":[0,96,108,156,168,180,192],"dependent":[1,13,72],"deviceDepended":[],"endTime":-96.0359,"execDepended":[],"frameId":643,"gpuDoneDep":{},"name":"simulation/end","packageId":12,"resAvailableTime":-96.0509,"slopDuration":1000000.0,"startTime":-96.0365},{"availableTime":-79.7579,"depended":[1,12,97,109,157,169,181,193],"dependent":[2,14,73],"deviceDepended":[],"endTime":-79.6635,"execDepended":[],"frameId":644,"gpuDoneDep":{},"name":"simulation/end","packageId":13,"resAvailableTime":-79.6644,"slopDuration":1000000.0,"startTime":-79.6641},{"availableTime":-62.7637,"depended":[2,13,98,110,158,170,182,194],"dependent":[3,15,74],"deviceDepended":[],"endTime":-62.7479,"execDepended":[],"frameId":645,"gpuDoneDep":{},"name":"simulation/end","packageId":14,"resAvailableTime":-62.7485,"slopDuration":1000000.0,"startTime":-62.7483},{"availableTime":-46.1907,"depended":[3,14,99,111,159,171,183,195],"dependent":[4,16,75],"deviceDepended":[],"endTime":-46.1104,"execDepended":[],"frameId":646,"gpuDoneDep":{},"name":"simulation/end","packageId":15,"resAvailableTime":-46.1113,"slopDuration":1000000.0,"startTime":-46.111},{"availableTime":-29.901,"depended":[4,15,100,112,160,172,184,196],"dependent":[5,17,76],"deviceDepended":[],"endTime":-29.8577,"execDepended":[],"frameId":647,"gpuDoneDep":{},"name":"simulation/end","packageId":16,"resAvailableTime":-29.8585,"slopDuration":1000000.0,"startTime":-29.8583},{"availableTime":-15.8233,"depended":[5,16,101,113,161,173,185,197],"dependent":[6,18,77],"deviceDepended":[],"endTime":-15.7236,"execDepended":[],"frameId":648,"gpuDoneDep":{},"name":"simulation/end","packageId":17,"resAvailableTime":-15.7245,"slopDuration":1000000.0,"startTime":-15.7242},{"availableTime":5.0865,"depended":[6,17,102,114,162,174,186,198],"dependent":[7,19,78],"deviceDepended":[],"endTime":5.1275,"execDepended":[],"frameId":649,"gpuDoneDep":{},"name":"simulation/end","packageId":18,"resAvailableTime":5.1267,"slopDuration":1000000.0,"startTime":5.1269},{"availableTime":20.2798,"depended":[7,18,103,115,163,175,187,199],"dependent":[8,20,79],"deviceDepended":[],"endTime":20.3344,"execDepended":[],"frameId":650,"gpuDoneDep":{},"name":"simulation/end","packageId":19,"resAvailableTime":20.3338,"slopDuration":1000000.0,"startTime":20.334},{"availableTime":37.1997,"depended":[8,19,104,116,164,176,188,200],"dependent":[9,21,80],"deviceDepended":[],"endTime":37.252,"execDepended":[],"frameId":651,"gpuDoneDep":{},"name":"simulation/end","packageId":20,"resAvailableTime":37.2513,"slopDuration":1000000.0,"startTime":37.2515},{"availableTime":53.6913,"depended":[9,20,105,117,165,177,189,201],"dependent":[10,22,81],"deviceDepended":[],"endTime":53.8057,"execDepended":[],"frameId":652,"gpuDoneDep":{},"name":"simulation/end","packageId":21,"resAvailableTime":53.7852,"slopDuration":1000000.0,"startTime":53.7855},{"availableTime":70.5868,"depended":[10,21,106,118,166,178,190,202],"dependent":[11,23,82],"deviceDepended":[],"endTime":70.6338,"execDepended":[],"frameId":653,"gpuDoneDep":{},"name":"simulation/end","packageId":22,"resAvailableTime":70.633,"slopDuration":1000000.0,"startTime":70.6333},{"availableTime":87.9318,"depended":[11,22,107,119,167,179,191,203],"dependent":[83],"deviceDepended":[],"endTime":88.0448,"execDepended":[],"frameId":654,"gpuDoneDep":{},"name":"simulation/end","packageId":23,"resAvailableTime":88.0297,"slopDuration":1000000.0,"startTime":88.0442},{"availableTime":-100.2373,"depended":[0],"dependent":[12,97,192],"deviceDepended":[],"endTime":-96.1492,"execDepended":[],"frameId":643,"gpuDoneDep":{},"name":"sample_input","packageId":96,"resAvailableTime":-100.2368,"slopDuration":57.668596,"startTime":-100.2367},{"availableTime":-83.9595,"depended":[1,96],"dependent":[13,98,193],"deviceDepended":[],"endTime":-79.7603,"execDepended":[],"frameId":644,"gpuDoneDep":{},"name":"sample_input","packageId":97,"resAvailableTime":-83.9589,"slopDuration":57.775688,"startTime":-83.9588},{"availableTime":-67.0812,"depended":[2,97],"dependent":[14,99,194],"deviceDepended":[],"endTime":-62.767,"execDepended":[],"frameId":645,"gpuDoneDep":{},"name":"sample_input","packageId":98,"resAvailableTime":-67.0806,"slopDuration":57.434192,"startTime":-67.0805},{"availableTime":-50.4054,"depended":[3,98],"dependent":[15,100,195],"deviceDepended":[],"endTime":-46.1935,"execDepended":[],"frameId":646,"gpuDoneDep":{},"name":"sample_input","packageId":99,"resAvailableTime":-50.4047,"slopDuration":57.599916,"startTime":-50.4046},{"availableTime":-34.0292,"depended":[4,99],"dependent":[16,101,196],"deviceDepended":[],"endTime":-29.9037,"execDepended":[],"frameId":647,"gpuDoneDep":{},"name":"sample_input","packageId":100,"resAvailableTime":-34.0288,"slopDuration":57.735244,"startTime":-34.0286},{"availableTime":-20.2338,"depended":[5,100],"dependent":[17,102,197],"deviceDepended":[],"endTime":-15.8274,"execDepended":[],"frameId":648,"gpuDoneDep":{},"name":"sample_input","packageId":101,"resAvailableTime":-20.2327,"slopDuration":59.365392,"startTime":-20.2326},{"availableTime":0.0365,"depended":[6,101],"dependent":[18,103,198],"deviceDepended":[],"endTime":5.0828,"execDepended":[],"frameId":649,"gpuDoneDep":{},"name":"sample_input","packageId":102,"resAvailableTime":0.037,"slopDuration":52.51556,"startTime":0.0371},{"availableTime":16.0877,"depended":[7,102],"dependent":[19,104,199],"deviceDepended":[],"endTime":20.2772,"execDepended":[],"frameId":650,"gpuDoneDep":{},"name":"sample_input","packageId":103,"resAvailableTime":16.0881,"slopDuration":58.989708,"startTime":16.0882},{"availableTime":33.078,"depended":[8,103],"dependent":[20,105,200],"deviceDepended":[],"endTime":37.1965,"execDepended":[],"frameId":651,"gpuDoneDep":{},"name":"sample_input","packageId":104,"resAvailableTime":33.0784,"slopDuration":58.166256,"startTime":33.0786},{"availableTime":49.2231,"depended":[9,104],"dependent":[21,106,201],"deviceDepended":[],"endTime":53.6882,"execDepended":[],"frameId":652,"gpuDoneDep":{},"name":"sample_input","packageId":105,"resAvailableTime":49.2235,"slopDuration":58.149572,"startTime":49.2236},{"availableTime":66.3424,"depended":[10,105],"dependent":[22,107,202],"deviceDepended":[],"endTime":70.5839,"execDepended":[],"frameId":653,"gpuDoneDep":{},"name":"sample_input","packageId":106,"resAvailableTime":66.3428,"slopDuration":58.095788,"startTime":66.3429},{"availableTime":83.7419,"depended":[11,106],"dependent":[23,203],"deviceDepended":[],"endTime":87.9282,"execDepended":[],"frameId":654,"gpuDoneDep":{},"name":"sample_input","packageId":107,"resAvailableTime":83.7425,"slopDuration":57.139736,"startTime":83.7426},{"availableTime":-100.2589,"depended":[0],"dependent":[12,109,156,168,204],"deviceDepended":[],"endTime":-100.2378,"execDepended":[],"frameId":643,"gpuDoneDep":{},"name":"physics_simulation","packageId":108,"resAvailableTime":-100.2583,"slopDuration":57.669696,"startTime":-100.2582},{"availableTime":-83.9762,"depended":[1,108],"dependent":[13,110,157,169,205],"deviceDepended":[],"endTime":-83.9612,"execDepended":[],"frameId":644,"gpuDoneDep":{},"name":"physics_simulation","packageId":109,"resAvailableTime":-83.9753,"slopDuration":57.778088,"startTime":-83.9751},{"availableTime":-67.1034,"depended":[2,109],"dependent":[14,111,158,170,206],"deviceDepended":[],"endTime":-67.0819,"execDepended":[],"frameId":645,"gpuDoneDep":{},"name":"physics_simulation","packageId":110,"resAvailableTime":-67.1023,"slopDuration":57.435592,"startTime":-67.1022},{"availableTime":-50.4245,"depended":[3,110],"dependent":[15,112,159,171,207],"deviceDepended":[],"endTime":-50.4059,"execDepended":[],"frameId":646,"gpuDoneDep":{},"name":"physics_simulation","packageId":111,"resAvailableTime":-50.4239,"slopDuration":57.601216,"startTime":-50.4237},{"availableTime":-34.0588,"depended":[4,111],"dependent":[16,113,160,172,208],"deviceDepended":[],"endTime":-34.0303,"execDepended":[],"frameId":647,"gpuDoneDep":{},"name":"physics_simulation","packageId":112,"resAvailableTime":-34.0584,"slopDuration":57.736944,"startTime":-34.0583},{"availableTime":-20.3251,"depended":[5,112],"dependent":[17,114,161,173,209],"deviceDepended":[],"endTime":-20.2415,"execDepended":[],"frameId":648,"gpuDoneDep":{},"name":"physics_simulation","packageId":113,"resAvailableTime":-20.3229,"slopDuration":59.374292,"startTime":-20.3228},{"availableTime":0.0149,"depended":[6,113],"dependent":[18,115,162,174,210],"deviceDepended":[],"endTime":0.0359,"execDepended":[],"frameId":649,"gpuDoneDep":{},"name":"physics_simulation","packageId":114,"resAvailableTime":0.0154,"slopDuration":52.51676,"startTime":0.0155},{"availableTime":16.072,"depended":[7,114],"dependent":[19,116,163,175,211],"deviceDepended":[],"endTime":16.0872,"execDepended":[],"frameId":650,"gpuDoneDep":{},"name":"physics_simulation","packageId":115,"resAvailableTime":16.0726,"slopDuration":58.990708,"startTime":16.0727},{"availableTime":32.9905,"depended":[8,115],"dependent":[20,117,164,176,212],"deviceDepended":[],"endTime":33.0733,"execDepended":[],"frameId":651,"gpuDoneDep":{},"name":"physics_simulation","packageId":116,"resAvailableTime":32.9908,"slopDuration":58.171556,"startTime":32.991},{"availableTime":49.2062,"depended":[9,116],"dependent":[21,118,165,177,213],"deviceDepended":[],"endTime":49.2217,"execDepended":[],"frameId":652,"gpuDoneDep":{},"name":"physics_simulation","packageId":117,"resAvailableTime":49.2073,"slopDuration":58.151472,"startTime":49.2074},{"availableTime":66.3221,"depended":[10,117],"dependent":[22,119,166,178,214],"deviceDepended":[],"endTime":66.3415,"execDepended":[],"frameId":653,"gpuDoneDep":{},"name":"physics_simulation","packageId":118,"resAvailableTime":66.3227,"slopDuration":58.097188,"startTime":66.3228},{"availableTime":83.7218,"depended":[11,118],"dependent":[23,167,179,215],"deviceDepended":[],"endTime":83.7413,"execDepended":[],"frameId":654,"gpuDoneDep":{},"name":"physics_simulation","packageId":119,"resAvailableTime":83.7224,"slopDuration":57.141036,"startTime":83.7225}]}},"workTime":26.581732}
+
+var viewMatrix = [[1, 0, 0], [0, 1, 0]];
+
+function copyMat(m) {
+    let ret = [[1, 0, 0], [0, 1, 0]];
+    for (let row = 0; row < 2; ++row)
+        for (let col = 0; col < 3; ++col)
+            ret[row][col] = m[row][col];
+    return ret;
+}
+
+function mulMat(a, b) {
+    let ret = [[1, 0, 0], [0, 1, 0]];
+    for (let row = 0; row < 2; ++row)
+        for (let col = 0; col < 3; ++col)
+            ret[row][col] = a[row][0] * b[0][col] + a[row][1] * b[1][col] + (col == 2 ? a[row][2] : 0);
+    return ret;
+}
+
+function getTranslation(dir) {
+    return [[1, 0, dir.x], [0, 1, dir.y]];
+}
+
+function getScaling(val) {
+    return [[val.x, 0, 0], [0, val.y, 0]];
+}
+
+function transformPoint(mat, p) {
+    return {
+        x: mat[0][0] * p.x + mat[0][1] * p.y + mat[0][2],
+        y: mat[1][0] * p.x + mat[1][1] * p.y + mat[1][2]
+    };
+}
+
+function dot(p1, p2) {
+    return p1.x * p2.x + p1.y * p2.y;
+}
+
+function invert(mat) {
+    let t = {x: -mat[0][2], y: -mat[1][2]};
+    // mat = SR * T
+    // inv(mat) = inv(SR * T)
+    // inv(mat) = inv(T) * inv(SR)
+    let invDet = 1.0 / (mat[0][0] * mat[1][1] - mat[0][1] * mat[1][0]);
+    let invMat = [[invDet * mat[1][1], - invDet * mat[0][1], 0], [- invDet * mat[1][0], invDet * mat[0][0], 0]]
+    return mulMat(getTranslation(t), invMat);
+}
+
+function diff(to, from) {
+    return {
+        x: to.x - from.x,
+        y: to.y - from.y
+    };
+}
+
+function translatePoint(p, dir) {
+    return {
+        x: p.x + dir.x,
+        y: p.y + dir.y
+    };
+}
+
+function invTransformPoint(mat, p) {
+    let xCol = {x: mat[0][0], y: mat[1][0]};
+    let yCol = {x: mat[0][1], y: mat[1][1]};
+    let t = {x: -mat[0][2], y: -mat[1][2]};
+    return {
+        x: dot(translatePoint(p, t), xCol),
+        y: dot(translatePoint(p, t), yCol)
+    };
+}
+
+function invTransformDir(mat, dir) {
+    let xCol = {x: mat[0][0], y: mat[1][0]};
+    let yCol = {x: mat[0][1], y: mat[1][1]};
+    return {
+        x: dot(dir, xCol),
+        y: dot(dir, yCol)
+    };
+}
+
+function transformDir(mat, dir) {
+    return {
+        x: mat[0][0] * dir.x + mat[0][1] * dir.y,
+        y: mat[1][0] * dir.x + mat[1][1] * dir.y
+    };
+}
+
+var dragStartMouse = null;
+var dragStartMat = null;
+
+function onDocumentDragStart(e) {
+    dragStartMat = copyMat(viewMatrix);
+    // dragStartMouse = transformPoint(viewMatrix, {x: e.clientX, y: e.clientY});
+    dragStartMouse = {x: e.clientX, y: e.clientY};
+}
+
+function onDocumentDragEnd(e) {
+    dragStartMat = null;
+    dragStartMouse = null;
+}
+
+function getModelTransform(element) {
+    return getTranslation({x: element.offsetWidth/2, y: element.offsetHeight/2});
+}
+
+function getInvModelTransform(element) {
+    return getTranslation({x: -element.offsetWidth/2, y: -element.offsetHeight/2});
+}
+
+function applyViewTransformOn(element) {
+    let invModel = getInvModelTransform(element);
+    tm = mulMat(invModel, viewMatrix);
+    element.style.transform = `matrix(${tm[0][0]}, ${tm[0][1]}, ${tm[1][0]}, ${tm[1][1]}, ${tm[0][2]}, ${tm[1][2]})`;
+}
+
+function applyViewTransform() {
+    let table = document.getElementById('perftable');
+    if (table) {
+        applyViewTransformOn(table);
+    }
+}
+
+function onDocumentDrag(e) {
+    if (dragStartMat != null) {
+        pos = {x: e.clientX, y: e.clientY};
+        viewMatrix = mulMat(getTranslation(diff(pos, dragStartMouse)), dragStartMat)
+        applyViewTransform();
+    }
+}
+function onDocumentZoom(e) {
+    let s = Math.exp(-e.deltaY / 5000.0);
+    let scaling = {x: s, y: s};
+    viewSpaceZoom = mulMat(
+        getTranslation({x: e.clientX, y: e.clientY}),
+        mulMat(getScaling(scaling),
+        getTranslation({x: -e.clientX, y: -e.clientY}))
+    );
+    viewMatrix = mulMat(viewSpaceZoom, viewMatrix);
+    applyViewTransform();
+}
+
+var cpuPackageData = {};
+var executionPackageData = {};
+
+function createTable() {
+    let oldTbl = document.getElementById('perftable');
+    if (oldTbl)
+        oldTbl.remove();
+
+    let frameIdText = document.getElementById('info_frameid');
+    let fpsText = document.getElementById('info_fps');
+    let frametimeText = document.getElementById('info_frametime');
+    let softLatencyText = document.getElementById('info_softwarelatency');
+    let latencySlopText = document.getElementById('info_latencyslop');
+    let workText = document.getElementById('info_worktime');
+    let execDelayText = document.getElementById('info_executiondelay');
+    let deviceDelayText = document.getElementById('info_devicedelay');
+
+    frameIdText.innerHTML = captureData.frameId;
+    fpsText.innerHTML = Math.round(captureData.fps);
+    frametimeText.innerHTML = `${Math.round(captureData.frameTime)}ms`;
+    softLatencyText.innerHTML = `${Math.round(captureData.softwareLatency)}ms`;
+    latencySlopText.innerHTML = `${Math.round(captureData.latencySlop)}ms`;
+    workText.innerHTML = `${Math.round(captureData.workTime)}ms`;
+    execDelayText.innerHTML = `${Math.round(captureData.executionDelay)}ms`;
+    deviceDelayText.innerHTML = `${Math.round(captureData.deviceDelay)}ms`;
+
+    document.onmousedown = onDocumentDragStart;
+    document.onmouseup = onDocumentDragEnd;
+    document.onmousemove = onDocumentDrag;
+    document.onwheel = onDocumentZoom;
+
+    let body = document.getElementsByTagName('body')[0];
+    let tbl = document.createElement('table');
+    tbl.id = 'perftable';
+    let tbdy = document.createElement('tbody');
+
+    let cpuStageOrder = captureData.cpuStageOrder;
+    let cpuNodes = captureData.stageToThreadToPackageList;
+    let deviceNodes = captureData.queueToDevicePackageList;
+    let executionNodes = captureData.executionPackages;
+    let minTime = null;
+    let maxTime = null;
+    let minTargetTime = null;
+    for (let stageNameId in cpuStageOrder) {
+        let stageName = cpuStageOrder[stageNameId];
+        if (!cpuNodes[stageName])
+            continue;
+        for (let threadName in cpuNodes[stageName]) {
+            for(let i in cpuNodes[stageName][threadName]) {
+                let node = cpuNodes[stageName][threadName][i];
+                if (minTime == null || node.availableTime < minTime)
+                    minTime = node.availableTime;
+                if (node.frameId == captureData.frameId && (minTargetTime == null || node.availableTime < minTargetTime))
+                    minTargetTime = node.availableTime;
+                if (maxTime == null || maxTime < node.endTime)
+                    maxTime = node.endTime;
+            }
+        }
+    }
+    for (let i in executionNodes) {
+        let node = executionNodes[i];
+        if (minTime == null || node.startTime < minTime)
+            minTime = node.startTime;
+        if (node.frameId == captureData.frameId && (minTargetTime == null || node.startTime < minTargetTime))
+            minTargetTime = node.startTime;
+        if (maxTime == null || maxTime < node.endTime)
+            maxTime = node.endTime;
+    }
+    for (let threadName in deviceNodes) {
+        for(let i in deviceNodes[threadName]) {
+            let node = deviceNodes[threadName][i];
+            if (minTime == null || node.startTime < minTime)
+                minTime = node.startTime;
+            if (maxTime == null || maxTime < node.endTime)
+                maxTime = node.endTime;
+        }
+    }
+
+    const tableStagesWidth = 300;
+    const timeToWorldUnit = (window.innerWidth - tableStagesWidth) / (maxTime - minTime);
+
+    cpuPackageData = {};
+    executionPackageData = {};
+
+    for (let stageNameId in cpuStageOrder) {
+        let stageName = cpuStageOrder[stageNameId];
+        if (!cpuNodes[stageName])
+            continue;
+        let stageTr = document.createElement('tr');
+
+        let stageNameTd = document.createElement('td');
+        let stageText = document.createElement('div');
+        stageText.innerHTML = stageName
+        stageText.className = 'stageName';
+        stageNameTd.appendChild(stageText);
+        stageNameTd.className = 'nametd';
+        stageTr.appendChild(stageNameTd);
+
+        let threadsNamesTd = document.createElement('td');
+        for (let threadName in cpuNodes[stageName]) {
+            let threadTbl = document.createElement('table');
+            threadTbl.className = 'threadtable';
+            let threadBody = document.createElement('tbody');
+            let threadTr = document.createElement('tr');
+
+            let threadNameTd = document.createElement('td');
+            threadNameTd.className = 'nametd';
+            let threadNameDiv = document.createElement('div');
+            threadNameDiv.innerHTML = threadName;
+            threadNameDiv.className = 'threadName';
+            threadNameTd.appendChild(threadNameDiv);
+            threadTr.appendChild(threadNameTd);
+
+            let contentTd = document.createElement('td');
+            contentTd.className = 'contenttd';
+            contentTd.style.width = `${timeToWorldUnit * (maxTime - minTime)}px`;
+
+            for(let i in cpuNodes[stageName][threadName]) {
+                let node = cpuNodes[stageName][threadName][i];
+                let resWaitTime = Math.max(node.startTime - node.resAvailableTime, 0);
+                let waitTime = Math.max(node.startTime - node.availableTime, 0);
+                if (resWaitTime > 0.05) {
+                    waitTime = Math.max(node.resAvailableTime - node.availableTime, 0)
+                }
+                else
+                    resWaitTime = 0;
+                let workTime = Math.max(node.endTime - node.startTime, 0);
+
+                let nodeWrapperElem = document.createElement('div');
+                nodeWrapperElem.className = "nodeWrapper " + (node.frameId == captureData.frameId ? "currentFrame" : "otherFrame");
+                nodeWrapperElem.style.left = `${timeToWorldUnit * (node.availableTime - minTime)}px`
+                let nodeElem = document.createElement('div');
+                nodeElem.className = "cpuNode";
+                cpuPackageData[node.packageId] = {w: nodeWrapperElem, n: node};
+
+                let textWrapper = document.createElement('div');
+                textWrapper.className = "textWrapper";
+                textWrapper.style.width = `${Math.max(timeToWorldUnit * (waitTime + workTime), 1)}px`;
+
+                let nodeNameElem = document.createElement('div');
+                nodeNameElem.className = "nodeText";
+                nodeNameElem.innerHTML = `${node.name} (${node.frameId - captureData.frameId})`;
+                textWrapper.appendChild(nodeNameElem);
+
+                let nodeSlopElem = document.createElement('div');
+                nodeSlopElem.className = "nodeText";
+                nodeSlopElem.innerHTML = `slop: ${Math.round(node.slopDuration)} ms`;
+                textWrapper.appendChild(nodeSlopElem);
+
+                let nodeTimingElem = document.createElement('div');
+                nodeTimingElem.className = "nodeText";
+                nodeTimingElem.innerHTML = `${Math.round(node.availableTime - minTargetTime)} | ${Math.round(node.startTime - minTargetTime)} | ${Math.round(node.endTime - minTargetTime)} ms`;
+                textWrapper.appendChild(nodeTimingElem);
+                nodeElem.appendChild(textWrapper);
+
+
+                if (resWaitTime > 0) {
+                    let resElem = document.createElement('div');
+                    resElem.className = "resourceWaitTime";
+                    resElem.style.width = `${Math.max(timeToWorldUnit * resWaitTime, 1)}px`;
+                    nodeElem.appendChild(resElem);
+                }
+                if (waitTime > 0.05) {
+                    let waitElem = document.createElement('div');
+                    waitElem.className = "waitTime";
+                    waitElem.style.width = `${Math.max(timeToWorldUnit * waitTime, 1)}px`;
+                    nodeElem.appendChild(waitElem);
+                }
+                let workElem = document.createElement('div');
+                workElem.className = "workTime";
+                workElem.style.width = `${Math.max(timeToWorldUnit * workTime, 1)}px`;
+                nodeElem.appendChild(workElem);
+
+
+                nodeWrapperElem.appendChild(nodeElem);
+                contentTd.appendChild(nodeWrapperElem);
+            }
+            threadTr.appendChild(contentTd);
+
+            threadBody.appendChild(threadTr);
+            threadTbl.appendChild(threadBody);
+            threadsNamesTd.appendChild(threadTbl);
+        }
+        stageTr.appendChild(threadsNamesTd);
+        stageTr.classList.add('perftr');
+        tbdy.appendChild(stageTr);
+    }
+
+
+    let executionStageTr = document.createElement('tr');
+
+    let stageNameTd = document.createElement('td');
+    let stageText = document.createElement('div');
+    stageText.innerHTML = "execution"
+    stageText.className = 'stageName';
+    stageNameTd.appendChild(stageText);
+    stageNameTd.className = 'nametd';
+    executionStageTr.appendChild(stageNameTd);
+
+    let threadsNamesTd = document.createElement('td');
+    let threadTbl = document.createElement('table');
+    threadTbl.className = 'threadtable';
+    let threadBody = document.createElement('tbody');
+    let threadTr = document.createElement('tr');
+
+    let threadNameTd = document.createElement('td');
+    threadNameTd.className = 'nametd';
+    let threadNameDiv = document.createElement('div');
+    threadNameDiv.innerHTML = "executionQueue";
+    threadNameDiv.className = 'threadName';
+    threadNameTd.appendChild(threadNameDiv);
+    threadTr.appendChild(threadNameTd);
+
+    let contentTd = document.createElement('td');
+    contentTd.className = 'contenttd';
+    contentTd.style.width = `${timeToWorldUnit * (maxTime - minTime)}px`;
+
+    let execIntervalElem = document.createElement('div');
+    execIntervalElem.id = 'execInterval';
+    contentTd.appendChild(execIntervalElem);
+
+
+    for (let i in executionNodes) {
+        let node = executionNodes[i];
+        // let delay = Math.max(node.startTime - node.issueTime, 0);
+        let workTime = Math.max(node.endTime - node.startTime, 0);
+
+        let sourceNode = cpuPackageData[node.sourcePackageId].n;
+        let sourceNodeWrapper = cpuPackageData[node.sourcePackageId].w;
+
+        let nodeWrapperElem = document.createElement('div');
+        nodeWrapperElem.className = "nodeWrapper " + (sourceNode.frameId == captureData.frameId ? "currentFrame" : "otherFrame");
+        nodeWrapperElem.style.left = `${timeToWorldUnit * (node.startTime - minTime)}px`
+        let nodeElem = document.createElement('div');
+        nodeElem.className = "cpuNode";
+        executionPackageData[node.packageId] = {w: nodeWrapperElem, n: node};
+
+        if (!cpuPackageData[node.sourcePackageId].lastExecution || node.endTime < cpuPackageData[node.sourcePackageId].lastExecution.n.endTime) {
+            cpuPackageData[node.sourcePackageId].lastExecution = executionPackageData[node.packageId];
+        }
+
+        let textWrapper = document.createElement('div');
+        textWrapper.className = "textWrapper";
+        textWrapper.style.width = `${Math.max(timeToWorldUnit * workTime, 1)}px`;
+
+        let nodeNameElem = document.createElement('div');
+        nodeNameElem.className = "nodeText";
+        nodeNameElem.innerHTML = `${sourceNode.name} (${sourceNode.frameId - captureData.frameId})`;
+        textWrapper.appendChild(nodeNameElem);
+
+        // let execNodeNameElem = document.createElement('div');
+        // execNodeNameElem.className = "nodeText";
+        // execNodeNameElem.innerHTML = `${node.name}`;
+        // textWrapper.appendChild(execNodeNameElem);
+
+        let nodeSlopElem = document.createElement('div');
+        nodeSlopElem.className = "nodeText";
+        nodeSlopElem.innerHTML = `slop: ${Math.round(node.slopDuration)} ms`;
+        textWrapper.appendChild(nodeSlopElem);
+        
+        let nodeTimingElem = document.createElement('div');
+        nodeTimingElem.className = "nodeText";
+        nodeTimingElem.innerHTML = `${Math.round(node.issueTime - minTargetTime)} | ${Math.round(node.startTime - minTargetTime)} | ${Math.round(node.endTime - minTargetTime)} ms`;
+        textWrapper.appendChild(nodeTimingElem);
+        nodeElem.appendChild(textWrapper);
+
+
+        let workElem = document.createElement('div');
+        workElem.className = "workTime";
+        workElem.style.width = `${Math.max(timeToWorldUnit * workTime, 1)}px`;
+        nodeElem.appendChild(workElem);
+
+        nodeWrapperElem.onmouseenter = (_) => {
+            sourceNodeWrapper.classList.add("issued");
+        }
+        nodeWrapperElem.onmouseleave = (_) => {
+            sourceNodeWrapper.classList.remove("issued");
+        }
+
+
+        nodeWrapperElem.appendChild(nodeElem);
+        contentTd.appendChild(nodeWrapperElem);
+    }
+    threadTr.appendChild(contentTd);
+
+    threadBody.appendChild(threadTr);
+    threadTbl.appendChild(threadBody);
+    threadsNamesTd.appendChild(threadTbl);
+    executionStageTr.appendChild(threadsNamesTd);
+    tbdy.appendChild(executionStageTr);
+
+
+    let deviceStageTr = document.createElement('tr');
+
+    stageNameTd = document.createElement('td');
+    stageText = document.createElement('div');
+    stageText.innerHTML = 'GPU';
+    stageText.className = 'stageName';
+    stageNameTd.appendChild(stageText);
+    stageNameTd.className = 'nametd';
+    deviceStageTr.appendChild(stageNameTd);
+
+    let fixedFrameEndTime = captureData.frameEndFixPoint;
+    let frameInterval = captureData.engineOptions.refreshMode == "discretized" ? 1000.0 / captureData.engineOptions.targetRefreshRate : 0;
+
+    threadsNamesTd = document.createElement('td');
+    let foundFirstGpu = false;
+    for (let threadName in deviceNodes) {
+        let threadTbl = document.createElement('table');
+        threadTbl.className = 'threadtable';
+        let threadBody = document.createElement('tbody');
+        let threadTr = document.createElement('tr');
+
+        let threadNameTd = document.createElement('td');
+        threadNameTd.className = 'nametd';
+        let threadNameDiv = document.createElement('div');
+        threadNameDiv.innerHTML = threadName;
+        threadNameDiv.className = 'threadName';
+        threadNameTd.appendChild(threadNameDiv);
+        threadTr.appendChild(threadNameTd);
+
+        let contentTd = document.createElement('td');
+        contentTd.className = 'contenttd';
+        contentTd.style.width = `${timeToWorldUnit * (maxTime - minTime)}px`;
+
+        if (!foundFirstGpu) {
+            contentTd.id = 'gpuTd';
+            foundFirstGpu = true;
+            if (frameInterval > 0) {
+                let firstInterval = Math.ceil((minTime - fixedFrameEndTime) / frameInterval) * frameInterval + fixedFrameEndTime;
+                let intervalCount = Math.ceil((maxTime - firstInterval) / frameInterval) + 1;
+                if (intervalCount > 0) {
+                    for (let i = 0; i < intervalCount; ++i) {
+                        let linesTbl = document.createElement('table');
+                        linesTbl.classList.add('markerlines');
+                        let linesTbdy = document.createElement('tbody');
+
+                        let tr = document.createElement('tr');
+                        let time = firstInterval + i*frameInterval;
+                        let td = document.createElement('td');
+                        td.innerText = `${Math.round(time - minTargetTime)}ms`;
+                        tr.appendChild(td);
+                        linesTbdy.appendChild(tr);
+
+                        linesTbl.appendChild(linesTbdy);
+                        contentTd.appendChild(linesTbl);
+                        linesTbl.style.left = `${timeToWorldUnit * (time - minTime)}px`;
+                    }
+                }
+            }
+        }
+
+        for(let i in deviceNodes[threadName]) {
+            let node = deviceNodes[threadName][i];
+            // let delay = Math.max(node.submissionTime - node.issueTime, 0);
+            let workTime = Math.max(node.endTime - node.startTime, 0);
+
+            let sourceExecution = executionPackageData[node.sourceExecPackageId];
+            let sourceNode = cpuPackageData[sourceExecution.n.sourcePackageId];
+
+            let nodeWrapperElem = document.createElement('div');
+            nodeWrapperElem.className = "nodeWrapper " + (sourceNode.n.frameId == captureData.frameId ? "currentFrame" : "otherFrame");
+            nodeWrapperElem.style.left = `${timeToWorldUnit * (node.startTime - minTime)}px`
+            let nodeElem = document.createElement('div');
+            nodeElem.className = "cpuNode";
+            node.w = nodeWrapperElem;
+            node.frameId = sourceNode.n.frameId;
+            // cpuPackageData[node.packageId] = {w: nodeWrapperElem, n: node};
+
+            if (!sourceNode.lastDeviceWork || node.endTime < sourceNode.lastDeviceWork.n.endTime) {
+                sourceNode.lastDeviceWork = {w: nodeWrapperElem, n: node};
+            }
+
+            let textWrapper = document.createElement('div');
+            textWrapper.className = "textWrapper";
+            textWrapper.style.width = `${Math.max(timeToWorldUnit * workTime, 1)}px`;
+
+            let nodeNameElem = document.createElement('div');
+            nodeNameElem.className = "nodeText";
+            nodeNameElem.innerHTML = `${sourceNode.n.name} (${sourceNode.n.frameId - captureData.frameId})`;
+            textWrapper.appendChild(nodeNameElem);
+
+            // let execNodeNameElem = document.createElement('div');
+            // execNodeNameElem.className = "nodeText";
+            // execNodeNameElem.innerHTML = `${node.name}`;
+            // textWrapper.appendChild(execNodeNameElem);
+
+            let nodeSlopElem = document.createElement('div');
+            nodeSlopElem.className = "nodeText";
+            nodeSlopElem.innerHTML = `slop: ${Math.round(node.slopDuration)} ms`;
+            textWrapper.appendChild(nodeSlopElem);
+
+            let nodeTimingElem = document.createElement('div');
+            nodeTimingElem.className = "nodeText";
+            nodeTimingElem.innerHTML = `${Math.round(node.submissionTime - minTargetTime)} | ${Math.round(node.startTime - minTargetTime)} | ${Math.round(node.endTime - minTargetTime)} ms`;
+            textWrapper.appendChild(nodeTimingElem);
+            nodeElem.appendChild(textWrapper);
+
+
+            let workElem = document.createElement('div');
+            workElem.className = "workTime";
+            workElem.style.width = `${Math.max(timeToWorldUnit * workTime, 1)}px`;
+            nodeElem.appendChild(workElem);
+
+            nodeWrapperElem.onmouseenter = (_) => {
+                sourceNode.w.classList.add("issued");
+                sourceExecution.w.classList.add("issued");
+            }
+            nodeWrapperElem.onmouseleave = (_) => {
+                sourceExecution.w.classList.remove("issued");
+                sourceNode.w.classList.remove("issued");
+            }
+
+
+            nodeWrapperElem.appendChild(nodeElem);
+            contentTd.appendChild(nodeWrapperElem);
+        }
+        threadTr.appendChild(contentTd);
+
+        threadBody.appendChild(threadTr);
+        threadTbl.appendChild(threadBody);
+        threadsNamesTd.appendChild(threadTbl);
+    }
+    deviceStageTr.appendChild(threadsNamesTd);
+    tbdy.appendChild(deviceStageTr);
+
+
+    tbl.appendChild(tbdy);
+    body.appendChild(tbl);
+
+    for (let i in captureData.executionIntervals) {
+        let interval = captureData.executionIntervals[i][1];
+        cpuPackageData[captureData.executionIntervals[i][0]].interval = interval;
+    }
+
+    for (let pkgId in cpuPackageData) {
+        // cpuPackageData[node.packageId] = {w: nodeWrapperElem, n: node};
+        let info = cpuPackageData[pkgId];
+        info.w.onmouseenter = (_) => {
+            for (let depended in info.n.depended) {
+                let dep = cpuPackageData[info.n.depended[depended]];
+                if (dep.n.endTime < info.n.availableTime)
+                    dep.w.classList.add("depended");
+                else
+                    dep.w.classList.add("activeDepended");
+            }
+            for (let execDepended in info.n.execDepended) {
+                let dep = cpuPackageData[info.n.execDepended[execDepended]].lastExecution;
+                if (dep.n.endTime < info.n.availableTime)
+                    dep.w.classList.add("depended");
+                else
+                    dep.w.classList.add("activeDepended");
+            }
+            for (let deviceDepended in info.n.deviceDepended) {
+                let dep = cpuPackageData[info.n.deviceDepended[deviceDepended]].lastDeviceWork;
+                if (dep.n.endTime < info.n.availableTime)
+                    dep.w.classList.add("depended");
+                else
+                    dep.w.classList.add("activeDepended");
+            }
+            for (let dependent in info.n.dependent) {
+                let dep = cpuPackageData[info.n.dependent[dependent]];
+                if (dep.n.availableTime < info.n.endTime)
+                    dep.w.classList.add("activeDependent");
+                else
+                    dep.w.classList.add("dependent");
+            }
+            for (let threadName in info.n.gpuDoneDep) {
+                for(let i in captureData.queueToDevicePackageList[threadName]) {
+                    let dep = captureData.queueToDevicePackageList[threadName][i];
+                    if (dep.frameId <= info.n.gpuDoneDep[threadName]) {
+                        if (info.n.availableTime < dep.endTime)
+                            dep.w.classList.add("activeDepended");
+                        else
+                            dep.w.classList.add("depended");
+                    }
+                }
+            }
+            if (info.interval) {
+                execIntervalElem.style.left = `${timeToWorldUnit * (info.interval.startTime - minTime)}px`;
+                execIntervalElem.style.width = `${Math.max(timeToWorldUnit * (info.interval.endTime - info.interval.startTime), 1)}px`;
+                execIntervalElem.style.visibility = "visible";
+            }
+        }
+        info.w.onmouseleave = (_) => {
+            for (let depended in info.n.depended) {
+                let dep = cpuPackageData[info.n.depended[depended]];
+                dep.w.classList.remove("depended");
+                dep.w.classList.remove("activeDepended");
+            }
+            for (let execDepended in info.n.execDepended) {
+                let dep = cpuPackageData[info.n.execDepended[execDepended]].lastExecution;
+                dep.w.classList.remove("depended");
+                dep.w.classList.remove("activeDepended");
+            }
+            for (let deviceDepended in info.n.deviceDepended) {
+                let dep = cpuPackageData[info.n.deviceDepended[deviceDepended]].lastDeviceWork;
+                dep.w.classList.remove("depended");
+                dep.w.classList.remove("activeDepended");
+            }
+            for (let dependent in info.n.dependent) {
+                let dep = cpuPackageData[info.n.dependent[dependent]];
+                dep.w.classList.remove("activeDependent");
+                dep.w.classList.remove("dependent");
+            }
+            for (let threadName in info.n.gpuDoneDep) {
+                for(let i in captureData.queueToDevicePackageList[threadName]) {
+                    let dep = captureData.queueToDevicePackageList[threadName][i];
+                    if (dep.frameId <= info.n.gpuDoneDep[threadName]) {
+                        dep.w.classList.remove("activeDepended");
+                        dep.w.classList.remove("depended");
+                    }
+                }
+            }
+            execIntervalElem.style.visibility = "hidden";
+        }
+    }
+    applyViewTransform();
+}
+
+function onResize() {
+    createTable();
+    applyViewTransform();
+}
+
+function initPage() {
+    createTable();
+    viewMatrix = getModelTransform(document.getElementById('perftable'));
+    applyViewTransform();
+}
+
+function toggleScreenShotSize() {
+    let div = document.getElementById('screenshot_container');
+    div.classList.toggle('fullscreen');
+}
+
+window.addEventListener("resize", onResize);
+</script>;
+    </head>
+<body onload="initPage()">
+
+<div id="screenshot_container">
+    <img src="capture__2021_10_11_11_36_39_649.png">
+    <button class="btn" onclick="toggleScreenShotSize()"><i class="fa fa-arrows-alt" aria-hidden="true"></i></button>
+</div>
+
+<table id="infos">
+    <tr>
+        <td class="info_name">Frame Id</td>
+        <td class="info_value" id="info_frameid"></td>
+    </tr>
+    <tr>
+        <td class="info_name">Fps</td>
+        <td class="info_value" id="info_fps"></td>
+    </tr>
+    <tr>
+        <td class="info_name">Frame time</td>
+        <td class="info_value" id="info_frametime"></td>
+    </tr>
+    <tr>
+        <td class="info_name">Software latency</td>
+        <td class="info_value" id="info_softwarelatency"></td>
+    </tr>
+    <tr>
+        <td class="info_name">Latency slop</td>
+        <td class="info_value" id="info_latencyslop"></td>
+    </tr>
+    <tr>
+        <td class="info_name">Work time</td>
+        <td class="info_value" id="info_worktime"></td>
+    </tr>
+    <tr>
+        <td class="info_name">Execution delay</td>
+        <td class="info_value" id="info_executiondelay"></td>
+    </tr>
+    <tr>
+        <td class="info_name">Device delay</td>
+        <td class="info_value" id="info_devicedelay"></td>
+    </tr>
+</table>
+
+</body>
+</html>
