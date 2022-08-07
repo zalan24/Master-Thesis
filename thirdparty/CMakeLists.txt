@@ -10,7 +10,7 @@ add_subdirectory(cimg)
 # add_subdirectory(buildbloat) # TODO
 add_subdirectory(glm)
 add_subdirectory(glfw)
-add_subdirectory(assimp)
+# add_subdirectory(assimp)
 add_subdirectory(imgui)
 add_subdirectory(base64)
 add_subdirectory(concurrentqueue)

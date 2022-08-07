@@ -2,7 +2,7 @@
 
 function(prep_thirdparty directory out_dir)
     if (NOT EXISTS ${out_dir})
-        message("Hacking 3rd party: ${directory}")
+        message("Preprocessing 3rd party: ${directory}")
         execute_process(COMMAND ${CMAKE_COMMAND} -E copy_directory ${directory} ${out_dir} COMMAND_ERROR_IS_FATAL ANY)
         file(GLOB_RECURSE HEADERS ${out_dir}/*.hpp ${out_dir}/*.h)
         file(GLOB_RECURSE SOURCES ${out_dir}/*.c ${out_dir}/*.cpp ${out_dir}/*.cxx)

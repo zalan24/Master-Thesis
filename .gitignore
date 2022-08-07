@@ -46,5 +46,4 @@ launchers/prev_scene.json
 data/models/*
 .vscode/ipch/
 .cache/
-imgui.ini
 .ipynb_checkpoints
