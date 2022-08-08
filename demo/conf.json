@@ -1,0 +1,14 @@
+{
+    "screenWidth": 1600,
+    "screenHeight": 900,
+    "inputBufferSize": 2048,
+    "stackMemorySizeKb": 1024,
+    "frameMemorySizeKb": 32768,
+    "imagesInSwapchain": 3,
+    "maxFramesInExecutionQueue": 2,
+    "maxFramesInFlight": 4,
+    "slopHistorySize": 32,
+    "title": "Playground",
+    "driver": "Vulkan",
+    "logs": "logs"
+}

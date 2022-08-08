@@ -15,6 +15,24 @@ This project implements a small gaming engine with very limited feature set, bui
 * Custom perf metrics tools
 * A system for capturing frames with a visualizer
 * Launch configurations for many different benchmarks
+
+## Try it out
+
+The provided configurations have artificial workload, which can be controlled under `Options` -> `Workload options`.
+
+Latency reduction config can be configured under `Options` -> `Latency options`.
+
+For simplicity use the provided demo configuration, downloaded from the releases or under `demo/` after a local build.
+
+There are many launchers configured for different benchmarks under `launchers/`. Feel free to try any of them.
+
+### Controls
+* F10: Create a capture (check under `captures/` in the cwd of the application)
+* F11: Toggle free camera
+* WASDE + mouse during free camera mode: move around
+* Shift: moving faster
+
+![Screenshot](documents/pictures/screenshot.png)
 ## The thesis
 
 [Read more here](documents/thesis.pdf)
